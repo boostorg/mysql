@@ -12,6 +12,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/config.hpp>
+#include <boost/core/span.hpp>
 
 #include <vector>
 
@@ -23,18 +24,13 @@ struct auth_response
 {
     std::vector<std::uint8_t> data;
     string_view plugin_name;
-
-    string_view response() const noexcept
-    {
-        return string_view(reinterpret_cast<const char*>(data.data()), data.size());
-    }
 };
 
 BOOST_ATTRIBUTE_NODISCARD
 error_code compute_auth_response(
     string_view plugin_name,
     string_view password,
-    string_view challenge,
+    span<const std::uint8_t> challenge,
     bool use_ssl,
     auth_response& output
 );

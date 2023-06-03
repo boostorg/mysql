@@ -12,11 +12,11 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/asio/coroutine.hpp>
 
+#include "channel/channel.hpp"
 #include "network_algorithms/handshake.hpp"
 
 namespace boost {

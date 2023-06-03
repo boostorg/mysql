@@ -11,17 +11,18 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
 
 #include <boost/asio/coroutine.hpp>
+
+#include "channel/channel.hpp"
+#include "protocol/protocol.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-inline void compose_quit(channel& chan) { chan.serialize(quit_packet{}, chan.reset_sequence_number()); }
+inline void compose_quit(channel& chan) { chan.serialize(quit_command(), chan.reset_sequence_number()); }
 
 struct quit_connection_op : boost::asio::coroutine
 {

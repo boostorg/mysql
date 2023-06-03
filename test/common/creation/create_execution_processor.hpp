@@ -66,7 +66,7 @@ void add_row(detail::execution_processor& proc, const T&... args)
     proc.on_row_batch_finish();
 }
 
-inline void add_ok(detail::execution_processor& proc, const detail::ok_packet& pack)
+inline void add_ok(detail::execution_processor& proc, const detail::ok_packet_data& pack)
 {
     diagnostics diag;
     error_code err;
@@ -115,7 +115,7 @@ public:
         add_row(res_.get_interface(), args...);
         return *this;
     }
-    basic_exec_builder& ok(const detail::ok_packet& pack)
+    basic_exec_builder& ok(const detail::ok_packet_data& pack)
     {
         add_ok(res_.get_interface(), pack);
         return *this;

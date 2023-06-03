@@ -12,15 +12,21 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/statement.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
 
 #include <boost/asio/async_result.hpp>
+
+#include "channel/channel.hpp"
+#include "protocol/protocol.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
+
+inline void compose_close_statement(channel& chan, const statement& stmt)
+{
+    chan.serialize(close_stmt_command{stmt.id()}, chan.reset_sequence_number());
+}
 
 inline void close_statement_impl(channel& chan, const statement& stmt, error_code& err, diagnostics& diag)
 {
@@ -28,7 +34,7 @@ inline void close_statement_impl(channel& chan, const statement& stmt, error_cod
     diag.clear();
 
     // Serialize the close message
-    chan.serialize(com_stmt_close_packet{stmt.id()}, chan.reset_sequence_number());
+    compose_close_statement(chan, stmt);
 
     // Send it. No response is sent back
     chan.write(err);
@@ -42,7 +48,7 @@ async_close_statement_impl(channel& chan, const statement& stmt, diagnostics& di
     diag.clear();
 
     // Serialize the close message
-    chan.serialize(com_stmt_close_packet{stmt.id()}, chan.reset_sequence_number());
+    compose_close_statement(chan, stmt);
 
     // Send it. No response is sent back
     return chan.async_write(std::forward<CompletionToken>(token));

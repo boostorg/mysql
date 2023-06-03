@@ -19,7 +19,7 @@ namespace test {
 
 class ok_builder
 {
-    detail::ok_packet pack_{};
+    detail::ok_packet_data pack_{};
 
     void flag(std::uint16_t f, bool value)
     {
@@ -61,7 +61,7 @@ public:
         pack_.info.value = v;
         return *this;
     }
-    detail::ok_packet build() { return pack_; }
+    detail::ok_packet_data build() { return pack_; }
 };
 
 inline detail::err_packet create_err_packet(std::uint16_t code, string_view message = "")

@@ -157,24 +157,23 @@ private:
     void reset_impl() noexcept override final;
 
     BOOST_MYSQL_DECL
-    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) override final;
+    error_code on_head_ok_packet_impl(const ok_view& pack, diagnostics& diag) override final;
 
     BOOST_MYSQL_DECL
     void on_num_meta_impl(std::size_t num_columns) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_meta_impl(metadata&& meta, string_view field_name, bool is_last, diagnostics& diag)
-        override final;
+    error_code on_meta_impl(const coldef_view& coldef, bool is_last, diagnostics& diag) override final;
 
     BOOST_MYSQL_DECL
     error_code on_row_impl(
-        deserialization_context&& ctx,
+        span<const std::uint8_t> msg,
         const output_ref& ref,
         std::vector<field_view>& fields
     ) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final;
+    error_code on_row_ok_packet_impl(const ok_view& pack) override final;
 
     void on_row_batch_start_impl() noexcept override final {}
 
@@ -194,7 +193,7 @@ private:
     void on_new_resultset() noexcept;
 
     BOOST_MYSQL_DECL
-    error_code on_ok_packet_impl(const ok_packet& pack);
+    error_code on_ok_packet_impl(const ok_view& pack);
 };
 
 template <class StaticRow>
@@ -286,10 +285,6 @@ public:
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/detail/execution_processor/impl/static_execution_state_impl.ipp>
-#endif
 
 #endif  // BOOST_MYSQL_CXX14
 

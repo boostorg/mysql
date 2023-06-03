@@ -8,76 +8,38 @@
 #ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_HANDSHAKE_HPP
 #define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_HANDSHAKE_HPP
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/db_flavor.hpp>
-#include <boost/mysql/detail/protocol/handshake_messages.hpp>
-#include <boost/mysql/detail/protocol/process_error_packet.hpp>
-#include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
 
-#include <type_traits>
-
 #include "auth/auth.hpp"
+#include "channel/channel.hpp"
+#include "protocol/capabilities.hpp"
+#include "protocol/protocol.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-inline std::uint8_t get_collation_first_byte(std::uint16_t value) { return value % 0xff; }
 
 inline capabilities conditional_capability(bool condition, std::uint32_t cap)
 {
     return capabilities(condition ? cap : 0);
 }
 
-inline db_flavor parse_db_version(string_view version_string) noexcept
-{
-    return version_string.find("MariaDB") != string_view::npos ? db_flavor::mariadb : db_flavor::mysql;
-}
-
-inline error_code deserialize_handshake(
-    boost::asio::const_buffer buffer,
-    handshake_packet& output,
-    diagnostics& diag
-)
-{
-    deserialization_context ctx(boost::asio::buffer(buffer), capabilities());
-    std::uint8_t msg_type = 0;
-    auto err = deserialize_message_part(ctx, msg_type);
-    if (err)
-        return err;
-    if (msg_type == handshake_protocol_version_9)
-    {
-        return make_error_code(client_errc::server_unsupported);
-    }
-    else if (msg_type == error_packet_header)
-    {
-        // We don't know which DB is yet
-        return process_error_packet(ctx, db_flavor::mysql, diag);
-    }
-    else if (msg_type != handshake_protocol_version_10)
-    {
-        return make_error_code(client_errc::protocol_value_error);
-    }
-    return deserialize_message(ctx, output);
-}
-
 inline error_code process_capabilities(
     const handshake_params& params,
-    const handshake_packet& handshake,
+    const server_hello& hello,
     bool is_ssl_stream,
     capabilities& negotiated_caps
 )
 {
     auto ssl = params.ssl();
-    capabilities server_caps(handshake.capability_falgs);
+    capabilities server_caps = hello.server_capabilities;
     capabilities required_caps = mandatory_capabilities |
                                  conditional_capability(!params.database().empty(), CLIENT_CONNECT_WITH_DB) |
                                  conditional_capability(params.multi_queries(), CLIENT_MULTI_STATEMENTS) |
@@ -138,30 +100,29 @@ public:
     bool use_ssl() const noexcept { return channel_.current_capabilities().has(CLIENT_SSL); }
 
     // Initial greeting processing
-    error_code process_handshake(boost::asio::const_buffer buffer, bool is_ssl_stream)
+    error_code process_handshake(asio::const_buffer buffer, bool is_ssl_stream)
     {
-        // Deserialize server greeting
-        handshake_packet handshake;
-        auto err = deserialize_handshake(buffer, handshake, diag_);
+        // Deserialize server hello
+        server_hello hello{};
+        auto err = deserialize_server_hello(buffer, hello, diag_);
         if (err)
             return err;
 
         // Check capabilities
         capabilities negotiated_caps;
-        err = process_capabilities(params_, handshake, is_ssl_stream, negotiated_caps);
+        err = process_capabilities(params_, hello, is_ssl_stream, negotiated_caps);
         if (err)
             return err;
-        channel_.set_current_capabilities(negotiated_caps);
 
-        // Check whether it's MySQL or MariaDB
-        auto flavor = parse_db_version(handshake.server_version.value);
-        channel_.set_flavor(flavor);
+        // Set capabilities & db flavor
+        channel_.set_current_capabilities(negotiated_caps);
+        channel_.set_flavor(hello.server);
 
         // Compute auth response
         return compute_auth_response(
-            handshake.auth_plugin_name.value,
+            hello.auth_plugin_name,
             params_.password(),
-            handshake.auth_plugin_data.value(),
+            hello.auth_plugin_data,
             use_ssl(),
             auth_resp_
         );
@@ -171,25 +132,24 @@ public:
     void compose_ssl_request()
     {
         ssl_request sslreq{
-            channel_.current_capabilities().get(),
+            channel_.current_capabilities(),
             static_cast<std::uint32_t>(MAX_PACKET_SIZE),
-            get_collation_first_byte(params_.connection_collation()),
-            {},
+            params_.connection_collation(),
         };
         channel_.serialize(sslreq, channel_.shared_sequence_number());
     }
 
-    void compose_handshake_response()
+    void compose_login_request()
     {
-        // Compose response
-        handshake_response_packet response{
-            channel_.current_capabilities().get(),
+        // Compose login request
+        login_request response{
+            channel_.current_capabilities(),
             static_cast<std::uint32_t>(MAX_PACKET_SIZE),
-            get_collation_first_byte(params_.connection_collation()),
-            string_null(params_.username()),
-            string_lenenc(auth_resp_.response()),
-            string_null(params_.database()),
-            string_null(auth_resp_.plugin_name),
+            params_.connection_collation(),
+            params_.username(),
+            auth_resp_.data,
+            params_.database(),
+            auth_resp_.plugin_name,
         };
 
         // Serialize
@@ -197,36 +157,25 @@ public:
     }
 
     // Server handshake response
-    error_code process_handshake_server_response(boost::asio::const_buffer server_response)
+    error_code process_handshake_server_response(asio::const_buffer msg)
     {
-        deserialization_context ctx(server_response, channel_.current_capabilities());
-        std::uint8_t msg_type = 0;
-        auto err = deserialize_message_part(ctx, msg_type);
-        if (err)
-            return err;
-        if (msg_type == ok_packet_header)
+        error_code err;
+
+        auto response = deserialize_handshake_server_response(msg, channel_.flavor(), diag_);
+
+        switch (response.type)
         {
-            // Auth success via fast auth path
+        case handhake_server_response::type_t::ok:
+            // Auth success
             auth_state_ = auth_state::complete;
             return error_code();
-        }
-        else if (msg_type == error_packet_header)
-        {
-            return process_error_packet(ctx, channel_.flavor(), diag_);
-        }
-        else if (msg_type == auth_switch_request_header)
-        {
-            // We have received an auth switch request. Deserialize it
-            auth_switch_request_packet auth_sw;
-            auto err = deserialize_message(ctx, auth_sw);
-            if (err)
-                return err;
-
+        case handhake_server_response::type_t::error: return response.data.err;
+        case handhake_server_response::type_t::auth_switch:
             // Compute response
             err = compute_auth_response(
-                auth_sw.plugin_name.value,
+                response.data.auth_switch.plugin_name,
                 params_.password(),
-                auth_sw.auth_plugin_data.value,
+                response.data.auth_switch.auth_data,
                 use_ssl(),
                 auth_resp_
             );
@@ -234,48 +183,27 @@ public:
                 return err;
 
             // Serialize
-            channel_.serialize(
-                auth_switch_response_packet{string_eof(auth_resp_.response())},
-                channel_.shared_sequence_number()
-            );
+            channel_.serialize(auth_switch_response{auth_resp_.data}, channel_.shared_sequence_number());
             auth_state_ = auth_state::send_more_data;
             return error_code();
-        }
-        else if (msg_type == auth_more_data_header)
-        {
-            // We have received an auth more data request. Deserialize it
-            auth_more_data_packet more_data;
-            auto err = deserialize_message(ctx, more_data);
-            if (err)
-                return err;
-
-            string_view challenge = more_data.auth_plugin_data.value;
-            if (challenge == fast_auth_complete_challenge)
-            {
-                auth_state_ = auth_state::wait_for_ok;
-                return error_code();
-            }
-
+        case handhake_server_response::type_t::ok_follows:
+            // The next packet will be an OK packet
+            auth_state_ = auth_state::wait_for_ok;
+            return error_code();
+        case handhake_server_response::type_t::auth_more_data:
             // Compute response
             err = compute_auth_response(
                 auth_resp_.plugin_name,
                 params_.password(),
-                challenge,
+                response.data.more_data,
                 use_ssl(),
                 auth_resp_
             );
             if (err)
                 return err;
-            channel_.serialize(
-                auth_switch_response_packet{string_eof(auth_resp_.response())},
-                channel_.shared_sequence_number()
-            );
+            channel_.serialize(auth_switch_response{auth_resp_.data}, channel_.shared_sequence_number());
             auth_state_ = auth_state::send_more_data;
             return error_code();
-        }
-        else
-        {
-            return make_error_code(client_errc::protocol_value_error);
         }
     }
 
@@ -342,7 +270,7 @@ struct handshake_op : boost::asio::coroutine
             }
 
             // Compose and send handshake response
-            processor_.compose_handshake_response();
+            processor_.compose_login_request();
             BOOST_ASIO_CORO_YIELD get_channel().async_write(std::move(self));
 
             while (!processor_.auth_complete())
@@ -414,7 +342,7 @@ inline void handshake_impl(
     }
 
     // Handshake response
-    processor.compose_handshake_response();
+    processor.compose_login_request();
     channel.write(err);
     if (err)
         return;

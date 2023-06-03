@@ -149,7 +149,7 @@ private:
         return err;
     }
 
-    void handle_ok(const detail::ok_packet& pack)
+    void handle_ok(const detail::ok_packet_data& pack)
     {
         ok_packet_.affected_rows = pack.affected_rows.value;
         ok_packet_.last_insert_id = pack.last_insert_id.value;
@@ -158,7 +158,7 @@ private:
 
 protected:
     void reset_impl() noexcept override { ++num_calls_.reset; }
-    error_code on_head_ok_packet_impl(const detail::ok_packet& pack, diagnostics& diag) override
+    error_code on_head_ok_packet_impl(const detail::ok_packet_data& pack, diagnostics& diag) override
     {
         ++num_calls_.on_head_ok_packet;
         handle_ok(pack);
@@ -184,7 +184,7 @@ protected:
         refs_.push_back(ref);
         return fc_.maybe_fail();
     }
-    error_code on_row_ok_packet_impl(const detail::ok_packet& pack) override
+    error_code on_row_ok_packet_impl(const detail::ok_packet_data& pack) override
     {
         ++num_calls_.on_row_ok_packet;
         handle_ok(pack);

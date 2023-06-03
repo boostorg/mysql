@@ -11,12 +11,12 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 #include <boost/asio/coroutine.hpp>
 
+#include "channel/channel.hpp"
 #include "network_algorithms/read_resultset_head.hpp"
 #include "network_algorithms/read_some_rows.hpp"
 #include "network_algorithms/start_execution.hpp"

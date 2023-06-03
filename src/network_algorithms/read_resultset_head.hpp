@@ -10,29 +10,30 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/metadata.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
-#include <boost/mysql/detail/protocol/process_error_packet.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/assert.hpp>
+
+#include "channel/channel.hpp"
+#include "protocol/protocol.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 inline error_code process_execution_response(
-    channel_base& chan,
+    channel& chan,
     execution_processor& proc,
     boost::asio::const_buffer msg,
     diagnostics& diag
 )
 {
-    auto response = deserialize_execute_response(msg, chan.current_capabilities(), chan.flavor(), diag);
+    auto response = deserialize_execute_response(msg, chan.flavor(), diag);
     error_code err;
     switch (response.type)
     {
@@ -45,7 +46,7 @@ inline error_code process_execution_response(
     return err;
 }
 
-inline error_code process_field_definition(channel_base& chan, execution_processor& proc, diagnostics& diag)
+inline error_code process_field_definition(channel& chan, execution_processor& proc, diagnostics& diag)
 {
     // Read the field definition packet (it's cached at this point)
     BOOST_ASSERT(chan.has_read_messages());
@@ -55,13 +56,13 @@ inline error_code process_field_definition(channel_base& chan, execution_process
         return err;
 
     // Deserialize
-    column_definition_packet field_definition{};
-    err = deserialize_message(msg, field_definition, chan.current_capabilities());
+    coldef_view coldef{};
+    err = deserialize_column_definition(msg, coldef);
     if (err)
         return err;
 
     // Notify the processor
-    return proc.on_meta(field_definition, diag);
+    return proc.on_meta(coldef, diag);
 }
 
 struct read_resultset_head_op : boost::asio::coroutine

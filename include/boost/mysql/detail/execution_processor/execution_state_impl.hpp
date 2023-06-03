@@ -49,26 +49,26 @@ class execution_state_impl final : public execution_processor
     }
 
     BOOST_MYSQL_DECL
-    void on_ok_packet_impl(const ok_packet& pack);
+    void on_ok_packet_impl(const ok_view& pack);
 
     BOOST_MYSQL_DECL
     void reset_impl() noexcept override final;
 
     BOOST_MYSQL_DECL
-    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override final;
+    error_code on_head_ok_packet_impl(const ok_view& pack, diagnostics&) override final;
 
     BOOST_MYSQL_DECL
     void on_num_meta_impl(std::size_t num_columns) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_meta_impl(metadata&& meta, string_view, bool, diagnostics&) override final;
+    error_code on_meta_impl(const coldef_view&, bool, diagnostics&) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_row_impl(deserialization_context&& ctx, const output_ref&, std::vector<field_view>& fields)
+    error_code on_row_impl(span<const std::uint8_t> msg, const output_ref&, std::vector<field_view>& fields)
         override final;
 
     BOOST_MYSQL_DECL
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final;
+    error_code on_row_ok_packet_impl(const ok_view& pack) override final;
 
     void on_row_batch_start_impl() noexcept override final {}
 
@@ -115,9 +115,5 @@ public:
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/detail/execution_processor/impl/execution_state_impl.ipp>
-#endif
 
 #endif

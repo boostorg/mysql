@@ -12,20 +12,20 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/coroutine.hpp>
 
+#include "channel/channel.hpp"
 #include "network_algorithms/read_some_rows.hpp"
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-inline rows_view get_some_rows(const channel_base& ch, const execution_state_impl& st)
+inline rows_view get_some_rows(const channel& ch, const execution_state_impl& st)
 {
     return impl_access::construct<rows_view>(
         ch.shared_fields().data(),

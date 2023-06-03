@@ -139,7 +139,7 @@ using boost::describe::operators::operator<<;
 #endif
 
 // OK packet creation
-inline detail::ok_packet create_ok_r1(bool more_results = false)
+inline detail::ok_packet_data create_ok_r1(bool more_results = false)
 {
     return ok_builder()
         .affected_rows(1)
@@ -150,7 +150,7 @@ inline detail::ok_packet create_ok_r1(bool more_results = false)
         .build();
 }
 
-inline detail::ok_packet create_ok_r2(bool more_results = false)
+inline detail::ok_packet_data create_ok_r2(bool more_results = false)
 {
     return ok_builder()
         .affected_rows(5)
@@ -162,7 +162,7 @@ inline detail::ok_packet create_ok_r2(bool more_results = false)
         .build();
 }
 
-inline detail::ok_packet create_ok_r3()
+inline detail::ok_packet_data create_ok_r3()
 {
     return ok_builder().affected_rows(10).last_insert_id(11).warnings(12).info("").build();
 }

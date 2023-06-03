@@ -15,8 +15,9 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
@@ -31,9 +32,8 @@ namespace mysql {
 namespace detail {
 
 // Forward declarations
-struct column_definition_packet;
-struct ok_packet;
-class deserialization_context;
+struct coldef_view;
+struct ok_view;
 
 // A type-erased reference to be used as the output range for static_execution_state
 class output_ref
@@ -87,7 +87,8 @@ public:
         reset_impl();
     }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code on_head_ok_packet(const ok_packet& pack, diagnostics& diag)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code on_head_ok_packet(const ok_view& pack, diagnostics& diag)
     {
         BOOST_ASSERT(is_reading_head());
         auto err = on_head_ok_packet_impl(pack, diag);
@@ -103,14 +104,15 @@ public:
         set_state(state_t::reading_metadata);
     }
 
-    BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
-    on_meta(const column_definition_packet& pack, diagnostics& diag);
-
-    // Exposed for the sake of testing
-    BOOST_ATTRIBUTE_NODISCARD error_code on_meta(metadata&& meta, diagnostics& diag)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code on_meta(const coldef_view& pack, diagnostics& diag)
     {
-        std::string field_name = meta.column_name();
-        return on_meta_helper(std::move(meta), field_name, diag);
+        BOOST_ASSERT(is_reading_meta());
+        bool is_last = --remaining_meta_ == 0;
+        auto err = on_meta_impl(pack, is_last, diag);
+        if (is_last)
+            set_state(state_t::reading_rows);
+        return err;
     }
 
     void on_row_batch_start()
@@ -121,14 +123,15 @@ public:
 
     void on_row_batch_finish() { on_row_batch_finish_impl(); }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code
-    on_row(deserialization_context&& ctx, const output_ref& ref, std::vector<field_view>& storage)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code on_row(span<const std::uint8_t> msg, const output_ref& ref, std::vector<field_view>& storage)
     {
         BOOST_ASSERT(is_reading_rows());
-        return on_row_impl(std::move(ctx), ref, storage);
+        return on_row_impl(msg, ref, storage);
     }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code on_row_ok_packet(const ok_packet& pack)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code on_row_ok_packet(const ok_view& pack)
     {
         BOOST_ASSERT(is_reading_rows());
         auto err = on_row_ok_packet_impl(pack);
@@ -152,22 +155,22 @@ public:
 
 protected:
     virtual void reset_impl() noexcept = 0;
-    virtual error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) = 0;
+    virtual error_code on_head_ok_packet_impl(const ok_view& pack, diagnostics& diag) = 0;
     virtual void on_num_meta_impl(std::size_t num_columns) = 0;
-    virtual error_code on_meta_impl(
-        metadata&& meta,
-        string_view column_name,
-        bool is_last,
-        diagnostics& diag
-    ) = 0;
-    virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
+    virtual error_code on_meta_impl(const coldef_view& coldef, bool is_last, diagnostics& diag) = 0;
+    virtual error_code on_row_ok_packet_impl(const ok_view& pack) = 0;
     virtual error_code on_row_impl(
-        deserialization_context&& ctx,
+        span<const std::uint8_t> msg,
         const output_ref& ref,
         std::vector<field_view>& storage
     ) = 0;
     virtual void on_row_batch_start_impl() = 0;
     virtual void on_row_batch_finish_impl() = 0;
+
+    metadata create_meta(const coldef_view& coldef) const
+    {
+        return impl_access::construct<metadata>(coldef, mode_ == metadata_mode::full);
+    }
 
 private:
     enum class state_t
@@ -197,26 +200,12 @@ private:
 
     void set_state(state_t v) noexcept { state_ = v; }
 
-    error_code on_meta_helper(metadata&& meta, string_view column_name, diagnostics& diag)
-    {
-        BOOST_ASSERT(is_reading_meta());
-        bool is_last = --remaining_meta_ == 0;
-        auto err = on_meta_impl(std::move(meta), column_name, is_last, diag);
-        if (is_last)
-            set_state(state_t::reading_rows);
-        return err;
-    }
-
     BOOST_MYSQL_DECL
-    void set_state_for_ok(const ok_packet& pack) noexcept;
+    void set_state_for_ok(const ok_view& pack) noexcept;
 };
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/detail/execution_processor/impl/execution_processor.ipp>
-#endif
 
 #endif

@@ -34,7 +34,7 @@ const serialization_test_spec packet_header_spec {
 
 const serialization_test_spec ok_packet_spec {
     serialization_test_type::deserialization, {
-        { "successful_update", detail::ok_packet{
+        { "successful_update", detail::ok_packet_data{
             int_lenenc(4), // affected rows
             int_lenenc(0), // last insert ID
             static_cast<std::uint16_t>(
@@ -50,7 +50,7 @@ const serialization_test_spec ok_packet_spec {
             0x73, 0x3a, 0x20, 0x30
         } },
 
-        { "successful_insert", detail::ok_packet{
+        { "successful_insert", detail::ok_packet_data{
             int_lenenc(1), // affected rows
             int_lenenc(6), // last insert ID
             static_cast<std::uint16_t>(detail::SERVER_STATUS_AUTOCOMMIT), // server status
@@ -60,7 +60,7 @@ const serialization_test_spec ok_packet_spec {
             0x01, 0x06, 0x02, 0x00, 0x00, 0x00
         } },
 
-        { "successful_login", detail::ok_packet{
+        { "successful_login", detail::ok_packet_data{
             int_lenenc(0), // affected rows
             int_lenenc(0), // last insert ID
             static_cast<std::uint16_t>(detail::SERVER_STATUS_AUTOCOMMIT), // server status

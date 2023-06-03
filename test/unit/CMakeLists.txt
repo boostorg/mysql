@@ -5,74 +5,75 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+# TODO: this is not gonna work when we build as a shared lib as it requires access to internal functions
 add_executable(
     boost_mysql_unittests
-    detail/channel/read_buffer.cpp
-    detail/channel/message_parser.cpp
-    detail/channel/message_reader.cpp
+    auth.cpp
+    # detail/channel/read_buffer.cpp
+    # detail/channel/message_parser.cpp
+    # detail/channel/message_reader.cpp
     detail/channel/message_writer_processor.cpp
-    detail/channel/message_writer.cpp
-    detail/auth/auth_calculator.cpp
-    detail/auxiliar/static_string.cpp
-    detail/auxiliar/rows_iterator.cpp
-    detail/auxiliar/execution_request.cpp
-    detail/auxiliar/datetime.cpp
-    detail/auxiliar/row_impl.cpp
-    detail/protocol/capabilities.cpp
-    detail/protocol/null_bitmap_traits.cpp
-    detail/protocol/deserialize_errc.cpp
-    detail/protocol/serialization_test.cpp
-    detail/protocol/deserialize_text_field.cpp
-    detail/protocol/deserialize_binary_field.cpp
-    detail/protocol/deserialize_row.cpp
-    detail/protocol/deserialize_execution_messages.cpp
-    detail/protocol/process_error_packet.cpp
-    detail/execution_processor/execution_processor.cpp
-    detail/execution_processor/execution_state_impl.cpp
-    detail/execution_processor/static_execution_state_impl.cpp
-    detail/execution_processor/results_impl.cpp
-    detail/execution_processor/static_results_impl.cpp
-    detail/execution_processor/concepts.cpp
-    detail/network_algorithms/read_resultset_head.cpp
-    detail/network_algorithms/start_execution_impl.cpp
-    detail/network_algorithms/read_some_rows_dynamic.cpp
-    detail/network_algorithms/read_some_rows_static.cpp
-    detail/network_algorithms/read_some_rows_impl.cpp
-    detail/network_algorithms/execute_impl.cpp
-    detail/network_algorithms/high_level_execution.cpp
-    detail/network_algorithms/close_statement.cpp
-    detail/network_algorithms/ping.cpp
-    detail/typing/meta_check_context.cpp
-    detail/typing/pos_map.cpp
-    detail/typing/readable_field_traits.cpp
-    detail/typing/writable_field_traits.cpp
-    detail/typing/row_traits.cpp
-    detail/typing/get_type_index.cpp
-    date.cpp
-    datetime.cpp
-    field_view.cpp
-    field.cpp
-    row_view.cpp
-    row.cpp
-    rows_view.cpp
-    rows.cpp
-    metadata.cpp
-    client_errc.cpp
-    common_server_errc.cpp
-    mysql_server_errc.cpp
-    mariadb_server_errc.cpp
-    diagnostics.cpp
-    statement.cpp
-    execution_state.cpp
-    static_execution_state.cpp
-    results.cpp
-    static_results.cpp
-    resultset_view.cpp
-    resultset.cpp
-    connection.cpp
-    throw_on_error.cpp
-    misc.cpp
-    multifn.cpp
+    # detail/channel/message_writer.cpp
+    # detail/auxiliar/static_string.cpp
+    # detail/auxiliar/rows_iterator.cpp
+    # detail/auxiliar/execution_request.cpp
+    # detail/auxiliar/datetime.cpp
+    # detail/auxiliar/row_impl.cpp
+    # detail/protocol/capabilities.cpp
+    # detail/protocol/null_bitmap_traits.cpp
+    # detail/protocol/deserialize_errc.cpp
+    # detail/protocol/serialization_test.cpp
+    # detail/protocol/deserialize_text_field.cpp
+    # detail/protocol/deserialize_binary_field.cpp
+    # detail/protocol/deserialize_row.cpp
+    # detail/protocol/deserialize_execution_messages.cpp
+    # detail/protocol/process_error_packet.cpp
+    # detail/execution_processor/execution_processor.cpp
+    # detail/execution_processor/execution_state_impl.cpp
+    # detail/execution_processor/static_execution_state_impl.cpp
+    # detail/execution_processor/results_impl.cpp
+    # detail/execution_processor/static_results_impl.cpp
+    # detail/execution_processor/concepts.cpp
+    # detail/network_algorithms/read_resultset_head.cpp
+    # detail/network_algorithms/start_execution_impl.cpp
+    # detail/network_algorithms/read_some_rows_dynamic.cpp
+    # detail/network_algorithms/read_some_rows_static.cpp
+    # detail/network_algorithms/read_some_rows_impl.cpp
+    # detail/network_algorithms/execute_impl.cpp
+    # detail/network_algorithms/high_level_execution.cpp
+    # detail/network_algorithms/close_statement.cpp
+    # detail/network_algorithms/ping.cpp
+    # detail/typing/meta_check_context.cpp
+    # detail/typing/pos_map.cpp
+    # detail/typing/readable_field_traits.cpp
+    # detail/typing/writable_field_traits.cpp
+    # detail/typing/row_traits.cpp
+    # detail/typing/get_type_index.cpp
+    # date.cpp
+    # datetime.cpp
+    # field_view.cpp
+    # field.cpp
+    # row_view.cpp
+    # row.cpp
+    # rows_view.cpp
+    # rows.cpp
+    # metadata.cpp
+    # client_errc.cpp
+    # common_server_errc.cpp
+    # mysql_server_errc.cpp
+    # mariadb_server_errc.cpp
+    # diagnostics.cpp
+    # statement.cpp
+    # execution_state.cpp
+    # static_execution_state.cpp
+    # results.cpp
+    # static_results.cpp
+    # resultset_view.cpp
+    # resultset.cpp
+    # connection.cpp
+    # throw_on_error.cpp
+    # misc.cpp
+    # multifn.cpp
     entry_point.cpp
 )
 target_link_libraries(
@@ -80,6 +81,7 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
+target_link_libraries(boost_mysql_unittests PRIVATE __please_change)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
         boost_mysql_unittests

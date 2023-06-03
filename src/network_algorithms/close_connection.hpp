@@ -11,11 +11,11 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/asio/post.hpp>
 
+#include "channel/channel.hpp"
 #include "network_algorithms/quit_connection.hpp"
 
 namespace boost {

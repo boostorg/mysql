@@ -145,17 +145,17 @@ private:
     void on_num_meta_impl(std::size_t num_columns) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override final;
+    error_code on_head_ok_packet_impl(const ok_view& pack, diagnostics&) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_meta_impl(metadata&& meta, string_view, bool, diagnostics&) override final;
+    error_code on_meta_impl(const coldef_view&, bool, diagnostics&) override final;
 
     BOOST_MYSQL_DECL
-    error_code on_row_impl(deserialization_context&& ctx, const output_ref&, std::vector<field_view>&)
+    error_code on_row_impl(span<const std::uint8_t> msg, const output_ref&, std::vector<field_view>&)
         override final;
 
     BOOST_MYSQL_DECL
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final;
+    error_code on_row_ok_packet_impl(const ok_view& pack) override final;
 
     BOOST_MYSQL_DECL
     void on_row_batch_start_impl() override final;
@@ -194,7 +194,7 @@ private:
     per_resultset_data& add_resultset();
 
     BOOST_MYSQL_DECL
-    void on_ok_packet_impl(const ok_packet& pack);
+    void on_ok_packet_impl(const ok_view& pack);
 
     const per_resultset_data& get_resultset(std::size_t index) const noexcept
     {
@@ -211,9 +211,5 @@ private:
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/detail/execution_processor/impl/results_impl.ipp>
-#endif
 
 #endif

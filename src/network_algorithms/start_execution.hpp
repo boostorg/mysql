@@ -16,18 +16,17 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
-#include <boost/mysql/detail/protocol/query_messages.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/post.hpp>
 
+#include "channel/channel.hpp"
 #include "network_algorithms/read_resultset_head.hpp"
+#include "protocol/protocol.hpp"
 
 namespace boost {
 namespace mysql {
@@ -54,19 +53,11 @@ inline void serialize_execution_request(
 {
     if (req.is_query)
     {
-        chan.serialize(com_query_packet{string_eof(req.data.query)}, sequence_number);
+        chan.serialize(query_command{req.data.query}, sequence_number);
     }
     else
     {
-        com_stmt_execute_packet<const field_view*> request{
-            req.data.stmt.stmt.id(),
-            std::uint8_t(0),   // flags
-            std::uint32_t(1),  // iteration count
-            std::uint8_t(1),   // new params flag: set
-            req.data.stmt.params.begin(),
-            req.data.stmt.params.end(),
-        };
-        chan.serialize(request, sequence_number);
+        chan.serialize(execute_stmt_command{req.data.stmt.stmt.id(), req.data.stmt.params}, sequence_number);
     }
 }
 

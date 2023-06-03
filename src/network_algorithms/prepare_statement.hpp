@@ -13,16 +13,15 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/prepared_statement_messages.hpp>
-#include <boost/mysql/detail/protocol/process_error_packet.hpp>
-#include <boost/mysql/detail/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
 
 #include <cstdint>
+
+#include "channel/channel.hpp"
+#include "protocol/protocol.hpp"
 
 namespace boost {
 namespace mysql {
@@ -46,35 +45,19 @@ public:
 
     void process_request()
     {
-        channel_.serialize(com_stmt_prepare_packet{string_eof(stmt_sql_)}, channel_.reset_sequence_number());
+        channel_.serialize(prepare_stmt_command{stmt_sql_}, channel_.reset_sequence_number());
     }
 
-    void process_response(boost::asio::const_buffer message, error_code& err)
+    void process_response(asio::const_buffer message, error_code& err)
     {
-        deserialization_context ctx(message, channel_.current_capabilities());
-        std::uint8_t msg_type = 0;
-        err = deserialize_message_part(ctx, msg_type);
-        if (err)
+        auto response = deserialize_prepare_stmt_response(message, channel_.flavor(), diag_);
+        if (response.err)
+        {
+            err = response.err;
             return;
-
-        if (msg_type == error_packet_header)
-        {
-            err = process_error_packet(ctx, channel_.flavor(), diag_);
         }
-        else if (msg_type != 0)
-        {
-            err = make_error_code(client_errc::protocol_value_error);
-        }
-        else
-        {
-            com_stmt_prepare_ok_packet response{};
-            err = deserialize_message(ctx, response);
-            if (err)
-                return;
-
-            res_ = impl_access::construct<statement>(response.statement_id, response.num_params);
-            remaining_meta_ = response.num_columns + response.num_params;
-        }
+        res_ = impl_access::construct<statement>(response.id, response.num_params);
+        remaining_meta_ = response.num_columns + response.num_params;
     }
 
     bool has_remaining_meta() const noexcept { return remaining_meta_ != 0; }

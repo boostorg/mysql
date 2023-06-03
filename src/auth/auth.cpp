@@ -50,7 +50,7 @@ static void mnp_compute_auth_string(string_view password, const void* challenge,
 
 static error_code mnp_compute_response(
     string_view password,
-    string_view challenge,
+    boost::span<const std::uint8_t> challenge,
     bool,  // use_ssl
     std::vector<std::uint8_t>& output
 )
@@ -109,16 +109,20 @@ static void csha2p_compute_auth_string(string_view password, const void* challen
     }
 }
 
-static constexpr auto perform_full_auth = make_string_view("\4");
+static bool should_perform_full_auth(boost::span<const std::uint8_t> challenge) noexcept
+{
+    // A challenge of "\4" means "perform full auth"
+    return challenge.size() == 1u && challenge[0] == 4;
+}
 
 static error_code csha2p_compute_response(
     string_view password,
-    string_view challenge,
+    boost::span<const std::uint8_t> challenge,
     bool use_ssl,
     std::vector<std::uint8_t>& output
 )
 {
-    if (challenge == perform_full_auth)
+    if (should_perform_full_auth(challenge))
     {
         if (!use_ssl)
         {
@@ -150,7 +154,7 @@ struct authentication_plugin
 {
     using calculator_signature = error_code (*)(
         string_view password,
-        string_view challenge,
+        boost::span<const std::uint8_t> challenge,
         bool use_ssl,
         std::vector<std::uint8_t>& output
     );
@@ -185,7 +189,7 @@ static const authentication_plugin* find_plugin(string_view name)
 error_code boost::mysql::detail::compute_auth_response(
     string_view plugin_name,
     string_view password,
-    string_view challenge,
+    span<const std::uint8_t> challenge,
     bool use_ssl,
     auth_response& output
 )

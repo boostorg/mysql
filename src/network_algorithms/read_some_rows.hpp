@@ -11,11 +11,8 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/channel/channel.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/deserialization_context.hpp>
-#include <boost/mysql/detail/protocol/deserialize_execution_messages.hpp>
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
@@ -24,12 +21,14 @@
 
 #include <cstddef>
 
+#include "channel/channel.hpp"
+
 namespace boost {
 namespace mysql {
 namespace detail {
 
 BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows(
-    channel_base& chan,
+    channel& chan,
     execution_processor& proc,
     output_ref output,
     std::size_t& read_rows,
@@ -43,7 +42,13 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows(
     proc.on_row_batch_start();
     while (chan.has_read_messages() && proc.is_reading_rows() && read_rows < output.max_size())
     {
-        auto res = deserialize_row_message(chan, proc.sequence_number(), diag);
+        // Get the row message
+        auto buff = chan.next_read_message(proc.sequence_number(), err);
+        if (err)
+            return err;
+
+        // Deserialize it
+        auto res = deserialize_row_message(buff, chan.flavor(), diag);
         if (res.type == row_message::type_t::error)
         {
             err = res.data.err;
@@ -51,7 +56,7 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_some_rows(
         else if (res.type == row_message::type_t::row)
         {
             output.set_offset(read_rows);
-            err = proc.on_row(deserialization_context(res.data.ctx), output, chan.shared_fields());
+            err = proc.on_row(res.data.row, output, chan.shared_fields());
             if (!err)
                 ++read_rows;
         }
