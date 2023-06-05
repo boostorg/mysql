@@ -394,7 +394,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline std::int64_t get_int64() const noexcept
     {
-        return is_field_ptr() ? impl_.repr_.field_ptr->get<std::int64_t>() : impl_.repr_.int64;
+        return is_field_ptr() ? impl_.repr.field_ptr->get<std::int64_t>() : impl_.repr.int64;
     }
 
     /**
@@ -407,7 +407,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline std::uint64_t get_uint64() const noexcept
     {
-        return is_field_ptr() ? impl_.repr_.field_ptr->get<std::uint64_t>() : impl_.repr_.uint64;
+        return is_field_ptr() ? impl_.repr.field_ptr->get<std::uint64_t>() : impl_.repr.uint64;
     }
 
     /**
@@ -423,7 +423,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline string_view get_string() const noexcept
     {
-        return is_field_ptr() ? string_view(impl_.repr_.field_ptr->get<std::string>()) : impl_.repr_.string;
+        return is_field_ptr() ? string_view(impl_.repr.field_ptr->get<std::string>()) : impl_.repr.string;
     }
 
     /**
@@ -439,7 +439,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline blob_view get_blob() const noexcept
     {
-        return is_field_ptr() ? impl_.repr_.field_ptr->get<blob>() : impl_.repr_.blob;
+        return is_field_ptr() ? impl_.repr.field_ptr->get<blob>() : impl_.repr.blob;
     }
 
     /**
@@ -452,7 +452,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline float get_float() const noexcept
     {
-        return is_field_ptr() ? impl_.repr_.field_ptr->get<float>() : impl_.repr_.float_;
+        return is_field_ptr() ? impl_.repr.field_ptr->get<float>() : impl_.repr.float_;
     }
 
     /**
@@ -465,7 +465,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline double get_double() const noexcept
     {
-        return is_field_ptr() ? impl_.repr_.field_ptr->get<double>() : impl_.repr_.double_;
+        return is_field_ptr() ? impl_.repr.field_ptr->get<double>() : impl_.repr.double_;
     }
 
     /**
@@ -478,7 +478,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline date get_date() const noexcept
     {
-        return is_field_ptr() ? impl_.repr_.field_ptr->get<date>() : impl_.repr_.date_;
+        return is_field_ptr() ? impl_.repr.field_ptr->get<date>() : impl_.repr.date_;
     }
 
     /**
@@ -491,7 +491,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline datetime get_datetime() const noexcept
     {
-        return is_field_ptr() ? impl_.repr_.field_ptr->get<datetime>() : impl_.repr_.datetime_;
+        return is_field_ptr() ? impl_.repr.field_ptr->get<datetime>() : impl_.repr.datetime_;
     }
 
     /**
@@ -504,7 +504,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR inline time get_time() const noexcept
     {
-        return is_field_ptr() ? impl_.repr_.field_ptr->get<time>() : impl_.repr_.time_;
+        return is_field_ptr() ? impl_.repr.field_ptr->get<time>() : impl_.repr.time_;
     }
 
     /**
@@ -585,17 +585,17 @@ private:
 
     struct
     {
-        internal_kind ikind_{internal_kind::null};
-        repr_t repr_{};
+        internal_kind ikind{internal_kind::null};
+        repr_t repr{};
 
         // Required by lib internal functions
-        bool is_string_offset() const noexcept { return ikind_ == internal_kind::sv_offset_string; }
-        bool is_blob_offset() const noexcept { return ikind_ == internal_kind::sv_offset_blob; }
+        bool is_string_offset() const noexcept { return ikind == internal_kind::sv_offset_string; }
+        bool is_blob_offset() const noexcept { return ikind == internal_kind::sv_offset_blob; }
     } impl_;
 
     BOOST_CXX14_CONSTEXPR bool is_field_ptr() const noexcept
     {
-        return impl_.ikind_ == internal_kind::field_ptr;
+        return impl_.ikind == internal_kind::field_ptr;
     }
     BOOST_CXX14_CONSTEXPR inline void check_kind(internal_kind expected) const;
 

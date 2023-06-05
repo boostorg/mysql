@@ -16,6 +16,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/typing/pos_map.hpp>
 
 #include <memory>
@@ -146,7 +147,7 @@ public:
     {
         if (errors_ != nullptr)
         {
-            diagnostics_access::assign_client(diag, errors_->str());
+            impl_access::get_impl(diag).assign_client(errors_->str());
             return client_errc::metadata_check_failed;
         }
         return error_code();

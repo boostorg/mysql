@@ -20,14 +20,14 @@ namespace test {
 inline diagnostics create_server_diag(string_view s)
 {
     diagnostics res;
-    detail::diagnostics_access::assign_server(res, s);
+    detail::impl_access::get_impl(res).assign_server(s);
     return res;
 }
 
 inline diagnostics create_client_diag(string_view s)
 {
     diagnostics res;
-    detail::diagnostics_access::assign_client(res, s);
+    detail::impl_access::get_impl(res).assign_client(s);
     return res;
 }
 

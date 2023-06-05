@@ -38,7 +38,7 @@ inline bool blobs_equal(blob_view b1, blob_view b2)
 
 BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::kind() const noexcept
 {
-    switch (impl_.ikind_)
+    switch (impl_.ikind)
     {
     case internal_kind::null: return field_kind::null;
     case internal_kind::int64: return field_kind::int64;
@@ -50,7 +50,7 @@ BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::
     case internal_kind::date: return field_kind::date;
     case internal_kind::datetime: return field_kind::datetime;
     case internal_kind::time: return field_kind::time;
-    case internal_kind::field_ptr: return impl_.repr_.field_ptr->kind();
+    case internal_kind::field_ptr: return impl_.repr.field_ptr->kind();
     // sv_offset values must be converted via offset_to_string_view before calling any other fn
     default: return field_kind::null;
     }
@@ -59,87 +59,87 @@ BOOST_CXX14_CONSTEXPR inline boost::mysql::field_kind boost::mysql::field_view::
 BOOST_CXX14_CONSTEXPR std::int64_t boost::mysql::field_view::as_int64() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<std::int64_t>();
+        return impl_.repr.field_ptr->as<std::int64_t>();
     check_kind(internal_kind::int64);
-    return impl_.repr_.int64;
+    return impl_.repr.int64;
 }
 
 BOOST_CXX14_CONSTEXPR std::uint64_t boost::mysql::field_view::as_uint64() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<std::uint64_t>();
+        return impl_.repr.field_ptr->as<std::uint64_t>();
     check_kind(internal_kind::uint64);
-    return impl_.repr_.uint64;
+    return impl_.repr.uint64;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::string_view boost::mysql::field_view::as_string() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<std::string>();
+        return impl_.repr.field_ptr->as<std::string>();
     check_kind(internal_kind::string);
-    return impl_.repr_.string;
+    return impl_.repr.string;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::blob_view boost::mysql::field_view::as_blob() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<blob>();
+        return impl_.repr.field_ptr->as<blob>();
     check_kind(internal_kind::blob);
-    return impl_.repr_.blob;
+    return impl_.repr.blob;
 }
 
 BOOST_CXX14_CONSTEXPR float boost::mysql::field_view::as_float() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<float>();
+        return impl_.repr.field_ptr->as<float>();
     check_kind(internal_kind::float_);
-    return impl_.repr_.float_;
+    return impl_.repr.float_;
 }
 
 BOOST_CXX14_CONSTEXPR double boost::mysql::field_view::as_double() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<double>();
+        return impl_.repr.field_ptr->as<double>();
     check_kind(internal_kind::double_);
-    return impl_.repr_.double_;
+    return impl_.repr.double_;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::date boost::mysql::field_view::as_date() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<date>();
+        return impl_.repr.field_ptr->as<date>();
     check_kind(internal_kind::date);
-    return impl_.repr_.date_;
+    return impl_.repr.date_;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::datetime boost::mysql::field_view::as_datetime() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<datetime>();
+        return impl_.repr.field_ptr->as<datetime>();
     check_kind(internal_kind::datetime);
-    return impl_.repr_.datetime_;
+    return impl_.repr.datetime_;
 }
 
 BOOST_CXX14_CONSTEXPR boost::mysql::time boost::mysql::field_view::as_time() const
 {
     if (is_field_ptr())
-        return impl_.repr_.field_ptr->as<time>();
+        return impl_.repr.field_ptr->as<time>();
     check_kind(internal_kind::time);
-    return impl_.repr_.time_;
+    return impl_.repr.time_;
 }
 
 BOOST_CXX14_CONSTEXPR void boost::mysql::field_view::check_kind(internal_kind expected) const
 {
-    if (impl_.ikind_ != expected)
+    if (impl_.ikind != expected)
         BOOST_THROW_EXCEPTION(bad_field_access());
 }
 
 BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(const field_view& rhs) const noexcept
 {
     // Make operator== work for types not representable by field_kind
-    if (impl_.ikind_ == internal_kind::sv_offset_string || impl_.ikind_ == internal_kind::sv_offset_blob)
+    if (impl_.ikind == internal_kind::sv_offset_string || impl_.ikind == internal_kind::sv_offset_blob)
     {
-        return rhs.impl_.ikind_ == impl_.ikind_ && impl_.repr_.sv_offset_ == rhs.impl_.repr_.sv_offset_;
+        return rhs.impl_.ikind == impl_.ikind && impl_.repr.sv_offset_ == rhs.impl_.repr.sv_offset_;
     }
 
     auto k = kind(), rhs_k = rhs.kind();

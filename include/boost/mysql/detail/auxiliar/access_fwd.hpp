@@ -17,7 +17,6 @@ namespace detail {
 // These structs expose additional functions that are "public" to
 // other members of the library, but are not to be used by end users
 struct connection_access;
-struct diagnostics_access;
 struct metadata_access;
 
 // A generic access struct to enable access to the implementation of any class

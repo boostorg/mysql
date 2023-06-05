@@ -140,13 +140,13 @@ static field_view offset_to_string_view(field_view fv, const std::uint8_t* buffe
     if (impl.is_string_offset())
     {
         return field_view(string_view(
-            reinterpret_cast<const char*>(buffer_first) + impl.repr_.sv_offset_.offset,
-            impl.repr_.sv_offset_.size
+            reinterpret_cast<const char*>(buffer_first) + impl.repr.sv_offset_.offset,
+            impl.repr.sv_offset_.size
         ));
     }
     else if (impl.is_blob_offset())
     {
-        return field_view(blob_view(buffer_first + impl.repr_.sv_offset_.offset, impl.repr_.sv_offset_.size));
+        return field_view(blob_view(buffer_first + impl.repr.sv_offset_.offset, impl.repr.sv_offset_.size));
     }
     else
     {

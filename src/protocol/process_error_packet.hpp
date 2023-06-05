@@ -13,6 +13,8 @@
 #include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+
 #include "error/server_error_to_string.hpp"
 #include "protocol/db_flavor.hpp"
 #include "protocol/messages.hpp"
@@ -31,7 +33,7 @@ inline error_code process_error_packet(deserialization_context& ctx, db_flavor f
 
     // Error message
     string_view sv = error_packet.error_message.value;
-    diagnostics_access::assign_server(diag, sv);
+    impl_access::get_impl(diag).assign_server(sv);
 
     // Error code
     if (common_error_to_string(error_packet.error_code))
