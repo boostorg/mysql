@@ -20,10 +20,10 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/mysql/detail/auxiliar/void_t.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
 #include <boost/mysql/detail/typing/pos_map.hpp>
+#include <boost/mysql/detail/void_t.hpp>
 
 #include <cstdint>
 #include <limits>

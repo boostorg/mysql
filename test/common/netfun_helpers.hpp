@@ -12,12 +12,15 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 
+#include <boost/mysql/detail/void_t.hpp>
+
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/execution/blocking.hpp>
 #include <boost/asio/execution/relationship.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
+#include <boost/type_traits/make_void.hpp>
 
 #include <cstddef>
 #include <functional>
