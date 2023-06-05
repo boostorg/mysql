@@ -13,7 +13,7 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -56,7 +56,7 @@ public:
             err = response.err;
             return;
         }
-        res_ = impl_access::construct<statement>(response.id, response.num_params);
+        res_ = access::construct<statement>(response.id, response.num_params);
         remaining_meta_ = response.num_columns + response.num_params;
     }
 

@@ -17,7 +17,7 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -77,7 +77,7 @@ inline stmt_it_request_getter make_request_getter(
     const bound_statement_iterator_range<FieldViewFwdIterator>& req
 )
 {
-    auto& impl = impl_access::get_impl(req);
+    auto& impl = access::get_impl(req);
     return {
         impl.stmt,
         {impl.first, impl.last}
@@ -97,7 +97,7 @@ stmt_tuple_request_getter<std::tuple_size<WritableFieldTuple>::value> make_reque
     const bound_statement_tuple<WritableFieldTuple>& req
 )
 {
-    auto& impl = impl_access::get_impl(req);
+    auto& impl = access::get_impl(req);
     return {impl.stmt, tuple_to_array(impl.params)};
 }
 
@@ -269,7 +269,7 @@ void execute_interface(
 )
 {
     auto getter = make_request_getter(req);
-    execute_erased(channel, getter.get(), impl_access::get_impl(result).get_interface(), err, diag);
+    execute_erased(channel, getter.get(), access::get_impl(result).get_interface(), err, diag);
 }
 
 template <class ExecutionRequest, class ResultsType, class CompletionToken>
@@ -287,7 +287,7 @@ async_execute_interface(
         token,
         std::ref(chan),
         std::forward<ExecutionRequest>(req),
-        std::ref(impl_access::get_impl(result).get_interface()),
+        std::ref(access::get_impl(result).get_interface()),
         std::ref(diag)
     );
 }
@@ -339,7 +339,7 @@ void start_execution_interface(
 )
 {
     auto getter = make_request_getter(req);
-    start_execution_erased(channel, getter.get(), impl_access::get_impl(st).get_interface(), err, diag);
+    start_execution_erased(channel, getter.get(), access::get_impl(st).get_interface(), err, diag);
 }
 
 template <class ExecutionRequest, class ExecutionStateType, class CompletionToken>
@@ -357,7 +357,7 @@ async_start_execution_interface(
         token,
         std::ref(chan),
         std::forward<ExecutionRequest>(req),
-        std::ref(impl_access::get_impl(st).get_interface()),
+        std::ref(access::get_impl(st).get_interface()),
         std::ref(diag)
     );
 }
@@ -492,7 +492,7 @@ inline rows_view read_some_rows_dynamic_interface(
     diagnostics& diag
 )
 {
-    return read_some_rows_dynamic_erased(chan, impl_access::get_impl(st), err, diag);
+    return read_some_rows_dynamic_erased(chan, access::get_impl(st), err, diag);
 }
 
 template <class CompletionToken>
@@ -508,7 +508,7 @@ async_read_some_rows_dynamic_interface(
         read_some_rows_dynamic_initiation(),
         token,
         &chan,
-        &impl_access::get_impl(st).get_interface(),
+        &access::get_impl(st).get_interface(),
         &diag
     );
 }
@@ -548,7 +548,7 @@ std::size_t read_some_rows_static_interface(
 
     return read_some_rows_static_erased(
         chan,
-        impl_access::get_impl(st).get_interface(),
+        access::get_impl(st).get_interface(),
         output_ref(output, index),
         err,
         diag
@@ -590,7 +590,7 @@ async_read_some_rows_static_interface(
         read_some_rows_static_initiation(),
         token,
         &chan,
-        &impl_access::get_impl(st).get_interface(),
+        &access::get_impl(st).get_interface(),
         output_ref(output, index),
         &diag
     );
@@ -623,7 +623,7 @@ void read_resultset_head_interface(
     diagnostics& diag
 )
 {
-    read_resultset_head_erased(channel, impl_access::get_impl(st).get_interface(), err, diag);
+    read_resultset_head_erased(channel, access::get_impl(st).get_interface(), err, diag);
 }
 
 struct read_resultset_head_initiation
@@ -648,7 +648,7 @@ async_read_resultset_head_interface(
         read_resultset_head_initiation(),
         token,
         &chan,
-        &impl_access::get_impl(st).get_interface(),
+        &access::get_impl(st).get_interface(),
         &diag
     );
 }

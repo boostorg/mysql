@@ -14,13 +14,9 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// These structs expose additional functions that are "public" to
-// other members of the library, but are not to be used by end users
-struct connection_access;
-struct metadata_access;
-
-// A generic access struct to enable access to the implementation of any class
-struct impl_access
+// Exposes access to the implementation of public access, which is sometimes
+// required by library internals.
+struct access
 {
     template <class T>
     static decltype(std::declval<T>().impl_)& get_impl(T& obj) noexcept

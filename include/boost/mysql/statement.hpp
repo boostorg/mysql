@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_STATEMENT_HPP
 #define BOOST_MYSQL_STATEMENT_HPP
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>
@@ -196,7 +196,7 @@ private:
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::impl_access;
+    friend struct detail::access;
 #endif
 };
 

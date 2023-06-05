@@ -13,7 +13,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>

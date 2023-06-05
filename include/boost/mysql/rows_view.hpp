@@ -12,7 +12,7 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/rows_iterator.hpp>
 
@@ -238,7 +238,7 @@ private:
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::impl_access;
+    friend struct detail::access;
     friend class rows;
 #endif
 };

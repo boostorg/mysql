@@ -13,8 +13,6 @@
 #include <boost/mysql/bad_field_access.hpp>
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-
 #include <boost/assert.hpp>
 #include <boost/throw_exception.hpp>
 

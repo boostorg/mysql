@@ -15,7 +15,7 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/field_impl.hpp>
 #include <boost/mysql/detail/string_view_offset.hpp>
@@ -601,7 +601,7 @@ private:
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend class field;
-    friend struct detail::impl_access;
+    friend struct detail::access;
     friend std::ostream& operator<<(std::ostream& os, const field_view& v);
 #endif
 };

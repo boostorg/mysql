@@ -17,7 +17,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/row_impl.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
@@ -91,7 +91,7 @@ static std::size_t copy_string_as_offset(
     if (!str.empty())
     {
         std::memcpy(buffer_first + offset, str.data(), str.size());
-        f = detail::impl_access::construct<field_view>(detail::string_view_offset(offset, str.size()), false);
+        f = detail::access::construct<field_view>(detail::string_view_offset(offset, str.size()), false);
         return str.size();
     }
     return 0;
@@ -107,7 +107,7 @@ static std::size_t copy_blob_as_offset(
     if (!str.empty())
     {
         std::memcpy(buffer_first + offset, str.data(), str.size());
-        f = detail::impl_access::construct<field_view>(detail::string_view_offset(offset, str.size()), true);
+        f = detail::access::construct<field_view>(detail::string_view_offset(offset, str.size()), true);
         return str.size();
     }
     return 0;
@@ -141,7 +141,7 @@ static void copy_strings(std::vector<field_view>& fields, std::vector<unsigned c
 
 static field_view offset_to_string_view(field_view fv, const std::uint8_t* buffer_first) noexcept
 {
-    auto& impl = detail::impl_access::get_impl(fv);
+    auto& impl = detail::access::get_impl(fv);
     if (impl.is_string_offset())
     {
         return field_view(string_view(

@@ -12,7 +12,7 @@
 
 #include <boost/mysql/statement.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 
 #include <boost/assert.hpp>
 
@@ -20,7 +20,7 @@ template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
 class boost::mysql::bound_statement_tuple
 {
     friend class statement;
-    friend struct detail::impl_access;
+    friend struct detail::access;
 
     struct impl
     {
@@ -38,7 +38,7 @@ template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
 class boost::mysql::bound_statement_iterator_range
 {
     friend class statement;
-    friend struct detail::impl_access;
+    friend struct detail::access;
 
     struct impl
     {

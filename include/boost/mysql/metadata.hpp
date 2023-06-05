@@ -11,7 +11,7 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/column_flags.hpp>
 #include <boost/mysql/detail/config.hpp>
 
@@ -288,7 +288,7 @@ private:
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::impl_access;
+    friend struct detail::access;
 #endif
 };
 

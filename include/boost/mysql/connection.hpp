@@ -19,8 +19,8 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel_ptr.hpp>
@@ -68,7 +68,7 @@ class connection
     diagnostics& shared_diag() noexcept { return shared_diag_; }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::connection_access;
+    friend struct detail::access;
 #endif
 
 public:

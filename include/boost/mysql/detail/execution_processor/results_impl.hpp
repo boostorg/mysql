@@ -98,7 +98,7 @@ public:
     rows_view get_rows(std::size_t index) const noexcept
     {
         const auto& resultset_data = per_result_[index];
-        return impl_access::construct<rows_view>(
+        return access::construct<rows_view>(
             rows_.fields().data() + resultset_data.field_offset,
             resultset_data.num_rows * resultset_data.num_columns,
             resultset_data.num_columns

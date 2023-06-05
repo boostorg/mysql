@@ -14,7 +14,7 @@
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/auxiliar/results_iterator.hpp>
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
 
@@ -346,7 +346,7 @@ public:
         BOOST_ASSERT(has_value());
         if (i >= size())
             BOOST_THROW_EXCEPTION(std::out_of_range("results::at: out of range"));
-        return detail::impl_access::construct<resultset_view>(impl_, i);
+        return detail::access::construct<resultset_view>(impl_, i);
     }
 
     /**
@@ -368,7 +368,7 @@ public:
     {
         BOOST_ASSERT(has_value());
         BOOST_ASSERT(i < size());
-        return detail::impl_access::construct<resultset_view>(impl_, i);
+        return detail::access::construct<resultset_view>(impl_, i);
     }
 
     /**
@@ -474,7 +474,7 @@ public:
 private:
     detail::results_impl impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::impl_access;
+    friend struct detail::access;
 #endif
 };
 

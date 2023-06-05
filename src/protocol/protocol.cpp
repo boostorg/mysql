@@ -16,7 +16,6 @@
 
 #include "protocol/protocol.hpp"
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/make_string_view.hpp>
 #include <boost/mysql/detail/column_flags.hpp>
 

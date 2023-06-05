@@ -11,7 +11,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 
 namespace boost {
 namespace mysql {
@@ -20,14 +20,14 @@ namespace test {
 inline diagnostics create_server_diag(string_view s)
 {
     diagnostics res;
-    detail::impl_access::get_impl(res).assign_server(s);
+    detail::access::get_impl(res).assign_server(s);
     return res;
 }
 
 inline diagnostics create_client_diag(string_view s)
 {
     diagnostics res;
-    detail::impl_access::get_impl(res).assign_client(s);
+    detail::access::get_impl(res).assign_client(s);
     return res;
 }
 

@@ -10,7 +10,7 @@
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/deserialize_errc.hpp>

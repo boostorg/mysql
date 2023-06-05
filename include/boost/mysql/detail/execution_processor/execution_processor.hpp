@@ -15,7 +15,7 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
@@ -169,7 +169,7 @@ protected:
 
     metadata create_meta(const coldef_view& coldef) const
     {
-        return impl_access::construct<metadata>(coldef, mode_ == metadata_mode::full);
+        return access::construct<metadata>(coldef, mode_ == metadata_mode::full);
     }
 
 private:

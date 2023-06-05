@@ -15,7 +15,7 @@
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/auxiliar/make_string_view.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 
@@ -42,12 +42,12 @@ std::vector<field_view> make_fv_vector(Types&&... args)
 
 inline field_view make_svoff_fv(std::size_t offset, std::size_t size, bool is_blob)
 {
-    return detail::impl_access::construct<field_view>(detail::string_view_offset(offset, size), is_blob);
+    return detail::access::construct<field_view>(detail::string_view_offset(offset, size), is_blob);
 }
 
 inline row_view makerowv(const field_view* f, std::size_t size) noexcept
 {
-    return detail::impl_access::construct<row_view>(f, size);
+    return detail::access::construct<row_view>(f, size);
 }
 
 template <class... Types>
@@ -59,7 +59,7 @@ row makerow(Types&&... args)
 
 inline rows_view makerowsv(const field_view* fields, std::size_t num_fields, std::size_t num_columns) noexcept
 {
-    return detail::impl_access::construct<rows_view>(fields, num_fields, num_columns);
+    return detail::access::construct<rows_view>(fields, num_fields, num_columns);
 }
 
 template <class... Types>

@@ -9,7 +9,7 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/impl/metadata.hpp>
 

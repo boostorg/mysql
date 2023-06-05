@@ -27,7 +27,7 @@ namespace detail {
 
 inline rows_view get_some_rows(const channel& ch, const execution_state_impl& st)
 {
-    return impl_access::construct<rows_view>(
+    return access::construct<rows_view>(
         ch.shared_fields().data(),
         ch.shared_fields().size(),
         st.meta().size()

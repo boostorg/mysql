@@ -10,7 +10,7 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 
 #include <string>
 
@@ -103,7 +103,7 @@ private:
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept;
-    friend struct detail::impl_access;
+    friend struct detail::access;
 #endif
 };
 

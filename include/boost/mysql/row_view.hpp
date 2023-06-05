@@ -11,7 +11,7 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/throw_exception.hpp>
@@ -208,7 +208,7 @@ private:
     std::size_t size_{};
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::impl_access;
+    friend struct detail::access;
     friend class row;
 #endif
 };

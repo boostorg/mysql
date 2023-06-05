@@ -15,7 +15,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
 
 #include <boost/assert.hpp>
@@ -284,7 +284,7 @@ public:
 private:
     detail::static_results_impl<StaticRow...> impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::impl_access;
+    friend struct detail::access;
 #endif
 };
 
