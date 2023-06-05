@@ -42,7 +42,7 @@ std::vector<field_view> make_fv_vector(Types&&... args)
 
 inline field_view make_svoff_fv(std::size_t offset, std::size_t size, bool is_blob)
 {
-    return detail::field_view_access::construct(detail::string_view_offset(offset, size), is_blob);
+    return detail::impl_access::construct<field_view>(detail::string_view_offset(offset, size), is_blob);
 }
 
 inline row_view makerowv(const field_view* f, std::size_t size) noexcept

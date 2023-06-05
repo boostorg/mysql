@@ -69,11 +69,8 @@ public:
     void copy_strings_as_offsets(std::size_t first, std::size_t num_fields);
 
     // Restores any offsets into string views, used by execute
-    void offsets_to_string_views()
-    {
-        for (auto& f : fields_)
-            field_view_access::offset_to_string_view(f, string_buffer_.data());
-    }
+    BOOST_MYSQL_DECL
+    void offsets_to_string_views();
 
     const std::vector<field_view>& fields() const noexcept { return fields_; }
 

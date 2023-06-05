@@ -8,10 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_AUXILIAR_STRING_VIEW_OFFSET_HPP
 #define BOOST_MYSQL_DETAIL_AUXILIAR_STRING_VIEW_OFFSET_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <cstddef>
-#include <cstdint>
 
 namespace boost {
 namespace mysql {
@@ -19,32 +16,16 @@ namespace detail {
 
 // Represents a string_view using offsets into a buffer.
 // Useful during deserialization, for buffers that may reallocate.
-class string_view_offset
+struct string_view_offset
 {
-    std::size_t offset_;
-    std::size_t size_;
+    std::size_t offset;
+    std::size_t size;
 
-public:
-    constexpr string_view_offset() noexcept : offset_(0), size_(0) {}
-    constexpr string_view_offset(std::size_t offset, std::size_t size) noexcept
-        : offset_(offset), size_(size)
-    {
-    }
-    constexpr std::size_t offset() const noexcept { return offset_; }
-    constexpr std::size_t size() const noexcept { return size_; }
     constexpr bool operator==(string_view_offset rhs) const noexcept
     {
-        return offset_ == rhs.offset_ && size_ == rhs.size_;
+        return offset == rhs.offset && size == rhs.size;
     }
     constexpr bool operator!=(string_view_offset rhs) const noexcept { return !(*this == rhs); }
-
-    static string_view_offset from_sv(string_view from, const std::uint8_t* buffer_first) noexcept
-    {
-        return string_view_offset(
-            from.data() - reinterpret_cast<const char*>(buffer_first),
-            from.size()
-        );
-    }
 };
 
 }  // namespace detail

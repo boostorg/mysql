@@ -18,7 +18,6 @@ namespace detail {
 // other members of the library, but are not to be used by end users
 struct connection_access;
 struct diagnostics_access;
-struct field_view_access;
 struct metadata_access;
 
 // A generic access struct to enable access to the implementation of any class

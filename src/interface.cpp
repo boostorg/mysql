@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
@@ -15,6 +16,9 @@
 
 #include <boost/assert.hpp>
 #include <boost/throw_exception.hpp>
+
+#include <cstdio>
+#include <ostream>
 
 #include "protocol/protocol.hpp"
 
@@ -128,6 +132,26 @@ static void copy_strings(std::vector<field_view>& fields, std::vector<unsigned c
     BOOST_ASSERT(buffer_it == string_buffer_.data() + size);
 }
 
+static field_view offset_to_string_view(field_view fv, const std::uint8_t* buffer_first) noexcept
+{
+    auto& impl = detail::impl_access::get_impl(fv);
+    if (impl.is_string_offset())
+    {
+        return field_view(string_view(
+            reinterpret_cast<const char*>(buffer_first) + impl.repr_.sv_offset_.offset,
+            impl.repr_.sv_offset_.size
+        ));
+    }
+    else if (impl.is_blob_offset())
+    {
+        return field_view(blob_view(buffer_first + impl.repr_.sv_offset_.offset, impl.repr_.sv_offset_.size));
+    }
+    else
+    {
+        return fv;
+    }
+}
+
 boost::mysql::detail::row_impl::row_impl(const field_view* fields, std::size_t size)
     : fields_(fields, fields + size)
 {
@@ -193,6 +217,12 @@ void boost::mysql::detail::row_impl::copy_strings_as_offsets(std::size_t first, 
     BOOST_ASSERT(offset == string_buffer_.size());
 }
 
+void boost::mysql::detail::row_impl::offsets_to_string_views()
+{
+    for (auto& f : fields_)
+        f = offset_to_string_view(f, string_buffer_.data());
+}
+
 // throw_on_error_loc
 void boost::mysql::detail::throw_on_error_loc(
     error_code err,
@@ -204,5 +234,77 @@ void boost::mysql::detail::throw_on_error_loc(
     if (err)
     {
         ::boost::throw_exception(error_with_diagnostics(err, diag), loc);
+    }
+}
+
+// field_view
+static std::ostream& print_blob(std::ostream& os, blob_view value)
+{
+    if (value.empty())
+        return os << "{}";
+
+    char buffer[16]{};
+
+    os << "{ ";
+    for (std::size_t i = 0; i < value.size(); ++i)
+    {
+        if (i != 0)
+            os << ", ";
+        unsigned byte = value[i];
+        std::snprintf(buffer, sizeof(buffer), "0x%02x", byte);
+        os << buffer;
+    }
+    os << " }";
+    return os;
+}
+
+static std::ostream& print_time(std::ostream& os, const boost::mysql::time& value)
+{
+    // Worst-case output is 26 chars, extra space just in case
+    char buffer[64]{};
+
+    using namespace std::chrono;
+    const char* sign = value < microseconds(0) ? "-" : "";
+    auto num_micros = value % seconds(1);
+    auto num_secs = duration_cast<seconds>(value % minutes(1) - num_micros);
+    auto num_mins = duration_cast<minutes>(value % hours(1) - num_secs);
+    auto num_hours = duration_cast<hours>(value - num_mins);
+
+    snprintf(
+        buffer,
+        sizeof(buffer),
+        "%s%02d:%02u:%02u.%06u",
+        sign,
+        static_cast<int>(std::abs(num_hours.count())),
+        static_cast<unsigned>(std::abs(num_mins.count())),
+        static_cast<unsigned>(std::abs(num_secs.count())),
+        static_cast<unsigned>(std::abs(num_micros.count()))
+    );
+
+    os << buffer;
+    return os;
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, const field_view& value)
+{
+    // Make operator<< work for detail::string_view_offset types
+    if (value.impl_.is_string_offset() || value.impl_.is_blob_offset())
+    {
+        return os << "<sv_offset>";
+    }
+
+    switch (value.kind())
+    {
+    case field_kind::null: return os << "<NULL>";
+    case field_kind::int64: return os << value.get_int64();
+    case field_kind::uint64: return os << value.get_uint64();
+    case field_kind::string: return os << value.get_string();
+    case field_kind::blob: return print_blob(os, value.get_blob());
+    case field_kind::float_: return os << value.get_float();
+    case field_kind::double_: return os << value.get_double();
+    case field_kind::date: return os << value.get_date();
+    case field_kind::datetime: return os << value.get_datetime();
+    case field_kind::time: return print_time(os, value.get_time());
+    default: BOOST_ASSERT(false); return os;
     }
 }
