@@ -88,6 +88,16 @@ const serialization_test_spec enum_spec {
     }
 };
 
+// TODO: share this
+// template <std::size_t N>
+// detail::string_fixed<N> makesfixed(const char (&value)[N + 1])
+// {
+//     static_assert(N >= 1, "Expected a C-array literal");
+//     detail::string_fixed<N> res;
+//     std::memcpy(res.data(), value, N);
+//     return res;
+// }
+
 const serialization_test_spec string_fixed_spec {
     serialization_test_type::full, {
         { "4c_regular_characters", makesfixed<4>("abde"), {0x61, 0x62, 0x64, 0x65} },
