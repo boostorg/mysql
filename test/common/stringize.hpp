@@ -13,7 +13,7 @@
 
 namespace boost {
 namespace mysql {
-namespace detail {
+namespace test {
 
 inline void stringize_helper(std::ostream&) noexcept {}
 
@@ -32,8 +32,8 @@ std::string stringize(const Types&... inputs)
     return ss.str();
 }
 
-}  // namespace detail
+}  // namespace test
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_STRINGIZE_HPP_ */
+#endif

@@ -11,7 +11,6 @@
 #include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_binary_field.hpp>
 #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
@@ -23,6 +22,7 @@
 
 #include "creation/create_meta.hpp"
 #include "printing.hpp"
+#include "stringize.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;

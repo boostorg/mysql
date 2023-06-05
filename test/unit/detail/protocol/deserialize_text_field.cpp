@@ -15,7 +15,6 @@
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
 #include <boost/mysql/detail/protocol/constants.hpp>
 #include <boost/mysql/detail/protocol/deserialize_text_field.hpp>
 
@@ -25,6 +24,7 @@
 
 #include "creation/create_meta.hpp"
 #include "printing.hpp"
+#include "stringize.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::detail;

@@ -25,8 +25,6 @@
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/tcp.hpp>
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-
 #include <boost/describe/class.hpp>
 #include <boost/describe/members.hpp>
 #include <boost/describe/modifiers.hpp>
@@ -50,6 +48,7 @@
 #include "metadata_validator.hpp"
 #include "printing.hpp"
 #include "safe_getenv.hpp"
+#include "stringize.hpp"
 #include "tcp_network_fixture.hpp"
 #include "test_common.hpp"
 
@@ -57,7 +56,6 @@ using namespace boost::mysql::test;
 using namespace boost::mysql;
 using boost::none;
 using boost::optional;
-using boost::mysql::detail::stringize;
 
 BOOST_AUTO_TEST_SUITE(test_database_types)
 

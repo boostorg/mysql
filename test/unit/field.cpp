@@ -9,8 +9,6 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-
 #include <boost/test/tools/context.hpp>
 #include <boost/test/tools/interface.hpp>
 #include <boost/test/unit_test_suite.hpp>
@@ -21,6 +19,7 @@
 
 #include "assert_buffer_equals.hpp"
 #include "printing.hpp"
+#include "stringize.hpp"
 #include "test_common.hpp"
 
 using namespace boost::mysql::test;

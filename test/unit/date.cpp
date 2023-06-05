@@ -8,11 +8,11 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/days.hpp>
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-
 #include <boost/test/unit_test.hpp>
 
 #include <stdexcept>
+
+#include "stringize.hpp"
 
 using boost::mysql::date;
 using boost::mysql::days;

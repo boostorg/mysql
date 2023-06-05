@@ -7,8 +7,6 @@
 
 #include <boost/mysql/datetime.hpp>
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
@@ -17,6 +15,8 @@
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
+
+#include "stringize.hpp"
 
 using boost::mysql::datetime;
 using boost::mysql::detail::stringize;

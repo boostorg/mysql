@@ -7,9 +7,9 @@
 
 #include <boost/mysql/client_errc.hpp>
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-
 #include <boost/test/unit_test.hpp>
+
+#include "stringize.hpp"
 
 using boost::mysql::client_errc;
 using boost::mysql::detail::error_to_string;

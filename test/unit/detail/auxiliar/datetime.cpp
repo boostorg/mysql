@@ -6,7 +6,6 @@
 //
 
 #include <boost/mysql/detail/auxiliar/datetime.hpp>
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
 
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
@@ -18,6 +17,7 @@
 #include <limits>
 #include <string>
 
+#include "stringize.hpp"
 #include "test_common.hpp"
 
 using namespace boost::unit_test;
