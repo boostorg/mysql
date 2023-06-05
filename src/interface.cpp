@@ -13,6 +13,7 @@
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/resultset.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/row_impl.hpp>
@@ -425,4 +426,30 @@ void boost::mysql::field::from_view(const field_view& fv)
 std::ostream& boost::mysql::operator<<(std::ostream& os, const field& value)
 {
     return os << field_view(value);
+}
+
+// resultset
+void boost::mysql::resultset::assign(resultset_view v)
+{
+    has_value_ = v.has_value();
+    if (has_value_)
+    {
+        meta_.assign(v.meta().begin(), v.meta().end());
+        rws_ = v.rows();
+        affected_rows_ = v.affected_rows();
+        last_insert_id_ = v.last_insert_id();
+        warnings_ = v.warning_count();
+        info_.assign(v.info().begin(), v.info().end());
+        is_out_params_ = v.is_out_params();
+    }
+    else
+    {
+        meta_.clear();
+        rws_ = ::boost::mysql::rows();
+        affected_rows_ = 0;
+        last_insert_id_ = 0;
+        warnings_ = 0;
+        info_.clear();
+        is_out_params_ = false;
+    }
 }

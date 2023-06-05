@@ -282,7 +282,9 @@ private:
     std::uint8_t decimals_;        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
                                    // dynamic strings, double, float
 
-    BOOST_MYSQL_DECL metadata(const detail::coldef_view& coldef, bool copy_strings);
+    BOOST_MYSQL_DECL
+    metadata(const detail::coldef_view& coldef, bool copy_strings);
+
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 
 #ifndef BOOST_MYSQL_DOXYGEN
