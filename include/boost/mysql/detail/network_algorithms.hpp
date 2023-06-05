@@ -18,7 +18,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/auxiliar/execution_request.hpp>
+#include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
@@ -245,7 +245,7 @@ BOOST_MYSQL_DECL void async_execute_erased(
 
 struct initiate_execute
 {
-    template <class Handler, BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest>
+    template <class Handler, class ExecutionRequest>
     void operator()(
         Handler&& handler,
         channel& chan,

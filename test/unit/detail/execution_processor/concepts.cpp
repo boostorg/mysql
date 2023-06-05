@@ -10,7 +10,7 @@
 #include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/static_results.hpp>
 
-#include <boost/mysql/detail/execution_processor/concepts.hpp>
+#include <boost/mysql/detail/execution_concepts.hpp>
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 

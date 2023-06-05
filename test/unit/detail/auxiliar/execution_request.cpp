@@ -8,8 +8,8 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/execution_concepts.hpp>
 
 #include <string>
 #ifdef __cpp_lib_string_view
