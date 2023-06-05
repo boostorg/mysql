@@ -10,14 +10,13 @@
 
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/static_string.hpp>
-
 #include <cstddef>
 
 #include "protocol/capabilities.hpp"
 #include "protocol/constants.hpp"
 #include "protocol/protocol_types.hpp"
 #include "protocol/serialization.hpp"
+#include "protocol/static_string.hpp"
 
 namespace boost {
 namespace mysql {
@@ -357,4 +356,4 @@ inline deserialize_errc deserialize(deserialization_context& ctx, auth_more_data
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_PROTOCOL_COMMON_MESSAGES_HPP_ */
+#endif
