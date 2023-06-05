@@ -5,25 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_ERROR_CATEGORIES_HPP
-#define BOOST_MYSQL_IMPL_ERROR_CATEGORIES_HPP
-
-#pragma once
-
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/error_categories.hpp>
 
-#include <boost/mysql/detail/auxiliar/server_errc_strings.hpp>
-#include <boost/mysql/detail/protocol/db_flavor.hpp>
+#include "error/server_error_to_string.hpp"
 
-#include <ostream>
+using namespace boost::mysql;
 
-namespace boost {
-namespace mysql {
-namespace detail {
-
-inline const char* error_to_string(client_errc error) noexcept
+static const char* error_to_string(client_errc error) noexcept
 {
     switch (error)
     {
@@ -62,12 +52,13 @@ inline const char* error_to_string(client_errc error) noexcept
     }
 }
 
-inline const char* error_to_string(common_server_errc v) noexcept
+static const char* error_to_string(common_server_errc v) noexcept
 {
-    constexpr const char* unknown_err = "<unknown server error>";
-    const char* res = get_common_error_message(static_cast<int>(v));
-    return res ? res : unknown_err;
+    const char* res = detail::common_error_to_string(static_cast<int>(v));
+    return res ? res : "<unknown server error>";
 }
+
+namespace {
 
 class client_category final : public boost::system::error_category
 {
@@ -90,14 +81,14 @@ class mysql_server_category final : public boost::system::error_category
 {
 public:
     const char* name() const noexcept final override { return "mysql.mysql-server"; }
-    std::string message(int ev) const final override { return mysql_specific_error_to_string(ev); }
+    std::string message(int ev) const final override { return detail::mysql_error_to_string(ev); }
 };
 
 class mariadb_server_category final : public boost::system::error_category
 {
 public:
     const char* name() const noexcept final override { return "mysql.mariadb-server"; }
-    std::string message(int ev) const final override { return mariadb_specific_error_to_string(ev); }
+    std::string message(int ev) const final override { return detail::mariadb_error_to_string(ev); }
 };
 
 // Optimization, so that static initialization happens only once (reduces C++11 thread-safe initialization
@@ -116,28 +107,24 @@ struct all_categories
     }
 };
 
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
+}  // namespace
 
 const boost::system::error_category& boost::mysql::get_client_category() noexcept
 {
-    return detail::all_categories::get().client;
+    return all_categories::get().client;
 }
 
 const boost::system::error_category& boost::mysql::get_common_server_category() noexcept
 {
-    return detail::all_categories::get().common_server;
+    return all_categories::get().common_server;
 }
 
 const boost::system::error_category& boost::mysql::get_mysql_server_category() noexcept
 {
-    return detail::all_categories::get().mysql_server;
+    return all_categories::get().mysql_server;
 }
 
 const boost::system::error_category& boost::mysql::get_mariadb_server_category() noexcept
 {
-    return detail::all_categories::get().mariadb_server;
+    return all_categories::get().mariadb_server;
 }
-
-#endif

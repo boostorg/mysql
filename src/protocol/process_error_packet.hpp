@@ -13,8 +13,7 @@
 #include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/auxiliar/server_errc_strings.hpp>
-
+#include "error/server_error_to_string.hpp"
 #include "protocol/db_flavor.hpp"
 #include "protocol/messages.hpp"
 #include "protocol/serialization.hpp"
@@ -35,7 +34,7 @@ inline error_code process_error_packet(deserialization_context& ctx, db_flavor f
     diagnostics_access::assign_server(diag, sv);
 
     // Error code
-    if (get_common_error_message(error_packet.error_code))
+    if (common_error_to_string(error_packet.error_code))
     {
         // This is an error shared between MySQL and MariaDB, represented as a common_server_errc.
         // get_common_error_message will check that the code has a common_server_errc representation

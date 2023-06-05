@@ -27,7 +27,8 @@ namespace mysql {
  * \par Thread safety
  * This function is thread-safe.
  */
-BOOST_MYSQL_DECL const boost::system::error_category& get_client_category() noexcept;
+BOOST_MYSQL_DECL
+const boost::system::error_category& get_client_category() noexcept;
 
 /**
  * \brief Returns the error_category associated to \ref common_server_errc.
@@ -41,7 +42,8 @@ BOOST_MYSQL_DECL const boost::system::error_category& get_client_category() noex
  * \par Thread safety
  * This function is thread-safe.
  */
-BOOST_MYSQL_DECL const boost::system::error_category& get_common_server_category() noexcept;
+BOOST_MYSQL_DECL
+const boost::system::error_category& get_common_server_category() noexcept;
 
 /**
  * \brief Returns the error_category associated to errors specific to MySQL.
@@ -55,7 +57,8 @@ BOOST_MYSQL_DECL const boost::system::error_category& get_common_server_category
  * \par Thread safety
  * This function is thread-safe.
  */
-BOOST_MYSQL_DECL const boost::system::error_category& get_mysql_server_category() noexcept;
+BOOST_MYSQL_DECL
+const boost::system::error_category& get_mysql_server_category() noexcept;
 
 /**
  * \brief Returns the error_category associated to errors specific to MariaDB.
@@ -69,13 +72,10 @@ BOOST_MYSQL_DECL const boost::system::error_category& get_mysql_server_category(
  * \par Thread safety
  * This function is thread-safe.
  */
-BOOST_MYSQL_DECL const boost::system::error_category& get_mariadb_server_category() noexcept;
+BOOST_MYSQL_DECL
+const boost::system::error_category& get_mariadb_server_category() noexcept;
 
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/impl/error_categories.hpp>
-#endif
 
 #endif
