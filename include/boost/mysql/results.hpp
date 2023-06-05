@@ -15,8 +15,8 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/auxiliar/results_iterator.hpp>
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
+#include <boost/mysql/detail/results_iterator.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/throw_exception.hpp>
