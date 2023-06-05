@@ -13,12 +13,14 @@
 #include <boost/mysql/row_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/rows_iterator.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/throw_exception.hpp>
 
 #include <cstddef>
+#include <stdexcept>
 
 namespace boost {
 namespace mysql {
@@ -114,7 +116,12 @@ public:
      * \par Complexity
      * Constant.
      */
-    BOOST_MYSQL_DECL row_view at(std::size_t i) const;
+    row_view at(std::size_t i) const
+    {
+        if (i >= size())
+            BOOST_THROW_EXCEPTION(std::out_of_range("rows_view::at"));
+        return detail::row_slice(fields_, num_columns_, i);
+    }
 
     /**
      * \brief Returns the i-th row (unchecked access).
@@ -127,7 +134,11 @@ public:
      * \par Complexity
      * Constant.
      */
-    BOOST_MYSQL_DECL row_view operator[](std::size_t i) const noexcept;
+    row_view operator[](std::size_t i) const noexcept
+    {
+        BOOST_ASSERT(i < size());
+        return detail::row_slice(fields_, num_columns_, i);
+    }
 
     /**
      * \brief Returns the first row.
@@ -199,7 +210,8 @@ public:
      * \par Complexity
      * Linear on `this->size() * this->num_columns()`.
      */
-    BOOST_MYSQL_DECL bool operator==(const rows_view& rhs) const noexcept;
+    BOOST_MYSQL_DECL
+    bool operator==(const rows_view& rhs) const noexcept;
 
     /**
      * \brief Inequality operator.
@@ -233,9 +245,5 @@ private:
 
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/impl/rows_view.ipp>
-#endif
 
 #endif

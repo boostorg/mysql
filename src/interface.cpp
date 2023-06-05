@@ -14,6 +14,8 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/resultset.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/rows_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/row_impl.hpp>
@@ -452,4 +454,30 @@ void boost::mysql::resultset::assign(resultset_view v)
         info_.clear();
         is_out_params_ = false;
     }
+}
+
+// row_view
+bool boost::mysql::operator==(const row_view& lhs, const row_view& rhs) noexcept
+{
+    if (lhs.size() != rhs.size())
+        return false;
+    for (std::size_t i = 0; i < lhs.size(); ++i)
+    {
+        if (lhs[i] != rhs[i])
+            return false;
+    }
+    return true;
+}
+
+// rows_view
+bool boost::mysql::rows_view::operator==(const rows_view& rhs) const noexcept
+{
+    if (num_fields_ != rhs.num_fields_ || num_columns_ != rhs.num_columns_)
+        return false;
+    for (std::size_t i = 0; i < num_fields_; ++i)
+    {
+        if (fields_[i] != rhs.fields_[i])
+            return false;
+    }
+    return true;
 }

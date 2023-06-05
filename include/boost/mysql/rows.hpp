@@ -13,9 +13,12 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/row_impl.hpp>
+#include <boost/mysql/detail/rows_iterator.hpp>
+
+#include <boost/throw_exception.hpp>
+
+#include <stdexcept>
 
 namespace boost {
 namespace mysql {
@@ -180,7 +183,12 @@ public:
     iterator end() const noexcept { return iterator(impl_.fields().data(), num_columns_, size()); }
 
     /// \copydoc rows_view::at
-    BOOST_MYSQL_DECL row_view at(std::size_t i) const;
+    row_view at(std::size_t i) const
+    {
+        if (i >= size())
+            BOOST_THROW_EXCEPTION(std::out_of_range("rows::at"));
+        return detail::row_slice(impl_.fields().data(), num_columns_, i);
+    }
 
     /// \copydoc rows_view::operator[]
     row_view operator[](std::size_t i) const noexcept
@@ -278,9 +286,5 @@ inline bool operator!=(const rows& lhs, const rows_view& rhs) noexcept { return 
 
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/impl/rows.ipp>
-#endif
 
 #endif

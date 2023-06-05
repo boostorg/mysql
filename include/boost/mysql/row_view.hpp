@@ -14,8 +14,10 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/config.hpp>
 
+#include <boost/throw_exception.hpp>
+
 #include <cstddef>
-#include <iosfwd>
+#include <stdexcept>
 #include <vector>
 
 namespace boost {
@@ -109,7 +111,12 @@ public:
      * \par Complexity
      * Constant.
      */
-    BOOST_MYSQL_DECL field_view at(std::size_t i) const;
+    field_view at(std::size_t i) const
+    {
+        if (i >= size_)
+            BOOST_THROW_EXCEPTION(std::out_of_range("row_view::at"));
+        return fields_[i];
+    }
 
     /**
      * \brief Returns the i-th element in the row (unchecked access).
@@ -218,7 +225,8 @@ private:
  * \par Complexity
  * Linear in `lhs.size()` and `rhs.size()`.
  */
-BOOST_MYSQL_DECL bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
+BOOST_MYSQL_DECL
+bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
 
 /**
  * \relates row_view
@@ -234,9 +242,5 @@ inline bool operator!=(const row_view& lhs, const row_view& rhs) noexcept { retu
 
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/impl/row_view.ipp>
-#endif
 
 #endif

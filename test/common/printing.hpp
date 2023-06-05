@@ -17,8 +17,8 @@
 #include <boost/mysql/row_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/results_iterator.hpp>
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/detail/auxiliar/static_string.hpp>
+#include <boost/mysql/detail/rows_iterator.hpp>
 // #include <boost/mysql/detail/protocol/constants.hpp>
 // #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
 // #include <boost/mysql/detail/protocol/resultset_encoding.hpp>

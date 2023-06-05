@@ -10,7 +10,7 @@
 #include <boost/mysql/rows_view.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
+#include <boost/mysql/detail/rows_iterator.hpp>
 
 #include <boost/test/unit_test.hpp>
 
