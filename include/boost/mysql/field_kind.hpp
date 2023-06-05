@@ -58,13 +58,10 @@ enum class field_kind
 /**
  * \brief Streams a field_kind.
  */
-BOOST_MYSQL_DECL std::ostream& operator<<(std::ostream& os, field_kind v);
+BOOST_MYSQL_DECL
+std::ostream& operator<<(std::ostream& os, field_kind v);
 
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/impl/field_kind.ipp>
-#endif
 
 #endif

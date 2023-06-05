@@ -9,6 +9,7 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 
@@ -380,4 +381,22 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, const datetime& value)
     );
     os << buffer;
     return os;
+}
+
+// field_kind
+std::ostream& boost::mysql::operator<<(std::ostream& os, boost::mysql::field_kind v)
+{
+    switch (v)
+    {
+    case field_kind::null: return os << "null";
+    case field_kind::int64: return os << "int64";
+    case field_kind::uint64: return os << "uint64";
+    case field_kind::string: return os << "string";
+    case field_kind::float_: return os << "float_";
+    case field_kind::double_: return os << "double_";
+    case field_kind::date: return os << "date";
+    case field_kind::datetime: return os << "datetime";
+    case field_kind::time: return os << "time";
+    default: return os << "<invalid>";
+    }
 }
