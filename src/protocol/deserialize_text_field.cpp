@@ -13,7 +13,7 @@
 
 #include "protocol/deserialize_text_field.hpp"
 
-#include <boost/mysql/detail/auxiliar/datetime.hpp>
+#include <boost/mysql/detail/datetime.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/lexical_cast/try_lexical_convert.hpp>

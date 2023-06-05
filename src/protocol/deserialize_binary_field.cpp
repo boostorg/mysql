@@ -12,7 +12,7 @@
 #include "protocol/deserialize_binary_field.hpp"
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/datetime.hpp>
+#include <boost/mysql/detail/datetime.hpp>
 
 #include <cmath>
 #include <cstddef>

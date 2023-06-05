@@ -6,6 +6,8 @@
 //
 
 #include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/date.hpp>
+#include <boost/mysql/datetime.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
@@ -340,4 +342,42 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, column_type t)
     case column_type::geometry: return os << "geometry";
     default: return os << "<unknown column type>";
     }
+}
+
+// date
+std::ostream& boost::mysql::operator<<(std::ostream& os, const date& value)
+{
+    // Worst-case output is 14 chars, extra space just in case
+    char buffer[32]{};
+    snprintf(
+        buffer,
+        sizeof(buffer),
+        "%04u-%02u-%02u",
+        static_cast<unsigned>(value.year()),
+        static_cast<unsigned>(value.month()),
+        static_cast<unsigned>(value.day())
+    );
+    os << buffer;
+    return os;
+}
+
+// datetime
+std::ostream& boost::mysql::operator<<(std::ostream& os, const datetime& value)
+{
+    // Worst-case output is 37 chars, extra space just in case
+    char buffer[64]{};
+    snprintf(
+        buffer,
+        sizeof(buffer),
+        "%04u-%02u-%02u %02d:%02u:%02u.%06u",
+        static_cast<unsigned>(value.year()),
+        static_cast<unsigned>(value.month()),
+        static_cast<unsigned>(value.day()),
+        static_cast<unsigned>(value.hour()),
+        static_cast<unsigned>(value.minute()),
+        static_cast<unsigned>(value.second()),
+        static_cast<unsigned>(value.microsecond())
+    );
+    os << buffer;
+    return os;
 }
