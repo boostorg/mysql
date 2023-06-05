@@ -8,10 +8,7 @@
 #ifndef BOOST_MYSQL_THROW_ON_ERROR_HPP
 #define BOOST_MYSQL_THROW_ON_ERROR_HPP
 
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
-
-#include <boost/mysql/detail/auxiliar/error_helpers.hpp>
+#include <boost/mysql/detail/throw_on_error_loc.hpp>
 
 namespace boost {
 namespace mysql {

@@ -21,12 +21,12 @@
 
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/error_helpers.hpp>
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel_ptr.hpp>
 #include <boost/mysql/detail/execution_processor/concepts.hpp>
 #include <boost/mysql/detail/network_algorithms.hpp>
+#include <boost/mysql/detail/throw_on_error_loc.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>
@@ -229,9 +229,10 @@ public:
     template <typename EndpointType>
     void connect(const EndpointType& endpoint, const handshake_params& params)
     {
-        detail::error_block blk;
-        connect(endpoint, params, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        connect(endpoint, params, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**
@@ -297,9 +298,10 @@ public:
     /// \copydoc handshake
     void handshake(const handshake_params& params)
     {
-        detail::error_block blk;
-        handshake(params, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        handshake(params, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**
@@ -365,9 +367,10 @@ public:
     template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
     void execute(const ExecutionRequest& req, ResultsType& result)
     {
-        detail::error_block blk;
-        execute(req, result, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        execute(req, result, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**
@@ -473,9 +476,10 @@ public:
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
     void start_execution(const ExecutionRequest& req, ExecutionStateType& st)
     {
-        detail::error_block blk;
-        start_execution(req, st, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        start_execution(req, st, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**
@@ -681,9 +685,10 @@ public:
     /// \copydoc prepare_statement
     statement prepare_statement(string_view stmt)
     {
-        detail::error_block blk;
-        statement res = prepare_statement(stmt, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        statement res = prepare_statement(stmt, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
         return res;
     }
 
@@ -1060,9 +1065,10 @@ public:
     /// \copydoc close_statement
     void close_statement(const statement& stmt)
     {
-        detail::error_block blk;
-        close_statement(stmt, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        close_statement(stmt, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**
@@ -1126,9 +1132,10 @@ public:
     /// \copydoc read_some_rows(execution_state&,error_code&,diagnostics&)
     rows_view read_some_rows(execution_state& st)
     {
-        detail::error_block blk;
-        rows_view res = read_some_rows(st, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        rows_view res = read_some_rows(st, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
         return res;
     }
 
@@ -1238,9 +1245,10 @@ public:
     template <class SpanStaticRow, class... StaticRow>
     std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanStaticRow> output)
     {
-        detail::error_block blk;
-        std::size_t res = read_some_rows(st, output, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        std::size_t res = read_some_rows(st, output, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
         return res;
     }
 
@@ -1379,9 +1387,10 @@ public:
     template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
     void read_resultset_head(ExecutionStateType& st)
     {
-        detail::error_block blk;
-        read_resultset_head(st, blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        read_resultset_head(st, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**
@@ -1439,9 +1448,10 @@ public:
     /// \copydoc ping
     void ping()
     {
-        detail::error_block blk;
-        ping(blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        ping(err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**
@@ -1484,9 +1494,10 @@ public:
     /// \copydoc close
     void close()
     {
-        detail::error_block blk;
-        close(blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        close(err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**
@@ -1534,9 +1545,10 @@ public:
     /// \copydoc quit
     void quit()
     {
-        detail::error_block blk;
-        quit(blk.err, blk.diag);
-        blk.check(BOOST_CURRENT_LOCATION);
+        error_code err;
+        diagnostics diag;
+        quit(err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     /**

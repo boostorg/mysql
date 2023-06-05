@@ -536,6 +536,7 @@ private:
 #ifndef BOOST_MYSQL_DOXYGEN
     friend class field;
     friend struct detail::field_view_access;
+    friend struct detail::impl_access;
     friend std::ostream& operator<<(std::ostream& os, const field_view& v);
 #endif
 };

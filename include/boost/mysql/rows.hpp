@@ -13,9 +13,9 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/auxiliar/rows_iterator.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/row_impl.hpp>
 
 namespace boost {
 namespace mysql {

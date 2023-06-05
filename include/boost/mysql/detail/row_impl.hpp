@@ -37,17 +37,26 @@ class row_impl
 {
 public:
     row_impl() = default;
-    BOOST_MYSQL_DECL row_impl(const row_impl&);
+
+    BOOST_MYSQL_DECL
+    row_impl(const row_impl&);
+
     row_impl(row_impl&&) = default;
-    BOOST_MYSQL_DECL row_impl& operator=(const row_impl&);
+
+    BOOST_MYSQL_DECL
+    row_impl& operator=(const row_impl&);
+
     row_impl& operator=(row_impl&&) = default;
+
     ~row_impl() = default;
 
     // Copies the given span into *this
-    BOOST_MYSQL_DECL row_impl(const field_view* fields, std::size_t size);
+    BOOST_MYSQL_DECL
+    row_impl(const field_view* fields, std::size_t size);
 
     // Copies the given span into *this, used by row/rows in assignment from view
-    BOOST_MYSQL_DECL void assign(const field_view* fields, std::size_t size);
+    BOOST_MYSQL_DECL
+    void assign(const field_view* fields, std::size_t size);
 
     // Adds new default constructed fields to provide storage to deserialization
     span<field_view> add_fields(std::size_t num_fields)
@@ -56,7 +65,8 @@ public:
     }
 
     // Saves strings in the [first, first+num_fields) range into the string buffer, used by execute
-    BOOST_MYSQL_DECL void copy_strings_as_offsets(std::size_t first, std::size_t num_fields);
+    BOOST_MYSQL_DECL
+    void copy_strings_as_offsets(std::size_t first, std::size_t num_fields);
 
     // Restores any offsets into string views, used by execute
     void offsets_to_string_views()
@@ -74,8 +84,6 @@ public:
     }
 
 private:
-    BOOST_MYSQL_DECL void copy_strings();
-
     std::vector<field_view> fields_;
     std::vector<unsigned char> string_buffer_;
 };
@@ -83,9 +91,5 @@ private:
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_SOURCE
-#include <boost/mysql/detail/auxiliar/impl/row_impl.ipp>
-#endif
 
 #endif

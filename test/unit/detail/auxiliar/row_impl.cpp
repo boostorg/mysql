@@ -11,9 +11,9 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/auxiliar/static_string.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
+#include <boost/mysql/detail/row_impl.hpp>
 
 #include <boost/test/unit_test.hpp>
 

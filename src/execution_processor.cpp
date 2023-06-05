@@ -7,12 +7,12 @@
 
 #include <boost/mysql/client_errc.hpp>
 
-#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
 #include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
+#include <boost/mysql/detail/row_impl.hpp>
 #include <boost/mysql/detail/typing/pos_map.hpp>
 
 #include "protocol/protocol.hpp"

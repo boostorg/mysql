@@ -16,9 +16,9 @@
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/row_impl.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/row_impl.hpp>
 
 #include <boost/assert.hpp>
 
