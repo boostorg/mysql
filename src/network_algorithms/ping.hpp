@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PING_HPP
-#define BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PING_HPP
+#ifndef BOOST_MYSQL_SRC_NETWORK_ALGORITHMS_PING_HPP
+#define BOOST_MYSQL_SRC_NETWORK_ALGORITHMS_PING_HPP
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>

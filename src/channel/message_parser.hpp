@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_CHANNEL_MESSAGE_PARSER_HPP
-#define BOOST_MYSQL_DETAIL_CHANNEL_MESSAGE_PARSER_HPP
+#ifndef BOOST_MYSQL_SRC_CHANNEL_MESSAGE_PARSER_HPP
+#define BOOST_MYSQL_SRC_CHANNEL_MESSAGE_PARSER_HPP
 
 #include <cstddef>
 #include <cstdint>

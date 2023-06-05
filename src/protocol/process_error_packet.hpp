@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_PROTOCOL_PROCESS_ERROR_PACKET_HPP
-#define BOOST_MYSQL_DETAIL_PROTOCOL_PROCESS_ERROR_PACKET_HPP
+#ifndef BOOST_MYSQL_SRC_PROTOCOL_PROCESS_ERROR_PACKET_HPP
+#define BOOST_MYSQL_SRC_PROTOCOL_PROCESS_ERROR_PACKET_HPP
 
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
