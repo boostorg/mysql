@@ -12,7 +12,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/typing/writable_field_traits.hpp>
+#include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/config.hpp>
 #include <boost/optional/optional.hpp>

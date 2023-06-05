@@ -27,7 +27,7 @@
 #include <boost/mysql/detail/network_algorithms.hpp>
 #include <boost/mysql/detail/rebind_executor.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
-#include <boost/mysql/detail/typing/writable_field_traits.hpp>
+#include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>
 

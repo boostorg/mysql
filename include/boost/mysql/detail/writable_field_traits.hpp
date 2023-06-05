@@ -10,7 +10,6 @@
 
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/void_t.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <type_traits>
@@ -81,20 +80,20 @@ struct is_field_view_forward_iterator : std::false_type
 
 // clang-format off
 template <typename T>
-struct is_field_view_forward_iterator<T, void_t<
+struct is_field_view_forward_iterator<
+    T,
     typename std::enable_if<
         std::is_convertible<
             typename std::iterator_traits<T>::reference,
             field_view
         >::value
-    >::type,
-    typename std::enable_if<
+        &&
         std::is_base_of<
             std::forward_iterator_tag, 
             typename std::iterator_traits<T>::iterator_category
         >::value
     >::type
->> : std::true_type { };
+> : std::true_type { };
 // clang-format on
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS

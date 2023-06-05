@@ -9,7 +9,7 @@
 #define BOOST_MYSQL_STATEMENT_HPP
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/typing/writable_field_traits.hpp>
+#include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>
 
