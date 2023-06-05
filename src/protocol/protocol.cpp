@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "protocol/protocol.hpp"
+
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -14,9 +16,6 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include "protocol/protocol.hpp"
-
-#include <boost/mysql/detail/auxiliar/make_string_view.hpp>
 #include <boost/mysql/detail/column_flags.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -25,6 +24,7 @@
 
 #include <cstddef>
 
+#include "make_string_view.hpp"
 #include "protocol/binary_serialization.hpp"
 #include "protocol/capabilities.hpp"
 #include "protocol/constants.hpp"

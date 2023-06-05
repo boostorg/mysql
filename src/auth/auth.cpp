@@ -10,11 +10,11 @@
 
 #include "auth/auth.hpp"
 
-#include <boost/mysql/detail/auxiliar/make_string_view.hpp>
-
 #include <algorithm>
 #include <cstring>
 #include <openssl/sha.h>
+
+#include "make_string_view.hpp"
 
 using boost::mysql::client_errc;
 using boost::mysql::error_code;
