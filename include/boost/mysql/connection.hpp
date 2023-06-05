@@ -22,10 +22,10 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
-#include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
 #include <boost/mysql/detail/channel_ptr.hpp>
 #include <boost/mysql/detail/execution_processor/concepts.hpp>
 #include <boost/mysql/detail/network_algorithms.hpp>
+#include <boost/mysql/detail/rebind_executor.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>
 
