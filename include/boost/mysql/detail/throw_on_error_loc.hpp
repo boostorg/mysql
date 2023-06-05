@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_ERROR_HELPERS_HPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_ERROR_HELPERS_HPP
+#ifndef BOOST_MYSQL_DETAIL_THROW_ON_ERROR_LOC_HPP
+#define BOOST_MYSQL_DETAIL_THROW_ON_ERROR_LOC_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>

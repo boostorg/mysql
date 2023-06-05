@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_RESULTS_ITERATOR_HPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_RESULTS_ITERATOR_HPP
+#ifndef BOOST_MYSQL_DETAIL_RESULTS_ITERATOR_HPP
+#define BOOST_MYSQL_DETAIL_RESULTS_ITERATOR_HPP
 
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>

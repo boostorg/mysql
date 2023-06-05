@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_IMPL_HPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_FIELD_IMPL_HPP
+#ifndef BOOST_MYSQL_DETAIL_FIELD_IMPL_HPP
+#define BOOST_MYSQL_DETAIL_FIELD_IMPL_HPP
 
 #include <boost/mysql/bad_field_access.hpp>
 #include <boost/mysql/blob.hpp>

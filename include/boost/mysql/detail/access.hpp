@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_ACCESS_FWD_HPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_ACCESS_FWD_HPP
+#ifndef BOOST_MYSQL_DETAIL_ACCESS_HPP
+#define BOOST_MYSQL_DETAIL_ACCESS_HPP
 
 #include <utility>
 

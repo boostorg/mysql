@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_DATETIME_HPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_DATETIME_HPP
+#ifndef BOOST_MYSQL_DETAIL_DATETIME_HPP
+#define BOOST_MYSQL_DETAIL_DATETIME_HPP
 
 // All these algorithms have been taken from:
 // http://howardhinnant.github.io/date_algorithms.html

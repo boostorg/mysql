@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_AUXILIAR_REBIND_EXECUTOR_HPP
-#define BOOST_MYSQL_DETAIL_AUXILIAR_REBIND_EXECUTOR_HPP
+#ifndef BOOST_MYSQL_DETAIL_REBIND_EXECUTOR_HPP
+#define BOOST_MYSQL_DETAIL_REBIND_EXECUTOR_HPP
 
 #include <boost/asio/ssl/stream.hpp>
 
