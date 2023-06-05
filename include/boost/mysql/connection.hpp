@@ -19,12 +19,12 @@
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/error_helpers.hpp>
 #include <boost/mysql/detail/auxiliar/execution_request.hpp>
 #include <boost/mysql/detail/auxiliar/rebind_executor.hpp>
-#include <boost/mysql/detail/channel/any_stream.hpp>
-#include <boost/mysql/detail/channel/channel_ptr.hpp>
+#include <boost/mysql/detail/channel_ptr.hpp>
 #include <boost/mysql/detail/execution_processor/concepts.hpp>
 #include <boost/mysql/detail/network_algorithms.hpp>
 #include <boost/mysql/detail/typing/writable_field_traits.hpp>

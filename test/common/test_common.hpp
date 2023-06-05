@@ -18,7 +18,6 @@
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
 #include <boost/mysql/detail/auxiliar/make_string_view.hpp>
 #include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -108,14 +107,14 @@ blob makeb(const char (&value)[N])
     return blob(bv.begin(), bv.end());
 }
 
-template <std::size_t N>
-detail::string_fixed<N> makesfixed(const char (&value)[N + 1])
-{
-    static_assert(N >= 1, "Expected a C-array literal");
-    detail::string_fixed<N> res;
-    std::memcpy(res.data(), value, N);
-    return res;
-}
+// template <std::size_t N>
+// detail::string_fixed<N> makesfixed(const char (&value)[N + 1])
+// {
+//     static_assert(N >= 1, "Expected a C-array literal");
+//     detail::string_fixed<N> res;
+//     std::memcpy(res.data(), value, N);
+//     return res;
+// }
 
 inline void validate_string_contains(std::string value, const std::vector<std::string>& to_check)
 {
