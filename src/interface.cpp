@@ -9,6 +9,7 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/field.hpp>
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
@@ -399,4 +400,29 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, boost::mysql::field_kin
     case field_kind::time: return os << "time";
     default: return os << "<invalid>";
     }
+}
+
+// field
+static blob to_blob(blob_view v) { return blob(v.data(), v.data() + v.size()); }
+
+void boost::mysql::field::from_view(const field_view& fv)
+{
+    switch (fv.kind())
+    {
+    case field_kind::null: repr_.data.emplace<detail::field_impl::null_t>(); break;
+    case field_kind::int64: repr_.data.emplace<std::int64_t>(fv.get_int64()); break;
+    case field_kind::uint64: repr_.data.emplace<std::uint64_t>(fv.get_uint64()); break;
+    case field_kind::string: repr_.data.emplace<std::string>(fv.get_string()); break;
+    case field_kind::blob: repr_.data.emplace<blob>(to_blob(fv.get_blob())); break;
+    case field_kind::float_: repr_.data.emplace<float>(fv.get_float()); break;
+    case field_kind::double_: repr_.data.emplace<double>(fv.get_double()); break;
+    case field_kind::date: repr_.data.emplace<date>(fv.get_date()); break;
+    case field_kind::datetime: repr_.data.emplace<datetime>(fv.get_datetime()); break;
+    case field_kind::time: repr_.data.emplace<time>(fv.get_time()); break;
+    }
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, const field& value)
+{
+    return os << field_view(value);
 }

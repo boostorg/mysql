@@ -16,8 +16,8 @@
 #include <boost/mysql/time.hpp>
 
 #include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/auxiliar/field_impl.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/field_impl.hpp>
 #include <boost/mysql/detail/string_view_offset.hpp>
 
 #include <boost/config.hpp>
