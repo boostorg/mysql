@@ -50,12 +50,10 @@ public:
 
     void process_response(asio::const_buffer message, error_code& err)
     {
-        auto response = deserialize_prepare_stmt_response(message, channel_.flavor(), diag_);
-        if (response.err)
-        {
-            err = response.err;
+        prepare_stmt_response response{};
+        err = deserialize_prepare_stmt_response(message, channel_.flavor(), response, diag_);
+        if (err)
             return;
-        }
         res_ = access::construct<statement>(response.id, response.num_params);
         remaining_meta_ = response.num_columns + response.num_params;
     }

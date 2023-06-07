@@ -76,13 +76,14 @@ struct coldef_view
 BOOST_ATTRIBUTE_NODISCARD
 error_code deserialize_column_definition(asio::const_buffer input, coldef_view& output) noexcept;
 
-// Commands
+// Quit
 struct quit_command
 {
     std::size_t get_size() const noexcept { return 1; }
     void serialize(asio::mutable_buffer) const noexcept;
 };
 
+// Ping
 struct ping_command
 {
     std::size_t get_size() const noexcept { return 1; }
@@ -91,6 +92,7 @@ struct ping_command
 BOOST_ATTRIBUTE_NODISCARD
 error_code deserialize_ping_response(asio::const_buffer message, db_flavor flavor, diagnostics& diag);
 
+// Query
 struct query_command
 {
     string_view query;
@@ -99,6 +101,7 @@ struct query_command
     void serialize(asio::mutable_buffer) const noexcept;
 };
 
+// Prepare statement
 struct prepare_stmt_command
 {
     string_view stmt;
@@ -108,24 +111,19 @@ struct prepare_stmt_command
 };
 struct prepare_stmt_response
 {
-    error_code err;
     std::uint32_t id;
     std::uint16_t num_columns;
     std::uint16_t num_params;
-
-    prepare_stmt_response(error_code err) noexcept : err(err) {}
-    prepare_stmt_response(std::uint32_t id, std::int16_t num_columns, std::int16_t num_params) noexcept
-        : id(id), num_columns(num_columns), num_params(num_params)
-    {
-    }
 };
 BOOST_ATTRIBUTE_NODISCARD
-prepare_stmt_response deserialize_prepare_stmt_response(
+error_code deserialize_prepare_stmt_response(
     asio::const_buffer message,
     db_flavor flavor,
+    prepare_stmt_response& output,
     diagnostics& diag
 );
 
+// Execute statement
 struct execute_stmt_command
 {
     std::uint32_t statement_id;
@@ -135,6 +133,7 @@ struct execute_stmt_command
     void serialize(asio::mutable_buffer) const noexcept;
 };
 
+// Close statement
 struct close_stmt_command
 {
     std::uint32_t statement_id{};
@@ -242,15 +241,24 @@ struct ssl_request
     void serialize(asio::mutable_buffer) const noexcept;
 };
 
+struct auth_switch
+{
+    string_view plugin_name;
+    span<const std::uint8_t> auth_data;
+};
+
+struct auth_switch_response
+{
+    span<const std::uint8_t> auth_plugin_data;
+
+    std::size_t get_size() const noexcept;
+    void serialize(asio::mutable_buffer) const noexcept;
+};
+
 struct handhake_server_response
 {
     struct ok_follows_t
     {
-    };
-    struct auth_switch_t
-    {
-        string_view plugin_name;
-        span<const std::uint8_t> auth_data;
     };
 
     enum class type_t
@@ -267,21 +275,20 @@ struct handhake_server_response
         ok_view ok;
         error_code err;
         ok_follows_t ok_follows;
-        auth_switch_t auth_switch;
+        auth_switch auth_sw;
         span<const std::uint8_t> more_data;
 
         data_t(const ok_view& ok) noexcept : ok(ok) {}
         data_t(error_code err) noexcept : err(err) {}
         data_t(ok_follows_t) noexcept : ok_follows({}) {}
-        data_t(auth_switch_t msg) noexcept : auth_switch(msg) {}
+        data_t(auth_switch msg) noexcept : auth_sw(msg) {}
         data_t(span<const std::uint8_t> more_data) noexcept : more_data(more_data) {}
     } data;
 
     handhake_server_response(const ok_view& ok) noexcept : type(type_t::ok), data(ok) {}
     handhake_server_response(error_code err) noexcept : type(type_t::error), data(err) {}
     handhake_server_response(ok_follows_t) noexcept : type(type_t::ok_follows), data(ok_follows_t{}) {}
-    handhake_server_response(auth_switch_t auth_switch) noexcept
-        : type(type_t::auth_switch), data(auth_switch)
+    handhake_server_response(auth_switch auth_switch) noexcept : type(type_t::auth_switch), data(auth_switch)
     {
     }
     handhake_server_response(span<const std::uint8_t> more_data) noexcept
@@ -294,14 +301,6 @@ handhake_server_response deserialize_handshake_server_response(
     db_flavor flavor,
     diagnostics& diag
 );
-
-struct auth_switch_response
-{
-    span<const std::uint8_t> auth_plugin_data;
-
-    std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
-};
 
 }  // namespace detail
 }  // namespace mysql

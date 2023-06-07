@@ -263,9 +263,10 @@ void boost::mysql::detail::prepare_stmt_command::serialize(asio::mutable_buffer 
     serialize_message(to_packet(*this), capabilities(), to_span(buff));
 }
 
-prepare_stmt_response boost::mysql::detail::deserialize_prepare_stmt_response(
+error_code boost::mysql::detail::deserialize_prepare_stmt_response(
     asio::const_buffer message,
     db_flavor flavor,
+    prepare_stmt_response& output,
     diagnostics& diag
 )
 {
@@ -290,7 +291,8 @@ prepare_stmt_response boost::mysql::detail::deserialize_prepare_stmt_response(
         if (err)
             return err;
 
-        return prepare_stmt_response(response.statement_id, response.num_columns, response.num_params);
+        output = prepare_stmt_response(response.statement_id, response.num_columns, response.num_params);
+        return error_code();
     }
 }
 
@@ -741,10 +743,7 @@ handhake_server_response boost::mysql::detail::deserialize_handshake_server_resp
         auto err = deserialize_message(ctx, auth_sw);
         if (err)
             return err;
-        return handhake_server_response::auth_switch_t(
-            auth_sw.plugin_name.value,
-            to_span(auth_sw.auth_plugin_data.value)
-        );
+        return auth_switch(auth_sw.plugin_name.value, to_span(auth_sw.auth_plugin_data.value));
     }
     else if (msg_type == auth_more_data_header)
     {

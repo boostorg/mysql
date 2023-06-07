@@ -173,9 +173,9 @@ public:
         case handhake_server_response::type_t::auth_switch:
             // Compute response
             err = compute_auth_response(
-                response.data.auth_switch.plugin_name,
+                response.data.auth_sw.plugin_name,
                 params_.password(),
-                response.data.auth_switch.auth_data,
+                response.data.auth_sw.auth_data,
                 use_ssl(),
                 auth_resp_
             );
