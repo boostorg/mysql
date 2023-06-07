@@ -55,15 +55,12 @@ static constexpr std::uint8_t auth_switch_request_header = 0xfe;
 static constexpr std::uint8_t auth_more_data_header = 0x01;
 static constexpr string_view fast_auth_complete_challenge = make_string_view("\3");
 
-// Frame header
-static constexpr std::uint32_t max_int3 = 0xffffff;
-
 void boost::mysql::detail::serialize_frame_header(
     frame_header msg,
     span<std::uint8_t, frame_header_size> buffer
 ) noexcept
 {
-    BOOST_ASSERT(msg.size <= max_int3);
+    BOOST_ASSERT(msg.size <= 0xffffff);                        // range check
     serialization_context ctx(capabilities(), buffer.data());  // unaffected by capabilities
     frame_header_packet pack{int3{msg.size}, msg.sequence_number};
     serialize(ctx, pack.packet_size, pack.sequence_number);
@@ -698,6 +695,7 @@ static ssl_request_packet to_packet(const ssl_request& req) noexcept
         req.negotiated_capabilities.get(),
         req.max_packet_size,
         get_collation_first_byte(req.collation_id),
+        {},
     };
 }
 

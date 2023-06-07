@@ -88,40 +88,54 @@ else()
     endif()
 endif()
 
-#
-# Interface library (header-only)
-#
-add_library(
-    boost_mysql
-    src/src.cpp
-    src/network_algorithms/network_algorithms.cpp
+# Private part. Used for the actual lib and the unit tests
+add_library(boost_mysql_impl_private INTERFACE)
+target_include_directories(boost_mysql_impl_private INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+target_sources(
+    boost_mysql_impl_private
+    INTERFACE 
     src/auth/auth.cpp
+    src/protocol/deserialize_text_field.cpp
+    src/protocol/deserialize_binary_field.cpp
+    src/protocol/binary_serialization.cpp
+    src/protocol/protocol.cpp
+    src/channel/channel.cpp
+    src/execution_processor.cpp
+    src/network_algorithms/network_algorithms.cpp
+    src/error/error_categories.cpp
+    src/error/server_error_to_string.cpp
+    src/interface.cpp
 )
-target_include_directories(boost_mysql PRIVATE src)
-add_library(Boost::mysql ALIAS boost_mysql)
+
+# Public includes, defines, link libs. Used for the actual lib and the unit tests
+add_library(boost_mysql_impl_public INTERFACE)
 
 if (BOOST_SUPERPROJECT_VERSION)
-    target_include_directories(boost_mysql PUBLIC "${PROJECT_SOURCE_DIR}/include")
+    target_include_directories(boost_mysql_impl_public INTERFACE "${PROJECT_SOURCE_DIR}/include")
 else()
     target_include_directories(
-        boost_mysql
+        boost_mysql_impl_public
         SYSTEM
-        PUBLIC
+        INTERFACE
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
     )
 endif()
 
-target_compile_features(boost_mysql PUBLIC cxx_std_11)
-
+target_compile_features(boost_mysql_impl_public INTERFACE cxx_std_11)
 target_link_libraries(
-    boost_mysql
-    PUBLIC
+    boost_mysql_impl_public
+    INTERFACE
     ${_BOOST_LINK_LIBRARIES}
     Threads::Threads
     OpenSSL::Crypto
     OpenSSL::SSL
 )
+
+add_library(boost_mysql)
+add_library(Boost::mysql ALIAS boost_mysql)
+target_link_libraries(boost_mysql PRIVATE boost_mysql_impl_private)
+target_link_libraries(boost_mysql PUBLIC boost_mysql_impl_public)
 
 # Examples and tests
 if(BUILD_TESTING)

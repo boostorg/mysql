@@ -18,7 +18,7 @@ add_library(
 target_include_directories(
     boost_mysql_testing
     INTERFACE
-    common
+    "common/include"
 )
 
 if (BOOST_MYSQL_USE_FIND_PACKAGE)
@@ -40,7 +40,6 @@ target_link_libraries(
     boost_mysql_testing
     INTERFACE
     ${_TEST_LIBRARIES}
-    Boost::mysql
     boost_mysql_asio
 )
 

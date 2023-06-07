@@ -12,7 +12,7 @@ add_executable(
     # detail/channel/read_buffer.cpp
     # detail/channel/message_parser.cpp
     # detail/channel/message_reader.cpp
-    detail/channel/message_writer_processor.cpp
+    # detail/channel/message_writer_processor.cpp
     # detail/channel/message_writer.cpp
     # detail/auxiliar/static_string.cpp
     # detail/auxiliar/rows_iterator.cpp
@@ -76,12 +76,18 @@ add_executable(
     # multifn.cpp
     entry_point.cpp
 )
+target_include_directories(
+    boost_mysql_unittests
+    PRIVATE
+    "include"
+)
 target_link_libraries(
     boost_mysql_unittests
     PRIVATE
     boost_mysql_testing
+    boost_mysql_impl_private
+    boost_mysql_impl_public
 )
-target_link_libraries(boost_mysql_unittests PRIVATE __please_change)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
         boost_mysql_unittests

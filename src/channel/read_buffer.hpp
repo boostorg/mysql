@@ -92,7 +92,7 @@ public:
     // Used to remove intermediate headers. length must be > 0
     void remove_current_message_last(std::size_t length) noexcept
     {
-        BOOST_ASSERT(n <= pending_size());
+        BOOST_ASSERT(length <= pending_size());
         pending_offset_ += length;
     }
 
@@ -100,7 +100,7 @@ public:
     // Used to move entire parsed messages or message headers
     void move_to_reserved(std::size_t length) noexcept
     {
-        BOOST_ASSERT(n <= free_size());
+        BOOST_ASSERT(length <= free_size());
         free_offset_ += length;
     }
 

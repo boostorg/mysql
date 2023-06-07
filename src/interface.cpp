@@ -136,7 +136,7 @@ static void copy_strings(std::vector<field_view>& fields, std::vector<unsigned c
         default: break;
         }
     }
-    BOOST_ASSERT(buffer_it == string_buffer_.data() + size);
+    BOOST_ASSERT(buffer_it == string_buffer.data() + size);
 }
 
 static field_view offset_to_string_view(field_view fv, const std::uint8_t* buffer_first) noexcept
