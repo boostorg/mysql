@@ -13,6 +13,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/core/span.hpp>
 
 #include <array>
 #include <cstring>
@@ -47,6 +48,12 @@ public:
     void clear() noexcept { size_ = 0; }
     bool operator==(const static_string<max_size>& other) const noexcept { return value() == other.value(); }
     bool operator!=(const static_string<max_size>& other) const noexcept { return !(*this == other); }
+
+    // TODO: this
+    span<const std::uint8_t> to_span() const noexcept
+    {
+        return {reinterpret_cast<const std::uint8_t*>(buffer_.data()), buffer_.size()};
+    }
 };
 
 }  // namespace detail

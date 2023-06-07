@@ -16,7 +16,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-std::size_t get_size(const serialization_context& ctx, field_view input) noexcept;
+std::size_t get_size(field_view input) noexcept;
 void serialize(serialization_context& ctx, field_view input) noexcept;
 
 }  // namespace detail

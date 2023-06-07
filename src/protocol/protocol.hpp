@@ -28,6 +28,7 @@
 #include "protocol/capabilities.hpp"
 #include "protocol/constants.hpp"
 #include "protocol/db_flavor.hpp"
+#include "protocol/static_string.hpp"
 
 namespace boost {
 namespace mysql {
@@ -79,14 +80,14 @@ error_code deserialize_column_definition(asio::const_buffer input, coldef_view& 
 // Quit
 struct quit_command
 {
-    std::size_t get_size() const noexcept { return 1; }
+    std::size_t get_size() const noexcept;
     void serialize(asio::mutable_buffer) const noexcept;
 };
 
 // Ping
 struct ping_command
 {
-    std::size_t get_size() const noexcept { return 1; }
+    std::size_t get_size() const noexcept;
     void serialize(asio::mutable_buffer) const noexcept;
 };
 BOOST_ATTRIBUTE_NODISCARD
@@ -208,7 +209,7 @@ error_code deserialize_row(
 // Handshake messages
 struct server_hello
 {
-    using auth_buffer_type = std::array<std::uint8_t, 8 + 0xff>;
+    using auth_buffer_type = static_string<8 + 0xff>;
     db_flavor server;
     auth_buffer_type auth_plugin_data;
     capabilities server_capabilities{};

@@ -122,7 +122,7 @@ public:
         return compute_auth_response(
             hello.auth_plugin_name,
             params_.password(),
-            hello.auth_plugin_data,
+            hello.auth_plugin_data.to_span(),
             use_ssl(),
             auth_resp_
         );

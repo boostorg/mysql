@@ -79,15 +79,15 @@ static boost::mysql::detail::string_lenenc to_string_lenenc(boost::mysql::blob_v
         string_view(reinterpret_cast<const char*>(v.data()), v.size())};
 }
 
-std::size_t boost::mysql::detail::get_size(const serialization_context& ctx, field_view input) noexcept
+std::size_t boost::mysql::detail::get_size(field_view input) noexcept
 {
     switch (input.kind())
     {
     case field_kind::null: return 0;
     case field_kind::int64: return 8;
     case field_kind::uint64: return 8;
-    case field_kind::string: return get_size(ctx, string_lenenc(input.get_string()));
-    case field_kind::blob: return get_size(ctx, to_string_lenenc(input.get_blob()));
+    case field_kind::string: return get_size(string_lenenc(input.get_string()));
+    case field_kind::blob: return get_size(to_string_lenenc(input.get_blob()));
     case field_kind::float_: return 4;
     case field_kind::double_: return 8;
     case field_kind::date: return binc::date_sz + binc::length_sz;

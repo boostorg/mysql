@@ -23,9 +23,9 @@
 #include <cstring>
 #include <type_traits>
 
+#include "protocol/basic_types.hpp"
 #include "protocol/capabilities.hpp"
-#include "protocol/constants.hpp"
-#include "protocol/protocol_types.hpp"
+#include "protocol/protocol_field_type.hpp"
 
 namespace boost {
 namespace mysql {
@@ -55,15 +55,14 @@ inline error_code to_error_code(deserialize_errc v) noexcept
 class serialization_context
 {
     std::uint8_t* first_;
-    capabilities capabilities_;
 
 public:
-    constexpr serialization_context(capabilities caps, void* first = nullptr) noexcept
-        : first_(static_cast<std::uint8_t*>(first)), capabilities_(caps){};
+    constexpr serialization_context(void* first = nullptr) noexcept
+        : first_(static_cast<std::uint8_t*>(first))
+    {
+    }
     std::uint8_t* first() const noexcept { return first_; }
-    void set_first(std::uint8_t* new_first) noexcept { first_ = new_first; }
     void advance(std::size_t size) noexcept { first_ += size; }
-    capabilities get_capabilities() const noexcept { return capabilities_; }
     void write(const void* buffer, std::size_t size) noexcept
     {
         memcpy(first_, buffer, size);
@@ -80,27 +79,20 @@ class deserialization_context
 {
     const std::uint8_t* first_;
     const std::uint8_t* last_;
-    capabilities capabilities_;
 
 public:
-    deserialization_context(const std::uint8_t* first, const std::uint8_t* last, capabilities caps) noexcept
-        : first_(first), last_(last), capabilities_(caps)
+    deserialization_context(const std::uint8_t* first, const std::uint8_t* last) noexcept
+        : first_(first), last_(last)
     {
         BOOST_ASSERT(last_ >= first_);
     };
-    deserialization_context(const void* first, std::size_t size, capabilities caps) noexcept
+    deserialization_context(const void* first, std::size_t size) noexcept
         : deserialization_context(
               static_cast<const std::uint8_t*>(first),
-              static_cast<const std::uint8_t*>(first) + size,
-              caps
+              static_cast<const std::uint8_t*>(first) + size
           ){};
     const std::uint8_t* first() const noexcept { return first_; }
     const std::uint8_t* last() const noexcept { return last_; }
-    void set_first(const std::uint8_t* new_first) noexcept
-    {
-        first_ = new_first;
-        BOOST_ASSERT(last_ >= first_);
-    }
     void advance(std::size_t sz) noexcept
     {
         first_ += sz;
@@ -110,7 +102,6 @@ public:
     std::size_t size() const noexcept { return last_ - first_; }
     bool empty() const noexcept { return last_ == first_; }
     bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }
-    capabilities get_capabilities() const noexcept { return capabilities_; }
     deserialize_errc copy(void* to, std::size_t sz) noexcept
     {
         if (!enough_size(sz))
@@ -147,7 +138,7 @@ void serialize(serialization_context& ctx, T input) noexcept
 }
 
 template <class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
-constexpr std::size_t get_size(const serialization_context&, T) noexcept
+constexpr std::size_t get_size(T) noexcept
 {
     return sizeof(T);
 }
@@ -166,7 +157,7 @@ inline void serialize(serialization_context& ctx, int3 input) noexcept
     endian::store_little_u24(ctx.first(), input.value);
     ctx.advance(3);
 }
-constexpr std::size_t get_size(const serialization_context&, int3) noexcept { return 3; }
+constexpr std::size_t get_size(int3) noexcept { return 3; }
 
 // int_lenenc
 inline deserialize_errc deserialize(deserialization_context& ctx, int_lenenc& output) noexcept
@@ -225,7 +216,7 @@ inline void serialize(serialization_context& ctx, int_lenenc input) noexcept
         serialize(ctx, static_cast<std::uint64_t>(input.value));
     }
 }
-inline std::size_t get_size(const serialization_context&, int_lenenc input) noexcept
+inline std::size_t get_size(int_lenenc input) noexcept
 {
     if (input.value < 251)
         return 1;
@@ -249,10 +240,7 @@ inline void serialize(serialization_context& ctx, protocol_field_type input) noe
 {
     serialize(ctx, static_cast<std::underlying_type<protocol_field_type>::type>(input));
 }
-constexpr std::size_t get_size(const serialization_context&, protocol_field_type) noexcept
-{
-    return sizeof(protocol_field_type);
-}
+constexpr std::size_t get_size(protocol_field_type) noexcept { return sizeof(protocol_field_type); }
 
 // string_fixed
 template <std::size_t N>
@@ -272,7 +260,7 @@ void serialize(serialization_context& ctx, const string_fixed<N>& input) noexcep
 }
 
 template <std::size_t N>
-static constexpr std::size_t get_size(const serialization_context&, const string_fixed<N>&) noexcept
+constexpr std::size_t get_size(const string_fixed<N>&) noexcept
 {
     return N;
 }
@@ -285,8 +273,9 @@ inline deserialize_errc deserialize(deserialization_context& ctx, string_null& o
     {
         return deserialize_errc::incomplete_message;
     }
-    output.value = ctx.get_string(string_end - ctx.first());
-    ctx.set_first(string_end + 1);  // skip the null terminator
+    std::size_t length = string_end - ctx.first();
+    output.value = ctx.get_string(length);
+    ctx.advance(length + 1);  // skip the null terminator
     return deserialize_errc::ok;
 }
 inline void serialize(serialization_context& ctx, string_null input) noexcept
@@ -294,26 +283,21 @@ inline void serialize(serialization_context& ctx, string_null input) noexcept
     ctx.write(input.value.data(), input.value.size());
     ctx.write(0);  // null terminator
 }
-inline std::size_t get_size(const serialization_context&, string_null input) noexcept
-{
-    return input.value.size() + 1;
-}
+inline std::size_t get_size(string_null input) noexcept { return input.value.size() + 1; }
 
 // string_eof
 inline deserialize_errc deserialize(deserialization_context& ctx, string_eof& output) noexcept
 {
-    output.value = ctx.get_string(ctx.last() - ctx.first());
-    ctx.set_first(ctx.last());
+    std::size_t size = ctx.size();
+    output.value = ctx.get_string(size);
+    ctx.advance(size);
     return deserialize_errc::ok;
 }
 inline void serialize(serialization_context& ctx, string_eof input) noexcept
 {
     ctx.write(input.value.data(), input.value.size());
 }
-inline std::size_t get_size(const serialization_context&, string_eof input) noexcept
-{
-    return input.value.size();
-}
+inline std::size_t get_size(string_eof input) noexcept { return input.value.size(); }
 
 // string_lenenc
 inline deserialize_errc deserialize(deserialization_context& ctx, string_lenenc& output) noexcept
@@ -343,9 +327,9 @@ inline void serialize(serialization_context& ctx, string_lenenc input) noexcept
     serialize(ctx, int_lenenc(input.value.size()));
     ctx.write(input.value.data(), input.value.size());
 }
-inline std::size_t get_size(const serialization_context& ctx, string_lenenc input) noexcept
+inline std::size_t get_size(string_lenenc input) noexcept
 {
-    return get_size(ctx, int_lenenc(input.value.size())) + input.value.size();
+    return get_size(int_lenenc(input.value.size())) + input.value.size();
 }
 
 // serialize, deserialize, and get size of multiple fields at the same time
@@ -378,29 +362,17 @@ void serialize(
 }
 
 template <class FirstType, class SecondType, class... Rest>
-std::size_t get_size(
-    const serialization_context& ctx,
-    const FirstType& first,
-    const SecondType& second,
-    const Rest&... rest
-) noexcept
+std::size_t get_size(const FirstType& first, const SecondType& second, const Rest&... rest) noexcept
 {
-    return get_size(ctx, first) + get_size(ctx, second, rest...);
+    return get_size(first) + get_size(second, rest...);
 }
 
-// Helper to serialize top-level messages
+// Helper to (de)serialize top-level messages
 template <class Serializable>
-std::size_t get_message_size(const Serializable& input, capabilities caps)
+void serialize_message(const Serializable& input, span<std::uint8_t> output)
 {
-    serialization_context ctx(caps);
-    return get_size(ctx, input);
-}
-
-template <class Serializable>
-void serialize_message(const Serializable& input, capabilities caps, span<std::uint8_t> output)
-{
-    BOOST_ASSERT(output.size() >= get_message_size(input, caps));
-    serialization_context ctx(caps, output.data());
+    BOOST_ASSERT(output.size() >= get_size(input));
+    serialization_context ctx(output.data());
     serialize(ctx, input);
 }
 
@@ -416,9 +388,9 @@ error_code deserialize_message(deserialization_context ctx, Deserializable& outp
 }
 
 template <class Deserializable>
-error_code deserialize_message(const void* buff, std::size_t size, capabilities caps, Deserializable& output)
+error_code deserialize_message(const void* buff, std::size_t size, Deserializable& output)
 {
-    deserialization_context ctx(buff, size, caps);
+    deserialization_context ctx(buff, size);
     return deserialize_message(ctx, output);
 }
 
