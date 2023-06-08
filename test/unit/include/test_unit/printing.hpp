@@ -8,12 +8,9 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_PRINTING_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_PRINTING_HPP
 
-#include <boost/mysql/detail/auxiliar/static_string.hpp>
 #include <boost/mysql/detail/results_iterator.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/rows_iterator.hpp>
-// #include <boost/mysql/detail/protocol/constants.hpp>
-// #include <boost/mysql/detail/protocol/deserialize_errc.hpp>
-// #include <boost/mysql/detail/protocol/resultset_encoding.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -23,11 +20,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <std::size_t max_size>
-std::ostream& operator<<(std::ostream& os, const static_string<max_size>& value)
-{
-    return os << value.value();
-}
+// template <std::size_t max_size>
+// std::ostream& operator<<(std::ostream& os, const static_string<max_size>& value)
+// {
+//     return os << value.value();
+// }
 
 inline std::ostream& operator<<(std::ostream& os, resultset_encoding t)
 {
@@ -38,52 +35,6 @@ inline std::ostream& operator<<(std::ostream& os, resultset_encoding t)
     default: return os << "unknown";
     }
 }
-
-// inline std::ostream& operator<<(std::ostream& os, protocol_field_type t)
-// {
-//     switch (t)
-//     {
-//     case detail::protocol_field_type::decimal: return os << "decimal";
-//     case detail::protocol_field_type::tiny: return os << "tiny";
-//     case detail::protocol_field_type::short_: return os << "short_";
-//     case detail::protocol_field_type::long_: return os << "long_";
-//     case detail::protocol_field_type::float_: return os << "float_";
-//     case detail::protocol_field_type::double_: return os << "double_";
-//     case detail::protocol_field_type::null: return os << "null";
-//     case detail::protocol_field_type::timestamp: return os << "timestamp";
-//     case detail::protocol_field_type::longlong: return os << "longlong";
-//     case detail::protocol_field_type::int24: return os << "int24";
-//     case detail::protocol_field_type::date: return os << "date";
-//     case detail::protocol_field_type::time: return os << "time";
-//     case detail::protocol_field_type::datetime: return os << "datetime";
-//     case detail::protocol_field_type::year: return os << "year";
-//     case detail::protocol_field_type::varchar: return os << "varchar";
-//     case detail::protocol_field_type::bit: return os << "bit";
-//     case detail::protocol_field_type::newdecimal: return os << "newdecimal";
-//     case detail::protocol_field_type::enum_: return os << "enum_";
-//     case detail::protocol_field_type::set: return os << "set";
-//     case detail::protocol_field_type::tiny_blob: return os << "tiny_blob";
-//     case detail::protocol_field_type::medium_blob: return os << "medium_blob";
-//     case detail::protocol_field_type::long_blob: return os << "long_blob";
-//     case detail::protocol_field_type::blob: return os << "blob";
-//     case detail::protocol_field_type::var_string: return os << "var_string";
-//     case detail::protocol_field_type::string: return os << "string";
-//     case detail::protocol_field_type::geometry: return os << "geometry";
-//     default: return os << "unknown";
-//     }
-// }
-
-// inline std::ostream& operator<<(std::ostream& os, deserialize_errc v)
-// {
-//     switch (v)
-//     {
-//     case deserialize_errc::ok: return os << "ok";
-//     case deserialize_errc::incomplete_message: return os << "incomplete_message";
-//     case deserialize_errc::protocol_value_error: return os << "protocol_value_error";
-//     case deserialize_errc::server_unsupported: return os << "server_unsupported";
-//     default: return os << "unknown";
-//     }
-// }
 
 inline std::ostream& operator<<(std::ostream& os, results_iterator it)
 {
