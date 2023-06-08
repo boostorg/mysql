@@ -321,8 +321,8 @@ inline capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> hi
 {
     std::uint32_t res = 0;
     auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&res);
-    memcpy(capabilities_begin, low.data(), 2);
-    memcpy(capabilities_begin + 2, high.data(), 2);
+    memcpy(capabilities_begin, low.value.data(), 2);
+    memcpy(capabilities_begin + 2, high.value.data(), 2);
     return capabilities(endian::little_to_native(res));
 }
 
@@ -397,7 +397,7 @@ inline deserialize_errc deserialize(deserialization_context& ctx, server_hello& 
 
     // Compose auth_plugin_data
     output.auth_plugin_data.clear();
-    output.auth_plugin_data.append(pack.auth_plugin_data_part_1.data(), auth1_length);
+    output.auth_plugin_data.append(pack.auth_plugin_data_part_1.value.data(), auth1_length);
     output.auth_plugin_data.append(auth2_data,
                                    auth2_length - 1);  // discard an extra trailing NULL byte
 

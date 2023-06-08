@@ -248,7 +248,7 @@ deserialize_errc deserialize(deserialization_context& ctx, string_fixed<N>& outp
 {
     if (!ctx.enough_size(N))
         return deserialize_errc::incomplete_message;
-    memcpy(output.data(), ctx.first(), N);
+    memcpy(output.value.data(), ctx.first(), N);
     ctx.advance(N);
     return deserialize_errc::ok;
 }
@@ -256,7 +256,7 @@ deserialize_errc deserialize(deserialization_context& ctx, string_fixed<N>& outp
 template <std::size_t N>
 void serialize(serialization_context& ctx, const string_fixed<N>& input) noexcept
 {
-    ctx.write(input.data(), N);
+    ctx.write(input.value.data(), N);
 }
 
 template <std::size_t N>

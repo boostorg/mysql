@@ -389,11 +389,6 @@ error_code boost::mysql::detail::deserialize_row(
 }
 
 // Server hello
-static db_flavor parse_db_version(string_view version_string) noexcept
-{
-    return version_string.find("MariaDB") != string_view::npos ? db_flavor::mariadb : db_flavor::mysql;
-}
-
 error_code boost::mysql::detail::deserialize_server_hello(
     asio::const_buffer msg,
     server_hello& output,

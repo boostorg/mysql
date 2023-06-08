@@ -42,8 +42,11 @@ struct string_lenenc
     string_view value;
 };
 
-template <std::size_t size>
-using string_fixed = std::array<char, size>;
+template <std::size_t N>
+struct string_fixed
+{
+    std::array<char, N> value;
+};
 
 }  // namespace detail
 }  // namespace mysql
