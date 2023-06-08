@@ -7,12 +7,13 @@
 
 #include "protocol/binary_serialization.hpp"
 #include "protocol/constants.hpp"
+#include "protocol/serialization.hpp"
 
+using namespace boost::mysql::detail;
 using boost::mysql::date;
 using boost::mysql::datetime;
 using boost::mysql::error_code;
 using boost::mysql::string_view;
-using boost::mysql::detail::serialization_context;
 
 // Binary serialization
 template <class T>
@@ -24,13 +25,13 @@ static void serialize_binary_float(serialization_context& ctx, T input)
 
 static void serialize_binary_date(serialization_context& ctx, const date& input)
 {
-    using namespace boost::mysql::detail::binc;
+    using namespace binc;
     serialize(ctx, static_cast<std::uint8_t>(date_sz), input.year(), input.month(), input.day());
 }
 
 static void serialize_binary_datetime(serialization_context& ctx, const datetime& input)
 {
-    using namespace boost::mysql::detail::binc;
+    using namespace binc;
 
     // Serialize
     serialize(
@@ -48,7 +49,7 @@ static void serialize_binary_datetime(serialization_context& ctx, const datetime
 
 static void serialize_binary_time(serialization_context& ctx, const boost::mysql::time& input)
 {
-    using namespace boost::mysql::detail::binc;
+    using namespace binc;
     using namespace std::chrono;
 
     // Break time
@@ -72,13 +73,6 @@ static void serialize_binary_time(serialization_context& ctx, const boost::mysql
     );
 }
 
-// Helper for blobs
-static boost::mysql::detail::string_lenenc to_string_lenenc(boost::mysql::blob_view v)
-{
-    return boost::mysql::detail::string_lenenc{
-        string_view(reinterpret_cast<const char*>(v.data()), v.size())};
-}
-
 std::size_t boost::mysql::detail::get_size(field_view input) noexcept
 {
     switch (input.kind())
@@ -87,7 +81,7 @@ std::size_t boost::mysql::detail::get_size(field_view input) noexcept
     case field_kind::int64: return 8;
     case field_kind::uint64: return 8;
     case field_kind::string: return get_size(string_lenenc{input.get_string()});
-    case field_kind::blob: return get_size(to_string_lenenc(input.get_blob()));
+    case field_kind::blob: return get_size(string_lenenc{to_string(input.get_blob())});
     case field_kind::float_: return 4;
     case field_kind::double_: return 8;
     case field_kind::date: return binc::date_sz + binc::length_sz;
@@ -105,7 +99,7 @@ void boost::mysql::detail::serialize(serialization_context& ctx, field_view inpu
     case field_kind::int64: serialize(ctx, input.get_int64()); break;
     case field_kind::uint64: serialize(ctx, input.get_uint64()); break;
     case field_kind::string: serialize(ctx, string_lenenc{input.get_string()}); break;
-    case field_kind::blob: serialize(ctx, to_string_lenenc(input.get_blob())); break;
+    case field_kind::blob: serialize(ctx, string_lenenc{to_string(input.get_blob())}); break;
     case field_kind::float_: serialize_binary_float(ctx, input.get_float()); break;
     case field_kind::double_: serialize_binary_float(ctx, input.get_double()); break;
     case field_kind::date: serialize_binary_date(ctx, input.get_date()); break;

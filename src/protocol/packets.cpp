@@ -5,37 +5,36 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_SRC_PROTOCOL_MESSAGES_HPP
-#define BOOST_MYSQL_SRC_PROTOCOL_MESSAGES_HPP
+#include "protocol/packets.hpp"
 
+#include <boost/mysql/column_type.hpp>
+#include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/error_categories.hpp>
+#include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/string_view.hpp>
+
+#include <boost/mysql/detail/column_flags.hpp>
 
 #include <boost/endian/conversion.hpp>
 
-#include <cstddef>
-
+#include "error/server_error_to_string.hpp"
 #include "protocol/basic_types.hpp"
 #include "protocol/binary_serialization.hpp"
 #include "protocol/capabilities.hpp"
 #include "protocol/constants.hpp"
 #include "protocol/null_bitmap_traits.hpp"
-#include "protocol/protocol.hpp"
 #include "protocol/protocol_field_type.hpp"
 #include "protocol/serialization.hpp"
-#include "protocol/static_string.hpp"
 
-namespace boost {
-namespace mysql {
-namespace detail {
-
-struct frame_header_packet
-{
-    int3 packet_size;
-    std::uint8_t sequence_number;
-};
+using namespace boost::mysql::detail;
+using boost::mysql::column_type;
+using boost::mysql::field_kind;
+using boost::mysql::field_view;
+using boost::mysql::string_view;
 
 // ok_view
-inline deserialize_errc deserialize(deserialization_context& ctx, ok_view& output) noexcept
+deserialize_errc boost::mysql::detail::deserialize(deserialization_context& ctx, ok_view& output) noexcept
 {
     struct ok_packet
     {
@@ -69,22 +68,95 @@ inline deserialize_errc deserialize(deserialization_context& ctx, ok_view& outpu
     return deserialize_errc::ok;
 }
 
-// Error packet. This is not exposed in the protocol interface
-struct err_packet
+// error packets
+deserialize_errc boost::mysql::detail::deserialize(deserialization_context& ctx, err_view& output) noexcept
 {
-    // int<1>     header     0xFF ERR packet header
-    std::uint16_t error_code;
-    string_fixed<1> sql_state_marker;
-    string_fixed<5> sql_state;
-    string_eof error_message;
-};
-inline deserialize_errc deserialize(deserialization_context& ctx, err_packet& pack) noexcept
-{
-    return deserialize(ctx, pack.error_code, pack.sql_state_marker, pack.sql_state, pack.error_message);
+    struct err_packet
+    {
+        // int<1>     header     0xFF ERR packet header
+        std::uint16_t error_code;
+        string_fixed<1> sql_state_marker;
+        string_fixed<5> sql_state;
+        string_eof error_message;
+    } pack{};
+
+    auto err = deserialize(ctx, pack.error_code, pack.sql_state_marker, pack.sql_state, pack.error_message);
+    if (err != deserialize_errc::ok)
+        return err;
+
+    output = err_view{
+        pack.error_code,
+        pack.error_message.value,
+    };
+    return deserialize_errc::ok;
 }
 
-// Column definition
-inline deserialize_errc deserialize(deserialization_context& ctx, coldef_view& output) noexcept
+// coldef_view
+static column_type compute_field_type_string(std::uint16_t flags, std::uint16_t collation) noexcept
+{
+    if (flags & column_flags::set)
+        return column_type::set;
+    else if (flags & column_flags::enum_)
+        return column_type::enum_;
+    else if (collation == binary_collation)
+        return column_type::binary;
+    else
+        return column_type::char_;
+}
+
+static column_type compute_field_type_var_string(std::uint16_t collation) noexcept
+{
+    return collation == binary_collation ? column_type::varbinary : column_type::varchar;
+}
+
+static column_type compute_field_type_blob(std::uint16_t collation) noexcept
+{
+    return collation == binary_collation ? column_type::blob : column_type::text;
+}
+
+column_type boost::mysql::detail::compute_column_type(
+    protocol_field_type protocol_type,
+    std::uint16_t flags,
+    std::uint16_t collation
+) noexcept
+{
+    // Some protocol_field_types seem to not be sent by the server. We've found instances
+    // where some servers, with certain SQL statements, send some of the "apparently not sent"
+    // types (e.g. MariaDB was sending medium_blob only if you SELECT TEXT variables - but not with TEXT
+    // columns). So we've taken a defensive approach here
+    switch (protocol_type)
+    {
+    case protocol_field_type::decimal:
+    case protocol_field_type::newdecimal: return column_type::decimal;
+    case protocol_field_type::geometry: return column_type::geometry;
+    case protocol_field_type::tiny: return column_type::tinyint;
+    case protocol_field_type::short_: return column_type::smallint;
+    case protocol_field_type::int24: return column_type::mediumint;
+    case protocol_field_type::long_: return column_type::int_;
+    case protocol_field_type::longlong: return column_type::bigint;
+    case protocol_field_type::float_: return column_type::float_;
+    case protocol_field_type::double_: return column_type::double_;
+    case protocol_field_type::bit: return column_type::bit;
+    case protocol_field_type::date: return column_type::date;
+    case protocol_field_type::datetime: return column_type::datetime;
+    case protocol_field_type::timestamp: return column_type::timestamp;
+    case protocol_field_type::time: return column_type::time;
+    case protocol_field_type::year: return column_type::year;
+    case protocol_field_type::json: return column_type::json;
+    case protocol_field_type::enum_: return column_type::enum_;  // in theory not set
+    case protocol_field_type::set: return column_type::set;      // in theory not set
+    case protocol_field_type::string: return compute_field_type_string(flags, collation);
+    case protocol_field_type::varchar:  // in theory not sent
+    case protocol_field_type::var_string: return compute_field_type_var_string(collation);
+    case protocol_field_type::tiny_blob:    // in theory not sent
+    case protocol_field_type::medium_blob:  // in theory not sent
+    case protocol_field_type::long_blob:    // in theory not sent
+    case protocol_field_type::blob: return compute_field_type_blob(collation);
+    default: return column_type::unknown;
+    }
+}
+
+deserialize_errc boost::mysql::detail::deserialize(deserialization_context& ctx, coldef_view& output) noexcept
 {
     struct column_definition_packet
     {
@@ -132,53 +204,17 @@ inline deserialize_errc deserialize(deserialization_context& ctx, coldef_view& o
         pack.org_name.value,
         pack.character_set,
         pack.column_length,
-        compute_field_type(pack.type, pack.flags, pack.character_set),
+        compute_column_type(pack.type, pack.flags, pack.character_set),
         pack.flags,
         pack.decimals,
     };
-
     return deserialize_errc::ok;
 }
 
-// Quit
-constexpr std::size_t get_size(quit_command) noexcept { return 1; }
-inline void serialize(serialization_context& ctx, quit_command) noexcept
-{
-    constexpr std::uint8_t command_id = 0x01;
-    serialize(ctx, command_id);
-}
-
-// Ping
-constexpr std::size_t get_size(ping_command) noexcept { return 1; }
-inline void serialize(serialization_context& ctx, ping_command) noexcept
-{
-    constexpr std::uint8_t command_id = 0x0e;
-    serialize(ctx, command_id);
-}
-
-// Query
-inline std::size_t get_size(query_command value) noexcept
-{
-    return get_size(string_eof{value.query}) + 1;  // command ID
-}
-inline void serialize(serialization_context& ctx, query_command value) noexcept
-{
-    constexpr std::uint8_t command_id = 3;
-    serialize(ctx, command_id, string_eof(value.query));
-}
-
-// Prepare statement
-inline std::size_t get_size(prepare_stmt_command value) noexcept
-{
-    return get_size(string_eof{value.stmt}) + 1;  // command ID
-}
-inline void serialize(serialization_context& ctx, prepare_stmt_command pack) noexcept
-{
-    constexpr std::uint8_t command_id = 0x16;
-    serialize(ctx, command_id, string_eof{pack.stmt});
-}
-
-inline deserialize_errc deserialize(deserialization_context& ctx, prepare_stmt_response& output) noexcept
+deserialize_errc boost::mysql::detail::deserialize(
+    deserialization_context& ctx,
+    prepare_stmt_response& output
+) noexcept
 {
     struct com_stmt_prepare_ok_packet
     {
@@ -220,7 +256,7 @@ inline deserialize_errc deserialize(deserialization_context& ctx, prepare_stmt_r
 //      array<field_view, num_params> params;
 
 // Maps from an actual value to a protocol_field_type. Only value's type is used
-inline protocol_field_type get_protocol_field_type(field_view input) noexcept
+static protocol_field_type get_protocol_field_type(field_view input) noexcept
 {
     switch (input.kind())
     {
@@ -238,7 +274,7 @@ inline protocol_field_type get_protocol_field_type(field_view input) noexcept
     }
 }
 
-inline std::size_t get_size(execute_stmt_command value) noexcept
+std::size_t boost::mysql::detail::get_size(execute_stmt_command value) noexcept
 {
     constexpr std::size_t param_meta_packet_size = 2;           // type + unsigned flag
     constexpr std::size_t stmt_execute_packet_head_size = 1     // command ID
@@ -261,7 +297,7 @@ inline std::size_t get_size(execute_stmt_command value) noexcept
     return res;
 }
 
-inline void serialize(serialization_context& ctx, execute_stmt_command value) noexcept
+void boost::mysql::detail::serialize(serialization_context& ctx, execute_stmt_command value) noexcept
 {
     constexpr std::uint8_t command_id = 0x17;
 
@@ -308,30 +344,25 @@ inline void serialize(serialization_context& ctx, execute_stmt_command value) no
     }
 }
 
-// Close statement
-constexpr std::size_t get_size(close_stmt_command) noexcept { return 5; }
-inline void serialize(serialization_context& ctx, close_stmt_command value) noexcept
-{
-    constexpr std::uint8_t command_id = 0x19;
-    serialize(ctx, command_id, value.statement_id);
-}
-
-// handshake messages
-inline capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> high) noexcept
+// server_hello
+static capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> high) noexcept
 {
     std::uint32_t res = 0;
     auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&res);
     memcpy(capabilities_begin, low.value.data(), 2);
     memcpy(capabilities_begin + 2, high.value.data(), 2);
-    return capabilities(endian::little_to_native(res));
+    return capabilities(boost::endian::little_to_native(res));
 }
 
-inline db_flavor parse_db_version(string_view version_string) noexcept
+static db_flavor parse_db_version(string_view version_string) noexcept
 {
     return version_string.find("MariaDB") != string_view::npos ? db_flavor::mariadb : db_flavor::mysql;
 }
 
-inline deserialize_errc deserialize(deserialization_context& ctx, server_hello& output) noexcept
+deserialize_errc boost::mysql::detail::deserialize(
+    deserialization_context& ctx,
+    server_hello& output
+) noexcept
 {
     static constexpr std::uint8_t auth1_length = 8;
 
@@ -404,15 +435,13 @@ inline deserialize_errc deserialize(deserialization_context& ctx, server_hello& 
     return deserialize_errc::ok;
 }
 
-inline std::uint8_t get_collation_first_byte(std::uint32_t collation_id) noexcept
+// login_request
+static std::uint8_t get_collation_first_byte(std::uint32_t collation_id) noexcept
 {
     return static_cast<std::uint8_t>(collation_id % 0xff);
 }
 
-inline string_view to_string(span<const std::uint8_t> value) noexcept
-{
-    return string_view(reinterpret_cast<const char*>(value.data()), value.size());
-}
+namespace {
 
 struct login_request_packet
 {
@@ -427,7 +456,9 @@ struct login_request_packet
     // CLIENT_CONNECT_ATTRS: not implemented
 };
 
-inline login_request_packet to_packet(const login_request& req) noexcept
+}  // namespace
+
+static login_request_packet to_packet(const login_request& req) noexcept
 {
     return {
         req.negotiated_capabilities.get(),
@@ -441,7 +472,7 @@ inline login_request_packet to_packet(const login_request& req) noexcept
     };
 }
 
-inline std::size_t get_size(const login_request& value) noexcept
+std::size_t boost::mysql::detail::get_size(const login_request& value) noexcept
 {
     auto pack = to_packet(value);
     return get_size(
@@ -456,7 +487,8 @@ inline std::size_t get_size(const login_request& value) noexcept
                                                                       : 0) +
            get_size(pack.client_plugin_name);
 }
-inline void serialize(serialization_context& ctx, const login_request& value) noexcept
+
+void boost::mysql::detail::serialize(serialization_context& ctx, const login_request& value) noexcept
 {
     auto pack = to_packet(value);
 
@@ -476,8 +508,9 @@ inline void serialize(serialization_context& ctx, const login_request& value) no
     serialize(ctx, string_null{value.auth_plugin_name});
 }
 
-constexpr std::size_t get_size(ssl_request) noexcept { return 4 + 4 + 1 + 23; }
-inline void serialize(serialization_context& ctx, ssl_request value) noexcept
+// ssl_request
+std::size_t boost::mysql::detail::get_size(ssl_request) noexcept { return 4 + 4 + 1 + 23; }
+void boost::mysql::detail::serialize(serialization_context& ctx, ssl_request value) noexcept
 {
     struct ssl_request_packet
     {
@@ -495,7 +528,8 @@ inline void serialize(serialization_context& ctx, ssl_request value) noexcept
     serialize(ctx, pack.client_flag, pack.max_packet_size, pack.character_set, pack.filler);
 }
 
-inline deserialize_errc deserialize(deserialization_context& ctx, auth_switch& output) noexcept
+// auth_switch
+deserialize_errc boost::mysql::detail::deserialize(deserialization_context& ctx, auth_switch& output) noexcept
 {
     struct auth_switch_request_packet
     {
@@ -516,22 +550,7 @@ inline deserialize_errc deserialize(deserialization_context& ctx, auth_switch& o
 
     output = {
         pack.plugin_name.value,
-        span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(auth_data.data()), auth_data.size()),
+        to_span(auth_data),
     };
     return deserialize_errc::ok;
 }
-
-inline std::size_t get_size(auth_switch_response value) noexcept
-{
-    return get_size(string_eof{to_string(value.auth_plugin_data)});
-}
-inline void serialize(serialization_context& ctx, auth_switch_response value) noexcept
-{
-    serialize(ctx, string_eof{to_string(value.auth_plugin_data)});
-}
-
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
-
-#endif

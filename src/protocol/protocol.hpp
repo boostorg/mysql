@@ -59,6 +59,9 @@ struct ok_view
     bool is_out_params() const noexcept { return status_flags & SERVER_PS_OUT_PARAMS; }
 };
 
+// Error packets (exposed for testing)
+error_code process_error_packet(span<const std::uint8_t> message, db_flavor flavor, diagnostics& diag);
+
 // Column definition
 struct coldef_view
 {

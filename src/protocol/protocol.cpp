@@ -8,15 +8,9 @@
 #include "protocol/protocol.hpp"
 
 #include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/column_type.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/field_kind.hpp>
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata_collection_view.hpp>
-#include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
-
-#include <boost/mysql/detail/column_flags.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/core/ignore_unused.hpp>
@@ -24,22 +18,20 @@
 
 #include <cstddef>
 
+#include "error/server_error_to_string.hpp"
 #include "make_string_view.hpp"
 #include "protocol/basic_types.hpp"
-#include "protocol/binary_serialization.hpp"
 #include "protocol/capabilities.hpp"
 #include "protocol/constants.hpp"
 #include "protocol/deserialize_binary_field.hpp"
 #include "protocol/deserialize_text_field.hpp"
-#include "protocol/messages.hpp"
 #include "protocol/null_bitmap_traits.hpp"
-#include "protocol/process_error_packet.hpp"
+#include "protocol/packets.hpp"
 #include "protocol/serialization.hpp"
 
 using boost::mysql::client_errc;
-using boost::mysql::column_type;
+using boost::mysql::diagnostics;
 using boost::mysql::error_code;
-using boost::mysql::field_kind;
 using boost::mysql::field_view;
 using boost::mysql::metadata_collection_view;
 using boost::mysql::string_view;
@@ -55,17 +47,50 @@ static constexpr std::uint8_t auth_switch_request_header = 0xfe;
 static constexpr std::uint8_t auth_more_data_header = 0x01;
 static constexpr string_view fast_auth_complete_challenge = make_string_view("\3");
 
-// Helpers
-static boost::span<std::uint8_t> to_span(boost::asio::mutable_buffer buff) noexcept
+// Helper to (de)serialize top-level messages
+template <class Serializable>
+static void serialize_message(const Serializable& input, boost::asio::mutable_buffer output)
 {
-    return boost::span<std::uint8_t>(static_cast<std::uint8_t*>(buff.data()), buff.size());
+    BOOST_ASSERT(output.size() >= get_size(input));
+    serialization_context ctx(output.data());
+    serialize(ctx, input);
 }
-static boost::span<const std::uint8_t> to_span(string_view v) noexcept
+
+template <class Deserializable>
+static error_code deserialize_message(deserialization_context ctx, Deserializable& output)
 {
-    return boost::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(v.data()), v.size());
+    auto err = deserialize(ctx, output);
+    if (err != deserialize_errc::ok)
+        return to_error_code(err);
+    if (!ctx.empty())
+        return make_error_code(client_errc::extra_bytes);
+    return error_code();
+}
+
+template <class Deserializable>
+static error_code deserialize_message(const void* buff, std::size_t size, Deserializable& output)
+{
+    deserialization_context ctx(buff, size);
+    return deserialize_message(ctx, output);
+}
+
+template <class Deserializable>
+static error_code deserialize_message_part(deserialization_context& ctx, Deserializable& output)
+{
+    return to_error_code(deserialize(ctx, output));
 }
 
 // Frame header
+namespace {
+
+struct frame_header_packet
+{
+    int3 packet_size;
+    std::uint8_t sequence_number;
+};
+
+}  // namespace
+
 void boost::mysql::detail::serialize_frame_header(
     frame_header msg,
     span<std::uint8_t, frame_header_size> buffer
@@ -88,6 +113,43 @@ frame_header boost::mysql::detail::deserialize_frame_header(span<const std::uint
     return frame_header{pack.packet_size.value, pack.sequence_number};
 }
 
+// Error packets
+error_code boost::mysql::detail::process_error_packet(
+    span<const std::uint8_t> msg,
+    db_flavor flavor,
+    diagnostics& diag
+)
+{
+    err_view error_packet{};
+    auto code = deserialize_message(msg.data(), msg.size(), error_packet);
+    if (code)
+        return code;
+
+    // Error message
+    access::get_impl(diag).assign_server(error_packet.error_message);
+
+    // Error code
+    if (common_error_to_string(error_packet.error_code))
+    {
+        // This is an error shared between MySQL and MariaDB, represented as a common_server_errc.
+        // get_common_error_message will check that the code has a common_server_errc representation
+        // (the common error range has "holes" because of removed error codes)
+        return static_cast<common_server_errc>(error_packet.error_code);
+    }
+    else
+    {
+        // This is a MySQL or MariaDB specific code. There is no fixed list of error codes,
+        // as they both keep adding more codes, so no validation happens.
+        const auto& cat = flavor == db_flavor::mysql ? get_mysql_server_category()
+                                                     : get_mariadb_server_category();
+        return error_code(error_packet.error_code, cat);
+    }
+}
+static error_code process_error_packet(deserialization_context ctx, db_flavor flavor, diagnostics& diag)
+{
+    return process_error_packet(boost::span<const std::uint8_t>(ctx.first(), ctx.size()), flavor, diag);
+}
+
 // Column definition
 error_code boost::mysql::detail::deserialize_column_definition(
     asio::const_buffer input,
@@ -101,14 +163,14 @@ error_code boost::mysql::detail::deserialize_column_definition(
 std::size_t boost::mysql::detail::quit_command::get_size() const noexcept { return ::get_size(*this); }
 void boost::mysql::detail::quit_command::serialize(asio::mutable_buffer buff) const noexcept
 {
-    serialize_message(*this, to_span(buff));
+    serialize_message(*this, buff);
 }
 
 // ping
 std::size_t boost::mysql::detail::ping_command::get_size() const noexcept { return ::get_size(*this); }
 void boost::mysql::detail::ping_command::serialize(asio::mutable_buffer buff) const noexcept
 {
-    serialize_message(*this, to_span(buff));
+    serialize_message(*this, buff);
 }
 
 error_code boost::mysql::detail::deserialize_ping_response(
@@ -133,7 +195,7 @@ error_code boost::mysql::detail::deserialize_ping_response(
     else if (packet_header == error_packet_header)
     {
         // Theoretically, the server can answer with an error packet, too
-        return process_error_packet(ctx, flavor, diag);
+        return ::process_error_packet(ctx, flavor, diag);
     }
     else
     {
@@ -144,10 +206,9 @@ error_code boost::mysql::detail::deserialize_ping_response(
 
 // query
 std::size_t boost::mysql::detail::query_command::get_size() const noexcept { return ::get_size(*this); }
-
 void boost::mysql::detail::query_command::serialize(asio::mutable_buffer buff) const noexcept
 {
-    serialize_message(*this, to_span(buff));
+    serialize_message(*this, buff);
 }
 
 // prepare statement
@@ -157,7 +218,7 @@ std::size_t boost::mysql::detail::prepare_stmt_command::get_size() const noexcep
 }
 void boost::mysql::detail::prepare_stmt_command::serialize(asio::mutable_buffer buff) const noexcept
 {
-    serialize_message(*this, to_span(buff));
+    serialize_message(*this, buff);
 }
 
 error_code boost::mysql::detail::deserialize_prepare_stmt_response(
@@ -175,7 +236,7 @@ error_code boost::mysql::detail::deserialize_prepare_stmt_response(
 
     if (msg_type == error_packet_header)
     {
-        return process_error_packet(ctx, flavor, diag);
+        return ::process_error_packet(ctx, flavor, diag);
     }
     else if (msg_type != 0)
     {
@@ -192,10 +253,9 @@ std::size_t boost::mysql::detail::execute_stmt_command::get_size() const noexcep
 {
     return ::get_size(*this);
 }
-
 void boost::mysql::detail::execute_stmt_command::serialize(asio::mutable_buffer buff) const noexcept
 {
-    serialize_message(*this, to_span(buff));
+    serialize_message(*this, buff);
 }
 
 // close statement
@@ -203,7 +263,7 @@ std::size_t boost::mysql::detail::close_stmt_command::get_size() const noexcept 
 
 void boost::mysql::detail::close_stmt_command::serialize(asio::mutable_buffer buff) const noexcept
 {
-    serialize_message(*this, to_span(buff));
+    serialize_message(*this, buff);
 }
 
 // execute response
@@ -232,7 +292,7 @@ execute_response boost::mysql::detail::deserialize_execute_response(
     }
     else if (msg_type == error_packet_header)
     {
-        return process_error_packet(ctx, flavor, diag);
+        return ::process_error_packet(ctx, flavor, diag);
     }
     else
     {
@@ -284,7 +344,7 @@ row_message boost::mysql::detail::deserialize_row_message(
     else if (msg_type == error_packet_header)
     {
         // An error occurred during the generation of the rows
-        return process_error_packet(ctx, flavor, diag);
+        return ::process_error_packet(ctx, flavor, diag);
     }
     else
     {
@@ -409,7 +469,7 @@ error_code boost::mysql::detail::deserialize_server_hello(
     else if (msg_type == error_packet_header)
     {
         // We don't know which DB is yet
-        return process_error_packet(ctx, db_flavor::mysql, diag);
+        return ::process_error_packet(ctx, db_flavor::mysql, diag);
     }
     else if (msg_type != handshake_protocol_version_10)
     {
@@ -426,7 +486,7 @@ std::size_t boost::mysql::detail::login_request::get_size() const noexcept { ret
 
 void boost::mysql::detail::login_request::serialize(asio::mutable_buffer buff) const noexcept
 {
-    serialize_message(*this, to_span(buff));
+    serialize_message(*this, buff);
 }
 
 // ssl_request
@@ -434,7 +494,7 @@ std::size_t boost::mysql::detail::ssl_request::get_size() const noexcept { retur
 
 void boost::mysql::detail::ssl_request::serialize(asio::mutable_buffer buff) const noexcept
 {
-    serialize_message(*this, to_span(buff));
+    serialize_message(*this, buff);
 }
 
 handhake_server_response boost::mysql::detail::deserialize_handshake_server_response(
@@ -459,7 +519,7 @@ handhake_server_response boost::mysql::detail::deserialize_handshake_server_resp
     }
     else if (msg_type == error_packet_header)
     {
-        return process_error_packet(ctx, flavor, diag);
+        return ::process_error_packet(ctx, flavor, diag);
     }
     else if (msg_type == auth_switch_request_header)
     {
@@ -505,5 +565,5 @@ std::size_t boost::mysql::detail::auth_switch_response::get_size() const noexcep
 
 void boost::mysql::detail::auth_switch_response::serialize(asio::mutable_buffer buff) const noexcept
 {
-    return serialize_message(*this, to_span(buff));
+    return serialize_message(*this, buff);
 }

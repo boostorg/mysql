@@ -11,6 +11,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/core/span.hpp>
@@ -367,37 +368,14 @@ std::size_t get_size(const FirstType& first, const SecondType& second, const Res
     return get_size(first) + get_size(second, rest...);
 }
 
-// Helper to (de)serialize top-level messages
-template <class Serializable>
-void serialize_message(const Serializable& input, span<std::uint8_t> output)
+// helpers
+inline string_view to_string(span<const std::uint8_t> v) noexcept
 {
-    BOOST_ASSERT(output.size() >= get_size(input));
-    serialization_context ctx(output.data());
-    serialize(ctx, input);
+    return string_view(reinterpret_cast<const char*>(v.data()), v.size());
 }
-
-template <class Deserializable>
-error_code deserialize_message(deserialization_context ctx, Deserializable& output)
+inline span<const std::uint8_t> to_span(string_view v) noexcept
 {
-    auto err = deserialize(ctx, output);
-    if (err != deserialize_errc::ok)
-        return to_error_code(err);
-    if (!ctx.empty())
-        return make_error_code(client_errc::extra_bytes);
-    return error_code();
-}
-
-template <class Deserializable>
-error_code deserialize_message(const void* buff, std::size_t size, Deserializable& output)
-{
-    deserialization_context ctx(buff, size);
-    return deserialize_message(ctx, output);
-}
-
-template <class Deserializable>
-error_code deserialize_message_part(deserialization_context& ctx, Deserializable& output)
-{
-    return to_error_code(deserialize(ctx, output));
+    return span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(v.data()), v.size());
 }
 
 }  // namespace detail

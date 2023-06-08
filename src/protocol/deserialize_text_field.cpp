@@ -5,13 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "protocol/deserialize_text_field.hpp"
+
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/string_view.hpp>
-
-#include "protocol/deserialize_text_field.hpp"
 
 #include <boost/mysql/detail/datetime.hpp>
 
@@ -27,13 +27,13 @@
 #include "protocol/constants.hpp"
 #include "protocol/serialization.hpp"
 
+using namespace boost::mysql::detail;
 using boost::mysql::blob_view;
 using boost::mysql::date;
 using boost::mysql::datetime;
 using boost::mysql::field_view;
 using boost::mysql::metadata;
 using boost::mysql::string_view;
-using boost::mysql::detail::deserialize_errc;
 
 #ifdef BOOST_MSVC
 #pragma warning(push)
@@ -101,7 +101,7 @@ static deserialize_errc deserialize_text_value_string(string_view from, field_vi
 
 static deserialize_errc deserialize_text_value_blob(string_view from, field_view& to) noexcept
 {
-    to = field_view(blob_view(reinterpret_cast<const unsigned char*>(from.data()), from.size()));
+    to = field_view(to_span(from));
     return deserialize_errc::ok;
 }
 
@@ -117,8 +117,6 @@ static unsigned compute_micros(unsigned parsed_micros, unsigned decimals) noexce
 
 static deserialize_errc deserialize_text_ymd(string_view from, date& to)
 {
-    using namespace boost::mysql::detail;
-
     // Size check
     if (from.size() != date_sz)
         return deserialize_errc::protocol_value_error;
@@ -147,7 +145,7 @@ static deserialize_errc deserialize_text_ymd(string_view from, date& to)
     return deserialize_errc::ok;
 }
 
-inline deserialize_errc deserialize_text_value_date(string_view from, field_view& to) noexcept
+static deserialize_errc deserialize_text_value_date(string_view from, field_view& to) noexcept
 {
     date d;
     auto err = deserialize_text_ymd(from, d);
@@ -157,14 +155,12 @@ inline deserialize_errc deserialize_text_value_date(string_view from, field_view
     return deserialize_errc::ok;
 }
 
-inline deserialize_errc deserialize_text_value_datetime(
+static deserialize_errc deserialize_text_value_datetime(
     string_view from,
     field_view& to,
     const metadata& meta
 ) noexcept
 {
-    using namespace boost::mysql::detail;
-
     // Sanitize decimals
     unsigned decimals = sanitize_decimals(meta.decimals());
 
@@ -222,14 +218,12 @@ inline deserialize_errc deserialize_text_value_datetime(
     return deserialize_errc::ok;
 }
 
-inline deserialize_errc deserialize_text_value_time(
+static deserialize_errc deserialize_text_value_time(
     string_view from,
     field_view& to,
     const metadata& meta
 ) noexcept
 {
-    using namespace boost::mysql::detail;
-
     // Sanitize decimals
     unsigned decimals = sanitize_decimals(meta.decimals());
 

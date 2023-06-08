@@ -15,7 +15,6 @@
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
-#include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
