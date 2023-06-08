@@ -9,8 +9,6 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/asio/buffer.hpp>
-#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
@@ -18,7 +16,7 @@
 
 #include "operators.hpp"
 #include "protocol/protocol_field_type.hpp"
-#include "test_common/assert_buffer_equals.hpp"
+#include "serialization_test.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/create_basic.hpp"
 
@@ -42,86 +40,6 @@ string_fixed<N> makesfixed(const char (&value)[N + 1])
     string_fixed<N> res;
     std::memcpy(res.value.data(), value, N);
     return res;
-}
-
-template <class T>
-void do_serialize_test(T value, boost::span<const std::uint8_t> serialized)
-{
-    // Size
-    std::size_t expected_size = serialized.size();
-    std::size_t actual_size = boost::mysql::detail::get_size(value);
-    BOOST_TEST(actual_size == expected_size);
-
-    // Serialize
-    std::vector<uint8_t> buffer(expected_size + 8, 0x7a);  // buffer overrun detector
-    serialization_context ctx(buffer.data());
-    boost::mysql::detail::serialize(ctx, value);
-
-    // Check buffer
-    boost::asio::const_buffer expected_populated(serialized.data(), serialized.size());
-    boost::asio::const_buffer actual_populated(buffer.data(), actual_size);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected_populated, actual_populated);
-
-    // Iterator
-    BOOST_TEST(ctx.first() == buffer.data() + expected_size, "Iterator not updated correctly");
-
-    // Check for buffer overruns
-    std::vector<std::uint8_t> expected_clean(8, 0x7a);
-    boost::asio::const_buffer actual_clean(buffer.data() + expected_size, 8);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(boost::asio::buffer(expected_clean), actual_clean);
-}
-
-template <class T>
-void do_deserialize_test(T value, boost::span<const std::uint8_t> serialized)
-{
-    auto first = serialized.data();
-    auto size = serialized.size();
-    deserialization_context ctx(first, first + size);
-    T actual{};
-    deserialize_errc err = boost::mysql::detail::deserialize(ctx, actual);
-
-    // No error
-    BOOST_TEST(err == deserialize_errc::ok);
-
-    // Iterator advanced
-    BOOST_TEST(ctx.first() == first + size);
-
-    // Actual value
-    BOOST_TEST(actual == value);
-}
-
-template <class T>
-void do_deserialize_extra_space_test(T value, boost::span<const std::uint8_t> serialized)
-{
-    // Create a buffer with extra data
-    std::vector<std::uint8_t> buffer(serialized.begin(), serialized.end());
-    buffer.push_back(0xff);
-
-    // Deserialize
-    deserialization_context ctx(buffer.data(), buffer.size());
-    T actual{};
-    deserialize_errc err = boost::mysql::detail::deserialize(ctx, actual);
-
-    // No error
-    BOOST_TEST(err == deserialize_errc::ok);
-
-    // Iterator advanced
-    BOOST_TEST(ctx.first() == buffer.data() + serialized.size());
-
-    // Actual value
-    BOOST_TEST(actual == value);
-}
-
-template <class T>
-void do_deserialize_not_enough_space_test(boost::span<const std::uint8_t> serialized)
-{
-    std::vector<uint8_t> buffer(serialized.begin(), serialized.end());
-    buffer.back() = 0x7a;  // try to detect any overruns
-    deserialization_context ctx(buffer.data(), buffer.data() + buffer.size() - 1);
-
-    T value{};
-    deserialize_errc err = boost::mysql::detail::deserialize(ctx, value);
-    BOOST_TEST(err == deserialize_errc::incomplete_message);
 }
 
 class test_case
