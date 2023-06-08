@@ -7,6 +7,8 @@
 
 #include "protocol/serialization.hpp"
 
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -22,6 +24,8 @@
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
+using boost::mysql::client_errc;
+using boost::mysql::error_code;
 using boost::mysql::string_view;
 
 BOOST_AUTO_TEST_SUITE(test_serialization)
@@ -241,6 +245,21 @@ BOOST_AUTO_TEST_CASE(string_eof_)
         BOOST_TEST_CONTEXT(tc.name << ", serialization") { do_serialize_test(tc.value, tc.serialized); }
         BOOST_TEST_CONTEXT(tc.name << ", deserialization") { do_deserialize_test(tc.value, tc.serialized); }
     }
+}
+
+// going from deserialize_errc to error code
+BOOST_AUTO_TEST_CASE(to_error_code_)
+{
+    BOOST_TEST(to_error_code(deserialize_errc::ok) == error_code());
+    BOOST_TEST(
+        to_error_code(deserialize_errc::incomplete_message) == error_code(client_errc::incomplete_message)
+    );
+    BOOST_TEST(
+        to_error_code(deserialize_errc::protocol_value_error) == error_code(client_errc::protocol_value_error)
+    );
+    BOOST_TEST(
+        to_error_code(deserialize_errc::server_unsupported) == error_code(client_errc::server_unsupported)
+    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

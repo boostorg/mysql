@@ -5,20 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/protocol/null_bitmap_traits.hpp>
+#include "protocol/null_bitmap_traits.hpp"
 
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
 
 #include <array>
 
-#include "test_common.hpp"
-
-using boost::mysql::detail::binary_row_null_bitmap_offset;
-using boost::mysql::detail::null_bitmap_traits;
-using boost::mysql::detail::stmt_execute_null_bitmap_offset;
+using namespace boost::mysql::detail;
 using namespace boost::unit_test;
-using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_null_bitmap_traits)
 
