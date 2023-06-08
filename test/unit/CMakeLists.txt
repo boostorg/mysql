@@ -14,6 +14,7 @@ add_executable(
     protocol/capabilities.cpp
     protocol/null_bitmap_traits.cpp
     protocol/deserialize_text_field.cpp
+    protocol/deserialize_binary_field.cpp
     # detail/channel/read_buffer.cpp
     # detail/channel/message_parser.cpp
     # detail/channel/message_reader.cpp
@@ -26,7 +27,6 @@ add_executable(
     # detail/auxiliar/row_impl.cpp
     # detail/protocol/serialization_test.cpp
     
-    # detail/protocol/deserialize_binary_field.cpp
     # detail/protocol/deserialize_row.cpp
     # detail/protocol/deserialize_execution_messages.cpp
     # detail/protocol/process_error_packet.cpp
