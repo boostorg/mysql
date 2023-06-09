@@ -166,16 +166,22 @@ deserialize_errc boost::mysql::detail::deserialize(deserialization_context& ctx,
         string_lenenc org_table;  // physical table
         string_lenenc name;       // virtual column name
         string_lenenc org_name;   // physical column name
-        int_lenenc length_of_fixed_fields;
+        string_lenenc fixed_fields;
+    } pack{};
+
+    // pack.fixed_fields itself is a structure like this.
+    // The proto allows for extensibility here - adding fields just increasing fixed_fields.length
+    struct fixed_fields_pack
+    {
         std::uint16_t character_set;  // collation id, somehow named character_set in the protocol docs
         std::uint32_t column_length;  // maximum length of the field
         protocol_field_type type;     // type of the column as defined in enum_field_types
         std::uint16_t flags;          // Flags as defined in Column Definition Flags
         std::uint8_t decimals;        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
                                       // dynamic strings, double, float
-        std::uint16_t final_padding;
-    } pack{};
+    } fixed_fields{};
 
+    // Deserialize the main structure
     auto err = deserialize(
         ctx,
         pack.catalog,
@@ -184,29 +190,38 @@ deserialize_errc boost::mysql::detail::deserialize(deserialization_context& ctx,
         pack.org_table,
         pack.name,
         pack.org_name,
-        pack.length_of_fixed_fields,
-        pack.character_set,
-        pack.column_length,
-        pack.type,
-        pack.flags,
-        pack.decimals,
-        pack.final_padding
+        pack.fixed_fields
     );
-    // TODO: this should really check length_of_fixed_fields
     if (err != deserialize_errc::ok)
         return err;
 
+    // Deserialize the fixed_fields structure.
+    // Intentionally not checking for extra bytes here, since there may be unknown fields that should just get
+    // ignored
+    deserialization_context subctx(pack.fixed_fields.value.data(), pack.fixed_fields.value.size());
+    err = deserialize(
+        subctx,
+        fixed_fields.character_set,
+        fixed_fields.column_length,
+        fixed_fields.type,
+        fixed_fields.flags,
+        fixed_fields.decimals
+    );
+    if (err != deserialize_errc::ok)
+        return err;
+
+    // Compose output
     output = coldef_view{
         pack.schema.value,
         pack.table.value,
         pack.org_table.value,
         pack.name.value,
         pack.org_name.value,
-        pack.character_set,
-        pack.column_length,
-        compute_column_type(pack.type, pack.flags, pack.character_set),
-        pack.flags,
-        pack.decimals,
+        fixed_fields.character_set,
+        fixed_fields.column_length,
+        compute_column_type(fixed_fields.type, fixed_fields.flags, fixed_fields.character_set),
+        fixed_fields.flags,
+        fixed_fields.decimals,
     };
     return deserialize_errc::ok;
 }

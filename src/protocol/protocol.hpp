@@ -68,8 +68,8 @@ struct coldef_view
     string_view database;
     string_view table;
     string_view org_table;
-    string_view column_name;
-    string_view org_column_name;
+    string_view name;
+    string_view org_name;
     std::uint16_t collation_id;
     std::uint32_t column_length;  // maximum length of the field
     column_type type;
