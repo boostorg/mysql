@@ -82,6 +82,10 @@ class deserialization_context
     const std::uint8_t* last_;
 
 public:
+    deserialization_context(span<const std::uint8_t> data) noexcept
+        : first_(data.data()), last_(data.data() + data.size())
+    {
+    }
     deserialization_context(const std::uint8_t* first, const std::uint8_t* last) noexcept
         : first_(first), last_(last)
     {
@@ -115,6 +119,11 @@ public:
     {
         return string_view(reinterpret_cast<const char*>(first_), sz);
     }
+    error_code check_extra_bytes() const noexcept
+    {
+        return empty() ? error_code() : error_code(client_errc::extra_bytes);
+    }
+    span<const std::uint8_t> to_span() const noexcept { return span<const std::uint8_t>(first_, size()); }
 };
 
 // integers

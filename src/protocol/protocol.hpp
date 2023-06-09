@@ -58,8 +58,18 @@ struct ok_view
     bool more_results() const noexcept { return status_flags & SERVER_MORE_RESULTS_EXISTS; }
     bool is_out_params() const noexcept { return status_flags & SERVER_PS_OUT_PARAMS; }
 };
+error_code deserialize_ok_packet(span<const std::uint8_t> msg, ok_view& output) noexcept;  // for testing
 
 // Error packets (exposed for testing)
+struct err_view
+{
+    std::uint16_t error_code;
+    string_view error_message;
+};
+BOOST_ATTRIBUTE_NODISCARD
+error_code deserialize_error_packet(span<const std::uint8_t> message, err_view& pack) noexcept;
+
+BOOST_ATTRIBUTE_NODISCARD
 error_code process_error_packet(span<const std::uint8_t> message, db_flavor flavor, diagnostics& diag);
 
 // Column definition
@@ -78,7 +88,7 @@ struct coldef_view
                             // dynamic strings, double, float
 };
 BOOST_ATTRIBUTE_NODISCARD
-error_code deserialize_column_definition(asio::const_buffer input, coldef_view& output) noexcept;
+error_code deserialize_column_definition(span<const std::uint8_t> input, coldef_view& output) noexcept;
 
 // Quit
 struct quit_command
@@ -119,6 +129,12 @@ struct prepare_stmt_response
     std::uint16_t num_columns;
     std::uint16_t num_params;
 };
+BOOST_ATTRIBUTE_NODISCARD
+error_code deserialize_prepare_stmt_response_impl(
+    span<const std::uint8_t> message,
+    prepare_stmt_response&
+) noexcept;  // exposed for testing, doesn't take header into account
+
 BOOST_ATTRIBUTE_NODISCARD
 error_code deserialize_prepare_stmt_response(
     asio::const_buffer message,
@@ -209,7 +225,7 @@ error_code deserialize_row(
     span<field_view> output  // Should point to meta.size() field_view objects
 );
 
-// Handshake messages
+// Server hello
 struct server_hello
 {
     using auth_buffer_type = static_string<8 + 0xff>;
@@ -219,8 +235,15 @@ struct server_hello
     string_view auth_plugin_name;
 };
 BOOST_ATTRIBUTE_NODISCARD
+error_code deserialize_server_hello_impl(
+    span<const std::uint8_t> msg,
+    server_hello& output
+);  // exposed for testing, doesn't take message header into account
+
+BOOST_ATTRIBUTE_NODISCARD
 error_code deserialize_server_hello(asio::const_buffer msg, server_hello& output, diagnostics& diag);
 
+// Login & ssl requests
 struct login_request
 {
     capabilities negotiated_capabilities;  // capabilities
@@ -245,19 +268,18 @@ struct ssl_request
     void serialize(asio::mutable_buffer) const noexcept;
 };
 
+// Auth switch
 struct auth_switch
 {
     string_view plugin_name;
     span<const std::uint8_t> auth_data;
 };
 
-struct auth_switch_response
-{
-    span<const std::uint8_t> auth_plugin_data;
-
-    std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
-};
+BOOST_ATTRIBUTE_NODISCARD
+error_code deserialize_auth_switch(
+    span<const std::uint8_t> msg,
+    auth_switch& output
+) noexcept;  // exposed for testing
 
 struct handhake_server_response
 {
@@ -305,6 +327,14 @@ handhake_server_response deserialize_handshake_server_response(
     db_flavor flavor,
     diagnostics& diag
 );
+
+struct auth_switch_response
+{
+    span<const std::uint8_t> auth_plugin_data;
+
+    std::size_t get_size() const noexcept;
+    void serialize(asio::mutable_buffer) const noexcept;
+};
 
 }  // namespace detail
 }  // namespace mysql

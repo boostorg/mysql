@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_SRC_PROTOCOL_PROTOCOL_FIELD_TYPE_HPP
 #define BOOST_MYSQL_SRC_PROTOCOL_PROTOCOL_FIELD_TYPE_HPP
 
+#include <boost/mysql/column_type.hpp>
+
 #include <cstdint>
 
 namespace boost {
@@ -44,6 +46,12 @@ enum class protocol_field_type : std::uint8_t
     string = 0xfe,       // Used for CHAR and BINARY, ENUM (enum flag set), SET (set flag set)
     geometry = 0xff      // GEOMETRY
 };
+
+column_type compute_column_type(
+    protocol_field_type protocol_type,
+    std::uint16_t flags,
+    std::uint16_t collation
+) noexcept;
 
 }  // namespace detail
 }  // namespace mysql

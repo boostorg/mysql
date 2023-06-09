@@ -5,24 +5,28 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "protocol/packets.hpp"
+#include "protocol/protocol.hpp"
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "operators.hpp"
 #include "protocol/constants.hpp"
-#include "protocol/protocol.hpp"
 #include "serialization_test.hpp"
+#include "test_common/printing.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 namespace collations = boost::mysql::mysql_collations;
+using boost::mysql::client_errc;
 using boost::mysql::column_type;
+using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_packets)
 
@@ -78,17 +82,11 @@ BOOST_AUTO_TEST_CASE(ok_view_success)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            auto first = tc.serialized.data();
-            auto size = tc.serialized.size();
-            deserialization_context ctx(first, first + size);
             ok_view actual{};
-            deserialize_errc err = deserialize(ctx, actual);
+            error_code err = deserialize_ok_packet(tc.serialized, actual);
 
             // No error
-            BOOST_TEST(err == deserialize_errc::ok);
-
-            // Iterator advanced
-            BOOST_TEST(ctx.first() == first + size);
+            BOOST_TEST(err == error_code());
 
             // Actual value
             BOOST_TEST(actual.affected_rows == tc.expected.affected_rows);
@@ -119,11 +117,9 @@ BOOST_AUTO_TEST_CASE(ok_view_error)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            deserialization_context ctx(tc.serialized.data(), tc.serialized.data() + tc.serialized.size());
-
             ok_view value{};
-            deserialize_errc err = deserialize(ctx, value);
-            BOOST_TEST(err == deserialize_errc::incomplete_message);
+            error_code err = deserialize_ok_packet(tc.serialized, value);
+            BOOST_TEST(err == client_errc::incomplete_message);
         }
     }
 }
@@ -172,17 +168,11 @@ BOOST_AUTO_TEST_CASE(err_view_success)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            auto first = tc.serialized.data();
-            auto size = tc.serialized.size();
-            deserialization_context ctx(first, first + size);
             err_view actual{};
-            deserialize_errc err = deserialize(ctx, actual);
+            error_code err = deserialize_error_packet(tc.serialized, actual);
 
             // No error
-            BOOST_TEST(err == deserialize_errc::ok);
-
-            // Iterator advanced
-            BOOST_TEST(ctx.first() == first + size);
+            BOOST_TEST(err == error_code());
 
             // Actual value
             BOOST_TEST(actual.error_code == tc.expected.error_code);
@@ -208,11 +198,9 @@ BOOST_AUTO_TEST_CASE(err_view_error)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            deserialization_context ctx(tc.serialized.data(), tc.serialized.data() + tc.serialized.size());
-
             err_view value{};
-            deserialize_errc err = deserialize(ctx, value);
-            BOOST_TEST(err == deserialize_errc::incomplete_message);
+            error_code err = deserialize_error_packet(tc.serialized, value);
+            BOOST_TEST(err == client_errc::incomplete_message);
         }
     }
 }
@@ -405,17 +393,11 @@ BOOST_AUTO_TEST_CASE(coldef_view_success)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            auto first = tc.serialized.data();
-            auto size = tc.serialized.size();
-            deserialization_context ctx(first, first + size);
             coldef_view actual{};
-            deserialize_errc err = deserialize(ctx, actual);
+            error_code err = deserialize_column_definition(tc.serialized, actual);
 
             // No error
-            BOOST_TEST_REQUIRE(err == deserialize_errc::ok);
-
-            // Iterator advanced
-            BOOST_TEST(ctx.first() == first + size);
+            BOOST_TEST_REQUIRE(err == error_code());
 
             // Actual value
             BOOST_TEST(actual.database == tc.expected.database);
@@ -522,11 +504,9 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            deserialization_context ctx(tc.serialized.data(), tc.serialized.data() + tc.serialized.size());
-
             coldef_view value{};
-            deserialize_errc err = deserialize(ctx, value);
-            BOOST_TEST(err == deserialize_errc::incomplete_message);
+            error_code err = deserialize_column_definition(tc.serialized, value);
+            BOOST_TEST(err == client_errc::incomplete_message);
         }
     }
 }

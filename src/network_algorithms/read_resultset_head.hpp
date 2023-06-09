@@ -57,7 +57,8 @@ inline error_code process_field_definition(channel& chan, execution_processor& p
 
     // Deserialize
     coldef_view coldef{};
-    err = deserialize_column_definition(msg, coldef);
+    span<const std::uint8_t> msg_span(static_cast<const std::uint8_t*>(msg.data()), msg.size());
+    err = deserialize_column_definition(msg_span, coldef);
     if (err)
         return err;
 
