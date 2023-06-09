@@ -31,24 +31,49 @@ public:
         coldef_.collation_id = 33;  // utf8_general_ci
         coldef_.type = column_type::enum_;
     }
-    meta_builder& flags(std::uint16_t v) noexcept
+    meta_builder& database(string_view v) noexcept
     {
-        coldef_.flags = v;
+        coldef_.database = v;
         return *this;
     }
-    meta_builder& decimals(std::uint8_t v) noexcept
+    meta_builder& table(string_view v) noexcept
     {
-        coldef_.decimals = v;
+        coldef_.table = v;
         return *this;
     }
-    meta_builder& collation(std::uint16_t v) noexcept
+    meta_builder& org_table(string_view v) noexcept
+    {
+        coldef_.org_table = v;
+        return *this;
+    }
+    meta_builder& name(string_view v) noexcept
+    {
+        coldef_.name = v;
+        return *this;
+    }
+    meta_builder& org_name(string_view v) noexcept
+    {
+        coldef_.org_name = v;
+        return *this;
+    }
+    meta_builder& collation_id(std::uint16_t v) noexcept
     {
         coldef_.collation_id = v;
+        return *this;
+    }
+    meta_builder& column_length(std::uint32_t v) noexcept
+    {
+        coldef_.column_length = v;
         return *this;
     }
     meta_builder& type(column_type v) noexcept
     {
         coldef_.type = v;
+        return *this;
+    }
+    meta_builder& flags(std::uint16_t v) noexcept
+    {
+        coldef_.flags = v;
         return *this;
     }
     meta_builder& unsigned_flag(bool v) noexcept
@@ -75,9 +100,9 @@ public:
             coldef_.flags |= detail::column_flags::zerofill;
         return *this;
     }
-    meta_builder& name(string_view v) noexcept
+    meta_builder& decimals(std::uint8_t v) noexcept
     {
-        coldef_.column_name = v;
+        coldef_.decimals = v;
         return *this;
     }
     metadata build() const { return detail::access::construct<metadata>(coldef_, true); }

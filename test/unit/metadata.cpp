@@ -178,44 +178,4 @@ BOOST_AUTO_TEST_CASE(string_ownership)
     BOOST_TEST(meta.column_name() == "col1");
 }
 
-// Tests edge cases not covered by database_types, where the DB sends
-// a protocol_field_type that is supposed not to be sent. Introduced due
-// to a bug with recent MariaDB versions that were sending medium_blob only
-// if you SELECT'ed TEXT variables
-BOOST_AUTO_TEST_CASE(legacy_protocol_field_types)
-{
-    struct
-    {
-        const char* name;
-        protocol_field_type proto_type;
-        std::uint16_t collation;
-        column_type expected;
-    } test_cases[] = {
-        {"tiny_text",      protocol_field_type::tiny_blob,   collations::utf8mb4_general_ci, column_type::text     },
-        {"tiny_blob",      protocol_field_type::tiny_blob,   collations::binary,             column_type::blob     },
-        {"medium_text",    protocol_field_type::medium_blob, collations::utf8mb4_general_ci, column_type::text     },
-        {"medium_blob",    protocol_field_type::medium_blob, collations::binary,             column_type::blob     },
-        {"long_text",      protocol_field_type::long_blob,   collations::utf8mb4_general_ci, column_type::text     },
-        {"long_blob",      protocol_field_type::long_blob,   collations::binary,             column_type::blob     },
-        {"varchar_string",
-         protocol_field_type::varchar,
-         collations::utf8mb4_general_ci,
-         column_type::varchar                                                                                      },
-        {"varchar_binary", protocol_field_type::varchar,     collations::binary,             column_type::varbinary},
-        {"enum",           protocol_field_type::enum_,       collations::utf8mb4_general_ci, column_type::enum_    },
-        {"set",            protocol_field_type::set,         collations::utf8mb4_general_ci, column_type::set      },
-        {"null",           protocol_field_type::null,        collations::binary,             column_type::unknown  },
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            auto msg = coldef_builder().type(tc.proto_type).collation(tc.collation).build();
-            auto t = impl_access::construct<metadata>(msg, false).type();
-            BOOST_TEST(t == tc.expected);
-        }
-    }
-}
-
 BOOST_AUTO_TEST_SUITE_END()  // test_metadata

@@ -19,7 +19,7 @@ namespace test {
 
 class ok_builder
 {
-    detail::ok_packet_data pack_{};
+    detail::ok_packet_data ok_{};
 
     void flag(std::uint16_t f, bool value)
     {

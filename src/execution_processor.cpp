@@ -202,7 +202,7 @@ boost::mysql::error_code boost::mysql::detail::static_results_erased_impl::on_me
     meta_.push_back(create_meta(coldef));
 
     // Fill the pos map entry for this field, if any
-    pos_map_add_field(current_pos_map(), current_name_table(), meta_index, coldef.column_name);
+    pos_map_add_field(current_pos_map(), current_name_table(), meta_index, coldef.name);
 
     return is_last ? meta_check(diag) : error_code();
 }
@@ -359,7 +359,7 @@ error_code boost::mysql::detail::static_execution_state_erased_impl::on_meta_imp
     meta_.push_back(create_meta(coldef));
 
     // Record its position
-    pos_map_add_field(current_pos_map(), current_name_table(), meta_index, coldef.column_name);
+    pos_map_add_field(current_pos_map(), current_name_table(), meta_index, coldef.name);
 
     return is_last ? meta_check(diag) : error_code();
 }
