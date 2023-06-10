@@ -15,7 +15,6 @@
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/asio/async_result.hpp>
-#include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
 
 #include "channel/channel.hpp"
@@ -38,7 +37,7 @@ struct ping_op : boost::asio::coroutine
     ping_op(channel& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
 
     template <class Self>
-    void operator()(Self& self, error_code err = {}, boost::asio::const_buffer buff = {})
+    void operator()(Self& self, error_code err = {}, span<const std::uint8_t> buff = {})
     {
         // Error checking
         if (err)

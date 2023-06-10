@@ -13,19 +13,18 @@
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/metadata.hpp>
 
-#include <boost/test/data/monomorphic/collection.hpp>
-#include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 
 #include "operators.hpp"
 #include "protocol/serialization.hpp"
+#include "serialization_test.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_unit/create_meta.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
-using namespace boost::unit_test;
 using detail::deserialize_errc;
 
 namespace {
@@ -37,7 +36,7 @@ BOOST_AUTO_TEST_SUITE(success)
 struct success_sample
 {
     std::string name;
-    std::vector<std::uint8_t> from;
+    deserialization_buffer from;
     field_view expected;
     metadata meta;
 
@@ -50,11 +49,6 @@ struct success_sample
     {
     }
 };
-
-std::ostream& operator<<(std::ostream& os, const success_sample& input)
-{
-    return os << "(type=" << input.meta.type() << ", name=" << input.name << ")";
-}
 
 void add_string_samples(std::vector<success_sample>& output)
 {
@@ -545,17 +539,23 @@ std::vector<success_sample> make_all_samples()
     return res;
 }
 
-BOOST_DATA_TEST_CASE(test_deserialize_binary_value_ok, data::make(make_all_samples()))
+BOOST_AUTO_TEST_CASE(success)
 {
-    const auto& buffer = sample.from;
-    detail::deserialization_context ctx(buffer.data(), buffer.data() + buffer.size());
+    for (const auto& tc : make_all_samples())
+    {
+        BOOST_TEST_CONTEXT("type=" << tc.meta.type() << ", name=" << tc.name)
+        {
+            const auto& buffer = tc.from;
+            detail::deserialization_context ctx(buffer);
 
-    field_view actual_value;
-    auto err = deserialize_binary_field(ctx, sample.meta, actual_value);
+            field_view actual_value;
+            auto err = deserialize_binary_field(ctx, tc.meta, actual_value);
 
-    BOOST_TEST(err == deserialize_errc::ok);
-    BOOST_TEST(actual_value == sample.expected);
-    BOOST_TEST(ctx.first() == buffer.data() + buffer.size());  // all bytes consumed
+            BOOST_TEST(err == deserialize_errc::ok);
+            BOOST_TEST(actual_value == tc.expected);
+            BOOST_TEST(ctx.first() == buffer.data() + buffer.size());  // all bytes consumed
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -565,13 +565,13 @@ BOOST_AUTO_TEST_SUITE(error)
 struct error_sample
 {
     std::string name;
-    std::vector<std::uint8_t> from;
+    deserialization_buffer from;
     metadata meta;
     deserialize_errc expected_err;
 
     error_sample(
         std::string&& name,
-        std::vector<std::uint8_t>&& from,
+        deserialization_buffer&& from,
         metadata meta,
         deserialize_errc expected_err = deserialize_errc::protocol_value_error
     )
@@ -580,22 +580,17 @@ struct error_sample
     }
 };
 
-std::ostream& operator<<(std::ostream& os, const error_sample& input)
-{
-    return os << "(type=" << input.meta.type() << ", name=" << input.name << ")";
-}
-
 void add_int_samples(column_type type, std::size_t num_bytes, std::vector<error_sample>& output)
 {
     output.emplace_back(error_sample(
         "signed_not_enough_space",
-        std::vector<std::uint8_t>(num_bytes, 0x0a),
+        deserialization_buffer(num_bytes, 0x0a),
         create_meta(type),
         deserialize_errc::incomplete_message
     ));
     output.emplace_back(error_sample(
         "unsigned_not_enough_space",
-        std::vector<std::uint8_t>(num_bytes, 0x0a),
+        deserialization_buffer(num_bytes, 0x0a),
         meta_builder().type(type).unsigned_flag(true).build(),
         deserialize_errc::incomplete_message
     ));
@@ -846,11 +841,11 @@ void add_time_samples(std::vector<error_sample>& output)
     {
         // Positive
         c.second[1] = 0x00;
-        output.emplace_back(c.first + std::string("_positive"), std::vector<std::uint8_t>(c.second), meta);
+        output.emplace_back(c.first + std::string("_positive"), deserialization_buffer(c.second), meta);
 
         // Negative
         c.second[1] = 0x01;
-        output.emplace_back(c.first + std::string("_negative"), std::move(c.second), meta);
+        output.emplace_back(c.first + std::string("_negative"), deserialization_buffer(c.second), meta);
     }
 }
 
@@ -873,15 +868,20 @@ std::vector<error_sample> make_all_samples()
     return res;
 }
 
-BOOST_DATA_TEST_CASE(test_deserialize_binary_value_error, data::make(make_all_samples()))
+BOOST_AUTO_TEST_CASE(error)
 {
-    const auto& buff = sample.from;
-    detail::deserialization_context ctx(buff.data(), buff.data() + buff.size());
+    for (const auto& tc : make_all_samples())
+    {
+        BOOST_TEST_CONTEXT("type=" << tc.meta.type() << ", name=" << tc.name)
+        {
+            detail::deserialization_context ctx(tc.from);
 
-    field_view actual_value;
-    auto err = deserialize_binary_field(ctx, sample.meta, actual_value);
+            field_view actual_value;
+            auto err = deserialize_binary_field(ctx, tc.meta, actual_value);
 
-    BOOST_TEST(err == sample.expected_err);
+            BOOST_TEST(err == tc.expected_err);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

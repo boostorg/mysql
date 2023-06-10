@@ -16,8 +16,6 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 
-#include <boost/asio/buffer.hpp>
-
 #include <cstdint>
 
 #include "channel/channel.hpp"
@@ -48,7 +46,7 @@ public:
         channel_.serialize(prepare_stmt_command{stmt_sql_}, channel_.reset_sequence_number());
     }
 
-    void process_response(asio::const_buffer message, error_code& err)
+    void process_response(span<const std::uint8_t> message, error_code& err)
     {
         prepare_stmt_response response{};
         err = deserialize_prepare_stmt_response(message, channel_.flavor(), response, diag_);
@@ -76,7 +74,7 @@ struct prepare_statement_op : boost::asio::coroutine
     channel& get_channel() noexcept { return processor_.get_channel(); }
 
     template <class Self>
-    void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_message = {})
+    void operator()(Self& self, error_code err = {}, span<const std::uint8_t> read_message = {})
     {
         // Error checking
         if (err)

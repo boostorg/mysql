@@ -13,7 +13,6 @@
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/asio/buffer.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/core/span.hpp>
 
@@ -30,6 +29,7 @@
 #include "protocol/null_bitmap_traits.hpp"
 #include "protocol/serialization.hpp"
 
+using boost::span;
 using boost::mysql::client_errc;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
@@ -50,10 +50,10 @@ static constexpr std::uint8_t auth_more_data_header = 0x01;
 static constexpr string_view fast_auth_complete_challenge = make_string_view("\3");
 
 // Helpers
-static void serialize_command_id(boost::asio::mutable_buffer buff, std::uint8_t command_id) noexcept
+static void serialize_command_id(span<std::uint8_t> buff, std::uint8_t command_id) noexcept
 {
     BOOST_ASSERT(buff.size() >= 1u);
-    *static_cast<std::uint8_t*>(buff.data()) = command_id;
+    buff[0] = command_id;
 }
 
 // Frame header
@@ -234,7 +234,10 @@ error_code boost::mysql::detail::deserialize_column_definition(
     // Deserialize the fixed_fields structure.
     // Intentionally not checking for extra bytes here, since there may be unknown fields that should just get
     // ignored
-    deserialization_context subctx(pack.fixed_fields.value.data(), pack.fixed_fields.value.size());
+    deserialization_context subctx(
+        reinterpret_cast<const std::uint8_t*>(pack.fixed_fields.value.data()),
+        pack.fixed_fields.value.size()
+    );
     err = deserialize(
         subctx,
         fixed_fields.character_set,
@@ -265,27 +268,27 @@ error_code boost::mysql::detail::deserialize_column_definition(
 
 // quit
 std::size_t boost::mysql::detail::quit_command::get_size() const noexcept { return 1u; }
-void boost::mysql::detail::quit_command::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::quit_command::serialize(span<std::uint8_t> buff) const noexcept
 {
     serialize_command_id(buff, 0x01);
 }
 
 // ping
 std::size_t boost::mysql::detail::ping_command::get_size() const noexcept { return 1u; }
-void boost::mysql::detail::ping_command::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::ping_command::serialize(span<std::uint8_t> buff) const noexcept
 {
     serialize_command_id(buff, 0x0e);
 }
 
 error_code boost::mysql::detail::deserialize_ping_response(
-    asio::const_buffer message,
+    span<const std::uint8_t> message,
     db_flavor flavor,
     diagnostics& diag
 )
 {
     // Header
     std::uint8_t header{};
-    deserialization_context ctx(message.data(), message.size());
+    deserialization_context ctx(message);
     auto err = to_error_code(deserialize(ctx, header));
     if (err)
         return err;
@@ -313,7 +316,7 @@ std::size_t boost::mysql::detail::query_command::get_size() const noexcept
 {
     return ::get_size(string_eof{query}) + 1;  // command ID
 }
-void boost::mysql::detail::query_command::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::query_command::serialize(span<std::uint8_t> buff) const noexcept
 {
     constexpr std::uint8_t command_id = 3;
 
@@ -327,7 +330,7 @@ std::size_t boost::mysql::detail::prepare_stmt_command::get_size() const noexcep
 {
     return ::get_size(string_eof{stmt}) + 1;  // command ID
 }
-void boost::mysql::detail::prepare_stmt_command::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::prepare_stmt_command::serialize(span<std::uint8_t> buff) const noexcept
 {
     constexpr std::uint8_t command_id = 3;
 
@@ -375,13 +378,13 @@ error_code boost::mysql::detail::deserialize_prepare_stmt_response_impl(
 }
 
 error_code boost::mysql::detail::deserialize_prepare_stmt_response(
-    asio::const_buffer message,
+    span<const std::uint8_t> message,
     db_flavor flavor,
     prepare_stmt_response& output,
     diagnostics& diag
 )
 {
-    deserialization_context ctx(message.data(), message.size());
+    deserialization_context ctx(message);
     std::uint8_t msg_type = 0;
     auto err = to_error_code(deserialize(ctx, msg_type));
     if (err)
@@ -457,7 +460,7 @@ std::size_t boost::mysql::detail::execute_stmt_command::get_size() const noexcep
     return res;
 }
 
-void boost::mysql::detail::execute_stmt_command::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::execute_stmt_command::serialize(span<std::uint8_t> buff) const noexcept
 {
     constexpr std::uint8_t command_id = 0x17;
 
@@ -510,7 +513,7 @@ void boost::mysql::detail::execute_stmt_command::serialize(asio::mutable_buffer 
 // close statement
 std::size_t boost::mysql::detail::close_stmt_command::get_size() const noexcept { return 5u; }
 
-void boost::mysql::detail::close_stmt_command::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::close_stmt_command::serialize(span<std::uint8_t> buff) const noexcept
 {
     constexpr std::uint8_t command_id = 0x19;
 
@@ -522,7 +525,7 @@ void boost::mysql::detail::close_stmt_command::serialize(asio::mutable_buffer bu
 
 // execute response
 execute_response boost::mysql::detail::deserialize_execute_response(
-    asio::const_buffer msg,
+    span<const std::uint8_t> msg,
     db_flavor flavor,
     diagnostics& diag
 ) noexcept
@@ -530,7 +533,7 @@ execute_response boost::mysql::detail::deserialize_execute_response(
     // Response may be: ok_packet, err_packet, local infile request (not implemented)
     // If it is none of this, then the message type itself is the beginning of
     // a length-encoded int containing the field count
-    deserialization_context ctx(msg.data(), msg.size());
+    deserialization_context ctx(msg);
     std::uint8_t msg_type = 0;
     auto err = to_error_code(deserialize(ctx, msg_type));
     if (err)
@@ -575,14 +578,14 @@ execute_response boost::mysql::detail::deserialize_execute_response(
 }
 
 row_message boost::mysql::detail::deserialize_row_message(
-    asio::const_buffer msg,
+    span<const std::uint8_t> msg,
     db_flavor flavor,
     diagnostics& diag
 )
 {
     // Message type: row, error or eof?
     std::uint8_t msg_type = 0;
-    deserialization_context ctx(msg.data(), msg.size());
+    deserialization_context ctx(msg);
     auto deser_errc = deserialize(ctx, msg_type);
     if (deser_errc != deserialize_errc::ok)
     {
@@ -700,7 +703,7 @@ error_code boost::mysql::detail::deserialize_row(
 )
 {
     BOOST_ASSERT(meta.size() == output.size());
-    deserialization_context ctx(buff.data(), buff.size());
+    deserialization_context ctx(buff);
     return encoding == detail::resultset_encoding::text ? deserialize_text_row(ctx, meta, output.data())
                                                         : deserialize_binary_row(ctx, meta, output.data());
 }
@@ -799,12 +802,12 @@ error_code boost::mysql::detail::deserialize_server_hello_impl(
 }
 
 error_code boost::mysql::detail::deserialize_server_hello(
-    asio::const_buffer msg,
+    span<const std::uint8_t> msg,
     server_hello& output,
     diagnostics& diag
 )
 {
-    deserialization_context ctx(msg.data(), msg.size());
+    deserialization_context ctx(msg);
 
     // Message type
     std::uint8_t msg_type = 0;
@@ -882,7 +885,7 @@ std::size_t boost::mysql::detail::login_request::get_size() const noexcept
            ::get_size(pack.client_plugin_name);
 }
 
-void boost::mysql::detail::login_request::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::login_request::serialize(span<std::uint8_t> buff) const noexcept
 {
     BOOST_ASSERT(buff.size() >= get_size());
     serialization_context ctx(buff.data());
@@ -907,7 +910,7 @@ void boost::mysql::detail::login_request::serialize(asio::mutable_buffer buff) c
 // ssl_request
 std::size_t boost::mysql::detail::ssl_request::get_size() const noexcept { return 4 + 4 + 1 + 23; }
 
-void boost::mysql::detail::ssl_request::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::ssl_request::serialize(span<std::uint8_t> buff) const noexcept
 {
     BOOST_ASSERT(buff.size() >= get_size());
     serialization_context ctx(buff.data());
@@ -963,12 +966,12 @@ error_code boost::mysql::detail::deserialize_auth_switch(
 }
 
 handhake_server_response boost::mysql::detail::deserialize_handshake_server_response(
-    asio::const_buffer buff,
+    span<const std::uint8_t> buff,
     db_flavor flavor,
     diagnostics& diag
 )
 {
-    deserialization_context ctx(buff.data(), buff.size());
+    deserialization_context ctx(buff);
     std::uint8_t msg_type = 0;
     auto err = to_error_code(deserialize(ctx, msg_type));
     if (err)
@@ -1029,7 +1032,7 @@ std::size_t boost::mysql::detail::auth_switch_response::get_size() const noexcep
     return ::get_size(string_eof{to_string(auth_plugin_data)});
 }
 
-void boost::mysql::detail::auth_switch_response::serialize(asio::mutable_buffer buff) const noexcept
+void boost::mysql::detail::auth_switch_response::serialize(span<std::uint8_t> buff) const noexcept
 {
     BOOST_ASSERT(buff.size() >= get_size());
     serialization_context ctx(buff.data());

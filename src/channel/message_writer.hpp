@@ -36,7 +36,7 @@ class message_writer
 public:
     message_writer(std::size_t max_frame_size = MAX_PACKET_SIZE) noexcept : processor_(max_frame_size) {}
 
-    asio::mutable_buffer prepare_buffer(std::size_t size, std::uint8_t& seqnum)
+    span<std::uint8_t> prepare_buffer(std::size_t size, std::uint8_t& seqnum)
     {
         return processor_.prepare_buffer(size, seqnum);
     }
@@ -47,8 +47,7 @@ public:
     {
         while (!processor_.done())
         {
-            auto msg = processor_.next_chunk();
-            std::size_t bytes_written = stream.write_some(msg, ec);
+            std::size_t bytes_written = stream.write_some(asio::buffer(processor_.next_chunk()), ec);
             if (ec)
                 break;
             processor_.on_bytes_written(bytes_written);
@@ -87,7 +86,10 @@ struct boost::mysql::detail::message_writer::write_op : boost::asio::coroutine
             BOOST_ASSERT(!processor_.done());
             while (!processor_.done())
             {
-                BOOST_ASIO_CORO_YIELD stream_.async_write_some(processor_.next_chunk(), std::move(self));
+                BOOST_ASIO_CORO_YIELD stream_.async_write_some(
+                    asio::buffer(processor_.next_chunk()),
+                    std::move(self)
+                );
                 processor_.on_bytes_written(bytes_written);
             };
 

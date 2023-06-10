@@ -15,7 +15,6 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 #include <boost/asio/async_result.hpp>
-#include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/post.hpp>
 

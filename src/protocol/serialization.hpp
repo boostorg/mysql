@@ -58,10 +58,7 @@ class serialization_context
     std::uint8_t* first_;
 
 public:
-    constexpr serialization_context(void* first = nullptr) noexcept
-        : first_(static_cast<std::uint8_t*>(first))
-    {
-    }
+    explicit serialization_context(std::uint8_t* first) noexcept : first_(first) {}
     std::uint8_t* first() const noexcept { return first_; }
     void advance(std::size_t size) noexcept { first_ += size; }
     void write(const void* buffer, std::size_t size) noexcept
@@ -83,19 +80,11 @@ class deserialization_context
 
 public:
     deserialization_context(span<const std::uint8_t> data) noexcept
-        : first_(data.data()), last_(data.data() + data.size())
+        : deserialization_context(data.data(), data.size())
     {
     }
-    deserialization_context(const std::uint8_t* first, const std::uint8_t* last) noexcept
-        : first_(first), last_(last)
-    {
-        BOOST_ASSERT(last_ >= first_);
-    };
-    deserialization_context(const void* first, std::size_t size) noexcept
-        : deserialization_context(
-              static_cast<const std::uint8_t*>(first),
-              static_cast<const std::uint8_t*>(first) + size
-          ){};
+    deserialization_context(const std::uint8_t* first, std::size_t size) noexcept
+        : first_(first), last_(first + size){};
     const std::uint8_t* first() const noexcept { return first_; }
     const std::uint8_t* last() const noexcept { return last_; }
     void advance(std::size_t sz) noexcept

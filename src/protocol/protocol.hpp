@@ -17,7 +17,6 @@
 
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
-#include <boost/asio/buffer.hpp>
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
@@ -94,17 +93,17 @@ error_code deserialize_column_definition(span<const std::uint8_t> input, coldef_
 struct quit_command
 {
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 
 // Ping
 struct ping_command
 {
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 BOOST_ATTRIBUTE_NODISCARD
-error_code deserialize_ping_response(asio::const_buffer message, db_flavor flavor, diagnostics& diag);
+error_code deserialize_ping_response(span<const std::uint8_t> message, db_flavor flavor, diagnostics& diag);
 
 // Query
 struct query_command
@@ -112,7 +111,7 @@ struct query_command
     string_view query;
 
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 
 // Prepare statement
@@ -121,7 +120,7 @@ struct prepare_stmt_command
     string_view stmt;
 
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 struct prepare_stmt_response
 {
@@ -137,7 +136,7 @@ error_code deserialize_prepare_stmt_response_impl(
 
 BOOST_ATTRIBUTE_NODISCARD
 error_code deserialize_prepare_stmt_response(
-    asio::const_buffer message,
+    span<const std::uint8_t> message,
     db_flavor flavor,
     prepare_stmt_response& output,
     diagnostics& diag
@@ -150,7 +149,7 @@ struct execute_stmt_command
     span<const field_view> params;
 
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 
 // Close statement
@@ -159,7 +158,7 @@ struct close_stmt_command
     std::uint32_t statement_id{};
 
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 
 // Execution messages
@@ -188,7 +187,7 @@ struct execute_response
     execute_response(error_code v) noexcept : type(type_t::error), data(v) {}
 };
 execute_response deserialize_execute_response(
-    asio::const_buffer msg,
+    span<const std::uint8_t> msg,
     db_flavor flavor,
     diagnostics& diag
 ) noexcept;
@@ -216,7 +215,7 @@ struct row_message
     row_message(const ok_view& ok_pack) noexcept : type(type_t::ok_packet), data(ok_pack) {}
     row_message(error_code v) noexcept : type(type_t::error), data(v) {}
 };
-row_message deserialize_row_message(asio::const_buffer msg, db_flavor flavor, diagnostics& diag);
+row_message deserialize_row_message(span<const std::uint8_t> msg, db_flavor flavor, diagnostics& diag);
 
 error_code deserialize_row(
     resultset_encoding encoding,
@@ -241,7 +240,7 @@ error_code deserialize_server_hello_impl(
 );  // exposed for testing, doesn't take message header into account
 
 BOOST_ATTRIBUTE_NODISCARD
-error_code deserialize_server_hello(asio::const_buffer msg, server_hello& output, diagnostics& diag);
+error_code deserialize_server_hello(span<const std::uint8_t> msg, server_hello& output, diagnostics& diag);
 
 // Login & ssl requests
 struct login_request
@@ -255,7 +254,7 @@ struct login_request
     string_view auth_plugin_name;
 
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 
 struct ssl_request
@@ -265,7 +264,7 @@ struct ssl_request
     std::uint32_t collation_id;
 
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 
 // Auth switch
@@ -323,7 +322,7 @@ struct handhake_server_response
     }
 };
 handhake_server_response deserialize_handshake_server_response(
-    asio::const_buffer buff,
+    span<const std::uint8_t> buff,
     db_flavor flavor,
     diagnostics& diag
 );
@@ -333,7 +332,7 @@ struct auth_switch_response
     span<const std::uint8_t> auth_plugin_data;
 
     std::size_t get_size() const noexcept;
-    void serialize(asio::mutable_buffer) const noexcept;
+    void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 
 }  // namespace detail

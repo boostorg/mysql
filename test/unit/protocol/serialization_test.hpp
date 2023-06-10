@@ -68,7 +68,10 @@ public:
     {
         std::memset(data_.get() + size, 0xde, 8);  // buffer overrun detector
     }
+    span<std::uint8_t> to_span() noexcept { return {data(), size()}; }
+    operator span<std::uint8_t>() noexcept { return to_span(); }
     std::uint8_t* data() noexcept { return data_.get(); }
+    std::size_t size() const noexcept { return size_; }
     void check(span<const std::uint8_t> expected) const
     {
         // Check the actual value
@@ -91,6 +94,10 @@ class deserialization_buffer
 
 public:
     explicit deserialization_buffer(std::size_t size) : size_(size), data_(new std::uint8_t[size]) {}
+    deserialization_buffer(std::size_t size, std::uint8_t value) : deserialization_buffer(size)
+    {
+        std::memset(data(), value, size);
+    }
     explicit deserialization_buffer(span<const std::uint8_t> data)
         : size_(data.size()), data_(new std::uint8_t[data.size()])
     {
@@ -134,7 +141,7 @@ void do_deserialize_test(T value, span<const std::uint8_t> serialized)
     deserialization_buffer buffer(serialized);
     auto first = buffer.data();
     auto size = buffer.size();
-    detail::deserialization_context ctx(first, first + size);
+    detail::deserialization_context ctx(first, size);
     T actual{};
     detail::deserialize_errc err = detail::deserialize(ctx, actual);
 

@@ -8,8 +8,6 @@
 #ifndef BOOST_MYSQL_SRC_CHANNEL_MESSAGE_WRITER_PROCESSOR_HPP
 #define BOOST_MYSQL_SRC_CHANNEL_MESSAGE_WRITER_PROCESSOR_HPP
 
-#include <boost/asio/buffer.hpp>
-
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -44,10 +42,10 @@ public:
         first_ += n;
     }
     bool done() const noexcept { return first_ == last_; }
-    asio::const_buffer get_chunk(const std::vector<std::uint8_t>& buff) const noexcept
+    span<const std::uint8_t> get_chunk(const std::vector<std::uint8_t>& buff) const noexcept
     {
         BOOST_ASSERT(buff.size() >= last_);
-        return asio::const_buffer(buff.data() + first_, remaining());
+        return {buff.data() + first_, remaining()};
     }
 };
 
@@ -106,7 +104,7 @@ public:
     {
     }
 
-    asio::mutable_buffer prepare_buffer(std::size_t msg_size, std::uint8_t& seqnum)
+    span<std::uint8_t> prepare_buffer(std::size_t msg_size, std::uint8_t& seqnum)
     {
         buffer_.resize(msg_size + HEADER_SIZE);
         total_bytes_ = msg_size;
@@ -114,13 +112,13 @@ public:
         should_send_empty_frame_ = msg_size == 0;
         seqnum_ = &seqnum;
         prepare_next_chunk();
-        return asio::mutable_buffer(buffer_.data() + HEADER_SIZE, msg_size);
+        return {buffer_.data() + HEADER_SIZE, msg_size};
     }
 
     bool done() const noexcept { return chunk_.done(); }
 
     // This function returns an empty buffer to signal that we're done
-    asio::const_buffer next_chunk() const
+    span<const std::uint8_t> next_chunk() const
     {
         BOOST_ASSERT(!done());
         return chunk_.get_chunk(buffer_);

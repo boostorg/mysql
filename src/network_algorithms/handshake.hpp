@@ -15,8 +15,6 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include <boost/asio/buffer.hpp>
-
 #include "auth/auth.hpp"
 #include "channel/channel.hpp"
 #include "protocol/capabilities.hpp"
@@ -100,7 +98,7 @@ public:
     bool use_ssl() const noexcept { return channel_.current_capabilities().has(CLIENT_SSL); }
 
     // Initial greeting processing
-    error_code process_handshake(asio::const_buffer buffer, bool is_ssl_stream)
+    error_code process_handshake(span<const std::uint8_t> buffer, bool is_ssl_stream)
     {
         // Deserialize server hello
         server_hello hello{};
@@ -157,7 +155,7 @@ public:
     }
 
     // Server handshake response
-    error_code process_handshake_server_response(asio::const_buffer msg)
+    error_code process_handshake_server_response(span<const std::uint8_t> msg)
     {
         error_code err;
 
@@ -227,7 +225,7 @@ struct handshake_op : boost::asio::coroutine
     channel& get_channel() noexcept { return processor_.get_channel(); }
 
     template <class Self>
-    void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_msg = {})
+    void operator()(Self& self, error_code err = {}, span<const std::uint8_t> read_msg = {})
     {
         // Error checking
         if (err)

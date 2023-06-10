@@ -17,7 +17,6 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
-#include <boost/asio/buffer.hpp>
 
 #include <cstddef>
 #include <memory>
@@ -59,7 +58,7 @@ public:
     // Reading
     bool has_read_messages() const noexcept { return reader_.has_message(); }
 
-    asio::const_buffer next_read_message(std::uint8_t& seqnum, error_code& err) noexcept
+    span<const std::uint8_t> next_read_message(std::uint8_t& seqnum, error_code& err) noexcept
     {
         return reader_.get_next_message(seqnum, err);
     }
@@ -73,13 +72,13 @@ public:
         return reader_.async_read_some(*stream_, std::forward<CompletionToken>(token));
     }
 
-    asio::const_buffer read_one(std::uint8_t& seqnum, error_code& ec)
+    span<const std::uint8_t> read_one(std::uint8_t& seqnum, error_code& ec)
     {
         return reader_.read_one(*stream_, seqnum, ec);
     }
 
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, ::boost::asio::const_buffer)) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ::boost::asio::const_buffer))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, span<const std::uint8_t>)) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, span<const std::uint8_t>))
     async_read_one(std::uint8_t& seqnum, CompletionToken&& token)
     {
         return reader_.async_read_one(*stream_, seqnum, std::forward<CompletionToken>(token));

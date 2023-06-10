@@ -41,7 +41,7 @@ public:
 
     bool has_message() const noexcept { return result_.has_message; }
 
-    asio::const_buffer get_next_message(std::uint8_t& seqnum, error_code& ec) noexcept;
+    span<const std::uint8_t> get_next_message(std::uint8_t& seqnum, error_code& ec) noexcept;
 
     // Reads some messages from stream, until there is at least one
     // or an error happens. On success, has_message() returns true
@@ -64,7 +64,7 @@ public:
             maybe_resize_buffer();
 
             // Actually read bytes
-            std::size_t bytes_read = stream.read_some(buffer_.free_area(), ec);
+            std::size_t bytes_read = stream.read_some(free_area(), ec);
             if (ec)
                 break;
             valgrind_make_mem_defined(buffer_.free_first(), bytes_read);
@@ -79,7 +79,7 @@ public:
     async_read_some(any_stream& stream, CompletionToken&& token);
 
     // Equivalent to read_some + get_next_message
-    asio::const_buffer read_one(any_stream& stream, std::uint8_t& seqnum, error_code& ec)
+    span<const std::uint8_t> read_one(any_stream& stream, std::uint8_t& seqnum, error_code& ec)
     {
         read_some(stream, ec);
         if (ec)
@@ -88,9 +88,9 @@ public:
             return get_next_message(seqnum, ec);
     }
 
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, boost::asio::const_buffer))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, span<const std::uint8_t>))
                   CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, boost::asio::const_buffer))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, span<const std::uint8_t>))
     async_read_one(any_stream& stream, std::uint8_t& seqnum, CompletionToken&& token);
 
     // Exposed for the sake of testing
@@ -119,6 +119,12 @@ private:
     {
         buffer_.move_to_pending(num_bytes);
         parse_message();
+    }
+
+    asio::mutable_buffer free_area() noexcept
+    {
+        auto res = buffer_.free_area();
+        return asio::mutable_buffer(res.data(), res.size());
     }
 };
 
@@ -160,7 +166,7 @@ struct boost::mysql::detail::message_reader::read_some_op : boost::asio::corouti
                 reader_.maybe_resize_buffer();
 
                 // Actually read bytes
-                BOOST_ASIO_CORO_YIELD stream_.async_read_some(reader_.buffer_.free_area(), std::move(self));
+                BOOST_ASIO_CORO_YIELD stream_.async_read_some(reader_.free_area(), std::move(self));
                 valgrind_make_mem_defined(reader_.buffer_.free_first(), bytes_read);
 
                 // Process them
@@ -189,17 +195,18 @@ struct boost::mysql::detail::message_reader::read_one_op : boost::asio::coroutin
         // Error handling
         if (code)
         {
-            self.complete(code, boost::asio::const_buffer());
+            self.complete(code, span<const std::uint8_t>());
             return;
         }
 
         // Non-error path
-        boost::asio::const_buffer b;
         BOOST_ASIO_CORO_REENTER(*this)
         {
             BOOST_ASIO_CORO_YIELD reader_.async_read_some(stream_, std::move(self));
-            b = reader_.get_next_message(seqnum_, code);
-            self.complete(code, b);
+            {
+                auto b = reader_.get_next_message(seqnum_, code);
+                self.complete(code, b);
+            }
         }
     }
 };
@@ -219,11 +226,11 @@ boost::mysql::detail::message_reader::async_read_some(any_stream& stream, Comple
     );
 }
 
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, boost::asio::const_buffer))
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::span<const std::uint8_t>))
               CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
     CompletionToken,
-    void(boost::mysql::error_code, ::boost::asio::const_buffer)
+    void(boost::mysql::error_code, ::boost::span<const std::uint8_t>)
 )
 boost::mysql::detail::message_reader::async_read_one(
     any_stream& stream,
@@ -231,7 +238,7 @@ boost::mysql::detail::message_reader::async_read_one(
     CompletionToken&& token
 )
 {
-    return boost::asio::async_compose<CompletionToken, void(error_code, boost::asio::const_buffer)>(
+    return boost::asio::async_compose<CompletionToken, void(error_code, span<const std::uint8_t>)>(
         read_one_op{*this, stream, seqnum},
         token,
         stream

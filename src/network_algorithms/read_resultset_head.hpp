@@ -15,7 +15,6 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
-#include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/assert.hpp>
 
@@ -29,7 +28,7 @@ namespace detail {
 inline error_code process_execution_response(
     channel& chan,
     execution_processor& proc,
-    boost::asio::const_buffer msg,
+    span<const std::uint8_t> msg,
     diagnostics& diag
 )
 {
@@ -57,8 +56,7 @@ inline error_code process_field_definition(channel& chan, execution_processor& p
 
     // Deserialize
     coldef_view coldef{};
-    span<const std::uint8_t> msg_span(static_cast<const std::uint8_t*>(msg.data()), msg.size());
-    err = deserialize_column_definition(msg_span, coldef);
+    err = deserialize_column_definition(msg, coldef);
     if (err)
         return err;
 
@@ -78,7 +76,7 @@ struct read_resultset_head_op : boost::asio::coroutine
     }
 
     template <class Self>
-    void operator()(Self& self, error_code err = {}, boost::asio::const_buffer read_message = {})
+    void operator()(Self& self, error_code err = {}, span<const std::uint8_t> read_message = {})
     {
         // Error checking
         if (err)

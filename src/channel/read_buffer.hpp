@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_SRC_CHANNEL_READ_BUFFER_HPP
 #define BOOST_MYSQL_SRC_CHANNEL_READ_BUFFER_HPP
 
-#include <boost/asio/buffer.hpp>
 #include <boost/assert.hpp>
+#include <boost/core/span.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -59,16 +59,13 @@ public:
     std::size_t pending_size() const noexcept { return free_offset_ - pending_offset_; }
     std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
 
-    asio::const_buffer reserved_area() const noexcept
+    span<const std::uint8_t> reserved_area() const noexcept { return {reserved_first(), reserved_size()}; }
+    span<const std::uint8_t> current_message() const noexcept
     {
-        return asio::buffer(reserved_first(), reserved_size());
+        return {current_message_first(), current_message_size()};
     }
-    asio::const_buffer current_message() const noexcept
-    {
-        return asio::buffer(current_message_first(), current_message_size());
-    }
-    asio::const_buffer pending_area() const noexcept { return asio::buffer(pending_first(), pending_size()); }
-    asio::mutable_buffer free_area() noexcept { return asio::buffer(free_first(), free_size()); }
+    span<const std::uint8_t> pending_area() const noexcept { return {pending_first(), pending_size()}; }
+    span<std::uint8_t> free_area() noexcept { return {free_first(), free_size()}; }
 
     // Moves n bytes from the free to the processing area (e.g. they've been read)
     void move_to_pending(std::size_t length) noexcept

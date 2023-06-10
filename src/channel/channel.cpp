@@ -5,9 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/client_errc.hpp>
-
 #include "channel/channel.hpp"
+
+#include <boost/mysql/client_errc.hpp>
 
 #include <boost/mysql/detail/channel_ptr.hpp>
 
@@ -141,7 +141,7 @@ inline void boost::mysql::detail::message_parser::parse_message(read_buffer& buf
     }
 }
 
-boost::asio::const_buffer boost::mysql::detail::message_reader::get_next_message(
+boost::span<const std::uint8_t> boost::mysql::detail::message_reader::get_next_message(
     std::uint8_t& seqnum,
     error_code& ec
 ) noexcept
@@ -153,7 +153,7 @@ boost::asio::const_buffer boost::mysql::detail::message_reader::get_next_message
         return {};
     }
     seqnum = result_.message.seqnum_last + 1;
-    boost::asio::const_buffer res(
+    span<const std::uint8_t> res(
         buffer_.current_message_first() - result_.message.size,
         result_.message.size
     );
