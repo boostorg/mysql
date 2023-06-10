@@ -35,6 +35,7 @@
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_row_message.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
@@ -1436,6 +1437,49 @@ BOOST_AUTO_TEST_CASE(deserialize_row_error)
             BOOST_TEST(err == tc.expected);
         }
     }
+}
+
+//
+// server hello
+//
+BOOST_AUTO_TEST_CASE(deserialize_server_hello_impl_)
+{
+    // Data
+    constexpr std::uint8_t auth_plugin_data[] = {0x52, 0x1a, 0x50, 0x3a, 0x4b, 0x12, 0x70, 0x2f, 0x03, 0x5a,
+                                                 0x74, 0x05, 0x28, 0x2b, 0x7f, 0x21, 0x43, 0x4a, 0x21, 0x62};
+
+    constexpr std::uint32_t caps = CLIENT_LONG_PASSWORD | CLIENT_FOUND_ROWS | CLIENT_LONG_FLAG |
+                                   CLIENT_CONNECT_WITH_DB | CLIENT_NO_SCHEMA | CLIENT_COMPRESS | CLIENT_ODBC |
+                                   CLIENT_LOCAL_FILES | CLIENT_IGNORE_SPACE | CLIENT_PROTOCOL_41 |
+                                   CLIENT_INTERACTIVE | CLIENT_IGNORE_SIGPIPE | CLIENT_TRANSACTIONS |
+                                   CLIENT_RESERVED |           // old flag, but set in this frame
+                                   CLIENT_SECURE_CONNECTION |  // old flag, but set in this frame
+                                   CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS | CLIENT_PS_MULTI_RESULTS |
+                                   CLIENT_PLUGIN_AUTH | CLIENT_CONNECT_ATTRS |
+                                   CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
+                                   CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS | CLIENT_SESSION_TRACK |
+                                   CLIENT_DEPRECATE_EOF | CLIENT_REMEMBER_OPTIONS;
+
+    deserialization_buffer serialized{
+        0x35, 0x2e, 0x37, 0x2e, 0x32, 0x37, 0x2d, 0x30, 0x75, 0x62, 0x75, 0x6e, 0x74, 0x75, 0x30,
+        0x2e, 0x31, 0x39, 0x2e, 0x30, 0x34, 0x2e, 0x31, 0x00, 0x02, 0x00, 0x00, 0x00, 0x52, 0x1a,
+        0x50, 0x3a, 0x4b, 0x12, 0x70, 0x2f, 0x00, 0xff, 0xf7, 0x08, 0x02, 0x00, 0xff, 0x81, 0x15,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x5a, 0x74, 0x05, 0x28,
+        0x2b, 0x7f, 0x21, 0x43, 0x4a, 0x21, 0x62, 0x00, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f, 0x6e,
+        0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00};
+
+    // Deserialize
+    server_hello actual{};
+    auto err = deserialize_server_hello_impl(serialized, actual);
+
+    // No error
+    BOOST_TEST_REQUIRE(err == error_code());
+
+    // Actual value
+    BOOST_TEST(actual.server == db_flavor::mysql);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(actual.auth_plugin_data.to_span(), auth_plugin_data);
+    BOOST_TEST(actual.server_capabilities == capabilities(caps));
+    BOOST_TEST(actual.auth_plugin_name == "mysql_native_password");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

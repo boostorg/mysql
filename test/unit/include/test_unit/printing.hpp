@@ -16,15 +16,27 @@
 
 #include <ostream>
 
+#include "protocol/capabilities.hpp"
+#include "protocol/db_flavor.hpp"
+
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// template <std::size_t max_size>
-// std::ostream& operator<<(std::ostream& os, const static_string<max_size>& value)
-// {
-//     return os << value.value();
-// }
+inline std::ostream& operator<<(std::ostream& os, capabilities caps)
+{
+    return os << "capabilities(" << caps.get() << ")";
+}
+
+inline std::ostream& operator<<(std::ostream& os, db_flavor value)
+{
+    switch (value)
+    {
+    case db_flavor::mysql: return os << "mysql";
+    case db_flavor::mariadb: return os << "mariadb";
+    default: return os << "<unknown db_flavor>";
+    }
+}
 
 inline std::ostream& operator<<(std::ostream& os, resultset_encoding t)
 {
@@ -45,7 +57,6 @@ inline std::ostream& operator<<(std::ostream& os, results_iterator it)
 }  // namespace mysql
 }  // namespace boost
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator)
 
 #endif
