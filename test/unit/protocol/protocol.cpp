@@ -16,6 +16,7 @@
 #include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -33,6 +34,7 @@
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
+#include "test_unit/create_row_message.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
@@ -48,7 +50,11 @@ using boost::mysql::error_code;
 using boost::mysql::field_view;
 using boost::mysql::get_mariadb_server_category;
 using boost::mysql::get_mysql_server_category;
+using boost::mysql::metadata;
 using boost::mysql::string_view;
+
+BOOST_TEST_DONT_PRINT_LOG_VALUE(execute_response::type_t)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(row_message::type_t)
 
 BOOST_AUTO_TEST_SUITE(test_protocol)
 
@@ -969,6 +975,467 @@ BOOST_AUTO_TEST_CASE(close_statement_serialization)
     close_stmt_command cmd{1};
     const std::uint8_t serialized[] = {0x19, 0x01, 0x00, 0x00, 0x00};
     do_serialize_toplevel_test(cmd, serialized);
+}
+
+//
+// execute response
+//
+BOOST_AUTO_TEST_CASE(deserialize_execute_response_ok_packet)
+{
+    deserialization_buffer serialized{0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00};
+    diagnostics diag;
+
+    auto response = deserialize_execute_response(serialized, db_flavor::mariadb, diag);
+
+    BOOST_TEST_REQUIRE(response.type == execute_response::type_t::ok_packet);
+    BOOST_TEST(response.data.ok_pack.affected_rows == 0u);
+    BOOST_TEST(response.data.ok_pack.status_flags == 2u);
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_execute_response_num_fields)
+{
+    struct
+    {
+        const char* name;
+        deserialization_buffer serialized;
+        std::size_t num_fields;
+    } test_cases[] = {
+        {"1",                    {0x01},             1     },
+        {"0xfa",                 {0xfa},             0xfa  },
+        {"0xfb_no_local_infile", {0xfb},             0xfb  }, // legal when LOCAL INFILE capability not enabled
+        {"0xfb_local_infile",    {0xfc, 0xfb, 0x00}, 0xfb  }, // sent LOCAL INFILE capability is enabled
+        {"0xff",                 {0xfc, 0xff, 0x00}, 0xff  },
+        {"0x01ff",               {0xfc, 0xff, 0x01}, 0x01ff},
+        {"max",                  {0xfc, 0xff, 0xff}, 0xffff},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            diagnostics diag;
+
+            auto response = deserialize_execute_response(tc.serialized, db_flavor::mysql, diag);
+
+            BOOST_TEST_REQUIRE(response.type == execute_response::type_t::num_fields);
+            BOOST_TEST(response.data.num_fields == tc.num_fields);
+            BOOST_TEST(diag.server_message() == "");
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_execute_response_error)
+{
+    struct
+    {
+        const char* name;
+        deserialization_buffer serialized;
+        error_code err;
+        const char* expected_info;
+    } test_cases[] = {
+        {"server_error",
+         {0xff, 0x7a, 0x04, 0x23, 0x34, 0x32, 0x53, 0x30, 0x32, 0x54, 0x61, 0x62, 0x6c, 0x65,
+          0x20, 0x27, 0x6d, 0x79, 0x74, 0x65, 0x73, 0x74, 0x2e, 0x61, 0x62, 0x63, 0x27, 0x20,
+          0x64, 0x6f, 0x65, 0x73, 0x6e, 0x27, 0x74, 0x20, 0x65, 0x78, 0x69, 0x73, 0x74},
+         common_server_errc::er_no_such_table,
+         "Table 'mytest.abc' doesn't exist"                                                                                   },
+        {"bad_server_error", {0xff, 0x00},                                               client_errc::incomplete_message,   ""},
+        {"bad_ok_packet",    {0x00, 0xff},                                               client_errc::incomplete_message,   ""},
+        {"bad_num_fields",   {0xfc, 0xff, 0x00, 0x01},                                   client_errc::extra_bytes,          ""},
+        {"zero_num_fields",  {0xfc, 0x00, 0x00},                                         client_errc::protocol_value_error, ""},
+        {"3byte_integer",    {0xfd, 0xff, 0xff, 0xff},                                   client_errc::protocol_value_error, ""},
+        {"8byte_integer",
+         {0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff},
+         client_errc::protocol_value_error,
+         ""                                                                                                                   },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            diagnostics diag;
+
+            auto response = deserialize_execute_response(tc.serialized, db_flavor::mysql, diag);
+
+            BOOST_TEST_REQUIRE(response.type == execute_response::type_t::error);
+            BOOST_TEST(response.data.err == tc.err);
+            BOOST_TEST(diag.server_message() == tc.expected_info);
+        }
+    }
+}
+
+//
+// row message
+//
+BOOST_AUTO_TEST_CASE(deserialize_row_message_row)
+{
+    deserialization_buffer serialized{create_text_row_body("abc", 10)};
+    diagnostics diag;
+
+    auto response = deserialize_row_message(serialized, db_flavor::mysql, diag);
+
+    BOOST_TEST_REQUIRE(response.type == row_message::type_t::row);
+    BOOST_TEST(response.data.row.data() == serialized.data());
+    BOOST_TEST(response.data.row.size() == serialized.size());
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_row_message_ok_packet)
+{
+    deserialization_buffer serialized{
+        ok_builder().affected_rows(42).last_insert_id(1).info("abc").build_eof_body()};
+    diagnostics diag;
+
+    auto response = deserialize_row_message(serialized, db_flavor::mysql, diag);
+
+    BOOST_TEST_REQUIRE(response.type == row_message::type_t::ok_packet);
+    BOOST_TEST(response.data.ok_pack.affected_rows == 42u);
+    BOOST_TEST(response.data.ok_pack.last_insert_id == 1u);
+    BOOST_TEST(response.data.ok_pack.info == "abc");
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_row_message_error)
+{
+    struct
+    {
+        const char* name;
+        deserialization_buffer serialized;
+        error_code expected_error;
+        const char* expected_info;
+    } test_cases[] = {
+  // clang-format off
+        {
+            "invalid_ok_packet",
+            { 0xfe, 0x00, 0x00, 0x02, 0x00, 0x00 }, // 1 byte missing
+            client_errc::incomplete_message,
+            ""
+        },
+        {
+            "error_packet",
+            {
+                0xff, 0x19, 0x04, 0x23, 0x34, 0x32, 0x30, 0x30, 0x30, 0x55, 0x6e, 0x6b,
+                0x6e, 0x6f, 0x77, 0x6e, 0x20, 0x64, 0x61, 0x74,
+                0x61, 0x62, 0x61, 0x73, 0x65, 0x20, 0x27, 0x61, 0x27
+            },
+            common_server_errc::er_bad_db_error,
+            "Unknown database 'a'"
+        },
+        {
+            "invalid_error_packet",
+            { 0xff, 0x19 }, // bytes missing
+            client_errc::incomplete_message,
+            ""
+        },
+        {
+            "empty_message",
+            {},
+            client_errc::incomplete_message,
+            ""
+        }
+  // clang-format on
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            diagnostics diag;
+
+            auto msg = deserialize_row_message(tc.serialized, db_flavor::mysql, diag);
+
+            BOOST_TEST_REQUIRE(msg.type == row_message::type_t::error);
+            BOOST_TEST(msg.data.err == tc.expected_error);
+            BOOST_TEST(diag.server_message() == tc.expected_info);
+        }
+    }
+}
+
+//
+// deserialize_row
+//
+BOOST_AUTO_TEST_CASE(deserialize_row_success)
+{
+    struct
+    {
+        const char* name;
+        resultset_encoding encoding;
+        deserialization_buffer serialized;
+        std::vector<field_view> expected;
+        std::vector<metadata> meta;
+    } test_cases[] = {
+        // clang-format off
+        // Text
+        {
+            "text_one_value",
+            resultset_encoding::text,
+            {0x01, 0x35},
+            make_fv_vector(std::int64_t(5)),
+            create_metas({ column_type::tinyint })
+        },
+        {
+            "text_one_null",
+            resultset_encoding::text,
+            {0xfb},
+            make_fv_vector(nullptr),
+            create_metas({ column_type::tinyint} )
+        },
+        {
+            "text_several_values",
+            resultset_encoding::text,
+            {0x03, 0x76, 0x61, 0x6c, 0x02, 0x32, 0x31, 0x03, 0x30, 0x2e, 0x30},
+            make_fv_vector("val", std::int64_t(21), 0.0f),
+            create_metas({ column_type::varchar, column_type::int_, column_type::float_})
+        },
+        {
+            "text_several_values_one_null",
+            resultset_encoding::text,
+            {0x03, 0x76, 0x61, 0x6c, 0xfb, 0x03, 0x76, 0x61, 0x6c},
+            make_fv_vector("val", nullptr, "val"),
+            create_metas({ column_type::varchar, column_type::int_, column_type::varchar })
+        },
+        {
+            "text_several_nulls",
+            resultset_encoding::text,
+            {0xfb, 0xfb, 0xfb},
+            make_fv_vector(nullptr, nullptr, nullptr),
+            create_metas({ column_type::varchar, column_type::int_, column_type::datetime })
+        },
+
+        // Binary
+        {
+            "binary_one_value",
+            resultset_encoding::binary,
+            {0x00, 0x00, 0x14},
+            make_fv_vector(std::int64_t(20)),
+            create_metas({ column_type::tinyint })
+        },
+        {
+            "binary_one_null",
+            resultset_encoding::binary,
+            {0x00, 0x04},
+            make_fv_vector(nullptr),
+            create_metas({ column_type::tinyint })
+        },
+        {
+            "binary_two_values",
+            resultset_encoding::binary,
+            {0x00, 0x00, 0x03, 0x6d, 0x69, 0x6e, 0x6d, 0x07},
+            make_fv_vector("min", std::int64_t(1901)),
+            create_metas({ column_type::varchar, column_type::smallint })
+        },
+        {
+            "binary_one_value_one_null",
+            resultset_encoding::binary,
+            {0x00, 0x08, 0x03, 0x6d, 0x61, 0x78},
+            make_fv_vector("max", nullptr),
+            create_metas({ column_type::varchar, column_type::tinyint })
+        },
+        {
+            "binary_two_nulls",
+            resultset_encoding::binary,
+            {0x00, 0x0c},
+            make_fv_vector(nullptr, nullptr),
+            create_metas({ column_type::tinyint, column_type::tinyint })
+        },
+        {
+            "binary_six_nulls",
+            resultset_encoding::binary,
+            {0x00, 0xfc},
+            std::vector<field_view>(6, field_view()),
+            std::vector<metadata>(6, create_meta(column_type::tinyint))
+        },
+        {
+            "binary_seven_nulls",
+            resultset_encoding::binary,
+            {0x00, 0xfc, 0x01},
+            std::vector<field_view>(7, field_view()),
+            std::vector<metadata>(7, create_meta(column_type::tinyint))
+        },
+        {
+            "binary_several_values",
+            resultset_encoding::binary,
+            {
+                0x00, 0x90, 0x00, 0xfd, 0x03, 0x61, 0x62, 0x63,
+                0xc3, 0xf5, 0x48, 0x40, 0x02, 0x61, 0x62, 0x04,
+                0xe2, 0x07, 0x0a, 0x05, 0x71, 0x99, 0x6d, 0xe2,
+                0x93, 0x4d, 0xf5, 0x3d
+            },
+            make_fv_vector(
+                std::int64_t(-3),
+                "abc",
+                nullptr,
+                3.14f,
+                "ab",
+                nullptr,
+                date(2018u, 10u, 5u),
+                3.10e-10
+            ),
+            create_metas({
+                column_type::tinyint,
+                column_type::varchar,
+                column_type::int_,
+                column_type::float_,
+                column_type::char_,
+                column_type::int_,
+                column_type::date,
+                column_type::double_,
+            })
+        }
+    };
+    // clang-format on
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Allocate exactly what is expected, to facilitate tooling for overrun detection
+            std::unique_ptr<field_view[]> actual{new field_view[tc.expected.size()]};
+            span<field_view> actual_span{actual.get(), tc.expected.size()};
+
+            auto err = deserialize_row(tc.encoding, tc.serialized, tc.meta, actual_span);
+
+            BOOST_TEST_REQUIRE(err == error_code());
+            std::vector<field_view> actual_vec{actual_span.begin(), actual_span.end()};
+            BOOST_TEST(actual_vec == tc.expected);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_row_error)
+{
+    struct
+    {
+        const char* name;
+        resultset_encoding encoding;
+        deserialization_buffer serialized;
+        error_code expected;
+        std::vector<metadata> meta;
+    } test_cases[] = {
+        // clang-format off
+        // text
+        {
+            "text_no_space_string_single",
+            resultset_encoding::text,
+            {0x02, 0x00},
+            client_errc::incomplete_message,
+            create_metas({ column_type::smallint })
+        },
+        {
+            "text_no_space_string_final",
+            resultset_encoding::text,
+            {0x01, 0x35, 0x02, 0x35},
+            client_errc::incomplete_message,
+            create_metas({ column_type::tinyint, column_type::smallint }),
+        },
+        {
+            "text_no_space_null_single",
+            resultset_encoding::text,
+            {},
+            client_errc::incomplete_message,
+            create_metas({ column_type::tinyint })
+        },
+        {
+            "text_no_space_null_final",
+            resultset_encoding::text,
+            {0xfb},
+            client_errc::incomplete_message,
+            create_metas({ column_type::tinyint, column_type::tinyint }),
+        },
+        {
+            "text_extra_bytes",
+            resultset_encoding::text,
+            {0x01, 0x35, 0xfb, 0x00},
+            client_errc::extra_bytes,
+            create_metas({ column_type::tinyint, column_type::tinyint })
+        },
+        {
+            "text_contained_value_error_single",
+            resultset_encoding::text,
+            {0x01, 0x00},
+            client_errc::protocol_value_error,
+            create_metas({ column_type::date })
+        },
+        {
+            "text_contained_value_error_middle",
+            resultset_encoding::text,
+            {0xfb, 0x01, 0x00, 0xfb},
+            client_errc::protocol_value_error,
+            create_metas({ column_type::date, column_type::date, column_type::date })
+        },
+        {
+            "text_row_for_empty_meta",
+            resultset_encoding::text,
+            {0xfb, 0x01, 0x00, 0xfb},
+            client_errc::extra_bytes,
+            {}
+        },
+
+        // binary
+        {
+            "binary_no_space_null_bitmap_1",
+            resultset_encoding::binary,
+            {0x00},
+            client_errc::incomplete_message,
+            create_metas({ column_type::tinyint })
+        },
+        {
+            "binary_no_space_null_bitmap_2",
+            resultset_encoding::binary,
+            {0x00, 0xfc},
+            client_errc::incomplete_message,
+            std::vector<metadata>(7, create_meta(column_type::tinyint))
+        },
+        {
+            "binary_no_space_value_single",
+            resultset_encoding::binary,
+            {0x00, 0x00},
+            client_errc::incomplete_message,
+            create_metas({ column_type::tinyint })
+        },
+        {
+            "binary_no_space_value_last",
+            resultset_encoding::binary,
+            {0x00, 0x00, 0x01},
+            client_errc::incomplete_message,
+            create_metas({ column_type::tinyint, column_type::tinyint })
+        },
+        {
+            "binary_no_space_value_middle",
+            resultset_encoding::binary,
+            {0x00, 0x00, 0x01},
+            client_errc::incomplete_message,
+            create_metas({ column_type::tinyint, column_type::tinyint, column_type::tinyint })
+        },
+        {
+            "binary_extra_bytes",
+            resultset_encoding::binary,
+            {0x00, 0x00, 0x01, 0x02},
+            client_errc::extra_bytes,
+            create_metas({ column_type::tinyint })
+        },
+        {
+            "binary_row_for_empty_meta",
+            resultset_encoding::binary,
+            {0xfb, 0x01, 0x00, 0xfb},
+            client_errc::extra_bytes,
+            {}
+        },
+        // clang-format on
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Allocate exactly what is expected, to facilitate tooling for overrun detection
+            std::unique_ptr<field_view[]> actual{new field_view[tc.meta.size()]};
+            span<field_view> actual_span{actual.get(), tc.meta.size()};
+
+            auto err = deserialize_row(tc.encoding, tc.serialized, tc.meta, actual_span);
+
+            BOOST_TEST(err == tc.expected);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

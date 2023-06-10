@@ -49,6 +49,22 @@ struct
     {netfun_maker::async_errinfo(&detail::async_read_some_rows_impl), "async"},
 };
 
+// TODO: this test
+// BOOST_AUTO_TEST_CASE(channel_seqnum_mismatch)
+// {
+//     auto chan = create_channel(
+//         ok_msg_builder().seqnum(41).affected_rows(42).last_insert_id(1).info("abc").build_eof()
+//     );
+//     read_some_and_check(chan);
+//     diagnostics diag;
+//     std::uint8_t seqnum = 42;
+
+//     auto response = deserialize_row_message(chan, seqnum, diag);
+
+//     BOOST_TEST_REQUIRE(response.type == row_message::type_t::error);
+//     BOOST_TEST(response.data.err == client_errc::sequence_number_mismatch);
+// }
+
 struct fixture
 {
     mock_execution_processor proc;

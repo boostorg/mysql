@@ -110,6 +110,14 @@ public:
 };
 
 inline metadata create_meta(column_type type) { return meta_builder().type(type).build(); }
+inline std::vector<metadata> create_metas(const std::vector<column_type>& types)
+{
+    std::vector<metadata> res;
+    res.reserve(types.size());
+    for (column_type t : types)
+        res.push_back(create_meta(t));
+    return res;
+}
 
 }  // namespace test
 }  // namespace mysql

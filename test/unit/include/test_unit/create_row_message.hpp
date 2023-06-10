@@ -10,17 +10,12 @@
 
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/deserialization_context.hpp>
-#include <boost/mysql/detail/protocol/protocol_types.hpp>
-
 #include <boost/core/span.hpp>
 
 #include <stdexcept>
 #include <string>
 
-#include "creation/create_message.hpp"
-#include "test_common.hpp"
+#include "test_unit/create_frame.hpp"
 
 namespace boost {
 namespace mysql {
@@ -62,28 +57,28 @@ std::vector<std::uint8_t> create_text_row_message(std::uint8_t seqnum, const Arg
 }
 
 // Helper to run execution_processor tests, since these expect long-lived row buffers
-class rowbuff
-{
-    std::vector<std::uint8_t> data_;
+// class rowbuff
+// {
+//     std::vector<std::uint8_t> data_;
 
-public:
-    template <class... Args>
-    rowbuff(const Args&... args) : data_(create_text_row_body(args...))
-    {
-    }
+// public:
+//     template <class... Args>
+//     rowbuff(const Args&... args) : data_(create_text_row_body(args...))
+//     {
+//     }
 
-    // Useful for tests that need invalid row bodies
-    std::vector<std::uint8_t>& data() noexcept { return data_; }
+//     // Useful for tests that need invalid row bodies
+//     std::vector<std::uint8_t>& data() noexcept { return data_; }
 
-    detail::deserialization_context ctx() noexcept
-    {
-        return detail::deserialization_context(
-            data_.data(),
-            data_.data() + data_.size(),
-            detail::capabilities()
-        );
-    }
-};
+//     detail::deserialization_context ctx() noexcept
+//     {
+//         return detail::deserialization_context(
+//             data_.data(),
+//             data_.data() + data_.size(),
+//             detail::capabilities()
+//         );
+//     }
+// };
 
 }  // namespace test
 }  // namespace mysql
