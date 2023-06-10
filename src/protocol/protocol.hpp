@@ -131,7 +131,7 @@ struct prepare_stmt_response
 BOOST_ATTRIBUTE_NODISCARD
 error_code deserialize_prepare_stmt_response_impl(
     span<const std::uint8_t> message,
-    prepare_stmt_response&
+    prepare_stmt_response& output
 ) noexcept;  // exposed for testing, doesn't take header into account
 
 BOOST_ATTRIBUTE_NODISCARD

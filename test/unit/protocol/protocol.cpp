@@ -10,6 +10,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/mysql_collations.hpp>
@@ -20,6 +21,7 @@
 
 #include "operators.hpp"
 #include "protocol/constants.hpp"
+#include "protocol/db_flavor.hpp"
 #include "serialization_test.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_err.hpp"
@@ -33,6 +35,7 @@ using boost::span;
 using boost::mysql::client_errc;
 using boost::mysql::column_type;
 using boost::mysql::common_server_errc;
+using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 using boost::mysql::get_mariadb_server_category;
 using boost::mysql::get_mysql_server_category;
@@ -149,16 +152,16 @@ BOOST_AUTO_TEST_CASE(ok_view_error)
     struct
     {
         const char* name;
-        deserialization_buffer serialized;
         client_errc expected_err;
+        deserialization_buffer serialized;
     } test_cases[] = {
-        {"empty",                {},                                                     client_errc::incomplete_message},
-        {"error_affected_rows",  {0xff},                                                 client_errc::incomplete_message},
-        {"error_last_insert_id", {0x01, 0xff},                                           client_errc::incomplete_message},
-        {"error_last_insert_id", {0x01, 0x06, 0x02},                                     client_errc::incomplete_message},
-        {"error_warnings",       {0x01, 0x06, 0x02, 0x00, 0x00},                         client_errc::incomplete_message},
-        {"error_info",           {0x04, 0x00, 0x22, 0x00, 0x00, 0x00, 0x28},             client_errc::incomplete_message},
-        {"extra_bytes",          {0x01, 0x06, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00}, client_errc::extra_bytes       }
+        {"empty",                client_errc::incomplete_message, {}                                                    },
+        {"error_affected_rows",  client_errc::incomplete_message, {0xff}                                                },
+        {"error_last_insert_id", client_errc::incomplete_message, {0x01, 0xff}                                          },
+        {"error_last_insert_id", client_errc::incomplete_message, {0x01, 0x06, 0x02}                                    },
+        {"error_warnings",       client_errc::incomplete_message, {0x01, 0x06, 0x02, 0x00, 0x00}                        },
+        {"error_info",           client_errc::incomplete_message, {0x04, 0x00, 0x22, 0x00, 0x00, 0x00, 0x28}            },
+        {"extra_bytes",          client_errc::extra_bytes,        {0x01, 0x06, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00}}
     };
 
     for (const auto& tc : test_cases)
@@ -305,7 +308,7 @@ BOOST_AUTO_TEST_CASE(process_error_packet_)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            boost::mysql::diagnostics diag;
+            diagnostics diag;
             auto ec = process_error_packet(tc.serialized, tc.flavor, diag);
             BOOST_TEST(ec == tc.ec);
             BOOST_TEST(diag.server_message() == tc.msg);
@@ -313,7 +316,9 @@ BOOST_AUTO_TEST_CASE(process_error_packet_)
     }
 }
 
+//
 // coldef
+//
 BOOST_AUTO_TEST_CASE(coldef_view_success)
 {
     struct
@@ -484,42 +489,51 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
     struct
     {
         const char* name;
+        error_code expected_err;
         deserialization_buffer serialized;
     } test_cases[] = {
   // clang-format off
         {
             "empty",
+            client_errc::incomplete_message,
             {}
         },
         {
             "error_catalog",
+            client_errc::incomplete_message,
             {0xff}
         },
         {
             "error_database",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0xff}
         },
         {
             "error_table",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0xff}
         },
         {   "error_org_table",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05,
             0x63, 0x68, 0x69, 0x6c, 0x64, 0xff}
         },
         {
             "error_name",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63, 0x68, 0x69,
             0x6c, 0x64, 0x0b, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0xff}
         },
         {
             "error_org_name",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63, 0x68,
             0x69, 0x6c, 0x64, 0x0b, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65,
             0x0b, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x61, 0x6c, 0x69, 0x61, 0x73, 0xff}
         },
         {
             "error_fixed_fields",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63, 0x68,
             0x69, 0x6c, 0x64, 0x0b, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65,
             0x0b, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x61, 0x6c, 0x69, 0x61, 0x73, 0x0d, 0x66, 0x69,
@@ -527,6 +541,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
         },
         {
             "error_collation_id",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63, 0x68,
             0x69, 0x6c, 0x64, 0x0b, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65,
             0x0b, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x61, 0x6c, 0x69, 0x61, 0x73, 0x0d, 0x66, 0x69,
@@ -534,6 +549,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
         },
         {
             "error_column_length",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63, 0x68,
             0x69, 0x6c, 0x64, 0x0b, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65,
             0x0b, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x61, 0x6c, 0x69, 0x61, 0x73, 0x0d, 0x66, 0x69,
@@ -541,6 +557,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
         },
         {
             "error_column_type",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63, 0x68, 0x69,
             0x6c, 0x64, 0x0b, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x0b, 0x66,
             0x69, 0x65, 0x6c, 0x64, 0x5f, 0x61, 0x6c, 0x69, 0x61, 0x73, 0x0d, 0x66, 0x69, 0x65, 0x6c, 0x64,
@@ -548,6 +565,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
         },
         {
             "error_flags",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05,
             0x63, 0x68, 0x69, 0x6c, 0x64, 0x0b, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x5f, 0x74,
             0x61, 0x62, 0x6c, 0x65, 0x0b, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x61, 0x6c,
@@ -556,12 +574,26 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
         },
         {
             "error_decimals",
+            client_errc::incomplete_message,
             {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65, 0x73, 0x6f, 0x6d, 0x65, 0x05, 0x63,
             0x68, 0x69, 0x6c, 0x64, 0x0b, 0x63, 0x68, 0x69, 0x6c, 0x64, 0x5f, 0x74, 0x61, 0x62,
             0x6c, 0x65, 0x0b, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x61, 0x6c, 0x69, 0x61, 0x73,
             0x0d, 0x66, 0x69, 0x65, 0x6c, 0x64, 0x5f, 0x76, 0x61, 0x72, 0x63, 0x68, 0x61, 0x72,
             0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
         },
+        {
+            "extra_bytes",
+            client_errc::extra_bytes,
+            {0x03, 0x64, 0x65, 0x66, 0x07, 0x61, 0x77, 0x65,
+            0x73, 0x6f, 0x6d, 0x65, 0x0a, 0x74, 0x65, 0x73,
+            0x74, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x0a,
+            0x74, 0x65, 0x73, 0x74, 0x5f, 0x74, 0x61, 0x62,
+            0x6c, 0x65, 0x0b, 0x66, 0x69, 0x65, 0x6c, 0x64,
+            0x5f, 0x66, 0x6c, 0x6f, 0x61, 0x74, 0x0b, 0x66,
+            0x69, 0x65, 0x6c, 0x64, 0x5f, 0x66, 0x6c, 0x6f,
+            0x61, 0x74, 0x0d, 0x3f, 0x00, 0x0c, 0x00, 0x00,
+            0x00, 0x04, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x00, 0xff}
+        }
   // clang-format on
     };
 
@@ -571,7 +603,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
         {
             coldef_view value{};
             error_code err = deserialize_column_definition(tc.serialized, value);
-            BOOST_TEST(err == client_errc::incomplete_message);
+            BOOST_TEST(err == tc.expected_err);
         }
     }
 }
@@ -593,7 +625,9 @@ void do_serialize_toplevel_test(const T& value, span<const std::uint8_t> seriali
     buffer.check(serialized);
 }
 
+//
 // quit
+//
 BOOST_AUTO_TEST_CASE(quit_serialization)
 {
     quit_command cmd;
@@ -601,7 +635,9 @@ BOOST_AUTO_TEST_CASE(quit_serialization)
     do_serialize_toplevel_test(cmd, serialized);
 }
 
+//
 // ping
+//
 BOOST_AUTO_TEST_CASE(ping_serialization)
 {
     ping_command cmd;
@@ -633,11 +669,156 @@ BOOST_AUTO_TEST_CASE(deserialize_ping_response_)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            boost::mysql::diagnostics diag;
+            diagnostics diag;
             auto err = deserialize_ping_response(tc.message, db_flavor::mariadb, diag);
 
             BOOST_TEST(err == tc.expected_err);
             BOOST_TEST(diag.server_message() == tc.expected_msg);
+        }
+    }
+}
+
+//
+// query
+//
+BOOST_AUTO_TEST_CASE(query_serialization)
+{
+    query_command cmd{"show databases"};
+    const std::uint8_t serialized[] =
+        {0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x73};
+    do_serialize_toplevel_test(cmd, serialized);
+}
+
+//
+// prepare statement
+//
+BOOST_AUTO_TEST_CASE(prepare_statement_serialization)
+{
+    prepare_stmt_command cmd{"SELECT * from three_rows_table WHERE id = ?"};
+    const std::uint8_t serialized[] = {0x16, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x2a, 0x20, 0x66,
+                                       0x72, 0x6f, 0x6d, 0x20, 0x74, 0x68, 0x72, 0x65, 0x65, 0x5f, 0x72,
+                                       0x6f, 0x77, 0x73, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x20, 0x57,
+                                       0x48, 0x45, 0x52, 0x45, 0x20, 0x69, 0x64, 0x20, 0x3d, 0x20, 0x3f};
+    do_serialize_toplevel_test(cmd, serialized);
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_prepare_stmt_response_impl_success)
+{
+    // Data (statement_id, num fields, num params)
+    prepare_stmt_response expected{1, 2, 3};
+    deserialization_buffer serialized{0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00};
+    prepare_stmt_response actual{};
+    auto err = deserialize_prepare_stmt_response_impl(serialized, actual);
+
+    // No error
+    BOOST_TEST_REQUIRE(err == error_code());
+
+    // Actual value
+    BOOST_TEST(actual.id == expected.id);
+    BOOST_TEST(actual.num_columns == expected.num_columns);
+    BOOST_TEST(actual.num_params == expected.num_params);
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_prepare_stmt_response_impl_error)
+{
+    struct
+    {
+        const char* name;
+        error_code expected_err;
+        deserialization_buffer serialized;
+    } test_cases[] = {
+        {"empty",              client_errc::incomplete_message, {}                                              },
+        {"error_id",           client_errc::incomplete_message, {0x01}                                          },
+        {"error_num_columns",  client_errc::incomplete_message, {0x01, 0x00, 0x00, 0x00, 0x02}                  },
+        {"error_num_params",   client_errc::incomplete_message, {0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03}      },
+        {"error_reserved",     client_errc::incomplete_message, {0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00}},
+        {"error_num_warnings",
+         client_errc::incomplete_message,
+         {0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00}                                           },
+        {"extra_bytes",
+         client_errc::extra_bytes,
+         {0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0xff}                               },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            prepare_stmt_response output{};
+            auto err = deserialize_prepare_stmt_response_impl(tc.serialized, output);
+            BOOST_TEST(err == tc.expected_err);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_prepare_stmt_response_success)
+{
+    // Data (statement_id, num fields, num params)
+    prepare_stmt_response expected{1, 2, 3};
+    deserialization_buffer serialized{0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00};
+    prepare_stmt_response actual{};
+    diagnostics diag;
+
+    auto err = deserialize_prepare_stmt_response(serialized, db_flavor::mysql, actual, diag);
+
+    // No error
+    BOOST_TEST_REQUIRE(err == error_code());
+    BOOST_TEST(diag == diagnostics());
+
+    // Actual value
+    BOOST_TEST(actual.id == expected.id);
+    BOOST_TEST(actual.num_columns == expected.num_columns);
+    BOOST_TEST(actual.num_params == expected.num_params);
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_prepare_stmt_response_error)
+{
+    struct
+    {
+        const char* name;
+        error_code expected_err;
+        const char* expected_diag;
+        deserialization_buffer serialized;
+    } test_cases[] = {
+  // clang-format off
+        {
+            "error_message_type",
+            client_errc::incomplete_message,
+            "",
+            {},
+        },
+        {
+            "unknown_message_type",
+            client_errc::protocol_value_error,
+            "",
+            {0xab, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00},
+        },
+        {
+            "error_packet",
+            common_server_errc::er_bad_db_error,
+            "bad db",
+            err_builder().code(common_server_errc::er_bad_db_error).message("bad db").build_body(),
+        },
+        {
+            "error_deserializing_response",
+            client_errc::incomplete_message,
+            "",
+            {0x00, 0x01, 0x00},
+        },
+  // clang-format on
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            prepare_stmt_response output{};
+            diagnostics diag;
+
+            auto err = deserialize_prepare_stmt_response(tc.serialized, db_flavor::mariadb, output, diag);
+
+            BOOST_TEST(err == tc.expected_err);
+            BOOST_TEST(diag.server_message() == tc.expected_diag);
         }
     }
 }

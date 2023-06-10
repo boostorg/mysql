@@ -318,7 +318,7 @@ std::size_t boost::mysql::detail::query_command::get_size() const noexcept
 }
 void boost::mysql::detail::query_command::serialize(span<std::uint8_t> buff) const noexcept
 {
-    constexpr std::uint8_t command_id = 3;
+    constexpr std::uint8_t command_id = 0x03;
 
     BOOST_ASSERT(buff.size() >= get_size());
     serialization_context ctx(buff.data());
@@ -332,7 +332,7 @@ std::size_t boost::mysql::detail::prepare_stmt_command::get_size() const noexcep
 }
 void boost::mysql::detail::prepare_stmt_command::serialize(span<std::uint8_t> buff) const noexcept
 {
-    constexpr std::uint8_t command_id = 3;
+    constexpr std::uint8_t command_id = 0x16;
 
     BOOST_ASSERT(buff.size() >= get_size());
     serialization_context ctx(buff.data());
