@@ -37,7 +37,7 @@ using boost::mysql::error_code;
 using boost::mysql::get_mariadb_server_category;
 using boost::mysql::get_mysql_server_category;
 
-BOOST_AUTO_TEST_SUITE(test_packets)
+BOOST_AUTO_TEST_SUITE(test_protocol)
 
 //
 // Frame header
@@ -264,7 +264,7 @@ BOOST_AUTO_TEST_CASE(process_error_packet_)
     {
         const char* name;
         db_flavor flavor;
-        std::vector<std::uint8_t> serialized;
+        deserialization_buffer serialized;
         error_code ec;
         const char* msg;
     } test_cases[] = {
@@ -572,6 +572,72 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
             coldef_view value{};
             error_code err = deserialize_column_definition(tc.serialized, value);
             BOOST_TEST(err == client_errc::incomplete_message);
+        }
+    }
+}
+
+// TODO: move this to common section
+template <class T>
+void do_serialize_toplevel_test(const T& value, span<const std::uint8_t> serialized)
+{
+    // Size
+    std::size_t expected_size = serialized.size();
+    std::size_t actual_size = value.get_size();
+    BOOST_TEST(actual_size == expected_size);
+
+    // Serialize
+    serialization_buffer buffer(actual_size);
+    value.serialize(buffer);
+
+    // Check buffer
+    buffer.check(serialized);
+}
+
+// quit
+BOOST_AUTO_TEST_CASE(quit_serialization)
+{
+    quit_command cmd;
+    const std::uint8_t serialized[] = {0x01};
+    do_serialize_toplevel_test(cmd, serialized);
+}
+
+// ping
+BOOST_AUTO_TEST_CASE(ping_serialization)
+{
+    ping_command cmd;
+    const std::uint8_t serialized[] = {0x0e};
+    do_serialize_toplevel_test(cmd, serialized);
+}
+
+BOOST_AUTO_TEST_CASE(deserialize_ping_response_)
+{
+    struct
+    {
+        const char* name;
+        deserialization_buffer message;
+        error_code expected_err;
+        const char* expected_msg;
+    } test_cases[] = {
+        {"success",              ok_builder().build_ok_body(),                                error_code(),                      ""},
+        {"empty_message",        {},                                                          client_errc::incomplete_message,   ""},
+        {"invalid_message_type", {0xab},                                                      client_errc::protocol_value_error, ""},
+        {"bad_ok_packet",        {0x00, 0x01},                                                client_errc::incomplete_message,   ""},
+        {"err_packet",
+         err_builder().code(common_server_errc::er_bad_db_error).message("abc").build_body(),
+         common_server_errc::er_bad_db_error,
+         "abc"                                                                                                                     },
+        {"bad_err_packet",       {0xff, 0x01},                                                client_errc::incomplete_message,   ""},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            boost::mysql::diagnostics diag;
+            auto err = deserialize_ping_response(tc.message, db_flavor::mariadb, diag);
+
+            BOOST_TEST(err == tc.expected_err);
+            BOOST_TEST(diag.server_message() == tc.expected_msg);
         }
     }
 }

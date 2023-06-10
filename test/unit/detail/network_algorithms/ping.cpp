@@ -45,44 +45,6 @@ struct
 
 BOOST_AUTO_TEST_SUITE(test_ping)
 
-BOOST_AUTO_TEST_CASE(process_ping_response_)
-{
-    struct
-    {
-        const char* name;
-        std::vector<std::uint8_t> message;
-        error_code expected_err;
-        const char* expected_msg;
-    } test_cases[] = {
-        {"success", ok_msg_builder().build_body(), error_code(), ""},
-        {"empty_message", {}, client_errc::incomplete_message, ""},
-        {"invalid_message_type", {0xab}, client_errc::protocol_value_error, ""},
-        {"bad_ok_packet", {0x00, 0x01}, client_errc::incomplete_message, ""},
-        {"err_packet",
-         create_err_packet_body(common_server_errc::er_bad_db_error, "abc"),
-         common_server_errc::er_bad_db_error,
-         "abc"},
-        {"bad_err_packet", {0xff, 0x01}, client_errc::incomplete_message, ""},
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            boost::mysql::diagnostics diag;
-            auto err = boost::mysql::detail::process_ping_response(
-                boost::asio::buffer(tc.message),
-                capabilities(),
-                boost::mysql::detail::db_flavor::mariadb,
-                diag
-            );
-
-            BOOST_TEST(err == tc.expected_err);
-            BOOST_TEST(diag.server_message() == tc.expected_msg);
-        }
-    }
-}
-
 BOOST_AUTO_TEST_CASE(success)
 {
     for (auto fns : all_fns)

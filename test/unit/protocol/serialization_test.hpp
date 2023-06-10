@@ -98,10 +98,14 @@ public:
     {
         std::memset(data(), value, size);
     }
-    explicit deserialization_buffer(span<const std::uint8_t> data)
+    deserialization_buffer(span<const std::uint8_t> data)
         : size_(data.size()), data_(new std::uint8_t[data.size()])
     {
         std::memcpy(data_.get(), data.data(), data.size());
+    }
+    deserialization_buffer(const std::vector<std::uint8_t>& data)
+        : deserialization_buffer(span<const std::uint8_t>(data))
+    {
     }
     deserialization_buffer(std::initializer_list<std::uint8_t> data)
         : size_(data.size()), data_(new std::uint8_t[data.size()])
