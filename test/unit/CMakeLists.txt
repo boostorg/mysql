@@ -9,6 +9,7 @@
 add_executable(
     boost_mysql_unittests
     auth.cpp
+    protocol/static_buffer.cpp
     protocol/capabilities.cpp
     protocol/null_bitmap_traits.cpp
     protocol/protocol_field_type.cpp
@@ -22,7 +23,6 @@ add_executable(
     # detail/channel/message_reader.cpp
     # detail/channel/message_writer_processor.cpp
     # detail/channel/message_writer.cpp
-    # detail/auxiliar/static_string.cpp
     # detail/auxiliar/rows_iterator.cpp
     # detail/auxiliar/execution_request.cpp
     # detail/auxiliar/datetime.cpp

@@ -27,7 +27,7 @@
 #include "protocol/capabilities.hpp"
 #include "protocol/constants.hpp"
 #include "protocol/db_flavor.hpp"
-#include "protocol/static_string.hpp"
+#include "protocol/static_buffer.hpp"
 
 namespace boost {
 namespace mysql {
@@ -227,7 +227,7 @@ error_code deserialize_row(
 // Server hello
 struct server_hello
 {
-    using auth_buffer_type = static_string<8 + 0xff>;
+    using auth_buffer_type = static_buffer<8 + 0xff>;
     db_flavor server;
     auth_buffer_type auth_plugin_data;
     capabilities server_capabilities{};
