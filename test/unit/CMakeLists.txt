@@ -9,10 +9,11 @@
 add_executable(
     boost_mysql_unittests
     auth.cpp
-    protocol/serialization.cpp
-    protocol/binary_serialization.cpp
     protocol/capabilities.cpp
     protocol/null_bitmap_traits.cpp
+    protocol/protocol_field_type.cpp
+    protocol/serialization.cpp
+    protocol/binary_serialization.cpp
     protocol/deserialize_text_field.cpp
     protocol/deserialize_binary_field.cpp
     protocol/protocol.cpp

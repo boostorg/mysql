@@ -16,6 +16,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <array>
+
 #include "operators.hpp"
 #include "protocol/constants.hpp"
 #include "serialization_test.hpp"
@@ -27,6 +29,7 @@
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 namespace collations = boost::mysql::mysql_collations;
+using boost::span;
 using boost::mysql::client_errc;
 using boost::mysql::column_type;
 using boost::mysql::common_server_errc;
@@ -37,6 +40,41 @@ using boost::mysql::get_mysql_server_category;
 BOOST_AUTO_TEST_SUITE(test_packets)
 
 //
+// Frame header
+//
+BOOST_AUTO_TEST_CASE(frame_header_serialization)
+{
+    struct
+    {
+        const char* name;
+        frame_header value;
+        std::array<std::uint8_t, 4> serialized;
+    } test_cases[] = {
+        {"small_packet_seqnum_0",     {3, 0},           {0x03, 0x00, 0x00, 0x00}},
+        {"small_packet_seqnum_not_0", {9, 2},           {0x09, 0x00, 0x00, 0x02}},
+        {"big_packet_seqnum_0",       {0xcacbcc, 0xfa}, {0xcc, 0xcb, 0xca, 0xfa}},
+        {"max_packet_max_seqnum",     {0xffffff, 0xff}, {0xff, 0xff, 0xff, 0xff}}
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name << " serialization")
+        {
+            serialization_buffer buffer(4);
+            serialize_frame_header(tc.value, span<std::uint8_t, frame_header_size>(buffer.data(), 4));
+            buffer.check(tc.serialized);
+        }
+        BOOST_TEST_CONTEXT(tc.name << " deserialization")
+        {
+            deserialization_buffer buffer(tc.serialized);
+            auto actual = deserialize_frame_header(span<const std::uint8_t, frame_header_size>(buffer));
+            BOOST_TEST(actual.size == tc.value.size);
+            BOOST_TEST(actual.sequence_number == tc.value.sequence_number);
+        }
+    }
+}
+
+//
 // OK packets
 //
 BOOST_AUTO_TEST_CASE(ok_view_success)
@@ -45,7 +83,7 @@ BOOST_AUTO_TEST_CASE(ok_view_success)
     {
         const char* name;
         ok_view expected;
-        std::vector<std::uint8_t> serialized;
+        deserialization_buffer serialized;
     } test_cases[] = {
   // clang-format off
         {
@@ -111,7 +149,7 @@ BOOST_AUTO_TEST_CASE(ok_view_error)
     struct
     {
         const char* name;
-        std::vector<std::uint8_t> serialized;
+        deserialization_buffer serialized;
         client_errc expected_err;
     } test_cases[] = {
         {"empty",                {},                                                     client_errc::incomplete_message},
@@ -143,7 +181,7 @@ BOOST_AUTO_TEST_CASE(err_view_success)
     {
         const char* name;
         err_view expected;
-        std::vector<std::uint8_t> serialized;
+        deserialization_buffer serialized;
     } test_cases[] = {
   // clang-format off
         {
@@ -198,7 +236,7 @@ BOOST_AUTO_TEST_CASE(err_view_error)
     struct
     {
         const char* name;
-        std::vector<std::uint8_t> serialized;
+        deserialization_buffer serialized;
     } test_cases[] = {
         {"empty",                  {}                      },
         {"error_error_code",       {0x15}                  },
@@ -275,49 +313,6 @@ BOOST_AUTO_TEST_CASE(process_error_packet_)
     }
 }
 
-// Tests edge cases not covered by database_types, where the DB sends
-// a protocol_field_type that is supposed not to be sent. Introduced due
-// to a bug with recent MariaDB versions that were sending medium_blob only
-// if you SELECT'ed TEXT variables
-BOOST_AUTO_TEST_CASE(compute_column_type_legacy_types)
-{
-    struct
-    {
-        const char* name;
-        protocol_field_type proto_type;
-        std::uint16_t flags;
-        std::uint16_t collation;
-        column_type expected;
-    } test_cases[] = {
-        {"tiny_text",      protocol_field_type::tiny_blob,   0, collations::utf8mb4_general_ci, column_type::text     },
-        {"tiny_blob",      protocol_field_type::tiny_blob,   0, collations::binary,             column_type::blob     },
-        {"medium_text",
-         protocol_field_type::medium_blob,
-         0,                                                     collations::utf8mb4_general_ci,
-         column_type::text                                                                                            },
-        {"medium_blob",    protocol_field_type::medium_blob, 0, collations::binary,             column_type::blob     },
-        {"long_text",      protocol_field_type::long_blob,   0, collations::utf8mb4_general_ci, column_type::text     },
-        {"long_blob",      protocol_field_type::long_blob,   0, collations::binary,             column_type::blob     },
-        {"varchar_string",
-         protocol_field_type::varchar,
-         0,                                                     collations::utf8mb4_general_ci,
-         column_type::varchar                                                                                         },
-        {"varchar_binary", protocol_field_type::varchar,     0, collations::binary,             column_type::varbinary},
-        {"enum",           protocol_field_type::enum_,       0, collations::utf8mb4_general_ci, column_type::enum_    },
-        {"set",            protocol_field_type::set,         0, collations::utf8mb4_general_ci, column_type::set      },
-        {"null",           protocol_field_type::null,        0, collations::binary,             column_type::unknown  },
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            auto res = compute_column_type(tc.proto_type, tc.flags, tc.collation);
-            BOOST_TEST(res == tc.expected);
-        }
-    }
-}
-
 // coldef
 BOOST_AUTO_TEST_CASE(coldef_view_success)
 {
@@ -325,7 +320,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_success)
     {
         const char* name;
         coldef_view expected;
-        std::vector<std::uint8_t> serialized;
+        deserialization_buffer serialized;
     } test_cases[] = {
   // clang-format off
         {
@@ -489,7 +484,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
     struct
     {
         const char* name;
-        std::vector<std::uint8_t> serialized;
+        deserialization_buffer serialized;
     } test_cases[] = {
   // clang-format off
         {
