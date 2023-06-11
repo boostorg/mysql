@@ -5,25 +5,21 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/channel/read_buffer.hpp>
+#include "channel/read_buffer.hpp"
 
-#include <boost/asio/buffer.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <ostream>
 #include <vector>
 
-#include "assert_buffer_equals.hpp"
+#include "test_common/assert_buffer_equals.hpp"
 
-using boost::asio::buffer;
-using boost::mysql::detail::read_buffer;
+using namespace boost::mysql::detail;
 
-namespace {
+BOOST_AUTO_TEST_SUITE(test_read_buffer)
 
 // Records the buffer first pointer and size to verify the buffer
 // didn't do any re-allocation
@@ -46,8 +42,6 @@ public:
         BOOST_TEST(b_.size() > total_size_);
     }
 };
-
-}  // namespace
 
 static void check_buffer(
     read_buffer& buff,
@@ -107,9 +101,9 @@ static void check_buffer(
         buff.size() - free_offset
     );
 
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.reserved_area(), buffer(reserved));
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.current_message(), buffer(current_message));
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.pending_area(), buffer(pending));
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(buff.reserved_area(), reserved);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(buff.current_message(), current_message);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(buff.pending_area(), pending);
 }
 
 static void check_empty_buffer(read_buffer& buff)
@@ -121,8 +115,6 @@ static void copy_to_free_area(read_buffer& buff, const std::vector<std::uint8_t>
 {
     std::copy(bytes.begin(), bytes.end(), buff.free_first());
 }
-
-BOOST_AUTO_TEST_SUITE(test_read_buffer)
 
 BOOST_AUTO_TEST_SUITE(init_ctor)
 

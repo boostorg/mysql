@@ -70,12 +70,21 @@ public:
     // Moves n bytes from the free to the processing area (e.g. they've been read)
     void move_to_pending(std::size_t length) noexcept
     {
-        BOOST_ASSERT(length <= current_message_size());
-        current_message_offset_ += length;
+        BOOST_ASSERT(length <= free_size());
+        free_offset_ += length;
     }
 
     // Moves n bytes from the processing to the current message area
     void move_to_current_message(std::size_t length) noexcept
+    {
+        BOOST_ASSERT(length <= pending_size());
+        pending_offset_ += length;
+    }
+
+    // Removes the last length bytes from the current message area,
+    // effectively memmove'ing all subsequent bytes backwards.
+    // Used to remove intermediate headers. length must be > 0
+    void remove_current_message_last(std::size_t length) noexcept
     {
         BOOST_ASSERT(length <= current_message_size());
         BOOST_ASSERT(length > 0);
@@ -84,21 +93,12 @@ public:
         free_offset_ -= length;
     }
 
-    // Removes the last length bytes from the current message area,
-    // effectively memmove'ing all subsequent bytes backwards.
-    // Used to remove intermediate headers. length must be > 0
-    void remove_current_message_last(std::size_t length) noexcept
-    {
-        BOOST_ASSERT(length <= pending_size());
-        pending_offset_ += length;
-    }
-
     // Moves length bytes from the current message area to the reserved area
     // Used to move entire parsed messages or message headers
     void move_to_reserved(std::size_t length) noexcept
     {
-        BOOST_ASSERT(length <= free_size());
-        free_offset_ += length;
+        BOOST_ASSERT(length <= current_message_size());
+        current_message_offset_ += length;
     }
 
     // Removes the reserved area, effectively memmove'ing evth backwards
