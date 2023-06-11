@@ -1697,10 +1697,38 @@ BOOST_AUTO_TEST_CASE(login_request_serialization)
         },
     };
 
+    // TODO: test case with collation > 0xff
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name) { do_serialize_toplevel_test(tc.value, tc.serialized); }
     }
+}
+
+//
+// ssl request
+//
+BOOST_AUTO_TEST_CASE(ssl_request_serialization)
+{
+    constexpr std::uint32_t caps = CLIENT_LONG_FLAG | CLIENT_LOCAL_FILES | CLIENT_PROTOCOL_41 |
+                                   CLIENT_INTERACTIVE | CLIENT_SSL | CLIENT_TRANSACTIONS |
+                                   CLIENT_SECURE_CONNECTION | CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS |
+                                   CLIENT_PS_MULTI_RESULTS | CLIENT_PLUGIN_AUTH | CLIENT_CONNECT_ATTRS |
+                                   CLIENT_SESSION_TRACK | (1UL << 29);
+
+    // Data
+    ssl_request value{
+        capabilities(caps),
+        0x1000000,  // max packet size
+        collations::utf8mb4_general_ci,
+    };
+
+    const std::uint8_t serialized[] = {0x84, 0xae, 0x9f, 0x20, 0x00, 0x00, 0x00, 0x01, 0x2d, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+    do_serialize_toplevel_test(value, serialized);
+
+    // TODO: test case with collation > 0xff
 }
 
 BOOST_AUTO_TEST_SUITE_END()
