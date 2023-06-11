@@ -9,6 +9,7 @@
 
 #include <boost/mysql/client_errc.hpp>
 
+#include <boost/mysql/detail/any_stream_impl.hpp>
 #include <boost/mysql/detail/channel_ptr.hpp>
 
 #include <cstddef>

@@ -20,7 +20,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/any_stream.hpp>
+#include <boost/mysql/detail/any_stream_impl.hpp>
 #include <boost/mysql/detail/channel_ptr.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/network_algorithms.hpp>
@@ -144,7 +144,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    Stream& stream() noexcept { return channel_.stream().cast<Stream>(); }
+    Stream& stream() noexcept { return detail::cast<Stream>(channel_.stream()); }
 
     /**
      * \brief Retrieves the underlying Stream object.
@@ -153,7 +153,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    const Stream& stream() const noexcept { return channel_.stream().cast<Stream>(); }
+    const Stream& stream() const noexcept { return detail::cast<Stream>(channel_.stream()); }
 
     /**
      * \brief Returns whether the connection negotiated the use of SSL or not.

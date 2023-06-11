@@ -8,7 +8,8 @@
 # TODO: this is not gonna work when we build as a shared lib as it requires access to internal functions
 add_executable(
     boost_mysql_unittests
-    auth.cpp
+    src/test_stream.cpp
+    auth/auth.cpp
     protocol/static_buffer.cpp
     protocol/capabilities.cpp
     protocol/null_bitmap_traits.cpp

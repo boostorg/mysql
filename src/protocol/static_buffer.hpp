@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_SRC_PROTOCOL_STATIC_STRING_HPP
-#define BOOST_MYSQL_SRC_PROTOCOL_STATIC_STRING_HPP
+#ifndef BOOST_MYSQL_SRC_PROTOCOL_STATIC_BUFFER_HPP
+#define BOOST_MYSQL_SRC_PROTOCOL_STATIC_BUFFER_HPP
 
 // A very simplified variable-length buffer with fixed max-size
 
