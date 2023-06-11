@@ -1731,4 +1731,33 @@ BOOST_AUTO_TEST_CASE(ssl_request_serialization)
     // TODO: test case with collation > 0xff
 }
 
+//
+// auth switch
+//
+BOOST_AUTO_TEST_CASE(deserialize_auth_switch_success)
+{
+    // Data
+    constexpr std::uint8_t auth_data[] = {0x49, 0x49, 0x7e, 0x51, 0x5d, 0x1f, 0x19, 0x6a, 0x0f, 0x5a,
+                                          0x63, 0x15, 0x3e, 0x28, 0x31, 0x3e, 0x3c, 0x79, 0x09, 0x7c};
+
+    deserialization_buffer serialized{0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f, 0x6e, 0x61, 0x74, 0x69, 0x76,
+                                      0x65, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00,
+                                      0x49, 0x49, 0x7e, 0x51, 0x5d, 0x1f, 0x19, 0x6a, 0x0f, 0x5a, 0x63,
+                                      0x15, 0x3e, 0x28, 0x31, 0x3e, 0x3c, 0x79, 0x09, 0x7c, 0x00};
+
+    // Deserialize
+    auth_switch actual{};
+    auto err = deserialize_auth_switch(serialized, actual);
+
+    // No error
+    BOOST_TEST_REQUIRE(err == error_code());
+
+    // Actual value
+    BOOST_TEST(actual.plugin_name == "mysql_native_password");
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(actual.auth_data, auth_data);
+
+    // TODO: error in plugin_name, extra bytes (?)
+    // TODO: edge case where plugin data is empty or doesn't end in a 0
+}
+
 BOOST_AUTO_TEST_SUITE_END()
