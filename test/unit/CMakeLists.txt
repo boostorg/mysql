@@ -27,11 +27,6 @@ add_executable(
     # detail/auxiliar/execution_request.cpp
     # detail/auxiliar/datetime.cpp
     # detail/auxiliar/row_impl.cpp
-    # detail/protocol/serialization_test.cpp
-    
-    # detail/protocol/deserialize_row.cpp
-    # detail/protocol/deserialize_execution_messages.cpp
-    # detail/protocol/process_error_packet.cpp
     # detail/execution_processor/execution_processor.cpp
     # detail/execution_processor/execution_state_impl.cpp
     # detail/execution_processor/static_execution_state_impl.cpp

@@ -1784,4 +1784,20 @@ BOOST_AUTO_TEST_CASE(deserialize_handshake_server_response_more_data)
 // TODO: auth switch
 // TODO: error in message type, unknown message type, bad OK packet, bad auth switch
 
+//
+// auth_switch_response
+//
+BOOST_AUTO_TEST_CASE(auth_switch_response_serialization)
+{
+    constexpr std::uint8_t auth_data[] = {0xba, 0x55, 0x9c, 0xc5, 0x9c, 0xbf, 0xca, 0x06, 0x91, 0xff,
+                                          0xaa, 0x72, 0x59, 0xfc, 0x53, 0xdf, 0x88, 0x2d, 0xf9, 0xcf};
+
+    auth_switch_response value{auth_data};
+
+    const std::uint8_t serialized[] = {0xba, 0x55, 0x9c, 0xc5, 0x9c, 0xbf, 0xca, 0x06, 0x91, 0xff,
+                                       0xaa, 0x72, 0x59, 0xfc, 0x53, 0xdf, 0x88, 0x2d, 0xf9, 0xcf};
+
+    do_serialize_toplevel_test(value, serialized);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
