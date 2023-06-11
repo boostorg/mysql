@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_UNIT_NETFUN_MAKER_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_UNIT_NETFUN_MAKER_HPP
 
-#include "netfun_helpers.hpp"
+#include "test_common/netfun_helpers.hpp"
 
 namespace boost {
 namespace mysql {
@@ -58,6 +58,17 @@ struct netfun_maker_impl : netfun_maker_sync_impl<R, Args...>
             return res;
         };
     }
+
+    // Used by channel functions
+    template <class Pfn>
+    static signature sync_errc_noerrinfo(Pfn fn)
+    {
+        return [fn](Args... args) {
+            auto res = create_initial_netresult<R>(false);
+            invoke_and_assign(res, fn, std::forward<Args>(args)..., res.err);
+            return res;
+        };
+    }
 };
 
 template <class R, class Obj, class... Args>
@@ -68,11 +79,13 @@ class netfun_maker_mem
 public:
     using signature = std::function<network_result<R>(Obj&, Args...)>;
     using sig_sync_errc = R (Obj::*)(Args..., error_code&, diagnostics&);
+    using sig_sync_errc_noerrinfo = R (Obj::*)(Args..., error_code&);
     using sig_sync_exc = R (Obj::*)(Args...);
     using sig_async_errinfo = void (Obj::*)(Args..., diagnostics&, bound_callback_token<R>&&);
     using sig_async_noerrinfo = void (Obj::*)(Args..., bound_callback_token<R>&&);
 
     static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }
+    static signature sync_errc_noerrinfo(sig_sync_errc pfn) { return impl::sync_errc_noerrinfo(pfn); }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
     static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
     static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
@@ -86,11 +99,13 @@ class netfun_maker_fn
 public:
     using signature = std::function<network_result<R>(Args...)>;
     using sig_sync_errc = R (*)(Args..., error_code&, diagnostics&);
+    using sig_sync_errc_noerrinfo = R (*)(Args..., error_code&);
     using sig_sync_exc = R (*)(Args...);
     using sig_async_errinfo = void (*)(Args..., diagnostics&, bound_callback_token<R>&&);
     using sig_async_noerrinfo = void (*)(Args..., bound_callback_token<R>&&);
 
     static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }
+    static signature sync_errc_noerrinfo(sig_sync_errc pfn) { return impl::sync_errc_noerrinfo(pfn); }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
     static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
     static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
