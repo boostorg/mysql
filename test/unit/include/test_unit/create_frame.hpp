@@ -39,6 +39,11 @@ inline std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, const std::ve
     return create_frame(seqnum, boost::span<const std::uint8_t>(body));
 }
 
+inline std::vector<std::uint8_t> create_empty_frame(std::uint8_t seqnum)
+{
+    return create_frame(seqnum, boost::span<const std::uint8_t>());
+}
+
 template <class... Args>
 void serialize_to_vector(std::vector<std::uint8_t>& res, const Args&... args)
 {

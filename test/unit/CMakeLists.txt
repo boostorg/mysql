@@ -23,7 +23,7 @@ add_executable(
     channel/message_parser.cpp
     # detail/channel/message_reader.cpp
     channel/message_writer_processor.cpp
-    # detail/channel/message_writer.cpp
+    channel/message_writer.cpp
     # detail/auxiliar/rows_iterator.cpp
     # detail/auxiliar/execution_request.cpp
     # detail/auxiliar/datetime.cpp

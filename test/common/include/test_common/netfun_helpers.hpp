@@ -88,6 +88,16 @@ public:
         return tracker_executor(ex_.require(p), tracked_);
     }
 
+    template <class Property>
+    tracker_executor prefer(
+        Property p,
+        void_t<decltype(boost::asio::prefer(std::declval<const boost::asio::io_context::executor_type&>(), p)
+        )> = {}
+    ) const
+    {
+        return tracker_executor(boost::asio::prefer(ex_, p), tracked_);
+    }
+
     // TODO: C++11
     template <class Property>
     auto query(Property p) const

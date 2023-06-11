@@ -85,7 +85,10 @@ public:
     using sig_async_noerrinfo = void (Obj::*)(Args..., bound_callback_token<R>&&);
 
     static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }
-    static signature sync_errc_noerrinfo(sig_sync_errc pfn) { return impl::sync_errc_noerrinfo(pfn); }
+    static signature sync_errc_noerrinfo(sig_sync_errc_noerrinfo pfn)
+    {
+        return impl::sync_errc_noerrinfo(pfn);
+    }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
     static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
     static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
@@ -105,7 +108,10 @@ public:
     using sig_async_noerrinfo = void (*)(Args..., bound_callback_token<R>&&);
 
     static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }
-    static signature sync_errc_noerrinfo(sig_sync_errc pfn) { return impl::sync_errc_noerrinfo(pfn); }
+    static signature sync_errc_noerrinfo(sig_sync_errc_noerrinfo pfn)
+    {
+        return impl::sync_errc_noerrinfo(pfn);
+    }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
     static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
     static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }

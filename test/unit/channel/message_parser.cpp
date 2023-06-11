@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(full_message)
 BOOST_AUTO_TEST_CASE(empty_message)
 {
     // message to be parsed
-    parser_fixture fixture(create_frame(1, span<const std::uint8_t>()));
+    parser_fixture fixture(create_empty_frame(1));
 
     // Full header and body part received
     auto res = fixture.parse_bytes(4);
@@ -576,7 +576,7 @@ BOOST_AUTO_TEST_CASE(two_frame_max_size)
         buffer_builder()
             .add(create_frame(1, std::vector<std::uint8_t>(64, 0x04)))
             .add(create_frame(2, std::vector<std::uint8_t>(64, 0x05)))
-            .add(create_frame(3, std::vector<std::uint8_t>{}))
+            .add(create_empty_frame(3))
             .build(),
         64 * 3
     );

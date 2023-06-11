@@ -33,6 +33,8 @@
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
 
+boost::mysql::test::test_stream::test_stream() : executor_(boost::asio::system_executor()) {}
+
 std::size_t boost::mysql::test::test_stream::get_size_to_read(std::size_t buffer_size) const
 {
     auto it = read_break_offsets_.upper_bound(num_bytes_read_);

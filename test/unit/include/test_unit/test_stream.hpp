@@ -43,7 +43,7 @@ public:
 class test_stream final : public detail::any_stream
 {
 public:
-    test_stream() = default;
+    test_stream();
 
     // Setters
     test_stream& add_message(const std::vector<std::uint8_t>& bytes);

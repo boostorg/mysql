@@ -193,7 +193,7 @@ BOOST_AUTO_TEST_CASE(empty_message)
 
     // Chunk should only contain the header
     auto chunk = processor.next_chunk();
-    auto expected = create_frame(2, span<const std::uint8_t>{});
+    auto expected = create_empty_frame(2);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
@@ -227,7 +227,7 @@ BOOST_AUTO_TEST_CASE(message_with_max_frame_size_length)
 
     // Next chunk is an empty frame
     chunk = processor.next_chunk();
-    expected = create_frame(3, span<const std::uint8_t>{});
+    expected = create_empty_frame(3);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
@@ -326,7 +326,7 @@ BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
 
     // Chunk 3 (empty)
     chunk = processor.next_chunk();
-    expected = create_frame(4, span<const std::uint8_t>{});
+    expected = create_empty_frame(4);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
