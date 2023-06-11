@@ -10,9 +10,12 @@
 
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <vector>
 
 #include "protocol/protocol.hpp"
 #include "protocol/serialization.hpp"
@@ -29,6 +32,11 @@ inline std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, span<const st
     detail::serialize_frame_header(header, span<std::uint8_t, detail::frame_header_size>{res.data(), 4u});
     std::memcpy(res.data() + 4, body.data(), body.size());
     return res;
+}
+
+inline std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, const std::vector<std::uint8_t>& body)
+{
+    return create_frame(seqnum, boost::span<const std::uint8_t>(body));
 }
 
 template <class... Args>

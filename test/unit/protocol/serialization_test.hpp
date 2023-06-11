@@ -19,39 +19,6 @@
 #include "protocol/serialization.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 
-/**
- * TODO: this is all simpler now
- * This header defines the required infrastructure for running
- * **serialization tests**. These are based on inspecting real packets
- * with a network analyzer, like Wireshark, to create a "golden file",
- * and verify that our serialization functions generate the same
- * packets as the official MySQL client and server.
- *
- * Each serialization test is defined by an instance of a
- * serialization_sample, which contains a C++ value
- * and its serialized network representation, as a byte array.
- * The interface any_value uses type erasure to represent any C++ value
- * in a generic way, providing access to the required serialization
- * and reporting functions.
- *
- * For each type that can be serialized or deserialized, we define
- * a const serialization_test_spec variable in one of the header
- * files in serialization_test_samples/. This contains a vector of
- * serialization_sample and a serialization_test_type, which defines
- * which of the three following types of test to run:
- *   - serialize: checks serialize() and get_size()
- *   - deserialize: checks deserialize()
- *   - deserialize_space: checks deserialize() under extra bytes and
- *     not enough space conditions. Some messages can't pass these tests,
- *     as their contents depends on message size (e.g. string_eof).
- *
- * Types may run one or more of the above types.
- *
- * All header files in serialization_test_samples/ are included
- * in serialization_test.cpp and the defined variables are used to
- * run the adequate tests.
- */
-
 namespace boost {
 namespace mysql {
 namespace test {

@@ -5,29 +5,25 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/channel/message_parser.hpp>
-#include <boost/mysql/detail/channel/read_buffer.hpp>
+#include "channel/message_parser.hpp"
 
-#include <boost/asio/buffer.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <vector>
 
-#include "assert_buffer_equals.hpp"
-#include "buffer_concat.hpp"
-#include "creation/create_message.hpp"
+#include "channel/read_buffer.hpp"
+#include "test_common/assert_buffer_equals.hpp"
+#include "test_common/buffer_concat.hpp"
+#include "test_unit/create_frame.hpp"
 
-using boost::asio::buffer;
-using boost::mysql::detail::message_parser;
-using boost::mysql::detail::read_buffer;
-using boost::mysql::test::concat_copy;
-using boost::mysql::test::create_message;
+using namespace boost::mysql::detail;
+using namespace boost::mysql::test;
+using boost::span;
 
-namespace {
+BOOST_AUTO_TEST_SUITE(test_message_parser)
 
 class parser_fixture
 {
@@ -55,21 +51,19 @@ public:
         parser_.parse_message(buff_, res);
         return res;
     }
-    boost::asio::const_buffer check_message(const std::vector<std::uint8_t>& contents)
+    span<const std::uint8_t> check_message(const std::vector<std::uint8_t>& contents)
     {
-        auto msg = boost::asio::buffer(buff_.current_message_first() - contents.size(), contents.size());
-        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, boost::asio::buffer(contents));
+        span<const std::uint8_t> msg(buff_.current_message_first() - contents.size(), contents.size());
+        BOOST_MYSQL_ASSERT_BLOB_EQUALS(msg, contents);
         return msg;
     }
     void check_buffer_stability() { BOOST_TEST(buff_.first() == buffer_first_); }
 };
 
-BOOST_AUTO_TEST_SUITE(message_parser_parse_message)
-
 BOOST_AUTO_TEST_CASE(fragmented_header_and_body_multiple)
 {
     // message to be parsed
-    parser_fixture fixture(create_message(0, {0x01, 0x02, 0x03}));
+    parser_fixture fixture(create_frame(0, {0x01, 0x02, 0x03}));
 
     // 1 byte in the header received
     auto res = fixture.parse_bytes(1);
@@ -107,7 +101,7 @@ BOOST_AUTO_TEST_CASE(fragmented_header_and_body_multiple)
 BOOST_AUTO_TEST_CASE(fragmented_header_and_body_single)
 {
     // message to be parsed
-    parser_fixture fixture(create_message(0, {0x01, 0x02, 0x03}));
+    parser_fixture fixture(create_frame(0, {0x01, 0x02, 0x03}));
 
     // Full header received
     auto res = fixture.parse_bytes(4);
@@ -130,7 +124,7 @@ BOOST_AUTO_TEST_CASE(fragmented_header_and_body_single)
 BOOST_AUTO_TEST_CASE(fragmented_body)
 {
     // message to be parsed
-    parser_fixture fixture(create_message(0, {0x01, 0x02, 0x03}));
+    parser_fixture fixture(create_frame(0, {0x01, 0x02, 0x03}));
 
     // Full header and body part received
     auto res = fixture.parse_bytes(5);
@@ -153,7 +147,7 @@ BOOST_AUTO_TEST_CASE(fragmented_body)
 BOOST_AUTO_TEST_CASE(full_message)
 {
     // message to be parsed
-    parser_fixture fixture(create_message(0, {0x01, 0x02, 0x03}));
+    parser_fixture fixture(create_frame(0, {0x01, 0x02, 0x03}));
 
     // Full header and body part received
     auto res = fixture.parse_bytes(7);
@@ -171,7 +165,7 @@ BOOST_AUTO_TEST_CASE(full_message)
 BOOST_AUTO_TEST_CASE(empty_message)
 {
     // message to be parsed
-    parser_fixture fixture(create_message(1, {}));
+    parser_fixture fixture(create_frame(1, span<const std::uint8_t>()));
 
     // Full header and body part received
     auto res = fixture.parse_bytes(4);
@@ -191,7 +185,7 @@ BOOST_AUTO_TEST_CASE(two_messages_one_after_another)
     // message to be parsed
     std::vector<std::uint8_t> first_msg_body{0x01, 0x02, 0x03};
     std::vector<std::uint8_t> second_msg_body{0x04, 0x05, 0x06, 0x07};
-    parser_fixture fixture(create_message(0, first_msg_body, 2, second_msg_body));
+    parser_fixture fixture(concat_copy(create_frame(0, first_msg_body), create_frame(2, second_msg_body)));
 
     // 1st message
     auto res = fixture.parse_bytes(7);
@@ -212,7 +206,7 @@ BOOST_AUTO_TEST_CASE(two_messages_one_after_another)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st message still valid
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(first_msg, boost::asio::buffer(first_msg_body));
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(first_msg, first_msg_body);
 
     // Buffer did not reallocate
     fixture.check_buffer_stability();
@@ -223,7 +217,7 @@ BOOST_AUTO_TEST_CASE(two_messages_at_once)
     // message to be parsed
     std::vector<std::uint8_t> first_msg_body{0x01, 0x02, 0x03};
     std::vector<std::uint8_t> second_msg_body{0x04, 0x05, 0x06, 0x07};
-    parser_fixture fixture(create_message(0, first_msg_body, 2, second_msg_body));
+    parser_fixture fixture(concat_copy(create_frame(0, first_msg_body), create_frame(2, second_msg_body)));
 
     // 1st message
     auto res = fixture.parse_bytes(15);
@@ -244,7 +238,7 @@ BOOST_AUTO_TEST_CASE(two_messages_at_once)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st message still valid
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(first_msg, boost::asio::buffer(first_msg_body));
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(first_msg, first_msg_body);
 
     // Buffer did not reallocate
     fixture.check_buffer_stability();
@@ -256,7 +250,11 @@ BOOST_AUTO_TEST_CASE(three_messages_last_fragmented)
     std::vector<std::uint8_t> first_msg_body{0x01, 0x02, 0x03};
     std::vector<std::uint8_t> second_msg_body{0x04, 0x05, 0x06, 0x07};
     std::vector<std::uint8_t> third_msg_body{0x08, 0x09};
-    parser_fixture fixture(create_message(0, first_msg_body, 2, second_msg_body, 3, third_msg_body));
+    parser_fixture fixture(buffer_builder()
+                               .add(create_frame(0, first_msg_body))
+                               .add(create_frame(2, second_msg_body))
+                               .add(create_frame(3, third_msg_body))
+                               .build());
 
     // 1st message
     auto res = fixture.parse_bytes(20);  // 1st and 2nd messages + 3rd message header and body part
@@ -291,8 +289,8 @@ BOOST_AUTO_TEST_CASE(three_messages_last_fragmented)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st and 2nd messages still valid
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(first_msg, buffer(first_msg_body));
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(second_msg, buffer(second_msg_body));
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(first_msg, first_msg_body);
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(second_msg, second_msg_body);
 
     // Buffer did not reallocate
     fixture.check_buffer_stability();
@@ -302,7 +300,10 @@ BOOST_AUTO_TEST_CASE(two_frame_message)
 {
     // message to be parsed
     parser_fixture fixture(
-        create_message(0, std::vector<std::uint8_t>(64, 0x04), 1, {0x05, 0x06, 0x07}),
+        concat_copy(
+            create_frame(0, std::vector<std::uint8_t>(64, 0x04)),
+            create_frame(1, {0x05, 0x06, 0x07})
+        ),
         64 + 16
     );
     auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07});
@@ -340,7 +341,11 @@ BOOST_AUTO_TEST_CASE(two_frame_message_with_reserved_area)
     // message to be parsed
     std::vector<std::uint8_t> first_msg_body{0x01, 0x02, 0x03};
     parser_fixture fixture(
-        create_message(0, first_msg_body, 4, std::vector<std::uint8_t>(64, 0x04), 5, {0x05, 0x06, 0x07}),
+        buffer_builder()
+            .add(create_frame(0, first_msg_body))
+            .add(create_frame(4, std::vector<std::uint8_t>(64, 0x04)))
+            .add(create_frame(5, {0x05, 0x06, 0x07}))
+            .build(),
         64 + 64
     );
     auto second_msg_body = concat_copy(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07});
@@ -364,7 +369,7 @@ BOOST_AUTO_TEST_CASE(two_frame_message_with_reserved_area)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // msg 1 still valid
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(first_msg, buffer(first_msg_body));
+    BOOST_MYSQL_ASSERT_BLOB_EQUALS(first_msg, first_msg_body);
 
     // buffer did not reallocate
     fixture.check_buffer_stability();
@@ -374,7 +379,10 @@ BOOST_AUTO_TEST_CASE(two_frame_message_fragmented)
 {
     // message to be parsed
     parser_fixture fixture(
-        create_message(0, std::vector<std::uint8_t>(64, 0x04), 1, {0x05, 0x06, 0x07}),
+        buffer_builder()
+            .add(create_frame(0, std::vector<std::uint8_t>(64, 0x04)))
+            .add(create_frame(1, {0x05, 0x06, 0x07}))
+            .build(),
         64 + 16
     );
     auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07});
@@ -441,21 +449,18 @@ BOOST_AUTO_TEST_CASE(three_frame_message)
 {
     // message to be parsed
     parser_fixture fixture(
-        create_message(
-            2,
-            std::vector<std::uint8_t>(64, 0x04),
-            3,
-            std::vector<std::uint8_t>(64, 0x05),
-            4,
-            {0x05, 0x06, 0x07}
-        ),
+        buffer_builder()
+            .add(create_frame(2, std::vector<std::uint8_t>(64, 0x04)))
+            .add(create_frame(3, std::vector<std::uint8_t>(64, 0x05)))
+            .add(create_frame(4, {0x05, 0x06, 0x07}))
+            .build(),
         64 * 2 + 64
     );
-    auto expected_message = concat_copy(
-        std::vector<std::uint8_t>(64, 0x04),
-        std::vector<std::uint8_t>(64, 0x05),
-        {0x05, 0x06, 0x07}
-    );
+    auto expected_message = buffer_builder()
+                                .add(std::vector<std::uint8_t>(64, 0x04))
+                                .add(std::vector<std::uint8_t>(64, 0x05))
+                                .add({0x05, 0x06, 0x07})
+                                .build();
 
     // header 1 + body 1 part
     auto res = fixture.parse_bytes(6);
@@ -489,7 +494,10 @@ BOOST_AUTO_TEST_CASE(two_frame_message_mismatched_seqnums)
 {
     // message to be parsed
     parser_fixture fixture(
-        create_message(1, std::vector<std::uint8_t>(64, 0x04), 3, {0x05, 0x06, 0x07}),
+        buffer_builder()
+            .add(create_frame(1, std::vector<std::uint8_t>(64, 0x04)))
+            .add(create_frame(3, {0x05, 0x06, 0x07}))
+            .build(),
         64 + 16
     );
     auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07});
@@ -510,21 +518,18 @@ BOOST_AUTO_TEST_CASE(three_frame_message_mismatched_seqnums)
 {
     // message to be parsed
     parser_fixture fixture(
-        create_message(
-            1,
-            std::vector<std::uint8_t>(64, 0x04),
-            2,
-            std::vector<std::uint8_t>(64, 0x05),
-            0,
-            {0x05, 0x06, 0x07}
-        ),
+        buffer_builder()
+            .add(create_frame(1, std::vector<std::uint8_t>(64, 0x04)))
+            .add(create_frame(2, std::vector<std::uint8_t>(64, 0x05)))
+            .add(create_frame(0, {0x05, 0x06, 0x07}))
+            .build(),
         64 * 2 + 64
     );
-    auto expected_message = concat_copy(
-        std::vector<std::uint8_t>(64, 0x04),
-        std::vector<std::uint8_t>(64, 0x05),
-        {0x05, 0x06, 0x07}
-    );
+    auto expected_message = buffer_builder()
+                                .add(std::vector<std::uint8_t>(64, 0x04))
+                                .add(std::vector<std::uint8_t>(64, 0x05))
+                                .add({0x05, 0x06, 0x07})
+                                .build();
 
     // all in one
     auto res = fixture.parse_bytes(64 * 2 + 4 * 3 + 3);
@@ -542,7 +547,10 @@ BOOST_AUTO_TEST_CASE(two_frame_seqnum_overflow)
 {
     // message to be parsed
     parser_fixture fixture(
-        create_message(255, std::vector<std::uint8_t>(64, 0x04), 0, {0x05, 0x06, 0x07}),
+        buffer_builder()
+            .add(create_frame(255, std::vector<std::uint8_t>(64, 0x04)))
+            .add(create_frame(0, {0x05, 0x06, 0x07}))
+            .build(),
         64 + 16
     );
     auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07});
@@ -565,7 +573,11 @@ BOOST_AUTO_TEST_CASE(two_frame_max_size)
     // message to be parsed. The two frames have size == max_frame_size,
     // so a third, empty header is received
     parser_fixture fixture(
-        create_message(1, std::vector<std::uint8_t>(64, 0x04), 2, std::vector<std::uint8_t>(64, 0x05), 3, {}),
+        buffer_builder()
+            .add(create_frame(1, std::vector<std::uint8_t>(64, 0x04)))
+            .add(create_frame(2, std::vector<std::uint8_t>(64, 0x05)))
+            .add(create_frame(3, std::vector<std::uint8_t>{}))
+            .build(),
         64 * 3
     );
     auto expected_message = concat_copy(
@@ -587,5 +599,3 @@ BOOST_AUTO_TEST_CASE(two_frame_max_size)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

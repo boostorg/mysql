@@ -18,8 +18,8 @@ add_executable(
     protocol/deserialize_text_field.cpp
     protocol/deserialize_binary_field.cpp
     protocol/protocol.cpp
-    # detail/channel/read_buffer.cpp
-    # detail/channel/message_parser.cpp
+    channel/read_buffer.cpp
+    channel/message_parser.cpp
     # detail/channel/message_reader.cpp
     # detail/channel/message_writer_processor.cpp
     # detail/channel/message_writer.cpp
