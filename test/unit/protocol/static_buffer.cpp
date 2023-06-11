@@ -74,7 +74,7 @@ BOOST_FIXTURE_TEST_CASE(append_from_empty_to_midsize, fixture)
     string_type v;
     v.append(midsize.data(), midsize.size());
     wipe_midsize();
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.to_span(), original_midsize());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), original_midsize());
 }
 
 BOOST_FIXTURE_TEST_CASE(append_from_empty_to_maxsize, fixture)
@@ -82,7 +82,7 @@ BOOST_FIXTURE_TEST_CASE(append_from_empty_to_maxsize, fixture)
     string_type v;
     v.append(maxsize.data(), maxsize.size());
     wipe_maxsize();
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.to_span(), original_maxsize());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), original_maxsize());
 }
 
 BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_midsize, fixture)
@@ -98,7 +98,7 @@ BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_midsize, fixture)
 
     // Verify
     auto expected = concat_copy(initial, original_midsize());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.to_span(), expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), expected);
 }
 
 BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_maxsize, fixture)
@@ -114,7 +114,7 @@ BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_maxsize, fixture)
 
     // Verify
     auto expected = concat_copy(original_midsize(), newbuff);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.to_span(), expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

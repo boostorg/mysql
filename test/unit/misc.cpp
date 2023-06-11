@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
 
     // We've written the query request
     auto expected_msg = create_message(0, {0x03, 0x61, 0x62, 0x63});  // ASCII "abc" (plus length)
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(get_channel(conn).lowest_layer().bytes_written(), expected_msg);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(get_channel(conn).lowest_layer().bytes_written(), expected_msg);
 
     // We've populated the results
     BOOST_TEST_REQUIRE(result.size() == 3u);
@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(execute_stmt_iterator_reference_not_field_view)
         0x15, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
         0x00, 0x02, 0x01, 0xfe, 0x00, 0x06, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74,
     };
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), expected_msg);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected_msg);
 
     // Verify the results
     BOOST_TEST_REQUIRE(result.size() == 1u);

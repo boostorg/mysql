@@ -68,11 +68,11 @@ BOOST_AUTO_TEST_CASE(copy_blob)
     blob b({0xff, 0x01, 0x02});
     field v(blob{b});
     field v2(v);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v2.as_blob(), b);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v2.as_blob(), b);
 
     // Changing the value of v doesn't affect v2
     v = "other";
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v2.as_blob(), b);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v2.as_blob(), b);
 }
 
 BOOST_AUTO_TEST_CASE(move)
@@ -181,14 +181,14 @@ BOOST_AUTO_TEST_CASE(from_string_lvalue)
 BOOST_AUTO_TEST_CASE(from_blob_rvalue)
 {
     field v(blob{0x02, 0x03});
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x02, 0x03}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.as_blob(), (blob{0x02, 0x03}));
 }
 
 BOOST_AUTO_TEST_CASE(from_blob_lvalue)
 {
     blob b{0x02, 0x03};
     field v(b);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x02, 0x03}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.as_blob(), (blob{0x02, 0x03}));
 }
 
 BOOST_AUTO_TEST_CASE(from_float)
@@ -260,7 +260,7 @@ BOOST_AUTO_TEST_CASE(from_field_view_blob)
     field_view fv(b);
     field f(fv);
     b[0] = 0xff;  // changing the source string shouldn't modify the value
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x02, 0x00, 0x01}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f.as_blob(), (blob{0x02, 0x00, 0x01}));
 }
 
 BOOST_AUTO_TEST_CASE(from_field_view_float)
@@ -330,11 +330,11 @@ BOOST_AUTO_TEST_CASE(copy_blob)
     field v(42);
     field v2(blob{0x00, 0x02});
     v = v2;
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
 
     // Changing the value of v2 doesn't affect v
     v2.as_blob()[0] = 0xff;
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
 }
 
 BOOST_AUTO_TEST_CASE(self_copy)
@@ -476,7 +476,7 @@ BOOST_AUTO_TEST_CASE(from_blob_rvalue)
 {
     field v(9.2f);
     v = blob{0x00, 0x02};
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
 }
 
 BOOST_AUTO_TEST_CASE(from_blob_lvalue)
@@ -484,7 +484,7 @@ BOOST_AUTO_TEST_CASE(from_blob_lvalue)
     blob b{0x00, 0x02};
     field v(9.2f);
     v = b;
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.as_blob(), (blob{0x00, 0x02}));
 }
 
 BOOST_AUTO_TEST_CASE(from_float)
@@ -562,7 +562,7 @@ BOOST_AUTO_TEST_CASE(from_field_view_blob)
     field_view fv(makebv("\0\1\0"));
     field f(1);
     f = fv;
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x01, 0x00}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f.as_blob(), (blob{0x00, 0x01, 0x00}));
 }
 
 BOOST_AUTO_TEST_CASE(from_field_view_float)
@@ -826,18 +826,18 @@ BOOST_AUTO_TEST_CASE(string)
 BOOST_AUTO_TEST_CASE(blob_)
 {
     field f(blob{0x00, 0x01});
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x01}));
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.get_blob(), (blob{0x00, 0x01}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f.as_blob(), (blob{0x00, 0x01}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f.get_blob(), (blob{0x00, 0x01}));
 
     f.as_blob() = blob{0x00, 0x07};
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x07}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f.as_blob(), (blob{0x00, 0x07}));
 
     f.get_blob().push_back(0xff);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), (blob{0x00, 0x07, 0xff}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f.as_blob(), (blob{0x00, 0x07, 0xff}));
 
     const field f2(blob{0xff, 0xfe});
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f2.as_blob(), (blob{0xff, 0xfe}));
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f2.get_blob(), (blob{0xff, 0xfe}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f2.as_blob(), (blob{0xff, 0xfe}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f2.get_blob(), (blob{0xff, 0xfe}));
 }
 
 BOOST_AUTO_TEST_CASE(float_)

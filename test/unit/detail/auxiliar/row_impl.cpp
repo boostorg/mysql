@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE(strings_blobs)
     BOOST_TEST(r.fields()[0] == field_view("test"));
     BOOST_TEST(r.fields()[1] == field_view("othertest"));
     BOOST_TEST(r.fields()[2] == field_view(50));
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(r.fields()[3].as_blob(), blob({0x00, 0xab, 0xf5}));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(r.fields()[3].as_blob(), blob({0x00, 0xab, 0xf5}));
 }
 
 BOOST_AUTO_TEST_CASE(empty_strings_blobs)
@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(empty_strings_blobs)
     BOOST_TEST(r.fields().size() == 3u);
     BOOST_TEST(r.fields()[0] == field_view(""));
     BOOST_TEST(r.fields()[1] == field_view(50));
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(r.fields()[2].as_blob(), blob());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(r.fields()[2].as_blob(), blob());
 }
 BOOST_AUTO_TEST_SUITE_END()
 

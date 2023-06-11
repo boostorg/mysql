@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(eof)
 
             // We've written the exeuction request
             auto expected_msg = create_message(0, {0x02, 0x05, 0x09});
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
             // We've read into the processor
             proc.num_calls().reset(1).on_head_ok_packet(1).validate();
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(single_batch)
 
             // We've written the exeuction request
             auto expected_msg = create_message(0, {0x02, 0x05, 0x09});
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
             // We've read the results
             proc.num_calls()
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(multiple_batches)
 
             // We've written the exeuction request
             auto expected_msg = create_message(0, {0x02, 0x05, 0x09});
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
 
             // We've read the results
             proc.num_calls()

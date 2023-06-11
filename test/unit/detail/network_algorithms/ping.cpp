@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE(success)
 
             // Verify the message we sent
             std::uint8_t expected_message[] = {0x01, 0x00, 0x00, 0x00, 0x0e};
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(conn.stream().bytes_written(), expected_message);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected_message);
         }
     }
 }

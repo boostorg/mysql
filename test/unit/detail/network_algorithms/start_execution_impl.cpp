@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(success)
 
             // We've written the request message
             auto expected_msg = create_message(0, {0x02, 0x05, 0x09});
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), expected_msg);
             BOOST_TEST(chan.shared_sequence_number() == 42u);  // unused
 
             // We've read the response

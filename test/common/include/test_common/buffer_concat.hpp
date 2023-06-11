@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_BUFFER_CONCAT_HPP
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_BUFFER_CONCAT_HPP
 
+#include <boost/core/span.hpp>
+
 #include <cstdint>
 #include <cstring>
 #include <vector>
@@ -29,37 +31,31 @@ inline void concat(std::vector<std::uint8_t>& lhs, const std::vector<uint8_t>& r
 }
 
 inline std::vector<std::uint8_t> concat_copy(
-    std::vector<uint8_t> lhs,
-    const std::vector<uint8_t>& rhs
+    std::vector<std::uint8_t> lhs,
+    const std::vector<std::uint8_t>& rhs
 )
 {
     concat(lhs, rhs);
     return lhs;
 }
 
-inline std::vector<std::uint8_t> concat_copy(
-    std::vector<uint8_t> lhs,
-    const std::vector<uint8_t>& rhs,
-    const std::vector<uint8_t>& rhs2
-)
+class buffer_builder
 {
-    concat(lhs, rhs);
-    concat(lhs, rhs2);
-    return lhs;
-}
+    std::vector<std::uint8_t> buff_;
 
-inline std::vector<std::uint8_t> concat_copy(
-    std::vector<uint8_t> lhs,
-    const std::vector<uint8_t>& rhs,
-    const std::vector<uint8_t>& rhs2,
-    const std::vector<uint8_t>& rhs3
-)
-{
-    concat(lhs, rhs);
-    concat(lhs, rhs2);
-    concat(lhs, rhs3);
-    return lhs;
-}
+public:
+    buffer_builder() = default;
+    buffer_builder& add(span<const std::uint8_t> value)
+    {
+        concat(buff_, value.data(), value.size());
+        return *this;
+    }
+    buffer_builder& add(const std::vector<std::uint8_t>& value)
+    {
+        return add(span<const std::uint8_t>(value));
+    }
+    std::vector<std::uint8_t> build() { return std::move(buff_); }
+};
 
 }  // namespace test
 }  // namespace mysql

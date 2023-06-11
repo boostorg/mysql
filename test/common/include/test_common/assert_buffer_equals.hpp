@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_ASSERT_BUFFER_EQUALS_HPP
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_ASSERT_BUFFER_EQUALS_HPP
 
-#include <boost/asio/buffer.hpp>
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstring>
@@ -20,7 +20,7 @@ namespace test {
 
 struct buffer_printer
 {
-    boost::asio::const_buffer buff;
+    span<const std::uint8_t> buff;
 };
 
 inline std::ostream& operator<<(std::ostream& os, buffer_printer buff)
@@ -28,13 +28,12 @@ inline std::ostream& operator<<(std::ostream& os, buffer_printer buff)
     os << std::setfill('0') << std::hex << "{ ";
     for (std::size_t i = 0; i < buff.buff.size(); ++i)
     {
-        os << "0x" << std::setw(2)
-           << static_cast<int>(static_cast<const std::uint8_t*>(buff.buff.data())[i]) << ", ";
+        os << "0x" << std::setw(2) << static_cast<int>(buff.buff.data()[i]) << ", ";
     }
     return os << "}";
 }
 
-inline bool buffer_equals(boost::asio::const_buffer b1, boost::asio::const_buffer b2) noexcept
+inline bool buffer_equals(span<const std::uint8_t> b1, span<const std::uint8_t> b2) noexcept
 {
     // If any of the buffers are empty (data() == nullptr), prevent
     // calling memcmp (UB)
@@ -57,8 +56,5 @@ inline bool buffer_equals(boost::asio::const_buffer b1, boost::asio::const_buffe
         #b1 " != " #b2 ": \nlhs: " << ::boost::mysql::test::buffer_printer{b1}              \
                                    << "\nrhs: " << ::boost::mysql::test::buffer_printer{b2} \
     )
-
-#define BOOST_MYSQL_ASSERT_BLOB_EQUALS(b1, b2) \
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(::boost::asio::buffer(b1), ::boost::asio::buffer(b2))
 
 #endif

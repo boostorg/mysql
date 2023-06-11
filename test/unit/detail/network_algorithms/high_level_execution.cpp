@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(success)
             fns.execute(chan, "SELECT 1", get_iface(result)).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), select_1_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), select_1_msg);
 
             // Verify the results
             BOOST_TEST_REQUIRE(result.size() == 1u);
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE(success)
             fns.execute(chan, stmt.bind("test", nullptr), get_iface(result)).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
 
             // Verify the results
             BOOST_TEST_REQUIRE(result.size() == 1u);
@@ -252,7 +252,7 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_rvalues)
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
         BOOST_TEST(result.info() == "1st");
     });
 }
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
         BOOST_TEST(result.info() == "1st");
     });
 }
@@ -321,7 +321,7 @@ BOOST_AUTO_TEST_CASE(success)
                 .validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
 
             // Verify the results
             BOOST_TEST_REQUIRE(result.size() == 1u);
@@ -392,7 +392,7 @@ BOOST_AUTO_TEST_CASE(success)
             fns.start_query(chan, "SELECT 1", get_iface(st)).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), select_1_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), select_1_msg);
 
             // Verify the results
             BOOST_TEST(get_iface(st).encoding() == resultset_encoding::text);
@@ -461,7 +461,7 @@ BOOST_AUTO_TEST_CASE(success)
             fns.start_execution(chan, stmt.bind("test", nullptr), get_iface(st)).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
 
             // Verify the results
             BOOST_TEST(get_iface(st).encoding() == resultset_encoding::binary);
@@ -511,7 +511,7 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_rvalues)
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
         BOOST_TEST(st.info() == "1st");
     });
 }
@@ -535,7 +535,7 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
         BOOST_TEST(st.info() == "1st");
     });
 }
@@ -580,7 +580,7 @@ BOOST_AUTO_TEST_CASE(success)
                 .validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
 
             // Verify the results
             BOOST_TEST(get_iface(st).encoding() == resultset_encoding::binary);

@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(success)
             fns.close_statement(fix.conn, fix.stmt).validate_no_error();
 
             // Verify the message we sent
-            BOOST_MYSQL_ASSERT_BLOB_EQUALS(fix.conn.stream().bytes_written(), expected_message);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.conn.stream().bytes_written(), expected_message);
         }
     }
 }
@@ -96,7 +96,7 @@ BOOST_AUTO_TEST_CASE(statement_handle)
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(fix.conn.stream().bytes_written(), expected_message);
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.conn.stream().bytes_written(), expected_message);
     });
 }
 #endif

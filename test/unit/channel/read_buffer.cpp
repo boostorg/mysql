@@ -101,9 +101,9 @@ static void check_buffer(
         buff.size() - free_offset
     );
 
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(buff.reserved_area(), reserved);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(buff.current_message(), current_message);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(buff.pending_area(), pending);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.reserved_area(), reserved);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.current_message(), current_message);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff.pending_area(), pending);
 }
 
 static void check_empty_buffer(read_buffer& buff)

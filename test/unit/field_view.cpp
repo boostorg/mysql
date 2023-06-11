@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(from_blob_view)
 {
     std::uint8_t buff[] = {0x00, 0x01, 0x02};
     field_view v{blob_view(buff)};
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(v.as_blob(), buff);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.as_blob(), buff);
 }
 
 BOOST_AUTO_TEST_CASE(from_float)
@@ -331,8 +331,8 @@ BOOST_AUTO_TEST_CASE(blob_)
 {
     std::uint8_t buff[] = {0x00, 0x0f, 0x01};
     field_view f{blob_view(buff)};
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.as_blob(), buff);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(f.get_blob(), buff);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f.as_blob(), buff);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(f.get_blob(), buff);
 }
 
 BOOST_AUTO_TEST_CASE(float_)
@@ -402,8 +402,8 @@ BOOST_AUTO_TEST_CASE(ref_blob)
     std::uint8_t buff[] = {0x00, 0x01, 0x02};
     field f{blob(std::begin(buff), std::end(buff))};
     field_view fv(f);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(fv.as_blob(), buff);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(fv.get_blob(), buff);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fv.as_blob(), buff);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fv.get_blob(), buff);
 }
 
 BOOST_AUTO_TEST_CASE(ref_float)

@@ -1479,7 +1479,7 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_impl_success)
 
     // Actual value
     BOOST_TEST(actual.server == db_flavor::mysql);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(actual.auth_plugin_data.to_span(), auth_plugin_data);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(actual.auth_plugin_data.to_span(), auth_plugin_data);
     BOOST_TEST(actual.server_capabilities == capabilities(caps));
     BOOST_TEST(actual.auth_plugin_name == "mysql_native_password");
 
@@ -1755,7 +1755,7 @@ BOOST_AUTO_TEST_CASE(deserialize_auth_switch_success)
 
     // Actual value
     BOOST_TEST(actual.plugin_name == "mysql_native_password");
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(actual.auth_data, auth_data);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(actual.auth_data, auth_data);
 
     // TODO: error in plugin_name, extra bytes (?)
     // TODO: edge case where plugin data is empty or doesn't end in a 0
@@ -1776,7 +1776,7 @@ BOOST_AUTO_TEST_CASE(deserialize_handshake_server_response_more_data)
 
     // Actual value
     BOOST_TEST_REQUIRE(response.type == handhake_server_response::type_t::auth_more_data);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(response.data.more_data, auth_data);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(response.data.more_data, auth_data);
 }
 // TODO: ok packet
 // TODO: ok follows

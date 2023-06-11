@@ -54,7 +54,7 @@ public:
     span<const std::uint8_t> check_message(const std::vector<std::uint8_t>& contents)
     {
         span<const std::uint8_t> msg(buff_.current_message_first() - contents.size(), contents.size());
-        BOOST_MYSQL_ASSERT_BLOB_EQUALS(msg, contents);
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, contents);
         return msg;
     }
     void check_buffer_stability() { BOOST_TEST(buff_.first() == buffer_first_); }
@@ -206,7 +206,7 @@ BOOST_AUTO_TEST_CASE(two_messages_one_after_another)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st message still valid
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(first_msg, first_msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(first_msg, first_msg_body);
 
     // Buffer did not reallocate
     fixture.check_buffer_stability();
@@ -238,7 +238,7 @@ BOOST_AUTO_TEST_CASE(two_messages_at_once)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st message still valid
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(first_msg, first_msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(first_msg, first_msg_body);
 
     // Buffer did not reallocate
     fixture.check_buffer_stability();
@@ -289,8 +289,8 @@ BOOST_AUTO_TEST_CASE(three_messages_last_fragmented)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // 1st and 2nd messages still valid
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(first_msg, first_msg_body);
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(second_msg, second_msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(first_msg, first_msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(second_msg, second_msg_body);
 
     // Buffer did not reallocate
     fixture.check_buffer_stability();
@@ -369,7 +369,7 @@ BOOST_AUTO_TEST_CASE(two_frame_message_with_reserved_area)
     BOOST_TEST(!res.message.has_seqnum_mismatch);
 
     // msg 1 still valid
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(first_msg, first_msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(first_msg, first_msg_body);
 
     // buffer did not reallocate
     fixture.check_buffer_stability();

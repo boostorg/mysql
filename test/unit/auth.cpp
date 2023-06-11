@@ -43,7 +43,7 @@ BOOST_FIXTURE_TEST_CASE(non_empty_password_ssl_false, mysql_native_password)
 {
     auto err = compute_auth_response("mysql_native_password", "root", challenge, false, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, expected);
     BOOST_TEST(resp.plugin_name == "mysql_native_password");
 }
 
@@ -51,7 +51,7 @@ BOOST_FIXTURE_TEST_CASE(non_empty_password_ssl_true, mysql_native_password)
 {
     auto err = compute_auth_response("mysql_native_password", "root", challenge, true, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, expected);
     BOOST_TEST(resp.plugin_name == "mysql_native_password");
 }
 
@@ -59,7 +59,7 @@ BOOST_FIXTURE_TEST_CASE(empty_password_ssl_false, mysql_native_password)
 {
     auto err = compute_auth_response("mysql_native_password", "", challenge, false, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, std::vector<std::uint8_t>());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, std::vector<std::uint8_t>());
     BOOST_TEST(resp.plugin_name == "mysql_native_password");
 }
 
@@ -67,7 +67,7 @@ BOOST_FIXTURE_TEST_CASE(empty_password_ssl_true, mysql_native_password)
 {
     auto err = compute_auth_response("mysql_native_password", "", challenge, false, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, std::vector<std::uint8_t>());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, std::vector<std::uint8_t>());
     BOOST_TEST(resp.plugin_name == "mysql_native_password");
 }
 
@@ -108,7 +108,7 @@ BOOST_FIXTURE_TEST_CASE(non_empty_password_challenge_auth_ssl_false, caching_sha
 {
     auto err = compute_auth_response("caching_sha2_password", "hola", challenge, false, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, expected);
     BOOST_TEST(resp.plugin_name == "caching_sha2_password");
 }
 
@@ -116,7 +116,7 @@ BOOST_FIXTURE_TEST_CASE(non_empty_password_challenge_auth_ssl_true, caching_sha2
 {
     auto err = compute_auth_response("caching_sha2_password", "hola", challenge, true, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, expected);
     BOOST_TEST(resp.plugin_name == "caching_sha2_password");
 }
 
@@ -131,7 +131,7 @@ BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_true, caching_sha2
     std::uint8_t expected[] = {'h', 'o', 'l', 'a', '\0'};
     auto err = compute_auth_response("caching_sha2_password", "hola", cleartext_challenge, true, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, expected);
     BOOST_TEST(resp.plugin_name == "caching_sha2_password");
 }
 
@@ -139,7 +139,7 @@ BOOST_FIXTURE_TEST_CASE(empty_password_challenge_auth_ssl_false, caching_sha2_pa
 {
     auto err = compute_auth_response("caching_sha2_password", "", challenge, false, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, std::vector<std::uint8_t>());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, std::vector<std::uint8_t>());
     BOOST_TEST(resp.plugin_name == "caching_sha2_password");
 }
 
@@ -147,7 +147,7 @@ BOOST_FIXTURE_TEST_CASE(empty_password_challenge_auth_ssl_true, caching_sha2_pas
 {
     auto err = compute_auth_response("caching_sha2_password", "", challenge, true, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, std::vector<std::uint8_t>());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, std::vector<std::uint8_t>());
     BOOST_TEST(resp.plugin_name == "caching_sha2_password");
 }
 
@@ -155,7 +155,7 @@ BOOST_FIXTURE_TEST_CASE(empty_password_cleartext_auth_ssl_false, caching_sha2_pa
 {
     auto err = compute_auth_response("caching_sha2_password", "", cleartext_challenge, false, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, std::vector<std::uint8_t>());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, std::vector<std::uint8_t>());
     BOOST_TEST(resp.plugin_name == "caching_sha2_password");
 }
 
@@ -163,7 +163,7 @@ BOOST_FIXTURE_TEST_CASE(empty_password_cleartext_auth_ssl_true, caching_sha2_pas
 {
     auto err = compute_auth_response("caching_sha2_password", "", cleartext_challenge, true, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BLOB_EQUALS(resp.data, std::vector<std::uint8_t>());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, std::vector<std::uint8_t>());
     BOOST_TEST(resp.plugin_name == "caching_sha2_password");
 }
 
