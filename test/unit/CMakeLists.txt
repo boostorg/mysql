@@ -21,7 +21,7 @@ add_executable(
     channel/read_buffer.cpp
     channel/message_parser.cpp
     # detail/channel/message_reader.cpp
-    # detail/channel/message_writer_processor.cpp
+    channel/message_writer_processor.cpp
     # detail/channel/message_writer.cpp
     # detail/auxiliar/rows_iterator.cpp
     # detail/auxiliar/execution_request.cpp

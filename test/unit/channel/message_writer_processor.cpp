@@ -5,30 +5,27 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/channel/message_writer_processor.hpp>
+#include "channel/message_writer_processor.hpp"
 
-#include <boost/asio/buffer.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 
-#include "assert_buffer_equals.hpp"
-#include "buffer_concat.hpp"
-#include "creation/create_message.hpp"
+#include "test_common/assert_buffer_equals.hpp"
+#include "test_common/buffer_concat.hpp"
+#include "test_unit/create_frame.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
-using boost::asio::buffer;
-using boost::asio::const_buffer;
+using boost::span;
 
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_message_writer_processor)
 
-void copy(boost::span<const std::uint8_t> from, boost::asio::mutable_buffer to)
+void copy(span<const std::uint8_t> from, span<std::uint8_t> to)
 {
     BOOST_TEST_REQUIRE(from.size() == to.size());
     std::memcpy(to.data(), from.data(), from.size());
@@ -120,8 +117,8 @@ BOOST_AUTO_TEST_CASE(regular_message)
 
     // First (and only) chunk
     auto chunk = processor.next_chunk();
-    auto expected = create_message(2, msg_body);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    auto expected = create_frame(2, msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
     processor.on_bytes_written(7);
@@ -145,8 +142,8 @@ BOOST_AUTO_TEST_CASE(short_writes)
 
     // First chunk
     auto chunk = processor.next_chunk();
-    auto expected = create_message(2, msg_body);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    auto expected = create_frame(2, msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // Write signals partial write
     processor.on_bytes_written(3);
@@ -155,7 +152,7 @@ BOOST_AUTO_TEST_CASE(short_writes)
 
     // Remaining of the chunk
     chunk = processor.next_chunk();
-    auto expected_buff = const_buffer(expected.data() + 3, 7);
+    span<const std::uint8_t> expected_buff(expected.data() + 3, 7);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected_buff);
 
     // Another partial write
@@ -165,7 +162,7 @@ BOOST_AUTO_TEST_CASE(short_writes)
 
     // Remaining of the chunk
     chunk = processor.next_chunk();
-    expected_buff = const_buffer(expected.data() + 5, 5);
+    expected_buff = span<const std::uint8_t>(expected.data() + 5, 5);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected_buff);
 
     // Zero bytes partial writes work correctly
@@ -175,7 +172,7 @@ BOOST_AUTO_TEST_CASE(short_writes)
 
     // Remaining of the chunk
     chunk = processor.next_chunk();
-    expected_buff = const_buffer(expected.data() + 5, 5);
+    expected_buff = span<const std::uint8_t>(expected.data() + 5, 5);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected_buff);
 
     // Final bytes
@@ -196,8 +193,8 @@ BOOST_AUTO_TEST_CASE(empty_message)
 
     // Chunk should only contain the header
     auto chunk = processor.next_chunk();
-    auto expected = create_message(2, {});
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    auto expected = create_frame(2, span<const std::uint8_t>{});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
     processor.on_bytes_written(4);
@@ -221,8 +218,8 @@ BOOST_AUTO_TEST_CASE(message_with_max_frame_size_length)
 
     // Chunk
     auto chunk = processor.next_chunk();
-    auto expected = create_message(2, msg_body);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    auto expected = create_frame(2, msg_body);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
     processor.on_bytes_written(12);
@@ -230,8 +227,8 @@ BOOST_AUTO_TEST_CASE(message_with_max_frame_size_length)
 
     // Next chunk is an empty frame
     chunk = processor.next_chunk();
-    expected = create_message(3, {});
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    expected = create_frame(3, span<const std::uint8_t>{});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
     processor.on_bytes_written(4);
@@ -245,7 +242,7 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
     std::vector<std::uint8_t> msg_frame_1{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
     std::vector<std::uint8_t> msg_frame_2{0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18};
     std::vector<std::uint8_t> msg_frame_3{0x21};
-    auto msg = concat_copy(msg_frame_1, msg_frame_2, msg_frame_3);
+    auto msg = buffer_builder().add(msg_frame_1).add(msg_frame_2).add(msg_frame_3).build();
     std::uint8_t seqnum = 2;
 
     // Operation start
@@ -258,8 +255,8 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
 
     // Chunk 1
     auto chunk = processor.next_chunk();
-    auto expected = create_message(2, msg_frame_1);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    auto expected = create_frame(2, msg_frame_1);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful 1 (short write)
     processor.on_bytes_written(4);
@@ -267,7 +264,7 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
 
     // Rest of chunk 1
     chunk = processor.next_chunk();
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, const_buffer(expected.data() + 4, 8));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, span<const std::uint8_t>(expected.data() + 4, 8));
 
     // On write rest of chunk 1
     processor.on_bytes_written(8);
@@ -275,8 +272,8 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
 
     // Chunk 2
     chunk = processor.next_chunk();
-    expected = create_message(3, msg_frame_2);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    expected = create_frame(3, msg_frame_2);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful 2
     processor.on_bytes_written(12);
@@ -284,8 +281,8 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
 
     // Chunk 3
     chunk = processor.next_chunk();
-    expected = create_message(4, msg_frame_3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    expected = create_frame(4, msg_frame_3);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
     processor.on_bytes_written(5);
@@ -311,8 +308,8 @@ BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
 
     // Chunk 1
     auto chunk = processor.next_chunk();
-    auto expected = create_message(2, msg_frame_1);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    auto expected = create_frame(2, msg_frame_1);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful 1
     processor.on_bytes_written(12);
@@ -320,8 +317,8 @@ BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
 
     // Chunk 2
     chunk = processor.next_chunk();
-    expected = create_message(3, msg_frame_2);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    expected = create_frame(3, msg_frame_2);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful 2
     processor.on_bytes_written(12);
@@ -329,8 +326,8 @@ BOOST_AUTO_TEST_CASE(multiframe_message_with_max_frame_size)
 
     // Chunk 3 (empty)
     chunk = processor.next_chunk();
-    expected = create_message(4, {});
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    expected = create_frame(4, span<const std::uint8_t>{});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
     processor.on_bytes_written(4);
@@ -354,8 +351,8 @@ BOOST_AUTO_TEST_CASE(seqnum_overflow)
 
     // Prepare chunk
     auto chunk = processor.next_chunk();
-    auto expected = create_message(0xff, msg);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    auto expected = create_frame(0xff, msg);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful
     processor.on_bytes_written(6);
@@ -381,8 +378,8 @@ BOOST_AUTO_TEST_CASE(several_messages)
 
     // Chunk 1
     auto chunk = processor.next_chunk();
-    auto expected = create_message(2, msg_1);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    auto expected = create_frame(2, msg_1);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful message 1
     processor.on_bytes_written(7);
@@ -397,8 +394,8 @@ BOOST_AUTO_TEST_CASE(several_messages)
 
     // Chunk 2
     chunk = processor.next_chunk();
-    expected = create_message(42, msg_2);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    expected = create_frame(42, msg_2);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful message 2
     processor.on_bytes_written(9);
@@ -413,8 +410,8 @@ BOOST_AUTO_TEST_CASE(several_messages)
 
     // Chunk 3
     chunk = processor.next_chunk();
-    expected = create_message(21, msg_3);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, buffer(expected));
+    expected = create_frame(21, msg_3);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chunk, expected);
 
     // On write successful message 3
     processor.on_bytes_written(6);
