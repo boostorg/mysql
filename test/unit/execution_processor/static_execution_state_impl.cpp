@@ -12,29 +12,27 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/core/span.hpp>
-#include <boost/describe/class.hpp>
-#include <boost/describe/operators.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 
-#include "check_meta.hpp"
-#include "creation/create_message_struct.hpp"
-#include "creation/create_meta.hpp"
-#include "creation/create_row_message.hpp"
-#include "creation/create_static_execution_state.hpp"
 #include "execution_processor_helpers.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "static_execution_processor_helpers.hpp"
+#include "test_common/check_meta.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/printing.hpp"
+#include "test_unit/create_execution_processor.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_row_message.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -93,15 +91,15 @@ struct fixture
 BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 {
     // Initial. Verify that we clear any previous result
-    auto stp = static_exec_builder<row1>()
-                   .reset(resultset_encoding::binary)
-                   .meta({
-                       meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build(),
-                       meta_builder().type(column_type::text).name("fvarchar").nullable(false).build(),
-                   })
-                   .ok(ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("abc").build())
-                   .build();
+    static_execution_state_impl<row1> stp;
     auto& st = stp.get_interface();
+    exec_access(st)
+        .reset(resultset_encoding::binary)
+        .meta({
+            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build_coldef(),
+            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build_coldef(),
+        })
+        .ok(ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("abc").build());
 
     // Reset
     st.reset(resultset_encoding::text, metadata_mode::full);
@@ -124,14 +122,15 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 
     // Rows
     row1 storage[2]{};
-    rowbuff r1{10, "abc"}, r2{20, "cdef"};
+    auto r1 = create_text_row_body(10, "abc");
+    auto r2 = create_text_row_body(20, "cdef");
 
-    err = st.on_row(r1.ctx(), create_ref<row1, row1>(span<row1>(storage), 0), fields);
+    err = st.on_row(r1, create_ref<row1, row1>(span<row1>(storage), 0), fields);
     BOOST_TEST(err == error_code());
     BOOST_TEST((storage[0] == row1{"abc", 10}));
     BOOST_TEST(storage[1] == row1{});
 
-    err = st.on_row(r2.ctx(), create_ref<row1, row1>(span<row1>(storage), 1), fields);
+    err = st.on_row(r2, create_ref<row1, row1>(span<row1>(storage), 1), fields);
     BOOST_TEST(err == error_code());
     BOOST_TEST((storage[0] == row1{"abc", 10}));
     BOOST_TEST((storage[1] == row1{"cdef", 20}));
@@ -159,11 +158,9 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 {
     // Resultset r1 (rows are not stored anyhow in execution states)
-    auto stp = static_exec_builder<row1, row2>()
-                   .reset(resultset_encoding::text)
-                   .meta(create_meta_r1())
-                   .build();
+    static_execution_state_impl<row1, row2> stp;
     auto& st = stp.get_interface();
+    exec_access(st).reset(resultset_encoding::text).meta(create_meta_r1());
 
     // OK packet indicates more results
     auto err = st.on_row_ok_packet(create_ok_r1(true));
@@ -183,9 +180,9 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     check_meta_r2(st.meta());
 
     // Rows
-    rowbuff r1{90u};
+    auto r1 = create_text_row_body(90u);
     row2 storage[2]{};
-    err = st.on_row(r1.ctx(), create_ref<row1, row2>(span<row2>(storage), 0), fields);
+    err = st.on_row(r1, create_ref<row1, row2>(span<row2>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
@@ -222,15 +219,16 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
     check_meta_r2(st.meta());
 
     // Rows
-    rowbuff r1{90u}, r2{100u};
+    auto r1 = create_text_row_body(90u);
+    auto r2 = create_text_row_body(100u);
     row2 storage[2]{};
-    err = st.on_row(r1.ctx(), create_ref<empty, row2>(span<row2>(storage), 0), fields);
+    err = st.on_row(r1, create_ref<empty, row2>(span<row2>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
     BOOST_TEST(storage[1] == row2{});
 
-    err = st.on_row(r2.ctx(), create_ref<empty, row2>(span<row2>(storage), 1), fields);
+    err = st.on_row(r2, create_ref<empty, row2>(span<row2>(storage), 1), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(storage[0] == row2{90u});
@@ -247,11 +245,9 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
 {
     // Resultset r1
-    auto stp = static_exec_builder<row1, empty>()
-                   .reset(resultset_encoding::text)
-                   .meta(create_meta_r1())
-                   .build();
+    static_execution_state_impl<row1, empty> stp;
     auto& st = stp.get_interface();
+    exec_access(st).reset(resultset_encoding::text).meta(create_meta_r1());
 
     // OK packet indicates more results
     auto err = st.on_row_ok_packet(create_ok_r1(true));
@@ -291,8 +287,9 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 {
     // First resultset
-    auto stp = static_exec_builder<empty, empty, row3>().ok(create_ok_r1(true)).build();
+    static_execution_state_impl<empty, empty, row3> stp;
     auto& st = stp.get_interface();
+    add_ok(st, create_ok_r1(true));
 
     // OK packet for second resultset indicates more results
     auto err = st.on_head_ok_packet(create_ok_r2(true), diag);
@@ -320,9 +317,9 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     check_meta_r3(st.meta());
 
     // Rows
-    rowbuff r1{4.2f, 90.0, 9};
+    auto r1 = create_text_row_body(4.2f, 90.0, 9);
     row3 storage[1]{};
-    err = st.on_row(r1.ctx(), create_ref<empty, empty, row3>(span<row3>(storage), 0), fields);
+    err = st.on_row(r1, create_ref<empty, empty, row3>(span<row3>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
@@ -338,8 +335,9 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
 {
     // First resultset
-    auto stp = static_exec_builder<row1, empty, row3>().meta(create_meta_r1()).ok(create_ok_r1(true)).build();
+    static_execution_state_impl<row1, empty, row3> stp;
     auto& st = stp.get_interface();
+    exec_access(st).meta(create_meta_r1()).ok(create_ok_r1(true));
 
     // OK packet indicates more results
     auto err = st.on_head_ok_packet(create_ok_r2(true), diag);
@@ -365,9 +363,9 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
     check_meta_r3(st.meta());
 
     // Rows
-    rowbuff r1{4.2f, 90.0, 9};
+    auto r1 = create_text_row_body(4.2f, 90.0, 9);
     row3 storage[1]{};
-    err = st.on_row(r1.ctx(), create_ref<row1, empty, row3>(span<row3>(storage), 0), fields);
+    err = st.on_row(r1, create_ref<row1, empty, row3>(span<row3>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
 
@@ -396,8 +394,9 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip_head_ok, fixture)
 
 BOOST_FIXTURE_TEST_CASE(info_string_ownserhip_row_ok, fixture)
 {
-    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    static_execution_state_impl<row1> stp;
     auto& st = stp.get_interface();
+    add_meta(st, create_meta_r1());
 
     // OK packet received, doesn't own the string
     std::string info = "Some info";
@@ -412,17 +411,14 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip_row_ok, fixture)
 BOOST_FIXTURE_TEST_CASE(repeated_row_types, fixture)
 {
     // Ready to read rows
-    auto stp = static_exec_builder<row1, row1>()
-                   .meta(create_meta_r1())
-                   .ok(create_ok_r1(true))
-                   .meta(create_meta_r1())
-                   .build();
+    static_execution_state_impl<row1, row1> stp;
     auto& st = stp.get_interface();
+    exec_access(st).meta(create_meta_r1()).ok(create_ok_r1(true)).meta(create_meta_r1());
 
     // Rows use type index 0, since they're the same type as resultset one's rows
-    rowbuff r1{10, "abc"};
+    auto r1 = create_text_row_body(10, "abc");
     row1 storage[1]{};
-    auto err = st.on_row(r1.ctx(), create_ref<row1, row1>(span<row1>(storage), 0), fields);
+    auto err = st.on_row(r1, create_ref<row1, row1>(span<row1>(storage), 0), fields);
     throw_on_error(err, diag);
     BOOST_TEST((storage[0] == row1{"abc", 10}));
 }
@@ -430,15 +426,17 @@ BOOST_FIXTURE_TEST_CASE(repeated_row_types, fixture)
 // Verify that we clear the fields before adding new ones
 BOOST_FIXTURE_TEST_CASE(storage_reuse, fixture)
 {
-    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    static_execution_state_impl<row1> stp;
     auto& st = stp.get_interface();
+    add_meta(st, create_meta_r1());
 
     // Rows
-    rowbuff r1{42, "abc"}, r2{43, "def"};
+    auto r1 = create_text_row_body(42, "abc");
+    auto r2 = create_text_row_body(43, "def");
     row1 storage[2]{};
-    auto err = st.on_row(r1.ctx(), create_ref<row1>(span<row1>(storage), 0), fields);
+    auto err = st.on_row(r1, create_ref<row1>(span<row1>(storage), 0), fields);
     throw_on_error(err, diag);
-    err = st.on_row(r2.ctx(), create_ref<row1>(span<row1>(storage), 1), fields);
+    err = st.on_row(r2, create_ref<row1>(span<row1>(storage), 1), fields);
     throw_on_error(err, diag);
 
     // Verify results
@@ -454,7 +452,7 @@ BOOST_FIXTURE_TEST_CASE(error_meta_mismatch, fixture)
 
     st.on_num_meta(1);
     auto err = st.on_meta(
-        meta_builder().type(column_type::bigint).name("fvarchar").nullable(false).build(),
+        meta_builder().type(column_type::bigint).name("fvarchar").nullable(false).build_coldef(),
         diag
     );
 
@@ -480,35 +478,38 @@ BOOST_FIXTURE_TEST_CASE(error_meta_mismatch_head, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
 {
-    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    static_execution_state_impl<row1> stp;
     auto& st = stp.get_interface();
-    rowbuff bad_row{42, "abc"};
-    bad_row.data().push_back(0xff);
+    add_meta(st, create_meta_r1());
+    auto bad_row = create_text_row_body(42, "abc");
+    bad_row.push_back(0xff);
 
     row1 storage[1]{};
-    auto err = st.on_row(bad_row.ctx(), create_ref<row1>(span<row1>(storage), 0), fields);
+    auto err = st.on_row(bad_row, create_ref<row1>(span<row1>(storage), 0), fields);
     BOOST_TEST(err == client_errc::extra_bytes);
 }
 
 BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
 {
-    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    static_execution_state_impl<row1> stp;
     auto& st = stp.get_interface();
-    rowbuff bad_row{nullptr, "abc"};  // should not be NULL
+    add_meta(st, create_meta_r1());
+    auto bad_row = create_text_row_body(nullptr, "abc");  // should not be NULL
 
     row1 storage[1]{};
-    auto err = st.on_row(bad_row.ctx(), create_ref<row1>(span<row1>(storage), 0), fields);
+    auto err = st.on_row(bad_row, create_ref<row1>(span<row1>(storage), 0), fields);
     BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
 BOOST_FIXTURE_TEST_CASE(error_type_index_mismatch, fixture)
 {
-    auto stp = static_exec_builder<row1, row2>().meta(create_meta_r1()).build();
+    static_execution_state_impl<row1, row2> stp;
     auto& st = stp.get_interface();
-    rowbuff r1{42, "abc"};
+    add_meta(st, create_meta_r1());
+    auto r1 = create_text_row_body(42, "abc");
 
     row2 storage[1]{};
-    auto err = st.on_row(r1.ctx(), create_ref<row1, row2>(span<row2>(storage), 0), fields);
+    auto err = st.on_row(r1, create_ref<row1, row2>(span<row2>(storage), 0), fields);
     BOOST_TEST(err == client_errc::row_type_mismatch);
 }
 
@@ -532,8 +533,9 @@ BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_empty, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_data, fixture)
 {
-    auto stp = static_exec_builder<row1, row2>().meta(create_meta_r1()).build();
+    static_execution_state_impl<row1, row2> stp;
     auto& st = stp.get_interface();
+    add_meta(st, create_meta_r1());
 
     auto err = st.on_row_ok_packet(create_ok_r1());
     BOOST_TEST(err == client_errc::num_resultsets_mismatch);
@@ -541,8 +543,9 @@ BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_data, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_data, fixture)
 {
-    auto stp = static_exec_builder<row1>().meta(create_meta_r1()).build();
+    static_execution_state_impl<row1> stp;
     auto& st = stp.get_interface();
+    add_meta(st, create_meta_r1());
 
     auto err = st.on_row_ok_packet(create_ok_r1(true));
     BOOST_TEST(err == client_errc::num_resultsets_mismatch);
@@ -576,10 +579,10 @@ struct ctor_assign_fixture
         add_meta(st, create_meta_r3());
         check_meta_r3(st.meta());
 
-        rowbuff r1{4.2f, 90.0, 9};
+        auto r1 = create_text_row_body(4.2f, 90.0, 9);
         row3 storage[1]{};
         std::vector<field_view> fields;
-        auto err = st.on_row(r1.ctx(), create_ref<row1, row3>(span<row3>(storage), 0), fields);
+        auto err = st.on_row(r1, create_ref<row1, row3>(span<row3>(storage), 0), fields);
         BOOST_TEST(err == error_code());
         BOOST_TEST((storage[0] == row3{90.0, 9, 4.2f}));
     }
@@ -612,8 +615,8 @@ BOOST_FIXTURE_TEST_CASE(copy_assignment, ctor_assign_fixture)
     add_meta(
         stp.get_interface(),
         {
-            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build(),
-            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build(),
+            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build_coldef(),
+            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build_coldef(),
         }
     );
 
@@ -632,8 +635,8 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
     add_meta(
         stp.get_interface(),
         {
-            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build(),
-            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build(),
+            meta_builder().type(column_type::smallint).name("ftiny").nullable(false).build_coldef(),
+            meta_builder().type(column_type::text).name("fvarchar").nullable(false).build_coldef(),
         }
     );
 
@@ -657,9 +660,9 @@ BOOST_AUTO_TEST_CASE(tuples)
 
     // Rows r1
     row1_tuple storage_1[2]{};
-    rowbuff r1{10, "abc"};
+    auto r1 = create_text_row_body(10, "abc");
     auto err = st.on_row(
-        r1.ctx(),
+        r1,
         create_ref<row1_tuple, std::tuple<>, row3_tuple>(span<row1_tuple>(storage_1), 0),
         fields
     );
@@ -679,9 +682,9 @@ BOOST_AUTO_TEST_CASE(tuples)
 
     // Rows r3
     row3_tuple storage_3[2]{};
-    rowbuff r3{4.2f, 90.0, 9};
+    auto r3 = create_text_row_body(4.2f, 90.0, 9);
     err = st.on_row(
-        r3.ctx(),
+        r3,
         create_ref<row1_tuple, std::tuple<>, row3_tuple>(span<row3_tuple>(storage_3), 0),
         fields
     );
@@ -704,8 +707,8 @@ BOOST_AUTO_TEST_CASE(field_selection_structs)
 
     // Rows
     row3_selection storage[1]{};
-    rowbuff r1{4.2f, 90.0, 9};
-    auto err = st.on_row(r1.ctx(), create_ref<row3_selection>(span<row3_selection>(storage), 0), fields);
+    auto r1 = create_text_row_body(4.2f, 90.0, 9);
+    auto err = st.on_row(r1, create_ref<row3_selection>(span<row3_selection>(storage), 0), fields);
     throw_on_error(err);
     BOOST_TEST((storage[0] == row3_selection{9, 4.2f}));
 
@@ -725,9 +728,9 @@ BOOST_AUTO_TEST_CASE(field_selection_tuples)
 
     // Rows
     row3_selection_tuple storage[1]{};
-    rowbuff r1{4.2f, 90.0, 9};
+    auto r1 = create_text_row_body(4.2f, 90.0, 9);
     auto err = st.on_row(
-        r1.ctx(),
+        r1,
         create_ref<row3_selection_tuple>(span<row3_selection_tuple>(storage), 0),
         fields
     );
@@ -740,6 +743,8 @@ BOOST_AUTO_TEST_CASE(field_selection_tuples)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// TODO: on_meta_mode_minimal & full tests
 
 }  // namespace
 

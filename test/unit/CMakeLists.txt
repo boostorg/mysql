@@ -25,8 +25,8 @@ add_executable(
     channel/message_writer.cpp
     channel/write_message.cpp
     execution_processor/execution_processor.cpp
-    # detail/execution_processor/execution_state_impl.cpp
-    # detail/execution_processor/static_execution_state_impl.cpp
+    execution_processor/execution_state_impl.cpp
+    execution_processor/static_execution_state_impl.cpp
     # detail/execution_processor/results_impl.cpp
     # detail/execution_processor/static_results_impl.cpp
     # detail/execution_processor/concepts.cpp
