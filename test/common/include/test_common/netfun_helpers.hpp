@@ -14,10 +14,7 @@
 
 #include <boost/mysql/detail/void_t.hpp>
 
-#include <boost/asio/as_tuple.hpp>
-#include <boost/asio/bind_executor.hpp>
-#include <boost/asio/execution/blocking.hpp>
-#include <boost/asio/execution/relationship.hpp>
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/system_error.hpp>
 
@@ -37,13 +34,21 @@ namespace mysql {
 namespace test {
 
 // Completion callback that saves result into a network_result
+// and binds it to an executor
 template <class R>
 class as_network_result
 {
     network_result<R>* netresult_;
+    asio::any_io_executor executor_;
 
 public:
-    as_network_result(network_result<R>& netresult) noexcept { netresult_ = &netresult; }
+    as_network_result(network_result<R>& netresult, asio::any_io_executor exec)
+        : netresult_(&netresult), executor_(exec)
+    {
+    }
+
+    using executor_type = asio::any_io_executor;
+    asio::any_io_executor get_executor() const { return executor_; }
 
     void operator()(error_code ec) const noexcept { netresult_->err = ec; }
 
@@ -53,82 +58,6 @@ public:
         netresult_->err = ec;
         netresult_->value = std::forward<Arg>(arg);
     }
-};
-
-// Executor that tracks calls to post() and dispatch()
-class tracker_executor
-{
-public:
-    struct tracked_values
-    {
-        std::size_t num_posts{};
-        std::size_t num_dispatches{};
-
-        std::size_t total() const noexcept { return num_dispatches + num_posts; }
-    };
-
-    tracker_executor(boost::asio::io_context::executor_type ex, tracked_values* tracked) noexcept
-        : ex_(ex), tracked_(tracked)
-    {
-    }
-
-    tracker_executor(boost::asio::io_context& ctx, tracked_values& tracked) noexcept
-        : tracker_executor(ctx.get_executor(), &tracked)
-    {
-    }
-
-    boost::asio::io_context& context() const noexcept { return ex_.context(); }
-
-    template <class Property>
-    tracker_executor require(
-        Property p,
-        void_t<decltype(std::declval<boost::asio::io_context::executor_type>().require(p))> = {}
-    ) const
-    {
-        return tracker_executor(ex_.require(p), tracked_);
-    }
-
-    template <class Property>
-    tracker_executor prefer(
-        Property p,
-        void_t<decltype(boost::asio::prefer(std::declval<const boost::asio::io_context::executor_type&>(), p)
-        )> = {}
-    ) const
-    {
-        return tracker_executor(boost::asio::prefer(ex_, p), tracked_);
-    }
-
-    // TODO: C++11
-    template <class Property>
-    auto query(Property p) const
-    {
-        return boost::asio::query(ex_, p);
-    }
-
-    template <typename Function>
-    void execute(Function&& f) const
-    {
-        if (asio::query(ex_, asio::execution::relationship) == asio::execution::relationship.continuation &&
-            asio::query(ex_, asio::execution::blocking) == asio::execution::blocking.never)
-        {
-            // This is a post
-            ++tracked_->num_posts;
-        }
-        else
-        {
-            ++tracked_->num_dispatches;
-        }
-        ex_.execute(std::forward<Function>(f));
-    }
-
-    bool operator==(const tracker_executor& rhs) const noexcept
-    {
-        return ex_ == rhs.ex_ && tracked_ == rhs.tracked_;
-    }
-
-private:
-    boost::asio::io_context::executor_type ex_;
-    tracked_values* tracked_;
 };
 
 template <class Fn, class... Args>
@@ -158,9 +87,6 @@ void invoke_and_assign(network_result<void>&, InvokeArgs&&... args)
 {
     invoke_polyfill(std::forward<InvokeArgs>(args)...);
 }
-
-template <class R>
-using bound_callback_token = boost::asio::executor_binder<as_network_result<R>, tracker_executor>;
 
 template <class R>
 network_result<R> create_initial_netresult(bool with_diag = true)
@@ -209,6 +135,18 @@ struct netfun_maker_sync_impl
         };
     }
 };
+
+inline boost::asio::io_context& get_context(boost::asio::any_io_executor ex) noexcept
+{
+    return static_cast<boost::asio::io_context&>(ex.context());
+}
+
+inline void run_until_completion(boost::asio::any_io_executor ex)
+{
+    auto& ctx = get_context(ex);
+    ctx.restart();
+    ctx.run();
+}
 
 }  // namespace test
 }  // namespace mysql

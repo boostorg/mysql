@@ -25,6 +25,7 @@
 
 #include "channel/message_reader.hpp"
 #include "channel/message_writer.hpp"
+#include "channel/write_message.hpp"
 #include "protocol/capabilities.hpp"
 #include "protocol/db_flavor.hpp"
 
@@ -97,13 +98,13 @@ public:
     }
 
     // Writes what has been set up by serialize()
-    void write(error_code& code) { writer_.write(*stream_, code); }
+    void write(error_code& code) { write_message(*stream_, writer_, code); }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_write(CompletionToken&& token)
     {
-        return writer_.async_write(*stream_, std::forward<CompletionToken>(token));
+        return async_write_message(*stream_, writer_, std::forward<CompletionToken>(token));
     }
 
     // Capabilities

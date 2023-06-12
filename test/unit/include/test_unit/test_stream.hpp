@@ -17,6 +17,8 @@
 #include <set>
 #include <vector>
 
+#include "test_common/tracker_executor.hpp"
+
 namespace boost {
 namespace mysql {
 namespace test {
@@ -43,7 +45,7 @@ public:
 class test_stream final : public detail::any_stream
 {
 public:
-    test_stream();
+    test_stream() = default;
 
     // Setters
     test_stream& add_message(const std::vector<std::uint8_t>& bytes);
@@ -65,7 +67,7 @@ public:
     const std::vector<std::uint8_t>& bytes_written() const noexcept { return bytes_written_; }
 
     // Executor
-    executor_type get_executor() override final { return executor_; }
+    executor_type get_executor() override final;
 
     // SSL
     bool supports_ssl() const noexcept override final;
@@ -97,7 +99,7 @@ private:
     std::vector<std::uint8_t> bytes_written_;
     fail_count fail_count_;
     std::size_t write_break_size_{1024};  // max number of bytes to be written in each write_some
-    executor_type executor_;
+    executor_info executor_info_{};
 
     std::size_t get_size_to_read(std::size_t buffer_size) const;
     std::size_t do_read(asio::mutable_buffer buff, error_code& ec);

@@ -11,6 +11,7 @@
 
 #include "er_impl_common.hpp"
 #include "test_common/netfun_helpers.hpp"
+#include "test_common/tracker_executor.hpp"
 #include "test_integration/streams.hpp"
 
 using namespace boost::mysql::test;
@@ -22,7 +23,7 @@ struct async_callback_maker
 {
     static constexpr const char* name() { return "async_callback"; }
 
-    static void verify_tracked(const tracker_executor::tracked_values& v) { BOOST_TEST(v.total() > 0u); }
+    static void verify_exec_info(executor_info v) { BOOST_TEST(v.total() > 0u); }
 
     template <class Signature>
     struct type;
@@ -31,25 +32,22 @@ struct async_callback_maker
     struct type<network_result<R>(Obj&, Args...)>
     {
         using signature = std::function<network_result<R>(Obj&, Args...)>;
-        using async_sig = void (Obj::*)(Args..., diagnostics&, bound_callback_token<R>&&);
+        using async_sig = void (Obj::*)(Args..., diagnostics&, as_network_result<R>&&);
 
         static signature call(async_sig fn)
         {
             return [fn](Obj& obj, Args... args) {
-                tracker_executor::tracked_values tracked_vals;
+                executor_info exec_info{};
                 auto res = create_initial_netresult<R>();
                 invoke_polyfill(
                     fn,
                     obj,
                     std::forward<Args>(args)...,
                     *res.diag,
-                    boost::asio::bind_executor(
-                        tracker_executor(get_context(obj.get_executor()), tracked_vals),
-                        as_network_result<R>(res)
-                    )
+                    as_network_result<R>(res, create_tracker_executor(obj.get_executor(), &exec_info))
                 );
                 run_until_completion(obj.get_executor());
-                verify_tracked(tracked_vals);
+                verify_exec_info(exec_info);
                 return res;
             };
         }

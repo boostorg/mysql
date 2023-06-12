@@ -428,18 +428,6 @@ er_network_variant_impl<Stream> create_async_variant()
 }
 
 // Helpers
-inline boost::asio::io_context& get_context(boost::asio::any_io_executor ex) noexcept
-{
-    return static_cast<boost::asio::io_context&>(ex.context());
-}
-
-inline void run_until_completion(boost::asio::any_io_executor ex)
-{
-    auto& ctx = get_context(ex);
-    ctx.restart();
-    ctx.run();
-}
-
 inline void rethrow_on_failure(std::exception_ptr ptr)
 {
     if (ptr)

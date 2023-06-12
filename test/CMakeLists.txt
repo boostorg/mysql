@@ -20,6 +20,11 @@ target_include_directories(
     INTERFACE
     "common/include"
 )
+target_sources(
+    boost_mysql_testing
+    INTERFACE
+    common/src/tracker_executor.cpp
+)
 
 if (BOOST_MYSQL_USE_FIND_PACKAGE)
     set(_TEST_LIBRARIES
