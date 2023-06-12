@@ -10,7 +10,7 @@
 #include "network_algorithms/close_connection.hpp"
 #include "network_algorithms/close_statement.hpp"
 #include "network_algorithms/connect.hpp"
-#include "network_algorithms/execute_impl.hpp"
+#include "network_algorithms/execute.hpp"
 #include "network_algorithms/handshake.hpp"
 #include "network_algorithms/ping.hpp"
 #include "network_algorithms/prepare_statement.hpp"

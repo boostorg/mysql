@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_SRC_NETWORK_ALGORITHMS_EXECUTE_IMPL_HPP
-#define BOOST_MYSQL_SRC_NETWORK_ALGORITHMS_EXECUTE_IMPL_HPP
+#ifndef BOOST_MYSQL_SRC_NETWORK_ALGORITHMS_EXECUTE_HPP
+#define BOOST_MYSQL_SRC_NETWORK_ALGORITHMS_EXECUTE_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
