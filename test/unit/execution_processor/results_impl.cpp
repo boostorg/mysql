@@ -8,27 +8,26 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/test/unit_test.hpp>
 
-#include "creation/create_message_struct.hpp"
-#include "creation/create_results.hpp"
 #include "execution_processor_helpers.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/printing.hpp"
+#include "test_unit/create_execution_processor.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_ok.hpp"
+#include "test_unit/create_row_message.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -175,20 +174,20 @@ struct fixture
 {
     diagnostics diag;
     std::vector<field_view> fields;
+    results_impl r;
 };
 
 BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 {
     // Initial. Check that we reset any previous state
-    auto r = results_builder()
-                 .meta({protocol_field_type::geometry})
-                 .row(makebv("\0\0"))
-                 .row(makebv("abc"))
-                 .ok(ok_builder().affected_rows(40).info("some_info").more_results(true).build())
-                 .meta({protocol_field_type::var_string, protocol_field_type::int24})
-                 .row("aaaa", 42)
-                 .ok(ok_builder().info("more_info").more_results(true).build())
-                 .build();
+    exec_access(r)
+        .meta({column_type::geometry})
+        .row(makebv("\0\0"))
+        .row(makebv("abc"))
+        .ok(ok_builder().affected_rows(40).info("some_info").more_results(true).build())
+        .meta({column_type::varchar, column_type::mediumint})
+        .row("aaaa", 42)
+        .ok(ok_builder().info("more_info").more_results(true).build());
     r.reset(resultset_encoding::text, metadata_mode::minimal);
     BOOST_TEST(r.is_reading_first());
 
@@ -207,9 +206,9 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
     BOOST_TEST(r.is_reading_rows());
 
     // Rows
-    rowbuff r1{42, "abc"};
+    auto r1 = create_text_row_body(42, "abc");
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref(), fields);
+    err = r.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -231,7 +230,6 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 BOOST_FIXTURE_TEST_CASE(one_resultset_empty, fixture)
 {
     // Initial
-    results_impl r;
     BOOST_TEST(r.is_reading_first());
 
     // End of resultset
@@ -250,7 +248,7 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 {
     // Resultset r1
-    auto r = results_builder().meta(create_meta_r1()).row(42, "abc").row(50, "def").build();
+    exec_access(r).meta(create_meta_r1()).row(42, "abc").row(50, "def");
 
     // OK packet indicates more results
     auto err = r.on_row_ok_packet(create_ok_r1(true));
@@ -266,9 +264,9 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     BOOST_TEST(r.is_reading_rows());
 
     // Row
-    rowbuff r1{70};
+    auto r1 = create_text_row_body(70);
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref(), fields);
+    err = r.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
 
     // OK packet, no more resultsets
@@ -290,8 +288,6 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 
 BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 {
-    results_impl r;
-
     // Empty resultset r1, indicating more results
     auto err = r.on_head_ok_packet(create_ok_r1(true), diag);
     throw_on_error(err, diag);
@@ -307,9 +303,9 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
     BOOST_TEST(r.is_reading_rows());
 
     // Rows
-    rowbuff r1{70};
+    auto r1 = create_text_row_body(70);
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref(), fields);
+    err = r.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(r.is_reading_rows());
 
@@ -335,7 +331,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
 {
     // Resultset r1
-    auto r = results_builder().meta(create_meta_r1()).row(42, "abc").row(50, "def").build();
+    exec_access(r).meta(create_meta_r1()).row(42, "abc").row(50, "def");
 
     // OK packet indicates more results
     auto err = r.on_row_ok_packet(create_ok_r1(true));
@@ -360,8 +356,6 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
 
 BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
 {
-    results_impl r;
-
     // Resultset r1
     auto err = r.on_head_ok_packet(create_ok_r1(true), diag);
     throw_on_error(err, diag);
@@ -386,7 +380,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 {
     // First resultset
-    auto r = results_builder().ok(create_ok_r1(true)).build();
+    add_ok(r, create_ok_r1(true));
 
     // Second resultset: OK packet indicates more results
     auto err = r.on_head_ok_packet(create_ok_r2(true), diag);
@@ -406,11 +400,12 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     BOOST_TEST(r.is_reading_rows());
 
     // Read rows
-    rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
+    auto r1 = create_text_row_body(4.2f, 5.0, 8);
+    auto r2 = create_text_row_body(42.0f, 50.0, 80);
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref(), fields);
+    err = r.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
-    err = r.on_row(r2.ctx(), output_ref(), fields);
+    err = r.on_row(r2, output_ref(), fields);
     throw_on_error(err, diag);
 
     // End of resultset
@@ -437,14 +432,13 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
 {
     // Two first resultets
-    auto r = results_builder()
-                 .meta(create_meta_r1())
-                 .row(42, "abc")
-                 .row(50, "def")
-                 .ok(create_ok_r1(true))
-                 .meta(create_meta_r2())
-                 .row(60)
-                 .build();
+    exec_access(r)
+        .meta(create_meta_r1())
+        .row(42, "abc")
+        .row(50, "def")
+        .ok(create_ok_r1(true))
+        .meta(create_meta_r2())
+        .row(60);
 
     // OK packet indicates more results
     auto err = r.on_row_ok_packet(create_ok_r2(true));
@@ -460,11 +454,12 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
     throw_on_error(err, diag);
 
     // Rows
-    rowbuff r1{4.2f, 5.0, 8}, r2{42.0f, 50.0, 80};
+    auto r1 = create_text_row_body(4.2f, 5.0, 8);
+    auto r2 = create_text_row_body(42.0f, 50.0, 80);
     r.on_row_batch_start();
-    err = r.on_row(r1.ctx(), output_ref(), fields);
+    err = r.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
-    err = r.on_row(r2.ctx(), output_ref(), fields);
+    err = r.on_row(r2, output_ref(), fields);
     throw_on_error(err, diag);
     r.on_row_batch_finish();
 
@@ -489,8 +484,6 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
 
 BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
 {
-    results_impl r;
-
     // Head OK packet
     std::string info = "Some info";
     auto err = r.on_head_ok_packet(ok_builder().more_results(true).info(info).build(), diag);
@@ -513,22 +506,24 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
 BOOST_FIXTURE_TEST_CASE(multiple_row_batches, fixture)
 {
     // Initial
-    auto r = results_builder().meta(create_meta_r1()).build();
+    add_meta(r, create_meta_r1());
 
     // Buffers
-    rowbuff r1{42, "abc"}, r2{50, "bdef"}, r3{60, "pov"};
+    auto r1 = create_text_row_body(42, "abc");
+    auto r2 = create_text_row_body(50, "bdef");
+    auto r3 = create_text_row_body(60, "pov");
 
     // First batch
     r.on_row_batch_start();
-    auto err = r.on_row(r1.ctx(), output_ref(), fields);
+    auto err = r.on_row(r1, output_ref(), fields);
     throw_on_error(err);
-    err = r.on_row(r2.ctx(), output_ref(), fields);
+    err = r.on_row(r2, output_ref(), fields);
     throw_on_error(err);
     r.on_row_batch_finish();
 
     // Second batch (only one row)
     r.on_row_batch_start();
-    err = r.on_row(r3.ctx(), output_ref(), fields);
+    err = r.on_row(r3, output_ref(), fields);
     throw_on_error(err);
 
     // End of resultset
@@ -545,7 +540,7 @@ BOOST_FIXTURE_TEST_CASE(multiple_row_batches, fixture)
 BOOST_FIXTURE_TEST_CASE(empty_row_batch, fixture)
 {
     // Initial
-    auto r = results_builder().meta(create_meta_r1()).build();
+    add_meta(r, create_meta_r1());
 
     // No rows, directly eof
     r.on_row_batch_start();
@@ -561,17 +556,19 @@ BOOST_FIXTURE_TEST_CASE(empty_row_batch, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
 {
-    auto st = results_builder().meta(create_meta_r1()).build();
-    rowbuff bad_row{42, "abc"};
-    bad_row.data().push_back(0xff);
+    add_meta(r, create_meta_r1());
+    auto bad_row = create_text_row_body(42, "abc");
+    bad_row.push_back(0xff);
 
-    st.on_row_batch_start();
-    auto err = st.on_row(bad_row.ctx(), output_ref(), fields);
-    st.on_row_batch_finish();
+    r.on_row_batch_start();
+    auto err = r.on_row(bad_row, output_ref(), fields);
+    r.on_row_batch_finish();
 
     BOOST_TEST(err == client_errc::extra_bytes);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// TODO: on_meta_mode_minimal & full tests
 
 }  // namespace

@@ -27,7 +27,7 @@ add_executable(
     execution_processor/execution_processor.cpp
     execution_processor/execution_state_impl.cpp
     execution_processor/static_execution_state_impl.cpp
-    # detail/execution_processor/results_impl.cpp
+    execution_processor/results_impl.cpp
     # detail/execution_processor/static_results_impl.cpp
     # detail/execution_processor/concepts.cpp
 

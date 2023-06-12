@@ -56,30 +56,6 @@ std::vector<std::uint8_t> create_text_row_message(std::uint8_t seqnum, const Arg
     return create_message(seqnum, create_text_row_body(args...));
 }
 
-// Helper to run execution_processor tests, since these expect long-lived row buffers
-// class rowbuff
-// {
-//     std::vector<std::uint8_t> data_;
-
-// public:
-//     template <class... Args>
-//     rowbuff(const Args&... args) : data_(create_text_row_body(args...))
-//     {
-//     }
-
-//     // Useful for tests that need invalid row bodies
-//     std::vector<std::uint8_t>& data() noexcept { return data_; }
-
-//     detail::deserialization_context ctx() noexcept
-//     {
-//         return detail::deserialization_context(
-//             data_.data(),
-//             data_.data() + data_.size(),
-//             detail::capabilities()
-//         );
-//     }
-// };
-
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
