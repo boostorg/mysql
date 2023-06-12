@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(message_fits_in_buffer)
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03};
             test_stream stream;
-            stream.add_message(create_frame(seqnum, msg_body));
+            stream.add_bytes(create_frame(seqnum, msg_body));
             error_code err = client_errc::unknown_auth_plugin;
 
             // Doesn't have a message initially
@@ -95,7 +95,9 @@ BOOST_AUTO_TEST_CASE(fragmented_message_fits_in_buffer)
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03};
             test_stream stream;
-            stream.add_message(create_frame(seqnum, msg_body), {3, 5});  // break the message at bytes 3 and 5
+            stream.add_bytes(create_frame(seqnum, msg_body))
+                .add_break(3)
+                .add_break(5);  // break the message at bytes 3 and 5
             error_code err(client_errc::server_unsupported);
 
             // Doesn't have a message initially
@@ -128,7 +130,7 @@ BOOST_AUTO_TEST_CASE(message_doesnt_fit_in_buffer)
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08};
             test_stream stream;
-            stream.add_message(create_frame(seqnum, msg_body));
+            stream.add_bytes(create_frame(seqnum, msg_body));
             error_code err(client_errc::server_unsupported);
 
             // Doesn't have a message initially
@@ -164,8 +166,7 @@ BOOST_AUTO_TEST_CASE(two_messages)
             std::vector<std::uint8_t> msg1_body{0x01, 0x02, 0x03};
             std::vector<std::uint8_t> msg2_body{0x05, 0x06, 0x07, 0x08};
             test_stream stream;
-            stream.add_message_part(create_frame(seqnum1, msg1_body))
-                .add_message(create_frame(seqnum2, msg2_body));
+            stream.add_bytes(create_frame(seqnum1, msg1_body)).add_bytes(create_frame(seqnum2, msg2_body));
             error_code err(client_errc::server_unsupported);
 
             // Doesn't have a message initially
@@ -177,21 +178,22 @@ BOOST_AUTO_TEST_CASE(two_messages)
             BOOST_TEST(stream.num_unread_bytes() == 0u);
 
             // Get next message and validate it
-            auto msg = reader.get_next_message(seqnum1, err);
+            auto msg1 = reader.get_next_message(seqnum1, err);
             BOOST_TEST_REQUIRE(err == error_code());
             BOOST_TEST(seqnum1 == 3);
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, msg1_body);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg1, msg1_body);
+
+            // Get the 2nd message and validate it
+            auto msg2 = reader.get_next_message(seqnum2, err);
+            BOOST_TEST_REQUIRE(err == error_code());
+            BOOST_TEST(seqnum2 == 6u);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg2, msg2_body);
+
+            // There isn't another message
+            BOOST_TEST(!reader.has_message());
 
             // Reading again does nothing
             fn.read_some(stream, reader);
-
-            // Get the 2nd message and validate it
-            msg = reader.get_next_message(seqnum2, err);
-            BOOST_TEST_REQUIRE(err == error_code());
-            BOOST_TEST(seqnum2 == 6u);
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(msg, msg2_body);
-
-            // There isn't another message
             BOOST_TEST(!reader.has_message());
         }
     }
@@ -209,8 +211,9 @@ BOOST_AUTO_TEST_CASE(previous_message)
             std::vector<std::uint8_t> msg1_body{0x01, 0x02, 0x03};
             std::vector<std::uint8_t> msg2_body{0x05, 0x06, 0x07};
             test_stream stream;
-            stream.add_message(create_frame(seqnum1, msg1_body))
-                .add_message(create_frame(seqnum2, msg2_body));
+            stream.add_bytes(create_frame(seqnum1, msg1_body))
+                .add_break()
+                .add_bytes(create_frame(seqnum2, msg2_body));
             error_code err(client_errc::server_unsupported);
 
             // Read and get 1st message
@@ -262,8 +265,8 @@ BOOST_AUTO_TEST_CASE(multiframe_message)
     message_reader reader(512, 8);
     std::uint8_t seqnum = 2;
     test_stream stream;
-    stream.add_message_part(create_frame(seqnum, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}))
-        .add_message(create_frame(3, {0x09, 0x0a}));
+    stream.add_bytes(create_frame(seqnum, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}))
+        .add_bytes(create_frame(3, {0x09, 0x0a}));
     std::vector<std::uint8_t> expected_msg{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a};
     error_code err(client_errc::server_unsupported);
 
@@ -289,7 +292,7 @@ BOOST_AUTO_TEST_CASE(seqnum_overflow)
     std::uint8_t seqnum = 0xff;
     std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03};
     test_stream stream;
-    stream.add_message(create_frame(seqnum, msg_body));
+    stream.add_bytes(create_frame(seqnum, msg_body));
     error_code err(client_errc::server_unsupported);
 
     // Read succesfully
@@ -309,7 +312,7 @@ BOOST_AUTO_TEST_CASE(error_passed_seqnum_mismatch)
 {
     message_reader reader(512);
     test_stream stream;
-    stream.add_message(create_frame(2, {0x01, 0x02, 0x03}));
+    stream.add_bytes(create_frame(2, {0x01, 0x02, 0x03}));
     error_code err(client_errc::server_unsupported);
 
     // Read succesfully
@@ -331,8 +334,8 @@ BOOST_AUTO_TEST_CASE(error_intermediate_frame_seqnum_mismatch)
     std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03};
     std::uint8_t seqnum = 2;
     test_stream stream;
-    stream.add_message_part(create_frame(seqnum, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}))
-        .add_message(create_frame(4, {0x11, 0x12, 0x13, 0x14}));  // the right seqnum would be 3
+    stream.add_bytes(create_frame(seqnum, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}))
+        .add_bytes(create_frame(4, {0x11, 0x12, 0x13, 0x14}));  // the right seqnum would be 3
     error_code err(client_errc::server_unsupported);
 
     // Read succesfully
@@ -361,7 +364,7 @@ BOOST_AUTO_TEST_CASE(success)
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03};
             test_stream stream;
-            stream.add_message(create_frame(seqnum, msg_body));
+            stream.add_bytes(create_frame(seqnum, msg_body));
 
             // Read succesfully
             auto msg = fn.read_one(stream, reader, seqnum).get();
@@ -386,8 +389,7 @@ BOOST_AUTO_TEST_CASE(cached_message)
             std::vector<std::uint8_t> msg1_body{0x01, 0x02, 0x03};
             std::vector<std::uint8_t> msg2_body{0x04, 0x05};
             test_stream stream;
-            stream.add_message_part(create_frame(seqnum1, msg1_body))
-                .add_message(create_frame(seqnum2, msg2_body));
+            stream.add_bytes(create_frame(seqnum1, msg1_body)).add_bytes(create_frame(seqnum2, msg2_body));
 
             // Read succesfully
             auto msg = fn.read_one(stream, reader, seqnum1).get();
@@ -415,7 +417,7 @@ BOOST_AUTO_TEST_CASE(error_in_read)
             std::uint8_t seqnum = 2;
             std::vector<std::uint8_t> msg_body{0x01, 0x02, 0x03};
             test_stream stream;
-            stream.add_message(create_frame(seqnum, msg_body))
+            stream.add_bytes(create_frame(seqnum, msg_body))
                 .set_fail_count(fail_count(0, client_errc::wrong_num_params));
 
             fn.read_one(stream, reader, seqnum).validate_error_exact(client_errc::wrong_num_params);
@@ -432,7 +434,7 @@ BOOST_AUTO_TEST_CASE(seqnum_mismatch)
         {
             message_reader reader(512);
             test_stream stream;
-            stream.add_message(create_frame(2, {0x01, 0x02, 0x03}));
+            stream.add_bytes(create_frame(2, {0x01, 0x02, 0x03}));
 
             std::uint8_t bad_seqnum = 42;
             fn.read_one(stream, reader, bad_seqnum)

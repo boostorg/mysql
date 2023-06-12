@@ -196,27 +196,15 @@ void boost::mysql::test::test_stream::
 void boost::mysql::test::test_stream::close(error_code&) { BOOST_ASSERT(false); }
 bool boost::mysql::test::test_stream::is_open() const noexcept { BOOST_ASSERT(false); }
 
-test_stream& boost::mysql::test::test_stream::add_message(const std::vector<std::uint8_t>& bytes)
+test_stream& boost::mysql::test::test_stream::add_bytes(span<const std::uint8_t> bytes)
 {
-    read_break_offsets_.insert(bytes_to_read_.size() + bytes.size());
-    return add_message_part(bytes);
+    concat(bytes_to_read_, bytes.data(), bytes.size());
+    return *this;
 }
 
-test_stream& boost::mysql::test::test_stream::add_message(
-    const std::vector<std::uint8_t>& bytes,
-    const std::vector<std::size_t>& break_points
-)
+test_stream& boost::mysql::test::test_stream::add_break(std::size_t byte_num)
 {
-    for (std::size_t break_point : break_points)
-    {
-        assert(break_point <= bytes.size());
-        read_break_offsets_.insert(bytes_to_read_.size() + break_point);
-    }
-    return add_message(bytes);
-}
-
-test_stream& boost::mysql::test::test_stream::add_message_part(const std::vector<std::uint8_t>& bytes)
-{
-    concat(bytes_to_read_, bytes);
+    BOOST_ASSERT(byte_num <= bytes_to_read_.size());
+    read_break_offsets_.insert(byte_num);
     return *this;
 }
