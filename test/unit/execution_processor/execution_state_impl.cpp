@@ -10,35 +10,28 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/row_view.hpp>
-#include <boost/mysql/rows.hpp>
-#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/deserialization_context.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "creation/create_execution_state.hpp"
-#include "creation/create_row_message.hpp"
 #include "execution_processor_helpers.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/printing.hpp"
+#include "test_unit/create_execution_processor.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_row_message.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 using boost::mysql::detail::execution_state_impl;
 using boost::mysql::detail::output_ref;
-using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::resultset_encoding;
 
 namespace {
@@ -83,17 +76,11 @@ struct fixture
 BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 {
     // Initial. Verify that we clear any previous result
-    st = exec_builder()
-             .reset(resultset_encoding::binary)
-             .meta({protocol_field_type::geometry})
-             .ok(ok_builder()
-                     .affected_rows(1)
-                     .last_insert_id(2)
-                     .warnings(3)
-                     .more_results(true)
-                     .info("abc")
-                     .build())
-             .build();
+    exec_access(st)
+        .reset(resultset_encoding::binary)
+        .meta({column_type::geometry})
+        .ok(ok_builder().affected_rows(1).last_insert_id(2).warnings(3).more_results(true).info("abc").build()
+        );
 
     // Reset
     st.reset(resultset_encoding::text, metadata_mode::full);
@@ -115,10 +102,11 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
     check_meta_r1(st.meta());
 
     // Rows
-    rowbuff r1{10, "abc"}, r2{20, "cdef"};
-    err = st.on_row(r1.ctx(), output_ref(), fields);
+    auto r1 = create_text_row_body(10, "abc");
+    auto r2 = create_text_row_body(20, "cdef");
+    err = st.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
-    err = st.on_row(r2.ctx(), output_ref(), fields);
+    err = st.on_row(r2, output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(fields == make_fv_vector(10, "abc", 20, "cdef"));
 
@@ -143,7 +131,7 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 {
     // Resultset r1 (rows are not stored anyhow in execution states)
-    st = exec_builder().meta(create_meta_r1()).build();
+    add_meta(st, create_meta_r1());
 
     // OK packet indicates more results
     auto err = st.on_row_ok_packet(create_ok_r1(true));
@@ -163,8 +151,8 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
     check_meta_r2(st.meta());
 
     // Rows
-    rowbuff r1{90u};
-    err = st.on_row(r1.ctx(), output_ref(), fields);
+    auto r1 = create_text_row_body(90u);
+    err = st.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(fields == make_fv_vector(90u));
@@ -180,7 +168,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 {
     // Resultset r1
-    st = exec_builder().ok(create_ok_r1(true)).build();
+    add_ok(st, create_ok_r1(true));
     BOOST_TEST(st.is_reading_first_subseq());
     check_meta_empty(st.meta());
     check_ok_r1(st);
@@ -196,11 +184,12 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
     check_meta_r2(st.meta());
 
     // Rows
-    rowbuff r1{90u}, r2{100u};
-    err = st.on_row(r1.ctx(), output_ref(), fields);
+    auto r1 = create_text_row_body(90u);
+    auto r2 = create_text_row_body(100u);
+    err = st.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
-    err = st.on_row(r2.ctx(), output_ref(), fields);
+    err = st.on_row(r2, output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
 
@@ -215,7 +204,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
 {
     // Resultset r1
-    st = exec_builder().meta(create_meta_r1()).build();
+    add_meta(st, create_meta_r1());
 
     // OK packet indicates more results
     auto err = st.on_row_ok_packet(create_ok_r1(true));
@@ -252,7 +241,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 {
     // Two first resultsets
-    st = exec_builder().ok(create_ok_r1(true)).build();
+    add_ok(st, create_ok_r1(true));
     auto err = st.on_head_ok_packet(create_ok_r2(true), diag);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_first_subseq());
@@ -278,8 +267,8 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
     check_meta_r3(st.meta());
 
     // Rows
-    rowbuff r1{4.2f, 90.0, 9};
-    err = st.on_row(r1.ctx(), output_ref(), fields);
+    auto r1 = create_text_row_body(4.2f, 90.0, 9);
+    err = st.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(st.is_reading_rows());
     BOOST_TEST(fields == make_fv_vector(4.2f, 90.0, 9));
@@ -295,7 +284,7 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
 {
     // Two first resultsets
-    st = exec_builder().meta(create_meta_r1()).ok(create_ok_r1(true)).build();
+    exec_access(st).meta(create_meta_r1()).ok(create_ok_r1(true));
     auto err = st.on_head_ok_packet(create_ok_r2(true), diag);
     BOOST_TEST(st.is_reading_first_subseq());
     check_meta_empty(st.meta());
@@ -316,8 +305,8 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_empty_data, fixture)
     check_meta_r3(st.meta());
 
     // Rows
-    rowbuff r1{4.2f, 90.0, 9};
-    err = st.on_row(r1.ctx(), output_ref(), fields);
+    auto r1 = create_text_row_body(4.2f, 90.0, 9);
+    err = st.on_row(r1, output_ref(), fields);
     throw_on_error(err, diag);
     BOOST_TEST(fields == make_fv_vector(4.2f, 90.0, 9));
 
@@ -342,7 +331,7 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
 
     // Repeat the process for row OK packet
     st.on_num_meta(1);
-    err = st.on_meta(create_coldef(protocol_field_type::longlong), diag);
+    err = st.on_meta(meta_builder().build_coldef(), diag);
     throw_on_error(err, diag);
     err = st.on_row_ok_packet(ok_builder().info(info).build());
     throw_on_error(err, diag);
@@ -352,15 +341,17 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
 {
-    st = exec_builder().meta(create_meta_r1()).build();
-    rowbuff bad_row{42, "abc"};
-    bad_row.data().push_back(0xff);
+    add_meta(st, create_meta_r1());
+    auto bad_row = create_text_row_body(42, "abc");
+    bad_row.push_back(0xff);
 
-    auto err = st.on_row(bad_row.ctx(), output_ref(), fields);
+    auto err = st.on_row(bad_row, output_ref(), fields);
 
     BOOST_TEST(err == client_errc::extra_bytes);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// TODO: on_meta_mode_minimal & full tests
 
 }  // namespace

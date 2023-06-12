@@ -8,48 +8,44 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_EXECUTION_PROCESSOR_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_EXECUTION_PROCESSOR_HPP
 
+#include <boost/mysql/column_type.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata.hpp>
-#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/deserialization_context.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <cstddef>
 
-#include "creation/create_message_struct.hpp"
-#include "creation/create_row_message.hpp"
+#include "protocol/protocol.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_row_message.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-inline void add_meta(detail::execution_processor& proc, std::vector<metadata> meta)
+inline void add_meta(detail::execution_processor& proc, const std::vector<detail::coldef_view>& meta)
 {
     diagnostics diag;
     proc.on_num_meta(meta.size());
-    for (auto& m : meta)
+    for (const auto& m : meta)
     {
-        auto err = proc.on_meta(std::move(m), diag);
+        auto err = proc.on_meta(m, diag);
         throw_on_error(err, diag);
     }
 }
 
-inline void add_meta(detail::execution_processor& proc, const std::vector<detail::protocol_field_type>& types)
+inline void add_meta(detail::execution_processor& proc, const std::vector<column_type>& types)
 {
     diagnostics diag;
     proc.on_num_meta(types.size());
     for (auto type : types)
     {
-        auto err = proc.on_meta(create_coldef(type), diag);
+        auto err = proc.on_meta(meta_builder().type(type).build_coldef(), diag);
         throw_on_error(err, diag);
     }
 }
@@ -58,15 +54,15 @@ inline void add_meta(detail::execution_processor& proc, const std::vector<detail
 template <class... T>
 void add_row(detail::execution_processor& proc, const T&... args)
 {
-    rowbuff buff{args...};
+    auto serialized_row = create_text_row_body(args...);
     std::vector<field_view> fields;
     proc.on_row_batch_start();
-    auto err = proc.on_row(buff.ctx(), detail::output_ref(), fields);
+    auto err = proc.on_row(serialized_row, detail::output_ref(), fields);
     throw_on_error(err);
     proc.on_row_batch_finish();
 }
 
-inline void add_ok(detail::execution_processor& proc, const detail::ok_packet_data& pack)
+inline void add_ok(detail::execution_processor& proc, const detail::ok_view& pack)
 {
     diagnostics diag;
     error_code err;
@@ -77,57 +73,56 @@ inline void add_ok(detail::execution_processor& proc, const detail::ok_packet_da
     throw_on_error(err, diag);
 }
 
-// Generic facility to create any execution processor
 template <class T>
-class basic_exec_builder
+auto get_iface(T& obj) -> decltype(detail::access::get_impl(obj).get_interface())
 {
-    T res_;
+    return detail::access::get_impl(obj).get_interface();
+}
+
+// Generic facility to manipulate any execution processor
+// It's not owning to support any processor type without templates
+class exec_access
+{
+    detail::execution_processor& res_;
 
 public:
-    basic_exec_builder() = default;
+    exec_access(detail::execution_processor& obj) noexcept : res_(obj) {}
 
-    basic_exec_builder& reset(
+    exec_access& reset(
         detail::resultset_encoding enc = detail::resultset_encoding::text,
         metadata_mode mode = metadata_mode::minimal
     )
     {
-        res_.get_interface().reset(enc, mode);
+        res_.reset(enc, mode);
         return *this;
     }
-    basic_exec_builder& seqnum(std::uint8_t v)
+    exec_access& seqnum(std::uint8_t v)
     {
-        res_.get_interface().sequence_number() = v;
+        res_.sequence_number() = v;
         return *this;
     }
-    basic_exec_builder& meta(const std::vector<detail::protocol_field_type>& types)
+    exec_access& meta(const std::vector<column_type>& types)
     {
-        add_meta(res_.get_interface(), types);
+        add_meta(res_, types);
         return *this;
     }
-    basic_exec_builder& meta(std::vector<metadata> meta)
+    exec_access& meta(const std::vector<detail::coldef_view>& meta)
     {
-        add_meta(res_.get_interface(), std::move(meta));
+        add_meta(res_, meta);
         return *this;
     }
     template <class... Args>
-    basic_exec_builder& row(const Args&... args)
+    exec_access& row(const Args&... args)
     {
-        add_row(res_.get_interface(), args...);
+        add_row(res_, args...);
         return *this;
     }
-    basic_exec_builder& ok(const detail::ok_packet_data& pack)
+    exec_access& ok(const detail::ok_view& pack)
     {
-        add_ok(res_.get_interface(), pack);
+        add_ok(res_, pack);
         return *this;
     }
-    T build() { return std::move(res_); }
 };
-
-template <class T>
-auto get_iface(T& obj) -> decltype(detail::impl_access::get_impl(obj).get_interface())
-{
-    return detail::impl_access::get_impl(obj).get_interface();
-}
 
 }  // namespace test
 }  // namespace mysql
