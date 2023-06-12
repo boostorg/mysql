@@ -24,16 +24,18 @@ add_executable(
     channel/message_reader.cpp
     channel/message_writer.cpp
     channel/write_message.cpp
-    # detail/auxiliar/rows_iterator.cpp
-    # detail/auxiliar/execution_request.cpp
-    # detail/auxiliar/datetime.cpp
-    # detail/auxiliar/row_impl.cpp
-    # detail/execution_processor/execution_processor.cpp
+    execution_processor/execution_processor.cpp
     # detail/execution_processor/execution_state_impl.cpp
     # detail/execution_processor/static_execution_state_impl.cpp
     # detail/execution_processor/results_impl.cpp
     # detail/execution_processor/static_results_impl.cpp
     # detail/execution_processor/concepts.cpp
+
+    # detail/auxiliar/rows_iterator.cpp
+    # detail/auxiliar/execution_request.cpp
+    # detail/auxiliar/datetime.cpp
+    # detail/auxiliar/row_impl.cpp
+
     # detail/network_algorithms/read_resultset_head.cpp
     # detail/network_algorithms/start_execution_impl.cpp
     # detail/network_algorithms/read_some_rows_dynamic.cpp

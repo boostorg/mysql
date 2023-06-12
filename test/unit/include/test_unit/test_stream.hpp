@@ -18,29 +18,11 @@
 #include <vector>
 
 #include "test_common/tracker_executor.hpp"
+#include "test_unit/fail_count.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
-
-// Inspired by Beast's fail count
-class fail_count
-{
-    std::size_t fail_after_;
-    std::size_t num_calls_{0};
-    error_code err_;
-
-public:
-    static constexpr std::size_t never_fail = std::size_t(-1);
-    explicit fail_count(
-        std::size_t fail_after = never_fail,
-        error_code err = make_error_code(std::errc::io_error)
-    ) noexcept
-        : fail_after_(fail_after), err_(err)
-    {
-    }
-    error_code maybe_fail() noexcept { return ++num_calls_ >= fail_after_ ? err_ : error_code(); }
-};
 
 class test_stream final : public detail::any_stream
 {
