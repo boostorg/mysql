@@ -95,9 +95,10 @@ target_sources(
     boost_mysql_impl_private
     INTERFACE 
     src/auth/auth.cpp
-    src/protocol/deserialize_text_field.cpp
-    src/protocol/deserialize_binary_field.cpp
+    src/protocol/protocol_field_type.cpp
     src/protocol/binary_serialization.cpp
+    src/protocol/deserialize_binary_field.cpp
+    src/protocol/deserialize_text_field.cpp
     src/protocol/protocol.cpp
     src/channel/channel.cpp
     src/execution_processor.cpp
