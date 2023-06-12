@@ -147,6 +147,24 @@ BOOST_AUTO_TEST_CASE(execute_stmt_iterator_reference_not_field_view)
     BOOST_TEST(result.info() == "1st");
 }
 
+// Verify that we don't require the passed-in statement to be alive. Only
+// relevant for deferred tokens.
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+BOOST_AUTO_TEST_CASE(close_statement_handle_deferred_tokens)
+{
+    run_coroutine([]() -> boost::asio::awaitable<void> {
+        fixture fix;
+
+        // Deferred op
+        auto aw = fix.conn.async_close_statement(statement(fix.stmt), boost::asio::use_awaitable);
+        co_await std::move(aw);
+
+        // verify that the op had the intended effects
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.conn.stream().bytes_written(), expected_message);
+    });
+}
+#endif
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
