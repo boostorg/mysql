@@ -31,6 +31,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// TODO: refactor this
 class message_reader
 {
 public:
@@ -52,7 +53,10 @@ public:
     {
         // If we already have a message, complete immediately
         if (has_message())
+        {
+            ec = error_code();
             return;
+        }
 
         // Remove processed messages
         buffer_.remove_reserved();
@@ -78,28 +82,12 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(any_stream& stream, CompletionToken&& token);
 
-    // Equivalent to read_some + get_next_message
-    span<const std::uint8_t> read_one(any_stream& stream, std::uint8_t& seqnum, error_code& ec)
-    {
-        read_some(stream, ec);
-        if (ec)
-            return {};
-        else
-            return get_next_message(seqnum, ec);
-    }
-
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, span<const std::uint8_t>))
-                  CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, span<const std::uint8_t>))
-    async_read_one(any_stream& stream, std::uint8_t& seqnum, CompletionToken&& token);
-
     // Exposed for the sake of testing
     read_buffer& buffer() noexcept { return buffer_; }
     const read_buffer& buffer() const noexcept { return buffer_; }
 
 private:
     struct read_some_op;
-    struct read_one_op;
 
     read_buffer buffer_;
     message_parser parser_;
@@ -178,13 +166,41 @@ struct boost::mysql::detail::message_reader::read_some_op : boost::asio::corouti
     }
 };
 
-struct boost::mysql::detail::message_reader::read_one_op : boost::asio::coroutine
+// Public interface
+inline void read_some_messages(any_stream& stream, message_reader& reader, error_code& ec)
+{
+    return reader.read_some(stream, ec);
+}
+
+template <class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+async_read_some_messages(any_stream& stream, message_reader& reader, CompletionToken&& token)
+{
+    return reader.async_read_some(stream, std::forward<CompletionToken>(token));
+}
+
+// Equivalent to read_some + get_next_message
+inline span<const std::uint8_t> read_one_message(
+    any_stream& stream,
+    message_reader& reader,
+    std::uint8_t& seqnum,
+    error_code& ec
+)
+{
+    read_some_messages(stream, reader, ec);
+    if (ec)
+        return {};
+    else
+        return reader.get_next_message(seqnum, ec);
+}
+
+struct read_one_message_op : boost::asio::coroutine
 {
     message_reader& reader_;
     any_stream& stream_;
     std::uint8_t& seqnum_;
 
-    read_one_op(message_reader& reader, any_stream& stream, std::uint8_t& seqnum)
+    read_one_message_op(message_reader& reader, any_stream& stream, std::uint8_t& seqnum)
         : reader_(reader), stream_(stream), seqnum_(seqnum)
     {
     }
@@ -211,6 +227,25 @@ struct boost::mysql::detail::message_reader::read_one_op : boost::asio::coroutin
     }
 };
 
+template <class CompletionToken>
+BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
+    CompletionToken,
+    void(boost::mysql::error_code, ::boost::span<const std::uint8_t>)
+)
+async_read_one_message(
+    any_stream& stream,
+    message_reader& reader,
+    std::uint8_t& seqnum,
+    CompletionToken&& token
+)
+{
+    return boost::asio::async_compose<CompletionToken, void(error_code, span<const std::uint8_t>)>(
+        read_one_message_op(reader, stream, seqnum),
+        token,
+        stream
+    );
+}
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
@@ -221,25 +256,6 @@ boost::mysql::detail::message_reader::async_read_some(any_stream& stream, Comple
 {
     return boost::asio::async_compose<CompletionToken, void(error_code)>(
         read_some_op{*this, stream},
-        token,
-        stream
-    );
-}
-
-template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::span<const std::uint8_t>))
-              CompletionToken>
-BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(
-    CompletionToken,
-    void(boost::mysql::error_code, ::boost::span<const std::uint8_t>)
-)
-boost::mysql::detail::message_reader::async_read_one(
-    any_stream& stream,
-    std::uint8_t& seqnum,
-    CompletionToken&& token
-)
-{
-    return boost::asio::async_compose<CompletionToken, void(error_code, span<const std::uint8_t>)>(
-        read_one_op{*this, stream, seqnum},
         token,
         stream
     );

@@ -64,25 +64,25 @@ public:
         return reader_.get_next_message(seqnum, err);
     }
 
-    void read_some(error_code& code) { return reader_.read_some(*stream_, code); }
+    void read_some(error_code& code) { read_some_messages(*stream_, reader_, code); }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_read_some(CompletionToken&& token)
     {
-        return reader_.async_read_some(*stream_, std::forward<CompletionToken>(token));
+        return async_read_some_messages(*stream_, reader_, std::forward<CompletionToken>(token));
     }
 
     span<const std::uint8_t> read_one(std::uint8_t& seqnum, error_code& ec)
     {
-        return reader_.read_one(*stream_, seqnum, ec);
+        return read_one_message(*stream_, reader_, seqnum, ec);
     }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, span<const std::uint8_t>)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, span<const std::uint8_t>))
     async_read_one(std::uint8_t& seqnum, CompletionToken&& token)
     {
-        return reader_.async_read_one(*stream_, seqnum, std::forward<CompletionToken>(token));
+        return async_read_one_message(*stream_, reader_, seqnum, std::forward<CompletionToken>(token));
     }
 
     // Exposed for the sake of testing

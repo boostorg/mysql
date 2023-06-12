@@ -49,6 +49,10 @@ public:
 
     // Setters
     test_stream& add_message(const std::vector<std::uint8_t>& bytes);
+    test_stream& add_message(
+        const std::vector<std::uint8_t>& bytes,
+        const std::vector<std::size_t>& break_points
+    );
     test_stream& add_message_part(const std::vector<std::uint8_t>& bytes);
     test_stream& set_write_break_size(std::size_t size) noexcept
     {

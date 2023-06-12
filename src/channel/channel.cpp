@@ -159,5 +159,6 @@ boost::span<const std::uint8_t> boost::mysql::detail::message_reader::get_next_m
         result_.message.size
     );
     parse_message();
+    ec = error_code();
     return res;
 }

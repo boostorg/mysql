@@ -70,8 +70,8 @@ public:
     message_parser(std::size_t max_frame_size = MAX_PACKET_SIZE) noexcept : max_frame_size_(max_frame_size){};
 
     // Attempts to process a message from buff and puts it into msg.
-    // If a message is read, returns true, and msg.message_first and msg.message_last
-    // will contain offsets into buff's reserved area. Otherwise, required_size will contain
+    // If a message is read, res.has_message == true, and res.message will be populated.
+    // Otherwise, res.required_size will contain
     // the number of bytes needed to complete the message part we're parsing.
     // Doesn't cause buffer reallocations, and doesn't change the contents
     // of buff's reserved area.

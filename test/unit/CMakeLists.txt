@@ -21,7 +21,7 @@ add_executable(
     protocol/protocol.cpp
     channel/read_buffer.cpp
     channel/message_parser.cpp
-    # detail/channel/message_reader.cpp
+    channel/message_reader.cpp
     channel/message_writer.cpp
     channel/write_message.cpp
     # detail/auxiliar/rows_iterator.cpp

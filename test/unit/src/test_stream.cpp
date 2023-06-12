@@ -198,8 +198,21 @@ bool boost::mysql::test::test_stream::is_open() const noexcept { BOOST_ASSERT(fa
 
 test_stream& boost::mysql::test::test_stream::add_message(const std::vector<std::uint8_t>& bytes)
 {
-    read_break_offsets_.insert(bytes_to_read_.size());
+    read_break_offsets_.insert(bytes_to_read_.size() + bytes.size());
     return add_message_part(bytes);
+}
+
+test_stream& boost::mysql::test::test_stream::add_message(
+    const std::vector<std::uint8_t>& bytes,
+    const std::vector<std::size_t>& break_points
+)
+{
+    for (std::size_t break_point : break_points)
+    {
+        assert(break_point <= bytes.size());
+        read_break_offsets_.insert(bytes_to_read_.size() + break_point);
+    }
+    return add_message(bytes);
 }
 
 test_stream& boost::mysql::test::test_stream::add_message_part(const std::vector<std::uint8_t>& bytes)
