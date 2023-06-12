@@ -76,6 +76,7 @@ struct start_execution_impl_op : boost::asio::coroutine
     any_execution_request req_;
     execution_processor& proc_;
     diagnostics& diag_;
+    error_code client_err_;  // keep it across posts
 
     start_execution_impl_op(
         channel& chan,
@@ -106,8 +107,9 @@ struct start_execution_impl_op : boost::asio::coroutine
             err = check_client_errors(req_);
             if (err)
             {
+                client_err_ = err;
                 BOOST_ASIO_CORO_YIELD boost::asio::post(chan_.get_executor(), std::move(self));
-                self.complete(err);
+                self.complete(client_err_);
                 BOOST_ASIO_CORO_YIELD break;
             }
 

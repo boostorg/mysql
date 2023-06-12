@@ -9,6 +9,7 @@
 add_executable(
     boost_mysql_unittests
     src/test_stream.cpp
+    src/serialization.cpp
     auth/auth.cpp
     protocol/static_buffer.cpp
     protocol/capabilities.cpp
@@ -29,15 +30,8 @@ add_executable(
     execution_processor/static_execution_state_impl.cpp
     execution_processor/results_impl.cpp
     execution_processor/static_results_impl.cpp
-    # detail/execution_processor/concepts.cpp
-
-    # detail/auxiliar/rows_iterator.cpp
-    # detail/auxiliar/execution_request.cpp
-    # detail/auxiliar/datetime.cpp
-    # detail/auxiliar/row_impl.cpp
-
-    # detail/network_algorithms/read_resultset_head.cpp
-    # detail/network_algorithms/start_execution_impl.cpp
+    network_algorithms/read_resultset_head.cpp
+    network_algorithms/start_execution.cpp
     # detail/network_algorithms/read_some_rows_dynamic.cpp
     # detail/network_algorithms/read_some_rows_static.cpp
     # detail/network_algorithms/read_some_rows_impl.cpp
@@ -45,6 +39,14 @@ add_executable(
     # detail/network_algorithms/high_level_execution.cpp
     # detail/network_algorithms/close_statement.cpp
     # detail/network_algorithms/ping.cpp
+
+    # detail/execution_processor/concepts.cpp
+
+    # detail/auxiliar/rows_iterator.cpp
+    # detail/auxiliar/execution_request.cpp
+    # detail/auxiliar/datetime.cpp
+    # detail/auxiliar/row_impl.cpp
+
     # detail/typing/meta_check_context.cpp
     # detail/typing/pos_map.cpp
     # detail/typing/readable_field_traits.cpp

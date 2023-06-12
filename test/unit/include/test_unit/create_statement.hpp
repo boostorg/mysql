@@ -35,7 +35,7 @@ public:
         num_params_ = v;
         return *this;
     }
-    statement build() { return detail::impl_access::construct<statement>(id_, num_params_); }
+    statement build() { return detail::access::construct<statement>(id_, num_params_); }
 };
 
 }  // namespace test
