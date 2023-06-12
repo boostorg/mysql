@@ -10,9 +10,9 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include "protocol/basic_types.hpp"
 #include "protocol/protocol.hpp"
 #include "test_unit/create_frame.hpp"
+#include "test_unit/serialization.hpp"
 
 namespace boost {
 namespace mysql {
@@ -29,23 +29,6 @@ class ok_builder
             ok_.status_flags |= f;
         else
             ok_.status_flags &= ~f;
-    }
-
-    std::vector<std::uint8_t> build_body_impl(std::uint8_t header)
-    {
-        auto res = serialize_to_vector(
-            std::uint8_t(header),
-            detail::int_lenenc{ok_.affected_rows},
-            detail::int_lenenc{ok_.last_insert_id},
-            ok_.status_flags,
-            ok_.warnings
-        );
-        // When info is empty, it's actually omitted in the ok_packet
-        if (!ok_.info.empty())
-        {
-            serialize_to_vector(res, detail::string_lenenc{ok_.info});
-        }
-        return res;
     }
 
 public:
@@ -92,8 +75,8 @@ public:
     }
     detail::ok_view build() const noexcept { return ok_; }
 
-    std::vector<std::uint8_t> build_ok_body() { return build_body_impl(0x00); }
-    std::vector<std::uint8_t> build_eof_body() { return build_body_impl(0xfe); }
+    std::vector<std::uint8_t> build_ok_body() { return serialize_ok(ok_); }
+    std::vector<std::uint8_t> build_eof_body() { return serialize_eof(ok_); }
     std::vector<std::uint8_t> build_ok_frame() { return create_frame(seqnum_, build_ok_body()); }
     std::vector<std::uint8_t> build_eof_frame() { return create_frame(seqnum_, build_eof_body()); }
 };

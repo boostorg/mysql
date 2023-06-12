@@ -16,6 +16,8 @@
 #include <boost/mysql/detail/column_flags.hpp>
 
 #include "protocol/protocol.hpp"
+#include "test_unit/create_frame.hpp"
+#include "test_unit/serialization.hpp"
 
 namespace boost {
 namespace mysql {
@@ -24,6 +26,7 @@ namespace test {
 class meta_builder
 {
     detail::coldef_view coldef_{};
+    std::uint8_t seqnum_{};
 
 public:
     meta_builder()
@@ -105,8 +108,18 @@ public:
         coldef_.decimals = v;
         return *this;
     }
+    meta_builder& seqnum(std::uint8_t v) noexcept
+    {
+        seqnum_ = v;
+        return *this;
+    }
     metadata build() const { return detail::access::construct<metadata>(coldef_, true); }
     detail::coldef_view build_coldef() const noexcept { return coldef_; }
+    std::vector<std::uint8_t> build_coldef_body() const { return serialize_coldef(coldef_); }
+    std::vector<std::uint8_t> build_coldef_frame() const
+    {
+        return create_frame(seqnum_, build_coldef_body());
+    }
 };
 
 inline metadata create_meta(column_type type) { return meta_builder().type(type).build(); }

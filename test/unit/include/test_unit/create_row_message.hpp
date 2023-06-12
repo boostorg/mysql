@@ -8,46 +8,18 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_ROW_MESSAGE_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_ROW_MESSAGE_HPP
 
-#include <boost/mysql/field_view.hpp>
-
-#include <boost/core/span.hpp>
-
-#include <stdexcept>
-#include <string>
-
+#include "test_common/create_basic.hpp"
 #include "test_unit/create_frame.hpp"
+#include "test_unit/serialization.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-inline std::vector<std::uint8_t> create_text_row_body_span(boost::span<const field_view> fields)
-{
-    std::vector<std::uint8_t> res;
-    for (field_view f : fields)
-    {
-        std::string s;
-        switch (f.kind())
-        {
-        case field_kind::int64: s = std::to_string(f.get_int64()); break;
-        case field_kind::uint64: s = std::to_string(f.get_uint64()); break;
-        case field_kind::float_: s = std::to_string(f.get_float()); break;
-        case field_kind::double_: s = std::to_string(f.get_double()); break;
-        case field_kind::string: s = f.get_string(); break;
-        case field_kind::blob: s.assign(f.get_blob().begin(), f.get_blob().end()); break;
-        case field_kind::null: serialize_to_vector(res, std::uint8_t(0xfb)); continue;
-        default: throw std::runtime_error("create_text_row_message: type not implemented");
-        }
-        detail::string_lenenc slenenc{s};
-        serialize_to_vector(res, slenenc);
-    }
-    return res;
-}
-
 template <class... Args>
 std::vector<std::uint8_t> create_text_row_body(const Args&... args)
 {
-    return create_text_row_body_span(make_fv_arr(args...));
+    return serialize_text_row(make_fv_arr(args...));
 }
 
 template <class... Args>
