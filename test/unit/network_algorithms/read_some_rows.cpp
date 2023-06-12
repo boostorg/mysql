@@ -5,40 +5,40 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/common_server_errc.hpp>
+#include "network_algorithms/read_some_rows.hpp"
 
-#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/network_algorithms/read_some_rows_impl.hpp>
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 
-#include "creation/create_execution_processor.hpp"
-#include "creation/create_message.hpp"
-#include "creation/create_message_struct.hpp"
-#include "creation/create_meta.hpp"
-#include "creation/create_row_message.hpp"
-#include "mock_execution_processor.hpp"
-#include "test_channel.hpp"
-#include "test_common.hpp"
-#include "test_stream.hpp"
-#include "unit_netfun_maker.hpp"
+#include "channel/channel.hpp"
+#include "test_unit/create_channel.hpp"
+#include "test_unit/create_err.hpp"
+#include "test_unit/create_execution_processor.hpp"
+#include "test_unit/create_frame.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_ok.hpp"
+#include "test_unit/create_row_message.hpp"
+#include "test_unit/mock_execution_processor.hpp"
+#include "test_unit/test_stream.hpp"
+#include "test_unit/unit_netfun_maker.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 using boost::span;
+using boost::mysql::detail::channel;
 using boost::mysql::detail::execution_processor;
 using boost::mysql::detail::output_ref;
 
-namespace {
-
-BOOST_AUTO_TEST_SUITE(test_read_some_rows_impl)
+BOOST_AUTO_TEST_SUITE(test_read_some_rows)
 
 using row1 = std::tuple<int>;
 
-using netfun_maker = netfun_maker_fn<std::size_t, test_channel&, execution_processor&, const output_ref&>;
+using netfun_maker = netfun_maker_fn<std::size_t, channel&, execution_processor&, const output_ref&>;
 
 struct
 {
@@ -49,40 +49,19 @@ struct
     {netfun_maker::async_errinfo(&detail::async_read_some_rows_impl), "async"},
 };
 
-// TODO: this test
-// BOOST_AUTO_TEST_CASE(channel_seqnum_mismatch)
-// {
-//     auto chan = create_channel(
-//         ok_msg_builder().seqnum(41).affected_rows(42).last_insert_id(1).info("abc").build_eof()
-//     );
-//     read_some_and_check(chan);
-//     diagnostics diag;
-//     std::uint8_t seqnum = 42;
-
-//     auto response = deserialize_row_message(chan, seqnum, diag);
-
-//     BOOST_TEST_REQUIRE(response.type == row_message::type_t::error);
-//     BOOST_TEST(response.data.err == client_errc::sequence_number_mismatch);
-// }
-
-// Note:
-// inline void read_some_and_check(test_channel& chan)
-// {
-//     error_code err;
-//     chan.read_some(err);
-//     throw_on_error(err);
-// }
-
 struct fixture
 {
     mock_execution_processor proc;
-    test_channel chan{create_channel()};
+    channel chan{create_channel()};
     std::array<row1, 3> storage;
 
     fixture()
     {
         // Prepare the processor, such that it's ready to read rows
-        add_meta(proc, {meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build()});
+        add_meta(
+            proc,
+            {meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build_coldef()}
+        );
         proc.sequence_number() = 42;
     }
 
@@ -93,6 +72,7 @@ struct fixture
             BOOST_TEST(proc.refs()[i].offset() == i);
     }
 
+    test_stream& stream() noexcept { return get_stream(chan); }
     output_ref ref() noexcept { return output_ref(span<row1>(storage), 0); }
 };
 
@@ -103,8 +83,8 @@ BOOST_AUTO_TEST_CASE(eof)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.chan.lowest_layer().add_message(
-                ok_msg_builder().affected_rows(1).info("1st").seqnum(42).more_results(true).build_eof()
+            fix.stream().add_bytes(
+                ok_builder().affected_rows(1).info("1st").seqnum(42).more_results(true).build_eof_frame()
             );
 
             std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
@@ -131,11 +111,11 @@ BOOST_AUTO_TEST_CASE(batch_with_rows)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.chan.lowest_layer()
-                .add_message(
-                    concat_copy(create_text_row_message(42, "abc"), create_text_row_message(43, "von"))
-                )
-                .add_message(create_text_row_message(44, "other"));  // only a single read should be issued
+            fix.stream()
+                .add_bytes(create_text_row_message(42, "abc"))
+                .add_bytes(create_text_row_message(43, "von"))
+                .add_break()
+                .add_bytes(create_text_row_message(44, "other"));  // only a single read should be issued
 
             std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 2u);
@@ -160,11 +140,12 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.chan.lowest_layer().add_message(concat_copy(
-                create_text_row_message(42, "abc"),
-                create_text_row_message(43, "von"),
-                ok_msg_builder().seqnum(44).affected_rows(1).info("1st").more_results(true).build_eof()
-            ));
+            fix.stream()
+                .add_bytes(create_text_row_message(42, "abc"))
+                .add_bytes(create_text_row_message(43, "von"))
+                .add_bytes(
+                    ok_builder().seqnum(44).affected_rows(1).info("1st").more_results(true).build_eof_frame()
+                );
 
             std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 2u);
@@ -193,11 +174,12 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof_multiresult)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.chan.lowest_layer().add_message(concat_copy(
-                create_text_row_message(42, "abc"),
-                ok_msg_builder().seqnum(43).affected_rows(1).info("1st").more_results(true).build_eof(),
-                ok_msg_builder().seqnum(44).info("2nd").build_ok()
-            ));
+            fix.stream()
+                .add_bytes(create_text_row_message(42, "abc"))
+                .add_bytes(
+                    ok_builder().seqnum(43).affected_rows(1).info("1st").more_results(true).build_eof_frame()
+                )
+                .add_bytes(ok_builder().seqnum(44).info("2nd").build_ok_frame());
 
             std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 1u);
@@ -224,12 +206,11 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_out_of_span_space)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.chan.lowest_layer().add_message(concat_copy(
-                create_text_row_message(42, "aaa"),
-                create_text_row_message(43, "bbb"),
-                create_text_row_message(44, "ccc"),
-                create_text_row_message(45, "ddd")
-            ));
+            fix.stream()
+                .add_bytes(create_text_row_message(42, "aaa"))
+                .add_bytes(create_text_row_message(43, "bbb"))
+                .add_bytes(create_text_row_message(44, "ccc"))
+                .add_bytes(create_text_row_message(45, "ddd"));
 
             // We only have space for 3
             std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
@@ -293,9 +274,10 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                 BOOST_TEST_CONTEXT("i=" << i)
                 {
                     fixture fix;
-                    fix.chan.lowest_layer()
-                        .add_message(create_text_row_message(42, "abc"))
-                        .add_message(ok_msg_builder().seqnum(43).affected_rows(1).info("1st").build_eof())
+                    fix.stream()
+                        .add_bytes(create_text_row_message(42, "abc"))
+                        .add_break()
+                        .add_bytes(ok_builder().seqnum(43).affected_rows(1).info("1st").build_eof_frame())
                         .set_fail_count(fail_count(i, client_errc::wrong_num_params));
 
                     fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())
@@ -313,7 +295,7 @@ BOOST_AUTO_TEST_CASE(error_on_row)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.chan.lowest_layer().add_message(create_text_row_message(42, 10));
+            fix.stream().add_bytes(create_text_row_message(42, 10));
 
             // Mock a failure
             fix.proc.set_fail_count(fail_count(0, client_errc::static_row_parsing_error));
@@ -332,7 +314,7 @@ BOOST_AUTO_TEST_CASE(error_on_row_ok_packet)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.chan.lowest_layer().add_message(ok_msg_builder().seqnum(42).build_eof());
+            fix.stream().add_bytes(ok_builder().seqnum(42).build_eof_frame());
 
             // Mock a failure
             fix.proc.set_fail_count(fail_count(0, client_errc::num_resultsets_mismatch));
@@ -344,7 +326,7 @@ BOOST_AUTO_TEST_CASE(error_on_row_ok_packet)
     }
 }
 
-// deserialize_row_message covers cases like getting an error packet, seqnum mismatch, etc
+// deserialize_row_message covers cases like getting an error packet, deserialization errors, etc.
 BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
 {
     for (const auto& fns : all_fns)
@@ -352,17 +334,31 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.chan.lowest_layer().add_message(
-                create_err_packet_message(42, common_server_errc::er_cant_create_db)
+            fix.stream().add_bytes(
+                err_builder().seqnum(42).code(common_server_errc::er_alter_info).build_frame()
             );
 
             // Call the function
             fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())
-                .validate_error_exact(common_server_errc::er_cant_create_db);
+                .validate_error_exact(common_server_errc::er_alter_info);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(error_seqnum_mismatch)
+{
+    for (const auto& fns : all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            fixture fix;
+            fix.stream().add_bytes(ok_builder().seqnum(50).build_eof_frame());
+
+            // Call the function
+            fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())
+                .validate_error_exact(client_errc::sequence_number_mismatch);
         }
     }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

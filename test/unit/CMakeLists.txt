@@ -32,9 +32,9 @@ add_executable(
     execution_processor/static_results_impl.cpp
     network_algorithms/read_resultset_head.cpp
     network_algorithms/start_execution.cpp
+    network_algorithms/read_some_rows.cpp
     # detail/network_algorithms/read_some_rows_dynamic.cpp
     # detail/network_algorithms/read_some_rows_static.cpp
-    # detail/network_algorithms/read_some_rows_impl.cpp
     # detail/network_algorithms/execute_impl.cpp
     # detail/network_algorithms/high_level_execution.cpp
     # detail/network_algorithms/close_statement.cpp
