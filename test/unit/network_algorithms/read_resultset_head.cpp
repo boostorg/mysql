@@ -5,39 +5,34 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "network_algorithms/read_resultset_head.hpp"
+
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
-#include <boost/mysql/connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/string_view.hpp>
-
-#include <boost/mysql/detail/protocol/common_messages.hpp>
 
 #include <boost/test/unit_test.hpp>
 
-#include "buffer_concat.hpp"
-#include "check_meta.hpp"
-#include "creation/create_diagnostics.hpp"
-#include "creation/create_execution_state.hpp"
-#include "creation/create_message.hpp"
-#include "creation/create_message_struct.hpp"
-#include "creation/create_meta.hpp"
-#include "creation/create_row_message.hpp"
-#include "mock_execution_processor.hpp"
-#include "test_channel.hpp"
-#include "test_common.hpp"
-#include "test_stream.hpp"
-#include "unit_netfun_maker.hpp"
+#include "channel/channel.hpp"
+#include "test_common/check_meta.hpp"
+#include "test_common/create_diagnostics.hpp"
+#include "test_unit/create_channel.hpp"
+#include "test_unit/create_err.hpp"
+#include "test_unit/create_execution_processor.hpp"
+#include "test_unit/create_frame.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_ok.hpp"
+#include "test_unit/create_row_message.hpp"
+#include "test_unit/mock_execution_processor.hpp"
+#include "test_unit/unit_netfun_maker.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using boost::mysql::detail::channel;
 using boost::mysql::detail::execution_processor;
-using boost::mysql::detail::protocol_field_type;
 
 namespace {
 
@@ -45,20 +40,20 @@ BOOST_AUTO_TEST_SUITE(test_read_resultset_head)
 
 BOOST_AUTO_TEST_SUITE(detail_)  // tests the overload that can be passed an execution_processor
 
-using netfun_maker = netfun_maker_fn<void, test_channel&, execution_processor&>;
+using netfun_maker = netfun_maker_fn<void, channel&, execution_processor&>;
 
 struct
 {
     typename netfun_maker::signature read_resultset_head;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&detail::read_resultset_head),           "sync_errc"    },
-    {netfun_maker::async_errinfo(&detail::async_read_resultset_head), "async_errinfo"},
+    {netfun_maker::sync_errc(&detail::read_resultset_head_impl),           "sync_errc"    },
+    {netfun_maker::async_errinfo(&detail::async_read_resultset_head_impl), "async_errinfo"},
 };
 
 struct fixture
 {
-    test_channel chan{create_channel()};
+    channel chan{create_channel()};
     mock_execution_processor st;
 
     fixture()
@@ -66,6 +61,8 @@ struct fixture
         // The initial request writing should have advanced this to 1 (or bigger)
         st.sequence_number() = 1;
     }
+
+    test_stream& stream() noexcept { return get_stream(chan); }
 };
 
 BOOST_AUTO_TEST_CASE(success_meta)
@@ -75,9 +72,9 @@ BOOST_AUTO_TEST_CASE(success_meta)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = create_message(1, {0x01});
-            auto col = create_coldef_message(2, protocol_field_type::var_string);
-            fix.chan.lowest_layer().add_message(concat_copy(response, col));
+            fix.stream()
+                .add_bytes(create_frame(1, {0x01}))
+                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame());
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -99,11 +96,13 @@ BOOST_AUTO_TEST_CASE(success_several_meta_separate)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = create_message(1, {0x02});
-            auto col1 = create_coldef_message(2, protocol_field_type::var_string, "f1");
-            auto col2 = create_coldef_message(3, protocol_field_type::tiny, "f2");
-            fix.chan.lowest_layer().add_message(concat_copy(response, col1));
-            fix.chan.lowest_layer().add_message(col2);
+            fix.stream()
+                .add_bytes(create_frame(1, {0x02}))
+                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).name("f1").build_coldef_frame()
+                )
+                .add_break()
+                .add_bytes(meta_builder().seqnum(3).type(column_type::tinyint).name("f2").build_coldef_frame()
+                );
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -131,8 +130,7 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = ok_msg_builder().seqnum(1).affected_rows(42).info("abc").build_ok();
-            fix.chan.lowest_layer().add_message(response);
+            fix.stream().add_bytes(ok_builder().seqnum(1).affected_rows(42).info("abc").build_ok_frame());
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -155,10 +153,11 @@ BOOST_AUTO_TEST_CASE(success_rows_available)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = create_message(1, {0x01});
-            auto col1 = create_coldef_message(2, protocol_field_type::var_string, "f1");
-            auto row1 = create_text_row_message(3, "abc");
-            fix.chan.lowest_layer().add_message(concat_copy(response, col1, row1));
+            fix.stream()
+                .add_bytes(create_frame(1, {0x01}))
+                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).name("f1").build_coldef_frame()
+                )
+                .add_bytes(create_text_row_message(3, "abc"));
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -179,9 +178,9 @@ BOOST_AUTO_TEST_CASE(success_ok_packet_next_resultset)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto ok1 = ok_msg_builder().seqnum(1).info("1st").more_results(true).build_ok();
-            auto ok2 = ok_msg_builder().seqnum(2).info("2nd").build_ok();
-            fix.chan.lowest_layer().add_message(concat_copy(ok1, ok2));
+            fix.stream()
+                .add_bytes(ok_builder().seqnum(1).info("1st").more_results(true).build_ok_frame())
+                .add_bytes(ok_builder().seqnum(2).info("2nd").build_ok_frame());
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -223,7 +222,7 @@ BOOST_AUTO_TEST_CASE(state_reading_rows)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            add_meta(fix.st, {meta_builder().type(column_type::bit).build()});
+            add_meta(fix.st, {meta_builder().type(column_type::bit).build_coldef()});
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -249,13 +248,21 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                 BOOST_TEST_CONTEXT(i)
                 {
                     fixture fix;
-                    auto response = create_message(1, {0x02});
-                    auto col1 = create_coldef_message(2, protocol_field_type::var_string, "f1");
-                    auto col2 = create_coldef_message(3, protocol_field_type::tiny, "f2");
-                    fix.chan.lowest_layer().add_message(response);
-                    fix.chan.lowest_layer().add_message(col1);
-                    fix.chan.lowest_layer().add_message(col2);
-                    fix.chan.lowest_layer().set_fail_count(fail_count(i, client_errc::server_unsupported));
+                    fix.stream()
+                        .add_bytes(create_frame(1, {0x02}))
+                        .add_break()
+                        .add_bytes(meta_builder()
+                                       .seqnum(2)
+                                       .type(column_type::varchar)
+                                       .name("f1")
+                                       .build_coldef_frame())
+                        .add_break()
+                        .add_bytes(meta_builder()
+                                       .seqnum(3)
+                                       .type(column_type::tinyint)
+                                       .name("f2")
+                                       .build_coldef_frame())
+                        .set_fail_count(fail_count(i, client_errc::server_unsupported));
 
                     // Call the function
                     fns.read_resultset_head(fix.chan, fix.st)
@@ -273,12 +280,10 @@ BOOST_AUTO_TEST_CASE(error_metadata_packets_seqnum_mismatch)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = create_message(1, {0x02});
-            auto col1 = create_coldef_message(2, protocol_field_type::var_string, "f1");
-            auto col2 = create_coldef_message(4, protocol_field_type::tiny, "f2");
-            fix.chan.lowest_layer().add_message(response);
-            fix.chan.lowest_layer().add_message(col1);
-            fix.chan.lowest_layer().add_message(col2);
+            fix.stream()
+                .add_bytes(create_frame(1, {0x02}))
+                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame())
+                .add_bytes(meta_builder().seqnum(4).type(column_type::tinyint).build_coldef_frame());
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st)
@@ -296,8 +301,11 @@ BOOST_AUTO_TEST_CASE(error_deserialize_execution_response)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = create_err_packet_message(1, common_server_errc::er_bad_db_error, "no_db");
-            fix.chan.lowest_layer().add_message(response);
+            fix.stream().add_bytes(err_builder()
+                                       .seqnum(1)
+                                       .code(common_server_errc::er_bad_db_error)
+                                       .message("no_db")
+                                       .build_frame());
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st)
@@ -313,10 +321,9 @@ BOOST_AUTO_TEST_CASE(error_deserialize_metadata)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            auto response = create_message(1, {0x01});
-            auto col = create_message(2, {0x08, 0x03});
-            fix.chan.lowest_layer().add_message(response);
-            fix.chan.lowest_layer().add_message(col);
+            fix.stream()
+                .add_bytes(create_frame(1, {0x01}))
+                .add_bytes(create_frame(2, {0x08, 0x03}));  // bad coldef
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_error_exact(client_errc::incomplete_message);
@@ -337,8 +344,7 @@ BOOST_AUTO_TEST_CASE(error_on_head_ok_packet)
                 create_client_diag("some message")
             );
 
-            auto response = ok_msg_builder().seqnum(1).affected_rows(42).info("abc").build_ok();
-            fix.chan.lowest_layer().add_message(response);
+            fix.stream().add_bytes(ok_builder().seqnum(1).affected_rows(42).info("abc").build_ok_frame());
 
             fns.read_resultset_head(fix.chan, fix.st)
                 .validate_error_exact_client(client_errc::metadata_check_failed, "some message");
@@ -359,9 +365,9 @@ BOOST_AUTO_TEST_CASE(error_on_meta)
                 create_client_diag("some message")
             );
 
-            auto response = create_message(1, {0x01});
-            auto col = create_coldef_message(2, protocol_field_type::var_string);
-            fix.chan.lowest_layer().add_message(concat_copy(response, col));
+            fix.stream()
+                .add_bytes(create_frame(1, {0x01}))
+                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame());
 
             fns.read_resultset_head(fix.chan, fix.st)
                 .validate_error_exact_client(client_errc::metadata_check_failed, "some message");

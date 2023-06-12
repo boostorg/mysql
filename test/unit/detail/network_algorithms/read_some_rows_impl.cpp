@@ -65,6 +65,14 @@ struct
 //     BOOST_TEST(response.data.err == client_errc::sequence_number_mismatch);
 // }
 
+// Note:
+// inline void read_some_and_check(test_channel& chan)
+// {
+//     error_code err;
+//     chan.read_some(err);
+//     throw_on_error(err);
+// }
+
 struct fixture
 {
     mock_execution_processor proc;

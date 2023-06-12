@@ -25,7 +25,7 @@ std::vector<std::uint8_t> create_text_row_body(const Args&... args)
 template <class... Args>
 std::vector<std::uint8_t> create_text_row_message(std::uint8_t seqnum, const Args&... args)
 {
-    return create_message(seqnum, create_text_row_body(args...));
+    return create_frame(seqnum, create_text_row_body(args...));
 }
 
 }  // namespace test

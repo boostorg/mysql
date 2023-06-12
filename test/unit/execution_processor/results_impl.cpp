@@ -32,7 +32,6 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 using boost::mysql::detail::output_ref;
-using boost::mysql::detail::protocol_field_type;
 using boost::mysql::detail::results_impl;
 using boost::mysql::detail::resultset_container;
 using boost::mysql::detail::resultset_encoding;
