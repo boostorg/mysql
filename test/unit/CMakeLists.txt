@@ -37,8 +37,7 @@ add_executable(
     network_algorithms/execute.cpp
     network_algorithms/close_statement.cpp
     network_algorithms/ping.cpp
-    # detail/network_algorithms/high_level_execution.cpp
-    # detail/network_algorithms/read_some_rows_static.cpp
+    network_algorithms/read_some_rows_static.cpp
 
     # detail/execution_processor/concepts.cpp
 

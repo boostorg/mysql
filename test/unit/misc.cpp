@@ -165,6 +165,112 @@ BOOST_AUTO_TEST_CASE(close_statement_handle_deferred_tokens)
 }
 #endif
 
+// Verify that we correctly perform a decay-copy of the execution request,
+// relevant for deferred tokens
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+BOOST_AUTO_TEST_CASE(deferred_lifetimes_rvalues)
+{
+    run_coroutine([]() -> boost::asio::awaitable<void> {
+        results result;
+        auto chan = create_channel();
+        chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        diagnostics diag;
+
+        // Deferred op. Execution request is a temporary
+        auto aw = detail::async_execute(
+            chan,
+            create_the_statement().bind(std::string("test"), nullptr),
+            get_iface(result),
+            diag,
+            boost::asio::use_awaitable
+        );
+        co_await std::move(aw);
+
+        // verify that the op had the intended effects
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+        BOOST_TEST(result.info() == "1st");
+    });
+}
+
+BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
+{
+    run_coroutine([]() -> boost::asio::awaitable<void> {
+        results result;
+        auto chan = create_channel();
+        diagnostics diag;
+        chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        boost::asio::awaitable<void> aw;
+
+        // Deferred op
+        {
+            auto stmt = create_the_statement();
+            auto req = stmt.bind(std::string("test"), nullptr);
+            aw = detail::async_execute(chan, req, get_iface(result), diag, boost::asio::use_awaitable);
+        }
+
+        co_await std::move(aw);
+
+        // verify that the op had the intended effects
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+        BOOST_TEST(result.info() == "1st");
+    });
+}
+#endif
+BOOST_AUTO_TEST_SUITE_END()
+
+// Verify that we correctly perform a decay-copy of the parameters and the
+// statement handle, relevant for deferred tokens
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+BOOST_AUTO_TEST_CASE(deferred_lifetimes_rvalues)
+{
+    run_coroutine([]() -> boost::asio::awaitable<void> {
+        execution_state st;
+        auto chan = create_channel();
+        chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        diagnostics diag;
+
+        // Deferred op. Execution request is a temporary
+        auto aw = detail::async_start_execution(
+            chan,
+            create_the_statement().bind(std::string("test"), nullptr),
+            get_iface(st),
+            diag,
+            boost::asio::use_awaitable
+        );
+        co_await std::move(aw);
+
+        // verify that the op had the intended effects
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+        BOOST_TEST(st.info() == "1st");
+    });
+}
+
+BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
+{
+    run_coroutine([]() -> boost::asio::awaitable<void> {
+        execution_state st;
+        auto chan = create_channel();
+        chan.lowest_layer().add_message(ok_msg_builder().seqnum(1).info("1st").build_ok());
+        boost::asio::awaitable<void> aw;
+        diagnostics diag;
+
+        // Deferred op
+        {
+            const auto stmt = create_the_statement();
+            const auto req = stmt.bind(std::string("test"), nullptr);
+            aw = detail::async_start_execution(chan, req, get_iface(st), diag, boost::asio::use_awaitable);
+        }
+
+        co_await std::move(aw);
+
+        // verify that the op had the intended effects
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(chan.lowest_layer().bytes_written(), execute_stmt_msg);
+        BOOST_TEST(st.info() == "1st");
+    });
+}
+#endif
+BOOST_AUTO_TEST_SUITE_END()
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
