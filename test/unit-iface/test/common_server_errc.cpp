@@ -7,16 +7,11 @@
 
 #include <boost/mysql/common_server_errc.hpp>
 
-#include <boost/mysql/detail/auxiliar/stringize.hpp>
-
-#include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <limits>
 
-using boost::mysql::common_server_errc;
-using boost::mysql::get_common_server_category;
-using boost::mysql::detail::error_to_string;
+using namespace boost::mysql;
 
 namespace {
 
@@ -47,7 +42,7 @@ BOOST_AUTO_TEST_CASE(error_to_string_regular)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            BOOST_TEST(error_to_string(static_cast<common_server_errc>(tc.err)) == tc.expected_msg);
+            BOOST_TEST(error_code(static_cast<common_server_errc>(tc.err)).message() == tc.expected_msg);
         }
     }
 }
@@ -57,13 +52,13 @@ BOOST_AUTO_TEST_CASE(error_to_string_coverage)
     // Check that no value causes problems.
     for (int i = 1000; i <= 1880; ++i)
     {
-        BOOST_CHECK_NO_THROW(error_to_string(static_cast<common_server_errc>(i)));
+        BOOST_CHECK_NO_THROW(error_code(static_cast<common_server_errc>(i)).message());
     }
 }
 
 BOOST_AUTO_TEST_CASE(make_error_code)
 {
-    boost::mysql::error_code code(common_server_errc::er_bad_db_error);
+    error_code code(common_server_errc::er_bad_db_error);
     BOOST_TEST(code.value() == static_cast<int>(common_server_errc::er_bad_db_error));
     BOOST_TEST(&code.category() == &get_common_server_category());  // categories are not printable
 }

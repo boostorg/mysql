@@ -55,6 +55,7 @@ endif()
 
 # Unit testing
 add_subdirectory(unit)
+add_subdirectory(unit-iface)
 
 # Integration testing
 if(BOOST_MYSQL_INTEGRATION_TESTS)

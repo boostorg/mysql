@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/mariadb_server_errc.hpp>
 
@@ -12,8 +13,7 @@
 
 #include <limits>
 
-using boost::mysql::error_code;
-using boost::mysql::get_mariadb_server_category;
+using namespace boost::mysql;
 
 namespace {
 

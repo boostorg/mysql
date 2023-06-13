@@ -5,16 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/mysql_server_errc.hpp>
 
-#include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <limits>
 
-using boost::mysql::error_code;
-using boost::mysql::get_mysql_server_category;
+using namespace boost::mysql;
 
 namespace {
 

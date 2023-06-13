@@ -9,10 +9,9 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "stringize.hpp"
+#include "test_common/stringize.hpp"
 
-using boost::mysql::client_errc;
-using boost::mysql::detail::error_to_string;
+using namespace boost::mysql;
 
 namespace {
 
@@ -22,12 +21,12 @@ BOOST_AUTO_TEST_SUITE(error_to_string_)
 
 BOOST_AUTO_TEST_CASE(regular)
 {
-    BOOST_TEST(error_to_string(client_errc::sequence_number_mismatch) == "Mismatched sequence numbers");
+    BOOST_TEST(error_code(client_errc::sequence_number_mismatch).message() == "Mismatched sequence numbers");
 }
 
 BOOST_AUTO_TEST_CASE(unknown_error)
 {
-    BOOST_TEST(error_to_string(static_cast<client_errc>(0xfffefdfc)) == "<unknown MySQL client error>");
+    BOOST_TEST(error_code(static_cast<client_errc>(0xfffefdfc)).message() == "<unknown MySQL client error>");
 }
 
 BOOST_AUTO_TEST_CASE(coverage)
@@ -36,14 +35,14 @@ BOOST_AUTO_TEST_CASE(coverage)
     // Ensure that all branches of the switch/case are covered
     for (int i = 0; i < 20; ++i)
     {
-        BOOST_CHECK_NO_THROW(error_to_string(static_cast<client_errc>(i)));
+        BOOST_CHECK_NO_THROW(error_code(static_cast<client_errc>(i)).message());
     }
 }
 BOOST_AUTO_TEST_SUITE_END()  // error_to_string_
 
 BOOST_AUTO_TEST_CASE(error_code_from_errc)
 {
-    boost::mysql::error_code code(client_errc::protocol_value_error);
+    error_code code(client_errc::protocol_value_error);
     BOOST_TEST(code.value() == static_cast<int>(client_errc::protocol_value_error));
     BOOST_TEST(&code.category() == &boost::mysql::get_client_category());  // categories are not printable
 }
