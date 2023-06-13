@@ -12,7 +12,8 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "test_unit/create_ok.hpp"
+#include "test_common/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/test_stream.hpp"
 #include "test_unit/unit_netfun_maker.hpp"
 
@@ -45,7 +46,7 @@ BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
             test_connection conn;
 
             // Use it
-            conn.stream().add_bytes(ok_builder().seqnum(1).build_ok_frame());
+            conn.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
             results result;
             fns.query(conn, "SELECT * FROM myt", result).validate_no_error();
 
@@ -53,7 +54,7 @@ BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
             test_connection conn2(std::move(conn));
 
             // Using it works (no dangling pointer)
-            conn2.stream().add_bytes(ok_builder().seqnum(1).affected_rows(42).build_ok_frame());
+            conn2.stream().add_bytes(create_ok_frame(1, ok_builder().affected_rows(42).build()));
             fns.query(conn2, "DELETE FROM myt", result).validate_no_error();
             BOOST_TEST(result.affected_rows() == 42u);
         }
@@ -71,8 +72,8 @@ BOOST_AUTO_TEST_CASE(use_move_assigned_connection)
             test_connection conn2;
 
             // Use them
-            conn1.stream().add_bytes(ok_builder().seqnum(1).build_ok_frame());
-            conn2.stream().add_bytes(ok_builder().seqnum(1).build_ok_frame());
+            conn1.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
+            conn2.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
             results result;
             fns.query(conn1, "SELECT * FROM myt", result).validate_no_error();
             fns.query(conn2, "SELECT * FROM myt", result).validate_no_error();
@@ -81,7 +82,7 @@ BOOST_AUTO_TEST_CASE(use_move_assigned_connection)
             conn2 = std::move(conn1);
 
             // Using it works (no dangling pointer)
-            conn2.stream().add_bytes(ok_builder().seqnum(1).affected_rows(42).build_ok_frame());
+            conn2.stream().add_bytes(create_ok_frame(1, ok_builder().affected_rows(42).build()));
             fns.query(conn2, "DELETE FROM myt", result).validate_no_error();
             BOOST_TEST(result.affected_rows() == 42u);
         }

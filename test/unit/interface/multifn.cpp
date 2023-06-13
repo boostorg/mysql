@@ -18,9 +18,10 @@
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/test_stream.hpp"
 #include "test_unit/unit_netfun_maker.hpp"
@@ -68,9 +69,10 @@ BOOST_AUTO_TEST_CASE(separate_batches)
                 .add_break()
                 .add_bytes(create_text_row_message(3, "abc"))
                 .add_break()
-                .add_bytes(
-                    ok_builder().seqnum(4).affected_rows(10u).info("1st").more_results(true).build_eof_frame()
-                )
+                .add_bytes(create_eof_frame(
+                    4,
+                    ok_builder().affected_rows(10u).info("1st").more_results(true).build()
+                ))
                 .add_break()
                 .add_bytes(create_frame(5, {0x01}))
                 .add_break()
@@ -80,7 +82,7 @@ BOOST_AUTO_TEST_CASE(separate_batches)
                 .add_bytes(create_text_row_message(8, "plo"))
                 .add_break()
                 .add_bytes(create_text_row_message(9, "hju"))
-                .add_bytes(ok_builder().seqnum(10).affected_rows(30u).info("2nd").build_eof_frame());
+                .add_bytes(create_eof_frame(10, ok_builder().affected_rows(30u).info("2nd").build()));
 
             // Start
             fns.start_execution(conn, "SELECT 1", st).validate_no_error();
@@ -133,15 +135,16 @@ BOOST_AUTO_TEST_CASE(single_read)
                 .add_bytes(create_frame(1, {0x01}))
                 .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
                 .add_bytes(create_text_row_message(3, "abc"))
-                .add_bytes(
-                    ok_builder().seqnum(4).affected_rows(10u).info("1st").more_results(true).build_eof_frame()
-                )
+                .add_bytes(create_eof_frame(
+                    4,
+                    ok_builder().affected_rows(10u).info("1st").more_results(true).build()
+                ))
                 .add_bytes(create_frame(5, {0x01}))
                 .add_bytes(create_coldef_frame(6, meta_builder().type(column_type::decimal).build_coldef()))
                 .add_bytes(create_text_row_message(7, "ab"))
                 .add_bytes(create_text_row_message(8, "plo"))
                 .add_bytes(create_text_row_message(9, "hju"))
-                .add_bytes(ok_builder().seqnum(10).affected_rows(30u).info("2nd").build_eof_frame());
+                .add_bytes(create_eof_frame(10, ok_builder().affected_rows(30u).info("2nd").build()));
 
             // Start
             fns.start_execution(conn, "SELECT 1", st).validate_no_error();
@@ -181,12 +184,12 @@ BOOST_AUTO_TEST_CASE(empty_resultsets)
 
             conn.stream()
                 .add_bytes(
-                    ok_builder().seqnum(1).affected_rows(10u).info("1st").more_results(true).build_ok_frame()
+                    create_ok_frame(1, ok_builder().affected_rows(10u).info("1st").more_results(true).build())
                 )
                 .add_bytes(
-                    ok_builder().seqnum(2).affected_rows(20u).info("2nd").more_results(true).build_ok_frame()
+                    create_ok_frame(2, ok_builder().affected_rows(20u).info("2nd").more_results(true).build())
                 )
-                .add_bytes(ok_builder().seqnum(3).affected_rows(30u).info("3rd").build_ok_frame());
+                .add_bytes(create_ok_frame(3, ok_builder().affected_rows(30u).info("3rd").build()));
 
             // Start
             fns.start_execution(conn, "SELECT 1", st).validate_no_error();

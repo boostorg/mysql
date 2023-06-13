@@ -15,6 +15,10 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/column_flags.hpp>
 
+#include <cstddef>
+#include <cstdint>
+#include <vector>
+
 namespace boost {
 namespace mysql {
 namespace test {

@@ -21,11 +21,12 @@
 #include "test_common/buffer_concat.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
 #include "test_unit/create_channel.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/printing.hpp"
@@ -70,7 +71,7 @@ BOOST_AUTO_TEST_CASE(eof)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.stream().add_bytes(ok_builder().affected_rows(60u).info("abc").seqnum(1).build_ok_frame());
+            fix.stream().add_bytes(create_ok_frame(1, ok_builder().affected_rows(60u).info("abc").build()));
 
             // Call the function
             fns.execute(fix.chan, any_execution_request("SELECT 1"), fix.proc).validate_no_error();
@@ -101,8 +102,8 @@ BOOST_AUTO_TEST_CASE(single_batch)
                 .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::bigint).build_coldef()))
                 .add_bytes(create_text_row_message(3, 42))  // row 1
                 .add_bytes(create_text_row_message(4, 43))  // row 2
-                .add_bytes(ok_builder().seqnum(5).affected_rows(10u).info("1st").build_eof_frame())
-                .add_bytes(ok_builder().seqnum(1).info("2nd").build_eof_frame());  // don't read any further
+                .add_bytes(create_eof_frame(5, ok_builder().affected_rows(10u).info("1st").build()))
+                .add_bytes(create_ok_frame(1, ok_builder().info("2nd").build()));  // don't read any further
 
             // Call the function
             fns.execute(fix.chan, any_execution_request("SELECT 1"), fix.proc).validate_no_error();
@@ -147,7 +148,7 @@ BOOST_AUTO_TEST_CASE(multiple_batches)
                 .add_break()
                 .add_bytes(create_text_row_message(4, 43))  // row 2
                 .add_break()
-                .add_bytes(ok_builder().seqnum(5).affected_rows(10u).info("1st").build_eof_frame());
+                .add_bytes(create_eof_frame(5, ok_builder().affected_rows(10u).info("1st").build()));
 
             // Call the function
             fns.execute(fix.chan, any_execution_request("SELECT 1"), fix.proc).validate_no_error();
@@ -195,7 +196,7 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                         )
                         .add_break()
                         .add_bytes(create_text_row_message(3, 42))
-                        .add_bytes(ok_builder().seqnum(4).info("1st").build_eof_frame())
+                        .add_bytes(create_eof_frame(4, ok_builder().info("1st").build()))
                         .set_fail_count(fail_count(i, client_errc::wrong_num_params));
 
                     // Call the function

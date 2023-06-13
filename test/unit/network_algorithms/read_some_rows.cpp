@@ -17,11 +17,12 @@
 
 #include "channel/channel.hpp"
 #include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
 #include "test_unit/create_channel.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/test_stream.hpp"
@@ -84,7 +85,7 @@ BOOST_AUTO_TEST_CASE(eof)
         {
             fixture fix;
             fix.stream().add_bytes(
-                ok_builder().affected_rows(1).info("1st").seqnum(42).more_results(true).build_eof_frame()
+                create_eof_frame(42, ok_builder().affected_rows(1).info("1st").more_results(true).build())
             );
 
             std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
@@ -144,7 +145,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
                 .add_bytes(create_text_row_message(42, "abc"))
                 .add_bytes(create_text_row_message(43, "von"))
                 .add_bytes(
-                    ok_builder().seqnum(44).affected_rows(1).info("1st").more_results(true).build_eof_frame()
+                    create_eof_frame(44, ok_builder().affected_rows(1).info("1st").more_results(true).build())
                 );
 
             std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
@@ -177,9 +178,9 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof_multiresult)
             fix.stream()
                 .add_bytes(create_text_row_message(42, "abc"))
                 .add_bytes(
-                    ok_builder().seqnum(43).affected_rows(1).info("1st").more_results(true).build_eof_frame()
+                    create_eof_frame(43, ok_builder().affected_rows(1).info("1st").more_results(true).build())
                 )
-                .add_bytes(ok_builder().seqnum(44).info("2nd").build_ok_frame());
+                .add_bytes(create_ok_frame(44, ok_builder().info("2nd").build()));
 
             std::size_t num_rows = fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref()).get();
             BOOST_TEST(num_rows == 1u);
@@ -277,7 +278,7 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                     fix.stream()
                         .add_bytes(create_text_row_message(42, "abc"))
                         .add_break()
-                        .add_bytes(ok_builder().seqnum(43).affected_rows(1).info("1st").build_eof_frame())
+                        .add_bytes(create_eof_frame(43, ok_builder().affected_rows(1).info("1st").build()))
                         .set_fail_count(fail_count(i, client_errc::wrong_num_params));
 
                     fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())
@@ -314,7 +315,7 @@ BOOST_AUTO_TEST_CASE(error_on_row_ok_packet)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.stream().add_bytes(ok_builder().seqnum(42).build_eof_frame());
+            fix.stream().add_bytes(create_eof_frame(42, ok_builder().build()));
 
             // Mock a failure
             fix.proc.set_fail_count(fail_count(0, client_errc::num_resultsets_mismatch));
@@ -352,7 +353,7 @@ BOOST_AUTO_TEST_CASE(error_seqnum_mismatch)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.stream().add_bytes(ok_builder().seqnum(50).build_eof_frame());
+            fix.stream().add_bytes(create_eof_frame(50, ok_builder().build()));
 
             // Call the function
             fns.read_some_rows_impl(fix.chan, fix.proc, fix.ref())

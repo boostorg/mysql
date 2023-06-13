@@ -15,10 +15,11 @@
 
 #include "channel/channel.hpp"
 #include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
 #include "test_unit/create_channel.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/test_stream.hpp"
 #include "test_unit/unit_netfun_maker.hpp"
@@ -66,7 +67,7 @@ BOOST_AUTO_TEST_CASE(eof)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.stream().add_bytes(ok_builder().affected_rows(1).info("1st").seqnum(42).build_eof_frame());
+            fix.stream().add_bytes(create_eof_frame(42, ok_builder().affected_rows(1).info("1st").build()));
 
             rows_view rv = fns.read_some_rows_dynamic(fix.chan, fix.st).get();
             BOOST_TEST(rv == makerows(1));
@@ -109,7 +110,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
             fix.stream()
                 .add_bytes(create_text_row_message(42, "abc"))
                 .add_bytes(create_text_row_message(43, "von"))
-                .add_bytes(ok_builder().seqnum(44).affected_rows(1).info("1st").build_eof_frame());
+                .add_bytes(create_eof_frame(44, ok_builder().affected_rows(1).info("1st").build()));
 
             rows_view rv = fns.read_some_rows_dynamic(fix.chan, fix.st).get();
             BOOST_TEST(rv == makerows(1, "abc", "von"));

@@ -32,9 +32,10 @@
 #include "serialization_test.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_err.hpp"
-#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/printing.hpp"
 
@@ -113,7 +114,7 @@ BOOST_AUTO_TEST_CASE(ok_view_success)
             ok_builder()
                 .affected_rows(4)
                 .last_insert_id(0)
-                .flags(SERVER_STATUS_AUTOCOMMIT | SERVER_QUERY_NO_INDEX_USED)
+                .flags(34)
                 .warnings(0)
                 .info("Rows matched: 5  Changed: 4  Warnings: 0")
                 .build(),
@@ -126,7 +127,7 @@ BOOST_AUTO_TEST_CASE(ok_view_success)
             ok_builder()
                 .affected_rows(1)
                 .last_insert_id(6)
-                .flags(SERVER_STATUS_AUTOCOMMIT)
+                .flags(2)
                 .warnings(0)
                 .info("")
                 .build(),
@@ -137,7 +138,7 @@ BOOST_AUTO_TEST_CASE(ok_view_success)
             ok_builder()
                 .affected_rows(0)
                 .last_insert_id(0)
-                .flags(SERVER_STATUS_AUTOCOMMIT)
+                .flags(0x02)
                 .warnings(0)
                 .info("")
                 .build(),
@@ -673,7 +674,7 @@ BOOST_AUTO_TEST_CASE(deserialize_ping_response_)
         error_code expected_err;
         const char* expected_msg;
     } test_cases[] = {
-        {"success",              ok_builder().build_ok_body(),                                error_code(),                      ""},
+        {"success",              create_ok_body(ok_builder().build()),                        error_code(),                      ""},
         {"empty_message",        {},                                                          client_errc::incomplete_message,   ""},
         {"invalid_message_type", {0xab},                                                      client_errc::protocol_value_error, ""},
         {"bad_ok_packet",        {0x00, 0x01},                                                client_errc::incomplete_message,   ""},
@@ -1086,7 +1087,7 @@ BOOST_AUTO_TEST_CASE(deserialize_row_message_row)
 BOOST_AUTO_TEST_CASE(deserialize_row_message_ok_packet)
 {
     deserialization_buffer serialized{
-        ok_builder().affected_rows(42).last_insert_id(1).info("abc").build_eof_body()};
+        create_eof_body(ok_builder().affected_rows(42).last_insert_id(1).info("abc").build())};
     diagnostics diag;
 
     auto response = deserialize_row_message(serialized, db_flavor::mysql, diag);

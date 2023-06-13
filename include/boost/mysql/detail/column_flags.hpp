@@ -33,6 +33,13 @@ constexpr std::uint16_t part_key = 16384;         // Intern; Part of some key.
 constexpr std::uint16_t num = 32768;              // Field is num (for clients)
 
 }  // namespace column_flags
+
+// TODO: this feels weird here
+namespace status_flags {
+constexpr std::uint32_t more_results = 8;
+constexpr std::uint32_t out_params = 4096;
+}  // namespace status_flags
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost

@@ -18,22 +18,6 @@ namespace detail {
 constexpr std::size_t MAX_PACKET_SIZE = 0xffffff;
 constexpr std::size_t HEADER_SIZE = 4;
 
-// Server status flags
-constexpr std::uint32_t SERVER_STATUS_IN_TRANS = 1;
-constexpr std::uint32_t SERVER_STATUS_AUTOCOMMIT = 2;
-constexpr std::uint32_t SERVER_MORE_RESULTS_EXISTS = 8;
-constexpr std::uint32_t SERVER_QUERY_NO_GOOD_INDEX_USED = 16;
-constexpr std::uint32_t SERVER_QUERY_NO_INDEX_USED = 32;
-constexpr std::uint32_t SERVER_STATUS_CURSOR_EXISTS = 64;
-constexpr std::uint32_t SERVER_STATUS_LAST_ROW_SENT = 128;
-constexpr std::uint32_t SERVER_STATUS_DB_DROPPED = 256;
-constexpr std::uint32_t SERVER_STATUS_NO_BACKSLASH_ESCAPES = 512;
-constexpr std::uint32_t SERVER_STATUS_METADATA_CHANGED = 1024;
-constexpr std::uint32_t SERVER_QUERY_WAS_SLOW = 2048;
-constexpr std::uint32_t SERVER_PS_OUT_PARAMS = 4096;
-constexpr std::uint32_t SERVER_STATUS_IN_TRANS_READONLY = 8192;
-constexpr std::uint32_t SERVER_SESSION_STATE_CHANGED = (1UL << 14);
-
 // The binary collation number, used to distinguish blobs from strings
 constexpr std::uint16_t binary_collation = 63;
 

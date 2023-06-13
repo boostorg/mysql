@@ -5,14 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_OK_HPP
-#define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_OK_HPP
+#ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_CREATE_OK_HPP
+#define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_CREATE_OK_HPP
 
 #include <boost/mysql/string_view.hpp>
 
-#include "protocol/protocol.hpp"
-#include "test_unit/create_frame.hpp"
-#include "test_unit/serialization.hpp"
+#include <boost/mysql/detail/column_flags.hpp>
+#include <boost/mysql/detail/ok_view.hpp>
 
 namespace boost {
 namespace mysql {
@@ -21,7 +20,6 @@ namespace test {
 class ok_builder
 {
     detail::ok_view ok_{};
-    std::uint8_t seqnum_{};
 
     void flag(std::uint16_t f, bool value) noexcept
     {
@@ -55,12 +53,12 @@ public:
     }
     ok_builder& more_results(bool v) noexcept
     {
-        flag(detail::SERVER_MORE_RESULTS_EXISTS, v);
+        flag(detail::status_flags::more_results, v);
         return *this;
     }
     ok_builder& out_params(bool v) noexcept
     {
-        flag(detail::SERVER_PS_OUT_PARAMS, v);
+        flag(detail::status_flags::out_params, v);
         return *this;
     }
     ok_builder& info(string_view v) noexcept
@@ -68,17 +66,7 @@ public:
         ok_.info = v;
         return *this;
     }
-    ok_builder seqnum(std::uint8_t v)
-    {
-        seqnum_ = v;
-        return *this;
-    }
     detail::ok_view build() const noexcept { return ok_; }
-
-    std::vector<std::uint8_t> build_ok_body() { return serialize_ok(ok_); }
-    std::vector<std::uint8_t> build_eof_body() { return serialize_eof(ok_); }
-    std::vector<std::uint8_t> build_ok_frame() { return create_frame(seqnum_, build_ok_body()); }
-    std::vector<std::uint8_t> build_eof_frame() { return create_frame(seqnum_, build_eof_body()); }
 };
 
 }  // namespace test

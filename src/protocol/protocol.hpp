@@ -16,6 +16,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/coldef_view.hpp>
+#include <boost/mysql/detail/ok_view.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/config.hpp>
@@ -47,17 +48,6 @@ void serialize_frame_header(frame_header, span<std::uint8_t, frame_header_size> 
 frame_header deserialize_frame_header(span<const std::uint8_t, frame_header_size> buffer) noexcept;
 
 // OK packets (views because strings are non-owning)
-struct ok_view
-{
-    std::uint64_t affected_rows;
-    std::uint64_t last_insert_id;
-    std::uint16_t status_flags;
-    std::uint16_t warnings;
-    string_view info;
-
-    bool more_results() const noexcept { return status_flags & SERVER_MORE_RESULTS_EXISTS; }
-    bool is_out_params() const noexcept { return status_flags & SERVER_PS_OUT_PARAMS; }
-};
 error_code deserialize_ok_packet(span<const std::uint8_t> msg, ok_view& output) noexcept;  // for testing
 
 // Error packets (exposed for testing)

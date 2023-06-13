@@ -20,12 +20,13 @@
 #include "test_common/check_meta.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
 #include "test_unit/create_channel.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/unit_netfun_maker.hpp"
@@ -135,7 +136,7 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
         BOOST_TEST_CONTEXT(fns.name)
         {
             fixture fix;
-            fix.stream().add_bytes(ok_builder().seqnum(1).affected_rows(42).info("abc").build_ok_frame());
+            fix.stream().add_bytes(create_ok_frame(1, ok_builder().affected_rows(42).info("abc").build()));
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -186,8 +187,8 @@ BOOST_AUTO_TEST_CASE(success_ok_packet_next_resultset)
         {
             fixture fix;
             fix.stream()
-                .add_bytes(ok_builder().seqnum(1).info("1st").more_results(true).build_ok_frame())
-                .add_bytes(ok_builder().seqnum(2).info("2nd").build_ok_frame());
+                .add_bytes(create_ok_frame(1, ok_builder().info("1st").more_results(true).build()))
+                .add_bytes(create_ok_frame(2, ok_builder().info("2nd").build()));
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -349,7 +350,7 @@ BOOST_AUTO_TEST_CASE(error_on_head_ok_packet)
                 create_client_diag("some message")
             );
 
-            fix.stream().add_bytes(ok_builder().seqnum(1).affected_rows(42).info("abc").build_ok_frame());
+            fix.stream().add_bytes(create_ok_frame(1, ok_builder().affected_rows(42).info("abc").build()));
 
             fns.read_resultset_head(fix.chan, fix.st)
                 .validate_error_exact_client(client_errc::metadata_check_failed, "some message");

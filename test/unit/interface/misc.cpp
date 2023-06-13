@@ -20,9 +20,10 @@
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/create_statement.hpp"
 #include "test_unit/run_coroutine.hpp"
@@ -45,8 +46,8 @@ BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
 
     // Resultsets will be complete as soon as a message is read
     conn.stream()
-        .add_bytes(ok_builder().seqnum(1).affected_rows(2).build_ok_frame())
-        .add_bytes(ok_builder().seqnum(1).affected_rows(1).build_ok_frame());
+        .add_bytes(create_ok_frame(1, ok_builder().affected_rows(2).build()))
+        .add_bytes(create_ok_frame(1, ok_builder().affected_rows(1).build()));
 
     // Launch coroutine and wait for completion
     run_coroutine(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
@@ -96,9 +97,10 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
         .add_break()
         .add_bytes(create_text_row_message(5, "defghi", makebv("\3\4\3\0")))  // row 2
         .add_break()
-        .add_bytes(ok_builder().seqnum(6).affected_rows(10u).info("1st").more_results(true).build_eof_frame())
+        .add_bytes(create_eof_frame(6, ok_builder().affected_rows(10u).info("1st").more_results(true).build())
+        )
         .add_break()
-        .add_bytes(ok_builder().seqnum(7).affected_rows(20u).info("2nd").more_results(true).build_ok_frame())
+        .add_bytes(create_ok_frame(7, ok_builder().affected_rows(20u).info("2nd").more_results(true).build()))
         .add_break()
         .add_bytes(create_frame(8, {0x01}))  // OK, 1 metadata
         .add_break()
@@ -106,7 +108,7 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
         .add_break()
         .add_bytes(create_text_row_message(10, "ab"))  // row 1
         .add_break()
-        .add_bytes(ok_builder().seqnum(11).affected_rows(30u).info("3rd").build_eof_frame());
+        .add_bytes(create_eof_frame(11, ok_builder().affected_rows(30u).info("3rd").build()));
 
     // Call the function
     conn.execute("abc", result);
@@ -135,7 +137,7 @@ BOOST_AUTO_TEST_CASE(execute_stmt_iterator_reference_not_field_view)
     results result;
     auto stmt = statement_builder().id(1).num_params(2).build();
     test_connection conn;
-    conn.stream().add_bytes(ok_builder().seqnum(1).affected_rows(50).info("1st").build_ok_frame());
+    conn.stream().add_bytes(create_ok_frame(1, ok_builder().affected_rows(50).info("1st").build()));
 
     // Call the function
     std::vector<field> fields{field_view("test"), field_view()};
@@ -170,7 +172,7 @@ BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes_rvalues)
 
     run_coroutine(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
         results result;
-        conn.stream().add_bytes(ok_builder().seqnum(1).info("1st").build_ok_frame());
+        conn.stream().add_bytes(create_ok_frame(1, ok_builder().info("1st").build()));
 
         // Deferred op. Execution request is a temporary
         auto aw = conn.async_execute(
@@ -199,7 +201,7 @@ BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes_lvalues)
         std::unique_ptr<bound_stmt_t> stmt_ptr{new bound_stmt_t{stmt.bind(std::string("test"), nullptr)}};
 
         // Messages
-        conn.stream().add_bytes(ok_builder().seqnum(1).info("1st").build_ok_frame());
+        conn.stream().add_bytes(create_ok_frame(1, ok_builder().info("1st").build()));
 
         // Deferred op
         auto aw = conn.async_execute(*stmt_ptr, result, boost::asio::use_awaitable);
@@ -226,7 +228,7 @@ BOOST_AUTO_TEST_CASE(async_start_execution_deferred_lifetimes_rvalues)
 
     run_coroutine(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
         execution_state st;
-        conn.stream().add_bytes(ok_builder().seqnum(1).info("1st").build_ok_frame());
+        conn.stream().add_bytes(create_ok_frame(1, ok_builder().info("1st").build()));
 
         // Deferred op. Execution request is a temporary
         auto aw = conn.async_start_execution(
@@ -248,7 +250,7 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
 
     run_coroutine(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
         execution_state st;
-        conn.stream().add_bytes(ok_builder().seqnum(1).info("1st").build_ok_frame());
+        conn.stream().add_bytes(create_ok_frame(1, ok_builder().info("1st").build()));
 
         // Create a bound statement on the heap. This helps tooling detect memory errors
         using bound_stmt_t = bound_statement_tuple<std::tuple<std::string, std::nullptr_t>>;
