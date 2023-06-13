@@ -96,7 +96,7 @@ private:
     ptr_data ptr_;
 };
 
-class static_execution_state_erased_impl final : public execution_processor
+class BOOST_SYMBOL_VISIBLE static_execution_state_erased_impl final : public execution_processor
 {
 public:
     static_execution_state_erased_impl(execst_external_data ext) noexcept : ext_(ext) {}

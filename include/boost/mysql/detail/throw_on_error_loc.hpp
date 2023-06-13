@@ -10,8 +10,7 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-
-#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 
 #include <boost/assert/source_location.hpp>
 
@@ -19,8 +18,13 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_MYSQL_DECL
-void throw_on_error_loc(error_code err, const diagnostics& diag, const boost::source_location& loc);
+inline void throw_on_error_loc(error_code err, const diagnostics& diag, const boost::source_location& loc)
+{
+    if (err)
+    {
+        ::boost::throw_exception(error_with_diagnostics(err, diag), loc);
+    }
+}
 
 }  // namespace detail
 }  // namespace mysql

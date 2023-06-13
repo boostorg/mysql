@@ -85,7 +85,7 @@ public:
 // - When a row batch is finished, we copy strings/blobs into the rows_impl, then transform them
 //   into offsets to allow rows_impl to grow.
 // - When the final OK packet is received, offsets are transformed back into views.
-class results_impl final : public execution_processor
+class BOOST_SYMBOL_VISIBLE results_impl final : public execution_processor
 {
 public:
     results_impl() = default;

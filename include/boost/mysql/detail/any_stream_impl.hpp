@@ -15,6 +15,7 @@
 #include <boost/asio/basic_socket.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/config.hpp>
 
 #include <type_traits>
 
@@ -110,7 +111,7 @@ bool do_is_open(const asio::basic_stream_socket<Protocol, Executor>& stream) noe
 }
 
 template <class Stream>
-class any_stream_impl final : public any_stream
+class BOOST_SYMBOL_VISIBLE any_stream_impl final : public any_stream
 {
     Stream stream_;
 
@@ -176,7 +177,7 @@ public:
 };
 
 template <class Stream>
-class any_stream_impl<asio::ssl::stream<Stream>> final : public any_stream
+class BOOST_SYMBOL_VISIBLE any_stream_impl<asio::ssl::stream<Stream>> final : public any_stream
 {
     asio::ssl::stream<Stream> stream_;
 

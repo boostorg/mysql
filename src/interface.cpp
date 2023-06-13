@@ -215,20 +215,6 @@ void boost::mysql::detail::row_impl::offsets_to_string_views()
         f = offset_to_string_view(f, string_buffer_.data());
 }
 
-// throw_on_error_loc
-void boost::mysql::detail::throw_on_error_loc(
-    error_code err,
-    const diagnostics& diag,
-    const boost::source_location& loc
-
-)
-{
-    if (err)
-    {
-        ::boost::throw_exception(error_with_diagnostics(err, diag), loc);
-    }
-}
-
 // field_view
 static std::ostream& print_blob(std::ostream& os, blob_view value)
 {

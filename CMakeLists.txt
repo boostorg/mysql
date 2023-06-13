@@ -135,8 +135,14 @@ target_link_libraries(
 
 add_library(boost_mysql)
 add_library(Boost::mysql ALIAS boost_mysql)
+
 target_link_libraries(boost_mysql PRIVATE boost_mysql_impl_private)
 target_link_libraries(boost_mysql PUBLIC boost_mysql_impl_public)
+
+target_compile_definitions(boost_mysql PRIVATE BOOST_MYSQL_SOURCE)
+if (BUILD_SHARED_LIBS)
+    target_compile_definitions(boost_mysql PUBLIC BOOST_MYSQL_DYN_LINK)
+endif()
 
 # Examples and tests
 if(BUILD_TESTING)
