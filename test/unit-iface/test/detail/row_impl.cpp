@@ -11,22 +11,20 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/static_string.hpp>
-#include <boost/mysql/detail/auxiliar/string_view_offset.hpp>
 #include <boost/mysql/detail/row_impl.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include <algorithm>
 
-#include "assert_buffer_equals.hpp"
-#include "test_common.hpp"
+#include "test_common/assert_buffer_equals.hpp"
+#include "test_common/create_basic.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
-using detail::row_impl;
+using boost::mysql::detail::row_impl;
 
-namespace {
+BOOST_AUTO_TEST_SUITE(test_row_impl)
 
 template <class... T>
 row_impl makerowimpl(T&&... args)
@@ -101,8 +99,6 @@ struct reference_checker_strs : reference_checker
         BOOST_TEST(blob_ptr == new_row.fields().at(blob_index).as_blob().data());
     }
 };
-
-BOOST_AUTO_TEST_SUITE(test_row_impl)
 
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
@@ -653,5 +649,3 @@ BOOST_AUTO_TEST_CASE(empty_collection)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

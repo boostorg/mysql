@@ -9,6 +9,9 @@
 # separate helps us test that we can cross the compiled library boundaries successfully
 add_executable(
     boost_mysql_unitifacetests
+    test/detail/datetime.cpp
+    test/detail/row_impl.cpp
+    test/detail/rows_iterator.cpp
     test/client_errc.cpp
     test/common_server_errc.cpp
     test/mysql_server_errc.cpp

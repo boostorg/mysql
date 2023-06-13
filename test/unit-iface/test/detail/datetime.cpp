@@ -5,10 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/auxiliar/datetime.hpp>
+#include <boost/mysql/detail/datetime.hpp>
 
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <algorithm>
 #include <array>
@@ -17,10 +16,8 @@
 #include <limits>
 #include <string>
 
-#include "stringize.hpp"
-#include "test_common.hpp"
+#include "test_common/stringize.hpp"
 
-using namespace boost::unit_test;
 using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
 
@@ -28,7 +25,7 @@ using namespace boost::mysql::detail;
 // proves very runtime expensive. We rather use plain loops. Using plain
 // BOOST_TEST() also increases runtime way too much
 
-namespace {
+BOOST_AUTO_TEST_SUITE(test_datetime_detail)
 
 class test_state
 {
@@ -60,8 +57,6 @@ public:
 };
 
 #define BOOST_MYSQL_ASSERT_EQ(st, v1, v2) st.assert_equals(v1, v2, __LINE__)
-
-BOOST_AUTO_TEST_SUITE(test_datetime)
 
 // Helpers
 constexpr std::uint16_t leap_years[] = {
@@ -252,5 +247,3 @@ BOOST_AUTO_TEST_CASE(days_to_ymd_limits)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

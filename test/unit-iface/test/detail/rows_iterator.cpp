@@ -18,16 +18,14 @@
 #include <tuple>
 #include <utility>
 
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
 
-using boost::mysql::field_view;
-using boost::mysql::row_view;
-using boost::mysql::rows;
-using boost::mysql::rows_view;
+using namespace boost::mysql;
 using namespace boost::mysql::test;
 
-namespace {
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator)
+
+BOOST_AUTO_TEST_SUITE(test_rows_iterator)
 
 // Provide a uniform interface for both rows and rows_view types,
 // so we can use template tests to reduce duplication
@@ -71,8 +69,6 @@ struct rows_wrapper
 };
 
 using rows_types = std::tuple<rows_view_wrapper, rows_wrapper>;
-
-BOOST_AUTO_TEST_SUITE(test_rows_iterator)
 
 BOOST_AUTO_TEST_SUITE(range_iteration)
 BOOST_AUTO_TEST_CASE_TEMPLATE(empty, RowType, rows_types)
@@ -502,5 +498,3 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(operator_lt_lte_gt_gte_empty, RowType, rows_types)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

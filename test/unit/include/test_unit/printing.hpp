@@ -57,6 +57,4 @@ inline std::ostream& operator<<(std::ostream& os, results_iterator it)
 }  // namespace mysql
 }  // namespace boost
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator)
-
 #endif
