@@ -12,18 +12,14 @@ add_executable(
     test/detail/datetime.cpp
     test/detail/row_impl.cpp
     test/detail/rows_iterator.cpp
+    test/detail/execution_concepts.cpp
     test/client_errc.cpp
     test/common_server_errc.cpp
     test/mysql_server_errc.cpp
     test/mariadb_server_errc.cpp
     test/connection.cpp
     
-    # detail/execution_processor/concepts.cpp
 
-    # detail/auxiliar/rows_iterator.cpp
-    # detail/auxiliar/execution_request.cpp
-    # detail/auxiliar/datetime.cpp
-    # detail/auxiliar/row_impl.cpp
 
     # detail/typing/meta_check_context.cpp
     # detail/typing/pos_map.cpp
