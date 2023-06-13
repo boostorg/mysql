@@ -12,16 +12,13 @@
 
 #include <stdexcept>
 
-#include "stringize.hpp"
+#include "test_common/stringize.hpp"
 
-using boost::mysql::date;
-using boost::mysql::days;
-using boost::mysql::detail::stringize;
+using namespace boost::mysql;
+using namespace boost::mysql::test;
 
 // Note: most of the algorithms have been thoroughly covered in
 // detail/auxiliar/datetime.cpp, so just spotchecks here
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_date)
 
@@ -224,5 +221,3 @@ BOOST_AUTO_TEST_CASE(constexpr_fns_cxx14)
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

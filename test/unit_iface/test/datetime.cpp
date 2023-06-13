@@ -7,28 +7,24 @@
 
 #include <boost/mysql/datetime.hpp>
 
-#include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <chrono>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
 
-#include "stringize.hpp"
+#include "test_common/stringize.hpp"
 
-using boost::mysql::datetime;
-using boost::mysql::detail::stringize;
+using namespace boost::mysql;
+using namespace boost::mysql::test;
 
-namespace {
+BOOST_AUTO_TEST_SUITE(test_datetime)
 
 datetime from_timestamp(std::int64_t micros_since_epoch)
 {
     return datetime(datetime::time_point(datetime::time_point::duration(micros_since_epoch)));
 }
-
-BOOST_AUTO_TEST_SUITE(test_datetime_class)
 
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
@@ -338,7 +334,7 @@ BOOST_AUTO_TEST_CASE(operator_stream)
     }
     }
     }
-    // clang-format off
+    // clang-format on
 }
 
 BOOST_AUTO_TEST_CASE(now)
@@ -349,11 +345,10 @@ BOOST_AUTO_TEST_CASE(now)
     BOOST_TEST(d.year() < 2100u);
 }
 
-
 // Make sure constxpr can actually be used in a constexpr context
 BOOST_AUTO_TEST_CASE(constexpr_fns_cxx11)
 {
-    constexpr datetime d0 {};
+    constexpr datetime d0{};
     static_assert(!d0.valid(), "");
     static_assert(d0.year() == 0, "");
     static_assert(d0.month() == 0, "");
@@ -381,7 +376,7 @@ BOOST_AUTO_TEST_CASE(constexpr_fns_cxx11)
 BOOST_AUTO_TEST_CASE(constexpr_fns_cxx14)
 {
     constexpr datetime d0(datetime::time_point(datetime::time_point::duration(1272841310123456)));
-    static_assert(d0 == datetime(2010, 5,  2,  23, 1,  50, 123456), "");
+    static_assert(d0 == datetime(2010, 5, 2, 23, 1, 50, 123456), "");
 
     constexpr auto tp1 = d0.get_time_point();
     static_assert(tp1.time_since_epoch().count() == 1272841310123456, "");
@@ -392,5 +387,3 @@ BOOST_AUTO_TEST_CASE(constexpr_fns_cxx14)
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

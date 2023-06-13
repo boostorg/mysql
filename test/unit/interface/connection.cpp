@@ -34,16 +34,6 @@ struct
     {query_netfun_maker::async_errinfo(&test_connection::async_execute), "async"},
 };
 
-// TODO: recover this test
-// BOOST_AUTO_TEST_CASE(init_ctor_with_buffer_params)
-// {
-//     test_connection c(buffer_params(4096));
-
-//     // Check buffer size. May not be the exact size
-//     BOOST_TEST(connection_access::get_channel(c).read_buffer_size() >= 4096u);
-//     BOOST_TEST(connection_access::get_channel(c).read_buffer_size() < 5000u);
-// }
-
 // move ctor
 BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
 {

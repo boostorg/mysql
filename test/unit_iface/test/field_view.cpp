@@ -12,36 +12,24 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/test/tools/context.hpp>
-#include <boost/test/unit_test_suite.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <sstream>
 #include <vector>
 
-#include "assert_buffer_equals.hpp"
-#include "printing.hpp"
-#include "stringize.hpp"
-#include "test_common.hpp"
+#include "test_common/assert_buffer_equals.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/printing.hpp"
+#include "test_common/stringize.hpp"
 
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::blob;
-using boost::mysql::blob_view;
-using boost::mysql::date;
-using boost::mysql::datetime;
-using boost::mysql::field;
-using boost::mysql::field_kind;
-using boost::mysql::field_view;
-using boost::mysql::string_view;
-using boost::mysql::detail::stringize;
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_field_view)
 
 BOOST_AUTO_TEST_SUITE(constructors)
-
 BOOST_AUTO_TEST_CASE(default_constructor)
 {
     field_view v;
@@ -174,7 +162,6 @@ BOOST_AUTO_TEST_CASE(from_time)
     field_view v(t);
     BOOST_TEST(v.as_time() == t);
 }
-
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(accesors)
@@ -888,5 +875,3 @@ BOOST_AUTO_TEST_SUITE_END()
 #endif  // BOOST_NO_CXX14_CONSTEXPR
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

@@ -24,18 +24,16 @@ add_executable(
     test/mysql_server_errc.cpp
     test/mariadb_server_errc.cpp
     test/connection.cpp
-    # date.cpp
-    # datetime.cpp
-    # field_view.cpp
-    # field.cpp
+    test/date.cpp
+    test/datetime.cpp
+    test/field_view.cpp
+    test/field.cpp
     # row_view.cpp
     # row.cpp
     # rows_view.cpp
     # rows.cpp
     # metadata.cpp
-    
-    
-    # diagnostics.cpp
+    test/diagnostics.cpp
     # statement.cpp
     # execution_state.cpp
     # static_execution_state.cpp

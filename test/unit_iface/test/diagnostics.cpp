@@ -9,13 +9,11 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "creation/create_diagnostics.hpp"
-#include "printing.hpp"
+#include "test_common/create_diagnostics.hpp"
+#include "test_common/printing.hpp"
 
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::diagnostics;
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_diagnostics)
 
@@ -79,5 +77,3 @@ BOOST_AUTO_TEST_CASE(clear)
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_diagnostics
-
-}  // namespace

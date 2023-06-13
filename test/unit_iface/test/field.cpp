@@ -9,35 +9,23 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/test/tools/context.hpp>
-#include <boost/test/tools/interface.hpp>
-#include <boost/test/unit_test_suite.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 #include <cstdint>
 #include <sstream>
 
-#include "assert_buffer_equals.hpp"
-#include "printing.hpp"
-#include "stringize.hpp"
-#include "test_common.hpp"
+#include "test_common/assert_buffer_equals.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/printing.hpp"
+#include "test_common/stringize.hpp"
 
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::blob;
-using boost::mysql::date;
-using boost::mysql::datetime;
-using boost::mysql::field;
-using boost::mysql::field_kind;
-using boost::mysql::field_view;
-using boost::mysql::string_view;
-using boost::mysql::detail::stringize;
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_field)
 
 BOOST_AUTO_TEST_SUITE(constructors)
-
 BOOST_AUTO_TEST_CASE(default_constructor)
 {
     field v;
@@ -300,11 +288,9 @@ BOOST_AUTO_TEST_CASE(from_field_view_time)
     field f(fv);
     BOOST_TEST(f.as_time() == t);
 }
-
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(assignment)
-
 BOOST_AUTO_TEST_CASE(copy_scalar)
 {
     field v(42);
@@ -607,7 +593,6 @@ BOOST_AUTO_TEST_CASE(from_field_view_time)
     f = fv;
     BOOST_TEST(f.as_time() == t);
 }
-
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(accesors)
@@ -936,7 +921,6 @@ BOOST_AUTO_TEST_CASE(time)
     BOOST_TEST(f2.as_time() == t1);
     BOOST_TEST(f2.get_time() == t1);
 }
-
 BOOST_AUTO_TEST_SUITE_END()
 
 // The returned field_view changes accordingly
@@ -964,7 +948,6 @@ BOOST_AUTO_TEST_CASE(operator_field_view)
 // operator== relies on field_view's operator==, so only
 // a small subset of tests here
 BOOST_AUTO_TEST_SUITE(operator_equals)
-
 BOOST_AUTO_TEST_CASE(field_field)
 {
     BOOST_TEST(field(42) == field(42));
@@ -991,7 +974,6 @@ BOOST_AUTO_TEST_CASE(field_fieldview)
     BOOST_TEST(!(field(42) == field_view("test")));
     BOOST_TEST(field(42) != field_view("test"));
 }
-
 BOOST_AUTO_TEST_SUITE_END()
 
 // operator<< relies on field_view's operator<<, so only
@@ -1004,5 +986,3 @@ BOOST_AUTO_TEST_CASE(operator_stream)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace
