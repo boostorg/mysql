@@ -9,9 +9,6 @@ import os ;
 import path ;
 import openssl ;
 
-project /boost/mysql/test ;
-
-
 # Requirements to use across targets
 local requirements = 
         <define>BOOST_ALL_NO_LIB=1

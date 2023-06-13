@@ -40,7 +40,6 @@ alias mysql_impl_private
         ../src/interface.cpp
     : requirements
         <link>shared:<define>BOOST_MYSQL_DYN_LINK
-        # <include>../src
     : usage-requirements
         <link>shared:<define>BOOST_MYSQL_DYN_LINK
         <include>../src
