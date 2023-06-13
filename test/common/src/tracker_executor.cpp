@@ -71,6 +71,7 @@ public:
     {
         return ex_ == rhs.ex_ && tracked_ == rhs.tracked_;
     }
+    bool operator!=(const tracker_executor& rhs) const noexcept { return !(*this == rhs); }
 
     executor_info* get_tracked() const noexcept { return tracked_; }
 

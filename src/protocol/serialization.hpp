@@ -207,7 +207,7 @@ inline void serialize(serialization_context& ctx, int_lenenc input) noexcept
     else if (input.value < 0x1000000)
     {
         ctx.write(0xfd);
-        serialize(ctx, int3(static_cast<std::uint32_t>(input.value)));
+        serialize(ctx, int3{static_cast<std::uint32_t>(input.value)});
     }
     else
     {
@@ -323,12 +323,12 @@ inline deserialize_errc deserialize(deserialization_context& ctx, string_lenenc&
 }
 inline void serialize(serialization_context& ctx, string_lenenc input) noexcept
 {
-    serialize(ctx, int_lenenc(input.value.size()));
+    serialize(ctx, int_lenenc{input.value.size()});
     ctx.write(input.value.data(), input.value.size());
 }
 inline std::size_t get_size(string_lenenc input) noexcept
 {
-    return get_size(int_lenenc(input.value.size())) + input.value.size();
+    return get_size(int_lenenc{input.value.size()}) + input.value.size();
 }
 
 // serialize, deserialize, and get size of multiple fields at the same time

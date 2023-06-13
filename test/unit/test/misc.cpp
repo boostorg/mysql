@@ -157,6 +157,8 @@ BOOST_AUTO_TEST_CASE(execute_stmt_iterator_reference_not_field_view)
     BOOST_TEST(result.info() == "1st");
 }
 
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+
 // The serialized form of executing a statement with ID=1, params=("test", nullptr)
 constexpr std::uint8_t execute_stmt_msg[] = {
     0x15, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
@@ -165,7 +167,6 @@ constexpr std::uint8_t execute_stmt_msg[] = {
 
 // Verify that we correctly perform a decay-copy of the execution request
 // in async_execute(), relevant for deferred tokens
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
 BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes_rvalues)
 {
     test_connection conn;
@@ -217,11 +218,9 @@ BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes_lvalues)
         BOOST_TEST(result.info() == "1st");
     });
 }
-#endif
 
 // Verify that we correctly perform a decay-copy of the parameters and the
 // statement handle for async_start_execution(), relevant for deferred tokens
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
 BOOST_AUTO_TEST_CASE(async_start_execution_deferred_lifetimes_rvalues)
 {
     test_connection conn;
@@ -271,11 +270,9 @@ BOOST_AUTO_TEST_CASE(deferred_lifetimes_lvalues)
         BOOST_TEST(st.info() == "1st");
     });
 }
-#endif
 
 // Verify that async_close_statement doesn't require the passed-in statement to be alive. Only
 // relevant for deferred tokens.
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
 BOOST_AUTO_TEST_CASE(async_close_statement_handle_deferred_tokens)
 {
     test_connection conn;

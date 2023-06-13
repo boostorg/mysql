@@ -322,7 +322,7 @@ void boost::mysql::detail::query_command::serialize(span<std::uint8_t> buff) con
 
     BOOST_ASSERT(buff.size() >= get_size());
     serialization_context ctx(buff.data());
-    ::serialize(ctx, command_id, string_eof(query));
+    ::serialize(ctx, command_id, string_eof{query});
 }
 
 // prepare statement

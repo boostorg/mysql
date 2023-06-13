@@ -76,7 +76,7 @@ static std::size_t copy_string_as_offset(
     if (!str.empty())
     {
         std::memcpy(buffer_first + offset, str.data(), str.size());
-        f = detail::access::construct<field_view>(detail::string_view_offset(offset, str.size()), false);
+        f = detail::access::construct<field_view>(detail::string_view_offset{offset, str.size()}, false);
         return str.size();
     }
     return 0;
@@ -92,7 +92,7 @@ static std::size_t copy_blob_as_offset(
     if (!str.empty())
     {
         std::memcpy(buffer_first + offset, str.data(), str.size());
-        f = detail::access::construct<field_view>(detail::string_view_offset(offset, str.size()), true);
+        f = detail::access::construct<field_view>(detail::string_view_offset{offset, str.size()}, true);
         return str.size();
     }
     return 0;

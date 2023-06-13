@@ -6,6 +6,11 @@
 //
 
 #include "protocol/binary_serialization.hpp"
+
+#include <boost/mysql/days.hpp>
+
+#include <chrono>
+
 #include "protocol/constants.hpp"
 #include "protocol/serialization.hpp"
 
@@ -50,7 +55,12 @@ static void serialize_binary_datetime(serialization_context& ctx, const datetime
 static void serialize_binary_time(serialization_context& ctx, const boost::mysql::time& input)
 {
     using namespace binc;
-    using namespace std::chrono;
+    using boost::mysql::days;
+    using std::chrono::duration_cast;
+    using std::chrono::hours;
+    using std::chrono::microseconds;
+    using std::chrono::minutes;
+    using std::chrono::seconds;
 
     // Break time
     auto num_micros = duration_cast<microseconds>(input % seconds(1));

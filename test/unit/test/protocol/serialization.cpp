@@ -103,7 +103,7 @@ std::vector<std::shared_ptr<test_case>> make_all_cases()
         // basic integers
         make_test("int1", std::uint8_t(0xff), {0xff}),
         make_test("int2", std::uint16_t(0xfeff), {0xff, 0xfe}),
-        make_test("int3", int3(0xfdfeff), {0xff, 0xfe, 0xfd}),
+        make_test("int3", int3{0xfdfeff}, {0xff, 0xfe, 0xfd}),
         make_test("int4", std::uint32_t(0xfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc}),
         make_test(
             "int8",
@@ -128,20 +128,20 @@ std::vector<std::shared_ptr<test_case>> make_all_cases()
         ),
 
         // int_lenenc
-        make_test("int_lenenc_1_byte_regular", int_lenenc(1), {0x01}),
-        make_test("int_lenenc_1_byte_max", int_lenenc(250), {0xfa}),
-        make_test("int_lenenc_2_bytes_regular", int_lenenc(0xfeb7), {0xfc, 0xb7, 0xfe}),
-        make_test("int_lenenc_2_bytes_max", int_lenenc(0xffff), {0xfc, 0xff, 0xff}),
-        make_test("int_lenenc_3_bytes_regular", int_lenenc(0xa0feff), {0xfd, 0xff, 0xfe, 0xa0}),
-        make_test("int_lenenc_3_bytes_max", int_lenenc(0xffffff), {0xfd, 0xff, 0xff, 0xff}),
+        make_test("int_lenenc_1_byte_regular", int_lenenc{1}, {0x01}),
+        make_test("int_lenenc_1_byte_max", int_lenenc{250}, {0xfa}),
+        make_test("int_lenenc_2_bytes_regular", int_lenenc{0xfeb7}, {0xfc, 0xb7, 0xfe}),
+        make_test("int_lenenc_2_bytes_max", int_lenenc{0xffff}, {0xfc, 0xff, 0xff}),
+        make_test("int_lenenc_3_bytes_regular", int_lenenc{0xa0feff}, {0xfd, 0xff, 0xfe, 0xa0}),
+        make_test("int_lenenc_3_bytes_max", int_lenenc{0xffffff}, {0xfd, 0xff, 0xff, 0xff}),
         make_test(
             "int_lenenc_8_bytes_regular",
-            int_lenenc(0xf8f9fafbfcfdfeff),
+            int_lenenc{0xf8f9fafbfcfdfeff},
             {0xfe, 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}
         ),
         make_test(
             "int_lenenc_8_bytes_max",
-            int_lenenc(0xffffffffffffffff),
+            int_lenenc{0xffffffffffffffff},
             {0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
         ),
 
@@ -157,32 +157,32 @@ std::vector<std::shared_ptr<test_case>> make_all_cases()
         make_test("1c_regular_characters", makesfixed<1>("a"), {0x61}),
 
         // string_null
-        make_test("regular_characters", string_null("abc"), {0x61, 0x62, 0x63, 0x00}),
-        make_test("utf8_characters", string_null("\xc3\xb1"), {0xc3, 0xb1, 0x00}),
-        make_test("empty", string_null(""), {0x00}),
+        make_test("regular_characters", string_null{"abc"}, {0x61, 0x62, 0x63, 0x00}),
+        make_test("utf8_characters", string_null{"\xc3\xb1"}, {0xc3, 0xb1, 0x00}),
+        make_test("empty", string_null{""}, {0x00}),
 
         // string_lenenc
-        make_test("empty", string_lenenc(""), {0x00}),
-        make_test("1_byte_size_regular_characters", string_lenenc("abc"), {0x03, 0x61, 0x62, 0x63}),
-        make_test("1_byte_size_null_characters", string_lenenc(makesv("a\0b")), {0x03, 0x61, 0x00, 0x62}),
+        make_test("empty", string_lenenc{""}, {0x00}),
+        make_test("1_byte_size_regular_characters", string_lenenc{"abc"}, {0x03, 0x61, 0x62, 0x63}),
+        make_test("1_byte_size_null_characters", string_lenenc{makesv("a\0b")}, {0x03, 0x61, 0x00, 0x62}),
         make_test(
             "1_byte_size_max",
-            string_lenenc(get_string_N<250>()),
+            string_lenenc{get_string_N<250>()},
             concat_copy({250}, std::vector<std::uint8_t>(250, 0x61))
         ),
         make_test(
             "2_byte_size_min",
-            string_lenenc(get_string_N<251>()),
+            string_lenenc{get_string_N<251>()},
             concat_copy({0xfc, 251, 0}, std::vector<std::uint8_t>(251, 0x61))
         ),
         make_test(
             "2_byte_size_max",
-            string_lenenc(get_string_N<0xffff>()),
+            string_lenenc{get_string_N<0xffff>()},
             concat_copy({0xfc, 0xff, 0xff}, std::vector<std::uint8_t>(0xffff, 0x61))
         ),
         make_test(
             "3_byte_size_min",
-            string_lenenc(get_string_N<0x10000>()),
+            string_lenenc{get_string_N<0x10000>()},
             concat_copy({0xfd, 0x00, 0x00, 0x01}, std::vector<std::uint8_t>(0x10000, 0x61))
         ),
     };

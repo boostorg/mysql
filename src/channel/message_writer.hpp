@@ -63,7 +63,7 @@ class message_writer
     void process_header_write(std::uint32_t size_to_write, std::uint8_t seqnum, std::size_t buff_offset)
     {
         serialize_frame_header(
-            frame_header(size_to_write, seqnum),
+            frame_header{size_to_write, seqnum},
             span<std::uint8_t, frame_header_size>(buffer_.data() + buff_offset, frame_header_size)
         );
     }

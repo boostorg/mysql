@@ -162,6 +162,7 @@ void boost::mysql::detail::results_impl::on_ok_packet_impl(const ok_view& pack)
 }
 
 // static_results_impl
+#ifdef BOOST_MYSQL_CXX14
 void boost::mysql::detail::static_results_erased_impl::reset_impl() noexcept
 {
     ext_.reset_fn()(ext_.rows());
@@ -259,6 +260,7 @@ error_code boost::mysql::detail::static_results_erased_impl::on_ok_packet_impl(c
     bool is_last = !pack.more_results();
     return should_be_last == is_last ? error_code() : client_errc::num_resultsets_mismatch;
 }
+#endif
 
 // execution_state_impl
 void boost::mysql::detail::execution_state_impl::on_ok_packet_impl(const ok_view& pack)
@@ -320,6 +322,7 @@ error_code boost::mysql::detail::execution_state_impl::on_row_ok_packet_impl(con
 }
 
 // static_execution_state_impl
+#ifdef BOOST_MYSQL_CXX14
 void boost::mysql::detail::static_execution_state_erased_impl::reset_impl() noexcept
 {
     resultset_index_ = 0;
@@ -419,3 +422,4 @@ error_code boost::mysql::detail::static_execution_state_erased_impl::on_ok_packe
     bool is_last = !pack.more_results();
     return should_be_last == is_last ? error_code() : client_errc::num_resultsets_mismatch;
 }
+#endif

@@ -134,6 +134,9 @@ struct close_stmt_command
 {
     std::uint32_t statement_id{};
 
+    constexpr close_stmt_command() = default;
+    constexpr close_stmt_command(std::uint32_t statement_id) noexcept : statement_id(statement_id) {}
+
     std::size_t get_size() const noexcept;
     void serialize(span<std::uint8_t> buffer) const noexcept;
 };
