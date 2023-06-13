@@ -11,24 +11,16 @@
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/test/tools/detail/print_helper.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <stdexcept>
 
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
 
-using boost::mysql::blob;
-using boost::mysql::blob_view;
-using boost::mysql::rows;
-using boost::mysql::rows_view;
-using boost::mysql::test::makerow;
-using boost::mysql::test::makerows;
+using namespace boost::mysql;
 using namespace boost::mysql::test;
 
-namespace {
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::detail::rows_iterator)
 
 BOOST_AUTO_TEST_SUITE(test_rows)
 
@@ -451,5 +443,3 @@ BOOST_AUTO_TEST_CASE(cleared)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

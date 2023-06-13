@@ -12,13 +12,10 @@
 
 #include <stdexcept>
 
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
 
-using boost::mysql::rows_view;
-using boost::mysql::test::makerow;
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_rows_view)
 
@@ -32,25 +29,25 @@ BOOST_AUTO_TEST_CASE(default_ctor)
 BOOST_AUTO_TEST_SUITE(init_ctor)
 BOOST_AUTO_TEST_CASE(fieldsnonnull_nfieldszero_ncolsnonzero)
 {
-    boost::mysql::field_view fv;
+    field_view fv;
     auto v = makerowsv(&fv, 0, 3);
     BOOST_TEST(v.empty());
     BOOST_TEST(v.size() == 0u);
     BOOST_TEST(v.num_columns() == 3u);
     BOOST_CHECK_THROW(v.at(0), std::out_of_range);
-    std::vector<boost::mysql::row_view> vec(v.begin(), v.end());
+    std::vector<row_view> vec(v.begin(), v.end());
     BOOST_TEST(vec.empty());
 }
 
 BOOST_AUTO_TEST_CASE(fieldsnonnull_nfieldszero_ncolszero)
 {
-    boost::mysql::field_view fv;
+    field_view fv;
     auto v = makerowsv(&fv, 0, 0);
     BOOST_TEST(v.empty());
     BOOST_TEST(v.size() == 0u);
     BOOST_TEST(v.num_columns() == 0u);
     BOOST_CHECK_THROW(v.at(0), std::out_of_range);
-    std::vector<boost::mysql::row_view> vec(v.begin(), v.end());
+    std::vector<row_view> vec(v.begin(), v.end());
     BOOST_TEST(vec.empty());
 }
 
@@ -61,7 +58,7 @@ BOOST_AUTO_TEST_CASE(fieldsnull_nfieldszero_ncolsnonzero)
     BOOST_TEST(v.size() == 0u);
     BOOST_TEST(v.num_columns() == 2u);
     BOOST_CHECK_THROW(v.at(0), std::out_of_range);
-    std::vector<boost::mysql::row_view> vec(v.begin(), v.end());
+    std::vector<row_view> vec(v.begin(), v.end());
     BOOST_TEST(vec.empty());
 }
 
@@ -72,7 +69,7 @@ BOOST_AUTO_TEST_CASE(fieldsnull_nfieldszero_ncolszero)
     BOOST_TEST(v.size() == 0u);
     BOOST_TEST(v.num_columns() == 0u);
     BOOST_CHECK_THROW(v.at(0), std::out_of_range);
-    std::vector<boost::mysql::row_view> vec(v.begin(), v.end());
+    std::vector<row_view> vec(v.begin(), v.end());
     BOOST_TEST(vec.empty());
 }
 BOOST_AUTO_TEST_SUITE_END()
@@ -212,5 +209,3 @@ BOOST_AUTO_TEST_CASE(several_columns_several_rows)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

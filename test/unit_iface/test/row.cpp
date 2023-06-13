@@ -15,15 +15,10 @@
 #include <string>
 #include <vector>
 
-#include "assert_buffer_equals.hpp"
-#include "test_common.hpp"
+#include "test_common/assert_buffer_equals.hpp"
+#include "test_common/create_basic.hpp"
 
-using boost::mysql::blob;
-using boost::mysql::field;
-using boost::mysql::field_view;
-using boost::mysql::row;
-using boost::mysql::row_view;
-using boost::mysql::test::makerow;
+using namespace boost::mysql;
 using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_row)

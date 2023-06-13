@@ -9,22 +9,16 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/row_view.hpp>
 
-#include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 #include <stdexcept>
 #include <vector>
 
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
 
-using boost::mysql::field;
-using boost::mysql::field_view;
-using boost::mysql::row_view;
-using boost::mysql::test::make_fv_vector;
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_row_view)
 
@@ -229,5 +223,3 @@ BOOST_AUTO_TEST_CASE(operator_equals)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

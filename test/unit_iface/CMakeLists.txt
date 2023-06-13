@@ -28,10 +28,10 @@ add_executable(
     test/datetime.cpp
     test/field_view.cpp
     test/field.cpp
-    # row_view.cpp
-    # row.cpp
-    # rows_view.cpp
-    # rows.cpp
+    test/row_view.cpp
+    test/row.cpp
+    test/rows_view.cpp
+    test/rows.cpp
     # metadata.cpp
     test/diagnostics.cpp
     # statement.cpp
