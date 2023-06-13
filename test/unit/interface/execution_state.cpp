@@ -11,23 +11,17 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
-#include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
-
 #include <boost/test/unit_test.hpp>
 
-#include "check_meta.hpp"
-#include "creation/create_execution_processor.hpp"
-#include "creation/create_message_struct.hpp"
-#include "test_common.hpp"
+#include "test_common/check_meta.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
+#include "test_unit/create_execution_processor.hpp"
+#include "test_unit/create_row_message.hpp"
 
-using namespace boost::mysql::test;
 using namespace boost::mysql;
-using detail::protocol_field_type;
+using namespace boost::mysql::test;
 
-namespace {
 BOOST_AUTO_TEST_SUITE(test_execution_state)
 
 // The functionality has been tested in execution_state_impl already.
@@ -36,7 +30,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
 {
     std::vector<field_view> fields;
     execution_state st;
-    auto& impl = boost::mysql::detail::impl_access::get_impl(st);
+    auto& impl = get_iface(st);
     diagnostics diag;
 
     // Initial
@@ -54,7 +48,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(!st.complete());
 
     // Meta
-    add_meta(impl, {protocol_field_type::var_string});
+    add_meta(impl, {meta_builder().type(column_type::varchar).build_coldef()});
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
@@ -62,8 +56,8 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     check_meta(st.meta(), {column_type::varchar});
 
     // Reading a row leaves it in the same state
-    rowbuff r1{"abc"};
-    auto err = impl.on_row(r1.ctx(), detail::output_ref(), fields);
+    auto r1 = create_text_row_body("abc");
+    auto err = impl.on_row(r1, detail::output_ref(), fields);
     throw_on_error(err);
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
@@ -95,7 +89,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(st.is_out_params());
 
     // Second resultset meta
-    add_meta(impl, {protocol_field_type::tiny});
+    add_meta(impl, {meta_builder().type(column_type::tinyint).build_coldef()});
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
@@ -119,7 +113,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
 std::unique_ptr<execution_state> create_heap_state()
 {
     std::unique_ptr<execution_state> st{new execution_state};
-    add_meta(get_iface(*st), {protocol_field_type::var_string});
+    add_meta(get_iface(*st), {meta_builder().type(column_type::varchar).build_coldef()});
     add_ok(get_iface(*st), ok_builder().info("small").build());
     return st;
 }
@@ -173,5 +167,3 @@ BOOST_AUTO_TEST_CASE(move_assignment)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

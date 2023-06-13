@@ -11,17 +11,13 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "check_meta.hpp"
-#include "creation/create_execution_processor.hpp"
-#include "creation/create_execution_state.hpp"
-#include "creation/create_message_struct.hpp"
-#include "test_common.hpp"
+#include "test_common/check_meta.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
+#include "test_unit/create_execution_processor.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
-using boost::mysql::detail::protocol_field_type;
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_resultset_view)
 
@@ -34,12 +30,10 @@ BOOST_AUTO_TEST_CASE(null_view)
 BOOST_AUTO_TEST_CASE(valid_view)
 {
     results result;
-    add_meta(get_iface(result), {protocol_field_type::tiny});
-    add_row(get_iface(result), 42);
-    add_ok(
-        get_iface(result),
-        ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").out_params(true).build()
-    );
+    exec_access(get_iface(result))
+        .meta({meta_builder().type(column_type::tinyint).build_coldef()})
+        .row(42)
+        .ok(ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").out_params(true).build());
 
     auto v = result.at(0);
     BOOST_TEST_REQUIRE(v.has_value());
@@ -53,5 +47,3 @@ BOOST_AUTO_TEST_CASE(valid_view)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

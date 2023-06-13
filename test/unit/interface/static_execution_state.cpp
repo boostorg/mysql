@@ -16,16 +16,15 @@
 #include <boost/describe/operators.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "check_meta.hpp"
-#include "creation/create_execution_processor.hpp"
-#include "creation/create_message_struct.hpp"
-#include "creation/create_meta.hpp"
-#include "test_common.hpp"
+#include "test_common/check_meta.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
+#include "test_unit/create_execution_processor.hpp"
 
-using namespace boost::mysql::test;
 using namespace boost::mysql;
+using namespace boost::mysql::test;
 
-namespace {
+BOOST_AUTO_TEST_SUITE(test_static_execution_state)
 
 struct row1
 {
@@ -41,8 +40,6 @@ using row2 = std::tuple<double>;
 using empty = std::tuple<>;
 
 using execst_t = static_execution_state<row1, row2, empty>;
-
-BOOST_AUTO_TEST_SUITE(test_static_execution_state)
 
 // The functionality has been tested in static_execution_state_impl already.
 // Just spotchecks here
@@ -63,8 +60,8 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     add_meta(
         impl,
         {
-            meta_builder().type(column_type::varchar).nullable(false).name("f1").build(),
-            meta_builder().type(column_type::float_).nullable(false).name("f2").build(),
+            meta_builder().type(column_type::varchar).nullable(false).name("f1").build_coldef(),
+            meta_builder().type(column_type::float_).nullable(false).name("f2").build_coldef(),
         }
     );
     BOOST_TEST(!st.should_start_op());
@@ -97,7 +94,7 @@ BOOST_AUTO_TEST_CASE(spotchecks)
     BOOST_TEST(st.is_out_params());
 
     // Second resultset meta
-    add_meta(impl, {meta_builder().type(column_type::double_).nullable(false).build()});
+    add_meta(impl, {meta_builder().type(column_type::double_).nullable(false).build_coldef()});
     BOOST_TEST(!st.should_start_op());
     BOOST_TEST(!st.should_read_head());
     BOOST_TEST(st.should_read_rows());
@@ -140,8 +137,8 @@ std::unique_ptr<execst_t> create_heap_state()
     add_meta(
         get_iface(*res),
         {
-            meta_builder().type(column_type::varchar).nullable(false).name("f1").build(),
-            meta_builder().type(column_type::float_).nullable(false).name("f2").build(),
+            meta_builder().type(column_type::varchar).nullable(false).name("f1").build_coldef(),
+            meta_builder().type(column_type::float_).nullable(false).name("f2").build_coldef(),
         }
     );
     add_ok(
@@ -200,7 +197,5 @@ BOOST_AUTO_TEST_CASE(move_assignment)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace
 
 #endif

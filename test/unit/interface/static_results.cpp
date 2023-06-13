@@ -17,16 +17,13 @@
 
 #include <tuple>
 
-#include "check_meta.hpp"
-#include "creation/create_execution_processor.hpp"
-#include "creation/create_meta.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/check_meta.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
+#include "test_unit/create_execution_processor.hpp"
 
-using namespace boost::mysql::test;
 using namespace boost::mysql;
-
-namespace {
+using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_static_results)
 
@@ -48,27 +45,20 @@ using results_t = static_results<row1, row2, empty>;
 results_t create_initial_results()
 {
     results_t res;
-    auto& iface = get_iface(res);
-    add_meta(
-        iface,
-        {
-            meta_builder().type(column_type::varchar).nullable(false).name("f1").build(),
-            meta_builder().type(column_type::float_).nullable(false).name("f2").build(),
-        }
-    );
-    add_row(iface, "abc", 10.1f);
-    add_row(iface, "def", 20.0f);
-    add_ok(
-        iface,
-        ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("1st").more_results(true).build()
-    );
-    add_meta(iface, {meta_builder().type(column_type::double_).nullable(false).build()});
-    add_row(iface, 42.0);
-    add_ok(
-        iface,
-        ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").more_results(true).build()
-    );
-    add_ok(iface, ok_builder().info("3rd").build());
+    exec_access(get_iface(res))
+        .meta({
+            meta_builder().type(column_type::varchar).nullable(false).name("f1").build_coldef(),
+            meta_builder().type(column_type::float_).nullable(false).name("f2").build_coldef(),
+        })
+        .row("abc", 10.1f)
+        .row("def", 20.0f)
+        .ok(ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("1st").more_results(true).build()
+        )
+        .meta({meta_builder().type(column_type::double_).nullable(false).build_coldef()})
+        .row(42.0)
+        .ok(ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").more_results(true).build()
+        )
+        .ok(ok_builder().info("3rd").build());
     return res;
 }
 
@@ -189,7 +179,5 @@ BOOST_AUTO_TEST_CASE(move_assignment)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace
 
 #endif

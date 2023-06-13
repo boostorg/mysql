@@ -41,45 +41,13 @@ add_executable(
     interface/connection.cpp
     interface/misc.cpp
     interface/multifn.cpp
-
-    # detail/execution_processor/concepts.cpp
-
-    # detail/auxiliar/rows_iterator.cpp
-    # detail/auxiliar/execution_request.cpp
-    # detail/auxiliar/datetime.cpp
-    # detail/auxiliar/row_impl.cpp
-
-    # detail/typing/meta_check_context.cpp
-    # detail/typing/pos_map.cpp
-    # detail/typing/readable_field_traits.cpp
-    # detail/typing/writable_field_traits.cpp
-    # detail/typing/row_traits.cpp
-    # detail/typing/get_type_index.cpp
-    # date.cpp
-    # datetime.cpp
-    # field_view.cpp
-    # field.cpp
-    # row_view.cpp
-    # row.cpp
-    # rows_view.cpp
-    # rows.cpp
-    # metadata.cpp
-    # client_errc.cpp
-    # common_server_errc.cpp
-    # mysql_server_errc.cpp
-    # mariadb_server_errc.cpp
-    # diagnostics.cpp
-    # statement.cpp
-    # execution_state.cpp
-    # static_execution_state.cpp
-    # results.cpp
-    # static_results.cpp
-    # resultset_view.cpp
-    # resultset.cpp
-    # connection.cpp
-    # throw_on_error.cpp
-    # misc.cpp
-    # multifn.cpp
+    # TODO: these should be in unit_iface
+    interface/execution_state.cpp
+    interface/static_execution_state.cpp
+    interface/results.cpp
+    interface/static_results.cpp
+    interface/resultset_view.cpp
+    interface/resultset.cpp
     entry_point.cpp
 )
 target_include_directories(

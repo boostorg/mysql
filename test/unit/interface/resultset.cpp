@@ -10,44 +10,30 @@
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
 
-#include <boost/mysql/detail/protocol/constants.hpp>
-
 #include <boost/test/unit_test.hpp>
 
-#include "check_meta.hpp"
-#include "creation/create_execution_state.hpp"
-#include "creation/create_message_struct.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/check_meta.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/create_ok.hpp"
+#include "test_unit/create_execution_processor.hpp"
 
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::column_type;
-using boost::mysql::results;
-using boost::mysql::resultset;
-using boost::mysql::resultset_view;
-using boost::mysql::detail::protocol_field_type;
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_resultset)
 
 results create_initial_results()
 {
     results res;
-    auto& iface = get_iface(res);
-    add_meta(iface, {protocol_field_type::var_string});
-    add_row(iface, "abc");
-    add_row(iface, nullptr);
-    add_ok(
-        iface,
-        ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("1st").more_results(true).build()
-    );
-    add_meta(iface, {protocol_field_type::tiny});
-    add_row(iface, 42);
-    add_ok(
-        iface,
-        ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").out_params(true).build()
-    );
+    exec_access(get_iface(res))
+        .meta({meta_builder().type(column_type::varchar).build_coldef()})
+        .row("abc")
+        .row(nullptr)
+        .ok(ok_builder().affected_rows(1).last_insert_id(2).warnings(3).info("1st").more_results(true).build()
+        )
+        .meta({meta_builder().type(column_type::tinyint).build_coldef()})
+        .row(42)
+        .ok(ok_builder().affected_rows(4).last_insert_id(5).warnings(6).info("2nd").out_params(true).build());
     return res;
 }
 
@@ -164,5 +150,3 @@ BOOST_AUTO_TEST_CASE(move_assignment)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace
