@@ -1,0 +1,56 @@
+#
+# Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+
+cpp-pch pch
+    :
+        pch.hpp
+        /boost/mysql/test//test_common
+        /boost/mysql//boost_mysql
+    :
+    :
+    :
+        <include>include
+    ;
+
+run
+        pch
+        /boost/mysql/test//test_common
+        /boost/mysql//boost_mysql
+
+        test/detail/datetime.cpp
+        test/detail/row_impl.cpp
+        test/detail/rows_iterator.cpp
+        test/detail/execution_concepts.cpp
+        test/detail/writable_field_traits.cpp
+        test/detail/typing/meta_check_context.cpp
+        test/detail/typing/pos_map.cpp
+        test/detail/typing/readable_field_traits.cpp
+        test/detail/typing/row_traits.cpp
+        test/detail/typing/get_type_index.cpp
+        test/client_errc.cpp
+        test/common_server_errc.cpp
+        test/mysql_server_errc.cpp
+        test/mariadb_server_errc.cpp
+        test/connection.cpp
+        test/date.cpp
+        test/datetime.cpp
+        test/field_view.cpp
+        test/field.cpp
+        test/row_view.cpp
+        test/row.cpp
+        test/rows_view.cpp
+        test/rows.cpp
+        test/metadata.cpp
+        test/diagnostics.cpp
+        test/statement.cpp
+        test/throw_on_error.cpp
+        
+    : requirements
+        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
+    : target-name boost_mysql_unitifacetests
+    ;

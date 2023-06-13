@@ -1,0 +1,58 @@
+#
+# Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+import os ;
+import openssl ;
+
+project /boost/mysql ;
+
+# TODO: looks like openssl module is missing rule configured
+# if ! $(openssl.configured)
+# {
+    ECHO "warning: no OpenSSL configured in user-config.jam" ;
+    ECHO "warning: will use default configuration" ;
+    using openssl ;
+# }
+# TODO: how can we check if openssl was found?
+# TODO: require cxx11
+
+
+# Private part. Used for the actual lib and the unit tests
+alias mysql_impl_private
+    :
+        /openssl//ssl
+        /openssl//crypto
+        ../src/auth/auth.cpp
+        ../src/protocol/protocol_field_type.cpp
+        ../src/protocol/binary_serialization.cpp
+        ../src/protocol/deserialize_binary_field.cpp
+        ../src/protocol/deserialize_text_field.cpp
+        ../src/protocol/protocol.cpp
+        ../src/channel/channel.cpp
+        ../src/execution_processor.cpp
+        ../src/network_algorithms/network_algorithms.cpp
+        ../src/error/error_categories.cpp
+        ../src/error/server_error_to_string.cpp
+        ../src/interface.cpp
+    : requirements
+        <link>shared:<define>BOOST_MYSQL_DYN_LINK
+        # <include>../src
+    : usage-requirements
+        <link>shared:<define>BOOST_MYSQL_DYN_LINK
+        <include>../src
+;
+explicit mysql_impl_private ;
+
+
+lib boost_mysql
+    :
+        mysql_impl_private
+    : requirements
+        <define>BOOST_MYSQL_SOURCE
+;
+
+boost-install boost_mysql ;

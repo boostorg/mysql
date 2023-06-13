@@ -5,5 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#define BOOST_TEST_MODULE boost_mysql_integrationtests
 #include <boost/test/unit_test.hpp>
+
+int main(int argc, char* argv[])
+{
+    return ::boost::unit_test::unit_test_main([] { return true; }, argc, argv);
+}

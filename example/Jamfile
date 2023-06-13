@@ -7,7 +7,10 @@
 
 import os ;
 
+project /boost/mysql/example ;
+
 path-constant this_dir : . ;
+
 
 # The hostname to use for examples
 local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
@@ -33,7 +36,8 @@ for local example in $(regular_examples)
 {
     run
             "$(example).cpp"
-            /boost/mysql/test//mysql
+            /boost/mysql/test//test_common
+            /boost/mysql//boost_mysql
         :
             <testing.arg>"example_user example_password $(hostname)"
         ;
@@ -51,7 +55,8 @@ for local example in $(order_examples)
 {
     run
             "order_management/$(example).cpp"
-            /boost/mysql/test//mysql
+            /boost/mysql/test//test_common
+            /boost/mysql//boost_mysql
         : requirements
             <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
             <testing.arg>$(hostname)
@@ -62,7 +67,8 @@ for local example in $(order_examples)
 # Coroutines, which requires Boost.Context
 run
         async_coroutines.cpp
-        /boost/mysql/test//mysql
+        /boost/mysql/test//test_common
+        /boost/mysql//boost_mysql
         /boost/context//boost_context
     :
         <testing.arg>"example_user example_password $(hostname)"
@@ -72,7 +78,8 @@ run
 if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
     run
         unix_socket.cpp
-        /boost/mysql/test//mysql
+        /boost/mysql/test//test_common
+        /boost/mysql//boost_mysql
     :
         <testing.arg>"example_user example_password"
     ;
@@ -81,7 +88,8 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
 # Source script
 run
         source_script.cpp
-        /boost/mysql/test//mysql
+        /boost/mysql/test//test_common
+        /boost/mysql//boost_mysql
     : requirements
         <testing.arg>"example_user example_password $(hostname) $(this_dir)/private/test_script.sql"
     ;

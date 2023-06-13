@@ -1,10 +1,9 @@
-build/
+/__build/
 .cproject
 .project
 .settings/
 .pydevproject
 /private/
-build-*/
 CMakeSettings.json
 out/
 .vs/
