@@ -34,14 +34,8 @@ add_executable(
     test/rows.cpp
     test/metadata.cpp
     test/diagnostics.cpp
-    # statement.cpp
-    # test/execution_state.cpp
-    # test/static_execution_state.cpp
-    # test/results.cpp
-    # test/static_results.cpp
-    # test/resultset_view.cpp
-    # test/resultset.cpp
-    # throw_on_error.cpp
+    test/statement.cpp
+    test/throw_on_error.cpp
     entry_point.cpp
 )
 target_include_directories(

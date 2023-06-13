@@ -12,15 +12,13 @@
 
 #include <tuple>
 
-#include "creation/create_statement.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/create_statement.hpp"
 
-using namespace boost::mysql::test;
 using namespace boost::mysql;
+using namespace boost::mysql::test;
 
-namespace {
-
-BOOST_AUTO_TEST_SUITE(test_statement_)
+BOOST_AUTO_TEST_SUITE(test_statement)
 
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
@@ -116,5 +114,3 @@ BOOST_AUTO_TEST_CASE(stmt_const)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

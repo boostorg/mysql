@@ -21,11 +21,11 @@
 #include "test_common/buffer_concat.hpp"
 #include "test_common/create_meta.hpp"
 #include "test_common/create_ok.hpp"
+#include "test_common/create_statement.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
-#include "test_unit/create_statement.hpp"
 #include "test_unit/run_coroutine.hpp"
 #include "test_unit/test_stream.hpp"
 

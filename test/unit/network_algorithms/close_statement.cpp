@@ -15,9 +15,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include "channel/channel.hpp"
+#include "test_common//create_statement.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_unit/create_channel.hpp"
-#include "test_unit/create_statement.hpp"
 #include "test_unit/test_stream.hpp"
 #include "test_unit/unit_netfun_maker.hpp"
 
