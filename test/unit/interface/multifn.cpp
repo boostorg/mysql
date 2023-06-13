@@ -9,27 +9,27 @@
 // that span over multiple messages, we test the complete multifn fllow in this unit tests.
 
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/connection.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/rows_view.hpp>
 
-#include <boost/mysql/detail/protocol/constants.hpp>
-
 #include <boost/test/unit_test.hpp>
 
-#include "assert_buffer_equals.hpp"
-#include "check_meta.hpp"
-#include "creation/create_message.hpp"
-#include "creation/create_row_message.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
-#include "test_connection.hpp"
-#include "unit_netfun_maker.hpp"
+#include "test_common/assert_buffer_equals.hpp"
+#include "test_common/check_meta.hpp"
+#include "test_unit/create_frame.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_ok.hpp"
+#include "test_unit/create_row_message.hpp"
+#include "test_unit/test_stream.hpp"
+#include "test_unit/unit_netfun_maker.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
-using detail::protocol_field_type;
 
-namespace {
+BOOST_AUTO_TEST_SUITE(test_multifn)
+
+using test_connection = connection<test_stream>;
 
 using start_query_netm = netfun_maker_mem<void, test_connection, const string_view&, execution_state&>;
 using read_resultset_head_netm = netfun_maker_mem<void, test_connection, execution_state&>;
@@ -52,8 +52,6 @@ struct
      "async"},
 };
 
-BOOST_AUTO_TEST_SUITE(test_multifn)
-
 BOOST_AUTO_TEST_CASE(separate_batches)
 {
     for (auto fns : all_fns)
@@ -63,19 +61,25 @@ BOOST_AUTO_TEST_CASE(separate_batches)
             execution_state st;
             test_connection conn;
             conn.stream()
-                .add_message(create_message(1, {0x01}))
-                .add_message(create_coldef_message(2, protocol_field_type::var_string))
-                .add_message(create_text_row_message(3, "abc"))
-                .add_message(
-                    ok_msg_builder().seqnum(4).affected_rows(10u).info("1st").more_results(true).build_eof()
+                .add_bytes(create_frame(1, {0x01}))
+                .add_break()
+                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame())
+                .add_break()
+                .add_bytes(create_text_row_message(3, "abc"))
+                .add_break()
+                .add_bytes(
+                    ok_builder().seqnum(4).affected_rows(10u).info("1st").more_results(true).build_eof_frame()
                 )
-                .add_message(create_message(5, {0x01}))
-                .add_message(create_coldef_message(6, protocol_field_type::newdecimal))
-                .add_message(concat_copy(create_text_row_message(7, "ab"), create_text_row_message(8, "plo")))
-                .add_message(concat_copy(
-                    create_text_row_message(9, "hju"),
-                    ok_msg_builder().seqnum(10).affected_rows(30u).info("2nd").build_eof()
-                ));
+                .add_break()
+                .add_bytes(create_frame(5, {0x01}))
+                .add_break()
+                .add_bytes(meta_builder().seqnum(6).type(column_type::decimal).build_coldef_frame())
+                .add_break()
+                .add_bytes(create_text_row_message(7, "ab"))
+                .add_bytes(create_text_row_message(8, "plo"))
+                .add_break()
+                .add_bytes(create_text_row_message(9, "hju"))
+                .add_bytes(ok_builder().seqnum(10).affected_rows(30u).info("2nd").build_eof_frame());
 
             // Start
             fns.start_execution(conn, "SELECT 1", st).validate_no_error();
@@ -123,21 +127,20 @@ BOOST_AUTO_TEST_CASE(single_read)
         {
             execution_state st;
             test_connection conn(buffer_params(4096));
-            std::vector<std::uint8_t> msgs;
-            concat(msgs, create_message(1, {0x01}));
-            concat(msgs, create_coldef_message(2, protocol_field_type::var_string));
-            concat(msgs, create_text_row_message(3, "abc"));
-            concat(
-                msgs,
-                ok_msg_builder().seqnum(4).affected_rows(10u).info("1st").more_results(true).build_eof()
-            );
-            concat(msgs, create_message(5, {0x01}));
-            concat(msgs, create_coldef_message(6, protocol_field_type::newdecimal));
-            concat(msgs, create_text_row_message(7, "ab"));
-            concat(msgs, create_text_row_message(8, "plo"));
-            concat(msgs, create_text_row_message(9, "hju"));
-            concat(msgs, ok_msg_builder().seqnum(10).affected_rows(30u).info("2nd").build_eof());
-            conn.stream().add_message(std::move(msgs));
+
+            conn.stream()
+                .add_bytes(create_frame(1, {0x01}))
+                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame())
+                .add_bytes(create_text_row_message(3, "abc"))
+                .add_bytes(
+                    ok_builder().seqnum(4).affected_rows(10u).info("1st").more_results(true).build_eof_frame()
+                )
+                .add_bytes(create_frame(5, {0x01}))
+                .add_bytes(meta_builder().seqnum(6).type(column_type::decimal).build_coldef_frame())
+                .add_bytes(create_text_row_message(7, "ab"))
+                .add_bytes(create_text_row_message(8, "plo"))
+                .add_bytes(create_text_row_message(9, "hju"))
+                .add_bytes(ok_builder().seqnum(10).affected_rows(30u).info("2nd").build_eof_frame());
 
             // Start
             fns.start_execution(conn, "SELECT 1", st).validate_no_error();
@@ -174,17 +177,15 @@ BOOST_AUTO_TEST_CASE(empty_resultsets)
         {
             execution_state st;
             test_connection conn(buffer_params(4096));
-            std::vector<std::uint8_t> msgs;
-            concat(
-                msgs,
-                ok_msg_builder().seqnum(1).affected_rows(10u).info("1st").more_results(true).build_ok()
-            );
-            concat(
-                msgs,
-                ok_msg_builder().seqnum(2).affected_rows(20u).info("2nd").more_results(true).build_ok()
-            );
-            concat(msgs, ok_msg_builder().seqnum(3).affected_rows(30u).info("3rd").build_ok());
-            conn.stream().add_message(std::move(msgs));
+
+            conn.stream()
+                .add_bytes(
+                    ok_builder().seqnum(1).affected_rows(10u).info("1st").more_results(true).build_ok_frame()
+                )
+                .add_bytes(
+                    ok_builder().seqnum(2).affected_rows(20u).info("2nd").more_results(true).build_ok_frame()
+                )
+                .add_bytes(ok_builder().seqnum(3).affected_rows(30u).info("3rd").build_ok_frame());
 
             // Start
             fns.start_execution(conn, "SELECT 1", st).validate_no_error();
@@ -211,5 +212,3 @@ BOOST_AUTO_TEST_CASE(empty_resultsets)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

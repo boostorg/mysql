@@ -40,6 +40,7 @@ add_executable(
     network_algorithms/read_some_rows_static.cpp
     interface/connection.cpp
     interface/misc.cpp
+    interface/multifn.cpp
 
     # detail/execution_processor/concepts.cpp
 
