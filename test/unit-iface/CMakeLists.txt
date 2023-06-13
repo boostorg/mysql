@@ -13,6 +13,7 @@ add_executable(
     test/common_server_errc.cpp
     test/mysql_server_errc.cpp
     test/mariadb_server_errc.cpp
+    test/connection.cpp
     
     # detail/execution_processor/concepts.cpp
 
