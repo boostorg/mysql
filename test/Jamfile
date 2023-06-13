@@ -9,6 +9,8 @@ import os ;
 import path ;
 import openssl ;
 
+project /boost/mysql/test ;
+
 # Requirements to use across targets
 local requirements = 
         <define>BOOST_ALL_NO_LIB=1
@@ -50,17 +52,16 @@ alias asio_separate_build
 alias test_common
     :
         common/src/tracker_executor.cpp
-        ../tools/utf_entry_point.cpp
+        common/src/utf_entry_point.cpp
         asio_separate_build
-        # Unit test library generates some internal warnings we're not interested in
+        # Unit test library generates some internal warnings we're not interested in.
+        # Dynamic linking against UTF allows us to define our own main, without playing with UTF macros
         /boost/test//boost_unit_test_framework/<warnings-as-errors>off/<link>shared
     :
         <include>common/include
-        <define>BOOST_TEST_NO_MAIN
     :
     :
         <include>common/include
-        <define>BOOST_TEST_NO_MAIN
     ;
 
 build-project unit ;

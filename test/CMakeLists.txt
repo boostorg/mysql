@@ -24,6 +24,7 @@ target_sources(
     boost_mysql_testing
     INTERFACE
     common/src/tracker_executor.cpp
+    common/src/utf_entry_point.cpp
 )
 
 if (BOOST_MYSQL_USE_FIND_PACKAGE)

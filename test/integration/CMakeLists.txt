@@ -35,8 +35,6 @@ add_executable(
     test/reconnect.cpp
     test/db_specific.cpp
     test/database_types.cpp
-
-    entry_point.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests
@@ -58,11 +56,6 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
         pch.hpp
     )
 endif()
-set_source_files_properties(
-    entry_point.cpp
-    PROPERTIES
-    SKIP_PRECOMPILE_HEADERS ON
-)
 
 # Compose the test filter
 if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")

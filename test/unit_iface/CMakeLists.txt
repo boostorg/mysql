@@ -36,7 +36,6 @@ add_executable(
     test/diagnostics.cpp
     test/statement.cpp
     test/throw_on_error.cpp
-    entry_point.cpp
 )
 target_include_directories(
     boost_mysql_unitifacetests
@@ -49,18 +48,13 @@ target_link_libraries(
     boost_mysql_testing
     boost_mysql
 )
-# if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
-#     target_precompile_headers(
-#         boost_mysql_unitifacetests
-#         PRIVATE
-#         pch.hpp
-#     )
-# endif()
-set_source_files_properties(
-    entry_point.cpp
-    PROPERTIES
-    SKIP_PRECOMPILE_HEADERS ON
-)
+if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
+    target_precompile_headers(
+        boost_mysql_unitifacetests
+        PRIVATE
+        pch.hpp
+    )
+endif()
 common_target_settings(boost_mysql_unitifacetests)
 
 if (BOOST_MYSQL_VALGRIND_TESTS)

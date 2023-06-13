@@ -52,8 +52,6 @@ add_executable(
     test/static_results.cpp
     test/resultset_view.cpp
     test/resultset.cpp
-
-    entry_point.cpp
 )
 target_include_directories(
     boost_mysql_unittests
@@ -74,11 +72,6 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
         pch.hpp
     )
 endif()
-set_source_files_properties(
-    entry_point.cpp
-    PROPERTIES
-    SKIP_PRECOMPILE_HEADERS ON
-)
 common_target_settings(boost_mysql_unittests)
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
