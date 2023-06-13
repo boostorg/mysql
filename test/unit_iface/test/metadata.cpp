@@ -10,37 +10,36 @@
 #include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/impl/metadata.hpp>
+#include <boost/mysql/detail/coldef_view.hpp>
 
-#include "creation/create_message_struct.hpp"
-#include "creation/create_meta.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/printing.hpp"
 
-using namespace boost::mysql::detail;
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::column_type;
-using boost::mysql::metadata;
 namespace collations = boost::mysql::mysql_collations;
+namespace column_flags = boost::mysql::detail::column_flags;
+
+// TODO: these tests should be more targetted towards metadata's object responsibilities
+// and less integration-y
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
 {
-    column_definition_packet msg{
-        string_lenenc("def"),
-        string_lenenc("awesome"),
-        string_lenenc("test_table"),
-        string_lenenc("test_table"),
-        string_lenenc("id"),
-        string_lenenc("id"),
+    detail::coldef_view msg{
+        "awesome",
+        "test_table",
+        "test_table",
+        "id",
+        "id",
         collations::binary,
         11,
-        protocol_field_type::long_,
+        column_type::int_,
         column_flags::pri_key | column_flags::auto_increment | column_flags::not_null,
-        0};
-    auto meta = impl_access::construct<metadata>(msg, true);
+        0,
+    };
+    auto meta = detail::access::construct<metadata>(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -63,19 +62,19 @@ BOOST_AUTO_TEST_CASE(int_primary_key)
 
 BOOST_AUTO_TEST_CASE(varchar_with_alias)
 {
-    column_definition_packet msg{
-        string_lenenc("def"),
-        string_lenenc("awesome"),
-        string_lenenc("child"),
-        string_lenenc("child_table"),
-        string_lenenc("field_alias"),
-        string_lenenc("field_varchar"),
+    detail::coldef_view msg{
+        "awesome",
+        "child",
+        "child_table",
+        "field_alias",
+        "field_varchar",
         collations::utf8mb4_general_ci,
         765,
-        protocol_field_type::var_string,
+        column_type::varchar,
         0,
-        0};
-    auto meta = impl_access::construct<metadata>(msg, true);
+        0,
+    };
+    auto meta = detail::access::construct<metadata>(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "child");
@@ -98,19 +97,19 @@ BOOST_AUTO_TEST_CASE(varchar_with_alias)
 
 BOOST_AUTO_TEST_CASE(float_)
 {
-    column_definition_packet msg{
-        string_lenenc("def"),
-        string_lenenc("awesome"),
-        string_lenenc("test_table"),
-        string_lenenc("test_table"),
-        string_lenenc("field_float"),
-        string_lenenc("field_float"),
+    detail::coldef_view msg{
+        "awesome",
+        "test_table",
+        "test_table",
+        "field_float",
+        "field_float",
         collations::binary,
         12,
-        protocol_field_type::float_,
+        column_type::float_,
         0,
-        31};
-    auto meta = impl_access::construct<metadata>(msg, true);
+        31,
+    };
+    auto meta = detail::access::construct<metadata>(msg, true);
 
     BOOST_TEST(meta.database() == "awesome");
     BOOST_TEST(meta.table() == "test_table");
@@ -133,19 +132,19 @@ BOOST_AUTO_TEST_CASE(float_)
 
 BOOST_AUTO_TEST_CASE(dont_copy_strings)
 {
-    column_definition_packet msg{
-        string_lenenc("def"),
-        string_lenenc("awesome"),
-        string_lenenc("child"),
-        string_lenenc("child_table"),
-        string_lenenc("field_alias"),
-        string_lenenc("field_varchar"),
+    detail::coldef_view msg{
+        "awesome",
+        "child",
+        "child_table",
+        "field_alias",
+        "field_varchar",
         collations::utf8mb4_general_ci,
         765,
-        protocol_field_type::var_string,
+        column_type::varchar,
         0,
-        0};
-    auto meta = impl_access::construct<metadata>(msg, false);
+        0,
+    };
+    auto meta = detail::access::construct<metadata>(msg, false);
 
     BOOST_TEST(meta.database() == "");
     BOOST_TEST(meta.table() == "");
@@ -170,12 +169,14 @@ BOOST_AUTO_TEST_CASE(string_ownership)
 {
     // Create the meta object
     std::string colname = "col1";
-    auto msg = create_coldef(protocol_field_type::float_, colname);
-    auto meta = impl_access::construct<metadata>(msg, true);
+    auto msg = meta_builder().name(colname).build_coldef();
+    auto meta = detail::access::construct<metadata>(msg, true);
 
     // Check that we actually copy the data
     colname = "abcd";
     BOOST_TEST(meta.column_name() == "col1");
+
+    // TODO: the other strings
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_metadata

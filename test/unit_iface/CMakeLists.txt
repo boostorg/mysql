@@ -32,19 +32,16 @@ add_executable(
     test/row.cpp
     test/rows_view.cpp
     test/rows.cpp
-    # metadata.cpp
+    test/metadata.cpp
     test/diagnostics.cpp
     # statement.cpp
-    # execution_state.cpp
-    # static_execution_state.cpp
-    # results.cpp
-    # static_results.cpp
-    # resultset_view.cpp
-    # resultset.cpp
-    # connection.cpp
+    # test/execution_state.cpp
+    # test/static_execution_state.cpp
+    # test/results.cpp
+    # test/static_results.cpp
+    # test/resultset_view.cpp
+    # test/resultset.cpp
     # throw_on_error.cpp
-    # misc.cpp
-    # multifn.cpp
     entry_point.cpp
 )
 target_include_directories(
