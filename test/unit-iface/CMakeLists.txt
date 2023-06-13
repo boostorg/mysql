@@ -13,6 +13,7 @@ add_executable(
     test/detail/row_impl.cpp
     test/detail/rows_iterator.cpp
     test/detail/execution_concepts.cpp
+    test/detail/writable_field_traits.cpp
     test/client_errc.cpp
     test/common_server_errc.cpp
     test/mysql_server_errc.cpp
@@ -24,7 +25,6 @@ add_executable(
     # detail/typing/meta_check_context.cpp
     # detail/typing/pos_map.cpp
     # detail/typing/readable_field_traits.cpp
-    # detail/typing/writable_field_traits.cpp
     # detail/typing/row_traits.cpp
     # detail/typing/get_type_index.cpp
     # date.cpp
@@ -52,11 +52,11 @@ add_executable(
     # multifn.cpp
     entry_point.cpp
 )
-# target_include_directories(
-#     boost_mysql_unitifacetests
-#     PRIVATE
-#     "include"
-# )
+target_include_directories(
+    boost_mysql_unitifacetests
+    PRIVATE
+    "include"
+)
 target_link_libraries(
     boost_mysql_unitifacetests
     PRIVATE

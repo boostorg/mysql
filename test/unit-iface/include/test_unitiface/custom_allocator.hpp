@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CUSTOM_ALLOCATOR_HPP
 
 // This is used for concept checks. Not implemented anywhere.
+#include <cstddef>
 
 namespace boost {
 namespace mysql {

@@ -34,8 +34,8 @@
 #include <optional>
 #endif
 
-#include "custom_allocator.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_unitiface/custom_allocator.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -45,19 +45,16 @@ using boost::mysql::detail::is_writable_field_tuple;
 using boost::mysql::detail::writable_field_traits;
 using std::tuple;
 
-namespace {
-
 BOOST_AUTO_TEST_SUITE(test_writable_field_traits)
 
 struct other_traits : std::char_traits<char>
 {
 };
 
-using string_with_alloc = std::basic_string<char, std::char_traits<char>, test::custom_allocator<char>>;
-using string_no_defctor = std::
-    basic_string<char, std::char_traits<char>, test::custom_allocator_no_defctor<char>>;
+using string_with_alloc = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
+using string_no_defctor = std::basic_string<char, std::char_traits<char>, custom_allocator_no_defctor<char>>;
 using string_with_traits = std::basic_string<char, other_traits>;
-using blob_with_alloc = std::vector<unsigned char, test::custom_allocator<unsigned char>>;
+using blob_with_alloc = std::vector<unsigned char, custom_allocator<unsigned char>>;
 
 struct unrelated
 {
@@ -309,5 +306,3 @@ BOOST_AUTO_TEST_CASE(to_field_)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace
