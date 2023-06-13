@@ -39,6 +39,7 @@ add_executable(
     network_algorithms/ping.cpp
     network_algorithms/read_some_rows_static.cpp
     interface/connection.cpp
+    interface/misc.cpp
 
     # detail/execution_processor/concepts.cpp
 

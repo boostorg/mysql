@@ -12,19 +12,20 @@
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/co_spawn.hpp>
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/use_future.hpp>
+
+#include "test_common/netfun_helpers.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-inline void run_coroutine(std::function<boost::asio::awaitable<void>(void)> coro)
+inline void run_coroutine(asio::any_io_executor ex, std::function<asio::awaitable<void>(void)> coro)
 {
-    boost::asio::io_context ctx;
-    auto fut = boost::asio::co_spawn(ctx.get_executor(), std::move(coro), boost::asio::use_future);
-    ctx.run();
+    auto fut = boost::asio::co_spawn(ex, std::move(coro), boost::asio::use_future);
+    run_until_completion(ex);
     fut.get();
 }
 }  // namespace test
