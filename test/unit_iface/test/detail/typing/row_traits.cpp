@@ -25,9 +25,9 @@
 
 #include <cstddef>
 
-#include "creation/create_meta.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -38,8 +38,6 @@ using boost::mysql::detail::is_static_row;
 using boost::mysql::detail::meta_check;
 using boost::mysql::detail::name_table_t;
 using boost::mysql::detail::parse;
-
-namespace {
 
 BOOST_AUTO_TEST_SUITE(test_row_traits)
 
@@ -326,7 +324,5 @@ BOOST_AUTO_TEST_CASE(parse_empty_tuple)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace
 
 #endif

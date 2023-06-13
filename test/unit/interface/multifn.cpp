@@ -17,8 +17,9 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/check_meta.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/test_stream.hpp"
@@ -63,7 +64,7 @@ BOOST_AUTO_TEST_CASE(separate_batches)
             conn.stream()
                 .add_bytes(create_frame(1, {0x01}))
                 .add_break()
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame())
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
                 .add_break()
                 .add_bytes(create_text_row_message(3, "abc"))
                 .add_break()
@@ -73,7 +74,7 @@ BOOST_AUTO_TEST_CASE(separate_batches)
                 .add_break()
                 .add_bytes(create_frame(5, {0x01}))
                 .add_break()
-                .add_bytes(meta_builder().seqnum(6).type(column_type::decimal).build_coldef_frame())
+                .add_bytes(create_coldef_frame(6, meta_builder().type(column_type::decimal).build_coldef()))
                 .add_break()
                 .add_bytes(create_text_row_message(7, "ab"))
                 .add_bytes(create_text_row_message(8, "plo"))
@@ -130,13 +131,13 @@ BOOST_AUTO_TEST_CASE(single_read)
 
             conn.stream()
                 .add_bytes(create_frame(1, {0x01}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame())
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
                 .add_bytes(create_text_row_message(3, "abc"))
                 .add_bytes(
                     ok_builder().seqnum(4).affected_rows(10u).info("1st").more_results(true).build_eof_frame()
                 )
                 .add_bytes(create_frame(5, {0x01}))
-                .add_bytes(meta_builder().seqnum(6).type(column_type::decimal).build_coldef_frame())
+                .add_bytes(create_coldef_frame(6, meta_builder().type(column_type::decimal).build_coldef()))
                 .add_bytes(create_text_row_message(7, "ab"))
                 .add_bytes(create_text_row_message(8, "plo"))
                 .add_bytes(create_text_row_message(9, "hju"))

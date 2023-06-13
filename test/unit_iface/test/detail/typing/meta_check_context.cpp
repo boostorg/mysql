@@ -18,16 +18,16 @@
 
 #include <cstddef>
 
-#include "creation/create_meta.hpp"
-#include "printing.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
-using detail::meta_check_context;
-using detail::name_table_t;
-using detail::pos_absent;
+using boost::mysql::detail::meta_check_context;
+using boost::mysql::detail::name_table_t;
+using boost::mysql::detail::pos_absent;
 
-namespace {
+BOOST_AUTO_TEST_SUITE(test_meta_check_context)
 
 // Get the error message from the context
 std::string get_errors(const meta_check_context& ctx)
@@ -36,8 +36,6 @@ std::string get_errors(const meta_check_context& ctx)
     ctx.check_errors(diag);
     return diag.client_message();
 }
-
-BOOST_AUTO_TEST_SUITE(test_meta_check_context)
 
 BOOST_AUTO_TEST_CASE(column_type_to_str_)
 {
@@ -298,5 +296,3 @@ BOOST_AUTO_TEST_CASE(check_errors_with_error)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

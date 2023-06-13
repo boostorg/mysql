@@ -19,11 +19,12 @@
 #include "channel/channel.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/create_meta.hpp"
 #include "test_unit/create_channel.hpp"
+#include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
@@ -74,7 +75,7 @@ BOOST_AUTO_TEST_CASE(success_meta)
             fixture fix;
             fix.stream()
                 .add_bytes(create_frame(1, {0x01}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame());
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()));
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -98,11 +99,15 @@ BOOST_AUTO_TEST_CASE(success_several_meta_separate)
             fixture fix;
             fix.stream()
                 .add_bytes(create_frame(1, {0x02}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).name("f1").build_coldef_frame()
-                )
+                .add_bytes(create_coldef_frame(
+                    2,
+                    meta_builder().type(column_type::varchar).name("f1").build_coldef()
+                ))
                 .add_break()
-                .add_bytes(meta_builder().seqnum(3).type(column_type::tinyint).name("f2").build_coldef_frame()
-                );
+                .add_bytes(create_coldef_frame(
+                    3,
+                    meta_builder().type(column_type::tinyint).name("f2").build_coldef()
+                ));
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st).validate_no_error();
@@ -155,8 +160,10 @@ BOOST_AUTO_TEST_CASE(success_rows_available)
             fixture fix;
             fix.stream()
                 .add_bytes(create_frame(1, {0x01}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).name("f1").build_coldef_frame()
-                )
+                .add_bytes(create_coldef_frame(
+                    2,
+                    meta_builder().type(column_type::varchar).name("f1").build_coldef()
+                ))
                 .add_bytes(create_text_row_message(3, "abc"));
 
             // Call the function
@@ -251,17 +258,15 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                     fix.stream()
                         .add_bytes(create_frame(1, {0x02}))
                         .add_break()
-                        .add_bytes(meta_builder()
-                                       .seqnum(2)
-                                       .type(column_type::varchar)
-                                       .name("f1")
-                                       .build_coldef_frame())
+                        .add_bytes(create_coldef_frame(
+                            2,
+                            meta_builder().type(column_type::varchar).name("f1").build_coldef()
+                        ))
                         .add_break()
-                        .add_bytes(meta_builder()
-                                       .seqnum(3)
-                                       .type(column_type::tinyint)
-                                       .name("f2")
-                                       .build_coldef_frame())
+                        .add_bytes(create_coldef_frame(
+                            3,
+                            meta_builder().type(column_type::tinyint).name("f2").build_coldef()
+                        ))
                         .set_fail_count(fail_count(i, client_errc::server_unsupported));
 
                     // Call the function
@@ -282,8 +287,8 @@ BOOST_AUTO_TEST_CASE(error_metadata_packets_seqnum_mismatch)
             fixture fix;
             fix.stream()
                 .add_bytes(create_frame(1, {0x02}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame())
-                .add_bytes(meta_builder().seqnum(4).type(column_type::tinyint).build_coldef_frame());
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
+                .add_bytes(create_coldef_frame(4, meta_builder().type(column_type::tinyint).build_coldef()));
 
             // Call the function
             fns.read_resultset_head(fix.chan, fix.st)
@@ -367,7 +372,7 @@ BOOST_AUTO_TEST_CASE(error_on_meta)
 
             fix.stream()
                 .add_bytes(create_frame(1, {0x01}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame());
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()));
 
             fns.read_resultset_head(fix.chan, fix.st)
                 .validate_error_exact_client(client_errc::metadata_check_failed, "some message");

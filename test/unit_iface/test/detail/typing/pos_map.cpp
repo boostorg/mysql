@@ -15,8 +15,8 @@
 
 #include <cstddef>
 
-#include "creation/create_meta.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/create_meta.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -28,9 +28,7 @@ using boost::mysql::detail::pos_absent;
 using boost::mysql::detail::pos_map_add_field;
 using boost::mysql::detail::pos_map_reset;
 
-namespace {
-
-BOOST_AUTO_TEST_SUITE(test_cpp2db_map)
+BOOST_AUTO_TEST_SUITE(test_post_map)
 
 BOOST_AUTO_TEST_CASE(reset_empty)
 {
@@ -159,5 +157,3 @@ BOOST_AUTO_TEST_CASE(map_field_view_)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

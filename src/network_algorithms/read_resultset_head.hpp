@@ -12,6 +12,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/metadata.hpp>
 
+#include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 

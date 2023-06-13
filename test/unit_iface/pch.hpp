@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_PCH_HPP
-#define BOOST_MYSQL_TEST_UNIT_PCH_HPP
+#ifndef BOOST_MYSQL_TEST_UNIT_IFACE_PCH_HPP
+#define BOOST_MYSQL_TEST_UNIT_IFACE_PCH_HPP
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>

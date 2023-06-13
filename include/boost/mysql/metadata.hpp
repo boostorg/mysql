@@ -12,18 +12,13 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/column_flags.hpp>
-#include <boost/mysql/detail/config.hpp>
 
 #include <string>
 
 namespace boost {
 namespace mysql {
-
-// Forward decls
-namespace detail {
-struct coldef_view;
-}
 
 /**
  * \brief Metadata about a column in a SQL query.
@@ -282,8 +277,19 @@ private:
     std::uint8_t decimals_;        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
                                    // dynamic strings, double, float
 
-    BOOST_MYSQL_DECL
-    metadata(const detail::coldef_view& coldef, bool copy_strings);
+    metadata(const detail::coldef_view& coldef, bool copy_strings)
+        : schema_(copy_strings ? coldef.database : string_view()),
+          table_(copy_strings ? coldef.table : string_view()),
+          org_table_(copy_strings ? coldef.org_table : string_view()),
+          name_(copy_strings ? coldef.name : string_view()),
+          org_name_(copy_strings ? coldef.org_name : string_view()),
+          character_set_(coldef.collation_id),
+          column_length_(coldef.column_length),
+          type_(coldef.type),
+          flags_(coldef.flags),
+          decimals_(coldef.decimals)
+    {
+    }
 
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 

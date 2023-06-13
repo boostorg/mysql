@@ -13,14 +13,15 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
+#include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include "protocol/protocol.hpp"
 #include "test_common/check_meta.hpp"
+#include "test_common/create_meta.hpp"
 #include "test_common/printing.hpp"
-#include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/printing.hpp"

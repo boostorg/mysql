@@ -23,7 +23,7 @@
 #include "operators.hpp"
 #include "protocol/constants.hpp"
 #include "test_common/create_basic.hpp"
-#include "test_unit/create_meta.hpp"
+#include "test_common/create_meta.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;

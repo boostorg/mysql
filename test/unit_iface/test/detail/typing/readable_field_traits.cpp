@@ -36,10 +36,10 @@
 #include <limits>
 #include <string>
 
-#include "creation/create_meta.hpp"
-#include "custom_allocator.hpp"
-#include "printing.hpp"
-#include "test_common.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_common/printing.hpp"
+#include "test_unitiface/custom_allocator.hpp"
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
@@ -49,14 +49,12 @@ using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace mp11 = boost::mp11;
 using boost::span;
-using detail::is_readable_field;
-using detail::meta_check_context;
-using detail::meta_check_field_type_list;
-using detail::name_table_t;
-using detail::pos_absent;
-using detail::readable_field_traits;
-
-namespace {
+using boost::mysql::detail::is_readable_field;
+using boost::mysql::detail::meta_check_context;
+using boost::mysql::detail::meta_check_field_type_list;
+using boost::mysql::detail::name_table_t;
+using boost::mysql::detail::pos_absent;
+using boost::mysql::detail::readable_field_traits;
 
 BOOST_AUTO_TEST_SUITE(test_readable_field_traits)
 
@@ -804,5 +802,3 @@ BOOST_AUTO_TEST_CASE(empty)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace

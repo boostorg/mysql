@@ -19,8 +19,9 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
+#include "test_common/create_meta.hpp"
+#include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/create_statement.hpp"
@@ -84,13 +85,12 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
     conn.stream()
         .add_bytes(create_frame(1, {0x02}))  // OK, 2 columns
         .add_break()
-        .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame())  // meta
+        .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))  // meta
         .add_break()
-        .add_bytes(meta_builder()
-                       .seqnum(3)
-                       .type(column_type::blob)
-                       .collation_id(mysql_collations::binary)
-                       .build_coldef_frame())  // meta
+        .add_bytes(create_coldef_frame(
+            3,
+            meta_builder().type(column_type::blob).collation_id(mysql_collations::binary).build_coldef()
+        ))  // meta
         .add_break()
         .add_bytes(create_text_row_message(4, "abcd", makebv("\0\1\0")))  // row 1
         .add_break()
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
         .add_break()
         .add_bytes(create_frame(8, {0x01}))  // OK, 1 metadata
         .add_break()
-        .add_bytes(meta_builder().seqnum(9).type(column_type::varchar).build_coldef_frame())  // meta
+        .add_bytes(create_coldef_frame(9, meta_builder().type(column_type::varchar).build_coldef()))  // meta
         .add_break()
         .add_bytes(create_text_row_message(10, "ab"))  // row 1
         .add_break()

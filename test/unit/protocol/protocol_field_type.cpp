@@ -12,8 +12,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/create_meta.hpp"
 #include "test_common/printing.hpp"
-#include "test_unit/create_meta.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;

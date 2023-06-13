@@ -16,6 +16,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
@@ -32,7 +33,6 @@ namespace mysql {
 namespace detail {
 
 // Forward declarations
-struct coldef_view;
 struct ok_view;
 
 // A type-erased reference to be used as the output range for static_execution_state

@@ -21,7 +21,7 @@
 #include "protocol/serialization.hpp"
 #include "serialization_test.hpp"
 #include "test_common/create_basic.hpp"
-#include "test_unit/create_meta.hpp"
+#include "test_common/create_meta.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;

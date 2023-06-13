@@ -21,9 +21,10 @@
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_common/create_meta.hpp"
 #include "test_unit/create_channel.hpp"
+#include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_meta.hpp"
 #include "test_unit/create_statement.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/printing.hpp"
@@ -69,7 +70,7 @@ BOOST_AUTO_TEST_CASE(text_query)
             fixture fix;
             fix.stream()
                 .add_bytes(create_frame(1, {0x01}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame());
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()));
 
             // Call the function
             fns.start_execution(fix.chan, any_execution_request("SELECT 1"), fix.st).validate_no_error();
@@ -100,7 +101,7 @@ BOOST_AUTO_TEST_CASE(prepared_statement)
             fixture fix;
             fix.stream()
                 .add_bytes(create_frame(1, {0x01}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame());
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()));
             auto stmt = statement_builder().id(1).num_params(2).build();
             const auto params = make_fv_arr("test", nullptr);
 
@@ -137,7 +138,7 @@ BOOST_AUTO_TEST_CASE(error_num_params)
             fixture fix;
             fix.stream()
                 .add_bytes(create_frame(1, {0x01}))
-                .add_bytes(meta_builder().seqnum(2).type(column_type::varchar).build_coldef_frame());
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()));
             auto stmt = statement_builder().id(1).num_params(2).build();
             const auto params = make_fv_arr("test", nullptr, 42);  // too many params
 
@@ -166,7 +167,9 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                     fixture fix;
                     fix.stream()
                         .add_bytes(create_frame(1, {0x01}))
-                        .add_bytes(meta_builder().seqnum(2).type(column_type::bit).build_coldef_frame())
+                        .add_bytes(
+                            create_coldef_frame(2, meta_builder().type(column_type::bit).build_coldef())
+                        )
                         .set_fail_count(fail_count(i, client_errc::server_unsupported));
 
                     // Call the function

@@ -15,6 +15,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/config.hpp>
@@ -72,20 +73,6 @@ BOOST_ATTRIBUTE_NODISCARD
 error_code process_error_packet(span<const std::uint8_t> message, db_flavor flavor, diagnostics& diag);
 
 // Column definition
-struct coldef_view
-{
-    string_view database;
-    string_view table;
-    string_view org_table;
-    string_view name;
-    string_view org_name;
-    std::uint16_t collation_id;
-    std::uint32_t column_length;  // maximum length of the field
-    column_type type;
-    std::uint16_t flags;
-    std::uint8_t decimals;  // max shown decimal digits. 0x00 for int/static strings; 0x1f for
-                            // dynamic strings, double, float
-};
 BOOST_ATTRIBUTE_NODISCARD
 error_code deserialize_column_definition(span<const std::uint8_t> input, coldef_view& output) noexcept;
 

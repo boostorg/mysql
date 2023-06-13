@@ -14,19 +14,16 @@ add_executable(
     test/detail/rows_iterator.cpp
     test/detail/execution_concepts.cpp
     test/detail/writable_field_traits.cpp
+    test/detail/typing/meta_check_context.cpp
+    test/detail/typing/pos_map.cpp
+    test/detail/typing/readable_field_traits.cpp
+    test/detail/typing/row_traits.cpp
+    test/detail/typing/get_type_index.cpp
     test/client_errc.cpp
     test/common_server_errc.cpp
     test/mysql_server_errc.cpp
     test/mariadb_server_errc.cpp
     test/connection.cpp
-    
-
-
-    # detail/typing/meta_check_context.cpp
-    # detail/typing/pos_map.cpp
-    # detail/typing/readable_field_traits.cpp
-    # detail/typing/row_traits.cpp
-    # detail/typing/get_type_index.cpp
     # date.cpp
     # datetime.cpp
     # field_view.cpp

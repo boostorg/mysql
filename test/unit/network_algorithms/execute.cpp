@@ -20,10 +20,11 @@
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/check_meta.hpp"
+#include "test_common/create_meta.hpp"
 #include "test_unit/create_channel.hpp"
+#include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
@@ -97,7 +98,7 @@ BOOST_AUTO_TEST_CASE(single_batch)
             fixture fix;
             fix.stream()
                 .add_bytes(create_frame(1, {0x01}))  // OK, 1 column
-                .add_bytes(meta_builder().seqnum(2).type(column_type::bigint).build_coldef_frame())
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::bigint).build_coldef()))
                 .add_bytes(create_text_row_message(3, 42))  // row 1
                 .add_bytes(create_text_row_message(4, 43))  // row 2
                 .add_bytes(ok_builder().seqnum(5).affected_rows(10u).info("1st").build_eof_frame())
@@ -140,7 +141,7 @@ BOOST_AUTO_TEST_CASE(multiple_batches)
             fix.stream()
                 .add_bytes(create_frame(1, {0x01}))  // OK, 1 column
                 .add_break()
-                .add_bytes(meta_builder().seqnum(2).type(column_type::tinyint).build_coldef_frame())
+                .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::tinyint).build_coldef()))
                 .add_break()
                 .add_bytes(create_text_row_message(3, 42))  // row 1
                 .add_break()
@@ -189,7 +190,9 @@ BOOST_AUTO_TEST_CASE(error_network_error)
                     fixture fix;
                     fix.stream()
                         .add_bytes(create_frame(1, {0x01}))  // OK, 1 column
-                        .add_bytes(meta_builder().seqnum(2).type(column_type::tinyint).build_coldef_frame())
+                        .add_bytes(
+                            create_coldef_frame(2, meta_builder().type(column_type::tinyint).build_coldef())
+                        )
                         .add_break()
                         .add_bytes(create_text_row_message(3, 42))
                         .add_bytes(ok_builder().seqnum(4).info("1st").build_eof_frame())
