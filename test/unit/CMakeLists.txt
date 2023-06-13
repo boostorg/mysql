@@ -8,46 +8,51 @@
 # TODO: this is not gonna work when we build as a shared lib as it requires access to internal functions
 add_executable(
     boost_mysql_unittests
+
+    # Helpers
     src/test_stream.cpp
     src/serialization.cpp
-    auth/auth.cpp
-    protocol/static_buffer.cpp
-    protocol/capabilities.cpp
-    protocol/null_bitmap_traits.cpp
-    protocol/protocol_field_type.cpp
-    protocol/serialization.cpp
-    protocol/binary_serialization.cpp
-    protocol/deserialize_text_field.cpp
-    protocol/deserialize_binary_field.cpp
-    protocol/protocol.cpp
-    channel/read_buffer.cpp
-    channel/message_parser.cpp
-    channel/message_reader.cpp
-    channel/message_writer.cpp
-    channel/write_message.cpp
-    execution_processor/execution_processor.cpp
-    execution_processor/execution_state_impl.cpp
-    execution_processor/static_execution_state_impl.cpp
-    execution_processor/results_impl.cpp
-    execution_processor/static_results_impl.cpp
-    network_algorithms/read_resultset_head.cpp
-    network_algorithms/start_execution.cpp
-    network_algorithms/read_some_rows.cpp
-    network_algorithms/read_some_rows_dynamic.cpp
-    network_algorithms/execute.cpp
-    network_algorithms/close_statement.cpp
-    network_algorithms/ping.cpp
-    network_algorithms/read_some_rows_static.cpp
-    interface/connection.cpp
-    interface/misc.cpp
-    interface/multifn.cpp
+
+    # Actual tests
+    test/auth/auth.cpp
+    test/protocol/static_buffer.cpp
+    test/protocol/capabilities.cpp
+    test/protocol/null_bitmap_traits.cpp
+    test/protocol/protocol_field_type.cpp
+    test/protocol/serialization.cpp
+    test/protocol/binary_serialization.cpp
+    test/protocol/deserialize_text_field.cpp
+    test/protocol/deserialize_binary_field.cpp
+    test/protocol/protocol.cpp
+    test/channel/read_buffer.cpp
+    test/channel/message_parser.cpp
+    test/channel/message_reader.cpp
+    test/channel/message_writer.cpp
+    test/channel/write_message.cpp
+    test/execution_processor/execution_processor.cpp
+    test/execution_processor/execution_state_impl.cpp
+    test/execution_processor/static_execution_state_impl.cpp
+    test/execution_processor/results_impl.cpp
+    test/execution_processor/static_results_impl.cpp
+    test/network_algorithms/read_resultset_head.cpp
+    test/network_algorithms/start_execution.cpp
+    test/network_algorithms/read_some_rows.cpp
+    test/network_algorithms/read_some_rows_dynamic.cpp
+    test/network_algorithms/execute.cpp
+    test/network_algorithms/close_statement.cpp
+    test/network_algorithms/ping.cpp
+    test/network_algorithms/read_some_rows_static.cpp
+    test/connection.cpp
+    test/misc.cpp
+    test/multifn.cpp
     # TODO: these should be in unit_iface
-    interface/execution_state.cpp
-    interface/static_execution_state.cpp
-    interface/results.cpp
-    interface/static_results.cpp
-    interface/resultset_view.cpp
-    interface/resultset.cpp
+    test/execution_state.cpp
+    test/static_execution_state.cpp
+    test/results.cpp
+    test/static_results.cpp
+    test/resultset_view.cpp
+    test/resultset.cpp
+
     entry_point.cpp
 )
 target_include_directories(
