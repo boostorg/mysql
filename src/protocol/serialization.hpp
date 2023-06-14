@@ -176,7 +176,7 @@ inline deserialize_errc deserialize(deserialization_context& ctx, int_lenenc& ou
     }
     else if (first_byte == 0xFD)
     {
-        int3 value;
+        int3 value{};
         err = deserialize(ctx, value);
         output.value = value.value;
     }

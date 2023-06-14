@@ -194,7 +194,11 @@ void boost::mysql::test::test_stream::
     BOOST_ASSERT(false);
 }
 void boost::mysql::test::test_stream::close(error_code&) { BOOST_ASSERT(false); }
-bool boost::mysql::test::test_stream::is_open() const noexcept { BOOST_ASSERT(false); }
+bool boost::mysql::test::test_stream::is_open() const noexcept
+{
+    BOOST_ASSERT(false);
+    return false;
+}
 
 test_stream& boost::mysql::test::test_stream::add_bytes(span<const std::uint8_t> bytes)
 {
