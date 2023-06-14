@@ -57,8 +57,8 @@ def _common_settings(
     os.environ['BOOST_MYSQL_TEST_DB'] = db
     if _is_windows:
         openssl_root = 'C:\\openssl-{}'.format(address_model)
-        os.environ['OPENSSL_INCLUDE'] = f'{openssl_root}\\include'
-        os.environ['OPENSSL_LIBRARY_PATH'] = f'{openssl_root}\\lib'
+        os.environ['OPENSSL_INCLUDE'] = openssl_root + '\\include'
+        os.environ['OPENSSL_LIBRARY_PATH'] = openssl_root + '\\lib'
         os.environ['BOOST_MYSQL_NO_UNIX_SOCKET_TESTS'] = '1'
 
 
