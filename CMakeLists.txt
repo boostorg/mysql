@@ -7,15 +7,8 @@
 
 cmake_minimum_required(VERSION 3.8...3.22)
 
-# Boost version
-if (DEFINED BOOST_SUPERPROJECT_VERSION)
-    set(BOOST_MYSQL_VERSION ${BOOST_SUPERPROJECT_VERSION})
-else()
-    set(BOOST_MYSQL_VERSION 1.80.0)
-endif()
-
 # Project
-project(boost_mysql VERSION ${BOOST_MYSQL_VERSION} LANGUAGES CXX)
+project(boost_mysql VERSION "${BOOST_SUPERPROJECT_VERSION}" LANGUAGES CXX)
 
 # Determine if we're the top-level project 
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
