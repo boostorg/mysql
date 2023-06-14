@@ -35,10 +35,8 @@ if (BOOST_MYSQL_USE_FIND_PACKAGE)
     )
 else()
     set(_TEST_LIBRARIES
-        Boost::any
         Boost::optional
         Boost::unit_test_framework
-        Boost::type_index
     )
 endif()
 
