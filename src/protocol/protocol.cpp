@@ -723,19 +723,19 @@ static db_flavor parse_db_version(string_view version_string) noexcept
     return version_string.find("MariaDB") != string_view::npos ? db_flavor::mariadb : db_flavor::mysql;
 }
 
+static constexpr std::uint8_t server_hello_auth1_length = 8;
+
 error_code boost::mysql::detail::deserialize_server_hello_impl(
     span<const std::uint8_t> msg,
     server_hello& output
 )
 {
-    constexpr std::uint8_t auth1_length = 8;
-
     struct server_hello_packet
     {
         // int<1>     protocol version     Always 10
         string_null server_version;
         std::uint32_t connection_id;
-        string_fixed<auth1_length> auth_plugin_data_part_1;
+        string_fixed<server_hello_auth1_length> auth_plugin_data_part_1;
         std::uint8_t filler;  // should be 0
         string_fixed<2> capability_flags_low;
         std::uint8_t character_set;  // default server a_protocol_character_set, only the lower 8-bits
@@ -776,7 +776,9 @@ error_code boost::mysql::detail::deserialize_server_hello_impl(
         return to_error_code(err);
 
     // Auth plugin data, second part
-    auto auth2_length = static_cast<std::uint8_t>((std::max)(13, pack.auth_plugin_data_len - auth1_length));
+    auto auth2_length = static_cast<std::uint8_t>(
+        (std::max)(13, pack.auth_plugin_data_len - server_hello_auth1_length)
+    );
     const void* auth2_data = ctx.first();
     if (!ctx.enough_size(auth2_length))
         return client_errc::incomplete_message;
@@ -794,7 +796,7 @@ error_code boost::mysql::detail::deserialize_server_hello_impl(
 
     // Compose auth_plugin_data
     output.auth_plugin_data.clear();
-    output.auth_plugin_data.append(pack.auth_plugin_data_part_1.value.data(), auth1_length);
+    output.auth_plugin_data.append(pack.auth_plugin_data_part_1.value.data(), server_hello_auth1_length);
     output.auth_plugin_data.append(auth2_data,
                                    auth2_length - 1);  // discard an extra trailing NULL byte
 

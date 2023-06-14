@@ -153,7 +153,7 @@ std::vector<std::shared_ptr<test_case>> make_all_cases()
         // string_fixed
         make_test("4c_regular_characters", makesfixed<4>("abde"), {0x61, 0x62, 0x64, 0x65}),
         make_test("3c_null_characters", makesfixed<3>("\0\1a"), {0x00, 0x01, 0x61}),
-        make_test("3c_utf8_characters", string_fixed<3>{'\xc3', '\xb1', 'a'}, {0xc3, 0xb1, 0x61}),
+        make_test("3c_utf8_characters", string_fixed<3>{{{'\xc3', '\xb1', 'a'}}}, {0xc3, 0xb1, 0x61}),
         make_test("1c_regular_characters", makesfixed<1>("a"), {0x61}),
 
         // string_null

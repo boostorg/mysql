@@ -46,7 +46,9 @@ public:
         BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected, actual_populated);
 
         // Check that we didn't overrun the buffer
-        const std::array<std::uint8_t, 8> expected_clean{0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde};
+        const std::array<std::uint8_t, 8> expected_clean{
+            {0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde}
+        };
         span<const std::uint8_t> actual_clean(data_.get() + size_, 8);
         BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected_clean, actual_clean);
     }

@@ -53,7 +53,9 @@ BOOST_FIXTURE_TEST_CASE(clear_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(clear_not_empty, fixture)
 {
     string_type v;
-    const std::array<std::uint8_t, 5> data{0, 1, 2, 3, 4};
+    const std::array<std::uint8_t, 5> data{
+        {0, 1, 2, 3, 4}
+    };
     v.append(data.data(), data.size());
     BOOST_TEST(v.to_span().size() == 5u);
     v.clear();

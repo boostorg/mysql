@@ -73,10 +73,10 @@ BOOST_AUTO_TEST_CASE(frame_header_serialization)
         frame_header value;
         std::array<std::uint8_t, 4> serialized;
     } test_cases[] = {
-        {"small_packet_seqnum_0",     {3, 0},           {0x03, 0x00, 0x00, 0x00}},
-        {"small_packet_seqnum_not_0", {9, 2},           {0x09, 0x00, 0x00, 0x02}},
-        {"big_packet_seqnum_0",       {0xcacbcc, 0xfa}, {0xcc, 0xcb, 0xca, 0xfa}},
-        {"max_packet_max_seqnum",     {0xffffff, 0xff}, {0xff, 0xff, 0xff, 0xff}}
+        {"small_packet_seqnum_0",     {3, 0},           {{0x03, 0x00, 0x00, 0x00}}},
+        {"small_packet_seqnum_not_0", {9, 2},           {{0x09, 0x00, 0x00, 0x02}}},
+        {"big_packet_seqnum_0",       {0xcacbcc, 0xfa}, {{0xcc, 0xcb, 0xca, 0xfa}}},
+        {"max_packet_max_seqnum",     {0xffffff, 0xff}, {{0xff, 0xff, 0xff, 0xff}}}
     };
 
     for (const auto& tc : test_cases)

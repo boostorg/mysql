@@ -547,7 +547,7 @@ private:
         BOOST_CXX14_CONSTEXPR repr_t(date v) noexcept : date_(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(datetime v) noexcept : datetime_(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(time v) noexcept : time_(v) {}
-        BOOST_CXX14_CONSTEXPR repr_t(detail::string_view_offset v) noexcept : sv_offset_{v} {}
+        BOOST_CXX14_CONSTEXPR repr_t(detail::string_view_offset v) noexcept : sv_offset_(v) {}
         BOOST_CXX14_CONSTEXPR repr_t(const detail::field_impl* v) noexcept : field_ptr(v) {}
     };
 
