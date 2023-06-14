@@ -5,9 +5,11 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-# TODO: this is not gonna work when we build as a shared lib as it requires access to internal functions
 add_executable(
     boost_mysql_unittests
+
+    # Library sources, since we need access to the private part
+    ${BOOST_MYSQL_SOURCES}
 
     # Helpers
     src/test_stream.cpp
@@ -57,13 +59,14 @@ target_include_directories(
     boost_mysql_unittests
     PRIVATE
     "include"
+    ${BOOST_MYSQL_ABSOLUTE_INCLUDES}
 )
 target_link_libraries(
     boost_mysql_unittests
     PRIVATE
     boost_mysql_testing
-    boost_mysql_impl_private
-    boost_mysql_impl_public
+    ${BOOST_MYSQL_LIBS_PRIVATE}
+    ${BOOST_MYSQL_LIBS_PUBLIC}
 )
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
@@ -72,7 +75,7 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
         pch.hpp
     )
 endif()
-common_target_settings(boost_mysql_unittests)
+boost_mysql_common_target_settings(boost_mysql_unittests)
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
     add_memcheck_test(

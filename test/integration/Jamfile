@@ -31,7 +31,7 @@ cpp-pch pch
     :
         pch.hpp
         $(context_lib)
-        /boost/mysql/test//test_common
+        /boost/mysql/test//test_common/<link>static
         /boost/mysql//boost_mysql
     ;
 
@@ -39,7 +39,7 @@ cpp-pch pch
 run 
         pch
         $(context_lib)
-        /boost/mysql/test//test_common
+        /boost/mysql/test//test_common/<link>static
         /boost/mysql//boost_mysql
  
         # Utilities

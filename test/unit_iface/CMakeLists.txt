@@ -55,7 +55,7 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
         pch.hpp
     )
 endif()
-common_target_settings(boost_mysql_unitifacetests)
+boost_mysql_common_target_settings(boost_mysql_unitifacetests)
 
 if (BOOST_MYSQL_VALGRIND_TESTS)
     add_memcheck_test(

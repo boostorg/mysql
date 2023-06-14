@@ -33,35 +33,30 @@ local requirements =
         <target-os>windows:<define>_WIN32_WINNT=0x0601
     ;
 
-# A static Asio library to speed up builds
-alias asio_separate_build
-    :
-        ../tools/asio.cpp
-        /openssl//ssl
-        /openssl//crypto
-    :
-        $(requirements)
-        <define>BOOST_ASIO_SEPARATE_COMPILATION
-    :
-    :
-        $(requirements)
-        <define>BOOST_ASIO_SEPARATE_COMPILATION
-    ;
+# Common settings to be applied to tests and examples
+alias common_target_settings
+    : requirements $(requirements)
+    : usage-requirements $(requirements)
+;
 
 
-alias test_common
+# A library with utilities and an asio separate build, to speed up
+lib test_common
     :
+        common_target_settings
+        common/src/asio.cpp
         common/src/tracker_executor.cpp
         common/src/utf_entry_point.cpp
-        asio_separate_build
         # Unit test library generates some internal warnings we're not interested in.
         # Dynamic linking against UTF allows us to define our own main, without playing with UTF macros
         /boost/test//boost_unit_test_framework/<warnings-as-errors>off/<link>shared
     :
         <include>common/include
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
     :
     :
         <include>common/include
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
     ;
 
 build-project unit ;

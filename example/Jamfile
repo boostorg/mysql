@@ -10,7 +10,7 @@ import os ;
 path-constant this_dir : . ;
 
 alias example_link_libs :
-    ../test//asio_separate_build
+    ../test//common_target_settings
     /boost/mysql//boost_mysql
 ;
 

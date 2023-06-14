@@ -9,13 +9,13 @@
 cpp-pch pch
     :
         pch.hpp
-        /boost/mysql/test//test_common
+        /boost/mysql/test//test_common/<link>static
         /boost/mysql//boost_mysql
     ;
 
 run
         pch
-        /boost/mysql/test//test_common
+        /boost/mysql/test//test_common/<link>static
         /boost/mysql//boost_mysql
 
         test/detail/datetime.cpp

@@ -48,7 +48,7 @@ target_link_libraries(
     Boost::mysql
     Boost::context
 )
-common_target_settings(boost_mysql_integrationtests)
+boost_mysql_common_target_settings(boost_mysql_integrationtests)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
         boost_mysql_integrationtests

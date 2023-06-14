@@ -22,14 +22,13 @@ target_link_libraries(
     INTERFACE
     Boost::disable_autolinking
     Boost::mysql
-    boost_mysql_asio
 )
 
 # Declare an example target
 function (add_example_target EXAMPLE_NAME EXAMPLE_PATH)
     add_executable(${EXAMPLE_NAME} ${EXAMPLE_PATH})
     target_link_libraries(${EXAMPLE_NAME} PRIVATE boost_mysql_examples_common ${ARGN})
-    common_target_settings(${EXAMPLE_NAME})
+    boost_mysql_common_target_settings(${EXAMPLE_NAME})
 endfunction()
 
 # Build and run an example
@@ -122,21 +121,3 @@ add_example(
     source_script.cpp
     example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql
 )
-
-# TODO: do we want to keep this example?
-# add_executable(
-#     zzz
-#     http_server/http_server.cpp
-#     http_server/dba.cpp
-# )
-# common_target_settings(zzz)
-# target_link_libraries(
-#     zzz 
-#     PUBLIC 
-#     boost_mysql_examples_common
-#     Boost::json
-#     Boost::context
-#     Boost::url
-# )
-# target_precompile_headers(zzz PUBLIC <boost/mysql.hpp>)
-# target_compile_options(zzz PUBLIC -ftime-trace)
