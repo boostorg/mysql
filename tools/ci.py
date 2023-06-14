@@ -185,7 +185,10 @@ def _b2_build(
 ) -> None:
     # Config
     if _is_windows:
-        os.environ['OPENSSL_ROOT'] = 'C:\\openssl-{}'.format(address_model)
+        openssl_root = 'C:\\openssl-{}'.format(address_model)
+        os.environ['OPENSSL_INCLUDE'] = f'{openssl_root}\\include'
+        os.environ['OPENSSL_LIBRARY_PATH'] = f'{openssl_root}\\lib'
+
 
     # Get Boost. This leaves us inside boost root
     _install_boost(
@@ -268,6 +271,7 @@ def _cmake_build(
             '--with-date_time',
             '--with-test',
             '--with-mysql',
+            'link=shared', # we want Boost.Test to be linked dynamically not to inject its own main
             '-d0',
         ] + (['cxxstd={}'.format(cxxstd)] if cxxstd else []) + [
             'install'
