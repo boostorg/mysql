@@ -48,7 +48,7 @@ void boost::mysql::detail::channel_ptr::set_meta_mode(metadata_mode v) noexcept 
 template class boost::mysql::detail::any_stream_impl<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
 template class boost::mysql::detail::any_stream_impl<boost::asio::ip::tcp::socket>;
 
-inline void boost::mysql::detail::message_parser::parse_message(read_buffer& buff, result& res) noexcept
+void boost::mysql::detail::message_parser::parse_message(read_buffer& buff, result& res) noexcept
 {
     while (true)
     {
