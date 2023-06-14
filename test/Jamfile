@@ -46,10 +46,9 @@ lib test_common
         common_target_settings
         common/src/asio.cpp
         common/src/tracker_executor.cpp
-        common/src/utf_entry_point.cpp
+        common/entry_point.cpp
         # Unit test library generates some internal warnings we're not interested in.
-        # Dynamic linking against UTF allows us to define our own main, without playing with UTF macros
-        /boost/test//boost_unit_test_framework/<warnings-as-errors>off/<link>shared
+        /boost/test//boost_unit_test_framework/<warnings-as-errors>off
     :
         <include>common/include
         <define>BOOST_ASIO_SEPARATE_COMPILATION

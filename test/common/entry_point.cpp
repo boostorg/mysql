@@ -7,7 +7,11 @@
 
 #include <boost/test/unit_test.hpp>
 
+#ifdef BOOST_TEST_ALTERNATIVE_INIT_API
 int main(int argc, char* argv[])
 {
     return ::boost::unit_test::unit_test_main([] { return true; }, argc, argv);
 }
+#else
+::boost::unit_test::test_suite* init_unit_test_suite(int, char*[]) { return nullptr; }
+#endif

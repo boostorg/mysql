@@ -15,12 +15,11 @@ endif()
 add_library(
     boost_mysql_testing
     STATIC
-   common/src/asio.cpp
-   common/src/tracker_executor.cpp
-   common/src/utf_entry_point.cpp
+    common/src/asio.cpp
+    common/src/tracker_executor.cpp
 )
+target_sources(boost_mysql_testing INTERFACE common/entry_point.cpp)
 boost_mysql_common_target_settings(boost_mysql_testing)
-
 
 # Asio static library to speed up compilation
 if (BOOST_MYSQL_IS_ROOT)
