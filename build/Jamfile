@@ -7,51 +7,86 @@
 
 import os ;
 import openssl ;
+import ac ;
+import indirect ;
+
+using openssl ;
 
 project /boost/mysql ;
 
-# TODO: looks like openssl module is missing rule configured
-# if ! $(openssl.configured)
-# {
-    ECHO "warning: no OpenSSL configured in user-config.jam" ;
-    ECHO "warning: will use default configuration" ;
-    using openssl ;
-# }
-# TODO: how can we check if openssl was found?
 # TODO: require cxx11
 
+# Machinery to check whether OpenSSL is present or not.
+# We issue a warning and skip the build if ssl or crypto are not present.
+# If the user explicitly specified --with-mysql, then we error out the build.
 
-# Private part. Used for the actual lib and the unit tests
-alias mysql_impl_private
-    :
-        /openssl//ssl
-        /openssl//crypto
-        ../src/auth/auth.cpp
-        ../src/protocol/protocol_field_type.cpp
-        ../src/protocol/binary_serialization.cpp
-        ../src/protocol/deserialize_binary_field.cpp
-        ../src/protocol/deserialize_text_field.cpp
-        ../src/protocol/protocol.cpp
-        ../src/channel/channel.cpp
-        ../src/execution_processor.cpp
-        ../src/network_algorithms/network_algorithms.cpp
-        ../src/error/error_categories.cpp
-        ../src/error/server_error_to_string.cpp
-        ../src/interface.cpp
-    : requirements
-        <link>shared:<define>BOOST_MYSQL_DYN_LINK
-    : usage-requirements
-        <link>shared:<define>BOOST_MYSQL_DYN_LINK
-        <include>../src
+.warned = ;
+
+rule openssl-not-found-impl ( properties * )
+{
+    local args = [ modules.peek : ARGV ] ;
+    local var = [ modules.peek project-config : libraries ] ;
+    if mysql in [ MATCH ^--with-(mysql) : $(args) $(var) ]
+    {
+        import errors ;
+        echo "error: OpenSSL is required to build Boost.MySQL" ;
+        echo "       Please make sure that OpenSSL binaries and development files are" ;
+        echo "       present in your machine and under the system and include paths." ;
+        echo "       TODO: link to the relevant doc page" ;
+        errors.user-error "OpenSSL is required to build Boost.MySQL" ;
+    }
+    else
+    {
+        if ! $(.warned)
+        {
+            .warned = true ;
+            echo "warning: skipping Boost.MySQL because OpenSSL was not found" ;
+            echo "note: to suppress this message, pass "--without-mysql" to b2" ;
+            echo "note: otherwise, you can safely ignore this message." ;
+        }
+        return <build>no ;
+    }
+}
+
+# This binding is required to be able to pass the rule to <conditional> through ac.check-library
+local openssl-not-found = [ indirect.make openssl-not-found-impl ] ;
+
+local openssl_requirements =
+    [ ac.check-library /openssl//ssl :    <library>/openssl//ssl :    <conditional>@$(openssl-not-found) ]
+    [ ac.check-library /openssl//crypto : <library>/openssl//crypto : <conditional>@$(openssl-not-found) ]
 ;
-explicit mysql_impl_private ;
 
+alias openssl_libs
+    : requirements $(openssl_requirements)
+    : usage-requirements $(openssl_requirements)
+;
+
+
+alias mysql_sources :
+    ../src/auth/auth.cpp
+    ../src/protocol/protocol_field_type.cpp
+    ../src/protocol/binary_serialization.cpp
+    ../src/protocol/deserialize_binary_field.cpp
+    ../src/protocol/deserialize_text_field.cpp
+    ../src/protocol/protocol.cpp
+    ../src/channel/channel.cpp
+    ../src/execution_processor.cpp
+    ../src/network_algorithms/network_algorithms.cpp
+    ../src/error/error_categories.cpp
+    ../src/error/server_error_to_string.cpp
+    ../src/interface.cpp
+;
 
 lib boost_mysql
     :
-        mysql_impl_private
+        mysql_sources
+        openssl_libs
     : requirements
         <define>BOOST_MYSQL_SOURCE
+        <include>../src
+        <link>shared:<define>BOOST_MYSQL_DYN_LINK
+    : usage-requirements
+        <link>shared:<define>BOOST_MYSQL_DYN_LINK
 ;
 
 boost-install boost_mysql ;

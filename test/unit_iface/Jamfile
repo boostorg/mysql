@@ -11,10 +11,6 @@ cpp-pch pch
         pch.hpp
         /boost/mysql/test//test_common
         /boost/mysql//boost_mysql
-    :
-    :
-    :
-        <include>include
     ;
 
 run
@@ -52,5 +48,6 @@ run
         
     : requirements
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
+        <include>include
     : target-name boost_mysql_unitifacetests
     ;

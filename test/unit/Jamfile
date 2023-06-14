@@ -9,17 +9,14 @@ cpp-pch pch
     :
         pch.hpp
         /boost/mysql/test//test_common
-        /boost/mysql//mysql_impl_private
-    :
-    :
-    :
-        <include>include
+        /boost/mysql//openssl_libs
     ;
 
 run
         pch
         /boost/mysql/test//test_common
-        /boost/mysql//mysql_impl_private
+        /boost/mysql//openssl_libs
+        /boost/mysql//mysql_sources
 
         # Helpers
         src/test_stream.cpp
@@ -68,5 +65,6 @@ run
     : requirements
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
         <include>include
+        <include>../../src
     : target-name boost_mysql_unittests
     ;

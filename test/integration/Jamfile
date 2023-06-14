@@ -33,10 +33,6 @@ cpp-pch pch
         $(context_lib)
         /boost/mysql/test//test_common
         /boost/mysql//boost_mysql
-    :
-    :
-    :
-        <include>include
     ;
 
 
@@ -71,6 +67,7 @@ run
     : requirements
         <testing.arg>$(test_command)
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
+        <include>include
     : target-name boost_mysql_integrationtests
     ;
 
