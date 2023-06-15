@@ -44,18 +44,15 @@ alias common_target_settings
 lib test_common
     :
         common_target_settings
-        common/src/asio.cpp
         common/src/tracker_executor.cpp
-        common/entry_point.cpp
+        common/src/entry_point.cpp
         # Unit test library generates some internal warnings we're not interested in.
         /boost/test//boost_unit_test_framework/<warnings-as-errors>off
     :
         <include>common/include
-        <define>BOOST_ASIO_SEPARATE_COMPILATION
     :
     :
         <include>common/include
-        <define>BOOST_ASIO_SEPARATE_COMPILATION
     ;
 
 build-project unit ;
