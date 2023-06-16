@@ -7,9 +7,67 @@
 
 import os ;
 import path ;
-import openssl ;
 
 project /boost/mysql/test ;
+
+# System libraries
+if [ os.name ] = NT
+{
+    local OPENSSL_ROOT_ENV = [ os.environ OPENSSL_ROOT ] ;
+    local OPENSSL_ROOT = "" ;
+    if $(OPENSSL_ROOT_ENV)
+    {
+        OPENSSL_ROOT = $(OPENSSL_ROOT_ENV) ;
+    }
+    else 
+    {
+        OPENSSL_ROOT = "C:/OpenSSL" ;
+    }
+    local openssl_requirements =
+        <include>$(OPENSSL_ROOT)/include
+        <library-path>$(OPENSSL_ROOT)/lib
+    ; 
+
+    if [ path.exists $(OPENSSL_ROOT)/lib/libssl.lib ]
+    {
+        echo "OpenSSL > 1.1.0. Including libssl" ;
+        lib ssl : : <target-os>windows <name>libssl : : $(openssl_requirements) ;
+    }
+    else if [ path.exists $(OPENSSL_ROOT)/lib/ssleay32.lib ] 
+    {
+        echo "OpenSSL < 1.1.0. Including ssleay32" ;
+        lib ssl : : <target-os>windows <name>ssleay32 : : $(openssl_requirements) ;
+    }
+    else
+    {
+        lib ssl : : <link>shared : : $(openssl_requirements) ;
+    }
+
+    if [ path.exists $(OPENSSL_ROOT)/lib/libcrypto.lib ]
+    {
+        echo "OpenSSL > 1.1.0. Including libcrypto" ;
+        lib crypto : : <target-os>windows <name>libcrypto : : $(openssl_requirements) ;
+    }
+    else if [ path.exists $(OPENSSL_ROOT)/lib/libeay32.lib ]
+    {
+        echo "OpenSSL < 1.1.0. Including libeay32" ;
+        lib crypto : : <target-os>windows <name>libeay32 : : $(openssl_requirements) ;
+    }
+    else
+    {
+        lib crypto : : <link>shared : : $(openssl_requirements) ;
+    }
+}
+else
+{
+    local OPENSSL_ROOT = [ os.environ OPENSSL_ROOT ] ;
+    local openssl_requirements =
+        <include>$(OPENSSL_ROOT)/include
+        <library-path>$(OPENSSL_ROOT)/lib
+    ; 
+    lib ssl : : <link>shared : : $(openssl_requirements) ;
+    lib crypto : : <link>shared : : $(openssl_requirements) ;
+}
 
 # Requirements to use across targets
 local requirements = 
@@ -31,29 +89,37 @@ local requirements =
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
+        <define>BOOST_MYSQL_SEPARATE_COMPILATION
+        <include>../include
     ;
 
-# Common settings to be applied to tests and examples
-alias common_target_settings
-    : requirements $(requirements)
-    : usage-requirements $(requirements)
-;
-
-
-# A library with utilities and an asio separate build, to speed up
-lib test_common
+lib boost_mysql_compiled
     :
-        common_target_settings
-        common/src/tracker_executor.cpp
+        common/src/boost_asio.cpp
+        common/src/boost_mysql.cpp
+        ssl
+        crypto
+    : requirements
+        <link>static
+        $(requirements)
+    : usage-requirements
+        $(requirements)
+    ;
+
+
+alias boost_mysql_test
+    :
+        boost_mysql_compiled
         common/src/entry_point.cpp
-        # Unit test library generates some internal warnings we're not interested in.
+        common/src/tracker_executor.cpp
+        # Unit test library generates some internal warnings we're not interested in
         /boost/test//boost_unit_test_framework/<warnings-as-errors>off
-    :
+    : requirements
+        <link>static
         <include>common/include
-    :
-    :
+    : usage-requirements
         <include>common/include
     ;
 
 build-project unit ;
-build-project unit_iface ;

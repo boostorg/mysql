@@ -31,16 +31,14 @@ cpp-pch pch
     :
         pch.hpp
         $(context_lib)
-        /boost/mysql/test//test_common/<link>static
-        /boost/mysql//boost_mysql
+        /boost/mysql/test//boost_mysql_test
     ;
 
 
 run 
         pch
         $(context_lib)
-        /boost/mysql/test//test_common/<link>static
-        /boost/mysql//boost_mysql
+        /boost/mysql/test//boost_mysql_test
  
         # Utilities
         src/get_endpoint.cpp
