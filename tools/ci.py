@@ -49,16 +49,12 @@ def _cmake_bool(value: bool) -> str:
 def _common_settings(
     boost_root: Path,
     server_host: str = 'localhost',
-    db: str = 'mysql8',
-    address_model: str = '64'
+    db: str = 'mysql8'
 ) -> None:
     _add_to_path(boost_root)
     os.environ['BOOST_MYSQL_SERVER_HOST'] = server_host
     os.environ['BOOST_MYSQL_TEST_DB'] = db
     if _is_windows:
-        openssl_root = 'C:\\openssl-{}'.format(address_model)
-        os.environ['OPENSSL_INCLUDE'] = openssl_root + '\\include'
-        os.environ['OPENSSL_LIBRARY_PATH'] = openssl_root + '\\lib'
         os.environ['BOOST_MYSQL_NO_UNIX_SOCKET_TESTS'] = '1'
 
 
@@ -187,6 +183,10 @@ def _b2_build(
     boost_branch: str = 'develop',
     db: str = 'mysql8'
 ) -> None:
+    # Config
+    if _is_windows:
+        os.environ['OPENSSL_ROOT'] = 'C:\\openssl-{}'.format(address_model)
+
     # Get Boost. This leaves us inside boost root
     _install_boost(
         _boost_root,
@@ -267,8 +267,6 @@ def _cmake_build(
             '--with-context',
             '--with-date_time',
             '--with-test',
-            '--with-mysql',
-            'link=shared', # we want Boost.Test to be linked dynamically not to inject its own main
             '-d0',
         ] + (['cxxstd={}'.format(cxxstd)] if cxxstd else []) + [
             'install'
@@ -446,7 +444,7 @@ def main():
 
     args = parser.parse_args()
 
-    _common_settings(_boost_root, args.server_host, db=args.db, address_model=args.address_model)
+    _common_settings(_boost_root, args.server_host, db=args.db)
     boost_branch = _deduce_boost_branch() if args.boost_branch is None else args.boost_branch
 
     if args.build_kind == 'b2':
