@@ -1,4 +1,3 @@
-
 //
 // Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
