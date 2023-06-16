@@ -30,7 +30,7 @@ const char* mariadb_error_to_string(int v) noexcept;
 }  // namespace boost
 
 #ifndef BOOST_MYSQL_SEPARATE_COMPILATION
-#include <boost/mysql/impl/internal/error.hpp>
+#include <boost/mysql/impl/internal/error/server_error_to_string.ipp>
 #endif
 
 #endif
