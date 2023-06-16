@@ -35,7 +35,7 @@
 #endif
 
 #include "test_common/create_basic.hpp"
-#include "test_unitiface/custom_allocator.hpp"
+#include "test_unit/custom_allocator.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
