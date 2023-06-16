@@ -8,7 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_COLDEF_FRAME_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_COLDEF_FRAME_HPP
 
-#include "protocol/protocol.hpp"
+#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+
 #include "test_common/create_meta.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/serialization.hpp"

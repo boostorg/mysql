@@ -5,16 +5,16 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "channel/write_message.hpp"
-
 #include <boost/mysql/client_errc.hpp>
+
+#include <boost/mysql/impl/internal/channel/message_writer.hpp>
+#include <boost/mysql/impl/internal/channel/write_message.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <vector>
 
-#include "channel/message_writer.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_unit/create_frame.hpp"

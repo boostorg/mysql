@@ -5,8 +5,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "network_algorithms/read_resultset_head.hpp"
-
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
@@ -14,9 +12,11 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/impl/internal/channel/channel.hpp>
+#include <boost/mysql/impl/internal/network_algorithms/read_resultset_head.hpp>
+
 #include <boost/test/unit_test.hpp>
 
-#include "channel/channel.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/create_meta.hpp"

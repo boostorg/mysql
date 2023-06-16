@@ -16,9 +16,10 @@
 #include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
+#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+
 #include <boost/test/unit_test.hpp>
 
-#include "protocol/protocol.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_meta.hpp"
 #include "test_common/create_ok.hpp"

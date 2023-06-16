@@ -12,12 +12,12 @@
 #include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/rows_iterator.hpp>
 
+#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
+#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+
 #include <boost/test/unit_test.hpp>
 
 #include <ostream>
-
-#include "protocol/capabilities.hpp"
-#include "protocol/db_flavor.hpp"
 
 namespace boost {
 namespace mysql {

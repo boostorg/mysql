@@ -5,16 +5,16 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "network_algorithms/ping.hpp"
-
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/impl/internal/channel/channel.hpp>
+#include <boost/mysql/impl/internal/network_algorithms/ping.hpp>
+
 #include <boost/test/unit_test.hpp>
 
-#include "channel/channel.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_ok.hpp"
 #include "test_unit/create_channel.hpp"

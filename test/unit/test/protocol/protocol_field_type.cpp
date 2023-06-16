@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "protocol/protocol_field_type.hpp"
-
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/mysql_collations.hpp>
+
+#include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
 
 #include <boost/test/unit_test.hpp>
 

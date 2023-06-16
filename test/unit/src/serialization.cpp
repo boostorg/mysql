@@ -5,16 +5,16 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "protocol/serialization.hpp"
 #include "test_unit/serialization.hpp"
 
 #include <boost/mysql/column_type.hpp>
 
-#include <stdexcept>
+#include <boost/mysql/impl/internal/protocol/basic_types.hpp>
+#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
-#include "protocol/basic_types.hpp"
-#include "protocol/protocol.hpp"
-#include "protocol/protocol_field_type.hpp"
+#include <stdexcept>
 
 using namespace boost::mysql::detail;
 using boost::mysql::column_type;

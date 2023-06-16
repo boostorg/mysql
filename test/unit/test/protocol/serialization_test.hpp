@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_SERIALIZATION_TEST_HPP
 #define BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_SERIALIZATION_TEST_HPP
 
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+
 #include <boost/asio/buffer.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
@@ -16,7 +18,6 @@
 #include <cstring>
 #include <initializer_list>
 
-#include "protocol/serialization.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 
 namespace boost {

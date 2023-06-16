@@ -10,24 +10,35 @@ if(BOOST_MYSQL_IS_ROOT)
     find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS unit_test_framework)
 endif()
 
-# boost_mysql_testing contains common definitions, includes and settings
+# Separately compiled Boost.MySQL and Boost.Asio
 add_library(
-    boost_mysql_testing
-    INTERFACE
+    boost_mysql_compiled
+    STATIC
+    common/src/boost_asio.cpp
+    common/src/boost_mysql.cpp
 )
+target_compile_definitions(
+    boost_mysql_compiled
+    PUBLIC
+    BOOST_ASIO_SEPARATE_COMPILATION
+    BOOST_MYSQL_SEPARATE_COMPILATION
+)
+target_link_libraries(boost_mysql_compiled PUBLIC boost_mysql)
+
+# boost_mysql_testing contains common definitions, includes and settings
+add_library(boost_mysql_testing INTERFACE)
 target_sources(
     boost_mysql_testing
     INTERFACE
     common/src/entry_point.cpp
     common/src/tracker_executor.cpp
 )
+target_link_libraries(boost_mysql_testing INTERFACE boost_mysql_compiled)
 
-# Asio static library to speed up compilation
 if(BOOST_MYSQL_IS_ROOT)
     target_link_libraries(
         boost_mysql_testing
         INTERFACE
-        Boost::headers
         Boost::unit_test_framework
         Boost::disable_autolinking
     )
@@ -35,9 +46,8 @@ else()
     target_link_libraries(
         boost_mysql_testing
         INTERFACE
-        Boost::asio
-        Boost::optional
         Boost::unit_test_framework
+        Boost::optional
     )
 endif()
 
@@ -54,7 +64,6 @@ target_include_directories(
 
 # Unit testing
 add_subdirectory(unit)
-add_subdirectory(unit_iface)
 
 # Integration testing
 if(BOOST_MYSQL_INTEGRATION_TESTS)

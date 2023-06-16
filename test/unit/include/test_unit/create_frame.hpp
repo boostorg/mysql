@@ -10,14 +10,14 @@
 
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+
 #include <boost/core/span.hpp>
 
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <vector>
-
-#include "protocol/protocol.hpp"
 
 namespace boost {
 namespace mysql {

@@ -5,8 +5,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "protocol/protocol.hpp"
-
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
@@ -20,15 +18,17 @@
 #include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
+#include <boost/mysql/impl/internal/protocol/constants.hpp>
+#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <array>
 
 #include "operators.hpp"
-#include "protocol/capabilities.hpp"
-#include "protocol/constants.hpp"
-#include "protocol/db_flavor.hpp"
 #include "serialization_test.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/create_meta.hpp"

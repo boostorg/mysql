@@ -5,9 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "auth/auth.hpp"
-
 #include <boost/mysql/client_errc.hpp>
+
+#include <boost/mysql/impl/internal/auth/auth.hpp>
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"

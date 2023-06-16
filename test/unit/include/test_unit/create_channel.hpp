@@ -8,10 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_CHANNEL_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_CHANNEL_HPP
 
+#include <boost/mysql/impl/internal/channel/channel.hpp>
+
 #include <cstddef>
 #include <memory>
 
-#include "channel/channel.hpp"
 #include "test_unit/test_stream.hpp"
 
 namespace boost {

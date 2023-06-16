@@ -5,10 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "protocol/null_bitmap_traits.hpp"
+#include <boost/mysql/impl/internal/protocol/null_bitmap_traits.hpp>
 
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <array>
 

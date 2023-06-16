@@ -14,10 +14,11 @@
 
 #include <boost/mysql/detail/network_algorithms.hpp>
 
+#include <boost/mysql/impl/internal/channel/channel.hpp>
+
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "channel/channel.hpp"
 #include "test_common/create_meta.hpp"
 #include "test_common/create_ok.hpp"
 #include "test_unit/create_channel.hpp"

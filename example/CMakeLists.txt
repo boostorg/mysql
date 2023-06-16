@@ -21,7 +21,7 @@ target_link_libraries(
     boost_mysql_examples_common
     INTERFACE
     Boost::disable_autolinking
-    Boost::mysql
+    boost_mysql_compiled
 )
 
 # Declare an example target

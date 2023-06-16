@@ -8,15 +8,13 @@
 add_executable(
     boost_mysql_unittests
 
-    # Library sources, since we need access to the private part
-    ${BOOST_MYSQL_SOURCES}
-
     # Helpers
     src/test_stream.cpp
     src/serialization.cpp
 
     # Actual tests
     test/auth/auth.cpp
+
     test/protocol/static_buffer.cpp
     test/protocol/capabilities.cpp
     test/protocol/null_bitmap_traits.cpp
@@ -26,16 +24,19 @@ add_executable(
     test/protocol/deserialize_text_field.cpp
     test/protocol/deserialize_binary_field.cpp
     test/protocol/protocol.cpp
+
     test/channel/read_buffer.cpp
     test/channel/message_parser.cpp
     test/channel/message_reader.cpp
     test/channel/message_writer.cpp
     test/channel/write_message.cpp
+
     test/execution_processor/execution_processor.cpp
     test/execution_processor/execution_state_impl.cpp
     test/execution_processor/static_execution_state_impl.cpp
     test/execution_processor/results_impl.cpp
     test/execution_processor/static_results_impl.cpp
+
     test/network_algorithms/read_resultset_head.cpp
     test/network_algorithms/start_execution.cpp
     test/network_algorithms/read_some_rows.cpp
@@ -44,29 +45,53 @@ add_executable(
     test/network_algorithms/close_statement.cpp
     test/network_algorithms/ping.cpp
     test/network_algorithms/read_some_rows_static.cpp
-    test/connection.cpp
+
+    test/detail/datetime.cpp
+    test/detail/row_impl.cpp
+    test/detail/rows_iterator.cpp
+    test/detail/execution_concepts.cpp
+    test/detail/writable_field_traits.cpp
+    test/detail/typing/meta_check_context.cpp
+    test/detail/typing/pos_map.cpp
+    test/detail/typing/readable_field_traits.cpp
+    test/detail/typing/row_traits.cpp
+    test/detail/typing/get_type_index.cpp
+
     test/misc.cpp
     test/multifn.cpp
-    # TODO: these should be in unit_iface
     test/execution_state.cpp
     test/static_execution_state.cpp
     test/results.cpp
     test/static_results.cpp
     test/resultset_view.cpp
     test/resultset.cpp
+    test/client_errc.cpp
+    test/common_server_errc.cpp
+    test/mysql_server_errc.cpp
+    test/mariadb_server_errc.cpp
+    test/connection.cpp
+    test/date.cpp
+    test/datetime.cpp
+    test/field_view.cpp
+    test/field.cpp
+    test/row_view.cpp
+    test/row.cpp
+    test/rows_view.cpp
+    test/rows.cpp
+    test/metadata.cpp
+    test/diagnostics.cpp
+    test/statement.cpp
+    test/throw_on_error.cpp
 )
 target_include_directories(
     boost_mysql_unittests
     PRIVATE
     "include"
-    ${BOOST_MYSQL_ABSOLUTE_INCLUDES}
 )
 target_link_libraries(
     boost_mysql_unittests
     PRIVATE
     boost_mysql_testing
-    ${BOOST_MYSQL_LIBS_PRIVATE}
-    ${BOOST_MYSQL_LIBS_PUBLIC}
 )
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(

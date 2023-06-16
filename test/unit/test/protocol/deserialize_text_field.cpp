@@ -5,10 +5,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-// Test deserialize_text_value(), just positive cases
-
-#include "protocol/deserialize_text_field.hpp"
-
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/date.hpp>
@@ -16,12 +12,14 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 
+#include <boost/mysql/impl/internal/protocol/constants.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialize_text_field.hpp>
+
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "operators.hpp"
-#include "protocol/constants.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/create_meta.hpp"
 

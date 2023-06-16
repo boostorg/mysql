@@ -5,9 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "protocol/binary_serialization.hpp"
-
 #include <boost/mysql/field_view.hpp>
+
+#include <boost/mysql/impl/internal/protocol/binary_serialization.hpp>
 
 #include <boost/test/unit_test.hpp>
 

@@ -10,9 +10,9 @@
 
 #include <boost/mysql/field_view.hpp>
 
-#include <cstdint>
+#include <boost/mysql/impl/internal/protocol/protocol.hpp>
 
-#include "protocol/protocol.hpp"
+#include <cstdint>
 
 namespace boost {
 namespace mysql {

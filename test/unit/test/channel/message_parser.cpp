@@ -5,7 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "channel/message_parser.hpp"
+#include <boost/mysql/impl/internal/channel/message_parser.hpp>
+#include <boost/mysql/impl/internal/channel/read_buffer.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -14,7 +15,6 @@
 #include <cstring>
 #include <vector>
 
-#include "channel/read_buffer.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_unit/create_frame.hpp"

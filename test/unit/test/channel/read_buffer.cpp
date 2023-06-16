@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "channel/read_buffer.hpp"
+#include <boost/mysql/impl/internal/channel/read_buffer.hpp>
 
 #include <boost/test/unit_test.hpp>
 

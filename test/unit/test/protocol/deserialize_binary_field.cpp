@@ -5,20 +5,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "protocol/deserialize_binary_field.hpp"
-
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/metadata.hpp>
 
+#include <boost/mysql/impl/internal/protocol/deserialize_binary_field.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
 
 #include "operators.hpp"
-#include "protocol/serialization.hpp"
 #include "serialization_test.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/create_meta.hpp"

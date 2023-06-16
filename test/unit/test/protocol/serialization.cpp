@@ -5,11 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "protocol/serialization.hpp"
-
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
+
+#include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -17,7 +18,6 @@
 #include <memory>
 
 #include "operators.hpp"
-#include "protocol/protocol_field_type.hpp"
 #include "serialization_test.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/create_basic.hpp"

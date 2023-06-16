@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "channel/message_reader.hpp"
-
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
+
+#include <boost/mysql/impl/internal/channel/message_reader.hpp>
 
 #include <boost/test/unit_test.hpp>
 

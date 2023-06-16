@@ -18,9 +18,10 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
+#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+
 #include <cstddef>
 
-#include "protocol/protocol.hpp"
 #include "test_common/create_meta.hpp"
 #include "test_unit/create_row_message.hpp"
 

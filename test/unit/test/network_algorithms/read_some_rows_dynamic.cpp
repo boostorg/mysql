@@ -5,15 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "network_algorithms/read_some_rows_dynamic.hpp"
-
 #include <boost/mysql/client_errc.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
+#include <boost/mysql/impl/internal/channel/channel.hpp>
+#include <boost/mysql/impl/internal/network_algorithms/read_some_rows_dynamic.hpp>
+
 #include <boost/test/unit_test.hpp>
 
-#include "channel/channel.hpp"
 #include "test_common/create_meta.hpp"
 #include "test_common/create_ok.hpp"
 #include "test_unit/create_channel.hpp"

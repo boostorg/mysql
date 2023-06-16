@@ -12,6 +12,8 @@
 
 #include <boost/mysql/detail/any_stream.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <set>

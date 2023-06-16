@@ -8,12 +8,12 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_OPERATORS_HPP
 #define BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_OPERATORS_HPP
 
+#include <boost/mysql/impl/internal/protocol/basic_types.hpp>
+#include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+
 #include <cstring>
 #include <ostream>
-
-#include "protocol/basic_types.hpp"
-#include "protocol/protocol_field_type.hpp"
-#include "protocol/serialization.hpp"
 
 namespace boost {
 namespace mysql {
