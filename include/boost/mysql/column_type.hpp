@@ -63,4 +63,8 @@ std::ostream& operator<<(std::ostream& os, column_type t);
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/column_type.ipp>
+#endif
+
 #endif

@@ -60,4 +60,8 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/channel_ptr.ipp>
+#endif
+
 #endif

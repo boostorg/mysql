@@ -286,6 +286,10 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/static_execution_state_impl.ipp>
+#endif
+
 #endif  // BOOST_MYSQL_CXX14
 
 #endif

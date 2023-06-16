@@ -212,4 +212,8 @@ private:
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/results_impl.ipp>
+#endif
+
 #endif

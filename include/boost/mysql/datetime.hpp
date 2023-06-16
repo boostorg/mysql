@@ -284,4 +284,8 @@ BOOST_CXX14_CONSTEXPR boost::mysql::datetime::datetime(time_point tp)
     hour_ = static_cast<std::uint8_t>(num_hours.count());
 }
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/datetime.ipp>
+#endif
+
 #endif

@@ -952,4 +952,8 @@ std::ostream& operator<<(std::ostream& os, const field& v);
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/field.ipp>
+#endif
+
 #endif

@@ -13,7 +13,6 @@
 #include <boost/mysql/row_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/rows_iterator.hpp>
 
 #include <boost/assert.hpp>
@@ -210,8 +209,17 @@ public:
      * \par Complexity
      * Linear on `this->size() * this->num_columns()`.
      */
-    BOOST_MYSQL_DECL
-    bool operator==(const rows_view& rhs) const noexcept;
+    bool operator==(const rows_view& rhs) const noexcept
+    {
+        if (num_fields_ != rhs.num_fields_ || num_columns_ != rhs.num_columns_)
+            return false;
+        for (std::size_t i = 0; i < num_fields_; ++i)
+        {
+            if (fields_[i] != rhs.fields_[i])
+                return false;
+        }
+        return true;
+    }
 
     /**
      * \brief Inequality operator.

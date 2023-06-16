@@ -26,6 +26,9 @@ AlignAfterOpenBracket: BlockIndent
 PointerAlignment: Left
 IncludeBlocks: Regroup
 IncludeCategories:
+  - Regex: '^<boost/mysql/impl/.*'
+    Priority: -10
+    SortPriority: 3
   - Regex: '^<boost/mysql/detail/.*>|^<boost/mysql/impl/.*'
     Priority: -9
     SortPriority: 2
@@ -34,13 +37,13 @@ IncludeCategories:
     SortPriority: 1
   - Regex: '^<boost/.*\.hpp>'
     Priority: -7
-    SortPriority: 3
+    SortPriority: 4
   - Regex: "^<.*"
     Priority: -6
-    SortPriority: 4
+    SortPriority: 5
   - Regex: ".*"
     Priority: -5
-    SortPriority: 5
+    SortPriority: 6
 IndentCaseLabels: false
 AllowShortCaseLabelsOnASingleLine: true
 AllowAllArgumentsOnNextLine: false

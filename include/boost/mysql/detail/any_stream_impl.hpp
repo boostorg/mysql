@@ -11,6 +11,7 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/any_stream.hpp>
+#include <boost/mysql/detail/config.hpp>
 
 #include <boost/asio/basic_socket.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -278,9 +279,6 @@ public:
     bool is_open() const noexcept override { return do_is_open(stream_.lowest_layer()); }
 };
 
-extern template class any_stream_impl<asio::ssl::stream<asio::ip::tcp::socket>>;
-extern template class any_stream_impl<asio::ip::tcp::socket>;
-
 template <class Stream>
 const Stream& cast(const any_stream& obj) noexcept
 {
@@ -293,8 +291,15 @@ Stream& cast(any_stream& obj) noexcept
     return static_cast<any_stream_impl<Stream>&>(obj).stream();
 }
 
+#ifdef BOOST_MYSQL_SEPARATE_COMPILATION
+extern template class any_stream_impl<asio::ssl::stream<asio::ip::tcp::socket>>;
+extern template class any_stream_impl<asio::ip::tcp::socket>;
+#endif
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+// any_stream_impl.ipp explicitly instantiates any_stream_impl, so not included here
 
 #endif

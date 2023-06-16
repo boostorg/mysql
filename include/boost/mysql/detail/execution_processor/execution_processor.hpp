@@ -17,7 +17,6 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/coldef_view.hpp>
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/ok_view.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
@@ -198,8 +197,17 @@ private:
 
     void set_state(state_t v) noexcept { state_ = v; }
 
-    BOOST_MYSQL_DECL
-    void set_state_for_ok(const ok_view& pack) noexcept;
+    void set_state_for_ok(const ok_view& pack) noexcept
+    {
+        if (pack.more_results())
+        {
+            set_state(state_t::reading_first_subseq);
+        }
+        else
+        {
+            set_state(state_t::complete);
+        }
+    }
 };
 
 }  // namespace detail

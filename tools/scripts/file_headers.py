@@ -144,7 +144,6 @@ bash_processor = NormalProcessor('bash', gen_header('#', shebang='#!/bin/bash'))
 bat_processor = NormalProcessor('bat', gen_header('@REM'))
 
 FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
-    ('docca-base-stage2-noescape.xsl', IgnoreProcessor()),
     ('CMakeLists.txt', hash_processor),
     ('.cmake', hash_processor),
     ('.cmake.in', hash_processor),

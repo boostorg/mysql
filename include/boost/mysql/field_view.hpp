@@ -605,5 +605,8 @@ std::ostream& operator<<(std::ostream& os, const field_view& v);
 }  // namespace boost
 
 #include <boost/mysql/impl/field_view.hpp>
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/field_view.ipp>
+#endif
 
 #endif

@@ -12,7 +12,6 @@
 #include <boost/mysql/field_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/config.hpp>
 
 #include <boost/throw_exception.hpp>
 
@@ -225,8 +224,17 @@ private:
  * \par Complexity
  * Linear in `lhs.size()` and `rhs.size()`.
  */
-BOOST_MYSQL_DECL
-bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
+inline bool operator==(const row_view& lhs, const row_view& rhs) noexcept
+{
+    if (lhs.size() != rhs.size())
+        return false;
+    for (std::size_t i = 0; i < lhs.size(); ++i)
+    {
+        if (lhs[i] != rhs[i])
+            return false;
+    }
+    return true;
+}
 
 /**
  * \relates row_view

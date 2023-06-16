@@ -757,4 +757,8 @@ async_quit_connection_interface(channel& chan, diagnostics& diag, CompletionToke
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/network_algorithms.ipp>
+#endif
+
 #endif
