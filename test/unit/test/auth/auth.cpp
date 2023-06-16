@@ -126,7 +126,7 @@ BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_false, fixture)
 
 BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_true, fixture)
 {
-    std::uint8_t expected[] = {'h', 'o', 'l', 'a', '\0'};
+    constexpr std::uint8_t expected[] = {'h', 'o', 'l', 'a', '\0'};
     auto err = compute_auth_response("caching_sha2_password", "hola", cleartext_challenge, true, resp);
     BOOST_TEST_REQUIRE(err == error_code());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, expected);
@@ -167,7 +167,7 @@ BOOST_FIXTURE_TEST_CASE(empty_password_cleartext_auth_ssl_true, fixture)
 
 BOOST_FIXTURE_TEST_CASE(caching_sha2_bad_challenge_length, fixture)
 {
-    std::uint8_t bad_challenge[] = {0x00, 0x01, 0x02};
+    constexpr std::uint8_t bad_challenge[] = {0x00, 0x01, 0x02};
     auto err = compute_auth_response("caching_sha2_password", "password", bad_challenge, true, resp);
     BOOST_TEST(err == client_errc::protocol_value_error);
 }
@@ -183,7 +183,7 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_CASE(unknown_auth_plugin)
 {
     auth_response resp;
-    std::uint8_t challenge[] = {0x00, 0x01, 0x02};
+    constexpr std::uint8_t challenge[] = {0x00, 0x01, 0x02};
     auto err = compute_auth_response("bad_plugin", "password", challenge, true, resp);
     BOOST_TEST(err == make_error_code(client_errc::unknown_auth_plugin));
 }
@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE(unknown_auth_plugin)
 BOOST_AUTO_TEST_CASE(unknown_auth_plugin_empty)
 {
     auth_response resp;
-    std::uint8_t challenge[] = {0x00, 0x01, 0x02};
+    constexpr std::uint8_t challenge[] = {0x00, 0x01, 0x02};
     auto err = compute_auth_response("", "password", challenge, true, resp);
     BOOST_TEST(err == make_error_code(client_errc::unknown_auth_plugin));
 }

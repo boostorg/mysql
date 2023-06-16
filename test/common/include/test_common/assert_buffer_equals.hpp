@@ -21,6 +21,8 @@ namespace test {
 struct buffer_printer
 {
     span<const std::uint8_t> buff;
+
+    constexpr buffer_printer(span<const std::uint8_t> b) noexcept : buff(b) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, buffer_printer buff)
@@ -53,8 +55,8 @@ inline bool buffer_equals(span<const std::uint8_t> b1, span<const std::uint8_t> 
 #define BOOST_MYSQL_ASSERT_BUFFER_EQUALS(b1, b2)                                            \
     BOOST_TEST(                                                                             \
         ::boost::mysql::test::buffer_equals(b1, b2),                                        \
-        #b1 " != " #b2 ": \nlhs: " << ::boost::mysql::test::buffer_printer{b1}              \
-                                   << "\nrhs: " << ::boost::mysql::test::buffer_printer{b2} \
+        #b1 " != " #b2 ": \nlhs: " << ::boost::mysql::test::buffer_printer(b1)              \
+                                   << "\nrhs: " << ::boost::mysql::test::buffer_printer(b2) \
     )
 
 #endif
