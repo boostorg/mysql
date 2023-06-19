@@ -118,7 +118,7 @@ private:
     ptr_data ptr_;
 };
 
-class BOOST_SYMBOL_VISIBLE static_results_erased_impl final : public execution_processor
+class static_results_erased_impl final : public execution_processor
 {
 public:
     static_results_erased_impl(results_external_data ext) noexcept : ext_(ext) {}

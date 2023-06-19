@@ -26,7 +26,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class BOOST_SYMBOL_VISIBLE execution_state_impl final : public execution_processor
+class execution_state_impl final : public execution_processor
 {
     struct ok_data
     {
