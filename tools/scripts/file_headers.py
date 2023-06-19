@@ -55,8 +55,7 @@ SRC_HPP_TEMPLATE = '''
 
 {includes}
 
-#endif
-'''
+#endif'''
 
 MYSQL_ERROR_HEADER = path.join(REPO_BASE, 'private', 'mysqld_error.h')
 MARIADB_ERROR_HEADER = path.join(REPO_BASE, 'private', 'mariadb_error.h')
@@ -133,7 +132,7 @@ class SrcHppProcessor(HppProcessor):
         base = Path(REPO_BASE)
         includes = [
             fname.relative_to(base.joinpath('include'))
-            for fname in base.joinpath('include', 'boost', 'mysql', 'impl').rglob('*.ipp')
+            for fname in sorted(base.joinpath('include', 'boost', 'mysql', 'impl').rglob('*.ipp'))
         ]
         return gen_header('//', include_guard=self._gen_include_guard(fpath)) + \
             text_to_lines(
