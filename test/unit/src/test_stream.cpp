@@ -143,7 +143,6 @@ boost::mysql::test::test_stream::executor_type boost::mysql::test::test_stream::
 }
 
 // SSL
-bool boost::mysql::test::test_stream::supports_ssl() const noexcept { return false; }
 void boost::mysql::test::test_stream::handshake(error_code&) { BOOST_ASSERT(false); }
 void boost::mysql::test::test_stream::async_handshake(asio::any_completion_handler<void(error_code)>)
 {

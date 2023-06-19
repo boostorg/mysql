@@ -22,40 +22,57 @@ namespace detail {
 
 class any_stream
 {
-    bool ssl_active_{false};
-
 public:
-    void reset() noexcept { set_ssl_active(false); }  // TODO: do we really need this?
-    bool ssl_active() const noexcept { return ssl_active_; }
-    void set_ssl_active(bool v) noexcept { ssl_active_ = v; }
+    any_stream(bool supports_ssl) noexcept
+        : ssl_state_(supports_ssl ? ssl_state::inactive : ssl_state::unsupported)
+    {
+    }
+    bool ssl_active() const noexcept { return ssl_state_ == ssl_state::active; }
+    void reset_ssl_active() noexcept
+    {
+        if (ssl_state_ == ssl_state::active)
+            ssl_state_ = ssl_state::inactive;
+    }
+    void set_ssl_active() noexcept
+    {
+        BOOST_ASSERT(ssl_state_ != ssl_state::unsupported);
+        ssl_state_ = ssl_state::active;
+    }
+    bool supports_ssl() const noexcept { return ssl_state_ != ssl_state::unsupported; }
 
-    using executor_type = boost::asio::any_io_executor;
-    using lowest_layer_type = any_stream;
+    using executor_type = asio::any_io_executor;
 
     virtual ~any_stream() {}
 
     virtual executor_type get_executor() = 0;
 
     // SSL
-    virtual bool supports_ssl() const noexcept = 0;
     virtual void handshake(error_code& ec) = 0;
     virtual void async_handshake(asio::any_completion_handler<void(error_code)>) = 0;
     virtual void shutdown(error_code& ec) = 0;
     virtual void async_shutdown(asio::any_completion_handler<void(error_code)>) = 0;
 
     // Reading
-    virtual std::size_t read_some(boost::asio::mutable_buffer, error_code& ec) = 0;
-    virtual void async_read_some(boost::asio::mutable_buffer, asio::any_completion_handler<void(error_code, std::size_t)>) = 0;
+    virtual std::size_t read_some(asio::mutable_buffer, error_code& ec) = 0;
+    virtual void async_read_some(asio::mutable_buffer, asio::any_completion_handler<void(error_code, std::size_t)>) = 0;
 
     // Writing
-    virtual std::size_t write_some(boost::asio::const_buffer, error_code& ec) = 0;
-    virtual void async_write_some(boost::asio::const_buffer, asio::any_completion_handler<void(error_code, std::size_t)>) = 0;
+    virtual std::size_t write_some(asio::const_buffer, error_code& ec) = 0;
+    virtual void async_write_some(asio::const_buffer, asio::any_completion_handler<void(error_code, std::size_t)>) = 0;
 
-    // Connect and close (TODO: is there a better way?)
+    // Connect and close - these apply only to SocketStream's
     virtual void connect(const void* endpoint, error_code& ec) = 0;
     virtual void async_connect(const void* endpoint, asio::any_completion_handler<void(error_code)>) = 0;
     virtual void close(error_code& ec) = 0;
     virtual bool is_open() const noexcept = 0;
+
+private:
+    enum class ssl_state
+    {
+        inactive,
+        active,
+        unsupported
+    } ssl_state_;
 };
 
 }  // namespace detail

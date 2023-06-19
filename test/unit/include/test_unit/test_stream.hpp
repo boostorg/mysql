@@ -29,7 +29,7 @@ namespace test {
 class test_stream final : public detail::any_stream
 {
 public:
-    test_stream() = default;
+    test_stream() noexcept : detail::any_stream(false) {}
 
     // Setters
     test_stream& add_bytes(const std::vector<std::uint8_t>& bytes)
@@ -59,7 +59,6 @@ public:
     executor_type get_executor() override final;
 
     // SSL
-    bool supports_ssl() const noexcept override final;
     void handshake(error_code&) override final;
     void async_handshake(asio::any_completion_handler<void(error_code)>) override final;
     void shutdown(error_code&) override final;

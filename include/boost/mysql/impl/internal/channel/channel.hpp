@@ -120,7 +120,7 @@ public:
         flavor_ = db_flavor::mysql;
         current_caps_ = capabilities();
         reset_sequence_number();
-        stream_->reset();
+        stream_->reset_ssl_active();
         // Metadata mode does not get reset on handshake
     }
 

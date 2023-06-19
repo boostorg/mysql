@@ -112,13 +112,13 @@ bool do_is_open(const asio::basic_stream_socket<Protocol, Executor>& stream) noe
 }
 
 template <class Stream>
-class BOOST_SYMBOL_VISIBLE any_stream_impl final : public any_stream
+class any_stream_impl final : public any_stream
 {
     Stream stream_;
 
 public:
     template <class... Args>  // TODO: noexcept
-    any_stream_impl(Args&&... args) : stream_(std::forward<Args>(args)...)
+    any_stream_impl(Args&&... args) : any_stream(false), stream_(std::forward<Args>(args)...)
     {
     }
 
@@ -128,7 +128,6 @@ public:
     executor_type get_executor() override final { return stream_.get_executor(); }
 
     // SSL
-    bool supports_ssl() const noexcept final override { return false; };
     void handshake(error_code&) final override { BOOST_ASSERT(false); }
     void async_handshake(asio::any_completion_handler<void(error_code)>) final override
     {
@@ -178,13 +177,13 @@ public:
 };
 
 template <class Stream>
-class BOOST_SYMBOL_VISIBLE any_stream_impl<asio::ssl::stream<Stream>> final : public any_stream
+class any_stream_impl<asio::ssl::stream<Stream>> final : public any_stream
 {
     asio::ssl::stream<Stream> stream_;
 
 public:
     template <class... Args>  // TODO: noexcept
-    any_stream_impl(Args&&... args) : stream_(std::forward<Args>(args)...)
+    any_stream_impl(Args&&... args) : any_stream(true), stream_(std::forward<Args>(args)...)
     {
     }
 
@@ -194,15 +193,14 @@ public:
     executor_type get_executor() override final { return stream_.get_executor(); }
 
     // SSL
-    bool supports_ssl() const noexcept final override { return true; };
     void handshake(error_code& ec) override final
     {
-        set_ssl_active(true);
+        set_ssl_active();
         stream_.handshake(boost::asio::ssl::stream_base::client, ec);
     }
     void async_handshake(asio::any_completion_handler<void(error_code)> handler) override final
     {
-        set_ssl_active(true);
+        set_ssl_active();
         stream_.async_handshake(boost::asio::ssl::stream_base::client, std::move(handler));
     }
     void shutdown(error_code& ec) override final { stream_.shutdown(ec); }
