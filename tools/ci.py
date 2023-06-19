@@ -368,6 +368,20 @@ def _cmake_build(
         _run(['cmake', '--build', '.', '--config', build_type])
         _run(['ctest', '--output-on-failure', '--build-config', build_type])
 
+        # Same as the above, but for separate-build mode
+        _mkdir_and_cd(_boost_root.joinpath('libs', 'mysql', 'test', 'cmake_b2_separate_compilation_test', '__build__'))
+        _run([
+            'cmake',
+            '-G',
+            generator,
+            '-DCMAKE_PREFIX_PATH={}'.format(_build_prefix_path(*cmake_prefix_path, b2_distro)),
+            '-DCMAKE_BUILD_TYPE={}'.format(build_type),
+            '-DBUILD_TESTING=ON',
+            '..'
+        ])
+        _run(['cmake', '--build', '.', '--config', build_type])
+        _run(['ctest', '--output-on-failure', '--build-config', build_type])
+
     # Gather coverage data, if available
     if coverage:
         lib_dir = str(_boost_root.joinpath('libs', 'mysql'))

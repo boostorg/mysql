@@ -7,6 +7,9 @@
 
 //[example_async_coroutines
 
+// To use coroutines created by boost::asio::spawn, you need to link
+// against Boost.Context.
+
 #include <boost/mysql.hpp>
 
 #include <boost/asio/io_context.hpp>

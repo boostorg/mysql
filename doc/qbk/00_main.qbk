@@ -122,6 +122,7 @@ END
 [import ../../example/snippets.cpp]
 
 [include 01_intro.qbk]
+[include 01_z_integrating.qbk]
 [include 02_tutorial.qbk]
 [include 03_overview.qbk]
 [include 04_dynamic_interface.qbk]
