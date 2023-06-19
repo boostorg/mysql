@@ -143,6 +143,22 @@ class SrcHppProcessor(HppProcessor):
             )
 
 
+class MysqlHppProcessor(HppProcessor):
+    name = 'mysql.hpp'
+
+    def process(self, _: List[str], fpath: str) -> List[str]:
+        base = Path(REPO_BASE)
+        includes = [
+            fname.relative_to(base.joinpath('include'))
+            for fname in sorted(base.joinpath('include', 'boost', 'mysql').glob('*.hpp'))
+            if fname.name != 'src.hpp'
+        ]
+        return gen_header('//', include_guard=self._gen_include_guard(fpath)) + \
+            ['\n'] + \
+            [f'#include <{inc}>\n' for inc in includes] + \
+            ['\n', '#endif\n']
+
+
 class XmlProcessor(BaseProcessor):
     name = 'xml'
     header = gen_header('   ', '<!--', '-->')
@@ -175,6 +191,7 @@ bat_processor = NormalProcessor('bat', gen_header('@REM'))
 
 FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('src.hpp', SrcHppProcessor()),
+    ('mysql.hpp', MysqlHppProcessor()),
     ('CMakeLists.txt', hash_processor),
     ('.cmake', hash_processor),
     ('.cmake.in', hash_processor),
