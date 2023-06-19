@@ -51,6 +51,7 @@ docca.reference reference.qbk
             \"BOOST_MYSQL_EXECUTION_REQUEST=class\" \\
             \"BOOST_MYSQL_RESULTS_TYPE=class\" \\
             \"BOOST_MYSQL_EXECUTION_STATE_TYPE=class\" \\
+            \"BOOST_MYSQL_DECL=\" \\
             "
         <doxygen:param>SKIP_FUNCTION_MACROS=NO
         <doxygen:param>OUTPUT_LANGUAGE=English
