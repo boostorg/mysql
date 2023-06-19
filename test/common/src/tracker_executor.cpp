@@ -47,7 +47,7 @@ public:
         typename std::enable_if<asio::can_require<asio::any_io_executor, Property>::value>::type* = nullptr
     ) const
     {
-        return tracker_executor(ex_.require(p), tracked_);
+        return tracker_executor(asio::require(ex_, p), tracked_);
     }
 
     template <class Property>
@@ -56,14 +56,14 @@ public:
         typename std::enable_if<asio::can_prefer<asio::any_io_executor, Property>::value>::type* = nullptr
     ) const
     {
-        return tracker_executor(ex_.prefer(p), tracked_);
+        return tracker_executor(asio::prefer(ex_, p), tracked_);
     }
 
     template <class Property>
     auto query(
         const Property& p,
         typename std::enable_if<asio::can_query<asio::any_io_executor, Property>::value>::type* = nullptr
-    ) const -> decltype(asio::any_io_executor().query(p))
+    ) const -> decltype(asio::query(std::declval<boost::asio::any_io_executor>(), p))
     {
         return boost::asio::query(ex_, p);
     }
@@ -111,6 +111,50 @@ struct equality_comparable<tracker_executor>
 {
     static constexpr bool is_valid = true;
     static constexpr bool is_noexcept = true;
+};
+
+template <typename Function>
+struct execute_member<tracker_executor, Function>
+{
+    static constexpr bool is_valid = true;
+    static constexpr bool is_noexcept = false;
+    using result_type = void;
+};
+
+template <class Property>
+struct require_member<
+    tracker_executor,
+    Property,
+    typename std::enable_if<asio::can_require<asio::any_io_executor, Property>::value>::type>
+{
+    static constexpr bool is_valid = true;
+    static constexpr bool is_noexcept = false;
+    using result_type = tracker_executor;
+};
+
+template <typename Property>
+struct prefer_member<
+    tracker_executor,
+    Property,
+    typename std::enable_if<asio::can_prefer<asio::any_io_executor, Property>::value>::type>
+{
+    static constexpr bool is_valid = true;
+    static constexpr bool is_noexcept = false;
+    using result_type = tracker_executor;
+};
+
+template <typename Property>
+struct query_member<
+    tracker_executor,
+    Property,
+    typename std::enable_if<asio::can_query<asio::any_io_executor, Property>::value>::type>
+{
+    static constexpr bool is_valid = true;
+    static constexpr bool is_noexcept = false;
+    using result_type = decltype(boost::asio::query(
+        std::declval<const any_io_executor&>(),
+        std::declval<const Property&>()
+    ));
 };
 
 }  // namespace traits
