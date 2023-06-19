@@ -84,8 +84,8 @@ struct ping_command
     BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
     BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
 };
-BOOST_ATTRIBUTE_NODISCARD
-error_code deserialize_ping_response(span<const std::uint8_t> message, db_flavor flavor, diagnostics& diag);
+BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
+deserialize_ping_response(span<const std::uint8_t> message, db_flavor flavor, diagnostics& diag);
 
 // Query
 struct query_command
@@ -238,8 +238,8 @@ struct login_request
     string_view database;
     string_view auth_plugin_name;
 
-    std::size_t get_size() const noexcept;
-    void serialize(span<std::uint8_t> buffer) const noexcept;
+    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
+    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
 };
 
 struct ssl_request

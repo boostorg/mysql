@@ -12,6 +12,7 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/string_view.hpp>

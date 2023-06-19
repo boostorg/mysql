@@ -8,8 +8,11 @@
 #ifndef BOOST_MYSQL_CLIENT_ERRC_HPP
 #define BOOST_MYSQL_CLIENT_ERRC_HPP
 
-#include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
+
+#include <boost/mysql/detail/config.hpp>
+
+#include <boost/system/error_category.hpp>
 
 namespace boost {
 namespace mysql {
@@ -66,6 +69,9 @@ enum class client_errc : int
     static_row_parsing_error,
 };
 
+BOOST_MYSQL_DECL
+const boost::system::error_category& get_client_category() noexcept;
+
 /// Creates an \ref error_code from a \ref client_errc.
 inline error_code make_error_code(client_errc error)
 {
@@ -84,5 +90,9 @@ struct is_error_code_enum<::boost::mysql::client_errc>
 
 }  // namespace system
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/error_categories.ipp>
+#endif
 
 #endif

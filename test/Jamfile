@@ -7,8 +7,12 @@
 
 import os ;
 import path ;
+import feature ;
 
 project /boost/mysql/test ;
+
+# Support header-only builds
+feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
 
 # System libraries
 if [ os.name ] = NT
@@ -90,17 +94,17 @@ local requirements =
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
         <define>BOOST_ASIO_SEPARATE_COMPILATION
-        <define>BOOST_MYSQL_SEPARATE_COMPILATION
+        <boost.mysql.separate-compilation>on:<define>BOOST_MYSQL_SEPARATE_COMPILATION
         <include>../include
     ;
 
 lib boost_mysql_compiled
     :
         common/src/boost_asio.cpp
-        common/src/boost_mysql.cpp
         ssl
         crypto
     : requirements
+        <boost.mysql.separate-compilation>on:<source>common/src/boost_mysql.cpp
         <link>static
         $(requirements)
     : usage-requirements

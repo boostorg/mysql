@@ -85,4 +85,8 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/internal/channel/message_parser.ipp>
+#endif
+
 #endif
