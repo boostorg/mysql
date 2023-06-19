@@ -20,7 +20,8 @@ def _b2_command(
     variant,
     stdlib='native',
     address_model='64',
-    server_host='localhost'
+    server_host='localhost',
+    separate_compilation=1
 ):
     return 'python tools/ci.py ' + \
                 '--clean=1 ' + \
@@ -31,7 +32,8 @@ def _b2_command(
                 '--variant={} '.format(variant) + \
                 '--stdlib={} '.format(stdlib) + \
                 '--address-model={} '.format(address_model) + \
-                '--server-host={} '.format(server_host)
+                '--server-host={} '.format(server_host) + \
+                '--separate-compilation={} '.format(separate_compilation) + \
 
 
 def _cmake_command(
@@ -123,7 +125,8 @@ def linux_b2(
     cxxstd,
     variant='debug,release',
     stdlib='native',
-    arch='amd64'
+    arch='amd64',
+    separate_compilation=1
 ):
     command = _b2_command(
         source_dir='$(pwd)',
@@ -131,7 +134,8 @@ def linux_b2(
         cxxstd=cxxstd,
         variant=variant,
         stdlib=stdlib,
-        server_host='mysql'
+        server_host='mysql',
+        separate_compilation=separate_compilation
     )
     return _pipeline(
         name=name,
@@ -242,6 +246,7 @@ def main(ctx):
         linux_b2('Linux B2 clang-7',        _image('build-clang7'),   toolset='clang-7',   cxxstd='14,17'),
         linux_b2('Linux B2 clang-11',       _image('build-clang11'),  toolset='clang-11',  cxxstd='20'),
         linux_b2('Linux B2 clang-14',       _image('build-clang14'),  toolset='clang-14',  cxxstd='17,20'),
+        linux_b2('Linux B2 header-only',    _image('build-clang14'),  toolset='clang-14',  cxxstd='20', separate_compilation=0),
         linux_b2('Linux B2 clang-libc++',   _image('build-clang14'),  toolset='clang-14',  cxxstd='20', stdlib='libc++'),
         linux_b2('Linux B2 clang-14-arm64', _image('build-clang14'),  toolset='clang-14',  cxxstd='20', arch='arm64'),
         linux_b2('Linux B2 gcc-5',          _image('build-gcc5'),     toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view

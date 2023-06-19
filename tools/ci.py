@@ -181,7 +181,8 @@ def _b2_build(
     address_model: str = '64',
     clean: bool = False,
     boost_branch: str = 'develop',
-    db: str = 'mysql8'
+    db: str = 'mysql8',
+    separate_compilation: bool = True
 ) -> None:
     # Config
     if _is_windows:
@@ -207,6 +208,7 @@ def _b2_build(
         'address-model={}'.format(address_model),
         'variant={}'.format(variant),
         'stdlib={}'.format(stdlib),
+        'boost.mysql.separate-compilation={}'.format('on' if separate_compilation else 'off'),
         'warnings-as-errors=on',
         '-j4',
         'libs/mysql/test',
@@ -454,6 +456,7 @@ def main():
     parser.add_argument('--variant', default='release')
     parser.add_argument('--stdlib', choices=['native', 'libc++'], default='native')
     parser.add_argument('--address-model', choices=['32', '64'], default='64')
+    parser.add_argument('--separate-compilation', type=_str2bool, default=True)
     parser.add_argument('--server-host', default='localhost')
 
     args = parser.parse_args()
