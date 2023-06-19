@@ -3421,6 +3421,7 @@ inline error_code make_error_code(common_server_errc error)
 
 }  // namespace mysql
 
+#ifndef BOOST_MYSQL_DOXYGEN
 namespace system {
 
 template <>
@@ -3430,6 +3431,8 @@ struct is_error_code_enum<::boost::mysql::common_server_errc>
 };
 
 }  // namespace system
+#endif
+
 }  // namespace boost
 
 #ifdef BOOST_MYSQL_HEADER_ONLY

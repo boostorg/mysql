@@ -22,6 +22,7 @@ local doxygen_exclussions =
     mariadb_server_errc.hpp
     mysql_collations.hpp
     mariadb_collations.hpp
+    src.hpp
 ;
 
 docca.reference reference.qbk
