@@ -33,7 +33,7 @@ def _b2_command(
                 '--stdlib={} '.format(stdlib) + \
                 '--address-model={} '.format(address_model) + \
                 '--server-host={} '.format(server_host) + \
-                '--separate-compilation={} '.format(separate_compilation) + \
+                '--separate-compilation={} '.format(separate_compilation)
 
 
 def _cmake_command(
