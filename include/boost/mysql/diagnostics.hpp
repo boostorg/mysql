@@ -83,6 +83,7 @@ public:
     }
 
 private:
+#ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
         bool is_server{};
@@ -101,7 +102,6 @@ private:
         }
     } impl_;
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept;
     friend struct detail::access;
 #endif
