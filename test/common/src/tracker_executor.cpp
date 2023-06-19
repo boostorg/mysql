@@ -12,9 +12,10 @@
 #include <boost/asio/require.hpp>
 
 using namespace boost::mysql::test;
-namespace asio = boost::asio;
 
-namespace {
+namespace boost {
+namespace mysql {
+namespace test {
 
 class tracker_executor
 {
@@ -23,6 +24,22 @@ public:
         : ex_(ex), tracked_(tracked)
     {
     }
+
+    tracker_executor(const tracker_executor& rhs) noexcept : ex_(rhs.ex_), tracked_(rhs.tracked_) {}
+    tracker_executor(tracker_executor&& rhs) noexcept : ex_(std::move(rhs.ex_)), tracked_(rhs.tracked_) {}
+    tracker_executor& operator=(const tracker_executor& rhs) noexcept
+    {
+        ex_ = rhs.ex_;
+        tracked_ = rhs.tracked_;
+        return *this;
+    }
+    tracker_executor& operator=(tracker_executor&& rhs) noexcept
+    {
+        ex_ = std::move(rhs.ex_);
+        tracked_ = std::move(rhs.tracked_);
+        return *this;
+    }
+    ~tracker_executor() = default;
 
     template <class Property>
     tracker_executor require(
@@ -80,7 +97,25 @@ private:
     executor_info* tracked_;
 };
 
-}  // namespace
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
+
+// Asio fails to detect that a type is equaility comparable under MSVC, so we need to do this
+namespace boost {
+namespace asio {
+namespace traits {
+
+template <>
+struct equality_comparable<tracker_executor>
+{
+    static constexpr bool is_valid = true;
+    static constexpr bool is_noexcept = true;
+};
+
+}  // namespace traits
+}  // namespace asio
+}  // namespace boost
 
 boost::asio::any_io_executor boost::mysql::test::create_tracker_executor(
     asio::any_io_executor inner,
