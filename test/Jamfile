@@ -8,6 +8,7 @@
 import os ;
 import path ;
 import feature ;
+import ../config/checks/config : requires ;
 
 project /boost/mysql/test ;
 
@@ -104,6 +105,20 @@ lib boost_mysql_compiled
         ssl
         crypto
     : requirements
+        [ requires
+            cxx11_defaulted_moves
+            cxx11_final
+            cxx11_hdr_array
+            cxx11_hdr_chrono
+            cxx11_hdr_tuple
+            cxx11_hdr_type_traits
+            cxx11_numeric_limits
+            cxx11_override
+            cxx11_smart_ptr
+            cxx11_trailing_result_types
+            cxx11_template_aliases
+            cxx11_variadic_templates
+        ]
         <boost.mysql.separate-compilation>on:<source>common/src/boost_mysql.cpp
         <link>static
         $(requirements)
