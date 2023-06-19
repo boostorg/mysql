@@ -111,12 +111,15 @@ lib boost_mysql_compiled
         $(requirements)
     ;
 
+alias common_test_sources
+    :
+        common/src/entry_point.cpp
+        common/src/tracker_executor.cpp
+    ;
 
 alias boost_mysql_test
     :
         boost_mysql_compiled
-        common/src/entry_point.cpp
-        common/src/tracker_executor.cpp
         # Unit test library generates some internal warnings we're not interested in
         /boost/test//boost_unit_test_framework/<warnings-as-errors>off
     : requirements

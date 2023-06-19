@@ -13,6 +13,7 @@ cpp-pch pch
 
 run
         pch
+        /boost/mysql/test//common_test_sources
         /boost/mysql/test//boost_mysql_test
 
         # Helpers
