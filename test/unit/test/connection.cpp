@@ -174,4 +174,30 @@ static_assert(
     ""
 );
 
+// Verify that connection doesn't cause compilation errors for a minimal stream type
+struct stream_archetype
+{
+    // Executor
+    using executor_type = net::any_io_executor;
+    executor_type get_executor() { return {}; }
+
+    // Reading
+    std::size_t read_some(net::mutable_buffer, error_code&) { return 0; }
+
+    template <class CompletionToken>
+    void async_read_some(net::mutable_buffer, CompletionToken&&)
+    {
+    }
+
+    // Writing
+    std::size_t write_some(net::const_buffer, error_code&) { return 0; }
+
+    template <class CompletionToken>
+    void async_write_some(net::const_buffer, CompletionToken&&)
+    {
+    }
+};
+
+connection<stream_archetype> conn;
+
 BOOST_AUTO_TEST_SUITE_END()  // test_connection

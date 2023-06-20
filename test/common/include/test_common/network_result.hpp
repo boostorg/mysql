@@ -123,10 +123,10 @@ struct network_result : network_result_base
     {
     }
 
-    value_type get() &&
+    const value_type& get() const
     {
         validate_no_error();
-        return std::move(value);
+        return value;
     }
 };
 

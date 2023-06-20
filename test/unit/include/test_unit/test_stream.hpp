@@ -32,6 +32,11 @@ class test_stream
 public:
     test_stream() = default;
 
+    // Support the layered stream model
+    using lowest_layer_type = test_stream;
+    lowest_layer_type& lowest_layer() noexcept { return *this; }
+    const lowest_layer_type& lowest_layer() const noexcept { return *this; }
+
     // Setters
     test_stream& add_bytes(const std::vector<std::uint8_t>& bytes)
     {

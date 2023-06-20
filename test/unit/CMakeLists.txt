@@ -46,6 +46,7 @@ add_executable(
     test/network_algorithms/ping.cpp
     test/network_algorithms/read_some_rows_static.cpp
 
+    test/detail/any_stream_impl.cpp
     test/detail/datetime.cpp
     test/detail/row_impl.cpp
     test/detail/rows_iterator.cpp
