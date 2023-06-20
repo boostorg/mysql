@@ -12,8 +12,8 @@
 
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/socket_stream.hpp>
 
-#include <boost/asio/basic_socket.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/config.hpp>
@@ -26,89 +26,96 @@ namespace detail {
 
 // Connect and close helpers
 template <class Stream>
-void do_connect(Stream&, const void*, error_code&)
+const typename Stream::lowest_layer_type::endpoint_type cast_endpoint(const void* input) noexcept
 {
-    BOOST_ASSERT(false);
-}
-
-template <class Protocol, class Executor>
-void do_connect(asio::basic_socket<Protocol, Executor>& stream, const void* endpoint, error_code& ec)
-{
-    using socket_t = asio::basic_socket<Protocol, Executor>;
-    stream.connect(*static_cast<const typename socket_t::endpoint_type*>(endpoint), ec);
-}
-
-template <class Protocol, class Executor>
-void do_connect(asio::basic_stream_socket<Protocol, Executor>& stream, const void* endpoint, error_code& ec)
-{
-    using socket_t = asio::basic_stream_socket<Protocol, Executor>;
-    stream.connect(*static_cast<const typename socket_t::endpoint_type*>(endpoint), ec);
+    return *static_cast<const typename Stream::lowest_layer_type::endpoint_type*>(input);
 }
 
 template <class Stream>
-void do_async_connect(Stream&, const void*, asio::any_completion_handler<void(error_code)>)
+void do_connect_impl(Stream&, const void*, error_code&, std::false_type)
 {
     BOOST_ASSERT(false);
 }
 
-template <class Protocol, class Executor>
-void do_async_connect(
-    asio::basic_socket<Protocol, Executor>& stream,
-    const void* endpoint,
-    asio::any_completion_handler<void(error_code)> handler
+template <class Stream>
+void do_connect_impl(Stream& stream, const void* endpoint, error_code& ec, std::true_type)
+{
+    stream.lowest_layer().connect(cast_endpoint<Stream>(endpoint), ec);
+}
+
+template <class Stream>
+void do_connect(Stream& stream, const void* endpoint, error_code& ec)
+{
+    do_connect_impl(stream, endpoint, ec, is_socket_stream<Stream>{});
+}
+
+template <class Stream>
+void do_async_connect_impl(
+    Stream&,
+    const void*,
+    asio::any_completion_handler<void(error_code)>&&,
+    std::false_type
 )
 {
-    using socket_t = asio::basic_socket<Protocol, Executor>;
-    stream.async_connect(*static_cast<const typename socket_t::endpoint_type*>(endpoint), std::move(handler));
-}
-
-template <class Protocol, class Executor>
-void do_async_connect(
-    asio::basic_stream_socket<Protocol, Executor>& stream,
-    const void* endpoint,
-    asio::any_completion_handler<void(error_code)> handler
-)
-{
-    using socket_t = asio::basic_stream_socket<Protocol, Executor>;
-    stream.async_connect(*static_cast<const typename socket_t::endpoint_type*>(endpoint), std::move(handler));
+    BOOST_ASSERT(false);
 }
 
 template <class Stream>
-void do_close(Stream&, error_code&)
+void do_async_connect_impl(
+    Stream& stream,
+    const void* endpoint,
+    asio::any_completion_handler<void(error_code)>&& handler,
+    std::true_type
+)
+{
+    stream.lowest_layer().async_connect(cast_endpoint<Stream>(endpoint), std::move(handler));
+}
+
+template <class Stream>
+void do_async_connect(
+    Stream& stream,
+    const void* endpoint,
+    asio::any_completion_handler<void(error_code)>&& handler
+)
+{
+    do_async_connect_impl(stream, endpoint, std::move(handler), is_socket_stream<Stream>{});
+}
+
+template <class Stream>
+void do_close_impl(Stream&, error_code&, std::false_type)
 {
     BOOST_ASSERT(false);
 }
 
-template <class Protocol, class Executor>
-void do_close(asio::basic_socket<Protocol, Executor>& stream, error_code& ec)
+template <class Stream>
+void do_close_impl(Stream& stream, error_code& ec, std::true_type)
 {
-    stream.shutdown(asio::socket_base::shutdown_both, ec);
-    stream.close(ec);
-}
-
-template <class Protocol, class Executor>
-void do_close(asio::basic_stream_socket<Protocol, Executor>& stream, error_code& ec)
-{
-    stream.shutdown(asio::socket_base::shutdown_both, ec);
-    stream.close(ec);
+    stream.lowest_layer().shutdown(asio::socket_base::shutdown_both, ec);
+    stream.lowest_layer().close(ec);
 }
 
 template <class Stream>
-bool do_is_open(const Stream&) noexcept
+void do_close(Stream& stream, error_code& ec)
+{
+    do_close_impl(stream, ec, is_socket_stream<Stream>{});
+}
+
+template <class Stream>
+bool do_is_open_impl(const Stream&, std::false_type) noexcept
 {
     return false;
 }
 
-template <class Protocol, class Executor>
-bool do_is_open(const asio::basic_socket<Protocol, Executor>& stream) noexcept
+template <class Stream>
+bool do_is_open_impl(const Stream& stream, std::true_type) noexcept
 {
-    return stream.is_open();
+    return stream.lowest_layer().is_open();
 }
 
-template <class Protocol, class Executor>
-bool do_is_open(const asio::basic_stream_socket<Protocol, Executor>& stream) noexcept
+template <class Stream>
+bool do_is_open(const Stream& stream) noexcept
 {
-    return stream.is_open();
+    return do_is_open_impl(stream, is_socket_stream<Stream>{});
 }
 
 template <class Stream>
@@ -165,7 +172,7 @@ public:
         return stream_.async_write_some(buff, std::move(handler));
     }
 
-    // Connect and close (TODO: better way?)
+    // Connect and close
     void connect(const void* endpoint, error_code& ec) override final { do_connect(stream_, endpoint, ec); }
     void async_connect(const void* endpoint, asio::any_completion_handler<void(error_code)> handler)
         override final
@@ -263,18 +270,15 @@ public:
         }
     }
 
-    // Connect and close. TODO: better way?
-    void connect(const void* endpoint, error_code& ec) override final
-    {
-        do_connect(stream_.lowest_layer(), endpoint, ec);
-    }
+    // Connect and close
+    void connect(const void* endpoint, error_code& ec) override final { do_connect(stream_, endpoint, ec); }
     void async_connect(const void* endpoint, asio::any_completion_handler<void(error_code)> handler)
         override final
     {
-        do_async_connect(stream_.lowest_layer(), endpoint, std::move(handler));
+        do_async_connect(stream_, endpoint, std::move(handler));
     }
-    void close(error_code& ec) override final { do_close(stream_.lowest_layer(), ec); }
-    bool is_open() const noexcept override { return do_is_open(stream_.lowest_layer()); }
+    void close(error_code& ec) override final { do_close(stream_, ec); }
+    bool is_open() const noexcept override { return do_is_open(stream_); }
 };
 
 template <class Stream>
