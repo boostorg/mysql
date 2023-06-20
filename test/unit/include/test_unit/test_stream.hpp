@@ -10,8 +10,9 @@
 
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/any_stream.hpp>
+#include <boost/mysql/detail/any_stream_impl.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -26,10 +27,10 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-class test_stream final : public detail::any_stream
+class test_stream
 {
 public:
-    test_stream() noexcept : detail::any_stream(false) {}
+    test_stream() = default;
 
     // Setters
     test_stream& add_bytes(const std::vector<std::uint8_t>& bytes)
@@ -56,29 +57,16 @@ public:
     const std::vector<std::uint8_t>& bytes_written() const noexcept { return bytes_written_; }
 
     // Executor
-    executor_type get_executor() override final;
-
-    // SSL
-    void handshake(error_code&) override final;
-    void async_handshake(asio::any_completion_handler<void(error_code)>) override final;
-    void shutdown(error_code&) override final;
-    void async_shutdown(asio::any_completion_handler<void(error_code)>) override final;
+    using executor_type = asio::any_io_executor;
+    executor_type get_executor();
 
     // Reading
-    std::size_t read_some(asio::mutable_buffer, error_code& ec) override final;
-    void async_read_some(asio::mutable_buffer, asio::any_completion_handler<void(error_code, std::size_t)>)
-        override final;
+    std::size_t read_some(asio::mutable_buffer, error_code& ec);
+    void async_read_some(asio::mutable_buffer, asio::any_completion_handler<void(error_code, std::size_t)>);
 
     // Writing
-    std::size_t write_some(boost::asio::const_buffer, error_code& ec) override final;
-    void async_write_some(boost::asio::const_buffer, asio::any_completion_handler<void(error_code, std::size_t)>)
-        override final;
-
-    // Connect and close
-    void connect(const void*, error_code&) override final;
-    void async_connect(const void*, asio::any_completion_handler<void(error_code)>) override final;
-    void close(error_code&) override final;
-    bool is_open() const noexcept override final;
+    std::size_t write_some(boost::asio::const_buffer, error_code& ec);
+    void async_write_some(boost::asio::const_buffer, asio::any_completion_handler<void(error_code, std::size_t)>);
 
 private:
     std::vector<std::uint8_t> bytes_to_read_;
@@ -97,8 +85,12 @@ private:
     struct write_op;
 };
 
+using test_any_stream = detail::any_stream_impl<test_stream>;
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
+
+extern template class boost::mysql::detail::any_stream_impl<boost::mysql::test::test_stream>;
 
 #endif

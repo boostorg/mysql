@@ -142,18 +142,6 @@ boost::mysql::test::test_stream::executor_type boost::mysql::test::test_stream::
     return create_tracker_executor(ctx.get_executor(), &executor_info_);
 }
 
-// SSL
-void boost::mysql::test::test_stream::handshake(error_code&) { BOOST_ASSERT(false); }
-void boost::mysql::test::test_stream::async_handshake(asio::any_completion_handler<void(error_code)>)
-{
-    BOOST_ASSERT(false);
-}
-void boost::mysql::test::test_stream::shutdown(error_code&) { BOOST_ASSERT(false); }
-void boost::mysql::test::test_stream::async_shutdown(asio::any_completion_handler<void(error_code)>)
-{
-    BOOST_ASSERT(false);
-}
-
 // Reading
 std::size_t boost::mysql::test::test_stream::read_some(asio::mutable_buffer buff, error_code& ec)
 {
@@ -185,20 +173,6 @@ void boost::mysql::test::test_stream::async_write_some(
         void(error_code, std::size_t)>(write_op(*this, buff), handler, get_executor());
 }
 
-// Connect and close
-void boost::mysql::test::test_stream::connect(const void*, error_code&) { BOOST_ASSERT(false); }
-void boost::mysql::test::test_stream::
-    async_connect(const void*, asio::any_completion_handler<void(error_code)>)
-{
-    BOOST_ASSERT(false);
-}
-void boost::mysql::test::test_stream::close(error_code&) { BOOST_ASSERT(false); }
-bool boost::mysql::test::test_stream::is_open() const noexcept
-{
-    BOOST_ASSERT(false);
-    return false;
-}
-
 test_stream& boost::mysql::test::test_stream::add_bytes(span<const std::uint8_t> bytes)
 {
     concat(bytes_to_read_, bytes.data(), bytes.size());
@@ -211,3 +185,5 @@ test_stream& boost::mysql::test::test_stream::add_break(std::size_t byte_num)
     read_break_offsets_.insert(byte_num);
     return *this;
 }
+
+template class boost::mysql::detail::any_stream_impl<boost::mysql::test::test_stream>;

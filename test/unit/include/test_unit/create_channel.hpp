@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_CHANNEL_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_CHANNEL_HPP
 
+#include <boost/mysql/detail/any_stream_impl.hpp>
+
 #include <boost/mysql/impl/internal/channel/channel.hpp>
 
 #include <cstddef>
@@ -21,12 +23,12 @@ namespace test {
 
 inline detail::channel create_channel(std::size_t buffer_size = 1024)
 {
-    return detail::channel(buffer_size, std::unique_ptr<test_stream>(new test_stream));
+    return detail::channel(buffer_size, std::unique_ptr<test_any_stream>(new test_any_stream));
 }
 
 inline test_stream& get_stream(detail::channel& chan) noexcept
 {
-    return static_cast<test_stream&>(chan.stream());
+    return detail::cast<test_stream>(chan.stream());
 }
 
 }  // namespace test

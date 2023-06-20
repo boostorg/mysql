@@ -7,6 +7,8 @@
 
 #include <boost/mysql/client_errc.hpp>
 
+#include <boost/mysql/detail/any_stream.hpp>
+
 #include <boost/mysql/impl/internal/channel/message_writer.hpp>
 #include <boost/mysql/impl/internal/channel/write_message.hpp>
 
@@ -50,7 +52,9 @@ struct fixture
 {
     message_writer writer{8};
     std::uint8_t seqnum{4};
-    test_stream stream;
+    test_any_stream stream;
+
+    test_stream& inner_stream() noexcept { return cast<test_stream>(stream); }
 };
 
 BOOST_AUTO_TEST_CASE(success)
@@ -71,7 +75,7 @@ BOOST_AUTO_TEST_CASE(success)
             fns.write(fix.stream, fix.writer).validate_no_error();
 
             // Verify
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.stream.bytes_written(), create_frame(4, msg));
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.inner_stream().bytes_written(), create_frame(4, msg));
             BOOST_TEST(fix.seqnum == 5);
         }
     }
@@ -93,7 +97,7 @@ BOOST_AUTO_TEST_CASE(empty_message)
             fns.write(fix.stream, fix.writer).validate_no_error();
 
             // Verify
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.stream.bytes_written(), create_empty_frame(4));
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.inner_stream().bytes_written(), create_empty_frame(4));
             BOOST_TEST(fix.seqnum == 5);
         }
     }
@@ -107,7 +111,7 @@ BOOST_AUTO_TEST_CASE(short_writes)
         {
             // Data
             fixture fix;
-            fix.stream.set_write_break_size(2);  // 2 byte reads
+            fix.inner_stream().set_write_break_size(2);  // 2 byte reads
             const std::vector<std::uint8_t> msg{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
 
             // Setup data to be written
@@ -118,7 +122,7 @@ BOOST_AUTO_TEST_CASE(short_writes)
             fns.write(fix.stream, fix.writer).validate_no_error();
 
             // Verify
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.stream.bytes_written(), create_frame(4, msg));
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.inner_stream().bytes_written(), create_frame(4, msg));
             BOOST_TEST(fix.seqnum == 5);
         }
     }
@@ -144,7 +148,7 @@ BOOST_AUTO_TEST_CASE(multi_frame)
             // Write
             fns.write(fix.stream, fix.writer).validate_no_error();
 
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.stream.bytes_written(), expected_msg);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.inner_stream().bytes_written(), expected_msg);
             BOOST_TEST(fix.seqnum == 6);
         }
     }
@@ -158,7 +162,7 @@ BOOST_AUTO_TEST_CASE(error)
         {
             // Data
             fixture fix;
-            fix.stream.set_fail_count(fail_count(0, client_errc::server_unsupported));
+            fix.inner_stream().set_fail_count(fail_count(0, client_errc::server_unsupported));
             const std::vector<std::uint8_t> msg{0x01, 0x02, 0x03};
 
             // Setup data to be written
