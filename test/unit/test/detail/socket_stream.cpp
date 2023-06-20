@@ -14,6 +14,7 @@
 #include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/asio/windows/stream_handle.hpp>
 
 using namespace boost::mysql::detail;
 namespace net = boost::asio;
@@ -65,6 +66,11 @@ static_assert(is_socket_stream<stream_archetype>::value, "");
 
 // Bad lowest_layer_type
 static_assert(!is_socket_stream<stream_bad_type>::value, "");
+
+// Stream that is not a socket
+#ifdef BOOST_ASIO_HAS_WINDOWS_STREAM_HANDLE
+static_assert(!is_socket_stream<net::windows::stream_handle>::value, "");
+#endif
 
 // No lowest_layer_type
 static_assert(!is_socket_stream<int>::value, "");
