@@ -29,7 +29,7 @@ boost::mysql::detail::channel_ptr& boost::mysql::detail::channel_ptr::operator=(
 
 boost::mysql::detail::channel_ptr::~channel_ptr() {}
 
-const boost::mysql::detail::any_stream& boost::mysql::detail::channel_ptr::get_stream() const
+boost::mysql::detail::any_stream& boost::mysql::detail::channel_ptr::get_stream() const
 {
     return chan_->stream();
 }

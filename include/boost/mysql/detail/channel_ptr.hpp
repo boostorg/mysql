@@ -27,7 +27,7 @@ class channel_ptr
 {
     std::unique_ptr<channel> chan_;
 
-    BOOST_MYSQL_DECL const any_stream& get_stream() const;
+    BOOST_MYSQL_DECL any_stream& get_stream() const;
 
 public:
     BOOST_MYSQL_DECL channel_ptr(std::size_t read_buff_size, std::unique_ptr<any_stream>);
@@ -37,8 +37,7 @@ public:
     BOOST_MYSQL_DECL channel_ptr& operator=(channel_ptr&&) noexcept;
     BOOST_MYSQL_DECL ~channel_ptr();
 
-    // TODO: handle this better
-    any_stream& stream() noexcept { return const_cast<any_stream&>(get_stream()); }
+    any_stream& stream() noexcept { return get_stream(); }
     const any_stream& stream() const noexcept { return get_stream(); }
 
     channel& get() noexcept
