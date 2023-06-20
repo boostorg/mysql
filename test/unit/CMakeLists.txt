@@ -51,6 +51,7 @@ add_executable(
     test/detail/rows_iterator.cpp
     test/detail/execution_concepts.cpp
     test/detail/writable_field_traits.cpp
+    test/detail/socket_stream.cpp
     test/detail/typing/meta_check_context.cpp
     test/detail/typing/pos_map.cpp
     test/detail/typing/readable_field_traits.cpp
