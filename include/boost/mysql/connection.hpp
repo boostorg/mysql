@@ -25,6 +25,7 @@
 #include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/network_algorithms.hpp>
 #include <boost/mysql/detail/rebind_executor.hpp>
+#include <boost/mysql/detail/socket_stream.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
@@ -221,6 +222,10 @@ public:
         diagnostics& diag
     )
     {
+        static_assert(
+            detail::is_socket_stream<Stream>::value,
+            "connect can only be used if Stream satisfies the SocketStream concept"
+        );
         detail::connect_interface<Stream>(channel_.get(), endpoint, params, ec, diag);
     }
 
@@ -228,6 +233,10 @@ public:
     template <typename EndpointType>
     void connect(const EndpointType& endpoint, const handshake_params& params)
     {
+        static_assert(
+            detail::is_socket_stream<Stream>::value,
+            "connect can only be used if Stream satisfies the SocketStream concept"
+        );
         error_code err;
         diagnostics diag;
         connect(endpoint, params, err, diag);
@@ -255,6 +264,10 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
+        static_assert(
+            detail::is_socket_stream<Stream>::value,
+            "async_connect can only be used if Stream satisfies the SocketStream concept"
+        );
         return async_connect(endpoint, params, this->shared_diag(), std::forward<CompletionToken>(token));
     }
 
@@ -271,6 +284,10 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
+        static_assert(
+            detail::is_socket_stream<Stream>::value,
+            "async_connect can only be used if Stream satisfies the SocketStream concept"
+        );
         return detail::async_connect_interface<Stream>(
             channel_.get(),
             endpoint,
@@ -1487,12 +1504,20 @@ public:
      */
     void close(error_code& err, diagnostics& diag)
     {
+        static_assert(
+            detail::is_socket_stream<Stream>::value,
+            "close can only be used if Stream satisfies the SocketStream concept"
+        );
         detail::close_connection_interface(channel_.get(), err, diag);
     }
 
     /// \copydoc close
     void close()
     {
+        static_assert(
+            detail::is_socket_stream<Stream>::value,
+            "close can only be used if Stream satisfies the SocketStream concept"
+        );
         error_code err;
         diagnostics diag;
         close(err, diag);
@@ -1510,6 +1535,10 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
+        static_assert(
+            detail::is_socket_stream<Stream>::value,
+            "async_close can only be used if Stream satisfies the SocketStream concept"
+        );
         return async_close(shared_diag(), std::forward<CompletionToken>(token));
     }
 
@@ -1519,6 +1548,10 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(diagnostics& diag, CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
+        static_assert(
+            detail::is_socket_stream<Stream>::value,
+            "async_close can only be used if Stream satisfies the SocketStream concept"
+        );
         return detail::async_close_connection_interface(
             channel_.get(),
             diag,
