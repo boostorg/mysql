@@ -32,7 +32,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// TODO: refactor this
 class message_reader
 {
 public:

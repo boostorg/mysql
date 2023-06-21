@@ -39,8 +39,8 @@ class channel
     db_flavor flavor_{db_flavor::mysql};
     capabilities current_caps_;
     std::uint8_t shared_sequence_number_{};
-    diagnostics shared_diag_;                // for async ops
-    std::vector<field_view> shared_fields_;  // for read_some ops
+    diagnostics shared_diag_;  // for async ops
+    std::vector<field_view> shared_fields_;
     metadata_mode meta_mode_{metadata_mode::minimal};
     message_reader reader_;
     message_writer writer_;

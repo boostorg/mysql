@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_CHANNEL_PTR_HPP
 
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/any_stream.hpp>
@@ -56,6 +57,8 @@ public:
     BOOST_MYSQL_DECL void set_meta_mode(metadata_mode v) noexcept;
     BOOST_MYSQL_DECL diagnostics& shared_diag() noexcept;
 };
+
+BOOST_MYSQL_DECL std::vector<field_view>& get_shared_fields(channel&) noexcept;
 
 }  // namespace detail
 }  // namespace mysql

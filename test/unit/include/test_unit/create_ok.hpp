@@ -10,7 +10,7 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/column_flags.hpp>
+#include <boost/mysql/detail/flags.hpp>
 #include <boost/mysql/detail/ok_view.hpp>
 
 namespace boost {

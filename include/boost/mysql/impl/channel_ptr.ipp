@@ -46,4 +46,9 @@ boost::mysql::diagnostics& boost::mysql::detail::channel_ptr::shared_diag() noex
     return chan_->shared_diag();
 }
 
+std::vector<boost::mysql::field_view>& boost::mysql::detail::get_shared_fields(channel& chan) noexcept
+{
+    return chan.shared_fields();
+}
+
 #endif

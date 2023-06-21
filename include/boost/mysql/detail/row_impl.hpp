@@ -23,7 +23,6 @@ namespace detail {
 
 // Adds num_fields default-constructed fields to the vector, return pointer to the first
 // allocated value. Used to allocate fields before deserialization
-// TODO: can we move this out?
 inline span<field_view> add_fields(std::vector<field_view>& storage, std::size_t num_fields)
 {
     std::size_t old_size = storage.size();

@@ -19,7 +19,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// TODO: move stuff to TU
 class chunk_processor
 {
     std::size_t first_{};

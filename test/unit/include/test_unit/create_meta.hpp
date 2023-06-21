@@ -13,7 +13,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/column_flags.hpp>
+#include <boost/mysql/detail/flags.hpp>
 
 #include <cstddef>
 #include <cstdint>

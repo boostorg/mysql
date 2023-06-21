@@ -19,6 +19,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/any_execution_request.hpp>
+#include <boost/mysql/detail/channel_ptr.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
@@ -62,26 +63,29 @@ struct query_request_getter
     any_execution_request value;
     any_execution_request get() const noexcept { return value; }
 };
-inline query_request_getter make_request_getter(string_view q) noexcept { return query_request_getter{q}; }
+inline query_request_getter make_request_getter(string_view q, channel&) noexcept
+{
+    return query_request_getter{q};
+}
 
 struct stmt_it_request_getter
 {
     statement stmt;
-    std::vector<field_view> params;  // TODO: this can be optimized
+    span<const field_view> params;  // Points into channel shared_fields()
 
     any_execution_request get() const noexcept { return any_execution_request(stmt, params); }
 };
 
 template <class FieldViewFwdIterator>
 inline stmt_it_request_getter make_request_getter(
-    const bound_statement_iterator_range<FieldViewFwdIterator>& req
+    const bound_statement_iterator_range<FieldViewFwdIterator>& req,
+    channel& chan
 )
 {
     auto& impl = access::get_impl(req);
-    return {
-        impl.stmt,
-        {impl.first, impl.last}
-    };
+    auto& shared_fields = get_shared_fields(chan);
+    shared_fields.assign(impl.first, impl.last);
+    return {impl.stmt, shared_fields};
 }
 
 template <std::size_t N>
@@ -93,9 +97,8 @@ struct stmt_tuple_request_getter
     any_execution_request get() const noexcept { return any_execution_request(stmt, params); }
 };
 template <class WritableFieldTuple>
-stmt_tuple_request_getter<std::tuple_size<WritableFieldTuple>::value> make_request_getter(
-    const bound_statement_tuple<WritableFieldTuple>& req
-)
+stmt_tuple_request_getter<std::tuple_size<WritableFieldTuple>::value>
+make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, channel&)
 {
     auto& impl = access::get_impl(req);
     return {impl.stmt, tuple_to_array(impl.params)};
@@ -132,7 +135,6 @@ void connect_interface(
     diagnostics& diag
 )
 {
-    // TODO: assert that Stream is a SocketStream
     connect_erased(chan, &ep, params, err, diag);
 }
 
@@ -254,7 +256,7 @@ struct initiate_execute
         diagnostics& diag
     )
     {
-        auto getter = make_request_getter(req);
+        auto getter = make_request_getter(req, chan);
         async_execute_erased(chan, getter.get(), proc, diag, std::forward<Handler>(handler));
     }
 };
@@ -268,7 +270,7 @@ void execute_interface(
     diagnostics& diag
 )
 {
-    auto getter = make_request_getter(req);
+    auto getter = make_request_getter(req, channel);
     execute_erased(channel, getter.get(), access::get_impl(result).get_interface(), err, diag);
 }
 
@@ -324,7 +326,7 @@ struct initiate_start_execution
         diagnostics& diag
     )
     {
-        auto getter = make_request_getter(req);
+        auto getter = make_request_getter(req, chan);
         async_start_execution_erased(chan, getter.get(), proc, diag, std::forward<Handler>(handler));
     }
 };
@@ -338,7 +340,7 @@ void start_execution_interface(
     diagnostics& diag
 )
 {
-    auto getter = make_request_getter(req);
+    auto getter = make_request_getter(req, channel);
     start_execution_erased(channel, getter.get(), access::get_impl(st).get_interface(), err, diag);
 }
 
