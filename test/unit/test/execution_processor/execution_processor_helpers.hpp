@@ -18,8 +18,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include "test_common/check_meta.hpp"
-#include "test_common/create_meta.hpp"
-#include "test_common/create_ok.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_ok.hpp"
 
 // Throughout execution_processor tests we use a set of common values for
 // metadata and OK packets. Definitions here to reduce duplication

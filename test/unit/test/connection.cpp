@@ -16,8 +16,8 @@
 #include <boost/asio/strand.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/create_ok.hpp"
 #include "test_common/printing.hpp"
+#include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/test_stream.hpp"
 #include "test_unit/unit_netfun_maker.hpp"

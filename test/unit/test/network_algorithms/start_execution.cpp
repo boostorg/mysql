@@ -18,14 +18,14 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "test_common//create_statement.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_basic.hpp"
-#include "test_common/create_meta.hpp"
 #include "test_unit/create_channel.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_statement.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/printing.hpp"
 #include "test_unit/test_stream.hpp"

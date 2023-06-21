@@ -13,7 +13,7 @@
 #include <tuple>
 
 #include "test_common/create_basic.hpp"
-#include "test_common/create_statement.hpp"
+#include "test_unit/create_statement.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;

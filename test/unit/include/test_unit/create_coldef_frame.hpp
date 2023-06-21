@@ -10,8 +10,8 @@
 
 #include <boost/mysql/impl/internal/protocol/protocol.hpp>
 
-#include "test_common/create_meta.hpp"
 #include "test_unit/create_frame.hpp"
+#include "test_unit/create_meta.hpp"
 #include "test_unit/serialization.hpp"
 
 namespace boost {

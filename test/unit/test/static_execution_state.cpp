@@ -17,9 +17,9 @@
 #include <boost/test/unit_test.hpp>
 
 #include "test_common/check_meta.hpp"
-#include "test_common/create_meta.hpp"
-#include "test_common/create_ok.hpp"
 #include "test_unit/create_execution_processor.hpp"
+#include "test_unit/create_meta.hpp"
+#include "test_unit/create_ok.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;

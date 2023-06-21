@@ -12,8 +12,8 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/coldef_view.hpp>
 
-#include "test_common/create_meta.hpp"
 #include "test_common/printing.hpp"
+#include "test_unit/create_meta.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;

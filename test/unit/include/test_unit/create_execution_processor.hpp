@@ -22,7 +22,7 @@
 
 #include <cstddef>
 
-#include "test_common/create_meta.hpp"
+#include "test_unit/create_meta.hpp"
 #include "test_unit/create_row_message.hpp"
 
 namespace boost {
