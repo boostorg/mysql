@@ -36,6 +36,7 @@
 #include <boost/mysql/impl/internal/protocol/deserialize_text_field.ipp>
 #include <boost/mysql/impl/internal/protocol/protocol.ipp>
 #include <boost/mysql/impl/internal/protocol/protocol_field_type.ipp>
+#include <boost/mysql/impl/meta_check_context.ipp>
 #include <boost/mysql/impl/network_algorithms.ipp>
 #include <boost/mysql/impl/results_impl.ipp>
 #include <boost/mysql/impl/resultset.ipp>

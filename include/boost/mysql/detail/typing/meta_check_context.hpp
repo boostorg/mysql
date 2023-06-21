@@ -17,6 +17,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/typing/pos_map.hpp>
 
 #include <memory>
@@ -110,48 +111,17 @@ public:
     bool nullability_checked() const noexcept { return nullability_checked_; }
 
     // Error reporting
-    void add_field_absent_error()
-    {
-        auto& stream = add_error();
-        stream << "Field ";
-        insert_field_name(stream);
-        if (has_field_names(name_table_))
-        {
-            stream << " is not present in the data returned by the server";
-        }
-        else
-        {
-            stream << " can't be mapped: there are more fields in your C++ data type than in your query";
-        }
-    }
+    BOOST_MYSQL_DECL
+    void add_field_absent_error();
 
-    void add_type_mismatch_error(const char* cpp_type_name)
-    {
-        auto& stream = add_error();
-        stream << "Incompatible types for field ";
-        insert_field_name(stream);
-        stream << ": C++ type '" << cpp_type_name << "' is not compatible with DB type '"
-               << column_type_to_str(current_meta()) << "'";
-    }
+    BOOST_MYSQL_DECL
+    void add_type_mismatch_error(const char* cpp_type_name);
 
-    void add_nullability_error()
-    {
-        auto& stream = add_error();
-        stream << "NULL checks failed for field ";
-        insert_field_name(stream);
-        stream << ": the database type may be NULL, but the C++ type cannot. Use std::optional<T> or "
-                  "boost::optional<T>";
-    }
+    BOOST_MYSQL_DECL
+    void add_nullability_error();
 
-    error_code check_errors(diagnostics& diag) const
-    {
-        if (errors_ != nullptr)
-        {
-            access::get_impl(diag).assign_client(errors_->str());
-            return client_errc::metadata_check_failed;
-        }
-        return error_code();
-    }
+    BOOST_MYSQL_DECL
+    error_code check_errors(diagnostics& diag) const;
 };
 
 }  // namespace detail
