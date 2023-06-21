@@ -7,9 +7,15 @@
 
 //[example_unix_socket
 
-#include <boost/mysql.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/results.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/statement.hpp>
+#include <boost/mysql/unix.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 
 #include <iostream>
 #include <tuple>

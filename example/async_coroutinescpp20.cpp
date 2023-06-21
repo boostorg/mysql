@@ -7,12 +7,18 @@
 
 //[example_async_coroutinescpp20
 
-#include <boost/mysql.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
+#include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/use_awaitable.hpp>
 
