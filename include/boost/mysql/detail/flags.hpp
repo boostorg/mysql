@@ -5,14 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_COLUMN_FLAGS_HPP
-#define BOOST_MYSQL_DETAIL_COLUMN_FLAGS_HPP
+#ifndef BOOST_MYSQL_DETAIL_FLAGS_HPP
+#define BOOST_MYSQL_DETAIL_FLAGS_HPP
 
 #include <cstdint>
 
 namespace boost {
 namespace mysql {
 namespace detail {
+
 namespace column_flags {
 
 constexpr std::uint16_t not_null = 1;             // Field can't be NULL.
@@ -34,10 +35,11 @@ constexpr std::uint16_t num = 32768;              // Field is num (for clients)
 
 }  // namespace column_flags
 
-// TODO: this feels weird here
 namespace status_flags {
+
 constexpr std::uint32_t more_results = 8;
 constexpr std::uint32_t out_params = 4096;
+
 }  // namespace status_flags
 
 }  // namespace detail

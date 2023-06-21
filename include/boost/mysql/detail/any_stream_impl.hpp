@@ -124,7 +124,7 @@ class any_stream_impl final : public any_stream
     Stream stream_;
 
 public:
-    template <class... Args>  // TODO: noexcept
+    template <class... Args>
     any_stream_impl(Args&&... args) : any_stream(false), stream_(std::forward<Args>(args)...)
     {
     }
@@ -189,7 +189,7 @@ class any_stream_impl<asio::ssl::stream<Stream>> final : public any_stream
     asio::ssl::stream<Stream> stream_;
 
 public:
-    template <class... Args>  // TODO: noexcept
+    template <class... Args>
     any_stream_impl(Args&&... args) : any_stream(true), stream_(std::forward<Args>(args)...)
     {
     }

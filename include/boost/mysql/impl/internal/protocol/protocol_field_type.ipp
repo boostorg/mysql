@@ -10,8 +10,8 @@
 
 #pragma once
 
-#include <boost/mysql/detail/column_flags.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/flags.hpp>
 
 #include <boost/mysql/impl/internal/protocol/constants.hpp>
 #include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
