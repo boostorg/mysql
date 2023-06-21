@@ -117,7 +117,7 @@ BOOST_FIXTURE_TEST_CASE(read_ssl_disabled, ssl_fixture)
     std::size_t n = stream.read_some(net::buffer(read_buff), ec);
 
     BOOST_TEST(ec == error_code());
-    BOOST_TEST(n == 3);
+    BOOST_TEST(n == 3u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(read_buff, msg);
 }
 
