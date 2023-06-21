@@ -350,8 +350,20 @@ BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
     BOOST_TEST(err == client_errc::extra_bytes);
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_FIXTURE_TEST_CASE(meta_mode_minimal, fixture)
+{
+    st.reset(resultset_encoding::text, metadata_mode::minimal);
+    add_meta(st, create_meta_r1());
+    BOOST_TEST(st.meta()[0].column_name() == "");
+}
 
-// TODO: on_meta_mode_minimal & full tests
+BOOST_FIXTURE_TEST_CASE(meta_mode_full, fixture)
+{
+    st.reset(resultset_encoding::text, metadata_mode::full);
+    add_meta(st, create_meta_r1());
+    BOOST_TEST(st.meta()[0].column_name() == "ftiny");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace

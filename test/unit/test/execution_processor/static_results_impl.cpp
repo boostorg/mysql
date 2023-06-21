@@ -11,10 +11,12 @@
 
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -31,6 +33,7 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 using boost::mysql::detail::output_ref;
+using boost::mysql::detail::resultset_encoding;
 using boost::mysql::detail::static_results_erased_impl;
 using boost::mysql::detail::static_results_impl;
 
@@ -883,9 +886,35 @@ BOOST_AUTO_TEST_CASE(all_fields_discarded)
     check_ok_r2(st, 1);
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_FIXTURE_TEST_CASE(meta_mode_minimal, fixture)
+{
+    static_results_impl<row1> stp;
+    auto& st = stp.get_interface();
 
-// TODO: on_meta_mode_minimal & full tests
+    exec_access(st)
+        .reset(resultset_encoding::text, metadata_mode::minimal)
+        .meta(create_meta_r1())
+        .row(42, "aaa")
+        .ok(create_ok_r1());
+
+    BOOST_TEST(st.get_meta(0)[0].column_name() == "");
+}
+
+BOOST_FIXTURE_TEST_CASE(meta_mode_full, fixture)
+{
+    static_results_impl<row1> stp;
+    auto& st = stp.get_interface();
+
+    exec_access(st)
+        .reset(resultset_encoding::text, metadata_mode::full)
+        .meta(create_meta_r1())
+        .row(42, "aaa")
+        .ok(create_ok_r1());
+
+    BOOST_TEST(st.get_meta(0)[0].column_name() == "ftiny");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
 

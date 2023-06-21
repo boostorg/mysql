@@ -742,9 +742,27 @@ BOOST_AUTO_TEST_CASE(field_selection_tuples)
     check_ok_r3(st);
 }
 
-BOOST_AUTO_TEST_SUITE_END()
+BOOST_FIXTURE_TEST_CASE(meta_mode_minimal, fixture)
+{
+    static_execution_state_impl<row1> stp;
+    auto& st = stp.get_interface();
 
-// TODO: on_meta_mode_minimal & full tests
+    st.reset(resultset_encoding::text, metadata_mode::minimal);
+    add_meta(st, create_meta_r1());
+    BOOST_TEST(st.meta()[0].column_name() == "");
+}
+
+BOOST_FIXTURE_TEST_CASE(meta_mode_full, fixture)
+{
+    static_execution_state_impl<row1> stp;
+    auto& st = stp.get_interface();
+
+    st.reset(resultset_encoding::text, metadata_mode::full);
+    add_meta(st, create_meta_r1());
+    BOOST_TEST(st.meta()[0].column_name() == "ftiny");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
 
