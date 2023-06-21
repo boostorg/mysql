@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CHANNEL_PTR_HPP
 #define BOOST_MYSQL_DETAIL_CHANNEL_PTR_HPP
 
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/any_stream.hpp>
@@ -53,6 +54,7 @@ public:
 
     BOOST_MYSQL_DECL metadata_mode meta_mode() const noexcept;
     BOOST_MYSQL_DECL void set_meta_mode(metadata_mode v) noexcept;
+    BOOST_MYSQL_DECL diagnostics& shared_diag() noexcept;
 };
 
 }  // namespace detail

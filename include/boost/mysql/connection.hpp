@@ -62,10 +62,9 @@ class static_execution_state;
 template <class Stream>
 class connection
 {
-    diagnostics shared_diag_;  // TODO: this can be done better
     detail::channel_ptr channel_;
 
-    diagnostics& shared_diag() noexcept { return shared_diag_; }
+    diagnostics& shared_diag() noexcept { return channel_.shared_diag(); }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;

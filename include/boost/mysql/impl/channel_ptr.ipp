@@ -41,4 +41,9 @@ boost::mysql::metadata_mode boost::mysql::detail::channel_ptr::meta_mode() const
 
 void boost::mysql::detail::channel_ptr::set_meta_mode(metadata_mode v) noexcept { chan_->set_meta_mode(v); }
 
+boost::mysql::diagnostics& boost::mysql::detail::channel_ptr::shared_diag() noexcept
+{
+    return chan_->shared_diag();
+}
+
 #endif
