@@ -108,19 +108,6 @@ with this library. Here are some of the most common:
 * Any other type that satisfies the __CompletionToken__ type requirements.
   We have listed the most common ones here, but you can craft your own
   and use it with this library's async operations.
-  
-
-[heading Default completion tokens]
-  
-__Self__ also supports default completion tokens. Recall that
-some stream types may have an associated __Executor__ that
-has an associated default completion token type (see
-[asiorelink default_completion_token default_completion_token]).
-If this is the case, you don't need to specify the
-__CompletionToken__ parameter in initiating functions,
-and the default will be used.
-[link mysql.examples.default_completion_tokens This example]
-demonstrates using default completion tokens with __Self__.
 
 
 [heading Cancellations and timeouts]

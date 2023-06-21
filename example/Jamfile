@@ -23,7 +23,6 @@ local regular_examples =
     async_callbacks
     async_coroutinescpp20
     async_futures
-    default_completion_tokens
     metadata
     ssl
     timeouts

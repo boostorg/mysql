@@ -17,7 +17,6 @@ Here is a list of available examples:
 # [link mysql.examples.async_futures Async functions using futures]
 # [link mysql.examples.async_coroutines Async functions using stackful coroutines]
 # [link mysql.examples.async_coroutinescpp20 Async functions using C++20 coroutines]
-# [link mysql.examples.default_completion_tokens Async functions using default completion tokens]
 # [link mysql.examples.timeouts Setting timeouts]
 # [link mysql.examples.prepared_statements_cpp11 Using prepared statements with the dynamic interface (C++11)]
 # [link mysql.examples.prepared_statements_cpp14 Using prepared statements with the static interface (C++14)]
@@ -112,25 +111,6 @@ __assume_setup__
 
 [import ../../example/async_coroutinescpp20.cpp]
 [example_async_coroutinescpp20]
-
-[endsect]
-
-
-
-
-[section:default_completion_tokens Async functions using default completion tokens]
-
-This example demonstrates how to use Boost.Asio's
-default completion token functionality with __Self__.
-For that purpose, it employs C++20 coroutines.
-If you are not familiar with them, look at
-[link mysql.examples.async_coroutinescpp20 this example]
-first.
-
-__assume_setup__
-
-[import ../../example/default_completion_tokens.cpp]
-[example_default_completion_tokens]
 
 [endsect]
 

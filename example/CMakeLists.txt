@@ -80,7 +80,6 @@ set (REGULAR_EXAMPLES
     async_callbacks
     async_coroutinescpp20
     async_futures
-    default_completion_tokens
     metadata
     ssl
     timeouts
