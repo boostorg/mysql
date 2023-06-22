@@ -23,7 +23,6 @@ local regular_examples =
     async_callbacks
     async_coroutinescpp20
     async_futures
-    default_completion_tokens
     metadata
     ssl
     timeouts
@@ -33,7 +32,7 @@ for local example in $(regular_examples)
 {
     run
             "$(example).cpp"
-            /boost/mysql/test//mysql
+            /boost/mysql/test//boost_mysql_compiled
         :
             <testing.arg>"example_user example_password $(hostname)"
         ;
@@ -51,7 +50,7 @@ for local example in $(order_examples)
 {
     run
             "order_management/$(example).cpp"
-            /boost/mysql/test//mysql
+            /boost/mysql/test//boost_mysql_compiled
         : requirements
             <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
             <testing.arg>$(hostname)
@@ -62,7 +61,7 @@ for local example in $(order_examples)
 # Coroutines, which requires Boost.Context
 run
         async_coroutines.cpp
-        /boost/mysql/test//mysql
+        /boost/mysql/test//boost_mysql_compiled
         /boost/context//boost_context
     :
         <testing.arg>"example_user example_password $(hostname)"
@@ -72,7 +71,7 @@ run
 if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
     run
         unix_socket.cpp
-        /boost/mysql/test//mysql
+        /boost/mysql/test//boost_mysql_compiled
     :
         <testing.arg>"example_user example_password"
     ;
@@ -81,7 +80,7 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
 # Source script
 run
         source_script.cpp
-        /boost/mysql/test//mysql
+        /boost/mysql/test//boost_mysql_compiled
     : requirements
         <testing.arg>"example_user example_password $(hostname) $(this_dir)/private/test_script.sql"
     ;

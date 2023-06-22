@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_FIELD_KIND_HPP
 #define BOOST_MYSQL_FIELD_KIND_HPP
 
+#include <boost/mysql/detail/config.hpp>
+
 #include <iosfwd>
 
 namespace boost {
@@ -56,11 +58,14 @@ enum class field_kind
 /**
  * \brief Streams a field_kind.
  */
-inline std::ostream& operator<<(std::ostream& os, field_kind v);
+BOOST_MYSQL_DECL
+std::ostream& operator<<(std::ostream& os, field_kind v);
 
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
 #include <boost/mysql/impl/field_kind.ipp>
+#endif
 
 #endif

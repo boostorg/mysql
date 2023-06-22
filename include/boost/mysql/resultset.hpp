@@ -14,6 +14,8 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
 
+#include <boost/mysql/detail/config.hpp>
+
 #include <boost/assert.hpp>
 
 namespace boost {
@@ -288,33 +290,15 @@ private:
     std::vector<char> info_;
     bool is_out_params_{false};
 
-    void assign(resultset_view v)
-    {
-        has_value_ = v.has_value();
-        if (has_value_)
-        {
-            meta_.assign(v.meta().begin(), v.meta().end());
-            rws_ = v.rows();
-            affected_rows_ = v.affected_rows();
-            last_insert_id_ = v.last_insert_id();
-            warnings_ = v.warning_count();
-            info_.assign(v.info().begin(), v.info().end());
-            is_out_params_ = v.is_out_params();
-        }
-        else
-        {
-            meta_.clear();
-            rws_ = ::boost::mysql::rows();
-            affected_rows_ = 0;
-            last_insert_id_ = 0;
-            warnings_ = 0;
-            info_.clear();
-            is_out_params_ = false;
-        }
-    }
+    BOOST_MYSQL_DECL
+    void assign(resultset_view v);
 };
 
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/resultset.ipp>
+#endif
 
 #endif

@@ -5,7 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-# This is included in README.md and 01_intro.qbk. If you change it, update these files, too.
+# This is included in README.md and 02_integrating.qbk. If you change it, update these files, too.
 
 cmake_minimum_required(VERSION 3.5...3.22)
 

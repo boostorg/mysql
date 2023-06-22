@@ -8,8 +8,8 @@
 
 set -e
 
-BK=docs
-IMAGE=build-docs
+BK=b2
+IMAGE=build-gcc11
 SHA=a6ccc56343736f8b4edea3686c92d9856469fa36
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
@@ -31,6 +31,7 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --toolset=gcc \
     --cxxstd=20 \
     --variant=debug \
+    --separate-compilation=1 \
     --cmake-standalone-tests=1 \
     --cmake-add-subdir-tests=1 \
     --cmake-install-tests=1 \

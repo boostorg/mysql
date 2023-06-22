@@ -7,9 +7,17 @@
 
 //[example_source_script
 
-#include <boost/mysql.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/system/system_error.hpp>
 

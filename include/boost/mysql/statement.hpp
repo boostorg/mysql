@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_STATEMENT_HPP
 #define BOOST_MYSQL_STATEMENT_HPP
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
-#include <boost/mysql/detail/typing/writable_field_traits.hpp>
+#include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>
 
@@ -190,8 +190,13 @@ private:
     std::uint32_t id_{0};
     std::uint16_t num_params_{0};
 
+    statement(std::uint32_t id, std::uint16_t num_params) noexcept
+        : valid_(true), id_(id), num_params_(num_params)
+    {
+    }
+
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::statement_access;
+    friend struct detail::access;
 #endif
 };
 

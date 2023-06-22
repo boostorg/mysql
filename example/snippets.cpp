@@ -576,6 +576,7 @@ void section_dynamic(tcp_ssl_connection& conn)
 
 void section_static(tcp_ssl_connection& conn)
 {
+    boost::ignore_unused(conn);
 #ifdef BOOST_MYSQL_CXX14
     {
         //[static_setup

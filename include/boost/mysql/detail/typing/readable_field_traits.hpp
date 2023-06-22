@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_TYPING_READABLE_FIELD_TRAITS_HPP
 #define BOOST_MYSQL_DETAIL_TYPING_READABLE_FIELD_TRAITS_HPP
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -22,6 +23,7 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
 #include <boost/mysql/detail/typing/pos_map.hpp>
+#include <boost/mysql/detail/void_t.hpp>
 
 #include <cstdint>
 #include <limits>

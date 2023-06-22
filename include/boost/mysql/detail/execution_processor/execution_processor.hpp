@@ -15,10 +15,10 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/protocol/capabilities.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/db_flavor.hpp>
-#include <boost/mysql/detail/protocol/resultset_encoding.hpp>
+#include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/coldef_view.hpp>
+#include <boost/mysql/detail/ok_view.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
@@ -84,7 +84,8 @@ public:
         reset_impl();
     }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code on_head_ok_packet(const ok_packet& pack, diagnostics& diag)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code on_head_ok_packet(const ok_view& pack, diagnostics& diag)
     {
         BOOST_ASSERT(is_reading_head());
         auto err = on_head_ok_packet_impl(pack, diag);
@@ -100,20 +101,15 @@ public:
         set_state(state_t::reading_metadata);
     }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code on_meta(const column_definition_packet& pack, diagnostics& diag)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code on_meta(const coldef_view& pack, diagnostics& diag)
     {
-        return on_meta_helper(
-            metadata_access::construct(pack, mode_ == metadata_mode::full),
-            pack.name.value,
-            diag
-        );
-    }
-
-    // Exposed for the sake of testing
-    BOOST_ATTRIBUTE_NODISCARD error_code on_meta(metadata&& meta, diagnostics& diag)
-    {
-        std::string field_name = meta.column_name();
-        return on_meta_helper(std::move(meta), field_name, diag);
+        BOOST_ASSERT(is_reading_meta());
+        bool is_last = --remaining_meta_ == 0;
+        auto err = on_meta_impl(pack, is_last, diag);
+        if (is_last)
+            set_state(state_t::reading_rows);
+        return err;
     }
 
     void on_row_batch_start()
@@ -124,14 +120,15 @@ public:
 
     void on_row_batch_finish() { on_row_batch_finish_impl(); }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code
-    on_row(deserialization_context ctx, const output_ref& ref, std::vector<field_view>& storage)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code on_row(span<const std::uint8_t> msg, const output_ref& ref, std::vector<field_view>& storage)
     {
         BOOST_ASSERT(is_reading_rows());
-        return on_row_impl(ctx, ref, storage);
+        return on_row_impl(msg, ref, storage);
     }
 
-    BOOST_ATTRIBUTE_NODISCARD error_code on_row_ok_packet(const ok_packet& pack)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code on_row_ok_packet(const ok_view& pack)
     {
         BOOST_ASSERT(is_reading_rows());
         auto err = on_row_ok_packet_impl(pack);
@@ -155,22 +152,22 @@ public:
 
 protected:
     virtual void reset_impl() noexcept = 0;
-    virtual error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics& diag) = 0;
+    virtual error_code on_head_ok_packet_impl(const ok_view& pack, diagnostics& diag) = 0;
     virtual void on_num_meta_impl(std::size_t num_columns) = 0;
-    virtual error_code on_meta_impl(
-        metadata&& meta,
-        string_view column_name,
-        bool is_last,
-        diagnostics& diag
-    ) = 0;
-    virtual error_code on_row_ok_packet_impl(const ok_packet& pack) = 0;
+    virtual error_code on_meta_impl(const coldef_view& coldef, bool is_last, diagnostics& diag) = 0;
+    virtual error_code on_row_ok_packet_impl(const ok_view& pack) = 0;
     virtual error_code on_row_impl(
-        deserialization_context ctx,
+        span<const std::uint8_t> msg,
         const output_ref& ref,
         std::vector<field_view>& storage
     ) = 0;
     virtual void on_row_batch_start_impl() = 0;
     virtual void on_row_batch_finish_impl() = 0;
+
+    metadata create_meta(const coldef_view& coldef) const
+    {
+        return access::construct<metadata>(coldef, mode_ == metadata_mode::full);
+    }
 
 private:
     enum class state_t
@@ -200,19 +197,9 @@ private:
 
     void set_state(state_t v) noexcept { state_ = v; }
 
-    error_code on_meta_helper(metadata&& meta, string_view column_name, diagnostics& diag)
+    void set_state_for_ok(const ok_view& pack) noexcept
     {
-        BOOST_ASSERT(is_reading_meta());
-        bool is_last = --remaining_meta_ == 0;
-        auto err = on_meta_impl(std::move(meta), column_name, is_last, diag);
-        if (is_last)
-            set_state(state_t::reading_rows);
-        return err;
-    }
-
-    void set_state_for_ok(const ok_packet& pack) noexcept
-    {
-        if (pack.status_flags & SERVER_MORE_RESULTS_EXISTS)
+        if (pack.more_results())
         {
             set_state(state_t::reading_first_subseq);
         }

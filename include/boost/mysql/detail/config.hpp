@@ -27,6 +27,18 @@
     #define BOOST_MYSQL_CXX14
 #endif
 
+// Separate build
+#if defined(BOOST_MYSQL_SEPARATE_COMPILATION)
+    #define BOOST_MYSQL_DECL
+    #define BOOST_MYSQL_STATIC_IF_COMPILED static
+    #define BOOST_MYSQL_STATIC_OR_INLINE static
+#else
+    #define BOOST_MYSQL_HEADER_ONLY
+    #define BOOST_MYSQL_DECL inline
+    #define BOOST_MYSQL_STATIC_IF_COMPILED
+    #define BOOST_MYSQL_STATIC_OR_INLINE inline
+#endif
+
 // clang-format on
 
 #endif

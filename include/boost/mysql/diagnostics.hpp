@@ -10,9 +10,8 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 
-#include <ostream>
 #include <string>
 
 namespace boost {
@@ -49,7 +48,10 @@ public:
      * The returned view is valid as long as `*this` is alive, hasn't been assigned-to
      * or moved-from, and \ref clear hasn't been called. Moving `*this` invalidates the view.
      */
-    string_view client_message() const noexcept { return is_server_ ? string_view() : string_view(msg_); }
+    string_view client_message() const noexcept
+    {
+        return impl_.is_server ? string_view() : string_view(impl_.msg);
+    }
 
     /**
      * \brief Gets the server-generated error message.
@@ -64,7 +66,10 @@ public:
      * The returned view is valid as long as `*this` is alive, hasn't been assigned-to
      * or moved-from, and \ref clear hasn't been called. Moving `*this` invalidates the view.
      */
-    string_view server_message() const noexcept { return is_server_ ? string_view(msg_) : string_view(); }
+    string_view server_message() const noexcept
+    {
+        return impl_.is_server ? string_view(impl_.msg) : string_view();
+    }
 
     /**
      * \brief Clears the error messages.
@@ -73,17 +78,32 @@ public:
      */
     void clear() noexcept
     {
-        is_server_ = false;
-        msg_.clear();
+        impl_.is_server = false;
+        impl_.msg.clear();
     }
 
 private:
-    bool is_server_{};
-    std::string msg_;
-
 #ifndef BOOST_MYSQL_DOXYGEN
+    struct
+    {
+        bool is_server{};
+        std::string msg;
+
+        void assign_client(std::string from)
+        {
+            msg = std::move(from);
+            is_server = false;
+        }
+
+        void assign_server(std::string from)
+        {
+            msg = std::move(from);
+            is_server = true;
+        }
+    } impl_;
+
     friend bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept;
-    friend struct detail::diagnostics_access;
+    friend struct detail::access;
 #endif
 };
 
@@ -95,7 +115,7 @@ private:
  */
 inline bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept
 {
-    return lhs.is_server_ == rhs.is_server_ && lhs.msg_ == rhs.msg_;
+    return lhs.impl_.is_server == rhs.impl_.is_server && lhs.impl_.msg == rhs.impl_.msg;
 }
 
 /**
@@ -108,7 +128,5 @@ inline bool operator!=(const diagnostics& lhs, const diagnostics& rhs) noexcept 
 
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/impl/diagnostics.hpp>
 
 #endif

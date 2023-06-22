@@ -16,7 +16,7 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
 
 namespace boost {
@@ -225,7 +225,7 @@ private:
     static_assert(sizeof...(StaticRow) > 0, "static_execution_state requires one row type, at least");
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::impl_access;
+    friend struct detail::access;
 #endif
 };
 

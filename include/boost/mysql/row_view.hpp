@@ -11,11 +11,12 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
+
+#include <boost/throw_exception.hpp>
 
 #include <cstddef>
-#include <iosfwd>
-#include <iterator>
+#include <stdexcept>
 #include <vector>
 
 namespace boost {
@@ -109,7 +110,12 @@ public:
      * \par Complexity
      * Constant.
      */
-    inline field_view at(std::size_t i) const;
+    field_view at(std::size_t i) const
+    {
+        if (i >= size_)
+            BOOST_THROW_EXCEPTION(std::out_of_range("row_view::at"));
+        return fields_[i];
+    }
 
     /**
      * \brief Returns the i-th element in the row (unchecked access).
@@ -201,7 +207,7 @@ private:
     std::size_t size_{};
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::row_view_access;
+    friend struct detail::access;
     friend class row;
 #endif
 };
@@ -218,7 +224,17 @@ private:
  * \par Complexity
  * Linear in `lhs.size()` and `rhs.size()`.
  */
-inline bool operator==(const row_view& lhs, const row_view& rhs) noexcept;
+inline bool operator==(const row_view& lhs, const row_view& rhs) noexcept
+{
+    if (lhs.size() != rhs.size())
+        return false;
+    for (std::size_t i = 0; i < lhs.size(); ++i)
+    {
+        if (lhs[i] != rhs[i])
+            return false;
+    }
+    return true;
+}
 
 /**
  * \relates row_view
@@ -234,7 +250,5 @@ inline bool operator!=(const row_view& lhs, const row_view& rhs) noexcept { retu
 
 }  // namespace mysql
 }  // namespace boost
-
-#include <boost/mysql/impl/row_view.hpp>
 
 #endif

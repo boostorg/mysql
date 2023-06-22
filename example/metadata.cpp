@@ -7,9 +7,14 @@
 
 //[example_metadata
 
-#include <boost/mysql.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/results.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 
 #include <iostream>
