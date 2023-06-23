@@ -14,20 +14,23 @@ jobs:
     strategy:
       matrix:
         include:
-          - { image: build-clang3_6,  dockerfile: build-clang3_6,  platforms: "linux/amd64",                }
-          - { image: build-clang7,    dockerfile: build-clang7,    platforms: "linux/amd64",                }
-          - { image: build-clang11,   dockerfile: build-clang11,   platforms: "linux/amd64",                }
-          - { image: build-clang14,   dockerfile: build-clang14,   platforms: "linux/amd64, linux/arm64/v8" }
-          - { image: build-gcc5,      dockerfile: build-gcc5,      platforms: "linux/amd64",                }
-          - { image: build-gcc6,      dockerfile: build-gcc6,      platforms: "linux/amd64",                }
-          - { image: build-gcc10,     dockerfile: build-gcc10,     platforms: "linux/amd64",                }
-          - { image: build-gcc11,     dockerfile: build-gcc11,     platforms: "linux/amd64, linux/arm64/v8" }
-          - { image: build-cmake3_8,  dockerfile: build-cmake3_8,  platforms: "linux/amd64",                }
-          - { image: build-noopenssl, dockerfile: build-noopenssl, platforms: "linux/amd64",                }
-          - { image: build-docs,      dockerfile: build-docs,      platforms: "linux/amd64",                }
-          - { image: mysql5,          dockerfile: mysql5,          platforms: "linux/amd64",                }
-          - { image: mysql8,          dockerfile: mysql8,          platforms: "linux/amd64, linux/arm64/v8" }
-          - { image: mariadb,         dockerfile: mariadb,         platforms: "linux/amd64, linux/arm64/v8" }
+          - { image: build-clang3_6,     dockerfile: build-clang3_6,     platforms: "linux/amd64",                }
+          - { image: build-clang7,       dockerfile: build-clang7,       platforms: "linux/amd64",                }
+          - { image: build-clang11,      dockerfile: build-clang11,      platforms: "linux/amd64",                }
+          - { image: build-clang14,      dockerfile: build-clang14,      platforms: "linux/amd64, linux/arm64/v8" }
+          - { image: build-clang16,      dockerfile: build-clang16,      platforms: "linux/amd64"                 }
+          - { image: build-clang16-i386, dockerfile: build-clang16-i386, platforms: "linux/amd64"                 }
+          - { image: build-gcc5,         dockerfile: build-gcc5,         platforms: "linux/amd64",                }
+          - { image: build-gcc6,         dockerfile: build-gcc6,         platforms: "linux/amd64",                }
+          - { image: build-gcc10,        dockerfile: build-gcc10,        platforms: "linux/amd64",                }
+          - { image: build-gcc11,        dockerfile: build-gcc11,        platforms: "linux/amd64, linux/arm64/v8" }
+          - { image: build-gcc13,        dockerfile: build-gcc13,        platforms: "linux/amd64"                 }
+          - { image: build-cmake3_8,     dockerfile: build-cmake3_8,     platforms: "linux/amd64",                }
+          - { image: build-noopenssl,    dockerfile: build-noopenssl,    platforms: "linux/amd64",                }
+          - { image: build-docs,         dockerfile: build-docs,         platforms: "linux/amd64",                }
+          - { image: mysql5,             dockerfile: mysql5,             platforms: "linux/amd64",                }
+          - { image: mysql8,             dockerfile: mysql8,             platforms: "linux/amd64, linux/arm64/v8" }
+          - { image: mariadb,            dockerfile: mariadb,            platforms: "linux/amd64, linux/arm64/v8" }
 
     permissions:
       contents: read

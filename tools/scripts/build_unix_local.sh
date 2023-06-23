@@ -9,8 +9,8 @@
 set -e
 
 BK=b2
-IMAGE=build-gcc11
-SHA=a6ccc56343736f8b4edea3686c92d9856469fa36
+IMAGE=build-gcc13
+SHA=6efce57d289bfa028da8d4a9b50158f1f073984f
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
 DB=mysql8
@@ -28,7 +28,8 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --valgrind=0 \
     --coverage=0 \
     --clean=0 \
-    --toolset=gcc \
+    --toolset=gcc-13 \
+    --address-model=64 \
     --cxxstd=20 \
     --variant=debug \
     --separate-compilation=1 \

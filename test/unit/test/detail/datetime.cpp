@@ -27,14 +27,16 @@ using namespace boost::mysql::detail;
 
 BOOST_AUTO_TEST_SUITE(test_datetime_detail)
 
+using test_name_t = std::array<char, 32>;
+
 class test_state
 {
-    const char* context_ = "";
+    test_name_t test_name_{};
     std::vector<std::string> failed_assertions_;
 
 public:
     const std::vector<std::string>& failures() const noexcept { return failed_assertions_; }
-    void set_context(const char* v) noexcept { context_ = v; }
+    void set_test_name(test_name_t v) noexcept { test_name_ = v; }
 
     template <class T1, class T2>
     void assert_equals(const T1& v1, const T2& v2, int line)
@@ -42,7 +44,7 @@ public:
         if (v1 != v2)
         {
             failed_assertions_.push_back(
-                stringize(__FILE__, ":", line, " (context=", context_, "): ", v1, " != ", v2)
+                stringize(__FILE__, ":", line, " (context=", test_name_.data(), "): ", v1, " != ", v2)
             );
         }
     }
@@ -109,8 +111,7 @@ BOOST_AUTO_TEST_CASE(coverage)
             std::uint8_t last_month_day = month == 2 && leap ? 29u : last_day_of_month(month);
             for (std::uint8_t day = 1; day <= 32; ++day)
             {
-                auto test_name = date_to_string(year, month, day);
-                st.set_context(test_name.data());
+                st.set_test_name(date_to_string(year, month, day));
 
                 BOOST_MYSQL_ASSERT_EQ(st, (is_valid(year, month, day)), (day <= last_month_day));
             }
@@ -159,13 +160,12 @@ BOOST_AUTO_TEST_SUITE_END()
 // Helper function that actually performs the assertions for us
 void ymd_years_test(test_state& st, std::uint16_t year, std::uint8_t month, std::uint8_t day, int num_days)
 {
-    auto test_name = date_to_string(year, month, day);
-    st.set_context(test_name.data());
+    st.set_test_name(date_to_string(year, month, day));
 
     BOOST_MYSQL_ASSERT_EQ(st, is_valid(year, month, day), true);
     BOOST_MYSQL_ASSERT_EQ(st, ymd_to_days(year, month, day), num_days);
-    std::uint16_t output_year;
-    std::uint8_t output_month, output_day;
+    std::uint16_t output_year{};
+    std::uint8_t output_month{}, output_day{};
     bool ok = days_to_ymd(num_days, output_year, output_month, output_day);
 
     BOOST_MYSQL_ASSERT_EQ(st, ok, true);
