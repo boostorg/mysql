@@ -6,48 +6,63 @@
 #
 
 # This may be called from add_subdirectory, too
-if (BOOST_MYSQL_USE_FIND_PACKAGE)
+if(BOOST_MYSQL_IS_ROOT)
     find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS unit_test_framework)
 endif()
 
-# Test common
+# Separately compiled Boost.MySQL and Boost.Asio
 add_library(
-    boost_mysql_testing
-    INTERFACE
+    boost_mysql_compiled
+    STATIC
+    common/src/boost_asio.cpp
+    common/src/boost_mysql.cpp
 )
-target_include_directories(
-    boost_mysql_testing
-    INTERFACE
-    common
+target_compile_definitions(
+    boost_mysql_compiled
+    PUBLIC
+    BOOST_ASIO_SEPARATE_COMPILATION
+    BOOST_MYSQL_SEPARATE_COMPILATION
 )
+target_link_libraries(boost_mysql_compiled PUBLIC boost_mysql)
+boost_mysql_common_target_settings(boost_mysql_compiled)
 
-if (BOOST_MYSQL_USE_FIND_PACKAGE)
-    set(_TEST_LIBRARIES
-        Boost::headers
+# boost_mysql_testing contains common definitions, includes and settings.
+# Note: old versions of cmake require the sources passed to target_sources to be absolute
+add_library(boost_mysql_testing INTERFACE)
+target_sources(
+    boost_mysql_testing
+    INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/src/entry_point.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/src/tracker_executor.cpp
+)
+target_link_libraries(boost_mysql_testing INTERFACE boost_mysql_compiled)
+
+if(BOOST_MYSQL_IS_ROOT)
+    target_link_libraries(
+        boost_mysql_testing
+        INTERFACE
         Boost::unit_test_framework
         Boost::disable_autolinking
     )
 else()
-    set(_TEST_LIBRARIES
-        Boost::any
-        Boost::optional
+    target_link_libraries(
+        boost_mysql_testing
+        INTERFACE
         Boost::unit_test_framework
-        Boost::type_index
+        Boost::optional
     )
 endif()
 
-target_link_libraries(
+target_compile_features(
     boost_mysql_testing
     INTERFACE
-    ${_TEST_LIBRARIES}
-    Boost::mysql
-    boost_mysql_asio
+    cxx_std_11
 )
-
-# Custom target tests; required by the Boost superproject
-if(NOT TARGET tests)
-    add_custom_target(tests)
-endif()
+target_include_directories(
+    boost_mysql_testing
+    INTERFACE
+    common/include
+)
 
 # Unit testing
 add_subdirectory(unit)

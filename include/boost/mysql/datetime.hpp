@@ -10,12 +10,18 @@
 
 #include <boost/mysql/days.hpp>
 
+#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/datetime.hpp>
+
+#include <boost/assert.hpp>
 #include <boost/config.hpp>
+#include <boost/throw_exception.hpp>
 
 #include <chrono>
 #include <cstdint>
 #include <iosfwd>
 #include <ratio>
+#include <stdexcept>
 
 namespace boost {
 namespace mysql {
@@ -139,7 +145,11 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr bool valid() const noexcept;
+    constexpr bool valid() const noexcept
+    {
+        return detail::is_valid(year_, month_, day_) && hour_ <= detail::max_hour &&
+               minute_ <= detail::max_min && second_ <= detail::max_sec && microsecond_ <= detail::max_micro;
+    }
 
     /**
      * \brief Converts `*this` into a `time_point` (unchecked access).
@@ -149,7 +159,11 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    BOOST_CXX14_CONSTEXPR inline time_point get_time_point() const noexcept;
+    BOOST_CXX14_CONSTEXPR time_point get_time_point() const noexcept
+    {
+        BOOST_ASSERT(valid());
+        return unch_get_time_point();
+    }
 
     /**
      * \brief Converts `*this` into a `time_point` (checked access).
@@ -157,7 +171,12 @@ public:
      * Strong guarantee.
      * \throws std::invalid_argument If `!this->valid()`.
      */
-    BOOST_CXX14_CONSTEXPR inline time_point as_time_point() const;
+    BOOST_CXX14_CONSTEXPR inline time_point as_time_point() const
+    {
+        if (!valid())
+            BOOST_THROW_EXCEPTION(std::invalid_argument("datetime::as_time_point: invalid datetime"));
+        return unch_get_time_point();
+    }
 
     /**
      * \brief Tests for equality.
@@ -167,7 +186,11 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr bool operator==(const datetime& rhs) const noexcept;
+    constexpr bool operator==(const datetime& rhs) const noexcept
+    {
+        return year_ == rhs.year_ && month_ == rhs.month_ && day_ == rhs.day_ && hour_ == rhs.hour_ &&
+               minute_ == rhs.minute_ && second_ == rhs.second_ && microsecond_ == rhs.microsecond_;
+    }
 
     /**
      * \brief Tests for inequality.
@@ -196,7 +219,14 @@ private:
     std::uint8_t second_{};
     std::uint32_t microsecond_{};
 
-    BOOST_CXX14_CONSTEXPR inline time_point unch_get_time_point() const noexcept;
+    BOOST_CXX14_CONSTEXPR inline time_point unch_get_time_point() const noexcept
+    {
+        // Doing time of day independently to prevent overflow
+        days d(detail::ymd_to_days(year_, month_, day_));
+        auto time_of_day = std::chrono::hours(hour_) + std::chrono::minutes(minute_) +
+                           std::chrono::seconds(second_) + std::chrono::microseconds(microsecond_);
+        return time_point(d) + time_of_day;
+    }
 };
 
 /**
@@ -204,7 +234,8 @@ private:
  * \brief Streams a datetime.
  * \details This function works for invalid datetimes, too.
  */
-inline std::ostream& operator<<(std::ostream& os, const datetime& v);
+BOOST_MYSQL_DECL
+std::ostream& operator<<(std::ostream& os, const datetime& v);
 
 /// The minimum allowed value for \ref datetime.
 constexpr datetime min_datetime(0u, 1u, 1u);
@@ -215,6 +246,49 @@ constexpr datetime max_datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999999u);
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/datetime.hpp>
+// Implementations
+BOOST_CXX14_CONSTEXPR boost::mysql::datetime::datetime(time_point tp)
+{
+    using std::chrono::duration_cast;
+    using std::chrono::hours;
+    using std::chrono::microseconds;
+    using std::chrono::minutes;
+    using std::chrono::seconds;
+
+    // Avoiding using -= for durations as it's not constexpr until C++17
+    auto input_dur = tp.time_since_epoch();
+    auto rem = input_dur % days(1);
+    auto num_days = duration_cast<days>(input_dur);
+    if (rem.count() < 0)
+    {
+        rem = rem + days(1);
+        num_days = num_days - days(1);
+    }
+    auto num_hours = duration_cast<hours>(rem);
+    rem = rem - num_hours;
+    auto num_minutes = duration_cast<minutes>(rem);
+    rem = rem - num_minutes;
+    auto num_seconds = duration_cast<seconds>(rem);
+    rem = rem - num_seconds;
+    auto num_microseconds = duration_cast<microseconds>(rem);
+
+    BOOST_ASSERT(num_hours.count() >= 0 && num_hours.count() <= detail::max_hour);
+    BOOST_ASSERT(num_minutes.count() >= 0 && num_minutes.count() <= detail::max_min);
+    BOOST_ASSERT(num_seconds.count() >= 0 && num_seconds.count() <= detail::max_sec);
+    BOOST_ASSERT(num_microseconds.count() >= 0 && num_microseconds.count() <= detail::max_micro);
+
+    bool ok = detail::days_to_ymd(num_days.count(), year_, month_, day_);
+    if (!ok)
+        BOOST_THROW_EXCEPTION(std::out_of_range("datetime::datetime: time_point was out of range"));
+
+    microsecond_ = static_cast<std::uint32_t>(num_microseconds.count());
+    second_ = static_cast<std::uint8_t>(num_seconds.count());
+    minute_ = static_cast<std::uint8_t>(num_minutes.count());
+    hour_ = static_cast<std::uint8_t>(num_hours.count());
+}
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/datetime.ipp>
+#endif
 
 #endif

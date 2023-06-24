@@ -10,7 +10,7 @@
 
 __Self__ is a C++11 client for the __Mysql__ and [@https://mariadb.com/ MariaDB] database servers, based on __Asio__.
 
-[section Motivation]
+[heading Motivation]
 
 MySQL and MariaDB are widespread SQL database servers. MySQL
 clients connect to the server in order to issue SQL queries. For this
@@ -48,9 +48,7 @@ Non-goals:
 * [*Portability to other SQL databases]. This library focuses on MySQL. It won't work with Postgres
   or SQLite.
 
-[endsect]
-
-[section When to use]
+[heading When to use]
 
 If any of the following statements is true, you may consider using __Self__:
 
@@ -71,55 +69,33 @@ It may not be a good fit for you if:
   library.
 
 
-[endsect]
 
-[section Requirements]
+[heading Tested compilers and systems]
 
-Boost.MySQL requires:
+Boost.MySQL is tested under the following compilers:
 
-* [*C++11] capable compiler. Tested with:
-    * gcc 5.4 (Linux)
-    * gcc 6.5 (Linux)
-    * gcc 10.3 (Linux)
-    * gcc 11.2 (Linux)
-    * clang 3.6 (Linux)
-    * clang 7.0 (Linux)
-    * clang 11.0 (Linux)
-    * clang 12.0 (Linux)
-    * clang 13.0 (OSX)
-    * MSVC 19.25 (Windows)
-* [*Boost]. Boost.MySQL does not work with the standalone version of __Asio__.
-* [*OpenSSL].
+* gcc 5.4 (Linux)
+* gcc 6.5 (Linux)
+* gcc 10.3 (Linux)
+* gcc 11.2 (Linux)
+* gcc 13.0 (Linux)
+* clang 3.6 (Linux)
+* clang 7.0 (Linux)
+* clang 11.0 (Linux)
+* clang 14.0 (Linux)
+* clang 16.0 (Linux)
+* clang 14.0 (OSX)
+* MSVC 14.1 - Visual Studio 2017 (Windows)
+* MSVC 14.2 - Visual Studio 2019 (Windows)
+* MSVC 14.3 - Visual Studio 2022 (Windows)
 
-Boost.MySQL is a header-only library. The following additional libraries are needed at link time:
-
-* OpenSSL is always required.
-* __Context__ is required when using coroutines created by
-  [@boost:/doc/html/boost_asio/reference/spawn.html `boost::asio::spawn`].
-
-If you are using CMake with a Boost distribution (e.g. one you downloaded and built with `b2`),
-you can use the following code to get the required setup:
-
-```
-project(boost_mysql_example LANGUAGES CXX)
-
-find_package(Boost REQUIRED COMPONENTS headers)
-find_package(Threads REQUIRED)
-find_package(OpenSSL REQUIRED)
-
-add_executable(main main.cpp)
-target_link_libraries(main PRIVATE Boost::headers Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
-```
-
-Boost.MySQL has been tested with the following RDBMS systems:
+And with the following RDBMS systems:
 
 * MySQL v5.7.41.
-* MySQL v8.0.31.
-* MariaDB v10.11.2.
+* MySQL v8.0.33.
+* MariaDB v11.0.
 
-[endsect]
-
-[section Acknowledgements]
+[heading Acknowledgements]
 
 I would like to specially acknowledge [@https://github.com/madmongo1 Richard Hodges] (hodges.r@gmail.com)
 for his invaluable technical guidance during development. Thanks also to
@@ -132,6 +108,5 @@ Finally, thanks to [@https://github.com/chriskohlhoff Christopher Kohlhoff]
 for his awesome __Asio__ library, and to [@https://github.com/HowardHinnant
 Howard Hinnant] for his date algorithms, shamelessly copied in this lib.
 
-[endsect]
 
 [endsect] [/intro]

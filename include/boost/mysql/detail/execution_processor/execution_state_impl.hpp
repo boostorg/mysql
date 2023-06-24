@@ -15,11 +15,8 @@
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/row_impl.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/constants.hpp>
-#include <boost/mysql/detail/protocol/deserialize_row.hpp>
 
 #include <boost/assert.hpp>
 
@@ -51,57 +48,27 @@ class execution_state_impl final : public execution_processor
         info_.clear();
     }
 
-    void on_ok_packet_impl(const ok_packet& pack)
-    {
-        eof_data_.has_value = true;
-        eof_data_.affected_rows = pack.affected_rows.value;
-        eof_data_.last_insert_id = pack.last_insert_id.value;
-        eof_data_.warnings = pack.warnings;
-        eof_data_.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
-        info_.assign(pack.info.value.begin(), pack.info.value.end());
-    }
+    BOOST_MYSQL_DECL
+    void on_ok_packet_impl(const ok_view& pack);
 
-    void reset_impl() noexcept override final
-    {
-        meta_.clear();
-        eof_data_ = ok_data();
-        info_.clear();
-    }
+    BOOST_MYSQL_DECL
+    void reset_impl() noexcept override final;
 
-    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override final
-    {
-        on_new_resultset();
-        on_ok_packet_impl(pack);
-        return error_code();
-    }
+    BOOST_MYSQL_DECL
+    error_code on_head_ok_packet_impl(const ok_view& pack, diagnostics&) override final;
 
-    void on_num_meta_impl(std::size_t num_columns) override final
-    {
-        on_new_resultset();
-        meta_.reserve(num_columns);
-    }
+    BOOST_MYSQL_DECL
+    void on_num_meta_impl(std::size_t num_columns) override final;
 
-    error_code on_meta_impl(metadata&& meta, string_view, bool, diagnostics&) override final
-    {
-        meta_.push_back(std::move(meta));
-        return error_code();
-    }
+    BOOST_MYSQL_DECL
+    error_code on_meta_impl(const coldef_view&, bool, diagnostics&) override final;
 
-    error_code on_row_impl(deserialization_context ctx, const output_ref&, std::vector<field_view>& fields)
-        override final
-    {
-        // add row storage
-        span<field_view> storage = add_fields(fields, meta_.size());
+    BOOST_MYSQL_DECL
+    error_code on_row_impl(span<const std::uint8_t> msg, const output_ref&, std::vector<field_view>& fields)
+        override final;
 
-        // deserialize the row
-        return deserialize_row(encoding(), ctx, meta_, storage);
-    }
-
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override final
-    {
-        on_ok_packet_impl(pack);
-        return error_code();
-    }
+    BOOST_MYSQL_DECL
+    error_code on_row_ok_packet_impl(const ok_view& pack) override final;
 
     void on_row_batch_start_impl() noexcept override final {}
 
@@ -148,5 +115,9 @@ public:
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/execution_state_impl.ipp>
+#endif
 
 #endif

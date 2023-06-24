@@ -7,7 +7,12 @@
 
 //[example_timeouts
 
-#include <boost/mysql.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
+#include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
@@ -28,6 +33,7 @@
 #include <boost/asio/experimental/awaitable_operators.hpp>
 
 using namespace boost::asio::experimental::awaitable_operators;
+using boost::asio::use_awaitable;
 using boost::mysql::error_code;
 
 constexpr std::chrono::milliseconds TIMEOUT(8000);
@@ -74,13 +80,13 @@ void check_error(
     boost::mysql::throw_on_error(ec, diag);
 }
 
-// We will use default completion tokens to make code less verbose. The timer
-// will use plain use_awaitable, while the other objects will use as_tuple(use_awaitable)
-// so that we can handle errors via error codes.
-using tuple_awaitable_t = boost::asio::as_tuple_t<boost::asio::use_awaitable_t<>>;
-using timer_type = boost::asio::use_awaitable_t<>::as_default_on_t<boost::asio::steady_timer>;
-using resolver_type = tuple_awaitable_t::as_default_on_t<boost::asio::ip::tcp::resolver>;
-using connection_type = tuple_awaitable_t::as_default_on_t<boost::mysql::tcp_ssl_connection>;
+// Using this completion token instead of plain use_awaitable prevents
+// co_await from throwing exceptions. Instead, co_await will return a std::tuple<error_code>
+// with a non-zero code on error. We will then use boost::mysql::throw_on_error
+// to throw exceptions with embedded diagnostics, if available. If you
+// employ plain use_awaitable, you will get boost::system::system_error exceptions
+// instead of boost::mysql::error_with_diagnostics exceptions. This is a limitation of use_awaitable.
+constexpr auto tuple_awaitable = boost::asio::as_tuple(boost::asio::use_awaitable);
 
 /**
  * We use Boost.Asio's cancellation capabilities to implement timeouts for our
@@ -101,9 +107,9 @@ using connection_type = tuple_awaitable_t::as_default_on_t<boost::mysql::tcp_ssl
  * in an unspecified state. You should close it and re-open it to get it working again.
  */
 boost::asio::awaitable<void> coro_main(
-    connection_type& conn,
-    resolver_type& resolver,
-    timer_type& timer,
+    boost::mysql::tcp_ssl_connection& conn,
+    boost::asio::ip::tcp::resolver& resolver,
+    boost::asio::steady_timer& timer,
     const boost::mysql::handshake_params& params,
     const char* hostname,
     const char* company_id
@@ -113,29 +119,38 @@ boost::asio::awaitable<void> coro_main(
 
     // Resolve hostname
     timer.expires_after(TIMEOUT);
-    auto endpoints = check_error(
-        co_await (timer.async_wait() || resolver.async_resolve(hostname, boost::mysql::default_port_string))
-    );
+    auto endpoints = check_error(co_await (
+        timer.async_wait(use_awaitable) ||
+        resolver.async_resolve(hostname, boost::mysql::default_port_string, tuple_awaitable)
+    ));
 
     // Connect to server. Note that we need to reset the timer before using it again.
     timer.expires_after(TIMEOUT);
-    auto op_result = co_await (timer.async_wait() || conn.async_connect(*endpoints.begin(), params, diag));
+    auto op_result = co_await (
+        timer.async_wait(use_awaitable) ||
+        conn.async_connect(*endpoints.begin(), params, diag, tuple_awaitable)
+    );
     check_error(op_result, diag);
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared
     // statement.
     auto stmt_op_result = co_await (
-        timer.async_wait() || conn.async_prepare_statement(
-                                  "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-                                  diag
-                              )
+        timer.async_wait(use_awaitable) ||
+        conn.async_prepare_statement(
+            "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
+            diag,
+            tuple_awaitable
+        )
     );
     boost::mysql::statement stmt = check_error(std::move(stmt_op_result), diag);
 
     // Execute the statement
     boost::mysql::results result;
     timer.expires_after(TIMEOUT);
-    op_result = co_await (timer.async_wait() || conn.async_execute(stmt.bind(company_id), result, diag));
+    op_result = co_await (
+        timer.async_wait(use_awaitable) ||
+        conn.async_execute(stmt.bind(company_id), result, diag, tuple_awaitable)
+    );
     check_error(op_result, diag);
 
     // Print all the obtained rows
@@ -145,7 +160,7 @@ boost::asio::awaitable<void> coro_main(
     }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
-    op_result = co_await (timer.async_wait() || conn.async_close(diag));
+    op_result = co_await (timer.async_wait(use_awaitable) || conn.async_close(diag, tuple_awaitable));
     check_error(op_result, diag);
 }
 
@@ -166,8 +181,8 @@ void main_impl(int argc, char** argv)
     // I/O context and connection. We use SSL because MySQL 8+ default settings require it.
     boost::asio::io_context ctx;
     boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
-    connection_type conn(ctx, ssl_ctx);
-    timer_type timer(ctx.get_executor());
+    boost::mysql::tcp_ssl_connection conn(ctx, ssl_ctx);
+    boost::asio::steady_timer timer(ctx.get_executor());
 
     // Connection parameters
     boost::mysql::handshake_params params(
@@ -177,7 +192,7 @@ void main_impl(int argc, char** argv)
     );
 
     // Resolver for hostname resolution
-    resolver_type resolver(ctx.get_executor());
+    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
 
     // The entry point. We pass in a function returning a boost::asio::awaitable<void>, as required.
     boost::asio::co_spawn(

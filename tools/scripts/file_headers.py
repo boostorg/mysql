@@ -7,7 +7,7 @@
 #
 
 import os
-import re
+from pathlib import Path
 from os import path
 from typing import List, Tuple
 import glob
@@ -24,6 +24,7 @@ BASE_FOLDERS = [
     'doc',
     'example',
     'include',
+    'src',
     'test',
     'tools',
     '.github'
@@ -41,9 +42,23 @@ HEADER_TEMPLATE = '''{begin}
 {linesym} file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 {end}'''
 
+SRC_HPP_TEMPLATE = '''
+// This file is meant to be included once, in a translation unit of
+// the program, with the macro BOOST_MYSQL_SEPARATE_COMPILATION defined.
+
+#include <boost/mysql/detail/config.hpp>
+
+#ifndef BOOST_MYSQL_SEPARATE_COMPILATION
+#error You need to define BOOST_MYSQL_SEPARATE_COMPILATION in all translation units that use the compiled version of Boost.MySQL, \\
+    as well as the one where this file is included.
+#endif
+
+{includes}
+
+#endif'''
+
 MYSQL_ERROR_HEADER = path.join(REPO_BASE, 'private', 'mysqld_error.h')
 MARIADB_ERROR_HEADER = path.join(REPO_BASE, 'private', 'mariadb_error.h')
-MYSQL_INCLUDE = re.compile('#include <boost/mysql/(.*)>')
 
 def find_first_blank(lines):
     return [i for i, line in enumerate(lines) if line == ''][0]
@@ -58,9 +73,6 @@ def write_file(fpath, lines):
 
 def text_to_lines(text):
     return [line + '\n' for line in text.split('\n')]
-
-def normalize_includes(lines: List[str]):
-    return [re.sub(MYSQL_INCLUDE, '#include <boost/mysql/\\1>', line) for line in lines]
 
 def gen_header(linesym, opensym=None, closesym=None, shebang=None, include_guard=None):
     opensym = linesym if opensym is None else opensym
@@ -89,7 +101,7 @@ class NormalProcessor(BaseProcessor):
         
     def process(self, lines: List[str], _: str) -> List[str]:
         first_blank = find_first_blank(line.replace('\n', '') for line in lines)
-        lines = self.header + normalize_includes(lines[first_blank:])
+        lines = self.header + lines[first_blank:]
         return lines
         
 class HppProcessor(BaseProcessor):
@@ -99,7 +111,7 @@ class HppProcessor(BaseProcessor):
         first_content = [i for i, line in enumerate(lines) if line.startswith('#define')][0] + 1
         iguard = self._gen_include_guard(fpath)
         header = gen_header('//', include_guard=iguard)
-        lines = header + normalize_includes(lines[first_content:])
+        lines = header + lines[first_content:]
         return lines
         
         
@@ -111,7 +123,41 @@ class HppProcessor(BaseProcessor):
         else:
             relpath = path.join('boost', 'mysql', path.relpath(fpath, REPO_BASE))
         return relpath.replace('/', '_').replace('.', '_').upper()
-        
+
+
+class SrcHppProcessor(HppProcessor):
+    name = 'src.hpp'
+
+    def process(self, _: List[str], fpath: str) -> List[str]:
+        base = Path(REPO_BASE)
+        includes = [
+            fname.relative_to(base.joinpath('include'))
+            for fname in sorted(base.joinpath('include', 'boost', 'mysql', 'impl').rglob('*.ipp'))
+        ]
+        return gen_header('//', include_guard=self._gen_include_guard(fpath)) + \
+            text_to_lines(
+                SRC_HPP_TEMPLATE.format(
+                    includes='\n'.join(f'#include <{inc}>' for inc in includes)
+                )
+            )
+
+
+class MysqlHppProcessor(HppProcessor):
+    name = 'mysql.hpp'
+
+    def process(self, _: List[str], fpath: str) -> List[str]:
+        base = Path(REPO_BASE)
+        includes = [
+            fname.relative_to(base.joinpath('include'))
+            for fname in sorted(base.joinpath('include', 'boost', 'mysql').glob('*.hpp'))
+            if fname.name != 'src.hpp'
+        ]
+        return gen_header('//', include_guard=self._gen_include_guard(fpath)) + \
+            ['\n'] + \
+            [f'#include <{inc}>\n' for inc in includes] + \
+            ['\n', '#endif\n']
+
+
 class XmlProcessor(BaseProcessor):
     name = 'xml'
     header = gen_header('   ', '<!--', '-->')
@@ -143,7 +189,8 @@ bash_processor = NormalProcessor('bash', gen_header('#', shebang='#!/bin/bash'))
 bat_processor = NormalProcessor('bat', gen_header('@REM'))
 
 FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
-    ('docca-base-stage2-noescape.xsl', IgnoreProcessor()),
+    ('src.hpp', SrcHppProcessor()),
+    ('mysql.hpp', MysqlHppProcessor()),
     ('CMakeLists.txt', hash_processor),
     ('.cmake', hash_processor),
     ('.cmake.in', hash_processor),
@@ -169,6 +216,7 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('valgrind_suppressions.txt', IgnoreProcessor()),
     ('.pem', IgnoreProcessor()),
     ('.md', IgnoreProcessor()),
+    ('.csv', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):

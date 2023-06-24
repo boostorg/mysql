@@ -6,11 +6,15 @@
 #
 
 _triggers = { "branch": [ "master", "develop", "drone*", "feature/*", "bugfix/*", "fix/*", "pr/*" ] }
-_container_tag = 'a6ccc56343736f8b4edea3686c92d9856469fa36'
+_container_tag = 'c94b77a716a0cc2cf5f489d9a97e9a0aefa7c0de'
+_win_container_tag = '6efce57d289bfa028da8d4a9b50158f1f073984f'
 
 
 def _image(name):
     return 'ghcr.io/anarthal-containers/{}:{}'.format(name, _container_tag)
+
+def _win_image(name):
+    return 'ghcr.io/anarthal-containers/{}:{}'.format(name, _win_container_tag)
 
 
 def _b2_command(
@@ -20,7 +24,10 @@ def _b2_command(
     variant,
     stdlib='native',
     address_model='64',
-    server_host='localhost'
+    server_host='localhost',
+    separate_compilation=1,
+    address_sanitizer=0,
+    undefined_sanitizer=0
 ):
     return 'python tools/ci.py ' + \
                 '--clean=1 ' + \
@@ -31,7 +38,10 @@ def _b2_command(
                 '--variant={} '.format(variant) + \
                 '--stdlib={} '.format(stdlib) + \
                 '--address-model={} '.format(address_model) + \
-                '--server-host={} '.format(server_host)
+                '--server-host={} '.format(server_host) + \
+                '--separate-compilation={} '.format(separate_compilation) + \
+                '--address-sanitizer={} '.format(address_sanitizer) + \
+                '--undefined-sanitizer={} '.format(undefined_sanitizer)
 
 
 def _cmake_command(
@@ -123,7 +133,11 @@ def linux_b2(
     cxxstd,
     variant='debug,release',
     stdlib='native',
-    arch='amd64'
+    address_model='64',
+    separate_compilation=1,
+    address_sanitizer=0,
+    undefined_sanitizer=0,
+    arch='amd64',
 ):
     command = _b2_command(
         source_dir='$(pwd)',
@@ -131,7 +145,11 @@ def linux_b2(
         cxxstd=cxxstd,
         variant=variant,
         stdlib=stdlib,
-        server_host='mysql'
+        address_model=address_model,
+        server_host='mysql',
+        separate_compilation=separate_compilation,
+        address_sanitizer=address_sanitizer,
+        undefined_sanitizer=undefined_sanitizer
     )
     return _pipeline(
         name=name,
@@ -238,23 +256,28 @@ def main(ctx):
         windows_cmake('Windows CMake shared', build_shared_libs=1),
 
         # B2 Linux
-        linux_b2('Linux B2 clang-3.6',      _image('build-clang3_6'), toolset='clang-3.6', cxxstd='11,14'),
-        linux_b2('Linux B2 clang-7',        _image('build-clang7'),   toolset='clang-7',   cxxstd='14,17'),
-        linux_b2('Linux B2 clang-11',       _image('build-clang11'),  toolset='clang-11',  cxxstd='20'),
-        linux_b2('Linux B2 clang-14',       _image('build-clang14'),  toolset='clang-14',  cxxstd='17,20'),
-        linux_b2('Linux B2 clang-libc++',   _image('build-clang14'),  toolset='clang-14',  cxxstd='20', stdlib='libc++'),
-        linux_b2('Linux B2 clang-14-arm64', _image('build-clang14'),  toolset='clang-14',  cxxstd='20', arch='arm64'),
-        linux_b2('Linux B2 gcc-5',          _image('build-gcc5'),     toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
-        linux_b2('Linux B2 gcc-6',          _image('build-gcc6'),     toolset='gcc-6',     cxxstd='14,17'),
-        linux_b2('Linux B2 gcc-10',         _image('build-gcc10'),    toolset='gcc-10',    cxxstd='17,20'),
-        linux_b2('Linux B2 gcc-11',         _image('build-gcc11'),    toolset='gcc-11',    cxxstd='17,20'),
-        linux_b2('Linux B2 gcc-11-arm64',   _image('build-gcc11'),    toolset='gcc-11',    cxxstd='20', arch='arm64'),
+        linux_b2('Linux B2 clang-3.6',            _image('build-clang3_6'),      toolset='clang-3.6', cxxstd='11,14'),
+        linux_b2('Linux B2 clang-7',              _image('build-clang7'),        toolset='clang-7',   cxxstd='14,17'),
+        linux_b2('Linux B2 clang-11',             _image('build-clang11'),       toolset='clang-11',  cxxstd='20'),
+        linux_b2('Linux B2 clang-14-header-only', _image('build-clang14'),       toolset='clang-14',  cxxstd='11,20', separate_compilation=0),
+        linux_b2('Linux B2 clang-14-libc++',      _image('build-clang14'),       toolset='clang-14',  cxxstd='20', stdlib='libc++'),
+        linux_b2('Linux B2 clang-14-arm64',       _image('build-clang14'),       toolset='clang-14',  cxxstd='20', arch='arm64'),
+        linux_b2('Linux B2 clang-16-sanit',       _image('build-clang16'),       toolset='clang-16',  cxxstd='20', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-16-i386-sanit',  _image('build-clang16-i386'),  toolset='clang-16',  cxxstd='20', address_model=32, address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 gcc-5',                _image('build-gcc5'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
+        linux_b2('Linux B2 gcc-6',                _image('build-gcc6'),          toolset='gcc-6',     cxxstd='14,17'),
+        linux_b2('Linux B2 gcc-10',               _image('build-gcc10'),         toolset='gcc-10',    cxxstd='17,20'),
+        linux_b2('Linux B2 gcc-11',               _image('build-gcc11'),         toolset='gcc-11',    cxxstd='20'),
+        linux_b2('Linux B2 gcc-11-arm64',         _image('build-gcc11'),         toolset='gcc-11',    cxxstd='11,20', arch='arm64', variant='release'),
+        linux_b2('Linux B2 gcc-11-arm64-sanit',   _image('build-gcc11'),         toolset='gcc-11',    cxxstd='20',    arch='arm64', variant='debug'),
+        linux_b2('Linux B2 gcc-13',               _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='release'),
+        linux_b2('Linux B2 gcc-13-sanit',         _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
 
         # B2 Windows
-        windows_b2('Windows B2 msvc14.1 32-bit', _image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
-        windows_b2('Windows B2 msvc14.1 64-bit', _image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='14,17',    variant='release',       address_model='64'),
-        windows_b2('Windows B2 msvc14.2',        _image('build-msvc14_2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release',       address_model='64'),
-        windows_b2('Windows B2 msvc14.3',        _image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release', address_model='64'),
+        windows_b2('Windows B2 msvc14.1 32-bit', _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
+        windows_b2('Windows B2 msvc14.1 64-bit', _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='14,17',    variant='release',       address_model='64'),
+        windows_b2('Windows B2 msvc14.2',        _win_image('build-msvc14_2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release',       address_model='64'),
+        windows_b2('Windows B2 msvc14.3',        _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release', address_model='64'),
 
         # Docs
         docs()

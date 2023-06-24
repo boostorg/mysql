@@ -13,12 +13,13 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/field_impl.hpp>
+#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/field_impl.hpp>
 
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>
-#include <ostream>
+#include <iosfwd>
 #include <string>
 #ifdef __cpp_lib_string_view
 #include <string_view>
@@ -881,7 +882,8 @@ public:
 private:
     detail::field_impl repr_;
 
-    inline void from_view(const field_view& v);
+    BOOST_MYSQL_DECL
+    void from_view(const field_view& v);
 };
 
 /**
@@ -944,11 +946,14 @@ inline bool operator!=(const field& lhs, const field_view& rhs) noexcept { retur
  * \relates field
  * \brief Streams a `field`.
  */
-inline std::ostream& operator<<(std::ostream& os, const field& v);
+BOOST_MYSQL_DECL
+std::ostream& operator<<(std::ostream& os, const field& v);
 
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/field.hpp>
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/field.ipp>
+#endif
 
 #endif

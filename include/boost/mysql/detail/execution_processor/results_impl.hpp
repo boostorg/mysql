@@ -16,11 +16,9 @@
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/row_impl.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/protocol/common_messages.hpp>
-#include <boost/mysql/detail/protocol/deserialization_context.hpp>
-#include <boost/mysql/detail/protocol/deserialize_row.hpp>
+#include <boost/mysql/detail/row_impl.hpp>
 
 #include <boost/assert.hpp>
 
@@ -77,20 +75,7 @@ public:
         BOOST_ASSERT(first_has_data_);
         return rest_.empty() ? first_ : rest_.back();
     }
-    per_resultset_data& emplace_back()
-    {
-        if (!first_has_data_)
-        {
-            first_ = per_resultset_data();
-            first_has_data_ = true;
-            return first_;
-        }
-        else
-        {
-            rest_.emplace_back();
-            return rest_.back();
-        }
-    }
+    BOOST_MYSQL_DECL per_resultset_data& emplace_back();
 };
 
 // Rows for all resultsets are stored in a single rows_impl object.
@@ -105,31 +90,21 @@ class results_impl final : public execution_processor
 public:
     results_impl() = default;
 
-    row_view get_out_params() const noexcept
-    {
-        BOOST_ASSERT(is_complete());
-        for (std::size_t i = 0; i < per_result_.size(); ++i)
-        {
-            if (per_result_[i].is_out_params)
-            {
-                auto res = get_rows(i);
-                return res.empty() ? row_view() : res[0];
-            }
-        }
-        return row_view();
-    }
+    BOOST_MYSQL_DECL
+    row_view get_out_params() const noexcept;
 
     std::size_t num_resultsets() const noexcept { return per_result_.size(); }
 
     rows_view get_rows(std::size_t index) const noexcept
     {
         const auto& resultset_data = per_result_[index];
-        return rows_view_access::construct(
+        return access::construct<rows_view>(
             rows_.fields().data() + resultset_data.field_offset,
             resultset_data.num_rows * resultset_data.num_columns,
             resultset_data.num_columns
         );
     }
+
     metadata_collection_view get_meta(std::size_t index) const noexcept
     {
         const auto& resultset_data = get_resultset(index);
@@ -163,65 +138,30 @@ public:
 
 private:
     // Virtual impls
-    void reset_impl() noexcept override
-    {
-        meta_.clear();
-        per_result_.clear();
-        info_.clear();
-        rows_.clear();
-        num_fields_at_batch_start_ = no_batch;
-    }
+    BOOST_MYSQL_DECL
+    void reset_impl() noexcept override final;
 
-    void on_num_meta_impl(std::size_t num_columns) override
-    {
-        auto& resultset_data = add_resultset();
-        meta_.reserve(meta_.size() + num_columns);
-        resultset_data.num_columns = num_columns;
-    }
+    BOOST_MYSQL_DECL
+    void on_num_meta_impl(std::size_t num_columns) override final;
 
-    error_code on_head_ok_packet_impl(const ok_packet& pack, diagnostics&) override
-    {
-        add_resultset();
-        on_ok_packet_impl(pack);
-        return error_code();
-    }
+    BOOST_MYSQL_DECL
+    error_code on_head_ok_packet_impl(const ok_view& pack, diagnostics&) override final;
 
-    error_code on_meta_impl(metadata&& meta, string_view, bool, diagnostics&) override
-    {
-        meta_.push_back(std::move(meta));
-        return error_code();
-    }
+    BOOST_MYSQL_DECL
+    error_code on_meta_impl(const coldef_view&, bool, diagnostics&) override final;
 
-    error_code on_row_impl(deserialization_context ctx, const output_ref&, std::vector<field_view>&) override
-    {
-        BOOST_ASSERT(has_active_batch());
+    BOOST_MYSQL_DECL
+    error_code on_row_impl(span<const std::uint8_t> msg, const output_ref&, std::vector<field_view>&)
+        override final;
 
-        // add row storage
-        std::size_t num_fields = current_resultset().num_columns;
-        span<field_view> storage = rows_.add_fields(num_fields);
-        ++current_resultset().num_rows;
+    BOOST_MYSQL_DECL
+    error_code on_row_ok_packet_impl(const ok_view& pack) override final;
 
-        // deserialize the row
-        auto err = deserialize_row(encoding(), ctx, current_resultset_meta(), storage);
-        if (err)
-            return err;
+    BOOST_MYSQL_DECL
+    void on_row_batch_start_impl() override final;
 
-        return error_code();
-    }
-
-    error_code on_row_ok_packet_impl(const ok_packet& pack) override
-    {
-        on_ok_packet_impl(pack);
-        return error_code();
-    }
-
-    void on_row_batch_start_impl() override final
-    {
-        BOOST_ASSERT(!has_active_batch());
-        num_fields_at_batch_start_ = rows_.fields().size();
-    }
-
-    void on_row_batch_finish_impl() override final { finish_batch(); }
+    BOOST_MYSQL_DECL
+    void on_row_batch_finish_impl() override final;
 
     // Data
     std::vector<metadata> meta_;
@@ -235,17 +175,8 @@ private:
 
     bool has_active_batch() const noexcept { return num_fields_at_batch_start_ != no_batch; }
 
-    void finish_batch()
-    {
-        if (has_active_batch())
-        {
-            rows_.copy_strings_as_offsets(
-                num_fields_at_batch_start_,
-                rows_.fields().size() - num_fields_at_batch_start_
-            );
-            num_fields_at_batch_start_ = no_batch;
-        }
-    }
+    BOOST_MYSQL_DECL
+    void finish_batch();
 
     per_resultset_data& current_resultset() noexcept
     {
@@ -259,33 +190,11 @@ private:
         return per_result_.back();
     }
 
-    per_resultset_data& add_resultset()
-    {
-        // Allocate a new per-resultset object
-        auto& resultset_data = per_result_.emplace_back();
-        resultset_data.meta_offset = meta_.size();
-        resultset_data.field_offset = rows_.fields().size();
-        resultset_data.info_offset = info_.size();
-        return resultset_data;
-    }
+    BOOST_MYSQL_DECL
+    per_resultset_data& add_resultset();
 
-    void on_ok_packet_impl(const ok_packet& pack)
-    {
-        auto& resultset_data = current_resultset();
-        resultset_data.affected_rows = pack.affected_rows.value;
-        resultset_data.last_insert_id = pack.last_insert_id.value;
-        resultset_data.warnings = pack.warnings;
-        resultset_data.info_size = pack.info.value.size();
-        resultset_data.has_ok_packet_data = true;
-        resultset_data.is_out_params = pack.status_flags & SERVER_PS_OUT_PARAMS;
-        info_.insert(info_.end(), pack.info.value.begin(), pack.info.value.end());
-        bool is_last = !(pack.status_flags & SERVER_MORE_RESULTS_EXISTS);
-        if (is_last)
-        {
-            finish_batch();
-            rows_.offsets_to_string_views();
-        }
-    }
+    BOOST_MYSQL_DECL
+    void on_ok_packet_impl(const ok_view& pack);
 
     const per_resultset_data& get_resultset(std::size_t index) const noexcept
     {
@@ -302,5 +211,9 @@ private:
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/results_impl.ipp>
+#endif
 
 #endif

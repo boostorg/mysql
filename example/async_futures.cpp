@@ -7,9 +7,15 @@
 
 //[example_async_futures
 
-#include <boost/mysql.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/results.hpp>
+#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/statement.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/use_future.hpp>
 #include <boost/system/system_error.hpp>

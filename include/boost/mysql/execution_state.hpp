@@ -8,16 +8,14 @@
 #ifndef BOOST_MYSQL_EXECUTION_STATE_HPP
 #define BOOST_MYSQL_EXECUTION_STATE_HPP
 
-#include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/auxiliar/access_fwd.hpp>
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
 #include <cstddef>
 #include <cstdint>
-#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -213,7 +211,7 @@ private:
     detail::execution_state_impl impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::impl_access;
+    friend struct detail::access;
 #endif
 };
 

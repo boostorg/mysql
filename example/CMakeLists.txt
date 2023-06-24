@@ -21,15 +21,14 @@ target_link_libraries(
     boost_mysql_examples_common
     INTERFACE
     Boost::disable_autolinking
-    Boost::mysql
-    boost_mysql_asio
+    boost_mysql_compiled
 )
 
 # Declare an example target
 function (add_example_target EXAMPLE_NAME EXAMPLE_PATH)
     add_executable(${EXAMPLE_NAME} ${EXAMPLE_PATH})
     target_link_libraries(${EXAMPLE_NAME} PRIVATE boost_mysql_examples_common ${ARGN})
-    common_target_settings(${EXAMPLE_NAME})
+    boost_mysql_common_target_settings(${EXAMPLE_NAME})
 endfunction()
 
 # Build and run an example
@@ -81,7 +80,6 @@ set (REGULAR_EXAMPLES
     async_callbacks
     async_coroutinescpp20
     async_futures
-    default_completion_tokens
     metadata
     ssl
     timeouts
