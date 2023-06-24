@@ -68,10 +68,13 @@ public:
     {
         std::memset(data(), value, size);
     }
-    deserialization_buffer(span<const std::uint8_t> data)
-        : size_(data.size()), data_(new std::uint8_t[data.size()])
+    deserialization_buffer(span<const std::uint8_t> data) : size_(data.size())
     {
-        std::memcpy(data_.get(), data.data(), data.size());
+        if (!data.empty())
+        {
+            data_.reset(new std::uint8_t[data.size()]);
+            std::memcpy(data_.get(), data.data(), data.size());
+        }
     }
     deserialization_buffer(const std::vector<std::uint8_t>& data)
         : deserialization_buffer(span<const std::uint8_t>(data))

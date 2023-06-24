@@ -20,9 +20,12 @@ namespace test {
 
 inline void concat(std::vector<std::uint8_t>& lhs, const void* buff, std::size_t size)
 {
-    auto current_size = lhs.size();
-    lhs.resize(current_size + size);
-    std::memcpy(lhs.data() + current_size, buff, size);
+    if (size)
+    {
+        auto current_size = lhs.size();
+        lhs.resize(current_size + size);
+        std::memcpy(lhs.data() + current_size, buff, size);
+    }
 }
 
 inline void concat(std::vector<std::uint8_t>& lhs, const std::vector<uint8_t>& rhs)

@@ -10,7 +10,7 @@ set -e
 
 BK=b2
 IMAGE=build-gcc13
-SHA=6efce57d289bfa028da8d4a9b50158f1f073984f
+SHA=c94b77a716a0cc2cf5f489d9a97e9a0aefa7c0de
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
 DB=mysql8
@@ -21,6 +21,7 @@ docker start $CONTAINER || docker run -dit \
     -v ~/workspace/mysql:/opt/boost-mysql \
     -v /var/run/mysqld:/var/run/mysqld \
     $FULL_IMAGE
+docker network connect my-net $DB || echo "DB already connected"
 docker network connect my-net $CONTAINER || echo "Network already connected"
 docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boost-mysql \
     --build-kind=$BK \
@@ -28,8 +29,10 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --valgrind=0 \
     --coverage=0 \
     --clean=0 \
-    --toolset=gcc-13 \
+    --toolset=gcc \
     --address-model=64 \
+    --address-sanitizer=0 \
+    --undefined-sanitizer=0 \
     --cxxstd=20 \
     --variant=debug \
     --separate-compilation=1 \

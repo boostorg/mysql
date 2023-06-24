@@ -20,7 +20,7 @@ using namespace boost::mysql::detail;
 using boost::mysql::column_type;
 
 template <class... Args>
-static void serialize_to_vector(std::vector<std::uint8_t>& res, const Args&... args)
+void serialize_to_vector_inplace(std::vector<std::uint8_t>& res, const Args&... args)
 {
     std::size_t size = get_size(args...);
     std::size_t old_size = res.size();
@@ -33,7 +33,7 @@ template <class... Args>
 static std::vector<std::uint8_t> serialize_to_vector(const Args&... args)
 {
     std::vector<std::uint8_t> res;
-    serialize_to_vector(res, args...);
+    serialize_to_vector_inplace(res, args...);
     return res;
 }
 
@@ -49,7 +49,7 @@ static std::vector<std::uint8_t> serialize_ok_impl(const ok_view& pack, std::uin
     // When info is empty, it's actually omitted in the ok_packet
     if (!pack.info.empty())
     {
-        serialize_to_vector(res, string_lenenc{pack.info});
+        serialize_to_vector_inplace(res, string_lenenc{pack.info});
     }
     return res;
 }
@@ -64,30 +64,26 @@ std::vector<std::uint8_t> boost::mysql::test::serialize_eof(const ok_view& pack)
     return serialize_ok_impl(pack, 0xfe);
 }
 
-static void serialize_err_impl(std::vector<std::uint8_t>& res, const err_view& err)
-{
-    serialize_to_vector(
-        res,
-        err.error_code,
-        string_fixed<1>{},  // SQL state marker
-        string_fixed<5>{},  // SQL state
-        string_eof{err.error_message}
-    );
-}
-
+// Trying to merge common code from the two functions below hits a gcc-13 codegen bug
 std::vector<std::uint8_t> boost::mysql::test::serialize_err_without_header(const err_view& pack)
 {
-    std::vector<std::uint8_t> res;
-    serialize_err_impl(res, pack);
-    return res;
+    return serialize_to_vector(
+        pack.error_code,
+        string_fixed<1>{},  // SQL state marker
+        string_fixed<5>{},  // SQL state
+        string_eof{pack.error_message}
+    );
 }
 
 std::vector<std::uint8_t> boost::mysql::test::serialize_err(const err_view& pack)
 {
-    std::vector<std::uint8_t> res;
-    serialize_to_vector(res, std::uint8_t(0xff));  // header
-    serialize_err_impl(res, pack);
-    return res;
+    return serialize_to_vector(
+        std::uint8_t(0xff),  // header
+        pack.error_code,
+        string_fixed<1>{},  // SQL state marker
+        string_fixed<5>{},  // SQL state
+        string_eof{pack.error_message}
+    );
 }
 
 static protocol_field_type to_protocol_type(column_type t) noexcept
@@ -157,11 +153,11 @@ std::vector<std::uint8_t> boost::mysql::test::serialize_text_row(span<const fiel
         case field_kind::double_: s = std::to_string(f.get_double()); break;
         case field_kind::string: s = f.get_string(); break;
         case field_kind::blob: s.assign(f.get_blob().begin(), f.get_blob().end()); break;
-        case field_kind::null: serialize_to_vector(res, std::uint8_t(0xfb)); continue;
+        case field_kind::null: serialize_to_vector_inplace(res, std::uint8_t(0xfb)); continue;
         default: throw std::runtime_error("create_text_row_message: type not implemented");
         }
         detail::string_lenenc slenenc{s};
-        serialize_to_vector(res, slenenc);
+        serialize_to_vector_inplace(res, slenenc);
     }
     return res;
 }

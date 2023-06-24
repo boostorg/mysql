@@ -64,8 +64,11 @@ std::size_t boost::mysql::test::test_stream::do_read(asio::mutable_buffer buff, 
 
     // Actually read
     std::size_t bytes_to_transfer = get_size_to_read(buff.size());
-    std::memcpy(buff.data(), bytes_to_read_.data() + num_bytes_read_, bytes_to_transfer);
-    num_bytes_read_ += bytes_to_transfer;
+    if (bytes_to_transfer)
+    {
+        std::memcpy(buff.data(), bytes_to_read_.data() + num_bytes_read_, bytes_to_transfer);
+        num_bytes_read_ += bytes_to_transfer;
+    }
 
     // Clear errors
     ec = error_code();

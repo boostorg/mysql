@@ -71,7 +71,8 @@ BOOST_AUTO_TEST_CASE(from_to_time_point)
         {"hmsu_halffraction2",     1276605030500000,   datetime(2010, 6,  15, 12, 30, 30, 500000)},
         {"hmsu_maxfraction2",      1293839999999999,   datetime(2010, 12, 31, 23, 59, 59, 999999)},
 
-        {"neg_date",               -37843200000000,    datetime(1968, 10, 20, 0,  0,  0,  0)     },
+        {"neg_date",               -86400000000,       datetime(1969, 12, 31, 0,  0,  0,  0)     },
+        {"neg_date_2",             -3 * 86400000000,   datetime(1969, 12, 29, 0,  0,  0,  0)     },
         {"neg_date_leap4",         -11544768000000000, datetime(1604, 2,  29, 0,  0,  0,  0)     },
         {"neg_date_leap400",       -11670998400000000, datetime(1600, 2,  29, 0,  0,  0,  0)     },
         {"neg_u",                  -84239999876544,    datetime(1967, 5,  2,  0,  0,  0,  123456)},

@@ -19,6 +19,8 @@
 #include <cstring>
 #include <vector>
 
+#include "test_common/buffer_concat.hpp"
+
 namespace boost {
 namespace mysql {
 namespace test {
@@ -26,10 +28,10 @@ namespace test {
 inline std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, span<const std::uint8_t> body)
 {
     BOOST_ASSERT(body.size() <= 0xffffff);  // it should fit in a single frame
-    std::vector<std::uint8_t> res(body.size() + 4);
+    std::vector<std::uint8_t> res(detail::frame_header_size);
     detail::frame_header header{static_cast<std::uint32_t>(body.size()), seqnum};
     detail::serialize_frame_header(header, span<std::uint8_t, detail::frame_header_size>{res.data(), 4u});
-    std::memcpy(res.data() + 4, body.data(), body.size());
+    concat(res, body.data(), body.size());
     return res;
 }
 

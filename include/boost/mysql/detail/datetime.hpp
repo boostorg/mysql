@@ -15,6 +15,7 @@
 #include <boost/config.hpp>
 
 #include <cstdint>
+#include <limits>
 
 namespace boost {
 namespace mysql {
@@ -70,7 +71,12 @@ BOOST_CXX14_CONSTEXPR inline bool days_to_ymd(
     std::uint8_t& day
 ) noexcept
 {
-    num_days += 719468;
+    // Prevent overflow
+    constexpr int days_magic = 719468;
+    if (num_days > (std::numeric_limits<int>::max)() - days_magic)
+        return false;
+
+    num_days += days_magic;
     const int era = (num_days >= 0 ? num_days : num_days - 146096) / 146097;
     const unsigned doe = static_cast<unsigned>(num_days - era * 146097);         // [0, 146096]
     const unsigned yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;  // [0, 399]

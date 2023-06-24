@@ -63,8 +63,12 @@ public:
     void advance(std::size_t size) noexcept { first_ += size; }
     void write(const void* buffer, std::size_t size) noexcept
     {
-        memcpy(first_, buffer, size);
-        advance(size);
+        if (size)
+        {
+            BOOST_ASSERT(buffer != nullptr);
+            std::memcpy(first_, buffer, size);
+            advance(size);
+        }
     }
     void write(std::uint8_t elm) noexcept
     {

@@ -258,9 +258,12 @@ BOOST_CXX14_CONSTEXPR boost::mysql::datetime::datetime(time_point tp)
     // Avoiding using -= for durations as it's not constexpr until C++17
     auto input_dur = tp.time_since_epoch();
     auto rem = input_dur % days(1);
+    auto num_days = duration_cast<days>(input_dur);
     if (rem.count() < 0)
+    {
         rem = rem + days(1);
-    auto num_days = duration_cast<days>(input_dur - rem);
+        num_days = num_days - days(1);
+    }
     auto num_hours = duration_cast<hours>(rem);
     rem = rem - num_hours;
     auto num_minutes = duration_cast<minutes>(rem);

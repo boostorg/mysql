@@ -78,10 +78,12 @@ Boost.MySQL is tested under the following compilers:
 * gcc 6.5 (Linux)
 * gcc 10.3 (Linux)
 * gcc 11.2 (Linux)
+* gcc 13.0 (Linux)
 * clang 3.6 (Linux)
 * clang 7.0 (Linux)
 * clang 11.0 (Linux)
 * clang 14.0 (Linux)
+* clang 16.0 (Linux)
 * clang 14.0 (OSX)
 * MSVC 14.1 - Visual Studio 2017 (Windows)
 * MSVC 14.2 - Visual Studio 2019 (Windows)
@@ -90,8 +92,8 @@ Boost.MySQL is tested under the following compilers:
 And with the following RDBMS systems:
 
 * MySQL v5.7.41.
-* MySQL v8.0.31.
-* MariaDB v10.11.2.
+* MySQL v8.0.33.
+* MariaDB v11.0.
 
 [heading Acknowledgements]
 

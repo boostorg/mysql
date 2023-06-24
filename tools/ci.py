@@ -182,9 +182,12 @@ def _b2_build(
     clean: bool = False,
     boost_branch: str = 'develop',
     db: str = 'mysql8',
-    separate_compilation: bool = True
+    separate_compilation: bool = True,
+    address_sanitizer: bool = False,
+    undefined_sanitizer: bool = False,
 ) -> None:
     # Config
+    os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
     if _is_windows:
         os.environ['OPENSSL_ROOT'] = 'C:\\openssl-{}'.format(address_model)
 
@@ -209,6 +212,9 @@ def _b2_build(
         'variant={}'.format(variant),
         'stdlib={}'.format(stdlib),
         'boost.mysql.separate-compilation={}'.format('on' if separate_compilation else 'off'),
+    ] + (['address-sanitizer=norecover'] if address_sanitizer else [])     # can only be disabled by omitting the arg
+      + (['undefined-sanitizer=norecover'] if undefined_sanitizer else []) # can only be disabled by omitting the arg
+      + [
         'warnings-as-errors=on',
         '-j4',
         'libs/mysql/test',
@@ -457,6 +463,8 @@ def main():
     parser.add_argument('--stdlib', choices=['native', 'libc++'], default='native')
     parser.add_argument('--address-model', choices=['32', '64'], default='64')
     parser.add_argument('--separate-compilation', type=_str2bool, default=True)
+    parser.add_argument('--address-sanitizer', type=_str2bool, default=False)
+    parser.add_argument('--undefined-sanitizer', type=_str2bool, default=False)
     parser.add_argument('--server-host', default='localhost')
 
     args = parser.parse_args()
@@ -472,6 +480,9 @@ def main():
             variant=args.variant,
             stdlib=args.stdlib,
             address_model=args.address_model,
+            separate_compilation=args.separate_compilation,
+            address_sanitizer=args.address_sanitizer,
+            undefined_sanitizer=args.undefined_sanitizer,
             clean=args.clean,
             boost_branch=boost_branch,
             db=args.db

@@ -241,8 +241,12 @@ BOOST_AUTO_TEST_CASE(days_to_ymd_limits)
     BOOST_TEST(month == 12);
     BOOST_TEST(day == 31);
 
-    // Above the upper limit
+    // Above the upper limit. 719468 is a magic number used within the algorithm that
+    // was found to cause signed int overflow
     BOOST_TEST(!days_to_ymd(2932897, years, month, day));
+    BOOST_TEST(!days_to_ymd((std::numeric_limits<int>::max)() - 719467, years, month, day));
+    BOOST_TEST(!days_to_ymd((std::numeric_limits<int>::max)() - 719468, years, month, day));
+    BOOST_TEST(!days_to_ymd((std::numeric_limits<int>::max)() - 719469, years, month, day));
     BOOST_TEST(!days_to_ymd((std::numeric_limits<int>::max)(), years, month, day));
 }
 
