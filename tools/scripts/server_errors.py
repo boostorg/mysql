@@ -12,14 +12,26 @@
 #  - There are common error codes and MariaDB/MySQL specific ones.
 #  - Some codes have been repurposed, renamed or removed from MySQL 5.x to MySQL 8.x and MariaDB.
 # To generate precise output, we need the mysqld_error.h header for MySQL 5.x, 8.x and MariaDB.
+# MySQL and MariaDB often rename, deprecate, etc. codes. To attempt to maintain sanity,
+# we generate a CSV file with what we did for the previous version. We load it and combine it
+# with the new errors, and we only perform backwards-compatible changes.
 
 import pandas as pd
 from os import path
 from pathlib import Path
-from typing import Tuple, Literal, List, Optional, cast
+from typing import Literal, List, Optional, cast, NamedTuple
 from subprocess import run
 
+
+# DataFrames have 'symbol', 'numbr' columns
+class ErrorCodes(NamedTuple):
+    common: pd.DataFrame
+    mysql: pd.DataFrame
+    mariadb: pd.DataFrame
+
+
 REPO_BASE = Path(path.abspath(path.join(path.dirname(path.realpath(__file__)), '..', '..')))
+_CSV_PATH = REPO_BASE.joinpath('tools', 'error_codes.csv')
 
 # All server errors range between 1000 and 4999. Errors between 2000 and 2999
 # are reserved for the client and are not used. In theory, codes between COMMON_ERROR_FIRST
@@ -252,7 +264,7 @@ def merge_mysql_errors(df_mysql5: pd.DataFrame, df_mysql8: pd.DataFrame) -> pd.D
 
 
 # Split between common and specific codes
-def generate_error_ranges(df_mysql: pd.DataFrame, df_mariadb: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def generate_error_ranges(df_mysql: pd.DataFrame, df_mariadb: pd.DataFrame) -> ErrorCodes:
     # Join
     joined = df_mysql.join(df_mariadb.set_index('numbr'), how='outer', on='numbr', lsuffix='_mysql', rsuffix='_mariadb')
     joined = joined[joined['numbr'] < COMMON_ERROR_LAST]
@@ -270,33 +282,76 @@ def generate_error_ranges(df_mysql: pd.DataFrame, df_mariadb: pd.DataFrame) -> T
     res_mysql_2 = df_mysql[df_mysql['numbr'] >= COMMON_ERROR_LAST]
     res_mariadb_2 = df_mariadb[df_mariadb['numbr'] >= COMMON_ERROR_LAST]
 
-    return (
-        res_common.sort_values(by='numbr'),
-        pd.concat([res_mysql_1, res_mysql_2]).sort_values(by='numbr'),
-        pd.concat([res_mariadb_1, res_mariadb_2]).sort_values(by='numbr')
+    return ErrorCodes(
+        common=res_common.sort_values(by='numbr'),
+        mysql=pd.concat([res_mysql_1, res_mysql_2]).sort_values(by='numbr'),
+        mariadb=pd.concat([res_mariadb_1, res_mariadb_2]).sort_values(by='numbr')
+    )
+
+# Does the full process. folder should contain the relevant headers
+def parse_headers(folder: Path) -> ErrorCodes:
+    df_mysql8_header = parse_err_header(folder.joinpath('mysql8.h'))
+    df_mysql5_header = parse_err_header(folder.joinpath('mysql5.h'))
+    df_mariadb_header = parse_err_header(folder.joinpath('mariadb.h'))
+    df_mysql_header = merge_mysql_errors(df_mysql5_header, df_mysql8_header)
+    return generate_error_ranges(df_mysql_header, df_mariadb_header)
+
+
+# Writes a CSV file with the contents of headers, so we can keep track of what we did in the last Boost version
+def write_csv(codes: ErrorCodes) -> None:
+    df = pd.concat([
+        codes.common.assign(category='common'),
+        codes.mysql.assign(category='mysql'),
+        codes.mariadb.assign(category='mariadb')
+    ]).sort_values(by=['numbr', 'category'])
+    df.to_csv(_CSV_PATH, index=False)
+
+
+# Loads the CSV file from the previous version
+def load_csv() -> ErrorCodes:
+    df = pd.read_csv(_CSV_PATH)
+    return ErrorCodes(
+        common=df[df['category'] == 'common'].drop(columns=['category']),
+        mysql=df[df['category'] == 'mysql'].drop(columns=['category']),
+        mariadb=df[df['category'] == 'mariadb'].drop(columns=['category']),
+    )
+
+
+def _merge_new_codes_single(df_common: pd.DataFrame, df_old: pd.DataFrame, df_new: pd.DataFrame) -> pd.DataFrame:
+    # Remove anything that's already present in the current headers
+    temp = pd.concat([df_common, df_new, df_common]).drop_duplicates(subset='numbr', keep=False)
+    temp = pd.concat([df_old, temp, df_old]).drop_duplicates(subset='numbr', keep=False)
+    return pd.concat([df_old, temp])
+
+
+def merge_new_codes(old: ErrorCodes, new: ErrorCodes) -> ErrorCodes:
+    return ErrorCodes(
+        common=old.common, # the common range never gets modified
+        mysql=_merge_new_codes_single(old.common, old.mysql, new.mysql),
+        mariadb=_merge_new_codes_single(old.common, old.mariadb, new.mariadb),
     )
 
 
 # Actually perform the generation
-def write_headers(df_common: pd.DataFrame, df_mysql: pd.DataFrame, df_mariadb: pd.DataFrame) -> None:
+def write_headers(codes: ErrorCodes) -> None:
     def header_path(p: List[str]) -> Path:
         return REPO_BASE.joinpath('include', 'boost', 'mysql', *p)
 
     # common_server_errc.hpp
     with open(header_path(['common_server_errc.hpp']), 'wt') as f:
-        f.write(render_common_server_errc(df_common))
+        f.write(render_common_server_errc(codes.common))
     
     # mysql_server_errc.hpp
     with open(header_path(['mysql_server_errc.hpp']), 'wt') as f:
-        f.write(render_server_specific_errc('mysql', df_mysql))
+        f.write(render_server_specific_errc('mysql', codes.mysql))
 
     # mariadb_server_errc.hpp
     with open(header_path(['mariadb_server_errc.hpp']), 'wt') as f:
-        f.write(render_server_specific_errc('mariadb', df_mariadb))
+        f.write(render_server_specific_errc('mariadb', codes.mariadb))
     
     # detail/auxiliar/server_errc_strings.hpp
     with open(header_path(['impl', 'internal', 'error', 'server_error_to_string.ipp']), 'wt') as f:
-        f.write(render_server_error_to_string(df_common, df_mysql, df_mariadb))
+        f.write(render_server_error_to_string(codes.common, codes.mysql, codes.mariadb))
 
 
 # We need to run file_headers.py to set copyrights and headers
@@ -305,12 +360,11 @@ def invoke_file_headers() -> None:
 
 
 def main():
-    df_mysql8_header = parse_err_header(REPO_BASE.joinpath('private', 'mysqld_error.h'))
-    df_mysql5_header = parse_err_header(REPO_BASE.joinpath('private', 'mysql5_error.h'))
-    df_mariadb_header = parse_err_header(REPO_BASE.joinpath('private', 'mariadb_error.h'))
-    df_mysql_header = merge_mysql_errors(df_mysql5_header, df_mysql8_header)
-    df_common, df_mysql, df_mariadb = generate_error_ranges(df_mysql_header, df_mariadb_header)
-    write_headers(df_common, df_mysql, df_mariadb)
+    old_codes = load_csv()
+    new_codes = parse_headers(REPO_BASE.joinpath('private', 'errors', '1.83'))
+    codes = merge_new_codes(old_codes, new_codes)
+    write_csv(codes)
+    write_headers(codes)
     invoke_file_headers()
 
             

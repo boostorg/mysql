@@ -15,7 +15,11 @@ CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
 DB=mysql8
 
-docker start $DB
+docker start $DB || docker run -d \
+    --name $DB \
+    -v /var/run/mysqld:/var/run/mysqld \
+    -p 3306:3306 \
+    ghcr.io/anarthal-containers/$DB:$SHA
 docker start $CONTAINER || docker run -dit \
     --name $CONTAINER \
     -v ~/workspace/mysql:/opt/boost-mysql \

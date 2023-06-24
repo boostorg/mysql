@@ -216,6 +216,7 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('valgrind_suppressions.txt', IgnoreProcessor()),
     ('.pem', IgnoreProcessor()),
     ('.md', IgnoreProcessor()),
+    ('.csv', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):
