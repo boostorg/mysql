@@ -671,8 +671,8 @@ error_code deserialize_binary_row(
 {
     // Skip packet header (it is not part of the message in the binary
     // protocol but it is in the text protocol, so we include it for homogeneity)
-    // The caller will have checked we have this byte already for us
-    BOOST_ASSERT(ctx.enough_size(1));
+    if (!ctx.enough_size(1))
+        return client_errc::incomplete_message;
     ctx.advance(1);
 
     // Number of fields

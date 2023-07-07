@@ -1,0 +1,42 @@
+name: fuzz
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "25 00 * * *"
+  workflow_dispatch:
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/anarthal-containers/build-clang16
+    steps:
+      - name: Fetch code
+        uses: actions/checkout@v3
+
+      - name: Restore corpus
+        uses: actions/cache@v3
+        with:
+          path: /tmp/corpus.tar.gz
+          key: corpus-${{ github.run_id }}
+          restore-keys: corpus-
+        
+      # Note: this will take care of using the corpus and updating it
+      - name: Build and run the fuzzer
+        run: |
+          python tools/ci.py \
+            --build-kind=fuzz \
+            --source-dir=$(pwd)
+      
+      - name: Archive any crashes as an artifact
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: crashes
+          path: |
+            ~/boost-root/crash-*
+            ~/boost-root/leak-*
+            ~/boost-root/timeout-*
+          if-no-files-found: ignore

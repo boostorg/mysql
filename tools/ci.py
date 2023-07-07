@@ -11,7 +11,7 @@ from typing import List, Union
 import subprocess
 import os
 import stat
-from shutil import rmtree, copytree, ignore_patterns
+from shutil import rmtree, copytree, ignore_patterns, unpack_archive, make_archive
 import argparse
 import sys
 import enum
@@ -411,6 +411,52 @@ def _cmake_build(
         _run(['codecov', '-Z', '-f', 'coverage.info'])
 
 
+def _fuzz_build(
+    source_dir: Path,
+    clean: bool = False,
+    boost_branch: str = 'develop',
+) -> None:
+    # Config
+    os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
+
+    # Get Boost. This leaves us inside boost root
+    _install_boost(
+        _boost_root,
+        source_dir=source_dir,
+        clean=clean,
+        branch=boost_branch
+    )
+
+    # Setup corpus from previous runs. /tmp/corpus.tar.gz is restored by the CI
+    old_corpus = Path('/tmp/corpus.tar.gz')
+    if old_corpus.exists():
+        print('+  Restoring old corpus')
+        unpack_archive(old_corpus, extract_dir='/tmp/corpus')
+    else:
+        print('+  No old corpus found')
+    
+    # Setup the seed corpus
+    print('+  Unpacking seed corpus')
+    seed_corpus = _boost_root.joinpath('libs', 'mysql', 'test', 'fuzzing', 'seedcorpus.tar.gz')
+    unpack_archive(seed_corpus, extract_dir='/tmp/seedcorpus')
+
+    # Build and run the fuzzing targets
+    _run([
+        'b2',
+        '--abbreviate-paths',
+        'toolset=clang',
+        'cxxstd=20',
+        'warnings-as-errors=on',
+        '-j4',
+        'libs/mysql/test/fuzzing',
+    ])
+
+    # Archive the generated corpus, so the CI caches it
+    name = make_archive(str(old_corpus).rstrip('.tar.gz'), 'gztar', '/tmp/mincorpus')
+    print('  + Created min corpus archive {}'.format(name))
+    
+
+
 def _str2bool(v: Union[bool, str]) -> bool:
     if isinstance(v, bool):
         return v
@@ -444,7 +490,7 @@ def _deduce_boost_branch() -> str:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--build-kind', choices=['b2', 'cmake', 'docs'], required=True)
+    parser.add_argument('--build-kind', choices=['b2', 'cmake', 'fuzz', 'docs'], required=True)
     parser.add_argument('--source-dir', type=Path, required=True)
     parser.add_argument('--boost-branch', default=None) # None means "let this script deduce it"
     parser.add_argument('--generator', default='Ninja')
@@ -502,6 +548,12 @@ def main():
             cxxstd=args.cxxstd,
             boost_branch=boost_branch,
             db=args.db
+        )
+    elif args.build_kind == 'fuzz':
+        _fuzz_build(
+            source_dir=args.source_dir,
+            clean=args.clean,
+            boost_branch=boost_branch,
         )
     else:
         _doc_build(

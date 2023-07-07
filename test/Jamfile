@@ -96,13 +96,11 @@ local requirements =
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
         <define>BOOST_ASIO_SEPARATE_COMPILATION
-        <boost.mysql.separate-compilation>on:<define>BOOST_MYSQL_SEPARATE_COMPILATION
         <include>../include
     ;
 
-lib boost_mysql_compiled
+alias boost_mysql
     :
-        common/src/boost_asio.cpp
         ssl
         crypto
     : requirements
@@ -120,11 +118,21 @@ lib boost_mysql_compiled
             cxx11_template_aliases
             cxx11_variadic_templates
         ]
-        <boost.mysql.separate-compilation>on:<source>common/src/boost_mysql.cpp
-        <link>static
         $(requirements)
     : usage-requirements
         $(requirements)
+    ;
+
+lib boost_mysql_compiled
+    :
+        common/src/boost_asio.cpp
+        boost_mysql
+    : requirements
+        <boost.mysql.separate-compilation>on:<source>common/src/boost_mysql.cpp
+        <boost.mysql.separate-compilation>on:<define>BOOST_MYSQL_SEPARATE_COMPILATION
+        <link>static
+    : usage-requirements
+        <boost.mysql.separate-compilation>on:<define>BOOST_MYSQL_SEPARATE_COMPILATION
     ;
 
 alias common_test_sources
