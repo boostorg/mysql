@@ -29,9 +29,9 @@
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
+#include "test_unit/netfun_maker.hpp"
 #include "test_unit/printing.hpp"
 #include "test_unit/test_stream.hpp"
-#include "test_unit/unit_netfun_maker.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;

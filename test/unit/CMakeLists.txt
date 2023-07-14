@@ -44,6 +44,7 @@ add_executable(
     test/network_algorithms/execute.cpp
     test/network_algorithms/close_statement.cpp
     test/network_algorithms/ping.cpp
+    test/network_algorithms/reset_connection.cpp
     test/network_algorithms/read_some_rows_static.cpp
 
     test/detail/any_stream_impl.cpp
@@ -61,6 +62,7 @@ add_executable(
 
     test/misc.cpp
     test/multifn.cpp
+    test/default_completion_tokens.cpp
     test/execution_state.cpp
     test/static_execution_state.cpp
     test/results.cpp

@@ -439,6 +439,23 @@ BOOST_MYSQL_NETWORK_TEST(ping_error, network_fixture, all_network_samples())
     conn->ping().validate_any_error();
 }
 
+// Reset connection: no server error spotcheck.
+BOOST_MYSQL_NETWORK_TEST(reset_connection_success, network_fixture, all_network_samples())
+{
+    setup_and_connect(sample.net);
+
+    // Set some variable
+    results result;
+    conn->execute("SET @myvar = 42", result).validate_no_error();
+
+    // Reset connection
+    conn->reset_connection().validate_no_error();
+
+    // The variable has been reset
+    conn->execute("SELECT @myvar", result);
+    BOOST_TEST(result.rows().at(0).at(0).is_null());
+}
+
 // Quit connection: no server error spotcheck
 BOOST_MYSQL_NETWORK_TEST(quit_success, network_fixture, all_network_samples())
 {

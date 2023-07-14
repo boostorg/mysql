@@ -10,45 +10,63 @@
 #include "test_integration/streams.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 
-namespace {
+namespace boost {
+namespace mysql {
+namespace test {
 
-struct sync_errc_maker
+template <class Stream>
+class sync_errc_connection : public connection_base<Stream>
 {
-    static constexpr const char* name() { return "sync_errc"; }
+    using conn_type = connection<Stream>;
+    using base_type = connection_base<Stream>;
 
-    template <class Signature>
-    struct type;
-
-    template <class R, class Obj, class... Args>
-    struct type<network_result<R>(Obj&, Args...)>
+    // workaround for gcc5
+    template <class R, class... Args>
+    struct pmem
     {
-        using impl = netfun_maker_sync_impl<R, Obj&, Args...>;
-        using signature = std::function<network_result<R>(Obj&, Args...)>;
-        using sync_sig = R (Obj::*)(Args..., error_code&, diagnostics&);
-
-        static signature call(sync_sig sync) { return impl::sync_errc(sync); }
+        using type = R (conn_type::*)(Args..., error_code&, diagnostics&);
     };
+
+    template <class R, class... Args>
+    network_result<R> fn_impl(typename pmem<R, Args...>::type p, Args... args)
+    {
+        auto res = create_initial_netresult<R>();
+        invoke_and_assign(res, p, this->conn(), std::forward<Args>(args)..., res.err, *res.diag);
+        return res;
+    }
+
+public:
+// MSVC complains about passing empty tokens, which is valid C++
+#ifdef BOOST_MSVC
+#pragma warning(push)
+#pragma warning(disable : 4003)
+#endif
+    BOOST_MYSQL_TEST_IMPLEMENT_SYNC()
+#ifdef BOOST_MSVC
+#pragma warning(pop)
+#endif
+    static constexpr const char* name() noexcept { return "sync_errc"; }
 };
 
-}  // namespace
+template <class Stream>
+void add_sync_errc_variant(std::vector<er_network_variant*>& output)
+{
+    add_variant<sync_errc_connection<Stream>>(output);
+}
+
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 void boost::mysql::test::add_sync_errc(std::vector<er_network_variant*>& output)
 {
     // Verify that all streams work
-    static auto tcp = create_sync_variant<tcp_socket, sync_errc_maker>();
-    static auto tcp_ssl = create_sync_variant<tcp_ssl_socket, sync_errc_maker>();
+    add_sync_errc_variant<tcp_socket>(output);
+    add_sync_errc_variant<tcp_ssl_socket>(output);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    static auto unix = create_sync_variant<unix_socket, sync_errc_maker>();
-    static auto unix_ssl = create_sync_variant<unix_ssl_socket, sync_errc_maker>();
-#endif
-
-    output.push_back(&tcp);
-    output.push_back(&tcp_ssl);
-#if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    output.push_back(&unix);
-    output.push_back(&unix_ssl);
+    add_sync_errc_variant<unix_socket>(output);
+    add_sync_errc_variant<unix_ssl_socket>(output);
 #endif
 }

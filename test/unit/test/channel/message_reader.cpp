@@ -19,8 +19,8 @@
 #include "test_common/buffer_concat.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_frame.hpp"
+#include "test_unit/netfun_maker.hpp"
 #include "test_unit/test_stream.hpp"
-#include "test_unit/unit_netfun_maker.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;

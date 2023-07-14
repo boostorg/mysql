@@ -665,7 +665,18 @@ BOOST_AUTO_TEST_CASE(ping_serialization)
     do_serialize_toplevel_test(cmd, serialized);
 }
 
-BOOST_AUTO_TEST_CASE(deserialize_ping_response_)
+//
+// reset_connection
+//
+BOOST_AUTO_TEST_CASE(reset_connection_serialization)
+{
+    reset_connection_command cmd;
+    const std::uint8_t serialized[] = {0x1f};
+    do_serialize_toplevel_test(cmd, serialized);
+}
+
+// OK response (ping & reset connection)
+BOOST_AUTO_TEST_CASE(deserialize_ok_response_)
 {
     struct
     {
@@ -690,7 +701,7 @@ BOOST_AUTO_TEST_CASE(deserialize_ping_response_)
         BOOST_TEST_CONTEXT(tc.name)
         {
             diagnostics diag;
-            auto err = deserialize_ping_response(tc.message, db_flavor::mariadb, diag);
+            auto err = deserialize_ok_response(tc.message, db_flavor::mariadb, diag);
 
             BOOST_TEST(err == tc.expected_err);
             BOOST_TEST(diag.server_message() == tc.expected_msg);

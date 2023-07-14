@@ -25,7 +25,7 @@
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_row_message.hpp"
-#include "test_unit/unit_netfun_maker.hpp"
+#include "test_unit/netfun_maker.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;

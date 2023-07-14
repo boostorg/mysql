@@ -65,7 +65,10 @@ def find_first_blank(lines):
 
 def read_file(fpath):
     with open(fpath, 'rt') as f:
-        return f.readlines()
+        try:
+            return f.readlines()
+        except Exception as err:
+            raise SystemError(f'Error processing file {fpath}') from err
     
 def write_file(fpath, lines):
     with open(fpath, 'wt') as f:
@@ -88,6 +91,8 @@ def gen_header(linesym, opensym=None, closesym=None, shebang=None, include_guard
     return text_to_lines(HEADER_TEMPLATE.format(begin=begin, end=end, linesym=linesym))
 
 class BaseProcessor(metaclass=ABCMeta):
+    skip = False
+
     @abstractmethod
     def process(self, lines: List[str], fpath: str) -> List[str]:
         return lines
@@ -176,6 +181,7 @@ class XmlProcessor(BaseProcessor):
         
 class IgnoreProcessor(BaseProcessor):
     name = 'ignore'
+    skip = True
     
     def process(self, lines: List[str], _: str) -> List[str]:
         return lines
@@ -217,6 +223,8 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('.pem', IgnoreProcessor()),
     ('.md', IgnoreProcessor()),
     ('.csv', IgnoreProcessor()),
+    ('.tar.gz', IgnoreProcessor()),
+    ('.json', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):
@@ -224,10 +232,11 @@ def process_file(fpath: str):
         if fpath.endswith(ext):
             if VERBOSE:
                 print('Processing file {} with processor {}'.format(fpath, processor.name))
-            lines = read_file(fpath)
-            output_lines = processor.process(lines, fpath)
-            if output_lines != lines:
-                write_file(fpath, output_lines)
+            if not processor.skip:
+                lines = read_file(fpath)
+                output_lines = processor.process(lines, fpath)
+                if output_lines != lines:
+                    write_file(fpath, output_lines)
             break
     else:
         raise ValueError('Could not find a suitable processor for file: ' + fpath)

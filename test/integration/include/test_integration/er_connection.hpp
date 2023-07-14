@@ -77,6 +77,7 @@ public:
     virtual network_result<void> read_resultset_head(execution_state& st) = 0;
     virtual network_result<rows_view> read_some_rows(execution_state& st) = 0;
     virtual network_result<void> ping() = 0;
+    virtual network_result<void> reset_connection() = 0;
     virtual network_result<void> quit() = 0;
     virtual network_result<void> close() = 0;
 

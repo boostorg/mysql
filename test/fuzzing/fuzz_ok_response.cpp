@@ -12,16 +12,16 @@
 
 using namespace boost::mysql::detail;
 
-static bool parse_ping_response(const uint8_t* data, size_t size) noexcept
+static bool parse_ok_response(const uint8_t* data, size_t size) noexcept
 {
     boost::mysql::diagnostics diag;
-    auto ec = deserialize_ping_response({data, size}, db_flavor::mariadb, diag);
+    auto ec = deserialize_ok_response({data, size}, db_flavor::mariadb, diag);
     return !ec.failed() && diag.server_message().empty();
 }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
 {
     // Note: this code should never throw exceptions, for any kind of input
-    parse_ping_response(data, size);
+    parse_ok_response(data, size);
     return 0;
 }

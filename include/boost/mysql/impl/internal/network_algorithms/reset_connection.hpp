@@ -5,8 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_NETWORK_ALGORITHMS_PING_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_NETWORK_ALGORITHMS_PING_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_NETWORK_ALGORITHMS_RESET_CONNECTION_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_NETWORK_ALGORITHMS_RESET_CONNECTION_HPP
+
+#pragma once
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -24,17 +26,17 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline void serialize_ping_message(channel& chan)
+inline void serialize_reset_connection_message(channel& chan)
 {
-    chan.serialize(ping_command(), chan.reset_sequence_number());
+    chan.serialize(reset_connection_command(), chan.reset_sequence_number());
 }
 
-struct ping_op : boost::asio::coroutine
+struct reset_connection_op : boost::asio::coroutine
 {
     channel& chan_;
     diagnostics& diag_;
 
-    ping_op(channel& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
+    reset_connection_op(channel& chan, diagnostics& diag) noexcept : chan_(chan), diag_(diag) {}
 
     template <class Self>
     void operator()(Self& self, error_code err = {}, span<const std::uint8_t> buff = {})
@@ -52,7 +54,7 @@ struct ping_op : boost::asio::coroutine
             diag_.clear();
 
             // Serialize the message
-            serialize_ping_message(chan_);
+            serialize_reset_connection_message(chan_);
 
             // Write message
             BOOST_ASIO_CORO_YIELD chan_.async_write(std::move(self));
@@ -67,13 +69,13 @@ struct ping_op : boost::asio::coroutine
 };
 
 // Interface
-inline void ping_impl(channel& chan, error_code& err, diagnostics& diag)
+inline void reset_connection_impl(channel& chan, error_code& err, diagnostics& diag)
 {
     err.clear();
     diag.clear();
 
     // Serialize the message
-    serialize_ping_message(chan);
+    serialize_reset_connection_message(chan);
 
     // Send it
     chan.write(err);
@@ -91,13 +93,17 @@ inline void ping_impl(channel& chan, error_code& err, diagnostics& diag)
 
 template <class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_ping_impl(channel& chan, diagnostics& diag, CompletionToken&& token)
+async_reset_connection_impl(channel& chan, diagnostics& diag, CompletionToken&& token)
 {
-    return asio::async_compose<CompletionToken, void(error_code)>(ping_op(chan, diag), token, chan);
+    return asio::async_compose<CompletionToken, void(error_code)>(
+        reset_connection_op(chan, diag),
+        token,
+        chan
+    );
 }
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-#endif
+#endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_IMPL_CLOSE_STATEMENT_HPP_ */

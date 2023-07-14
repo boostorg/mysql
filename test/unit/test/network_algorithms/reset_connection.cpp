@@ -11,7 +11,7 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/impl/internal/channel/channel.hpp>
-#include <boost/mysql/impl/internal/network_algorithms/ping.hpp>
+#include <boost/mysql/impl/internal/network_algorithms/reset_connection.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -28,17 +28,17 @@ using namespace boost::mysql::test;
 using namespace boost::mysql;
 using boost::mysql::detail::channel;
 
-BOOST_AUTO_TEST_SUITE(test_ping)
+BOOST_AUTO_TEST_SUITE(test_reset_connection)
 
 using netfun_maker = netfun_maker_fn<void, channel&>;
 
 struct
 {
-    netfun_maker::signature ping;
+    netfun_maker::signature reset_connection;
     const char* name;
 } all_fns[] = {
-    {netfun_maker::sync_errc(&detail::ping_impl),           "sync" },
-    {netfun_maker::async_errinfo(&detail::async_ping_impl), "async"},
+    {netfun_maker::sync_errc(&detail::reset_connection_impl),           "sync" },
+    {netfun_maker::async_errinfo(&detail::async_reset_connection_impl), "async"},
 };
 
 struct fixture
@@ -58,10 +58,10 @@ BOOST_AUTO_TEST_CASE(success)
             fix.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
 
             // Call the function
-            fns.ping(fix.chan).validate_no_error();
+            fns.reset_connection(fix.chan).validate_no_error();
 
             // Verify the message we sent
-            const std::uint8_t expected_message[] = {0x01, 0x00, 0x00, 0x00, 0x0e};
+            const std::uint8_t expected_message[] = {0x01, 0x00, 0x00, 0x00, 0x1f};
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(fix.stream().bytes_written(), expected_message);
         }
     }
@@ -79,7 +79,8 @@ BOOST_AUTO_TEST_CASE(error_network)
                 fix.stream().set_fail_count(fail_count(i, common_server_errc::er_aborting_connection));
 
                 // Call the function
-                fns.ping(fix.chan).validate_error_exact(common_server_errc::er_aborting_connection);
+                fns.reset_connection(fix.chan).validate_error_exact(common_server_errc::er_aborting_connection
+                );
             }
         }
     }
@@ -99,7 +100,10 @@ BOOST_AUTO_TEST_CASE(error_response)
                                        .build_frame());
 
             // Call the function
-            fns.ping(fix.chan).validate_error_exact(common_server_errc::er_bad_db_error, "my_message");
+            fns.reset_connection(fix.chan).validate_error_exact(
+                common_server_errc::er_bad_db_error,
+                "my_message"
+            );
         }
     }
 }

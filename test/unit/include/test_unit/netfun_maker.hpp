@@ -5,10 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_UNIT_NETFUN_MAKER_HPP
-#define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_UNIT_NETFUN_MAKER_HPP
+#ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_NETFUN_MAKER_HPP
+#define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_NETFUN_MAKER_HPP
+
+#include <boost/mysql/error_with_diagnostics.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/system/system_error.hpp>
 
 #include "test_common/netfun_helpers.hpp"
 #include "test_common/tracker_executor.hpp"
@@ -21,9 +24,52 @@ namespace test {
 // These rely on the stream dispatching completion handlers directly
 // via post(), which only happens with test_stream.
 template <class R, class IOObject, class... Args>
-struct netfun_maker_impl : netfun_maker_sync_impl<R, IOObject, Args...>
+struct netfun_maker_impl
 {
     using signature = std::function<network_result<R>(IOObject&, Args...)>;
+
+    template <class Pfn>
+    static signature sync_errc(Pfn fn)
+    {
+        return [fn](IOObject& obj, Args... args) {
+            auto res = create_initial_netresult<R>();
+            invoke_and_assign(res, fn, obj, std::forward<Args>(args)..., res.err, *res.diag);
+            return res;
+        };
+    }
+
+    template <class Pfn>
+    static signature sync_exc(Pfn fn)
+    {
+        return [fn](IOObject& obj, Args... args) {
+            network_result<R> res;
+            try
+            {
+                invoke_and_assign(res, fn, obj, std::forward<Args>(args)...);
+            }
+            catch (const boost::mysql::error_with_diagnostics& err)
+            {
+                res.err = err.code();
+                res.diag = err.get_diagnostics();
+            }
+            catch (const boost::system::system_error& err)
+            {
+                res.err = err.code();
+            }
+            return res;
+        };
+    }
+
+    // Used by channel functions
+    template <class Pfn>
+    static signature sync_errc_noerrinfo(Pfn fn)
+    {
+        return [fn](IOObject& obj, Args... args) {
+            auto res = create_initial_netresult<R>(false);
+            invoke_and_assign(res, fn, obj, std::forward<Args>(args)..., res.err);
+            return res;
+        };
+    }
 
     template <class Pfn>
     static signature async_errinfo(Pfn fn)
@@ -62,17 +108,6 @@ struct netfun_maker_impl : netfun_maker_sync_impl<R, IOObject, Args...>
             run_until_completion(io_obj_executor);
             BOOST_TEST(get_executor_info(io_obj_executor).num_posts > 0u);
             BOOST_TEST(exec_info.num_dispatches > 0u);
-            return res;
-        };
-    }
-
-    // Used by channel functions
-    template <class Pfn>
-    static signature sync_errc_noerrinfo(Pfn fn)
-    {
-        return [fn](IOObject& obj, Args... args) {
-            auto res = create_initial_netresult<R>(false);
-            invoke_and_assign(res, fn, obj, std::forward<Args>(args)..., res.err);
             return res;
         };
     }

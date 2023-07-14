@@ -10,13 +10,9 @@
 
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/error_with_diagnostics.hpp>
-
-#include <boost/mysql/detail/void_t.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/system/system_error.hpp>
 
 #include <cstddef>
 #include <functional>
@@ -96,45 +92,6 @@ network_result<R> create_initial_netresult(bool with_diag = true)
         res.diag = create_server_diag("diagnostics not cleared properly");
     return res;
 }
-
-// The synchronous implementations are common between unit and integ tests
-template <class R, class... Args>
-struct netfun_maker_sync_impl
-{
-    using signature = std::function<network_result<R>(Args...)>;
-
-    template <class Pfn>
-    static signature sync_errc(Pfn fn)
-    {
-        return [fn](Args... args) {
-            auto res = create_initial_netresult<R>();
-            invoke_and_assign(res, fn, std::forward<Args>(args)..., res.err, *res.diag);
-            return res;
-        };
-    }
-
-    template <class Pfn>
-    static signature sync_exc(Pfn fn)
-    {
-        return [fn](Args... args) {
-            network_result<R> res;
-            try
-            {
-                invoke_and_assign(res, fn, std::forward<Args>(args)...);
-            }
-            catch (const boost::mysql::error_with_diagnostics& err)
-            {
-                res.err = err.code();
-                res.diag = err.get_diagnostics();
-            }
-            catch (const boost::system::system_error& err)
-            {
-                res.err = err.code();
-            }
-            return res;
-        };
-    }
-};
 
 inline boost::asio::io_context& get_context(boost::asio::any_io_executor ex) noexcept
 {

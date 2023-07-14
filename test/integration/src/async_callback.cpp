@@ -5,69 +5,73 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/statement.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 
 #include "er_impl_common.hpp"
 #include "test_common/netfun_helpers.hpp"
 #include "test_common/tracker_executor.hpp"
+#include "test_integration/er_connection.hpp"
 #include "test_integration/streams.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::diagnostics;
 
-namespace {
+namespace boost {
+namespace mysql {
+namespace test {
 
-struct async_callback_maker
+template <class Stream>
+class async_callback_connection : public connection_base<Stream>
 {
-    static constexpr const char* name() { return "async_callback"; }
+    using conn_type = connection<Stream>;
+    using base_type = connection_base<Stream>;
 
-    static void verify_exec_info(executor_info v) { BOOST_TEST(v.total() > 0u); }
+    template <class R, class... Args>
+    using pmem_t = void (conn_type::*)(Args..., diagnostics&, as_network_result<R>&&);
 
-    template <class Signature>
-    struct type;
-
-    template <class R, class Obj, class... Args>
-    struct type<network_result<R>(Obj&, Args...)>
+    template <class R, class... Args>
+    network_result<R> fn_impl(pmem_t<R, Args...> p, Args... args)
     {
-        using signature = std::function<network_result<R>(Obj&, Args...)>;
-        using async_sig = void (Obj::*)(Args..., diagnostics&, as_network_result<R>&&);
+        executor_info exec_info{};
+        auto res = create_initial_netresult<R>();
+        invoke_polyfill(
+            p,
+            this->conn(),
+            std::forward<Args>(args)...,
+            *res.diag,
+            as_network_result<R>(res, create_tracker_executor(this->conn().get_executor(), &exec_info))
+        );
+        run_until_completion(this->conn().get_executor());
+        BOOST_TEST(exec_info.total() > 0u);
+        return res;
+    }
 
-        static signature call(async_sig fn)
-        {
-            return [fn](Obj& obj, Args... args) {
-                executor_info exec_info{};
-                auto res = create_initial_netresult<R>();
-                invoke_polyfill(
-                    fn,
-                    obj,
-                    std::forward<Args>(args)...,
-                    *res.diag,
-                    as_network_result<R>(res, create_tracker_executor(obj.get_executor(), &exec_info))
-                );
-                run_until_completion(obj.get_executor());
-                verify_exec_info(exec_info);
-                return res;
-            };
-        }
-    };
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC()
+    static constexpr const char* name() noexcept { return "async_callback"; }
 };
 
-}  // namespace
+template <class Stream>
+void add_async_callback_variant(std::vector<er_network_variant*>& output)
+{
+    add_variant<async_callback_connection<Stream>>(output);
+}
+
+}  // namespace test
+}  // namespace mysql
+}  // namespace boost
 
 void boost::mysql::test::add_async_callback(std::vector<er_network_variant*>& output)
 {
     // Spotcheck for both streams
-    static auto tcp = create_async_variant<tcp_socket, async_callback_maker>();
-    static auto tcp_ssl = create_async_variant<tcp_ssl_socket, async_callback_maker>();
+    add_async_callback_variant<tcp_socket>(output);
+    add_async_callback_variant<tcp_ssl_socket>(output);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    static auto unix_ssl = create_async_variant<unix_ssl_socket, async_callback_maker>();
-#endif
-
-    output.push_back(&tcp);
-    output.push_back(&tcp_ssl);
-#if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    output.push_back(&unix_ssl);
+    add_async_callback_variant<unix_socket>(output);
 #endif
 }
