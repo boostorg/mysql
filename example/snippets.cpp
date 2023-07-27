@@ -1122,7 +1122,9 @@ void section_time_types(tcp_ssl_connection& conn)
         // This change has session scope. All operations after this query
         // will now use UTC for TIMESTAMPs. Other sessions will not see the change.
         // If you need to reconnect the connection, you need to run this again.
-        conn.execute("SET @time_zone = 'UTC'", result);
+        // If your MySQL server supports named time zones, you can also use
+        // "SET time_zone = 'UTC'"
+        conn.execute("SET time_zone = '+00:00'", result);
         //]
 
         //[time_types_timestamp_insert
@@ -1130,7 +1132,7 @@ void section_time_types(tcp_ssl_connection& conn)
         // For the sake of example, we will use the current timestamp
         datetime event_timestamp = datetime::now();
 
-        // event_timestamp will be interpreted as UTC if you have run SET @time_zone
+        // event_timestamp will be interpreted as UTC if you have run SET time_zone
         conn.execute(insert_stmt.bind(event_timestamp, "Something happened"), result);
         //]
 
