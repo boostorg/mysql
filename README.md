@@ -18,7 +18,7 @@ Please comment [on this issue](https://github.com/boostorg/mysql/issues/140).
 - It is fully compatible with Boost.Asio and integrates well with any other
   library in the Boost.Asio ecosystem (like Boost.Beast).
 - It supports Boost.Asio's universal asynchronous model, which means you can
-  go asyncrhonous using callbacks, futures or coroutines (including C++20 coroutines).
+  go asynchronous using callbacks, futures or coroutines (including C++20 coroutines).
 - It is written in C++11 and takes advantage of it.
 - It is header only.
 
