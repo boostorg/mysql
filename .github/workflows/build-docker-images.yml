@@ -7,7 +7,12 @@
 
 name: Build Docker images
 
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/docker/**
+
 
 jobs:
   linux-images:

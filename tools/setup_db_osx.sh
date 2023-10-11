@@ -7,9 +7,7 @@
 #
 
 # Setup database. We can't use a Docker service as Docker
-# is not supported in osx
-
-set -e
+# is not supported in osx.
 
 # Install the DB
 brew install mysql@8.0

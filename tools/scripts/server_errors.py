@@ -361,7 +361,7 @@ def invoke_file_headers() -> None:
 
 def main():
     old_codes = load_csv()
-    new_codes = parse_headers(REPO_BASE.joinpath('private', 'errors', '1.83'))
+    new_codes = parse_headers(REPO_BASE.joinpath('private', 'errors', '1.84'))
     codes = merge_new_codes(old_codes, new_codes)
     write_csv(codes)
     write_headers(codes)

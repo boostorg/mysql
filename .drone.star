@@ -6,8 +6,8 @@
 #
 
 _triggers = { "branch": [ "master", "develop", "drone*", "feature/*", "bugfix/*", "fix/*", "pr/*" ] }
-_container_tag = 'c94b77a716a0cc2cf5f489d9a97e9a0aefa7c0de'
-_win_container_tag = '6efce57d289bfa028da8d4a9b50158f1f073984f'
+_container_tag = '454e58d36a2e801a1a6b4e9fd2f995c3087740b1'
+_win_container_tag = '454e58d36a2e801a1a6b4e9fd2f995c3087740b1'
 
 
 def _image(name):

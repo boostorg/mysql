@@ -5,7 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-FROM mysql:8.0.33
+FROM mysql:8.1.0
 
 ENV MYSQL_ALLOW_EMPTY_PASSWORD=1
 ENV MYSQL_ROOT_PASSWORD=

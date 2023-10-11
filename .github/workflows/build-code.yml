@@ -19,10 +19,10 @@ jobs:
       OPENSSL_ROOT: /usr/local/opt/openssl
     steps:
       - uses: actions/checkout@v3
-      - run: unlink /usr/local/bin/python
-      - run: ln -s /usr/local/bin/python3 /usr/local/bin/python
-      - run: bash tools/setup_db_osx.sh
       - run: |
+          unlink /usr/local/bin/python
+          ln -s /usr/local/bin/python3 /usr/local/bin/python
+          source tools/setup_db_osx.sh
           python tools/ci.py \
             --build-kind=b2 \
             --source-dir=$(pwd) \
