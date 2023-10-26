@@ -31,47 +31,44 @@ else()
 
         # Secondary dependencies
         align
-        array
         bind
-        chrono
         context
         coroutine
         date_time
-        exception
-        "function"
         regex
-        smart_ptr
-        type_traits
-        utility
         static_assert
         container
         integer
         numeric/conversion
-        range
+        type_traits
         winapi
-        move
-        mpl
-        predef
-        ratio
-        typeof
         intrusive
+        move
         pool
+        predef
+        smart_ptr
+        exception
+        utility
         algorithm
         io
+        range
         tokenizer
-        tuple
-        preprocessor
         conversion
+        mpl
+        preprocessor
         concept_check
         container_hash
-        detail
+        array
+        "function"
         iterator
-        optional
+        tuple
         unordered
+        detail
+        optional
         function_types
         fusion
-        rational
         functional
+        typeof
     )
 
     # Build our dependencies, so the targets Boost::xxx are defined
