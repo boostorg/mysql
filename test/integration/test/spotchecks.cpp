@@ -464,9 +464,8 @@ BOOST_MYSQL_NETWORK_TEST(quit_success, network_fixture, all_network_samples())
     // Quit
     conn->quit().validate_no_error();
 
-    // We are no longer able to query
-    results result;
-    conn->query("SELECT 1", result).validate_any_error();
+    // TODO: we can't just query() and expect an error, because that's not reliable as a test.
+    // We should have a flag to check whether the connection is connected or not
 }
 
 // Close connection: no server error spotcheck

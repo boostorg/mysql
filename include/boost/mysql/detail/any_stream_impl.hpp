@@ -17,7 +17,9 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
 #include <boost/config.hpp>
+#include <boost/core/ignore_unused.hpp>
 
+#include <memory>
 #include <type_traits>
 
 namespace boost {
@@ -101,24 +103,6 @@ void do_close(Stream& stream, error_code& ec)
 }
 
 template <class Stream>
-bool do_is_open_impl(const Stream&, std::false_type) noexcept
-{
-    return false;
-}
-
-template <class Stream>
-bool do_is_open_impl(const Stream& stream, std::true_type) noexcept
-{
-    return stream.lowest_layer().is_open();
-}
-
-template <class Stream>
-bool do_is_open(const Stream& stream) noexcept
-{
-    return do_is_open_impl(stream, is_socket_stream<Stream>{});
-}
-
-template <class Stream>
 class any_stream_impl final : public any_stream
 {
     Stream stream_;
@@ -147,28 +131,38 @@ public:
     }
 
     // Reading
-    std::size_t read_some(boost::asio::mutable_buffer buff, error_code& ec) final override
+    std::size_t read_some(boost::asio::mutable_buffer buff, bool use_ssl, error_code& ec) final override
     {
+        BOOST_ASSERT(!use_ssl);
+        boost::ignore_unused(use_ssl);
         return stream_.read_some(buff, ec);
     }
     void async_read_some(
         boost::asio::mutable_buffer buff,
+        bool use_ssl,
         asio::any_completion_handler<void(error_code, std::size_t)> handler
     ) final override
     {
+        BOOST_ASSERT(!use_ssl);
+        boost::ignore_unused(use_ssl);
         return stream_.async_read_some(buff, std::move(handler));
     }
 
     // Writing
-    std::size_t write_some(boost::asio::const_buffer buff, error_code& ec) final override
+    std::size_t write_some(boost::asio::const_buffer buff, bool use_ssl, error_code& ec) final override
     {
+        BOOST_ASSERT(!use_ssl);
+        boost::ignore_unused(use_ssl);
         return stream_.write_some(buff, ec);
     }
     void async_write_some(
         boost::asio::const_buffer buff,
+        bool use_ssl,
         asio::any_completion_handler<void(error_code, std::size_t)> handler
     ) final override
     {
+        BOOST_ASSERT(!use_ssl);
+        boost::ignore_unused(use_ssl);
         return stream_.async_write_some(buff, std::move(handler));
     }
 
@@ -180,7 +174,6 @@ public:
         do_async_connect(stream_, endpoint, std::move(handler));
     }
     void close(error_code& ec) override final { do_close(stream_, ec); }
-    bool is_open() const noexcept override { return do_is_open(stream_); }
 };
 
 template <class Stream>
@@ -202,12 +195,10 @@ public:
     // SSL
     void handshake(error_code& ec) override final
     {
-        set_ssl_active();
         stream_.handshake(boost::asio::ssl::stream_base::client, ec);
     }
     void async_handshake(asio::any_completion_handler<void(error_code)> handler) override final
     {
-        set_ssl_active();
         stream_.async_handshake(boost::asio::ssl::stream_base::client, std::move(handler));
     }
     void shutdown(error_code& ec) override final { stream_.shutdown(ec); }
@@ -217,9 +208,9 @@ public:
     }
 
     // Reading
-    std::size_t read_some(boost::asio::mutable_buffer buff, error_code& ec) override final
+    std::size_t read_some(boost::asio::mutable_buffer buff, bool use_ssl, error_code& ec) override final
     {
-        if (ssl_active())
+        if (use_ssl)
         {
             return stream_.read_some(buff, ec);
         }
@@ -230,10 +221,11 @@ public:
     }
     void async_read_some(
         boost::asio::mutable_buffer buff,
+        bool use_ssl,
         asio::any_completion_handler<void(error_code, std::size_t)> handler
     ) override final
     {
-        if (ssl_active())
+        if (use_ssl)
         {
             return stream_.async_read_some(buff, std::move(handler));
         }
@@ -244,9 +236,9 @@ public:
     }
 
     // Writing
-    std::size_t write_some(boost::asio::const_buffer buff, error_code& ec) override final
+    std::size_t write_some(boost::asio::const_buffer buff, bool use_ssl, error_code& ec) override final
     {
-        if (ssl_active())
+        if (use_ssl)
         {
             return stream_.write_some(buff, ec);
         }
@@ -257,10 +249,11 @@ public:
     }
     void async_write_some(
         boost::asio::const_buffer buff,
+        bool use_ssl,
         asio::any_completion_handler<void(error_code, std::size_t)> handler
     ) override final
     {
-        if (ssl_active())
+        if (use_ssl)
         {
             stream_.async_write_some(buff, std::move(handler));
         }
@@ -278,7 +271,6 @@ public:
         do_async_connect(stream_, endpoint, std::move(handler));
     }
     void close(error_code& ec) override final { do_close(stream_, ec); }
-    bool is_open() const noexcept override { return do_is_open(stream_); }
 };
 
 template <class Stream>
@@ -297,6 +289,12 @@ Stream& cast(any_stream& obj) noexcept
 extern template class any_stream_impl<asio::ssl::stream<asio::ip::tcp::socket>>;
 extern template class any_stream_impl<asio::ip::tcp::socket>;
 #endif
+
+template <class Stream, class... Args>
+std::unique_ptr<any_stream> make_stream(Args&&... args)
+{
+    return std::unique_ptr<any_stream>(new any_stream_impl<Stream>(std::forward<Args>(args)...));
+}
 
 }  // namespace detail
 }  // namespace mysql

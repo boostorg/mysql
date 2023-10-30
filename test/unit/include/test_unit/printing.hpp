@@ -14,6 +14,7 @@
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -51,6 +52,19 @@ inline std::ostream& operator<<(std::ostream& os, resultset_encoding t)
 inline std::ostream& operator<<(std::ostream& os, results_iterator it)
 {
     return os << "results_iterator(" << static_cast<const void*>(it.obj()) << ", index=" << it.index() << ")";
+}
+
+inline std::ostream& operator<<(std::ostream& os, next_action::type_t t)
+{
+    switch (t)
+    {
+    case next_action::type_t::none: return os << "next_action::type_t::none";
+    case next_action::type_t::read: return os << "next_action::type_t::read";
+    case next_action::type_t::write: return os << "next_action::type_t::write";
+    case next_action::type_t::ssl_handshake: return os << "next_action::type_t::ssl_handshake";
+    case next_action::type_t::ssl_shutdown: return os << "next_action::type_t::ssh_shutdown";
+    default: return os << "<unknown>";
+    }
 }
 
 }  // namespace detail

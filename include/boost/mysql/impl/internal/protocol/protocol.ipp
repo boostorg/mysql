@@ -569,7 +569,7 @@ boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute
         // the number of field definitions to expect. Message type is part
         // of this packet, so we must rewind the context
         ctx.rewind(1);
-        int_lenenc num_fields;
+        int_lenenc num_fields{};
         err = to_error_code(deserialize(ctx, num_fields));
         if (err)
             return err;

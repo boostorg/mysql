@@ -31,7 +31,7 @@ inline std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, span<const st
     std::vector<std::uint8_t> res(detail::frame_header_size);
     detail::frame_header header{static_cast<std::uint32_t>(body.size()), seqnum};
     detail::serialize_frame_header(header, span<std::uint8_t, detail::frame_header_size>{res.data(), 4u});
-    concat(res, body.data(), body.size());
+    concat(res, body);
     return res;
 }
 

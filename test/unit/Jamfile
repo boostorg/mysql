@@ -33,11 +33,20 @@ run
         test/protocol/deserialize_binary_field.cpp
         test/protocol/protocol.cpp
 
-        test/channel/read_buffer.cpp
-        test/channel/message_parser.cpp
-        test/channel/message_reader.cpp
-        test/channel/message_writer.cpp
-        test/channel/write_message.cpp
+        test/sansio/read_buffer.cpp
+        test/sansio/message_writer.cpp
+        test/sansio/message_reader.cpp
+        test/sansio/algo_runner.cpp
+
+        test/sansio/read_resultset_head.cpp
+        test/sansio/start_execution.cpp
+        test/sansio/read_some_rows.cpp
+        test/sansio/read_some_rows_dynamic.cpp
+        test/sansio/execute.cpp
+        test/sansio/close_statement.cpp
+        test/sansio/ping.cpp
+        test/sansio/reset_connection.cpp
+        test/network_algorithms/run_algo_impl.cpp
 
         test/execution_processor/execution_processor.cpp
         test/execution_processor/execution_state_impl.cpp
@@ -45,17 +54,6 @@ run
         test/execution_processor/results_impl.cpp
         test/execution_processor/static_results_impl.cpp
 
-        test/network_algorithms/read_resultset_head.cpp
-        test/network_algorithms/start_execution.cpp
-        test/network_algorithms/read_some_rows.cpp
-        test/network_algorithms/read_some_rows_dynamic.cpp
-        test/network_algorithms/execute.cpp
-        test/network_algorithms/close_statement.cpp
-        test/network_algorithms/ping.cpp
-        test/network_algorithms/reset_connection.cpp
-        test/network_algorithms/read_some_rows_static.cpp
-
-        test/detail/any_stream_impl.cpp
         test/detail/datetime.cpp
         test/detail/row_impl.cpp
         test/detail/rows_iterator.cpp
@@ -68,9 +66,12 @@ run
         test/detail/typing/row_traits.cpp
         test/detail/typing/get_type_index.cpp
 
-        test/misc.cpp
-        test/multifn.cpp
-        test/default_completion_tokens.cpp
+        test/spotchecks/connection_use_after_move.cpp
+        test/spotchecks/default_completion_tokens.cpp
+        test/spotchecks/read_some_rows_static.cpp
+        test/spotchecks/multifn.cpp
+        test/spotchecks/misc.cpp
+
         test/execution_state.cpp
         test/static_execution_state.cpp
         test/results.cpp

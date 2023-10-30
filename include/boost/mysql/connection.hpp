@@ -20,10 +20,11 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/any_stream_impl.hpp>
-#include <boost/mysql/detail/channel_ptr.hpp>
+#include <boost/mysql/detail/connection_impl.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
-#include <boost/mysql/detail/network_algorithms.hpp>
 #include <boost/mysql/detail/rebind_executor.hpp>
 #include <boost/mysql/detail/socket_stream.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
@@ -31,6 +32,7 @@
 
 #include <boost/assert.hpp>
 
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -62,9 +64,7 @@ class static_execution_state;
 template <class Stream>
 class connection
 {
-    detail::channel_ptr channel_;
-
-    diagnostics& shared_diag() noexcept { return channel_.shared_diag(); }
+    detail::connection_impl impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
@@ -105,11 +105,7 @@ public:
         class... Args,
         class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
     connection(const buffer_params& buff_params, Args&&... args)
-        : channel_(
-              buff_params.initial_read_size(),
-              std::unique_ptr<detail::any_stream>(new detail::any_stream_impl<Stream>(std::forward<Args>(args
-              )...))
-          )
+        : impl_(buff_params.initial_read_size(), detail::make_stream<Stream>(std::forward<Args>(args)...))
     {
     }
 
@@ -144,7 +140,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    Stream& stream() noexcept { return detail::cast<Stream>(channel_.stream()); }
+    Stream& stream() noexcept { return detail::cast<Stream>(impl_.stream()); }
 
     /**
      * \brief Retrieves the underlying Stream object.
@@ -153,7 +149,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    const Stream& stream() const noexcept { return detail::cast<Stream>(channel_.stream()); }
+    const Stream& stream() const noexcept { return detail::cast<Stream>(impl_.stream()); }
 
     /**
      * \brief Returns whether the connection negotiated the use of SSL or not.
@@ -172,7 +168,7 @@ public:
      *
      * \returns Whether the connection is using SSL.
      */
-    bool uses_ssl() const noexcept { return channel_.stream().ssl_active(); }
+    bool uses_ssl() const noexcept { return impl_.ssl_active(); }
 
     /**
      * \brief Returns the current metadata mode that this connection is using.
@@ -182,7 +178,7 @@ public:
      *
      * \returns The matadata mode that will be used for queries and statement executions.
      */
-    metadata_mode meta_mode() const noexcept { return channel_.meta_mode(); }
+    metadata_mode meta_mode() const noexcept { return impl_.meta_mode(); }
 
     /**
      * \brief Sets the metadata mode.
@@ -197,7 +193,7 @@ public:
      *
      * \param v The new metadata mode.
      */
-    void set_meta_mode(metadata_mode v) noexcept { channel_.set_meta_mode(v); }
+    void set_meta_mode(metadata_mode v) noexcept { impl_.set_meta_mode(v); }
 
     /**
      * \brief Establishes a connection to a MySQL server.
@@ -225,7 +221,7 @@ public:
             detail::is_socket_stream<Stream>::value,
             "connect can only be used if Stream satisfies the SocketStream concept"
         );
-        detail::connect_interface<Stream>(channel_.get(), endpoint, params, ec, diag);
+        impl_.connect<Stream>(endpoint, params, ec, diag);
     }
 
     /// \copydoc connect
@@ -267,7 +263,7 @@ public:
             detail::is_socket_stream<Stream>::value,
             "async_connect can only be used if Stream satisfies the SocketStream concept"
         );
-        return async_connect(endpoint, params, this->shared_diag(), std::forward<CompletionToken>(token));
+        return async_connect(endpoint, params, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_connect
@@ -287,13 +283,7 @@ public:
             detail::is_socket_stream<Stream>::value,
             "async_connect can only be used if Stream satisfies the SocketStream concept"
         );
-        return detail::async_connect_interface<Stream>(
-            channel_.get(),
-            endpoint,
-            params,
-            diag,
-            std::forward<CompletionToken>(token)
-        );
+        return impl_.async_connect<Stream>(endpoint, params, diag, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -307,7 +297,7 @@ public:
      */
     void handshake(const handshake_params& params, error_code& ec, diagnostics& diag)
     {
-        detail::handshake_interface(channel_.get(), params, ec, diag);
+        impl_.run(impl_.make_params_handshake(params, diag), ec);
     }
 
     /// \copydoc handshake
@@ -336,7 +326,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_handshake(params, shared_diag(), std::forward<CompletionToken>(token));
+        return async_handshake(params, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_handshake
@@ -349,10 +339,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_handshake_interface(
-            channel_.get(),
-            params,
-            diag,
+        return impl_.async_run(
+            impl_.make_params_handshake(params, diag),
             std::forward<CompletionToken>(token)
         );
     }
@@ -375,7 +363,7 @@ public:
     template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
     void execute(const ExecutionRequest& req, ResultsType& result, error_code& err, diagnostics& diag)
     {
-        detail::execute_interface(channel_.get(), req, result, err, diag);
+        impl_.execute(req, result, err, diag);
     }
 
     /// \copydoc execute
@@ -420,7 +408,7 @@ public:
         return async_execute(
             std::forward<ExecutionRequest>(req),
             result,
-            shared_diag(),
+            impl_.shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -439,8 +427,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_execute_interface(
-            channel_.get(),
+        return impl_.async_execute(
             std::forward<ExecutionRequest>(req),
             result,
             diag,
@@ -482,7 +469,7 @@ public:
         diagnostics& diag
     )
     {
-        detail::start_execution_interface(channel_.get(), req, st, err, diag);
+        impl_.start_execution(req, st, err, diag);
     }
 
     /// \copydoc start_execution
@@ -529,7 +516,7 @@ public:
         return async_start_execution(
             std::forward<ExecutionRequest>(req),
             st,
-            shared_diag(),
+            impl_.shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -548,8 +535,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_start_execution_interface(
-            channel_.get(),
+        return impl_.async_start_execution(
             std::forward<ExecutionRequest>(req),
             st,
             diag,
@@ -604,7 +590,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_query(query_string, result, shared_diag(), std::forward<CompletionToken>(token));
+        return async_query(query_string, result, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_query
@@ -668,7 +654,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_start_query(query_string, st, shared_diag(), std::forward<CompletionToken>(token));
+        return async_start_query(query_string, st, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_start_query
@@ -694,7 +680,7 @@ public:
      */
     statement prepare_statement(string_view stmt, error_code& err, diagnostics& diag)
     {
-        return detail::prepare_statement_interface(channel_.get(), stmt, err, diag);
+        return impl_.run(detail::prepare_statement_algo_params{&diag, stmt}, err);
     }
 
     /// \copydoc prepare_statement
@@ -726,7 +712,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_prepare_statement(stmt, shared_diag(), std::forward<CompletionToken>(token));
+        return async_prepare_statement(stmt, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_prepare_statement
@@ -739,10 +725,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_prepare_statement_interface(
-            channel_.get(),
-            stmt,
-            diag,
+        return impl_.async_run(
+            detail::prepare_statement_algo_params{&diag, stmt},
             std::forward<CompletionToken>(token)
         );
     }
@@ -823,7 +807,7 @@ public:
             stmt,
             std::forward<WritableFieldTuple>(params),
             result,
-            shared_diag(),
+            impl_.shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -933,7 +917,7 @@ public:
             stmt,
             std::forward<WritableFieldTuple>(params),
             st,
-            shared_diag(),
+            impl_.shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -1036,7 +1020,7 @@ public:
             params_first,
             params_last,
             st,
-            shared_diag(),
+            impl_.shared_diag(),
             std::forward<CompletionToken>(token)
         );
     }
@@ -1074,7 +1058,7 @@ public:
      */
     void close_statement(const statement& stmt, error_code& err, diagnostics& diag)
     {
-        detail::close_statement_interface(channel_.get(), stmt, err, diag);
+        impl_.run(impl_.make_params_close_statement(stmt, diag), err);
     }
 
     /// \copydoc close_statement
@@ -1103,7 +1087,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_close_statement(stmt, shared_diag(), std::forward<CompletionToken>(token));
+        return async_close_statement(stmt, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_close_statement
@@ -1116,10 +1100,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_close_statement_interface(
-            channel_.get(),
-            stmt,
-            diag,
+        return impl_.async_run(
+            impl_.make_params_close_statement(stmt, diag),
             std::forward<CompletionToken>(token)
         );
     }
@@ -1141,7 +1123,7 @@ public:
      */
     rows_view read_some_rows(execution_state& st, error_code& err, diagnostics& diag)
     {
-        return detail::read_some_rows_dynamic_interface(channel_.get(), st, err, diag);
+        return impl_.run(impl_.make_params_read_some_rows(st, diag), err);
     }
 
     /// \copydoc read_some_rows(execution_state&,error_code&,diagnostics&)
@@ -1169,7 +1151,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_read_some_rows(st, shared_diag(), std::forward<CompletionToken>(token));
+        return async_read_some_rows(st, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_read_some_rows(execution_state&,CompletionToken&&)
@@ -1182,10 +1164,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_read_some_rows_dynamic_interface(
-            channel_.get(),
-            st,
-            diag,
+        return impl_.async_run(
+            impl_.make_params_read_some_rows(st, diag),
             std::forward<CompletionToken>(token)
         );
     }
@@ -1227,7 +1207,7 @@ public:
         diagnostics& diag
     )
     {
-        return detail::read_some_rows_static_interface(channel_.get(), st, output, err, diag);
+        return impl_.run(impl_.make_params_read_some_rows(st, output, diag), err);
     }
 
     /**
@@ -1313,7 +1293,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_read_some_rows(st, output, shared_diag(), std::forward<CompletionToken>(token));
+        return async_read_some_rows(st, output, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /**
@@ -1363,11 +1343,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_read_some_rows_static_interface(
-            channel_.get(),
-            st,
-            output,
-            diag,
+        return impl_.async_run(
+            impl_.make_params_read_some_rows(st, output, diag),
             std::forward<CompletionToken>(token)
         );
     }
@@ -1395,7 +1372,7 @@ public:
     template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
     void read_resultset_head(ExecutionStateType& st, error_code& err, diagnostics& diag)
     {
-        return detail::read_resultset_head_interface(channel_.get(), st, err, diag);
+        return impl_.run(impl_.make_params_read_resultset_head(st, diag), err);
     }
 
     /// \copydoc read_resultset_head
@@ -1424,7 +1401,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return async_read_resultset_head(st, shared_diag(), std::forward<CompletionToken>(token));
+        return async_read_resultset_head(st, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_read_resultset_head
@@ -1439,10 +1416,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_read_resultset_head_interface(
-            channel_.get(),
-            st,
-            diag,
+        return impl_.async_run(
+            impl_.make_params_read_resultset_head(st, diag),
             std::forward<CompletionToken>(token)
         );
     }
@@ -1458,7 +1433,7 @@ public:
      * in a long-running query, the ping request won't be answered until the query is
      * finished.
      */
-    void ping(error_code& err, diagnostics& diag) { detail::ping_interface(channel_.get(), err, diag); }
+    void ping(error_code& err, diagnostics& diag) { impl_.run(impl_.make_params_ping(diag), err); }
 
     /// \copydoc ping
     void ping()
@@ -1481,7 +1456,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_ping(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
-        return async_ping(shared_diag(), std::forward<CompletionToken>(token));
+        return async_ping(impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_ping
@@ -1490,7 +1465,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_ping(diagnostics& diag, CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
-        return detail::async_ping_interface(channel_.get(), diag, std::forward<CompletionToken>(token));
+        return impl_.async_run(impl_.make_params_ping(diag), std::forward<CompletionToken>(token));
     }
 
     /**
@@ -1515,7 +1490,7 @@ public:
      */
     void reset_connection(error_code& err, diagnostics& diag)
     {
-        detail::reset_connection_interface(channel_.get(), err, diag);
+        impl_.run(impl_.make_params_reset_connection(diag), err);
     }
 
     /// \copydoc reset_connection
@@ -1539,7 +1514,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_reset_connection(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
-        return async_reset_connection(shared_diag(), std::forward<CompletionToken>(token));
+        return async_reset_connection(impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_reset_connection
@@ -1551,9 +1526,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
-        return detail::async_reset_connection_interface(
-            channel_.get(),
-            diag,
+        return impl_.async_run(
+            impl_.make_params_reset_connection(diag),
             std::forward<CompletionToken>(token)
         );
     }
@@ -1572,7 +1546,7 @@ public:
             detail::is_socket_stream<Stream>::value,
             "close can only be used if Stream satisfies the SocketStream concept"
         );
-        detail::close_connection_interface(channel_.get(), err, diag);
+        impl_.run(impl_.make_params_close(diag), err);
     }
 
     /// \copydoc close
@@ -1603,7 +1577,7 @@ public:
             detail::is_socket_stream<Stream>::value,
             "async_close can only be used if Stream satisfies the SocketStream concept"
         );
-        return async_close(shared_diag(), std::forward<CompletionToken>(token));
+        return async_close(impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_close
@@ -1616,11 +1590,7 @@ public:
             detail::is_socket_stream<Stream>::value,
             "async_close can only be used if Stream satisfies the SocketStream concept"
         );
-        return detail::async_close_connection_interface(
-            channel_.get(),
-            diag,
-            std::forward<CompletionToken>(token)
-        );
+        return impl_.async_run(impl_.make_params_close(diag), std::forward<CompletionToken>(token));
     }
 
     /**
@@ -1633,10 +1603,7 @@ public:
      * requirements, use \ref connection::close instead of this function,
      * as it also takes care of closing the underlying stream.
      */
-    void quit(error_code& err, diagnostics& diag)
-    {
-        detail::quit_connection_interface(channel_.get(), err, diag);
-    }
+    void quit(error_code& err, diagnostics& diag) { impl_.run(impl_.make_params_quit(diag), err); }
 
     /// \copydoc quit
     void quit()
@@ -1658,7 +1625,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_quit(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
-        return async_quit(shared_diag(), std::forward<CompletionToken>(token));
+        return async_quit(impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_quit
@@ -1667,11 +1634,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_quit(diagnostics& diag, CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
     {
-        return detail::async_quit_connection_interface(
-            channel_.get(),
-            diag,
-            std::forward<CompletionToken>(token)
-        );
+        return impl_.async_run(impl_.make_params_quit(diag), std::forward<CompletionToken>(token));
     }
 
     /**
