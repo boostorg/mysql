@@ -42,5 +42,6 @@
 #include <boost/mysql/impl/run_algo.ipp>
 #include <boost/mysql/impl/static_execution_state_impl.ipp>
 #include <boost/mysql/impl/static_results_impl.ipp>
+#include <boost/mysql/impl/variant_stream.ipp>
 
 #endif
