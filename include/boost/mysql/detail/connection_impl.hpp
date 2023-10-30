@@ -131,7 +131,8 @@ class connection_impl
         }
     };
 
-    template <class Stream>
+    // Connect
+    template <class ConnectArg>
     struct connect_initiation
     {
         template <class Handler>
@@ -139,7 +140,7 @@ class connection_impl
             Handler&& handler,
             any_stream* stream,
             connection_state* st,
-            const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+            const ConnectArg& connect_arg,
             handshake_params params,
             diagnostics* diag
         )
@@ -147,7 +148,7 @@ class connection_impl
             async_run_algo(
                 *stream,
                 *st,
-                connect_algo_params{&endpoint, diag, params},
+                connect_algo_params{&connect_arg, diag, params},
                 std::forward<Handler>(handler)
             );
         }
@@ -245,15 +246,15 @@ public:
     }
 
     // Connect. This handles casting to the corresponding endpoint_type, if required
-    template <class Stream>
+    template <class ConnectArg>
     void connect(
-        const typename Stream::lowest_layer_type::endpoint_type& ep,
+        const ConnectArg& connect_arg,
         const handshake_params& params,
         error_code& err,
         diagnostics& diag
     )
     {
-        run_algo(*stream_, *st_, connect_algo_params{&ep, &diag, params}, err);
+        run_algo(*stream_, *st_, connect_algo_params{&connect_arg, &diag, params}, err);
     }
 
     template <class Stream, class CompletionToken>

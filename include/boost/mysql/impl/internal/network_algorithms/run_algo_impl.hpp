@@ -150,7 +150,7 @@ inline void run_algo_impl(any_stream& stream, any_algo_ref algo, error_code& ec)
         }
         else if (act.type() == next_action::type_t::connect)
         {
-            stream.connect(act.connect_arg(), ec);
+            stream.connect(act.connect_arg(), io_ec);
         }
         else
         {

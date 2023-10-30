@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_HPP
 #define BOOST_MYSQL_HPP
 
+#include <boost/mysql/any_address.hpp>
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/bad_field_access.hpp>
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/blob_view.hpp>
@@ -16,6 +18,7 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/connection_base.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/days.hpp>
