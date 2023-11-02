@@ -21,7 +21,6 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
-#include <boost/asio/yield.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
@@ -170,12 +169,12 @@ struct mock_algo : sansio_algorithm, asio::coroutine
 
     next_action resume(error_code ec)
     {
-        reenter(*this)
+        BOOST_ASIO_CORO_REENTER(*this)
         {
             BOOST_TEST(ec == error_code());
             st_->reader.prepare_read(seqnum);
             st_->writer.prepare_write(mock_message{}, seqnum);
-            yield return act;
+            BOOST_ASIO_CORO_YIELD return act;
         }
         return next_action();
     }
