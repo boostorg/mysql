@@ -51,44 +51,14 @@ class connection_pool
 {
     std::unique_ptr<detail::connection_pool_impl> impl_;
 
-    static detail::owning_pool_params create_pool_params(const pool_params& input)
-    {
-        return {
-            input.server_address.type(),
-            input.server_address.type() == address_type::tcp ? input.server_address.hostname()
-                                                             : input.server_address.unix_path(),
-            input.server_address.type() == address_type::tcp ? input.server_address.port()
-                                                             : (unsigned short)0u,
-            input.hparams.username(),
-            input.hparams.password(),
-            input.hparams.database(),
-            input.hparams.connection_collation(),
-            input.hparams.ssl(),
-            input.hparams.multi_queries(),
-            input.initial_size,
-            input.max_size,
-            input.connect_timeout,
-            input.ping_timeout,
-            input.reset_timeout,
-            input.retry_interval,
-            input.ping_interval,
-        };
-    }
-
     static constexpr std::chrono::steady_clock::duration get_default_timeout() noexcept
     {
         return std::chrono::seconds(30);
     }
 
 public:
-    connection_pool(asio::any_io_executor ex, const pool_params& params)
-        : impl_(new detail::connection_pool_impl(
-              create_pool_params(params),
-              std::move(ex),
-              params.enable_thread_safety
-          ))
-    {
-    }
+    BOOST_MYSQL_DECL
+    connection_pool(asio::any_io_executor ex, const pool_params& params);
 
 #ifndef BOOST_MYSQL_DOXYGEN
     connection_pool(const connection_pool&) = delete;
@@ -162,8 +132,11 @@ public:
             detail::return_connection(*conn.impl_.release(), should_reset);
     }
 
-    BOOST_MYSQL_DECL
-    void cancel();
+    void cancel()
+    {
+        BOOST_ASSERT(valid());
+        impl_->cancel();
+    }
 };
 
 }  // namespace mysql
