@@ -16,7 +16,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connection_pool_helpers.hpp>
+#include <boost/mysql/detail/connection_pool/connection_pool_impl.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
@@ -47,95 +47,32 @@ struct pool_params
     // TODO: SSL
 };
 
-class pooled_connection
-{
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend class connection_pool;
-    friend struct detail::access;
-#endif
-
-    BOOST_MYSQL_DECL
-    const any_connection* const_ptr() const noexcept;
-
-    any_connection* ptr() noexcept { return const_cast<any_connection*>(const_ptr()); }
-
-    pooled_connection(detail::connection_node& node) noexcept : impl_(&node) {}
-
-    std::unique_ptr<detail::connection_node, detail::connection_node_deleter> impl_;
-
-public:
-    pooled_connection() noexcept = default;
-    pooled_connection(const pooled_connection&) = delete;
-    pooled_connection(pooled_connection&&) = default;
-    pooled_connection& operator=(const pooled_connection&) = delete;
-    pooled_connection& operator=(pooled_connection&&) = default;
-    ~pooled_connection() = default;
-
-    bool valid() const noexcept { return impl_.get() != nullptr; }
-
-    any_connection& get() noexcept { return *ptr(); }
-    const any_connection& get() const noexcept { return *const_ptr(); }
-    any_connection* operator->() noexcept { return ptr(); }
-    const any_connection* operator->() const noexcept { return const_ptr(); }
-};
-
 class connection_pool
 {
     std::unique_ptr<detail::connection_pool_impl> impl_;
 
-    BOOST_MYSQL_DECL
-    static void async_run_impl(
-        detail::connection_pool_impl& impl,
-        asio::any_completion_handler<void(error_code)> handler
-    );
-
-    struct initiate_run
+    static detail::owning_pool_params create_pool_params(const pool_params& input)
     {
-        template <class Handler>
-        void operator()(Handler&& handler, detail::connection_pool_impl* impl) const
-        {
-            async_run_impl(*impl, std::forward<Handler>(handler));
-        }
-    };
-
-    BOOST_MYSQL_DECL
-    static void async_get_connection_impl(
-        detail::connection_pool_impl& impl,
-        std::chrono::steady_clock::duration timeout,
-        diagnostics* diag,
-        asio::any_completion_handler<void(error_code, pooled_connection)> handler
-    );
-
-    struct initiate_get_connection
-    {
-        template <class Handler>
-        void operator()(
-            Handler&& handler,
-            detail::connection_pool_impl* impl,
-            diagnostics* diag,
-            std::chrono::steady_clock::duration timeout
-        ) const
-        {
-            async_get_connection_impl(*impl, timeout, diag, std::forward<Handler>(handler));
-        }
-    };
-
-    template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
-    async_get_connection(
-        std::chrono::steady_clock::duration timeout,
-        diagnostics* diag,
-        CompletionToken&& token
-    )
-    {
-        BOOST_ASSERT(valid());
-        return asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_get_connection(),
-            token,
-            this,
-            diag,
-            timeout
-        );
+        return {
+            input.server_address.type(),
+            input.server_address.type() == address_type::tcp ? input.server_address.hostname()
+                                                             : input.server_address.unix_path(),
+            input.server_address.type() == address_type::tcp ? input.server_address.port()
+                                                             : (unsigned short)0u,
+            input.hparams.username(),
+            input.hparams.password(),
+            input.hparams.database(),
+            input.hparams.connection_collation(),
+            input.hparams.ssl(),
+            input.hparams.multi_queries(),
+            input.initial_size,
+            input.max_size,
+            input.connect_timeout,
+            input.ping_timeout,
+            input.reset_timeout,
+            input.retry_interval,
+            input.ping_interval,
+        };
     }
 
     static constexpr std::chrono::steady_clock::duration get_default_timeout() noexcept
@@ -144,22 +81,23 @@ class connection_pool
     }
 
 public:
-    BOOST_MYSQL_DECL
-    connection_pool(asio::any_io_executor ex, const pool_params& params);
-
-    BOOST_MYSQL_DECL
-    connection_pool(connection_pool&& rhs) noexcept;
-
-    BOOST_MYSQL_DECL
-    connection_pool& operator=(connection_pool&&) noexcept;
+    connection_pool(asio::any_io_executor ex, const pool_params& params)
+        : impl_(new detail::connection_pool_impl(
+              create_pool_params(params),
+              std::move(ex),
+              params.enable_thread_safety
+          ))
+    {
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     connection_pool(const connection_pool&) = delete;
     connection_pool& operator=(const connection_pool&) = delete;
 #endif
 
-    BOOST_MYSQL_DECL
-    ~connection_pool();
+    connection_pool(connection_pool&& rhs) = default;
+    connection_pool& operator=(connection_pool&&) = default;
+    ~connection_pool() = default;
 
     bool valid() const noexcept { return impl_.get() != nullptr; }
 
@@ -168,7 +106,7 @@ public:
     async_run(CompletionToken&& token)
     {
         BOOST_ASSERT(valid());
-        return asio::async_initiate<CompletionToken, void(error_code)>(initiate_run(), token, this);
+        return impl_->async_run(std::forward<CompletionToken>(token));
     }
 
     template <
@@ -177,7 +115,9 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
     async_get_connection(CompletionToken&& token)
     {
-        return async_get_connection(get_default_timeout(), nullptr, std::forward<CompletionToken>(token));
+        BOOST_ASSERT(valid());
+        return impl_
+            ->async_get_connection(get_default_timeout(), nullptr, std::forward<CompletionToken>(token));
     }
 
     template <
@@ -186,7 +126,9 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
     async_get_connection(diagnostics& diag, CompletionToken&& token)
     {
-        return async_get_connection(get_default_timeout(), &diag, std::forward<CompletionToken>(token));
+        BOOST_ASSERT(valid());
+        return impl_
+            ->async_get_connection(get_default_timeout(), &diag, std::forward<CompletionToken>(token));
     }
 
     template <
@@ -195,7 +137,8 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
     async_get_connection(std::chrono::steady_clock::duration timeout, CompletionToken&& token)
     {
-        return async_get_connection(timeout, nullptr, std::forward<CompletionToken>(token));
+        BOOST_ASSERT(valid());
+        return impl_->async_get_connection(timeout, nullptr, std::forward<CompletionToken>(token));
     }
 
     template <
@@ -208,7 +151,8 @@ public:
         CompletionToken&& token
     )
     {
-        return async_get_connection(timeout, &diag, std::forward<CompletionToken>(token));
+        BOOST_ASSERT(valid());
+        return impl_->async_get_connection(timeout, &diag, std::forward<CompletionToken>(token));
     }
 
     void return_connection(pooled_connection&& conn, bool should_reset = true) noexcept

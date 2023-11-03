@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_NODE_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_NODE_HPP
+#ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
+#define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
@@ -15,8 +15,8 @@
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
-#include <boost/mysql/impl/internal/connection_pool/iddle_connection_list.hpp>
-#include <boost/mysql/impl/internal/connection_pool/task_joiner.hpp>
+#include <boost/mysql/detail/connection_pool/iddle_connection_list.hpp>
+#include <boost/mysql/detail/connection_pool/task_joiner.hpp>
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/bind_executor.hpp>
