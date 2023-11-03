@@ -17,8 +17,8 @@ namespace mysql {
 
 enum class address_type
 {
-    tcp,
-    unix
+    host_and_port,
+    unix_path
 };
 
 class any_address_view
@@ -37,29 +37,29 @@ class any_address_view
     }
 
 public:
-    static any_address_view tcp(string_view hostname, unsigned short port) noexcept
+    static any_address_view host_and_port(string_view hostname, unsigned short port) noexcept
     {
-        return any_address_view(address_type::tcp, hostname, port);
+        return any_address_view(address_type::host_and_port, hostname, port);
     }
-    static any_address_view unix(string_view path) noexcept
+    static any_address_view unix_path(string_view path) noexcept
     {
-        return any_address_view(address_type::unix, path, 0);
+        return any_address_view(address_type::unix_path, path, 0);
     }
 
     address_type type() const noexcept { return type_; }
     string_view hostname() const noexcept
     {
-        BOOST_ASSERT(type_ == address_type::tcp);
+        BOOST_ASSERT(type_ == address_type::host_and_port);
         return address_;
     }
     unsigned short port() const noexcept
     {
-        BOOST_ASSERT(type_ == address_type::tcp);
+        BOOST_ASSERT(type_ == address_type::host_and_port);
         return port_;
     }
     string_view unix_path() const noexcept
     {
-        BOOST_ASSERT(type_ == address_type::unix);
+        BOOST_ASSERT(type_ == address_type::unix_path);
         return address_;
     }
 };
@@ -81,29 +81,29 @@ public:
     {
     }
 
-    static any_address_view tcp(std::string hostname, unsigned short port) noexcept
+    static any_address_view host_and_port(std::string hostname, unsigned short port) noexcept
     {
-        return any_address_view(address_type::tcp, std::move(hostname), port);
+        return any_address_view(address_type::host_and_port, std::move(hostname), port);
     }
-    static any_address_view unix(std::string path) noexcept
+    static any_address_view unix_path(std::string path) noexcept
     {
-        return any_address_view(address_type::unix, std::move(path), 0);
+        return any_address_view(address_type::unix_path, std::move(path), 0);
     }
 
     address_type type() const noexcept { return type_; }
     string_view hostname() const noexcept
     {
-        BOOST_ASSERT(type_ == address_type::tcp);
+        BOOST_ASSERT(type_ == address_type::host_and_port);
         return address_;
     }
     unsigned short port() const noexcept
     {
-        BOOST_ASSERT(type_ == address_type::tcp);
+        BOOST_ASSERT(type_ == address_type::host_and_port);
         return port_;
     }
     string_view unix_path() const noexcept
     {
-        BOOST_ASSERT(type_ == address_type::unix);
+        BOOST_ASSERT(type_ == address_type::unix_path);
         return address_;
     }
 

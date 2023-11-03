@@ -43,7 +43,7 @@ struct boost::mysql::detail::variant_stream::connect_op : boost::asio::coroutine
                 return;
             }
 
-            if (server_address_.type() == address_type::tcp)
+            if (server_address_.type() == address_type::host_and_port)
             {
                 // Resolve endpoints
                 BOOST_ASIO_CORO_YIELD
@@ -67,7 +67,7 @@ struct boost::mysql::detail::variant_stream::connect_op : boost::asio::coroutine
             }
             else
             {
-                BOOST_ASSERT(server_address_.type() == address_type::unix);
+                BOOST_ASSERT(server_address_.type() == address_type::unix_path);
 
                 // Just connect the stream
                 // TODO: we could save a copy here
@@ -217,7 +217,7 @@ void boost::mysql::detail::variant_stream::connect(const void* connect_arg, erro
     if (ec)
         return;
 
-    if (server_address.type() == address_type::tcp)
+    if (server_address.type() == address_type::host_and_port)
     {
         // Resolve endpoints. TODO: we can save the to_string allocation
         auto& tcp_sock = variant2::unsafe_get<1>(sock_);
@@ -231,7 +231,7 @@ void boost::mysql::detail::variant_stream::connect(const void* connect_arg, erro
     }
     else
     {
-        BOOST_ASSERT(server_address.type() == address_type::unix);
+        BOOST_ASSERT(server_address.type() == address_type::unix_path);
 
         // Just connect the stream
         auto& unix_sock = variant2::unsafe_get<2>(sock_);
@@ -266,7 +266,7 @@ void boost::mysql::detail::variant_stream::close(error_code& ec)
 
 boost::mysql::error_code boost::mysql::detail::variant_stream::setup_stream(any_address_view server_address)
 {
-    if (server_address.type() == address_type::tcp)
+    if (server_address.type() == address_type::host_and_port)
     {
         auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_);
         if (tcp_sock)
@@ -284,7 +284,7 @@ boost::mysql::error_code boost::mysql::detail::variant_stream::setup_stream(any_
             sock_.emplace<socket_and_resolver>(ex_);
         }
     }
-    else if (server_address.type() == address_type::unix)
+    else if (server_address.type() == address_type::unix_path)
     {
         // TODO: fail if not supported
         auto* unix_sock = variant2::get_if<unix_socket>(&sock_);
