@@ -143,6 +143,9 @@ public:
         );
     }
 
+    // TODO: do we want to expose this?
+    void force_close(error_code& ec);
+
 private:
     using base_type = connection_base<asio::any_io_executor>;
 

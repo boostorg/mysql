@@ -257,21 +257,21 @@ public:
         run_algo(*stream_, *st_, connect_algo_params{&connect_arg, &diag, params}, err);
     }
 
-    template <class Stream, class CompletionToken>
+    template <class ConnectArg, class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
-        const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+        const ConnectArg& connect_arg,
         const handshake_params& params,
         diagnostics& diag,
         CompletionToken&& token
     )
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            connect_initiation<Stream>(),
+            connect_initiation<ConnectArg>(),
             token,
             stream_.get(),
             st_.get(),
-            endpoint,
+            connect_arg,
             params,
             &diag
         );
