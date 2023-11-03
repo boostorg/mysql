@@ -115,7 +115,7 @@ class connection_pool_impl
     struct get_connection_op : asio::coroutine
     {
         connection_pool_impl& obj_;
-        std::chrono::steady_clock::duration timeout_;
+        std::chrono::steady_clock::time_point timeout_tp_;
         diagnostics* diag_;
         connection_node* result_;
         std::unique_ptr<asio::steady_timer> timer_;
@@ -125,7 +125,7 @@ class connection_pool_impl
             std::chrono::steady_clock::duration timeout,
             diagnostics* diag
         ) noexcept
-            : obj_(obj), timeout_(timeout), diag_(diag)
+            : obj_(obj), timeout_tp_(std::chrono::steady_clock::now() + timeout), diag_(diag)
         {
         }
 
@@ -212,7 +212,7 @@ class connection_pool_impl
                 while (true)
                 {
                     // Wait to be notified, or until a timeout happens
-                    timer_->expires_after(timeout_);
+                    timer_->expires_at(timeout_tp_);
 
                     BOOST_ASIO_CORO_YIELD
                     asio::experimental::make_parallel_group(
@@ -231,6 +231,12 @@ class connection_pool_impl
                             ec = obj_.shared_st_.iddle_list.last_error();
                             if (diag_)
                                 *diag_ = obj_.shared_st_.iddle_list.last_diagnostics();
+                        }
+
+                        if (obj_.is_thread_safe())
+                        {
+                            BOOST_ASIO_CORO_YIELD
+                            asio::post(obj_.ex_, std::move(self));
                         }
 
                         do_complete(self, ec, pooled_connection());
@@ -303,12 +309,12 @@ inline owning_pool_params create_pool_params(const pool_params& input)
         input.server_address.type() == address_type::tcp ? input.server_address.hostname()
                                                          : input.server_address.unix_path(),
         input.server_address.type() == address_type::tcp ? input.server_address.port() : (unsigned short)0u,
-        input.handshake_params.username(),
-        input.handshake_params.password(),
-        input.handshake_params.database(),
-        input.handshake_params.connection_collation(),
-        input.handshake_params.ssl(),
-        input.handshake_params.multi_queries(),
+        input.hparams.username(),
+        input.hparams.password(),
+        input.hparams.database(),
+        input.hparams.connection_collation(),
+        input.hparams.ssl(),
+        input.hparams.multi_queries(),
         input.initial_size,
         input.max_size,
         input.connect_timeout,

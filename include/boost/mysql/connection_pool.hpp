@@ -14,6 +14,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool_helpers.hpp>
 
@@ -33,7 +34,7 @@ class connection_pool;
 struct pool_params
 {
     any_address_view server_address;
-    handshake_params handshake_params;
+    handshake_params hparams;
     std::size_t initial_size{1};
     std::size_t max_size{150};  // TODO: is this MySQL's max by default?
     bool enable_thread_safety{true};
@@ -48,7 +49,10 @@ struct pool_params
 
 class pooled_connection
 {
+#ifndef BOOST_MYSQL_DOXYGEN
     friend class connection_pool;
+    friend struct detail::access;
+#endif
 
     BOOST_MYSQL_DECL
     const any_connection* const_ptr() const noexcept;
