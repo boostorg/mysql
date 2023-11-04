@@ -81,13 +81,13 @@ public:
     {
     }
 
-    static any_address_view host_and_port(std::string hostname, unsigned short port) noexcept
+    static any_address host_and_port(std::string hostname, unsigned short port) noexcept
     {
-        return any_address_view(address_type::host_and_port, std::move(hostname), port);
+        return any_address(address_type::host_and_port, std::move(hostname), port);
     }
-    static any_address_view unix_path(std::string path) noexcept
+    static any_address unix_path(std::string path) noexcept
     {
-        return any_address_view(address_type::unix_path, std::move(path), 0);
+        return any_address(address_type::unix_path, std::move(path), 0);
     }
 
     address_type type() const noexcept { return type_; }

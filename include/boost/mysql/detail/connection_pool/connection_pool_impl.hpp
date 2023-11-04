@@ -20,6 +20,7 @@
 #include <boost/mysql/detail/connection_pool/task_joiner.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
@@ -46,7 +47,7 @@ namespace detail {
 class connection_pool_impl
 {
     bool cancelled_{};
-    owning_pool_params params_;
+    pool_params params_;
     asio::any_io_executor ex_;
     asio::any_io_executor strand_ex_;
     std::list<connection_node> all_conns_;
@@ -61,7 +62,7 @@ class connection_pool_impl
         all_conns_.back().async_run(asio::detached);
     }
 
-    bool is_thread_safe() const noexcept { return static_cast<bool>(strand_ex_); }
+    bool is_thread_safe() const noexcept { return params_.enable_thread_safety; }
 
     struct run_op : asio::coroutine
     {
@@ -265,14 +266,18 @@ class connection_pool_impl
     };
 
 public:
-    connection_pool_impl(owning_pool_params&& params, asio::any_io_executor ex, bool enable_thread_safety)
+    connection_pool_impl(pool_params&& params, asio::any_io_executor ex)
         : params_(std::move(params)),
           ex_(std::move(ex)),
-          strand_ex_(enable_thread_safety ? asio::make_strand(ex_) : asio::any_io_executor()),
+          strand_ex_(params_.enable_thread_safety ? asio::make_strand(ex_) : asio::any_io_executor()),
           shared_st_(get_io_executor()),
           cancel_chan_(get_io_executor(), 1)
     {
     }
+
+    using executor_type = asio::any_io_executor;
+
+    executor_type get_executor() { return ex_; }
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -295,7 +300,7 @@ public:
         CompletionToken&& token
     )
     {
-        asio::async_compose<CompletionToken, void(error_code, pooled_connection)>(
+        return asio::async_compose<CompletionToken, void(error_code, pooled_connection)>(
             get_connection_op(*this, timeout, diag),
             token,
             ex_

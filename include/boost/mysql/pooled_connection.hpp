@@ -12,7 +12,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connection_pool/fwd.hpp>
+#include <boost/mysql/detail/connection_pool/connection_node.hpp>
 
 #include <memory>
 
@@ -22,23 +22,14 @@ namespace mysql {
 class pooled_connection
 {
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend class connection_pool;
     friend struct detail::access;
 #endif
-
-    BOOST_MYSQL_DECL
-    const any_connection* const_ptr() const noexcept;
-
-    any_connection* ptr() noexcept { return const_cast<any_connection*>(const_ptr()); }
 
     pooled_connection(detail::connection_node& node) noexcept : impl_(&node) {}
 
     struct deleter
     {
-        void operator()(detail::connection_node* node) const noexcept
-        {
-            detail::return_connection(*node, true);
-        }
+        void operator()(detail::connection_node* node) const noexcept { node->mark_as_collectable(true); }
     };
 
     std::unique_ptr<detail::connection_node, deleter> impl_;
@@ -53,10 +44,12 @@ public:
 
     bool valid() const noexcept { return impl_.get() != nullptr; }
 
-    any_connection& get() noexcept { return *ptr(); }
-    const any_connection& get() const noexcept { return *const_ptr(); }
-    any_connection* operator->() noexcept { return ptr(); }
-    const any_connection* operator->() const noexcept { return const_ptr(); }
+    any_connection& get() noexcept { return impl_->connection(); }
+    const any_connection& get() const noexcept { return impl_->connection(); }
+    any_connection* operator->() noexcept { return &get(); }
+    const any_connection* operator->() const noexcept { return &get(); }
+
+    void return_to_pool(bool should_reset = true) noexcept { impl_->mark_as_collectable(should_reset); }
 };
 
 }  // namespace mysql

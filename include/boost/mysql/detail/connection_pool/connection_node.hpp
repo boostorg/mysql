@@ -8,12 +8,11 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
-#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/pool_params.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool/iddle_connection_list.hpp>
@@ -40,28 +39,6 @@ namespace mysql {
 namespace detail {
 
 // TODO: this should be somewhere public
-struct owning_pool_params
-{
-    any_address address;
-    std::string username;
-    std::string password;
-    std::string database;
-    std::uint16_t connection_collation{handshake_params::default_collation};
-    ssl_mode ssl;
-    bool multi_queries{};
-    std::size_t initial_size{1};
-    std::size_t max_size{150};
-    std::chrono::steady_clock::duration connect_timeout;
-    std::chrono::steady_clock::duration ping_timeout;
-    std::chrono::steady_clock::duration reset_timeout;
-    std::chrono::steady_clock::duration retry_interval;
-    std::chrono::steady_clock::duration ping_interval;
-
-    handshake_params hparams() const noexcept
-    {
-        return handshake_params(username, password, database, connection_collation, ssl, multi_queries);
-    }
-};
 
 // State shared between connection tasks
 struct conn_shared_state
@@ -113,7 +90,100 @@ class sansio_connection_node
 
 public:
     BOOST_MYSQL_DECL
-    next_connection_action resume(error_code ec, collection_state col_st);
+    next_connection_action resume(error_code ec, collection_state col_st)
+    {
+        BOOST_ASIO_CORO_REENTER(coro_)
+        {
+            while (true)
+            {
+                if (status_ == connection_status::pending_connect)
+                {
+                    // Try to connect
+                    BOOST_ASIO_CORO_YIELD return next_connection_action::connect;
+                    if (ec)
+                    {
+                        // We were cancelled, exit
+                        if (ec == asio::error::operation_aborted)
+                            return next_connection_action::none;
+
+                        // Sleep
+                        BOOST_ASIO_CORO_YIELD return next_connection_action::sleep_connect_failed;
+
+                        // We were cancelled, exit
+                        if (ec == asio::error::operation_aborted)
+                            return next_connection_action::none;
+
+                        // We're still pending connect, just retry. No need to close here.
+                    }
+                    else
+                    {
+                        // We're iddle
+                        status_ = connection_status::iddle;
+                    }
+                }
+                else if (status_ == connection_status::iddle || status_ == connection_status::in_use)
+                {
+                    // Iddle wait. Note that, if a connection is taken, status_ will be
+                    // changed externally, not by this coroutine. This saves rescheduling.
+                    BOOST_ASIO_CORO_YIELD return next_connection_action::iddle_wait;
+                    if (ec == asio::error::operation_aborted)
+                    {
+                        // We were cancelled. Return
+                        return next_connection_action::none;
+                    }
+                    else if (col_st != collection_state::none)
+                    {
+                        // The user has notified us to collect the connection.
+                        // This happens after they return the connection to the pool.
+                        // Update status and continue
+                        status_ = col_st == collection_state::needs_collect
+                                      ? connection_status::iddle
+                                      : connection_status::pending_reset;
+                    }
+                    else if (status_ == connection_status::iddle)
+                    {
+                        // The wait finished with no interruptions, and the connection
+                        // is still iddle. Time to ping.
+                        status_ = connection_status::pending_ping;
+                    }
+
+                    // Otherwise (status is in_use and there's no collection request),
+                    // the user is still using the connection (it's taking long, but can happen).
+                    // Iddle wait again until they return the connection.
+                }
+                else if (status_ == connection_status::pending_ping || status_ == connection_status::pending_reset)
+                {
+                    // Do ping or reset
+                    BOOST_ASIO_CORO_YIELD return status_ == connection_status::pending_ping
+                        ? next_connection_action::ping
+                        : next_connection_action::reset;
+
+                    // Check result
+                    if (ec)
+                    {
+                        // The operation was cancelled. Exit
+                        if (ec == asio::error::operation_aborted)
+                            return next_connection_action::none;
+
+                        // The operation had an error but weren't cancelled. Close and reconnect
+                        BOOST_ASIO_CORO_YIELD return next_connection_action::close;
+                        status_ = connection_status::pending_connect;
+                    }
+                    else
+                    {
+                        // The operation succeeded. We're iddle again.
+                        status_ = connection_status::iddle;
+                    }
+                }
+                else
+                {
+                    BOOST_ASSERT(false);
+                }
+            }
+        }
+
+        return next_connection_action::none;
+    }
 
     void mark_as_in_use() noexcept
     {
@@ -141,7 +211,7 @@ inline error_code to_error_code(
 class connection_node : public hook_type
 {
     // Not thread-safe, should only be manipulated within the connection pool strand context
-    const owning_pool_params* params_;
+    const pool_params* params_;
     sansio_connection_node sansio_impl_;
     any_connection conn_;
     boost::asio::steady_timer timer_;
@@ -167,6 +237,18 @@ class connection_node : public hook_type
             ++shared_st_->num_pending_connections;
         else if (is_pending(old_status) && !is_pending(new_status))
             --shared_st_->num_pending_connections;
+    }
+
+    handshake_params get_hparams() const noexcept
+    {
+        return handshake_params(
+            params_->username,
+            params_->password,
+            params_->database,
+            params_->connection_collation,
+            params_->ssl,
+            params_->multi_queries
+        );
     }
 
     struct connection_task_op : asio::coroutine
@@ -252,7 +334,7 @@ class connection_node : public hook_type
                             self,
                             node_.conn_.async_connect(
                                 node_.params_->address,
-                                node_.params_->hparams(),
+                                node_.get_hparams(),
                                 node_.diag_,
                                 asio::deferred
                             ),
@@ -325,7 +407,7 @@ class connection_node : public hook_type
 
 public:
     connection_node(
-        const owning_pool_params& params,
+        const pool_params& params,
         boost::asio::any_io_executor ex,
         boost::asio::any_io_executor strand_ex,
         conn_shared_state& shared_st
@@ -354,6 +436,7 @@ public:
         );
     }
 
+    any_connection& connection() noexcept { return conn_; }
     const any_connection& connection() const noexcept { return conn_; }
 
     void mark_as_in_use() noexcept

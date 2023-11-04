@@ -8,17 +8,15 @@
 #ifndef BOOST_MYSQL_CONNECTION_POOL_HPP
 #define BOOST_MYSQL_CONNECTION_POOL_HPP
 
-#include <boost/mysql/any_address.hpp>
-#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/pool_params.hpp>
+#include <boost/mysql/pooled_connection.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool/connection_pool_impl.hpp>
 
-#include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
 
@@ -27,25 +25,6 @@
 
 namespace boost {
 namespace mysql {
-
-class connection_pool;
-
-// TODO: review this
-struct pool_params
-{
-    any_address_view server_address;
-    handshake_params hparams;
-    std::size_t initial_size{1};
-    std::size_t max_size{150};  // TODO: is this MySQL's max by default?
-    bool enable_thread_safety{true};
-
-    std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};
-    std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(5)};
-    std::chrono::steady_clock::duration reset_timeout{std::chrono::seconds(10)};
-    std::chrono::steady_clock::duration retry_interval{std::chrono::seconds(10)};
-    std::chrono::steady_clock::duration ping_interval{std::chrono::hours(1)};
-    // TODO: SSL
-};
 
 class connection_pool
 {
@@ -57,8 +36,10 @@ class connection_pool
     }
 
 public:
-    BOOST_MYSQL_DECL
-    connection_pool(asio::any_io_executor ex, const pool_params& params);
+    connection_pool(asio::any_io_executor ex, pool_params params)
+        : impl_(new detail::connection_pool_impl(std::move(params), std::move(ex)))
+    {
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     connection_pool(const connection_pool&) = delete;
@@ -68,6 +49,10 @@ public:
     connection_pool(connection_pool&& rhs) = default;
     connection_pool& operator=(connection_pool&&) = default;
     ~connection_pool() = default;
+
+    using executor_type = asio::any_io_executor;
+
+    executor_type get_executor() { return impl_->get_executor(); }
 
     bool valid() const noexcept { return impl_.get() != nullptr; }
 
@@ -125,13 +110,6 @@ public:
         return impl_->async_get_connection(timeout, &diag, std::forward<CompletionToken>(token));
     }
 
-    void return_connection(pooled_connection&& conn, bool should_reset = true) noexcept
-    {
-        BOOST_ASSERT(valid());
-        if (conn.valid())
-            detail::return_connection(*conn.impl_.release(), should_reset);
-    }
-
     void cancel()
     {
         BOOST_ASSERT(valid());
@@ -141,9 +119,5 @@ public:
 
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/connection_pool.ipp>
-#endif
 
 #endif
