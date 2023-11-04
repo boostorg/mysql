@@ -135,8 +135,10 @@ std::size_t boost::mysql::detail::variant_stream::read_some(
     {
         return unix_sock->read_some(buff, ec);
     }
-
-    BOOST_ASSERT(false);
+    else
+    {
+        BOOST_ASSERT(false);
+    }
 }
 
 void boost::mysql::detail::variant_stream::async_read_some(
@@ -158,8 +160,10 @@ void boost::mysql::detail::variant_stream::async_read_some(
     {
         unix_sock->async_read_some(buff, std::move(handler));
     }
-
-    BOOST_ASSERT(false);
+    else
+    {
+        BOOST_ASSERT(false);
+    }
 }
 
 // Writing
@@ -182,8 +186,10 @@ std::size_t boost::mysql::detail::variant_stream::write_some(
     {
         return unix_sock->write_some(buff, ec);
     }
-
-    BOOST_ASSERT(false);
+    else
+    {
+        BOOST_ASSERT(false);
+    }
 }
 
 void boost::mysql::detail::variant_stream::async_write_some(
@@ -205,8 +211,10 @@ void boost::mysql::detail::variant_stream::async_write_some(
     {
         return unix_sock->async_write_some(buff, std::move(handler));
     }
-
-    BOOST_ASSERT(false);
+    else
+    {
+        BOOST_ASSERT(false);
+    }
 }
 
 void boost::mysql::detail::variant_stream::connect(const void* connect_arg, error_code& ec)
