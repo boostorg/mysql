@@ -73,7 +73,6 @@ enum class next_connection_action
     iddle_wait,
     reset,
     ping,
-    close
 };
 
 enum class collection_state
@@ -165,8 +164,7 @@ public:
                         if (ec == asio::error::operation_aborted)
                             return next_connection_action::none;
 
-                        // The operation had an error but weren't cancelled. Close and reconnect
-                        BOOST_ASIO_CORO_YIELD return next_connection_action::close;
+                        // The operation had an error but weren't cancelled. Reconnect
                         status_ = connection_status::pending_connect;
                     }
                     else
@@ -388,11 +386,6 @@ class connection_node : public hook_type
                         // Iddle wait may yield a collection state. Load it and pass it to the sans-io
                         // algorithm.
                         col_st = node_.collection_state_.exchange(collection_state::none);
-                    }
-                    else if (act == next_connection_action::close)
-                    {
-                        // This doesn't actually involve I/O
-                        node_.conn_.force_close(ec);
                     }
                     else if (act == next_connection_action::none)
                     {

@@ -49,7 +49,10 @@ public:
     any_connection* operator->() noexcept { return &get(); }
     const any_connection* operator->() const noexcept { return &get(); }
 
-    void return_to_pool(bool should_reset = true) noexcept { impl_->mark_as_collectable(should_reset); }
+    void return_to_pool(bool should_reset = true) noexcept
+    {
+        impl_.release()->mark_as_collectable(should_reset);
+    }
 };
 
 }  // namespace mysql

@@ -58,6 +58,10 @@ struct connection_state_data
         flavor = db_flavor::mysql;
         current_capabilities = capabilities();
         // Metadata mode does not get reset on handshake
+        reader.reset();
+        // Writer does not need reset, since every write clears previous state
+        if (supports_ssl())
+            ssl = ssl_state::inactive;
     }
 };
 

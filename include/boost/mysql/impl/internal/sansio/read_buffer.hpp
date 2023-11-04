@@ -37,6 +37,14 @@ class read_buffer
 public:
     read_buffer(std::size_t size) : buffer_(size, std::uint8_t(0)) { buffer_.resize(buffer_.capacity()); }
 
+    void reset() noexcept
+    {
+        buffer_.clear();
+        current_message_offset_ = 0;
+        pending_offset_ = 0;
+        free_offset_ = 0;
+    }
+
     // Whole buffer accessors
     const std::uint8_t* first() const noexcept { return buffer_.data(); }
     std::size_t size() const noexcept { return buffer_.size(); }
