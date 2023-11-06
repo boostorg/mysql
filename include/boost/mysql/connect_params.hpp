@@ -15,8 +15,6 @@
 
 #include <boost/mysql/detail/access.hpp>
 
-#include <string>
-
 namespace boost {
 namespace mysql {
 
@@ -25,20 +23,14 @@ class connect_params
     struct
     {
         address_type addr_type{address_type::tcp_address};
-        std::string address;
+        string_view address{"localhost"};
         unsigned short port{3306};
-        std::string username;
-        std::string password;
-        std::string database;
+        string_view username;
+        string_view password;
+        string_view database;
         std::uint16_t connection_collation{handshake_params::default_collation};
         ssl_mode ssl{ssl_mode::require};
         bool multi_queries{};
-
-        const char* unix_path_c_str() const noexcept
-        {
-            BOOST_ASSERT(addr_type == address_type::unix_path);
-            return address.c_str();
-        }
     } impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -54,7 +46,7 @@ public:
     string_view hostname() const noexcept
     {
         BOOST_ASSERT(impl_.addr_type == address_type::tcp_address);
-        return impl_.address.empty() ? string_view("localhost") : string_view(impl_.address);
+        return impl_.address;
     }
 
     unsigned short port() const noexcept
@@ -85,34 +77,34 @@ public:
     bool multi_queries() const noexcept { return impl_.multi_queries; }
 
     // setters
-    connect_params& set_tcp_address(std::string hostname, unsigned short port = 3306)
+    connect_params& set_tcp_address(string_view hostname, unsigned short port = 3306) noexcept
     {
         impl_.addr_type = address_type::tcp_address;
-        impl_.address = std::move(hostname);
+        impl_.address = hostname;
         impl_.port = port;
         return *this;
     }
 
-    connect_params& set_unix_address(std::string path)
+    connect_params& set_unix_address(string_view path) noexcept
     {
         impl_.addr_type = address_type::unix_path;
-        impl_.address = std::move(path);
+        impl_.address = path;
         return *this;
     }
 
-    connect_params& set_username(std::string val)
+    connect_params& set_username(string_view val) noexcept
     {
-        impl_.username = std::move(val);
+        impl_.username = val;
         return *this;
     }
 
-    connect_params& set_password(std::string passwd)
+    connect_params& set_password(string_view passwd) noexcept
     {
         impl_.password = std::move(passwd);
         return *this;
     }
 
-    connect_params& set_database(std::string val)
+    connect_params& set_database(string_view val) noexcept
     {
         impl_.database = std::move(val);
         return *this;
