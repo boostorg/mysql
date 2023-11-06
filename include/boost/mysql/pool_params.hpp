@@ -8,11 +8,15 @@
 #ifndef BOOST_MYSQL_POOL_PARAMS_HPP
 #define BOOST_MYSQL_POOL_PARAMS_HPP
 
-#include <boost/mysql/any_address.hpp>
+#include <boost/mysql/buffer_params.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
+#include <boost/asio/ssl/context.hpp>
+
 #include <chrono>
+#include <cstddef>
 #include <string>
 
 namespace boost {
@@ -21,13 +25,9 @@ namespace mysql {
 // TODO: review this
 struct pool_params
 {
-    any_address address;
-    std::string username;
-    std::string password;
-    std::string database;
-    std::uint16_t connection_collation{handshake_params::default_collation};
-    ssl_mode ssl{ssl_mode::require};
-    bool multi_queries{};
+    connect_params conn_params;
+    asio::ssl::context* ssl_ctx{};
+    buffer_params buff_params;
     std::size_t initial_size{1};
     std::size_t max_size{150};
     std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};

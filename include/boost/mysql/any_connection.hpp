@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_ANY_CONNECTION_HPP
 #define BOOST_MYSQL_ANY_CONNECTION_HPP
 
-#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/buffer_params.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection_base.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -57,6 +57,12 @@ public:
     {
     }
 
+    // TODO: do we want to expose this?
+    any_connection(asio::any_io_executor ex, asio::ssl::context* ctx, const buffer_params& buff)
+        : base_type(buff, std::unique_ptr<detail::any_stream>(new detail::variant_stream(std::move(ex), ctx)))
+    {
+    }
+
     /**
      * \brief Move constructor.
      */
@@ -78,37 +84,43 @@ public:
     /// Retrieves the executor associated to this object.
     executor_type get_executor() { return impl_.stream().get_executor(); }
 
-    void connect(any_address_view address, const handshake_params& hparams, error_code& ec, diagnostics& diag)
+    void connect(const connect_params& params, error_code& ec, diagnostics& diag)
     {
-        impl_.connect(address, hparams, ec, diag);
+        impl_.connect_v2(params, ec, diag);
     }
 
     /// \copydoc connect
-    void connect(any_address_view address, const handshake_params& hparams)
+    void connect(const connect_params& params)
     {
         error_code err;
         diagnostics diag;
-        connect(address, hparams, err, diag);
+        connect(params, err, diag);
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_connect(any_address_view address, const handshake_params& hparams, CompletionToken&& token)
+    async_connect(const connect_params& params, CompletionToken&& token)
     {
-        return async_connect(address, hparams, impl_.shared_diag(), std::forward<CompletionToken>(token));
+        return async_connect(params, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_connect(
-        any_address_view address,
-        const handshake_params& hparams,
-        diagnostics& diag,
-        CompletionToken&& token
-    )
+    async_connect(const connect_params& params, diagnostics& diag, CompletionToken&& token)
     {
-        return impl_.async_connect(address, hparams, diag, std::forward<CompletionToken>(token));
+        return impl_.async_connect_v2(params, diag, std::forward<CompletionToken>(token));
+    }
+
+    // TODO: hide this
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
+    {
+        return impl_.async_run(
+            impl_.make_params_connect_v2(*params, diag),
+            std::forward<CompletionToken>(token)
+        );
     }
 
     void close(error_code& err, diagnostics& diag)
@@ -145,11 +157,6 @@ public:
 
 private:
     using base_type = connection_base<asio::any_io_executor>;
-
-    any_connection(asio::any_io_executor ex, asio::ssl::context* ctx, const buffer_params& buff)
-        : base_type(buff, std::unique_ptr<detail::any_stream>(new detail::variant_stream(std::move(ex), ctx)))
-    {
-    }
 };
 
 }  // namespace mysql

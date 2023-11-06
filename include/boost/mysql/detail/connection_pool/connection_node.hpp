@@ -237,18 +237,6 @@ class connection_node : public hook_type
             --shared_st_->num_pending_connections;
     }
 
-    handshake_params get_hparams() const noexcept
-    {
-        return handshake_params(
-            params_->username,
-            params_->password,
-            params_->database,
-            params_->connection_collation,
-            params_->ssl,
-            params_->multi_queries
-        );
-    }
-
     struct connection_task_op : asio::coroutine
     {
         connection_node& node_;
@@ -330,12 +318,8 @@ class connection_node : public hook_type
                         BOOST_ASIO_CORO_YIELD
                         run_with_timeout(
                             self,
-                            node_.conn_.async_connect(
-                                node_.params_->address,
-                                node_.get_hparams(),
-                                node_.diag_,
-                                asio::deferred
-                            ),
+                            node_.conn_
+                                .async_connect(&node_.params_->conn_params, node_.diag_, asio::deferred),
                             node_.params_->connect_timeout,
                             true
                         );
@@ -406,7 +390,7 @@ public:
         conn_shared_state& shared_st
     )
         : params_(&params),
-          conn_(ex),
+          conn_(ex, params.ssl_ctx, params.buff_params),
           timer_(strand_ex),
           shared_st_(&shared_st),
           collection_channel_(strand_ex, 1)

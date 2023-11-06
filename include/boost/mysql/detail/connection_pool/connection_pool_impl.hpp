@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
 
-#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pooled_connection.hpp>

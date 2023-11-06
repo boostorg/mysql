@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_VARIANT_STREAM_HPP
 #define BOOST_MYSQL_DETAIL_VARIANT_STREAM_HPP
 
-#include <boost/mysql/any_address.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -28,6 +28,7 @@
 #include <boost/optional/optional.hpp>
 #include <boost/variant2/variant.hpp>
 
+#include <memory>
 #include <string>
 
 namespace boost {
@@ -108,7 +109,7 @@ private:
     boost::optional<asio::ssl::stream<asio::ip::tcp::socket&>> ssl_;
 
     BOOST_MYSQL_DECL
-    error_code setup_stream(any_address_view server_address);
+    error_code setup_stream(address_type server_address);
 
     BOOST_MYSQL_DECL
     asio::ssl::context& ensure_ssl_context();

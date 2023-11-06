@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
@@ -28,6 +29,9 @@
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
+#include <boost/asio/associated_allocator.hpp>
+#include <boost/asio/consign.hpp>
+#include <boost/asio/recycling_allocator.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
 #include <array>
@@ -112,6 +116,18 @@ make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, std::v
     return {impl.stmt, tuple_to_array(impl.params)};
 }
 
+inline handshake_params get_hparams(const connect_params& input) noexcept
+{
+    return handshake_params(
+        input.username(),
+        input.password(),
+        input.database(),
+        input.connection_collation(),
+        input.ssl(),
+        input.multi_queries()
+    );
+}
+
 class connection_impl
 {
     std::unique_ptr<any_stream> stream_;
@@ -150,6 +166,27 @@ class connection_impl
                 *st,
                 connect_algo_params{&connect_arg, diag, params},
                 std::forward<Handler>(handler)
+            );
+        }
+    };
+    struct connect_v2_initiation
+    {
+        template <class Handler>
+        void operator()(
+            Handler&& handler,
+            any_stream* stream,
+            connection_state* st,
+            connect_params&& params,
+            diagnostics* diag
+        )
+        {
+            auto alloc = asio::get_associated_allocator(handler, asio::recycling_allocator<connect_params>());
+            auto shared_params = std::allocate_shared<connect_params>(alloc, std::move(params));
+            async_run_algo(
+                *stream,
+                *st,
+                make_params_connect_v2(*shared_params, *diag),
+                asio::consign(std::forward<Handler>(handler), std::move(shared_params))
             );
         }
     };
@@ -273,6 +310,34 @@ public:
             st_.get(),
             connect_arg,
             params,
+            &diag
+        );
+    }
+
+    // Connect v2
+    static connect_algo_params make_params_connect_v2(
+        const connect_params& params,
+        diagnostics& diag
+    ) noexcept
+    {
+        return {&params, &diag, get_hparams(params)};
+    }
+
+    void connect_v2(const connect_params& params, error_code& err, diagnostics& diag)
+    {
+        run_algo(*stream_, *st_, make_params_connect_v2(params, diag), err);
+    }
+
+    template <class CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_connect_v2(connect_params&& params, diagnostics& diag, CompletionToken&& token)
+    {
+        return asio::async_initiate<CompletionToken, void(error_code)>(
+            connect_v2_initiation(),
+            token,
+            stream_.get(),
+            st_.get(),
+            std::move(params),
             &diag
         );
     }
