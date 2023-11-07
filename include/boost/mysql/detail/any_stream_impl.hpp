@@ -31,12 +31,15 @@ namespace detail {
 template <class Stream, class = void>
 struct endpoint_storage  // prevent build errors for non socket streams
 {
+    void store(const void*) noexcept {}
 };
 
 template <class Stream>
 struct endpoint_storage<Stream, void_t<typename Stream::lowest_layer_type::endpoint_type>>
 {
-    typename Stream::lowest_layer_type::endpoint_type value;
+    using endpoint_type = typename Stream::lowest_layer_type::endpoint_type;
+    endpoint_type value;
+    void store(const void* v) { value = *static_cast<const endpoint_type*>(v); }
 };
 
 template <class Stream>
@@ -120,11 +123,7 @@ public:
     {
     }
 
-    template <class T>
-    void set_endpoint(T&& val)
-    {
-        endpoint_.value = std::forward<T>(val);
-    }
+    void set_endpoint(const void* val) override final { endpoint_.store(val); }
 
     Stream& stream() noexcept { return stream_; }
     const Stream& stream() const noexcept { return stream_; }
@@ -200,11 +199,7 @@ public:
     {
     }
 
-    template <class T>
-    void set_endpoint(T&& val)
-    {
-        endpoint_.value = std::forward<T>(val);
-    }
+    void set_endpoint(const void* val) override final { endpoint_.store(val); }
 
     asio::ssl::stream<Stream>& stream() noexcept { return stream_; }
     const asio::ssl::stream<Stream>& stream() const noexcept { return stream_; }

@@ -143,6 +143,7 @@ public:
     }
 
     // Connect and close
+    void set_endpoint(const void*) override {}
     void connect(error_code& ec) override
     {
         calls.push_back(next_action::connect());

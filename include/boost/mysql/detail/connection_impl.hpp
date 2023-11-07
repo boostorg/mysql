@@ -31,7 +31,6 @@
 #include <boost/mysql/detail/owning_connect_params.hpp>
 #include <boost/mysql/detail/run_algo.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
-#include <boost/mysql/detail/variant_stream.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
@@ -144,21 +143,7 @@ class connection_impl
     };
 
     // Connect
-    template <class Stream>
-    static void set_endpoint(
-        any_stream& stream,
-        const typename Stream::lowest_layer_type::endpoint_type& endpoint
-    )
-    {
-        static_cast<any_stream_impl<Stream>&>(stream).set_endpoint(endpoint);
-    }
-
-    inline static void set_address(any_stream& stream, any_address address)
-    {
-        static_cast<variant_stream&>(stream).set_address(address);
-    }
-
-    template <class Stream>
+    template <class EndpointType>
     struct connect_initiation
     {
         template <class Handler>
@@ -166,30 +151,13 @@ class connection_impl
             Handler&& handler,
             any_stream* stream,
             connection_state* st,
-            const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+            const EndpointType& endpoint,
             handshake_params params,
             diagnostics* diag
         )
         {
-            set_endpoint<Stream>(*stream, endpoint);
+            stream->set_endpoint(&endpoint);
             async_run_algo(*stream, *st, connect_algo_params{diag, params}, std::forward<Handler>(handler));
-        }
-    };
-
-    struct connect_v2_initiation
-    {
-        template <class Handler>
-        void operator()(
-            Handler&& handler,
-            any_stream* stream,
-            connection_state* st,
-            any_address address,
-            handshake_params hparams,
-            diagnostics* diag
-        )
-        {
-            static_cast<detail::variant_stream*>(stream)->set_address(address);
-            async_run_algo(*stream, *st, connect_algo_params{diag, hparams}, std::forward<Handler>(handler));
         }
     };
 
@@ -284,30 +252,30 @@ public:
         return run_algo(*stream_, *st_, params, ec);
     }
 
-    // Connect. This handles casting to the corresponding endpoint_type, if required
-    template <class Stream>
+    // Connect
+    template <class EndpointType>
     void connect(
-        const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+        const EndpointType& endpoint,
         const handshake_params& params,
         error_code& err,
         diagnostics& diag
     )
     {
-        set_endpoint<Stream>(*stream_, endpoint);
+        stream_->set_endpoint(&endpoint);
         run_algo(*stream_, *st_, connect_algo_params{&diag, params}, err);
     }
 
-    template <class Stream, class CompletionToken>
+    template <class EndpointType, class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
-        const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+        const EndpointType& endpoint,
         const handshake_params& params,
         diagnostics& diag,
         CompletionToken&& token
     )
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            connect_initiation<Stream>(),
+            connect_initiation<EndpointType>(),
             token,
             stream_.get(),
             st_.get(),
@@ -321,8 +289,7 @@ public:
     void connect_v2(const connect_params& params, error_code& err, diagnostics& diag)
     {
         const auto& impl = access::get_impl(params);
-        set_address(*stream_, impl.to_address());
-        run_algo(*stream_, *st_, connect_algo_params{&diag, impl.to_handshake_params()}, err);
+        connect(impl.to_address(), impl.to_handshake_params(), err, diag);
     }
 
     template <class CompletionToken>
@@ -347,15 +314,7 @@ public:
         CompletionToken&& token
     )
     {
-        return asio::async_initiate<CompletionToken, void(error_code)>(
-            connect_v2_initiation(),
-            token,
-            stream_.get(),
-            st_.get(),
-            addr,
-            params,
-            &diag
-        );
+        return async_connect(addr, params, diag, std::forward<CompletionToken>(token));
     }
 
     // Handshake

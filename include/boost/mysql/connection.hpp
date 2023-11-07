@@ -173,7 +173,8 @@ public:
             detail::is_socket_stream<Stream>::value,
             "connect can only be used if Stream satisfies the SocketStream concept"
         );
-        this->impl_.template connect<Stream>(endpoint, params, ec, diag);
+        this->impl_
+            .template connect<typename Stream::lowest_layer_type::endpoint_type>(endpoint, params, ec, diag);
     }
 
     /// \copydoc connect
@@ -240,8 +241,12 @@ public:
             detail::is_socket_stream<Stream>::value,
             "async_connect can only be used if Stream satisfies the SocketStream concept"
         );
-        return this->impl_
-            .template async_connect<Stream>(endpoint, params, diag, std::forward<CompletionToken>(token));
+        return this->impl_.template async_connect<typename Stream::lowest_layer_type::endpoint_type>(
+            endpoint,
+            params,
+            diag,
+            std::forward<CompletionToken>(token)
+        );
     }
 
     /**

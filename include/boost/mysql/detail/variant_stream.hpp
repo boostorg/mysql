@@ -46,7 +46,10 @@ public:
     {
     }
 
-    void set_address(any_address addr) noexcept { address_ = addr; }
+    void set_endpoint(const void* value) override final
+    {
+        address_ = *static_cast<const any_address*>(value);
+    }
 
     // Executor
     executor_type get_executor() override final { return ex_; }
