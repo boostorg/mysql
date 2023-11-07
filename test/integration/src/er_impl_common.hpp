@@ -273,6 +273,8 @@ private:
 #endif
 
 #define BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_COMMON(prefix)                                                  \
+    using conn_type = typename base_type::conn_type;                                                       \
+    using base_type::base_type;                                                                            \
     network_result<statement> prepare_statement(string_view stmt_sql) override                             \
     {                                                                                                      \
         return fn_impl<statement, string_view>(&conn_type::prefix##prepare_statement, stmt_sql);           \
@@ -351,7 +353,6 @@ private:
     BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_CXX14(prefix)
 
 #define BOOST_MYSQL_TEST_IMPLEMENT_GENERIC(prefix)                                                           \
-    using base_type::base_type;                                                                              \
     network_result<void> connect(const handshake_params& params) override                                    \
     {                                                                                                        \
         return fn_impl<                                                                                      \
@@ -414,7 +415,6 @@ private:
     BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_COMMON(prefix)
 
 #define BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_ANY(prefix)                    \
-    using base_type::base_type;                                           \
     network_result<void> connect(const handshake_params& params) override \
     {                                                                     \
         return fn_impl<void, const connect_params&>(                      \

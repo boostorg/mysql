@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/address_type.hpp>
+
 #include <boost/asio/error.hpp>
 #include <boost/asio/spawn.hpp>
 
@@ -20,11 +22,12 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-template <class Stream>
-class async_coroutine_connection : public connection_base<Stream>
+template <class Base>
+class async_coroutine_base : public Base
 {
-    using conn_type = connection<Stream>;
-    using base_type = connection_base<Stream>;
+protected:
+    using conn_type = typename Base::conn_type;
+    using base_type = Base;
 
     template <class R, class... Args>
     using pmem_t = R (conn_type::*)(Args..., boost::asio::yield_context&&);
@@ -45,8 +48,25 @@ class async_coroutine_connection : public connection_base<Stream>
     }
 
 public:
-    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC()
+    using Base::Base;
     static constexpr const char* name() noexcept { return "async_coroutines"; }
+};
+
+template <class Stream>
+class async_coroutine_connection : public async_coroutine_base<connection_base<Stream>>
+{
+    using base_type = async_coroutine_base<connection_base<Stream>>;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC()
+};
+
+class any_async_coroutine_connection : public async_coroutine_base<any_connection_base>
+{
+    using base_type = async_coroutine_base<any_connection_base>;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC_ANY()
 };
 
 }  // namespace test
@@ -56,4 +76,5 @@ public:
 void boost::mysql::test::add_async_coroutines(std::vector<er_network_variant*>& output)
 {
     add_variant<async_coroutine_connection<tcp_socket>>(output);
+    add_variant_any<address_type::tcp_address, any_async_coroutine_connection>(output);
 }

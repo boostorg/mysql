@@ -55,7 +55,6 @@ template <class Stream>
 class sync_errc_connection : public sync_errc_base<connection_base<Stream>>
 {
     using base_type = sync_errc_base<connection_base<Stream>>;
-    using conn_type = typename base_type::conn_type;
 
 public:
     BOOST_MYSQL_TEST_IMPLEMENT_SYNC()
@@ -64,7 +63,6 @@ public:
 class any_sync_errc_connection final : public sync_errc_base<any_connection_base>
 {
     using base_type = sync_errc_base<any_connection_base>;
-    using conn_type = typename base_type::conn_type;
 
 public:
     BOOST_MYSQL_TEST_IMPLEMENT_SYNC_ANY()

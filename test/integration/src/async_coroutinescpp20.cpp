@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/address_type.hpp>
+
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -42,11 +44,12 @@ void to_network_result(const std::tuple<error_code>& tup, network_result<void>& 
     netresult.err = std::get<0>(tup);
 }
 
-template <class Stream>
-class async_coroutinecpp20_connection : public connection_base<Stream>
+template <class Base>
+class async_coroutinecpp20_base : public Base
 {
-    using conn_type = connection<Stream>;
-    using base_type = connection_base<Stream>;
+protected:
+    using conn_type = typename Base::conn_type;
+    using base_type = Base;
 
     template <class R, class... Args>
     using pmem_t = boost::asio::awaitable<result_tuple<R>> (conn_type::*)(Args..., diagnostics&, token_t&&);
@@ -79,8 +82,25 @@ class async_coroutinecpp20_connection : public connection_base<Stream>
     }
 
 public:
-    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC()
+    using Base::Base;
     static constexpr const char* name() noexcept { return "async_coroutinescpp20"; }
+};
+
+template <class Stream>
+class async_coroutinecpp20_connection : public async_coroutinecpp20_base<connection_base<Stream>>
+{
+    using base_type = async_coroutinecpp20_base<connection_base<Stream>>;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC()
+};
+
+class any_async_coroutinecpp20_connection : public async_coroutinecpp20_base<any_connection_base>
+{
+    using base_type = async_coroutinecpp20_base<any_connection_base>;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC_ANY()
 };
 
 }  // namespace test
@@ -90,6 +110,7 @@ public:
 void boost::mysql::test::add_async_coroutinescpp20(std::vector<er_network_variant*>& output)
 {
     add_variant<async_coroutinecpp20_connection<tcp_ssl_socket>>(output);
+    add_variant_any<address_type::tcp_address, any_async_coroutinecpp20_connection>(output);
 }
 
 #else
