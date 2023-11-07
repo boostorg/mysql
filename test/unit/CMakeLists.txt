@@ -58,6 +58,8 @@ add_executable(
     test/detail/typing/row_traits.cpp
     test/detail/typing/get_type_index.cpp
 
+    test/impl/ssl_context_with_default.cpp
+
     test/spotchecks/connection_use_after_move.cpp
     test/spotchecks/default_completion_tokens.cpp
     test/spotchecks/read_some_rows_static.cpp

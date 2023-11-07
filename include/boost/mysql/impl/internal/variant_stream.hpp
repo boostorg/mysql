@@ -16,6 +16,8 @@
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
 
+#include <boost/mysql/impl/internal/ssl_context_with_default.hpp>
+
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/connect.hpp>
@@ -234,7 +236,7 @@ private:
 
     asio::any_io_executor ex_;  // TODO: we can probably get rid of this
     variant2::variant<variant2::monostate, socket_and_resolver, unix_socket> sock_;
-    variant2::variant<asio::ssl::context*, asio::ssl::context> ssl_ctx_;
+    ssl_context_with_default ssl_ctx_;
     boost::optional<asio::ssl::stream<asio::ip::tcp::socket&>> ssl_;
 
     error_code setup_stream()
@@ -280,31 +282,13 @@ private:
         return error_code();
     }
 
-    asio::ssl::context& ensure_ssl_context()
-    {
-        // Do we have a default context already created?
-        auto* default_ctx = variant2::get_if<asio::ssl::context>(&ssl_ctx_);
-        if (default_ctx)
-            return *default_ctx;
-
-        // Do we have an external context provided by the user?
-        BOOST_ASSERT(variant2::holds_alternative<asio::ssl::context*>(ssl_ctx_));
-        auto* external_ctx = variant2::unsafe_get<0>(ssl_ctx_);
-        if (external_ctx)
-            return *external_ctx;
-
-        // Create a default context and return it
-        // TODO: this is not secure. Investigate
-        return ssl_ctx_.emplace<asio::ssl::context>(asio::ssl::context::tls_client);
-    }
-
     void create_ssl_stream()
     {
         // The stream object must be re-created even if it already exists, since
         // once used for a connection (anytime after ssl::stream::handshake is called),
         // it can't be re-used for any subsequent connections
         BOOST_ASSERT(variant2::holds_alternative<socket_and_resolver>(sock_));
-        ssl_.emplace(variant2::unsafe_get<1>(sock_).sock, ensure_ssl_context());
+        ssl_.emplace(variant2::unsafe_get<1>(sock_).sock, ssl_ctx_.get());
     }
 
     struct connect_op : boost::asio::coroutine
