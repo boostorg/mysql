@@ -14,6 +14,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/any_address.hpp>
 
 namespace boost {
 namespace mysql {
@@ -31,6 +32,12 @@ class connect_params
         std::uint16_t connection_collation{handshake_params::default_collation};
         ssl_mode ssl{ssl_mode::require};
         bool multi_queries{};
+
+        detail::any_address to_address() const noexcept { return {addr_type, address, port}; }
+        handshake_params to_handshake_params() const noexcept
+        {
+            return handshake_params(username, password, database, connection_collation, ssl, multi_queries);
+        }
     } impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN

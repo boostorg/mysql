@@ -12,6 +12,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/any_address.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
 
@@ -37,11 +38,15 @@ namespace detail {
 
 class variant_stream final : public any_stream
 {
+    any_address address_;
+
 public:
     variant_stream(asio::any_io_executor ex, asio::ssl::context* ctx)
         : any_stream(true), ex_(std::move(ex)), ssl_ctx_(ctx)
     {
     }
+
+    void set_address(any_address addr) noexcept { address_ = addr; }
 
     // Executor
     executor_type get_executor() override final { return ex_; }
@@ -83,11 +88,10 @@ public:
 
     // Connect and close
     BOOST_MYSQL_DECL
-    void connect(const void* address, error_code& ec) override final;
+    void connect(error_code& ec) override final;
 
     BOOST_MYSQL_DECL
-    void async_connect(const void* address, asio::any_completion_handler<void(error_code)> handler)
-        override final;
+    void async_connect(asio::any_completion_handler<void(error_code)> handler) override final;
 
     BOOST_MYSQL_DECL
     void close(error_code& ec) override final;
@@ -109,7 +113,7 @@ private:
     boost::optional<asio::ssl::stream<asio::ip::tcp::socket&>> ssl_;
 
     BOOST_MYSQL_DECL
-    error_code setup_stream(address_type server_address);
+    error_code setup_stream();
 
     BOOST_MYSQL_DECL
     asio::ssl::context& ensure_ssl_context();

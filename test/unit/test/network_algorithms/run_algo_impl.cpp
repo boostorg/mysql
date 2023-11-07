@@ -143,14 +143,14 @@ public:
     }
 
     // Connect and close
-    void connect(const void* arg, error_code& ec) override
+    void connect(error_code& ec) override
     {
-        calls.push_back(next_action::connect(arg));
+        calls.push_back(next_action::connect());
         ec = error_code();
     }
-    void async_connect(const void* arg, asio::any_completion_handler<void(error_code)> h) override
+    void async_connect(asio::any_completion_handler<void(error_code)> h) override
     {
-        calls.push_back(next_action::connect(arg));
+        calls.push_back(next_action::connect());
         complete_immediate(ex, std::move(h), error_code());
     }
     void close(error_code& ec) override
@@ -189,13 +189,13 @@ BOOST_AUTO_TEST_CASE(async_completions)
         const char* name;
         next_action act;
     } test_cases[] = {
-        {"no_action",    next_action()                },
-        {"read",         next_action::read({})        },
-        {"write",        next_action::write({})       },
-        {"ssl_hanshake", next_action::ssl_handshake() },
-        {"ssl_shutdown", next_action::ssl_shutdown()  },
-        {"connect",      next_action::connect(nullptr)},
-        {"close",        next_action::close()         },
+        {"no_action",    next_action()               },
+        {"read",         next_action::read({})       },
+        {"write",        next_action::write({})      },
+        {"ssl_hanshake", next_action::ssl_handshake()},
+        {"ssl_shutdown", next_action::ssl_shutdown() },
+        {"connect",      next_action::connect()      },
+        {"close",        next_action::close()        },
     };
 
     for (const auto& tc : test_cases)

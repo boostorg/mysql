@@ -17,15 +17,21 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
+#include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/any_address.hpp>
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
+#include <boost/mysql/detail/any_stream_impl.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
+#include <boost/mysql/detail/owning_connect_params.hpp>
 #include <boost/mysql/detail/run_algo.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
+#include <boost/mysql/detail/variant_stream.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
@@ -35,6 +41,8 @@
 #include <boost/mp11/integer_sequence.hpp>
 
 #include <array>
+#include <cstddef>
+#include <cstring>
 #include <memory>
 #include <tuple>
 
@@ -116,18 +124,6 @@ make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, std::v
     return {impl.stmt, tuple_to_array(impl.params)};
 }
 
-inline handshake_params get_hparams(const connect_params& input) noexcept
-{
-    return handshake_params(
-        input.username(),
-        input.password(),
-        input.database(),
-        input.connection_collation(),
-        input.ssl(),
-        input.multi_queries()
-    );
-}
-
 class connection_impl
 {
     std::unique_ptr<any_stream> stream_;
@@ -148,7 +144,21 @@ class connection_impl
     };
 
     // Connect
-    template <class ConnectArg>
+    template <class Stream>
+    static void set_endpoint(
+        any_stream& stream,
+        const typename Stream::lowest_layer_type::endpoint_type& endpoint
+    )
+    {
+        static_cast<any_stream_impl<Stream>&>(stream).set_endpoint(endpoint);
+    }
+
+    inline static void set_address(any_stream& stream, any_address address)
+    {
+        static_cast<variant_stream&>(stream).set_address(address);
+    }
+
+    template <class Stream>
     struct connect_initiation
     {
         template <class Handler>
@@ -156,19 +166,16 @@ class connection_impl
             Handler&& handler,
             any_stream* stream,
             connection_state* st,
-            const ConnectArg& connect_arg,
+            const typename Stream::lowest_layer_type::endpoint_type& endpoint,
             handshake_params params,
             diagnostics* diag
         )
         {
-            async_run_algo(
-                *stream,
-                *st,
-                connect_algo_params{&connect_arg, diag, params},
-                std::forward<Handler>(handler)
-            );
+            set_endpoint<Stream>(*stream, endpoint);
+            async_run_algo(*stream, *st, connect_algo_params{diag, params}, std::forward<Handler>(handler));
         }
     };
+
     struct connect_v2_initiation
     {
         template <class Handler>
@@ -176,18 +183,13 @@ class connection_impl
             Handler&& handler,
             any_stream* stream,
             connection_state* st,
-            connect_params&& params,
+            any_address address,
+            handshake_params hparams,
             diagnostics* diag
         )
         {
-            auto alloc = asio::get_associated_allocator(handler, asio::recycling_allocator<connect_params>());
-            auto shared_params = std::allocate_shared<connect_params>(alloc, std::move(params));
-            async_run_algo(
-                *stream,
-                *st,
-                make_params_connect_v2(*shared_params, *diag),
-                asio::consign(std::forward<Handler>(handler), std::move(shared_params))
-            );
+            static_cast<detail::variant_stream*>(stream)->set_address(address);
+            async_run_algo(*stream, *st, connect_algo_params{diag, hparams}, std::forward<Handler>(handler));
         }
     };
 
@@ -283,61 +285,75 @@ public:
     }
 
     // Connect. This handles casting to the corresponding endpoint_type, if required
-    template <class ConnectArg>
+    template <class Stream>
     void connect(
-        const ConnectArg& connect_arg,
+        const typename Stream::lowest_layer_type::endpoint_type& endpoint,
         const handshake_params& params,
         error_code& err,
         diagnostics& diag
     )
     {
-        run_algo(*stream_, *st_, connect_algo_params{&connect_arg, &diag, params}, err);
+        set_endpoint<Stream>(*stream_, endpoint);
+        run_algo(*stream_, *st_, connect_algo_params{&diag, params}, err);
     }
 
-    template <class ConnectArg, class CompletionToken>
+    template <class Stream, class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
-        const ConnectArg& connect_arg,
+        const typename Stream::lowest_layer_type::endpoint_type& endpoint,
         const handshake_params& params,
         diagnostics& diag,
         CompletionToken&& token
     )
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            connect_initiation<ConnectArg>(),
+            connect_initiation<Stream>(),
             token,
             stream_.get(),
             st_.get(),
-            connect_arg,
+            endpoint,
             params,
             &diag
         );
     }
 
     // Connect v2
-    static connect_algo_params make_params_connect_v2(
-        const connect_params& params,
-        diagnostics& diag
-    ) noexcept
-    {
-        return {&params, &diag, get_hparams(params)};
-    }
-
     void connect_v2(const connect_params& params, error_code& err, diagnostics& diag)
     {
-        run_algo(*stream_, *st_, make_params_connect_v2(params, diag), err);
+        const auto& impl = access::get_impl(params);
+        set_address(*stream_, impl.to_address());
+        run_algo(*stream_, *st_, connect_algo_params{&diag, impl.to_handshake_params()}, err);
     }
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_connect_v2(connect_params&& params, diagnostics& diag, CompletionToken&& token)
+    async_connect_v2(const connect_params& params, diagnostics& diag, CompletionToken&& token)
+    {
+        auto params_and_strings = owning_connect_params::create(params);
+        return async_connect_v2(
+            params_and_strings.address,
+            params_and_strings.hparams,
+            diag,
+            asio::consign(std::forward<CompletionToken>(token), std::move(params_and_strings.string_buffer))
+        );
+    }
+
+    template <class CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_connect_v2(
+        any_address addr,
+        const handshake_params& params,
+        diagnostics& diag,
+        CompletionToken&& token
+    )
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
             connect_v2_initiation(),
             token,
             stream_.get(),
             st_.get(),
-            std::move(params),
+            addr,
+            params,
             &diag
         );
     }

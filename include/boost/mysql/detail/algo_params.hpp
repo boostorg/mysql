@@ -27,7 +27,6 @@ namespace detail {
 
 struct connect_algo_params
 {
-    const void* connect_arg;
     diagnostics* diag;
     handshake_params hparams;
 

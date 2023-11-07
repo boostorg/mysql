@@ -17,6 +17,7 @@
 #include <boost/mysql/detail/connection_pool/connection_node.hpp>
 #include <boost/mysql/detail/connection_pool/iddle_connection_list.hpp>
 #include <boost/mysql/detail/connection_pool/task_joiner.hpp>
+#include <boost/mysql/detail/owning_connect_params.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>

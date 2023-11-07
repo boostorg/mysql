@@ -112,17 +112,6 @@ public:
         return impl_.async_connect_v2(params, diag, std::forward<CompletionToken>(token));
     }
 
-    // TODO: hide this
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
-    {
-        return impl_.async_run(
-            impl_.make_params_connect_v2(*params, diag),
-            std::forward<CompletionToken>(token)
-        );
-    }
-
     void close(error_code& err, diagnostics& diag)
     {
         this->impl_.run(this->impl_.make_params_close(diag), err);

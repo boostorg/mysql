@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_ANY_ADDRESS_VIEW_HPP
-#define BOOST_MYSQL_DETAIL_ANY_ADDRESS_VIEW_HPP
+#ifndef BOOST_MYSQL_DETAIL_ANY_ADDRESS_HPP
+#define BOOST_MYSQL_DETAIL_ANY_ADDRESS_HPP
 
 #include <boost/mysql/address_type.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -15,11 +15,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-struct any_address_view
+struct any_address
 {
     address_type type{address_type::tcp_address};
     string_view address;
-    unsigned short port;
+    unsigned short port{};
 };
 
 }  // namespace detail

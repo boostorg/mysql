@@ -14,18 +14,15 @@
 #include <boost/mysql/connect_params.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/any_address.hpp>
 #include <boost/mysql/detail/variant_stream.hpp>
 
 struct boost::mysql::detail::variant_stream::connect_op : boost::asio::coroutine
 {
     variant_stream& this_obj_;
-    const connect_params& connect_params_;
     error_code stored_ec_;
 
-    connect_op(variant_stream& this_obj, const connect_params& connect_params) noexcept
-        : this_obj_(this_obj), connect_params_(connect_params)
-    {
-    }
+    connect_op(variant_stream& this_obj) noexcept : this_obj_(this_obj) {}
 
     template <class Self>
     void operator()(Self& self, error_code ec = {}, asio::ip::tcp::resolver::results_type endpoints = {})
@@ -39,7 +36,7 @@ struct boost::mysql::detail::variant_stream::connect_op : boost::asio::coroutine
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Setup stream
-            stored_ec_ = this_obj_.setup_stream(connect_params_.addr_type());
+            stored_ec_ = this_obj_.setup_stream();
             if (stored_ec_)
             {
                 BOOST_ASIO_CORO_YIELD asio::post(this_obj_.ex_, std::move(self));
@@ -47,14 +44,14 @@ struct boost::mysql::detail::variant_stream::connect_op : boost::asio::coroutine
                 return;
             }
 
-            if (connect_params_.addr_type() == address_type::tcp_address)
+            if (this_obj_.address_.type == address_type::tcp_address)
             {
                 // Resolve endpoints
                 BOOST_ASIO_CORO_YIELD
                 variant2::unsafe_get<1>(this_obj_.sock_)
                     .resolv.async_resolve(
-                        connect_params_.hostname(),
-                        std::to_string(connect_params_.port()),
+                        this_obj_.address_.address,
+                        std::to_string(this_obj_.address_.port),
                         std::move(self)
                     );
 
@@ -71,13 +68,13 @@ struct boost::mysql::detail::variant_stream::connect_op : boost::asio::coroutine
             }
             else
             {
-                BOOST_ASSERT(connect_params_.addr_type() == address_type::unix_path);
+                BOOST_ASSERT(this_obj_.address_.type == address_type::unix_path);
 
                 // Just connect the stream
                 // TODO: we could save a copy here
                 BOOST_ASIO_CORO_YIELD
                 variant2::unsafe_get<2>(this_obj_.sock_)
-                    .async_connect(access::get_impl(connect_params_).unix_path_c_str(), std::move(self));
+                    .async_connect(std::string(this_obj_.address_.address), std::move(self));
 
                 self.complete(error_code());
             }
@@ -221,20 +218,17 @@ void boost::mysql::detail::variant_stream::async_write_some(
     }
 }
 
-void boost::mysql::detail::variant_stream::connect(const void* connect_arg, error_code& ec)
+void boost::mysql::detail::variant_stream::connect(error_code& ec)
 {
-    const auto& connect_prms = *static_cast<const connect_params*>(connect_arg);
-
-    ec = setup_stream(connect_prms.addr_type());
+    ec = setup_stream();
     if (ec)
         return;
 
-    if (connect_prms.addr_type() == address_type::tcp_address)
+    if (address_.type == address_type::tcp_address)
     {
         // Resolve endpoints. TODO: we can save the to_string allocation
         auto& tcp_sock = variant2::unsafe_get<1>(sock_);
-        auto endpoints = tcp_sock.resolv
-                             .resolve(connect_prms.hostname(), std::to_string(connect_prms.port()), ec);
+        auto endpoints = tcp_sock.resolv.resolve(address_.address, std::to_string(address_.port), ec);
         if (ec)
             return;
 
@@ -243,21 +237,20 @@ void boost::mysql::detail::variant_stream::connect(const void* connect_arg, erro
     }
     else
     {
-        BOOST_ASSERT(connect_prms.addr_type() == address_type::unix_path);
+        BOOST_ASSERT(address_.type == address_type::unix_path);
 
         // Just connect the stream
         auto& unix_sock = variant2::unsafe_get<2>(sock_);
-        unix_sock.connect(access::get_impl(connect_prms).unix_path_c_str(), ec);
+        unix_sock.connect(std::string(address_.address), ec);
     }
 }
 
 void boost::mysql::detail::variant_stream::async_connect(
-    const void* address,
     asio::any_completion_handler<void(error_code)> handler
 )
 {
     asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
-        connect_op(*this, *static_cast<const connect_params*>(address)),
+        connect_op(*this),
         handler,
         ex_
     );
@@ -275,9 +268,10 @@ void boost::mysql::detail::variant_stream::close(error_code& ec)
     }
 }
 
-boost::mysql::error_code boost::mysql::detail::variant_stream::setup_stream(address_type addr_type)
+boost::mysql::error_code boost::mysql::detail::variant_stream::setup_stream()
 {
-    if (addr_type == address_type::tcp_address)
+    BOOST_ASSERT(!address_.address.empty());
+    if (address_.type == address_type::tcp_address)
     {
         auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_);
         if (tcp_sock)
@@ -295,7 +289,7 @@ boost::mysql::error_code boost::mysql::detail::variant_stream::setup_stream(addr
             sock_.emplace<socket_and_resolver>(ex_);
         }
     }
-    else if (addr_type == address_type::unix_path)
+    else if (address_.type == address_type::unix_path)
     {
         // TODO: fail if not supported
         auto* unix_sock = variant2::get_if<unix_socket>(&sock_);
