@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/address_type.hpp>
+
 #include "er_impl_common.hpp"
 #include "test_common/netfun_helpers.hpp"
 #include "test_integration/streams.hpp"
@@ -12,15 +14,22 @@
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
 
+// MSVC complains about passing empty tokens, which is valid C++
+#ifdef BOOST_MSVC
+#pragma warning(push)
+#pragma warning(disable : 4003)
+#endif
+
 namespace boost {
 namespace mysql {
 namespace test {
 
-template <class Stream>
-class sync_errc_connection : public connection_base<Stream>
+template <class Base>
+class sync_errc_base : public Base
 {
-    using conn_type = connection<Stream>;
-    using base_type = connection_base<Stream>;
+protected:
+    using conn_type = typename Base::conn_type;
+    using base_type = Base;
 
     // workaround for gcc5
     template <class R, class... Args>
@@ -38,16 +47,27 @@ class sync_errc_connection : public connection_base<Stream>
     }
 
 public:
-// MSVC complains about passing empty tokens, which is valid C++
-#ifdef BOOST_MSVC
-#pragma warning(push)
-#pragma warning(disable : 4003)
-#endif
-    BOOST_MYSQL_TEST_IMPLEMENT_SYNC()
-#ifdef BOOST_MSVC
-#pragma warning(pop)
-#endif
+    using Base::Base;
     static constexpr const char* name() noexcept { return "sync_errc"; }
+};
+
+template <class Stream>
+class sync_errc_connection : public sync_errc_base<connection_base<Stream>>
+{
+    using base_type = sync_errc_base<connection_base<Stream>>;
+    using conn_type = typename base_type::conn_type;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_SYNC()
+};
+
+class any_sync_errc_connection final : public sync_errc_base<any_connection_base>
+{
+    using base_type = sync_errc_base<any_connection_base>;
+    using conn_type = typename base_type::conn_type;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_SYNC_ANY()
 };
 
 template <class Stream>
@@ -65,8 +85,14 @@ void boost::mysql::test::add_sync_errc(std::vector<er_network_variant*>& output)
     // Verify that all streams work
     add_sync_errc_variant<tcp_socket>(output);
     add_sync_errc_variant<tcp_ssl_socket>(output);
+    add_variant_any<address_type::tcp_address, any_sync_errc_connection>(output);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
     add_sync_errc_variant<unix_socket>(output);
     add_sync_errc_variant<unix_ssl_socket>(output);
+    add_variant_any<address_type::unix_path, any_sync_errc_connection>(output);
 #endif
 }
+
+#ifdef BOOST_MSVC
+#pragma warning(pop)
+#endif

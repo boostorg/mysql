@@ -8,7 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_SRC_ER_IMPL_COMMON_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_SRC_ER_IMPL_COMMON_HPP
 
+#include <boost/mysql/address_type.hpp>
+#include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
@@ -18,9 +22,12 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 
+#include <cassert>
+#include <string>
 #include <type_traits>
 
 #include "test_common/network_result.hpp"
@@ -81,7 +88,7 @@ class connection_base : public er_connection
 {
 public:
     using stream_type = Stream;
-    using connection_type = connection<Stream>;
+    using conn_type = connection<Stream>;
     using stmt_tuple = bound_statement_tuple<std::tuple<field_view, field_view>>;
     using stmt_it = bound_statement_iterator_range<fv_list_it>;
 
@@ -94,7 +101,7 @@ public:
     {
     }
 
-    connection_type& conn() noexcept { return conn_; }
+    conn_type& conn() noexcept { return conn_; }
 
     bool uses_ssl() const override { return conn_.uses_ssl(); }
     bool is_open() const override { return conn_.stream().lowest_layer().is_open(); }
@@ -113,8 +120,107 @@ public:
     er_network_variant& variant() const override { return var_; }
 
 private:
-    connection_type conn_;
+    conn_type conn_;
     er_network_variant& var_;
+};
+
+class any_connection_base : public er_connection
+{
+public:
+    using conn_type = any_connection;
+    using base_type = any_connection_base;
+    using stmt_tuple = bound_statement_tuple<std::tuple<field_view, field_view>>;
+    using stmt_it = bound_statement_iterator_range<fv_list_it>;
+
+    connect_params get_connect_params(const handshake_params& input) const noexcept
+    {
+        connect_params res;
+        if (addr_type_ == address_type::tcp_address)
+            res.set_tcp_address(hostname_);
+        else if (addr_type_ == address_type::unix_path)
+            res.set_unix_address(default_unix_path);
+        return res.set_username(input.username())
+            .set_password(input.password())
+            .set_database(input.database())
+            .set_connection_collation(input.connection_collation())
+            .set_ssl(input.ssl())
+            .set_multi_queries(input.multi_queries());
+    }
+
+    any_connection_base(
+        boost::asio::any_io_executor executor,
+        boost::asio::ssl::context& ssl_ctx,
+        er_network_variant& var,
+        address_type addr
+    )
+        : conn_(executor, ssl_ctx), var_(var), addr_type_(addr)
+    {
+    }
+
+    any_connection& conn() noexcept { return conn_; }
+
+    bool uses_ssl() const override { return conn_.uses_ssl(); }
+    bool is_open() const override { return true; }  // TODO
+    void set_metadata_mode(metadata_mode v) override { conn_.set_meta_mode(v); }
+    void physical_connect() override final { assert(false); }  // not allowed in v2
+    network_result<void> handshake(const handshake_params&) override final
+    {
+        return error_code(asio::error::operation_not_supported);
+    }
+    network_result<void> quit() override final { return error_code(asio::error::operation_not_supported); }
+
+    network_result<void> query(string_view query, results& result) override final
+    {
+        return execute(query, result);
+    }
+    network_result<void> start_query(string_view query, execution_state& result) override final
+    {
+        return start_execution(query, result);
+    }
+    network_result<void> execute_statement(
+        const statement& stmt,
+        field_view fv1,
+        field_view fv2,
+        results& result
+    ) override final
+    {
+        return execute(stmt.bind(fv1, fv2), result);
+    }
+    network_result<void> start_statement_execution(
+        const statement& stmt,
+        field_view fv1,
+        field_view fv2,
+        execution_state& st
+    ) override final
+    {
+        return start_execution(stmt.bind(fv1, fv2), st);
+    }
+    network_result<void> start_statement_execution(
+        const statement& stmt,
+        fv_list_it params_first,
+        fv_list_it params_last,
+        execution_state& st
+    ) override final
+    {
+        return start_execution(stmt.bind(params_first, params_last), st);
+    }
+    void sync_close() noexcept override
+    {
+        try
+        {
+            conn_.close();
+        }
+        catch (...)
+        {
+        }
+    }
+    er_network_variant& variant() const override { return var_; }
+
+private:
+    std::string hostname_{get_hostname()};
+    any_connection conn_;
+    er_network_variant& var_;
+    address_type addr_type_;
 };
 
 // Macros to help implementing er_connection
@@ -166,8 +272,86 @@ private:
 #define BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_CXX14(prefix)
 #endif
 
+#define BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_COMMON(prefix)                                                  \
+    network_result<statement> prepare_statement(string_view stmt_sql) override                             \
+    {                                                                                                      \
+        return fn_impl<statement, string_view>(&conn_type::prefix##prepare_statement, stmt_sql);           \
+    }                                                                                                      \
+    network_result<void> execute(string_view query, results& result) override                              \
+    {                                                                                                      \
+        return fn_impl<void, const string_view&, results&>(&conn_type::prefix##execute, query, result);    \
+    }                                                                                                      \
+    network_result<void> execute(                                                                          \
+        bound_statement_tuple<std::tuple<field_view, field_view>> req,                                     \
+        results& result                                                                                    \
+    ) override                                                                                             \
+    {                                                                                                      \
+        return fn_impl<void, const typename base_type::stmt_tuple&, results&>(                             \
+            &conn_type::prefix##execute,                                                                   \
+            req,                                                                                           \
+            result                                                                                         \
+        );                                                                                                 \
+    }                                                                                                      \
+    network_result<void> execute(bound_statement_iterator_range<fv_list_it> req, results& result) override \
+    {                                                                                                      \
+        return fn_impl<void, const typename base_type::stmt_it&, results&>(                                \
+            &conn_type::prefix##execute,                                                                   \
+            req,                                                                                           \
+            result                                                                                         \
+        );                                                                                                 \
+    }                                                                                                      \
+    network_result<void> start_execution(string_view query, execution_state& st) override                  \
+    {                                                                                                      \
+        return fn_impl<void, const string_view&, execution_state&>(                                        \
+            &conn_type::prefix##start_execution,                                                           \
+            query,                                                                                         \
+            st                                                                                             \
+        );                                                                                                 \
+    }                                                                                                      \
+    network_result<void> start_execution(                                                                  \
+        bound_statement_tuple<std::tuple<field_view, field_view>> req,                                     \
+        execution_state& st                                                                                \
+    ) override                                                                                             \
+    {                                                                                                      \
+        return fn_impl<void, const typename base_type::stmt_tuple&, execution_state&>(                     \
+            &conn_type::prefix##start_execution,                                                           \
+            req,                                                                                           \
+            st                                                                                             \
+        );                                                                                                 \
+    }                                                                                                      \
+    network_result<void> start_execution(                                                                  \
+        bound_statement_iterator_range<fv_list_it> req,                                                    \
+        execution_state& st                                                                                \
+    ) override                                                                                             \
+    {                                                                                                      \
+        return fn_impl<void, const typename base_type::stmt_it&, execution_state&>(                        \
+            &conn_type::prefix##start_execution,                                                           \
+            req,                                                                                           \
+            st                                                                                             \
+        );                                                                                                 \
+    }                                                                                                      \
+    network_result<void> close_statement(statement& stmt) override                                         \
+    {                                                                                                      \
+        return fn_impl<void, const statement&>(&conn_type::prefix##close_statement, stmt);                 \
+    }                                                                                                      \
+    network_result<void> read_resultset_head(execution_state& st) override                                 \
+    {                                                                                                      \
+        return fn_impl<void, execution_state&>(&conn_type::prefix##read_resultset_head, st);               \
+    }                                                                                                      \
+    network_result<rows_view> read_some_rows(execution_state& st) override                                 \
+    {                                                                                                      \
+        return fn_impl<rows_view, execution_state&>(&conn_type::prefix##read_some_rows, st);               \
+    }                                                                                                      \
+    network_result<void> ping() override { return fn_impl<void>(&conn_type::prefix##ping); }               \
+    network_result<void> reset_connection() override                                                       \
+    {                                                                                                      \
+        return fn_impl<void>(&conn_type::prefix##reset_connection);                                        \
+    }                                                                                                      \
+    network_result<void> close() override { return fn_impl<void>(&conn_type::prefix##close); }             \
+    BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_CXX14(prefix)
+
 #define BOOST_MYSQL_TEST_IMPLEMENT_GENERIC(prefix)                                                           \
-    using connection_base<Stream>::connection_base;                                                          \
+    using base_type::base_type;                                                                              \
     network_result<void> connect(const handshake_params& params) override                                    \
     {                                                                                                        \
         return fn_impl<                                                                                      \
@@ -186,10 +370,6 @@ private:
     network_result<void> start_query(string_view query, execution_state& st) override                        \
     {                                                                                                        \
         return fn_impl<void, string_view, execution_state&>(&conn_type::prefix##start_query, query, st);     \
-    }                                                                                                        \
-    network_result<statement> prepare_statement(string_view stmt_sql) override                               \
-    {                                                                                                        \
-        return fn_impl<statement, string_view>(&conn_type::prefix##prepare_statement, stmt_sql);             \
     }                                                                                                        \
     network_result<void>                                                                                     \
     execute_statement(const statement& stmt, field_view param1, field_view param2, results& result) override \
@@ -230,83 +410,25 @@ private:
             st                                                                                               \
         );                                                                                                   \
     }                                                                                                        \
-    network_result<void> execute(string_view query, results& result) override                                \
-    {                                                                                                        \
-        return fn_impl<void, const string_view&, results&>(&conn_type::prefix##execute, query, result);      \
-    }                                                                                                        \
-    network_result<void> execute(                                                                            \
-        bound_statement_tuple<std::tuple<field_view, field_view>> req,                                       \
-        results& result                                                                                      \
-    ) override                                                                                               \
-    {                                                                                                        \
-        return fn_impl<void, const typename base_type::stmt_tuple&, results&>(                               \
-            &conn_type::prefix##execute,                                                                     \
-            req,                                                                                             \
-            result                                                                                           \
-        );                                                                                                   \
-    }                                                                                                        \
-    network_result<void> execute(bound_statement_iterator_range<fv_list_it> req, results& result) override   \
-    {                                                                                                        \
-        return fn_impl<void, const typename base_type::stmt_it&, results&>(                                  \
-            &conn_type::prefix##execute,                                                                     \
-            req,                                                                                             \
-            result                                                                                           \
-        );                                                                                                   \
-    }                                                                                                        \
-    network_result<void> start_execution(string_view query, execution_state& st) override                    \
-    {                                                                                                        \
-        return fn_impl<void, const string_view&, execution_state&>(                                          \
-            &conn_type::prefix##start_execution,                                                             \
-            query,                                                                                           \
-            st                                                                                               \
-        );                                                                                                   \
-    }                                                                                                        \
-    network_result<void> start_execution(                                                                    \
-        bound_statement_tuple<std::tuple<field_view, field_view>> req,                                       \
-        execution_state& st                                                                                  \
-    ) override                                                                                               \
-    {                                                                                                        \
-        return fn_impl<void, const typename base_type::stmt_tuple&, execution_state&>(                       \
-            &conn_type::prefix##start_execution,                                                             \
-            req,                                                                                             \
-            st                                                                                               \
-        );                                                                                                   \
-    }                                                                                                        \
-    network_result<void> start_execution(                                                                    \
-        bound_statement_iterator_range<fv_list_it> req,                                                      \
-        execution_state& st                                                                                  \
-    ) override                                                                                               \
-    {                                                                                                        \
-        return fn_impl<void, const typename base_type::stmt_it&, execution_state&>(                          \
-            &conn_type::prefix##start_execution,                                                             \
-            req,                                                                                             \
-            st                                                                                               \
-        );                                                                                                   \
-    }                                                                                                        \
-    network_result<void> close_statement(statement& stmt) override                                           \
-    {                                                                                                        \
-        return fn_impl<void, const statement&>(&conn_type::prefix##close_statement, stmt);                   \
-    }                                                                                                        \
-    network_result<void> read_resultset_head(execution_state& st) override                                   \
-    {                                                                                                        \
-        return fn_impl<void, execution_state&>(&conn_type::prefix##read_resultset_head, st);                 \
-    }                                                                                                        \
-    network_result<rows_view> read_some_rows(execution_state& st) override                                   \
-    {                                                                                                        \
-        return fn_impl<rows_view, execution_state&>(&conn_type::prefix##read_some_rows, st);                 \
-    }                                                                                                        \
-    network_result<void> ping() override { return fn_impl<void>(&conn_type::prefix##ping); }                 \
-    network_result<void> reset_connection() override                                                         \
-    {                                                                                                        \
-        return fn_impl<void>(&conn_type::prefix##reset_connection);                                          \
-    }                                                                                                        \
     network_result<void> quit() override { return fn_impl<void>(&conn_type::prefix##quit); }                 \
-    network_result<void> close() override { return fn_impl<void>(&conn_type::prefix##close); }               \
-    BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_CXX14(prefix)
+    BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_COMMON(prefix)
+
+#define BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_ANY(prefix)                    \
+    using base_type::base_type;                                           \
+    network_result<void> connect(const handshake_params& params) override \
+    {                                                                     \
+        return fn_impl<void, const connect_params&>(                      \
+            &conn_type::prefix##connect,                                  \
+            get_connect_params(params)                                    \
+        );                                                                \
+    }                                                                     \
+    BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_COMMON(prefix)
 
 // Use these
 #define BOOST_MYSQL_TEST_IMPLEMENT_SYNC() BOOST_MYSQL_TEST_IMPLEMENT_GENERIC()
 #define BOOST_MYSQL_TEST_IMPLEMENT_ASYNC() BOOST_MYSQL_TEST_IMPLEMENT_GENERIC(async_)
+#define BOOST_MYSQL_TEST_IMPLEMENT_SYNC_ANY() BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_ANY()
+#define BOOST_MYSQL_TEST_IMPLEMENT_ASYNC_ANY() BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_ANY(async_)
 
 // Implementation for er_network_variant
 template <class ErConnection>
@@ -317,12 +439,36 @@ class er_network_variant_impl : public er_network_variant
 public:
     bool supports_ssl() const override { return ::boost::mysql::test::supports_ssl<stream_type>(); }
     bool is_unix_socket() const override { return ::boost::mysql::test::is_unix_socket<stream_type>(); }
+    bool supports_handshake() const override { return true; }
     const char* stream_name() const override { return ::boost::mysql::test::get_stream_name<stream_type>(); }
     const char* variant_name() const override { return ErConnection::name(); }
     er_connection_ptr create_connection(boost::asio::any_io_executor ex, boost::asio::ssl::context& ssl_ctx)
         override
     {
         return er_connection_ptr(new ErConnection(std::move(ex), ssl_ctx, *this));
+    }
+};
+
+template <address_type addr_type, class ErConnection>
+class er_network_variant_any_impl : public er_network_variant
+{
+public:
+    bool supports_ssl() const override { return addr_type == address_type::tcp_address; }
+    bool is_unix_socket() const override { return addr_type == address_type::unix_path; }
+    bool supports_handshake() const override { return false; }
+    const char* stream_name() const override
+    {
+        static_assert(addr_type == address_type::tcp_address || addr_type == address_type::unix_path);
+        if (addr_type == address_type::tcp_address)
+            return "any_tcp";
+        else
+            return "any_unix";
+    }
+    const char* variant_name() const override { return ErConnection::name(); }
+    er_connection_ptr create_connection(boost::asio::any_io_executor ex, boost::asio::ssl::context& ssl_ctx)
+        override
+    {
+        return er_connection_ptr(new ErConnection(std::move(ex), ssl_ctx, *this, addr_type));
     }
 };
 
@@ -339,6 +485,13 @@ template <class ErConnection>
 void add_variant(std::vector<er_network_variant*>& output)
 {
     static er_network_variant_impl<ErConnection> obj;
+    output.push_back(&obj);
+}
+
+template <address_type addr_type, class ErConnection>
+void add_variant_any(std::vector<er_network_variant*>& output)
+{
+    static er_network_variant_any_impl<addr_type, ErConnection> obj;
     output.push_back(&obj);
 }
 

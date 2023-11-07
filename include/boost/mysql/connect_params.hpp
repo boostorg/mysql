@@ -33,10 +33,22 @@ class connect_params
         ssl_mode ssl{ssl_mode::require};
         bool multi_queries{};
 
+        ssl_mode adjusted_ssl_mode() const noexcept
+        {
+            return addr_type == address_type::tcp_address ? ssl : ssl_mode::disable;
+        }
+
         detail::any_address to_address() const noexcept { return {addr_type, address, port}; }
         handshake_params to_handshake_params() const noexcept
         {
-            return handshake_params(username, password, database, connection_collation, ssl, multi_queries);
+            return handshake_params(
+                username,
+                password,
+                database,
+                connection_collation,
+                adjusted_ssl_mode(),
+                multi_queries
+            );
         }
     } impl_;
 
@@ -76,10 +88,7 @@ public:
 
     std::uint16_t connection_collation() const noexcept { return impl_.connection_collation; }
 
-    ssl_mode ssl() const noexcept
-    {
-        return impl_.addr_type == address_type::tcp_address ? impl_.ssl : ssl_mode::disable;
-    }
+    ssl_mode ssl() const noexcept { return impl_.adjusted_ssl_mode(); }
 
     bool multi_queries() const noexcept { return impl_.multi_queries; }
 

@@ -157,6 +157,14 @@ inline const std::vector<network_sample>& all_network_samples()
     return res;
 }
 
+inline std::vector<network_sample> all_network_samples_with_handshake()
+{
+    std::vector<network_sample> res;
+    for (auto* var : all_variants_with_handshake())
+        res.emplace_back(var);
+    return res;
+}
+
 inline void validate_2fields_meta(const metadata_collection_view& fields, const std::string& table)
 
 {

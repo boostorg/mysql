@@ -26,6 +26,7 @@ public:
     virtual ~er_network_variant() {}
     virtual bool supports_ssl() const = 0;
     virtual bool is_unix_socket() const = 0;
+    virtual bool supports_handshake() const = 0;
     virtual const char* stream_name() const = 0;
     virtual const char* variant_name() const = 0;
     std::string name() const { return std::string(stream_name()) + '_' + variant_name(); }
@@ -33,6 +34,7 @@ public:
 };
 
 boost::span<er_network_variant*> all_variants();
+boost::span<er_network_variant*> all_variants_with_handshake();
 er_network_variant* get_variant(string_view name);
 
 }  // namespace test

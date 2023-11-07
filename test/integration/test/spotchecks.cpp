@@ -41,7 +41,7 @@ auto err_net_samples = create_network_samples({
 });
 
 // Handshake
-BOOST_MYSQL_NETWORK_TEST(handshake_success, network_fixture, all_network_samples())
+BOOST_MYSQL_NETWORK_TEST(handshake_success, network_fixture, all_network_samples_with_handshake())
 {
     setup_and_physical_connect(sample.net);
     conn->handshake(params).validate_no_error();
@@ -431,7 +431,8 @@ BOOST_MYSQL_NETWORK_TEST(ping_success, network_fixture, all_network_samples())
     conn->ping().validate_no_error();
 }
 
-BOOST_MYSQL_NETWORK_TEST(ping_error, network_fixture, all_network_samples())
+// TODO
+BOOST_MYSQL_NETWORK_TEST(ping_error, network_fixture, all_network_samples_with_handshake())
 {
     setup(sample.net);
 
@@ -457,7 +458,7 @@ BOOST_MYSQL_NETWORK_TEST(reset_connection_success, network_fixture, all_network_
 }
 
 // Quit connection: no server error spotcheck
-BOOST_MYSQL_NETWORK_TEST(quit_success, network_fixture, all_network_samples())
+BOOST_MYSQL_NETWORK_TEST(quit_success, network_fixture, all_network_samples_with_handshake())
 {
     setup_and_connect(sample.net);
 
@@ -469,7 +470,8 @@ BOOST_MYSQL_NETWORK_TEST(quit_success, network_fixture, all_network_samples())
 }
 
 // Close connection: no server error spotcheck
-BOOST_MYSQL_NETWORK_TEST(close_connection_success, network_fixture, all_network_samples())
+// TODO: all_network_samples_with_handshake
+BOOST_MYSQL_NETWORK_TEST(close_connection_success, network_fixture, all_network_samples_with_handshake())
 {
     setup_and_connect(sample.net);
 
