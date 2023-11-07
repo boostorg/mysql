@@ -18,8 +18,8 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
-#include <boost/mysql/detail/variant_stream.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -59,7 +59,7 @@ public:
 
     // TODO: do we want to expose this?
     any_connection(asio::any_io_executor ex, asio::ssl::context* ctx, const buffer_params& buff)
-        : base_type(buff, std::unique_ptr<detail::any_stream>(new detail::variant_stream(std::move(ex), ctx)))
+        : base_type(buff, create_stream(std::move(ex), ctx))
     {
     }
 
@@ -146,9 +146,19 @@ public:
 
 private:
     using base_type = connection_base<asio::any_io_executor>;
+
+    BOOST_MYSQL_DECL
+    static std::unique_ptr<detail::any_stream> create_stream(
+        asio::any_io_executor ex,
+        asio::ssl::context* ctx
+    );
 };
 
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/any_connection.ipp>
+#endif
 
 #endif

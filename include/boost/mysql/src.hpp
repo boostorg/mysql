@@ -18,6 +18,7 @@
     as well as the one where this file is included.
 #endif
 
+#include <boost/mysql/impl/any_connection.ipp>
 #include <boost/mysql/impl/any_stream_impl.ipp>
 #include <boost/mysql/impl/column_type.ipp>
 #include <boost/mysql/impl/connection_impl.ipp>
@@ -42,6 +43,5 @@
 #include <boost/mysql/impl/run_algo.ipp>
 #include <boost/mysql/impl/static_execution_state_impl.ipp>
 #include <boost/mysql/impl/static_results_impl.ipp>
-#include <boost/mysql/impl/variant_stream.ipp>
 
 #endif
