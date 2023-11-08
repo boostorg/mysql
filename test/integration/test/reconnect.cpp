@@ -31,6 +31,7 @@
 #include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/get_endpoint.hpp"
+#include "test_integration/run_stackful_coro.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -133,43 +134,35 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_while_connected, reconnect_fixture, samples_a
     BOOST_TEST(r.rows().at(0).at(0).as_string().starts_with("root"));
 }
 
-BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, network_fixture_base)
+BOOST_AUTO_TEST_CASE(reconnect_after_cancel)
 {
-    boost::asio::spawn(
-        ctx.get_executor(),
-        [&](boost::asio::yield_context yield) {
-            // Setup
-            auto connect_prms = base_connect_params();
-            any_connection conn(yield.get_executor());
-            results r;
-            boost::mysql::error_code ec;
-            boost::mysql::diagnostics diag;
+    run_stackful_coro([](boost::asio::yield_context yield) {
+        // Setup
+        auto connect_prms = base_connect_params();
+        any_connection conn(yield.get_executor());
+        results r;
+        boost::mysql::error_code ec;
+        boost::mysql::diagnostics diag;
 
-            // Connect
-            conn.async_connect(connect_prms, diag, yield[ec]);
-            boost::mysql::throw_on_error(ec, diag);
+        // Connect
+        conn.async_connect(connect_prms, diag, yield[ec]);
+        boost::mysql::throw_on_error(ec, diag);
 
-            // Kick an operation that ends up cancelled
-            auto wait_result = make_parallel_group(
-                                   conn.async_execute("DO SLEEP(2)", r, deferred),
-                                   boost::asio::post(yield.get_executor(), deferred)
-            )
-                                   .async_wait(wait_for_one(), yield);
+        // Kick an operation that ends up cancelled
+        auto wait_result = make_parallel_group(
+                               conn.async_execute("DO SLEEP(2)", r, deferred),
+                               boost::asio::post(yield.get_executor(), deferred)
+        )
+                               .async_wait(wait_for_one(), yield);
 
-            // Verify this was the case
-            BOOST_TEST(std::get<0>(wait_result)[1] == 0u);  // post completed first
-            BOOST_TEST(std::get<1>(wait_result) == boost::asio::error::operation_aborted);
+        // Verify this was the case
+        BOOST_TEST(std::get<0>(wait_result)[1] == 0u);  // post completed first
+        BOOST_TEST(std::get<1>(wait_result) == boost::asio::error::operation_aborted);
 
-            // We can connect again
-            conn.async_connect(connect_prms, diag, yield[ec]);
-            boost::mysql::throw_on_error(ec, diag);
-        },
-        [](std::exception_ptr err) {
-            if (err)
-                std::rethrow_exception(err);
-        }
-    );
-    ctx.run();
+        // We can connect again
+        conn.async_connect(connect_prms, diag, yield[ec]);
+        boost::mysql::throw_on_error(ec, diag);
+    });
 }
 
 BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp_tcpssl, network_fixture_base)

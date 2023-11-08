@@ -29,8 +29,6 @@ using boost::mysql::field_view;
 using boost::mysql::results;
 using boost::mysql::row_view;
 
-namespace {
-
 BOOST_AUTO_TEST_SUITE(test_spotchecks)
 
 auto err_net_samples = create_network_samples({
@@ -573,5 +571,3 @@ BOOST_MYSQL_NETWORK_TEST(read_some_rows_error, network_fixture, err_net_samples)
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()  // test_spotchecks
-
-}  // namespace
