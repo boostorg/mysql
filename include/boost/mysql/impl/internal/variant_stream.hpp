@@ -22,6 +22,7 @@
 #include <boost/asio/compose.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/coroutine.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/post.hpp>
@@ -244,41 +245,20 @@ private:
         BOOST_ASSERT(!address_.address.empty());
         if (address_.type == address_type::tcp_address)
         {
-            auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_);
-            if (tcp_sock)
-            {
-                // Clean up any previous state
-                if (tcp_sock->sock.is_open())
-                {
-                    error_code ignored;
-                    tcp_sock->sock.close(ignored);
-                }
-            }
-            else
-            {
-                // Create a socket
-                sock_.emplace<socket_and_resolver>(ex_);
-            }
+            // Clean up any previous state
+            sock_.emplace<socket_and_resolver>(ex_);
         }
+
         else if (address_.type == address_type::unix_path)
         {
-            // TODO: fail if not supported
-            auto* unix_sock = variant2::get_if<unix_socket>(&sock_);
-            if (unix_sock)
-            {
-                // Clean up any previous state
-                if (unix_sock->is_open())
-                {
-                    error_code ignored;
-                    unix_sock->close(ignored);
-                }
-            }
-            else
-            {
-                // Create a socket
-                sock_.emplace<unix_socket>(ex_);
-            }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+            // Clean up any previous state
+            sock_.emplace<unix_socket>(ex_);
+#else
+            return asio::error::operation_not_supported;
+#endif
         }
+
         return error_code();
     }
 

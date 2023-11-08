@@ -14,11 +14,6 @@ using namespace boost::mysql::detail;
 
 BOOST_AUTO_TEST_SUITE(test_ssl_context_with_default)
 
-// Ctor from null: nothing created by default
-// Ctor from context: accesible. get() doesn't create a new one
-// Ctor from null, get(): creates a new, default one
-// Calling get again doesn't create a new context
-
 BOOST_AUTO_TEST_CASE(no_external_context)
 {
     // No external SSL context is passed

@@ -21,10 +21,25 @@ using boost::mysql::results;
 
 namespace {
 
-auto net_samples_nossl = create_network_samples({
+// clang-format off
+auto samples_with_reconnection = create_network_samples({
     "tcp_sync_errc",
     "tcp_async_callback",
+    "any_tcp_sync_errc",
+    "any_tcp_async_callback",
+#if BOOST_ASIO_HAS_LOCAL_SOCKETS
+    "any_unix_sync_errc",
+#endif
 });
+
+auto samples_any = create_network_samples({
+    "any_tcp_sync_errc",
+    "any_tcp_async_callback",
+#if BOOST_ASIO_HAS_LOCAL_SOCKETS
+    "any_unix_sync_errc",
+#endif
+});
+// clang-format on
 
 BOOST_AUTO_TEST_SUITE(test_reconnect)
 
@@ -38,7 +53,7 @@ struct reconnect_fixture : network_fixture
     }
 };
 
-BOOST_MYSQL_NETWORK_TEST(reconnect_after_close, reconnect_fixture, net_samples_nossl)
+BOOST_MYSQL_NETWORK_TEST(reconnect_after_close, reconnect_fixture, samples_with_reconnection)
 {
     setup(sample.net);
 
@@ -54,7 +69,7 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_after_close, reconnect_fixture, net_samples_n
     do_query_ok();
 }
 
-BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, net_samples_nossl)
+BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, samples_with_reconnection)
 {
     setup(sample.net);
 
@@ -70,6 +85,27 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, net
     connect();
     do_query_ok();
 }
+
+BOOST_MYSQL_NETWORK_TEST(reconnect_while_connected, reconnect_fixture, samples_any)
+{
+    setup(sample.net);
+
+    // Connect and use the connection
+    connect();
+    do_query_ok();
+
+    // We can safely connect again
+    params.set_username("root");
+    params.set_password("");
+    connect();
+
+    // We've logged in as root
+    results r;
+    conn->execute("SELECT CURRENT_USER()", r).validate_no_error();
+    BOOST_TEST(r.rows().at(0).at(0).as_string().starts_with("root"));
+}
+
+BOOST_AUTO_TEST_CASE(reconnect_after_cancel) {}
 
 BOOST_AUTO_TEST_SUITE_END()  // test_reconnect
 
