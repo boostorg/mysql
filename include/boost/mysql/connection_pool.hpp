@@ -28,7 +28,7 @@ namespace mysql {
 
 class connection_pool
 {
-    std::unique_ptr<detail::connection_pool_impl> impl_;
+    std::shared_ptr<detail::connection_pool_impl> impl_;
 
     static constexpr std::chrono::steady_clock::duration get_default_timeout() noexcept
     {
@@ -37,7 +37,7 @@ class connection_pool
 
 public:
     connection_pool(asio::any_io_executor ex, pool_params params)
-        : impl_(new detail::connection_pool_impl(std::move(params), std::move(ex)))
+        : impl_(std::make_shared<detail::connection_pool_impl>(std::move(params), std::move(ex)))
     {
     }
 
@@ -48,7 +48,11 @@ public:
 
     connection_pool(connection_pool&& rhs) = default;
     connection_pool& operator=(connection_pool&&) = default;
-    ~connection_pool() = default;
+    ~connection_pool() noexcept
+    {
+        if (valid())
+            cancel();
+    }
 
     using executor_type = asio::any_io_executor;
 

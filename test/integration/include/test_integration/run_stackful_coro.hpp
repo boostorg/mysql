@@ -17,14 +17,22 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-inline void run_stackful_coro(std::function<void(boost::asio::yield_context)> fn)
+inline void run_stackful_coro(
+    boost::asio::io_context& ctx,
+    std::function<void(boost::asio::yield_context)> fn
+)
 {
-    boost::asio::io_context ctx;
     boost::asio::spawn(ctx.get_executor(), fn, [](std::exception_ptr err) {
         if (err)
             std::rethrow_exception(err);
     });
     ctx.run();
+}
+
+inline void run_stackful_coro(std::function<void(boost::asio::yield_context)> fn)
+{
+    boost::asio::io_context ctx;
+    run_stackful_coro(ctx, std::move(fn));
 }
 
 }  // namespace test

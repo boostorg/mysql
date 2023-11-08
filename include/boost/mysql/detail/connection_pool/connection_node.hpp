@@ -24,9 +24,11 @@
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
+#include <boost/asio/experimental/channel_error.hpp>
 #include <boost/asio/experimental/concurrent_channel.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/post.hpp>
+#include <boost/asio/steady_timer.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -37,8 +39,6 @@
 namespace boost {
 namespace mysql {
 namespace detail {
-
-// TODO: this should be somewhere public
 
 // State shared between connection tasks
 struct conn_shared_state
@@ -199,7 +199,10 @@ inline error_code to_error_code(
 ) noexcept
 {
     if (completion_order[0] == 0u)  // I/O finished first
-        return io_ec;
+        return io_ec == asio::experimental::error::channel_cancelled ||
+                       io_ec == asio::experimental::error::channel_closed
+                   ? asio::error::operation_aborted
+                   : io_ec;
     else if (completion_order[1] == 0u && !timer_ec)  // Timer fired. Operation timed out
         return asio::error::timed_out;
     else  // Timer was cancelled
@@ -244,34 +247,17 @@ class connection_node : public hook_type
         connection_task_op(connection_node& node) noexcept : node_(node) {}
 
         template <class Self, class Op>
-        void run_with_timeout(
-            Self& self,
-            Op&& op,
-            std::chrono::steady_clock::duration timeout,
-            bool use_strand_executor
-        )
+        void run_with_timeout(Self& self, Op&& op, std::chrono::steady_clock::duration timeout)
         {
             // Set the timeout
             node_.timer_.expires_after(timeout);
 
-            // Create the group
-            auto gp = asio::experimental::make_parallel_group(
+            // Initiate the wait
+            asio::experimental::make_parallel_group(
                 std::forward<Op>(op),
                 node_.timer_.async_wait(asio::deferred)
-            );
-
-            // Initiate the wait
-            if (use_strand_executor)
-            {
-                gp.async_wait(
-                    asio::experimental::wait_for_one(),
-                    asio::bind_executor(node_.get_strand_executor(), std::move(self))
-                );
-            }
-            else
-            {
-                gp.async_wait(asio::experimental::wait_for_one(), std::move(self));
-            }
+            )
+                .async_wait(asio::experimental::wait_for_one(), std::move(self));
         }
 
         template <class Self>
@@ -298,6 +284,8 @@ class connection_node : public hook_type
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
+                // If we're in thread-safe mode, this is guaranteed to be invoked
+                // from within the pool's strand, and self will have the strand as associated executor
                 ++node_.shared_st_->num_pending_connections;
                 node_.shared_st_->wait_gp.on_task_start();
 
@@ -320,8 +308,7 @@ class connection_node : public hook_type
                             self,
                             node_.conn_
                                 .async_connect(&node_.params_->connect_config, node_.diag_, asio::deferred),
-                            node_.params_->connect_timeout,
-                            true
+                            node_.params_->connect_timeout
                         );
 
                         // Store the result so get_connection can return meaningful diagnostics
@@ -342,8 +329,7 @@ class connection_node : public hook_type
                         run_with_timeout(
                             self,
                             node_.conn_.async_ping(asio::deferred),
-                            node_.params_->ping_timeout,
-                            true
+                            node_.params_->ping_timeout
                         );
                     }
                     else if (act == next_connection_action::reset)
@@ -352,19 +338,16 @@ class connection_node : public hook_type
                         run_with_timeout(
                             self,
                             node_.conn_.async_reset_connection(asio::deferred),
-                            node_.params_->reset_timeout,
-                            true
+                            node_.params_->reset_timeout
                         );
                     }
                     else if (act == next_connection_action::iddle_wait)
                     {
-                        // Both I/O objects use the strand executor. No need to bind any executor here
                         BOOST_ASIO_CORO_YIELD
                         run_with_timeout(
                             self,
                             node_.collection_channel_.async_receive(asio::deferred),
-                            node_.params_->ping_interval,
-                            false
+                            node_.params_->ping_interval
                         );
 
                         // Iddle wait may yield a collection state. Load it and pass it to the sans-io
@@ -407,10 +390,7 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_run(CompletionToken&& token)
     {
-        return asio::async_compose<CompletionToken, void(error_code)>(
-            connection_task_op(*this),
-            std::forward<CompletionToken>(token)
-        );
+        return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op(*this), token);
     }
 
     any_connection& connection() noexcept { return conn_; }

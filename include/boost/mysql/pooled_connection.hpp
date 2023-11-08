@@ -19,13 +19,23 @@
 namespace boost {
 namespace mysql {
 
+namespace detail {
+class connection_pool_impl;
+}
+
 class pooled_connection
 {
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
 #endif
 
-    pooled_connection(detail::connection_node& node) noexcept : impl_(&node) {}
+    pooled_connection(
+        detail::connection_node& node,
+        std::shared_ptr<detail::connection_pool_impl> pool_impl
+    ) noexcept
+        : impl_(&node), pool_impl_(std::move(pool_impl))
+    {
+    }
 
     struct deleter
     {
@@ -33,6 +43,7 @@ class pooled_connection
     };
 
     std::unique_ptr<detail::connection_node, deleter> impl_;
+    std::shared_ptr<detail::connection_pool_impl> pool_impl_;
 
 public:
     pooled_connection() noexcept = default;
