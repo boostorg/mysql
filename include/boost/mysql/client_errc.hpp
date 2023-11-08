@@ -67,6 +67,9 @@ enum class client_errc : int
 
     /// The static interface encountered an error when parsing a field into a C++ data structure.
     static_row_parsing_error,
+
+    /// An operation controlled by Boost.MySQL timed out.
+    timeout,
 };
 
 BOOST_MYSQL_DECL

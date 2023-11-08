@@ -31,21 +31,6 @@ class iddle_connection_list
     error_code last_ec_;
     diagnostics last_diag_;
 
-    error_code get_last_error(diagnostics& diag) const
-    {
-        // If we have a specific error, return this. Otherwise, return a generic error
-        if (last_ec_)
-        {
-            diag = last_diag_;
-            return last_ec_;
-        }
-        else
-        {
-            diag.clear();
-            return boost::asio::error::timed_out;
-        }
-    }
-
 public:
     iddle_connection_list(boost::asio::any_io_executor ex) : chan_(ex, 1) {}
 

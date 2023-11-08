@@ -123,6 +123,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         diagnostics* diag_;
         connection_node* result_;
         std::unique_ptr<asio::steady_timer> timer_;
+        error_code stored_ec_;
 
         get_connection_op(
             std::shared_ptr<connection_pool_impl> obj,
@@ -229,13 +230,17 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     // Check result
                     if (ec)
                     {
-                        if (ec == asio::error::timed_out && obj_->shared_st_.iddle_list.last_error())
+                        if (ec == client_errc::timeout && obj_->shared_st_.iddle_list.last_error())
                         {
                             // The operation timed out. Attempt to provide as better diagnostics as we can.
                             // If no diagnostics are available, just leave the timeout error as-is.
-                            ec = obj_->shared_st_.iddle_list.last_error();
+                            stored_ec_ = obj_->shared_st_.iddle_list.last_error();
                             if (diag_)
                                 *diag_ = obj_->shared_st_.iddle_list.last_diagnostics();
+                        }
+                        else
+                        {
+                            stored_ec_ = ec;
                         }
 
                         if (obj_->is_thread_safe())
@@ -244,7 +249,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                             asio::post(obj_->ex_, std::move(self));
                         }
 
-                        do_complete(self, ec, pooled_connection());
+                        do_complete(self, stored_ec_, pooled_connection());
                         return;
                     }
 

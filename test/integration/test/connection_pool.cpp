@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE(connection_upper_limit)
 
         // Getting another connection will block until one is returned.
         // Since we won't return the one we have, the function time outs
-        auto conn2 = pool.async_get_connection(std::chrono::milliseconds(500), yield[ec]);
+        auto conn2 = pool.async_get_connection(std::chrono::milliseconds(1), diag, yield[ec]);
         BOOST_TEST(!conn2.valid());
         BOOST_TEST(ec == client_errc::timeout);
         BOOST_TEST(diag == diagnostics());

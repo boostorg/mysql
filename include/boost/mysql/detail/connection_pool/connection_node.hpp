@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
@@ -204,7 +205,7 @@ inline error_code to_error_code(
                    ? asio::error::operation_aborted
                    : io_ec;
     else if (completion_order[1] == 0u && !timer_ec)  // Timer fired. Operation timed out
-        return asio::error::timed_out;
+        return client_errc::timeout;
     else  // Timer was cancelled
         return asio::error::operation_aborted;
 }
