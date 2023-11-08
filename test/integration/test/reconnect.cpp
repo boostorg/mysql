@@ -28,6 +28,7 @@
 
 #include <exception>
 
+#include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/get_endpoint.hpp"
 
@@ -171,61 +172,70 @@ BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, network_fixture_base)
     ctx.run();
 }
 
-struct change_stream_type_fixture : network_fixture_base
+BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp_tcpssl, network_fixture_base)
 {
-    connect_params tcp_ssl_params{base_connect_params()};
-    connect_params tcp_params{base_connect_params().set_ssl(ssl_mode::disable)};
-    connect_params unix_params{base_connect_params().set_unix_address(default_unix_path)};
-    any_connection conn{ctx.get_executor()};
-};
+    // Functions, to run sync and async with the same code
+    using netmaker_connect = netfun_maker_mem<void, any_connection, const connect_params&>;
+    using netmaker_ping = netfun_maker_mem<void, any_connection>;
 
-BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp_tcpssl, change_stream_type_fixture)
-{
-    // TCP
-    conn.connect(tcp_params);
-    conn.ping();
+    struct functions_t
+    {
+        netmaker_connect::signature connect;
+        netmaker_ping::signature ping;
+    };
 
-    // TCP with SSL
-    conn.connect(tcp_ssl_params);
-    conn.ping();
-}
+    functions_t sync_fns{
+        netmaker_connect::sync_errc(&any_connection::connect),
+        netmaker_ping::sync_errc(&any_connection::ping),
+    };
 
-BOOST_FIXTURE_TEST_CASE(change_stream_type_tcpssl_tcp, change_stream_type_fixture)
-{
-    // TCP SSL
-    conn.connect(tcp_ssl_params);
-    conn.ping();
+    functions_t async_fns{
+        netmaker_connect::async_errinfo(&any_connection::async_connect, false),
+        netmaker_ping::async_errinfo(&any_connection::async_ping, false),
+    };
 
-    // TCP
-    conn.connect(tcp_params);
-    conn.ping();
-}
-
+    // Connect params
+    auto tcp_ssl_params = base_connect_params();
+    auto tcp_params = base_connect_params().set_ssl(ssl_mode::disable);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
-
-BOOST_FIXTURE_TEST_CASE(change_stream_type_unix_tcpssl, change_stream_type_fixture)
-{
-    // UNIX
-    conn.connect(unix_params);
-    conn.ping();
-
-    // TCP SSL
-    conn.connect(tcp_ssl_params);
-    conn.ping();
-}
-
-BOOST_FIXTURE_TEST_CASE(change_stream_type_tcpssl_unix, change_stream_type_fixture)
-{
-    // TCP SSL
-    conn.connect(tcp_ssl_params);
-    conn.ping();
-
-    // UNIX
-    conn.connect(unix_params);
-    conn.ping();
-}
-
+    auto unix_params = base_connect_params().set_unix_address(default_unix_path);
 #endif
+
+    // Test cases. Note that some sync cases are not included, to save testing time
+    struct
+    {
+        const char* name;
+        functions_t fns;
+        connect_params first_params;
+        connect_params second_params;
+    } test_cases[] = {
+        {"sync_tcp_tcpssl",   sync_fns,  tcp_params,     tcp_ssl_params},
+        {"async_tcp_tcpssl",  async_fns, tcp_params,     tcp_ssl_params},
+        {"async_tcpssl_tcp",  async_fns, tcp_ssl_params, tcp_params    },
+#if BOOST_ASIO_HAS_LOCAL_SOCKETS
+        {"sync_unix_tcpssl",  sync_fns,  unix_params,    tcp_ssl_params},
+        {"async_unix_tcpssl", async_fns, unix_params,    tcp_ssl_params},
+        {"async_tcpssl_unix", async_fns, tcp_ssl_params, unix_params   },
+        {"async_tcp_unix",    async_fns, tcp_params,     unix_params   },
+#endif
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            any_connection conn{ctx.get_executor()};
+
+            // Connect with the first stream type
+            tc.fns.connect(conn, tc.first_params).validate_no_error();
+            tc.fns.ping(conn).validate_no_error();
+
+            // Connect with the second stream type
+            tc.fns.connect(conn, tc.second_params).validate_no_error();
+            tc.fns.ping(conn).validate_no_error();
+        }
+    }
+}
 
 BOOST_AUTO_TEST_SUITE_END()  // test_reconnect
 

@@ -27,10 +27,10 @@
 #include <cstdint>
 #include <cstring>
 
+#include "test_common/netfun_maker.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/mock_message.hpp"
-#include "test_unit/netfun_maker.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
