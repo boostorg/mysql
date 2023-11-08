@@ -319,7 +319,7 @@ class connection_node : public hook_type
                         run_with_timeout(
                             self,
                             node_.conn_
-                                .async_connect(&node_.params_->conn_params, node_.diag_, asio::deferred),
+                                .async_connect(&node_.params_->connect_config, node_.diag_, asio::deferred),
                             node_.params_->connect_timeout,
                             true
                         );
@@ -390,7 +390,7 @@ public:
         conn_shared_state& shared_st
     )
         : params_(&params),
-          conn_(ex, params.ssl_ctx, params.buff_params),
+          conn_(ex, params.ssl_ctx, params.buffer_config),
           timer_(strand_ex),
           shared_st_(&shared_st),
           collection_channel_(strand_ex, 1)

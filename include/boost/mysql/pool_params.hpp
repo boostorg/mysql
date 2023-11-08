@@ -22,20 +22,19 @@
 namespace boost {
 namespace mysql {
 
-// TODO: review this
 struct pool_params
 {
-    connect_params conn_params;
-    asio::ssl::context* ssl_ctx{};
-    buffer_params buff_params{};
+    connect_params connect_config;
     std::size_t initial_size{1};
     std::size_t max_size{150};
+    bool enable_thread_safety{true};
+    asio::ssl::context* ssl_ctx{};
+    buffer_params buffer_config{};
     std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};
     std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
     std::chrono::steady_clock::duration reset_timeout{std::chrono::seconds(10)};
     std::chrono::steady_clock::duration retry_interval{std::chrono::seconds(30)};
     std::chrono::steady_clock::duration ping_interval{std::chrono::hours(1)};
-    bool enable_thread_safety{true};
 };
 
 }  // namespace mysql
