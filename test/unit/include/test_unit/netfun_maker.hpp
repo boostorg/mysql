@@ -60,7 +60,6 @@ struct netfun_maker_impl
         };
     }
 
-    // Used by channel functions
     template <class Pfn>
     static signature sync_errc_noerrinfo(Pfn fn)
     {

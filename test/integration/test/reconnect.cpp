@@ -5,19 +5,37 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/throw_on_error.hpp>
 
-#include <boost/asio/ssl/verify_mode.hpp>
+#include <boost/asio/deferred.hpp>
+#include <boost/asio/error.hpp>
+#include <boost/asio/experimental/cancellation_condition.hpp>
+#include <boost/asio/experimental/parallel_group.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/post.hpp>
+#include <boost/asio/spawn.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_suite.hpp>
+
+#include <exception>
 
 #include "test_integration/common.hpp"
+#include "test_integration/get_endpoint.hpp"
 
 using namespace boost::mysql::test;
-using boost::mysql::common_server_errc;
-using boost::mysql::results;
+using namespace boost::mysql;
+using boost::asio::deferred;
+using boost::asio::experimental::make_parallel_group;
+using boost::asio::experimental::wait_for_one;
 
 namespace {
 
@@ -42,6 +60,15 @@ auto samples_any = create_network_samples({
 // clang-format on
 
 BOOST_AUTO_TEST_SUITE(test_reconnect)
+
+connect_params base_connect_params()
+{
+    return connect_params()
+        .set_tcp_address(get_hostname())
+        .set_username(default_user)
+        .set_password(default_passwd)
+        .set_database(default_db);
+}
 
 struct reconnect_fixture : network_fixture
 {
@@ -105,7 +132,100 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_while_connected, reconnect_fixture, samples_a
     BOOST_TEST(r.rows().at(0).at(0).as_string().starts_with("root"));
 }
 
-BOOST_AUTO_TEST_CASE(reconnect_after_cancel) {}
+BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, network_fixture_base)
+{
+    boost::asio::spawn(
+        ctx.get_executor(),
+        [&](boost::asio::yield_context yield) {
+            // Setup
+            auto connect_prms = base_connect_params();
+            any_connection conn(yield.get_executor());
+            results r;
+            boost::mysql::error_code ec;
+            boost::mysql::diagnostics diag;
+
+            // Connect
+            conn.async_connect(connect_prms, diag, yield[ec]);
+            boost::mysql::throw_on_error(ec, diag);
+
+            // Kick an operation that ends up cancelled
+            auto wait_result = make_parallel_group(
+                                   conn.async_execute("DO SLEEP(2)", r, deferred),
+                                   boost::asio::post(yield.get_executor(), deferred)
+            )
+                                   .async_wait(wait_for_one(), yield);
+
+            // Verify this was the case
+            BOOST_TEST(std::get<0>(wait_result)[1] == 0u);  // post completed first
+            BOOST_TEST(std::get<1>(wait_result) == boost::asio::error::operation_aborted);
+
+            // We can connect again
+            conn.async_connect(connect_prms, diag, yield[ec]);
+            boost::mysql::throw_on_error(ec, diag);
+        },
+        [](std::exception_ptr err) {
+            if (err)
+                std::rethrow_exception(err);
+        }
+    );
+    ctx.run();
+}
+
+struct change_stream_type_fixture : network_fixture_base
+{
+    connect_params tcp_ssl_params{base_connect_params()};
+    connect_params tcp_params{base_connect_params().set_ssl(ssl_mode::disable)};
+    connect_params unix_params{base_connect_params().set_unix_address(default_unix_path)};
+    any_connection conn{ctx.get_executor()};
+};
+
+BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp_tcpssl, change_stream_type_fixture)
+{
+    // TCP
+    conn.connect(tcp_params);
+    conn.ping();
+
+    // TCP with SSL
+    conn.connect(tcp_ssl_params);
+    conn.ping();
+}
+
+BOOST_FIXTURE_TEST_CASE(change_stream_type_tcpssl_tcp, change_stream_type_fixture)
+{
+    // TCP SSL
+    conn.connect(tcp_ssl_params);
+    conn.ping();
+
+    // TCP
+    conn.connect(tcp_params);
+    conn.ping();
+}
+
+#if BOOST_ASIO_HAS_LOCAL_SOCKETS
+
+BOOST_FIXTURE_TEST_CASE(change_stream_type_unix_tcpssl, change_stream_type_fixture)
+{
+    // UNIX
+    conn.connect(unix_params);
+    conn.ping();
+
+    // TCP SSL
+    conn.connect(tcp_ssl_params);
+    conn.ping();
+}
+
+BOOST_FIXTURE_TEST_CASE(change_stream_type_tcpssl_unix, change_stream_type_fixture)
+{
+    // TCP SSL
+    conn.connect(tcp_ssl_params);
+    conn.ping();
+
+    // UNIX
+    conn.connect(unix_params);
+    conn.ping();
+}
+
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()  // test_reconnect
 

@@ -8,6 +8,7 @@
 #include "test_integration/get_endpoint.hpp"
 
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address_v4.hpp>
@@ -33,7 +34,11 @@ boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
 
 }  // namespace
 
-std::string boost::mysql::test::get_hostname() { return safe_getenv("BOOST_MYSQL_SERVER_HOST", "localhost"); }
+boost::mysql::string_view boost::mysql::test::get_hostname()
+{
+    static auto res = safe_getenv("BOOST_MYSQL_SERVER_HOST", "localhost");
+    return res;
+}
 
 boost::asio::ip::tcp::endpoint boost::mysql::test::endpoint_getter<boost::asio::ip::tcp>::operator()()
 {
