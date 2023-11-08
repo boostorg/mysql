@@ -27,7 +27,7 @@ struct pool_params
 {
     connect_params conn_params;
     asio::ssl::context* ssl_ctx{};
-    buffer_params buff_params;
+    buffer_params buff_params{};
     std::size_t initial_size{1};
     std::size_t max_size{150};
     std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};

@@ -16,6 +16,8 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/any_address.hpp>
 
+#include <string>
+
 namespace boost {
 namespace mysql {
 
@@ -24,11 +26,11 @@ class connect_params
     struct
     {
         address_type addr_type{address_type::tcp_address};
-        string_view address{"localhost"};
+        std::string address;
         unsigned short port{3306};
-        string_view username;
-        string_view password;
-        string_view database;
+        std::string username;
+        std::string password;
+        std::string database;
         std::uint16_t connection_collation{handshake_params::default_collation};
         ssl_mode ssl{ssl_mode::require};
         bool multi_queries{};
@@ -38,7 +40,13 @@ class connect_params
             return addr_type == address_type::tcp_address ? ssl : ssl_mode::disable;
         }
 
-        detail::any_address to_address() const noexcept { return {addr_type, address, port}; }
+        string_view adjusted_address() const noexcept
+        {
+            return addr_type == address_type::tcp_address && address.empty() ? string_view("localhost")
+                                                                             : string_view(address);
+        }
+
+        detail::any_address to_address() const noexcept { return {addr_type, adjusted_address(), port}; }
         handshake_params to_handshake_params() const noexcept
         {
             return handshake_params(
@@ -65,7 +73,7 @@ public:
     string_view hostname() const noexcept
     {
         BOOST_ASSERT(impl_.addr_type == address_type::tcp_address);
-        return impl_.address;
+        return impl_.adjusted_address();
     }
 
     unsigned short port() const noexcept
@@ -93,34 +101,34 @@ public:
     bool multi_queries() const noexcept { return impl_.multi_queries; }
 
     // setters
-    connect_params& set_tcp_address(string_view hostname, unsigned short port = 3306) noexcept
+    connect_params& set_tcp_address(std::string hostname, unsigned short port = 3306)
     {
         impl_.addr_type = address_type::tcp_address;
-        impl_.address = hostname;
+        impl_.address = std::move(hostname);
         impl_.port = port;
         return *this;
     }
 
-    connect_params& set_unix_address(string_view path) noexcept
+    connect_params& set_unix_address(std::string path)
     {
         impl_.addr_type = address_type::unix_path;
-        impl_.address = path;
+        impl_.address = std::move(path);
         return *this;
     }
 
-    connect_params& set_username(string_view val) noexcept
+    connect_params& set_username(std::string val)
     {
-        impl_.username = val;
+        impl_.username = std::move(val);
         return *this;
     }
 
-    connect_params& set_password(string_view passwd) noexcept
+    connect_params& set_password(std::string passwd)
     {
         impl_.password = std::move(passwd);
         return *this;
     }
 
-    connect_params& set_database(string_view val) noexcept
+    connect_params& set_database(std::string val)
     {
         impl_.database = std::move(val);
         return *this;

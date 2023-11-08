@@ -16,12 +16,15 @@
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/stable_connect_params.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/consign.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/variant2/variant.hpp>
 
@@ -86,7 +89,8 @@ public:
 
     void connect(const connect_params& params, error_code& ec, diagnostics& diag)
     {
-        impl_.connect_v2(params, ec, diag);
+        const auto& impl = detail::access::get_impl(params);
+        impl_.connect(impl.to_address(), impl.to_handshake_params(), ec, diag);
     }
 
     /// \copydoc connect
@@ -109,7 +113,27 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(const connect_params& params, diagnostics& diag, CompletionToken&& token)
     {
-        return impl_.async_connect_v2(params, diag, std::forward<CompletionToken>(token));
+        auto stable_prms = detail::make_stable(params);
+        return impl_.async_connect(
+            stable_prms.address,
+            stable_prms.hparams,
+            diag,
+            asio::consign(std::forward<CompletionToken>(token), std::move(stable_prms.string_buffer))
+        );
+    }
+
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
+    async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
+    {
+        BOOST_ASSERT(params != nullptr);
+        const auto& impl = detail::access::get_impl(*params);
+        return impl_.async_connect(
+            impl.to_address(),
+            impl.to_handshake_params(),
+            diag,
+            std::forward<CompletionToken>(token)
+        );
     }
 
     void close(error_code& err, diagnostics& diag)

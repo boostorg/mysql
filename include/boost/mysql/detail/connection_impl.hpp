@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 
-#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
@@ -21,22 +20,16 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
-#include <boost/mysql/detail/any_address.hpp>
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
-#include <boost/mysql/detail/any_stream_impl.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
-#include <boost/mysql/detail/owning_connect_params.hpp>
 #include <boost/mysql/detail/run_algo.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
-#include <boost/asio/associated_allocator.hpp>
-#include <boost/asio/consign.hpp>
-#include <boost/asio/recycling_allocator.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
 #include <array>
@@ -283,38 +276,6 @@ public:
             params,
             &diag
         );
-    }
-
-    // Connect v2
-    void connect_v2(const connect_params& params, error_code& err, diagnostics& diag)
-    {
-        const auto& impl = access::get_impl(params);
-        connect(impl.to_address(), impl.to_handshake_params(), err, diag);
-    }
-
-    template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_connect_v2(const connect_params& params, diagnostics& diag, CompletionToken&& token)
-    {
-        auto params_and_strings = owning_connect_params::create(params);
-        return async_connect_v2(
-            params_and_strings.address,
-            params_and_strings.hparams,
-            diag,
-            asio::consign(std::forward<CompletionToken>(token), std::move(params_and_strings.string_buffer))
-        );
-    }
-
-    template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_connect_v2(
-        any_address addr,
-        const handshake_params& params,
-        diagnostics& diag,
-        CompletionToken&& token
-    )
-    {
-        return async_connect(addr, params, diag, std::forward<CompletionToken>(token));
     }
 
     // Handshake

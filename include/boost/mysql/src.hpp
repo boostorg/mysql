@@ -41,6 +41,7 @@
 #include <boost/mysql/impl/resultset.ipp>
 #include <boost/mysql/impl/row_impl.ipp>
 #include <boost/mysql/impl/run_algo.ipp>
+#include <boost/mysql/impl/stable_connect_params.ipp>
 #include <boost/mysql/impl/static_execution_state_impl.ipp>
 #include <boost/mysql/impl/static_results_impl.ipp>
 

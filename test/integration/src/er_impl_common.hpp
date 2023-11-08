@@ -136,15 +136,16 @@ public:
     {
         connect_params res;
         if (addr_type_ == address_type::tcp_address)
-            res.set_tcp_address(hostname_);
+            res.set_tcp_address(get_hostname());
         else if (addr_type_ == address_type::unix_path)
             res.set_unix_address(default_unix_path);
-        return res.set_username(input.username())
+        res.set_username(input.username())
             .set_password(input.password())
             .set_database(input.database())
             .set_connection_collation(input.connection_collation())
             .set_ssl(input.ssl())
             .set_multi_queries(input.multi_queries());
+        return res;
     }
 
     any_connection_base(
@@ -217,7 +218,6 @@ public:
     er_network_variant& variant() const override { return var_; }
 
 private:
-    std::string hostname_{get_hostname()};
     any_connection conn_;
     er_network_variant& var_;
     address_type addr_type_;
