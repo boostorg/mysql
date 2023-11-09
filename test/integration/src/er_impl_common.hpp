@@ -153,7 +153,7 @@ public:
         er_network_variant& var,
         address_type addr
     )
-        : conn_(executor, ssl_ctx), var_(var), addr_type_(addr)
+        : conn_(executor, {&ssl_ctx}), var_(var), addr_type_(addr)
     {
     }
 

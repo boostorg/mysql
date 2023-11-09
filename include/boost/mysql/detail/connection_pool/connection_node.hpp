@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
 #include <boost/mysql/any_connection.hpp>
-#include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -47,10 +46,9 @@ namespace detail {
 struct internal_pool_params
 {
     connect_params connect_config;
-    buffer_params buffer_config;
+    any_connection_params ctor_config;
     std::size_t initial_size{};
     std::size_t max_size{};
-    asio::ssl::context* ssl_ctx{};
     std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};
     std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
     std::chrono::steady_clock::duration retry_interval{std::chrono::seconds(30)};
@@ -67,10 +65,12 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
          params.connection_collation,
          params.ssl,
          params.multi_queries},
-        buffer_params(params.initial_read_buffer_size),
+        {
+         params.ssl_ctx,
+         params.initial_read_buffer_size,
+         },
         params.initial_size,
         params.max_size,
-        params.ssl_ctx,
         params.connect_timeout,
         params.ping_timeout,
         params.retry_interval,
@@ -411,7 +411,7 @@ public:
         conn_shared_state& shared_st
     )
         : params_(&params),
-          conn_(ex, params.ssl_ctx, params.buffer_config),
+          conn_(ex, params.ctor_config),
           timer_(strand_ex),
           shared_st_(&shared_st),
           collection_channel_(strand_ex, 1)

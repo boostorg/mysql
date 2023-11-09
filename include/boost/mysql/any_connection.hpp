@@ -12,7 +12,12 @@
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/results.hpp>
+#include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -26,9 +31,12 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/consign.hpp>
+#include <boost/asio/execution_context.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/assert.hpp>
 #include <boost/variant2/variant.hpp>
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <type_traits>
@@ -41,35 +49,29 @@ namespace mysql {
 template <class... StaticRow>
 class static_execution_state;
 
+struct any_connection_params
+{
+    asio::ssl::context* ssl_context{};
+    std::size_t initial_read_buffer_size{buffer_params::default_initial_read_size};
+};
+
 class any_connection
 {
     detail::connection_impl impl_;
 
 public:
-    // TODO: maybe a "params struct"?
-    any_connection(boost::asio::any_io_executor ex) : any_connection(std::move(ex), nullptr, buffer_params())
-    {
-    }
-    any_connection(boost::asio::any_io_executor ex, const buffer_params& buff_params)
-        : any_connection(std::move(ex), nullptr, buff_params)
-    {
-    }
-    any_connection(boost::asio::any_io_executor ex, asio::ssl::context& ssl_ctx)
-        : any_connection(std::move(ex), &ssl_ctx, buffer_params())
-    {
-    }
-    any_connection(
-        boost::asio::any_io_executor ex,
-        asio::ssl::context& ssl_ctx,
-        const buffer_params& buff_params
-    )
-        : any_connection(std::move(ex), &ssl_ctx, buff_params)
+    any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
+        : impl_(params.initial_read_buffer_size, create_stream(std::move(ex), params.ssl_context))
     {
     }
 
-    // TODO: do we want to expose this?
-    any_connection(asio::any_io_executor ex, asio::ssl::context* ctx, const buffer_params& buff)
-        : impl_(buff.initial_read_size(), create_stream(std::move(ex), ctx))
+    template <
+        class ExecutionContext,
+        class = typename std::enable_if<std::is_constructible<
+            asio::any_io_executor,
+            decltype(std::declval<ExecutionContext&>().get_executor())>::value>::type>
+    any_connection(ExecutionContext& ctx, any_connection_params params = {})
+        : any_connection(ctx.get_executor(), params)
     {
     }
 
