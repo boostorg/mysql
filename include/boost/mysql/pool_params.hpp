@@ -28,12 +28,11 @@ struct pool_params
     std::string username;
     std::string password;
     std::string database;
-    std::uint16_t connection_collation{handshake_params::default_collation};
     ssl_mode ssl{ssl_mode::require};
     bool multi_queries{};
     std::size_t initial_read_buffer_size{buffer_params::default_initial_read_size};
     std::size_t initial_size{1};
-    std::size_t max_size{150};
+    std::size_t max_size{151};
     bool enable_thread_safety{true};
     asio::ssl::context* ssl_ctx{};
     std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};

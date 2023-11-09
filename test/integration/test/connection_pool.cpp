@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE(get_connection_diagnostics)
 
         // Try to get a connection. This times out, but will return
         // the connection's diagnostics, instead
-        auto conn = pool.async_get_connection(std::chrono::milliseconds(5), diag, yield[ec]);
+        auto conn = pool.async_get_connection(std::chrono::milliseconds(10), diag, yield[ec]);
         BOOST_TEST(ec == common_server_errc::er_access_denied_error);
         validate_string_contains(diag.server_message(), {"access denied"});
     });

@@ -62,7 +62,7 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
          std::move(params.username),
          std::move(params.password),
          std::move(params.database),
-         params.connection_collation,
+         handshake_params::default_collation,  // reset wipes out this. TODO: figure out a way
          params.ssl,
          params.multi_queries},
         {
