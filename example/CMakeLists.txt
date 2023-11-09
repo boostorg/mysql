@@ -50,9 +50,9 @@ function (add_example EXAMPLE_NAME EXAMPLE_PATH)
 endfunction()
 
 # Coroutines needs Boost.Context and shouldn't be memchecked
-function (add_example_coroutines)
-    set(EXECUTABLE_NAME boost_mysql_example_async_coroutines)
-    add_example_target(${EXECUTABLE_NAME} async_coroutines.cpp Boost::context)
+function (add_example_coroutines EXAMPLE_NAME)
+    set(EXECUTABLE_NAME boost_mysql_example_${EXAMPLE_NAME})
+    add_example_target(${EXECUTABLE_NAME} ${EXAMPLE_NAME}.cpp Boost::context)
     add_test(
         NAME ${EXECUTABLE_NAME}
         COMMAND ${EXECUTABLE_NAME} example_user example_password ${SERVER_HOST}
@@ -107,7 +107,8 @@ foreach (FILE_NAME ${ORDER_EXAMPLES})
 endforeach()
 
 # Rest of the examples
-add_example_coroutines()
+add_example_coroutines(async_coroutines)
+add_example_coroutines(any_connection)
 if ("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
     add_example(
         boost_mysql_example_unix_socket
