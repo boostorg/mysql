@@ -19,11 +19,11 @@
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/connection_base.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/days.hpp>
+#include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
