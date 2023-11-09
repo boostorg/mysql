@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_ANY_ADDRESS_HPP
 #define BOOST_MYSQL_ANY_ADDRESS_HPP
 
+#include <boost/mysql/defaults.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -29,7 +30,7 @@ class any_address
     {
         address_type type{address_type::tcp_address};
         std::string address;
-        unsigned short port{3306};
+        unsigned short port{default_port};
     } impl_;
 
     any_address(address_type t, std::string&& addr, unsigned short port) noexcept
@@ -63,7 +64,7 @@ public:
         return impl_.address;
     }
 
-    void set_host_and_port(std::string hostname, unsigned short port = 3306)
+    void set_host_and_port(std::string hostname, unsigned short port = default_port)
     {
         impl_.type = address_type::tcp_address;
         impl_.address = std::move(hostname);
@@ -76,7 +77,7 @@ public:
         impl_.address = std::move(path);
     }
 
-    static any_address make_tcp(std::string hostname, unsigned short port = 3306)
+    static any_address make_tcp(std::string hostname, unsigned short port = default_port)
     {
         return any_address(address_type::tcp_address, std::move(hostname), port);
     }
