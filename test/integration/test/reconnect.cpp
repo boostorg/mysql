@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
@@ -65,11 +66,12 @@ BOOST_AUTO_TEST_SUITE(test_reconnect)
 
 connect_params base_connect_params()
 {
-    return connect_params()
-        .set_tcp_address(get_hostname())
-        .set_username(default_user)
-        .set_password(default_passwd)
-        .set_database(default_db);
+    return {
+        any_address::make_tcp(get_hostname()),
+        default_user,
+        default_passwd,
+        default_db,
+    };
 }
 
 struct reconnect_fixture : network_fixture
@@ -189,9 +191,11 @@ BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp_tcpssl, network_fixture_base)
 
     // Connect params
     auto tcp_ssl_params = base_connect_params();
-    auto tcp_params = base_connect_params().set_ssl(ssl_mode::disable);
+    auto tcp_params = base_connect_params();
+    tcp_params.ssl = ssl_mode::disable;
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    auto unix_params = base_connect_params().set_unix_address(default_unix_path);
+    auto unix_params = base_connect_params();
+    unix_params.server_address.set_unix_path(default_unix_path);
 #endif
 
     // Test cases. Note that some sync cases are not included, to save testing time

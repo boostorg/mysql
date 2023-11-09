@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/address_type.hpp>
+#include <boost/mysql/any_address.hpp>
 
 #include "er_impl_common.hpp"
 #include "test_common/netfun_helpers.hpp"

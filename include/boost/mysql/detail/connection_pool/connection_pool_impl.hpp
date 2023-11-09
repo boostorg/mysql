@@ -48,7 +48,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 {
     bool cancelled_{};
     bool running_{};
-    pool_params params_;
+    internal_pool_params params_;
     asio::any_io_executor ex_;
     asio::any_io_executor strand_ex_;
     std::list<connection_node> all_conns_;
@@ -63,7 +63,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         new_conn.async_run(asio::bind_executor(get_io_executor(), asio::detached));
     }
 
-    bool is_thread_safe() const noexcept { return params_.enable_thread_safety; }
+    bool is_thread_safe() const noexcept { return static_cast<bool>(strand_ex_); }
 
     struct run_op : asio::coroutine
     {
@@ -277,9 +277,9 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
 public:
     connection_pool_impl(pool_params&& params, asio::any_io_executor ex)
-        : params_(std::move(params)),
+        : params_(make_internal_pool_params(std::move(params))),
           ex_(std::move(ex)),
-          strand_ex_(params_.enable_thread_safety ? asio::make_strand(ex_) : asio::any_io_executor()),
+          strand_ex_(params.enable_thread_safety ? asio::make_strand(ex_) : asio::any_io_executor()),
           shared_st_(get_io_executor()),
           cancel_chan_(get_io_executor(), 1)
     {

@@ -8,13 +8,12 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_VARIANT_STREAM_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_VARIANT_STREAM_HPP
 
-#include <boost/mysql/address_type.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/any_address.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/connect_params_helpers.hpp>
 
 #include <boost/mysql/impl/internal/ssl_context_with_default.hpp>
 
@@ -40,7 +39,7 @@ namespace detail {
 
 class variant_stream final : public any_stream
 {
-    any_address address_;
+    any_address_view address_;
 
 public:
     variant_stream(asio::any_io_executor ex, asio::ssl::context* ctx)
@@ -50,7 +49,7 @@ public:
 
     void set_endpoint(const void* value) override final
     {
-        address_ = *static_cast<const any_address*>(value);
+        address_ = *static_cast<const any_address_view*>(value);
     }
 
     // Executor

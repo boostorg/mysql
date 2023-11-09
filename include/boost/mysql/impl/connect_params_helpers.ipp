@@ -5,12 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_STABLE_CONNECT_PARAMS_IPP
-#define BOOST_MYSQL_IMPL_STABLE_CONNECT_PARAMS_IPP
+#ifndef BOOST_MYSQL_IMPL_CONNECT_PARAMS_HELPERS_IPP
+#define BOOST_MYSQL_IMPL_CONNECT_PARAMS_HELPERS_IPP
 
 #pragma once
 
-#include <boost/mysql/detail/stable_connect_params.hpp>
+#include <boost/mysql/detail/connect_params_helpers.hpp>
 
 namespace boost {
 namespace mysql {
@@ -34,31 +34,31 @@ inline string_view copy_string(const std::string& input, char*& it)
 
 boost::mysql::detail::stable_connect_params boost::mysql::detail::make_stable(const connect_params& input)
 {
-    auto& impl = access::get_impl(input);
+    const auto& addr_impl = access::get_impl(input.server_address);
 
-    // Calculate required space
-    std::size_t required_size = impl.address.size() + impl.username.size() + impl.password.size() +
-                                impl.database.size();
+    // Calculate required space. TODO: handle the case where required_size == 0
+    std::size_t required_size = addr_impl.address.size() + input.username.size() + input.password.size() +
+                                input.database.size();
 
     // Allocate space for strings
     auto ptr = std::make_unique<char[]>(required_size);
 
     // Copy them to the new buffer
     char* it = ptr.get();
-    auto address = copy_string(impl.adjusted_address(), it);
-    auto username = copy_string(impl.username, it);
-    auto password = copy_string(impl.password, it);
-    auto database = copy_string(impl.database, it);
+    auto address = copy_string(addr_impl.address, it);
+    auto username = copy_string(input.username, it);
+    auto password = copy_string(input.password, it);
+    auto database = copy_string(input.database, it);
 
     return {
-        any_address(impl.addr_type, address, impl.port),
+        any_address_view{addr_impl.type, address, addr_impl.port},
         handshake_params(
             username,
             password,
             database,
-            impl.connection_collation,
-            impl.adjusted_ssl_mode(),
-            impl.multi_queries
+            input.connection_collation,
+            adjust_ssl_mode(input.ssl, input.server_address.type()),
+            input.multi_queries
         ),
         std::move(ptr),
     };

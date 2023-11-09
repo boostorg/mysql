@@ -24,15 +24,20 @@ namespace mysql {
 
 struct pool_params
 {
-    connect_params connect_config;
+    any_address server_address{any_address::make_tcp("localhost")};
+    std::string username;
+    std::string password;
+    std::string database;
+    std::uint16_t connection_collation{handshake_params::default_collation};
+    ssl_mode ssl{ssl_mode::require};
+    bool multi_queries{};
+    std::size_t initial_read_buffer_size{buffer_params::default_initial_read_size};
     std::size_t initial_size{1};
     std::size_t max_size{150};
     bool enable_thread_safety{true};
     asio::ssl::context* ssl_ctx{};
-    buffer_params buffer_config{};
     std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};
     std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
-    std::chrono::steady_clock::duration reset_timeout{std::chrono::seconds(10)};
     std::chrono::steady_clock::duration retry_interval{std::chrono::seconds(30)};
     std::chrono::steady_clock::duration ping_interval{std::chrono::hours(1)};
 };

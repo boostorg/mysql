@@ -9,7 +9,9 @@
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
@@ -40,6 +42,41 @@
 namespace boost {
 namespace mysql {
 namespace detail {
+
+// Same as pool_params, but structured in a way that is more helpful for the impl
+struct internal_pool_params
+{
+    connect_params connect_config;
+    buffer_params buffer_config;
+    std::size_t initial_size{};
+    std::size_t max_size{};
+    asio::ssl::context* ssl_ctx{};
+    std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};
+    std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
+    std::chrono::steady_clock::duration retry_interval{std::chrono::seconds(30)};
+    std::chrono::steady_clock::duration ping_interval{std::chrono::hours(1)};
+};
+
+inline internal_pool_params make_internal_pool_params(pool_params&& params)
+{
+    return {
+        {std::move(params.server_address),
+         std::move(params.username),
+         std::move(params.password),
+         std::move(params.database),
+         params.connection_collation,
+         params.ssl,
+         params.multi_queries},
+        buffer_params(params.initial_read_buffer_size),
+        params.initial_size,
+        params.max_size,
+        params.ssl_ctx,
+        params.connect_timeout,
+        params.ping_timeout,
+        params.retry_interval,
+        params.ping_interval,
+    };
+}
 
 // State shared between connection tasks
 struct conn_shared_state
@@ -213,7 +250,7 @@ inline error_code to_error_code(
 class connection_node : public hook_type
 {
     // Not thread-safe, should only be manipulated within the connection pool strand context
-    const pool_params* params_;
+    const internal_pool_params* params_;
     sansio_connection_node sansio_impl_;
     any_connection conn_;
     boost::asio::steady_timer timer_;
@@ -339,7 +376,7 @@ class connection_node : public hook_type
                         run_with_timeout(
                             self,
                             node_.conn_.async_reset_connection(asio::deferred),
-                            node_.params_->reset_timeout
+                            node_.params_->ping_timeout
                         );
                     }
                     else if (act == next_connection_action::iddle_wait)
@@ -368,7 +405,7 @@ class connection_node : public hook_type
 
 public:
     connection_node(
-        const pool_params& params,
+        const internal_pool_params& params,
         boost::asio::any_io_executor ex,
         boost::asio::any_io_executor strand_ex,
         conn_shared_state& shared_st

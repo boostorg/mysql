@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_SRC_ER_IMPL_COMMON_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_SRC_ER_IMPL_COMMON_HPP
 
-#include <boost/mysql/address_type.hpp>
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
@@ -136,15 +136,14 @@ public:
     {
         connect_params res;
         if (addr_type_ == address_type::tcp_address)
-            res.set_tcp_address(get_hostname());
+            res.server_address.set_host_and_port(get_hostname());
         else if (addr_type_ == address_type::unix_path)
-            res.set_unix_address(default_unix_path);
-        res.set_username(input.username())
-            .set_password(input.password())
-            .set_database(input.database())
-            .set_connection_collation(input.connection_collation())
-            .set_ssl(input.ssl())
-            .set_multi_queries(input.multi_queries());
+            res.server_address.set_unix_path(default_unix_path);
+        res.username = input.username();
+        res.password = input.password();
+        res.database = input.database();
+        res.connection_collation = input.connection_collation();
+        res.multi_queries = input.multi_queries();
         return res;
     }
 

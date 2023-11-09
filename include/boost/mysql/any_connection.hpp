@@ -20,7 +20,7 @@
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/stable_connect_params.hpp>
+#include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
@@ -89,8 +89,7 @@ public:
 
     void connect(const connect_params& params, error_code& ec, diagnostics& diag)
     {
-        const auto& impl = detail::access::get_impl(params);
-        impl_.connect(impl.to_address(), impl.to_handshake_params(), ec, diag);
+        impl_.connect(detail::make_view(params.server_address), detail::make_hparams(params), ec, diag);
     }
 
     /// \copydoc connect
@@ -127,10 +126,9 @@ public:
     async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
     {
         BOOST_ASSERT(params != nullptr);
-        const auto& impl = detail::access::get_impl(*params);
         return impl_.async_connect(
-            impl.to_address(),
-            impl.to_handshake_params(),
+            detail::make_view(params->server_address),
+            detail::make_hparams(*params),
             diag,
             std::forward<CompletionToken>(token)
         );

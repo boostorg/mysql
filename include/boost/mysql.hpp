@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_HPP
 #define BOOST_MYSQL_HPP
 
-#include <boost/mysql/address_type.hpp>
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/bad_field_access.hpp>
 #include <boost/mysql/blob.hpp>

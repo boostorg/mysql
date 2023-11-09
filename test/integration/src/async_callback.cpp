@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/address_type.hpp>
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>

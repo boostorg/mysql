@@ -37,11 +37,12 @@ BOOST_AUTO_TEST_SUITE(test_connection_pool)
 
 pool_params default_pool_params()
 {
-    return pool_params{connect_params()
-                           .set_tcp_address(get_hostname())
-                           .set_username(default_user)
-                           .set_password(default_passwd)
-                           .set_database(default_db)};
+    pool_params res;
+    res.server_address.set_host_and_port(get_hostname());
+    res.username = default_user;
+    res.password = default_passwd;
+    res.database = default_db;
+    return res;
 }
 
 BOOST_AUTO_TEST_CASE(return_connection_with_reset)
@@ -288,7 +289,7 @@ BOOST_AUTO_TEST_CASE(get_connection_diagnostics)
         error_code ec;
         results r;
         auto params = default_pool_params();
-        params.connect_config.set_password("bad");
+        params.password = "bad";
         boost::asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
         boost::asio::experimental::channel<void(error_code)> getconn_chan(yield.get_executor(), 1);
 
@@ -314,7 +315,7 @@ BOOST_AUTO_TEST_CASE(unix_sockets)
         error_code ec;
         results r;
         auto params = default_pool_params();
-        params.connect_config.set_unix_address(default_unix_path);
+        params.server_address.set_unix_path(default_unix_path);
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool.async_run([](error_code ec) { throw_on_error(ec); });
