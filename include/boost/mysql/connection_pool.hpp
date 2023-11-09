@@ -41,6 +41,16 @@ public:
     {
     }
 
+    template <
+        class ExecutionContext,
+        class = typename std::enable_if<std::is_constructible<
+            asio::any_io_executor,
+            decltype(std::declval<ExecutionContext&>().get_executor())>::value>::type>
+    connection_pool(ExecutionContext& ctx, pool_params params)
+        : connection_pool(ctx.get_executor(), std::move(params))
+    {
+    }
+
 #ifndef BOOST_MYSQL_DOXYGEN
     connection_pool(const connection_pool&) = delete;
     connection_pool& operator=(const connection_pool&) = delete;
