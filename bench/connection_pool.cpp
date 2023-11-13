@@ -139,7 +139,7 @@ public:
     }
 };
 
-class task_pool_1
+class task_pool
 {
     mysql::connection_pool* pool_;
     mysql::results r_;
@@ -156,7 +156,7 @@ class task_pool_1
     }
 
 public:
-    task_pool_1(mysql::connection_pool& pool, coordinator& coord) : pool_(&pool), coord_(&coord) {}
+    task_pool(mysql::connection_pool& pool, coordinator& coord) : pool_(&pool), coord_(&coord) {}
 
     void resume(error_code ec = {})
     {
@@ -249,7 +249,7 @@ void run_pool(mysql::any_address server_addr, bool use_ssl, bool thread_safe)
     mysql::connection_pool pool(ctx, std::move(params));
     pool.async_run(asio::detached);
 
-    std::vector<task_pool_1> conns;
+    std::vector<task_pool> conns;
     coordinator coord(&pool);
 
     // Create connections
