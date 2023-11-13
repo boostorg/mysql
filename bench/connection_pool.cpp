@@ -5,8 +5,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_async_callbacks
-
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
@@ -14,59 +12,60 @@
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/pooled_connection.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/statement.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/detached.hpp>
+#include <boost/asio/coroutine.hpp>
 #include <boost/asio/io_context.hpp>
 
-#include <asm-generic/errno.h>
 #include <chrono>
 #include <cstddef>
 #include <iostream>
 
 using boost::mysql::error_code;
+using std::chrono::steady_clock;
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
+namespace {
+
 static constexpr std::size_t num_parallel = 100;
 static constexpr std::size_t total = num_parallel * 100;
-
-using myclock = std::chrono::steady_clock;
+static constexpr const char* default_unix_path = "/var/run/mysqld/mysqld.sock";
 
 class coordinator
 {
     bool finished_{};
-    std::size_t remaining_{total};
-    std::size_t outstanding{num_parallel};
-    myclock::time_point tp_start;
-    myclock::time_point tp_finish;
-    mysql::connection_pool* pool{};
+    std::size_t remaining_queries_{total};
+    std::size_t outstanding_tasks_{num_parallel};
+    steady_clock::time_point tp_start_;
+    steady_clock::time_point tp_finish_;
+    mysql::connection_pool* pool_{};
 
 public:
-    coordinator(mysql::connection_pool* pool = nullptr) : pool(pool) {}
+    coordinator(mysql::connection_pool* pool = nullptr) : pool_(pool) {}
     std::chrono::milliseconds ellapsed() const
     {
-        return std::chrono::duration_cast<std::chrono::milliseconds>(tp_finish - tp_start);
+        return std::chrono::duration_cast<std::chrono::milliseconds>(tp_finish_ - tp_start_);
     }
-    void record_start() { tp_start = myclock::now(); }
+    void record_start() { tp_start_ = steady_clock::now(); }
     void on_finish()
     {
-        if (--outstanding == 0)
+        if (--outstanding_tasks_ == 0)
         {
-            tp_finish = myclock::now();
-            if (pool)
-                pool->cancel();
+            tp_finish_ = steady_clock::now();
+            if (pool_)
+                pool_->cancel();
         }
     }
     bool on_loop_finish()
     {
-        if (--remaining_ == 0)
+        if (--remaining_queries_ == 0)
             finished_ = true;
         return !finished_;
     }
@@ -77,157 +76,154 @@ public:
         {
             finished_ = true;
             std::cout << ec << ", " << diag.server_message() << std::endl;
-            // exit(1);
         }
-        return static_cast<bool>(ec);
+        return !finished_;
     }
 };
 
-struct per_connection
+class task_nopool
 {
-    mysql::any_connection conn;
-    mysql::results r;
-    mysql::diagnostics diag;
-    coordinator* coord{};
-    const mysql::connect_params* params;
+    mysql::any_connection conn_;
+    mysql::results r_;
+    mysql::diagnostics diag_;
+    coordinator* coord_{};
+    const mysql::connect_params* params_;
+    mysql::statement stmt_;
+    asio::coroutine coro_;
 
-    void start()
+public:
+    task_nopool(asio::any_io_executor ex, coordinator& coord, const mysql::connect_params& params)
+        : conn_(ex), coord_(&coord), params_(&params)
     {
-        conn.async_connect(params, diag, [this](error_code ec) {
-            if (!coord->check_ec(ec, diag))
-            {
-                send_query();
-            }
-            else
-            {
-                coord->on_finish();
-            }
-        });
     }
 
-    void send_query()
+    void resume(error_code ec = {})
     {
-        conn.async_execute("SELECT 1", r, diag, [this](error_code ec) {
-            if (!coord->check_ec(ec, diag))
-            {
-                close();
-            }
-            else
-            {
-                coord->on_finish();
-            }
-        });
-    }
+        // Error checking
+        if (!coord_->check_ec(ec, diag_))
+        {
+            coord_->on_finish();
+            return;
+        }
 
-    void close()
-    {
-        conn.async_close(diag, [this](error_code ec) {
-            if (!coord->check_ec(ec, diag) && coord->on_loop_finish())
+        BOOST_ASIO_CORO_REENTER(coro_)
+        {
+            while (true)
             {
-                start();
-            }
-            else
-            {
-                coord->on_finish();
-            }
-        });
-    }
-};
+                BOOST_ASIO_CORO_YIELD
+                conn_.async_connect(params_, diag_, [this](error_code ec) { resume(ec); });
 
-struct per_connection_2
-{
-    mysql::connection_pool* pool;
-    mysql::results r;
-    mysql::diagnostics diag;
-    coordinator* coord{};
-    mysql::pooled_connection conn;
+                BOOST_ASIO_CORO_YIELD
+                conn_.async_prepare_statement(
+                    "SELECT tax_id FROM company WHERE id = ?",
+                    diag_,
+                    [this](error_code ec, boost::mysql::statement s) {
+                        stmt_ = s;
+                        resume(ec);
+                    }
+                );
 
-    void start()
-    {
-        pool->async_get_connection(diag, [this](error_code ec, mysql::pooled_connection c) {
-            if (!coord->check_ec(ec, diag))
-            {
-                conn = std::move(c);
-                stmt();
-            }
-            else
-            {
-                coord->on_finish();
-            }
-        });
-    }
+                BOOST_ASIO_CORO_YIELD
+                conn_.async_execute(stmt_.bind("HGS"), r_, diag_, [this](error_code ec) { resume(ec); });
 
-    void stmt()
-    {
-        conn->async_prepare_statement(
-            "SELECT tax_id FROM company WHERE id = ?",
-            diag,
-            [this](error_code ec, boost::mysql::statement s) {
-                if (!coord->check_ec(ec, diag))
+                BOOST_ASIO_CORO_YIELD
+                conn_.async_close(diag_, [this](error_code ec) { resume(ec); });
+
+                if (!coord_->on_loop_finish())
                 {
-                    send_query(s);
-                }
-                else
-                {
-                    coord->on_finish();
+                    coord_->on_finish();
+                    return;
                 }
             }
-        );
-    }
-
-    void send_query(boost::mysql::statement s)
-    {
-        conn->async_execute(s.bind("HGS"), r, diag, [this, s](error_code ec) {
-            if (!coord->check_ec(ec, diag))
-            {
-                close_stmt(s);
-            }
-            else
-            {
-                coord->on_finish();
-            }
-        });
-    }
-
-    void close_stmt(boost::mysql::statement s)
-    {
-        conn->async_close_statement(s, diag, [this](error_code ec) {
-            conn.return_to_pool();
-            if (!coord->check_ec(ec, diag) && coord->on_loop_finish())
-            {
-                start();
-            }
-            else
-            {
-                coord->on_finish();
-            }
-        });
+        }
     }
 };
 
-void without_pool()
+class task_pool_1
+{
+    mysql::connection_pool* pool_;
+    mysql::results r_;
+    mysql::diagnostics diag_;
+    coordinator* coord_{};
+    mysql::pooled_connection conn_;
+    asio::coroutine coro_;
+    mysql::statement stmt_;
+
+    void on_finish()
+    {
+        conn_ = mysql::pooled_connection();
+        coord_->on_finish();
+    }
+
+public:
+    task_pool_1(mysql::connection_pool& pool, coordinator& coord) : pool_(&pool), coord_(&coord) {}
+
+    void resume(error_code ec = {})
+    {
+        // Error checking
+        if (!coord_->check_ec(ec, diag_))
+        {
+            on_finish();
+            return;
+        }
+
+        BOOST_ASIO_CORO_REENTER(coro_)
+        {
+            while (true)
+            {
+                BOOST_ASIO_CORO_YIELD
+                pool_->async_get_connection(diag_, [this](error_code ec, mysql::pooled_connection c) {
+                    conn_ = std::move(c);
+                    resume(ec);
+                });
+
+                BOOST_ASIO_CORO_YIELD
+                conn_->async_prepare_statement(
+                    "SELECT tax_id FROM company WHERE id = ?",
+                    diag_,
+                    [this](error_code ec, boost::mysql::statement s) {
+                        stmt_ = s;
+                        resume(ec);
+                    }
+                );
+
+                BOOST_ASIO_CORO_YIELD
+                conn_->async_execute(stmt_.bind("HGS"), r_, diag_, [this](error_code ec) { resume(ec); });
+
+                conn_.return_to_pool();
+
+                if (!coord_->on_loop_finish())
+                {
+                    on_finish();
+                    return;
+                }
+            }
+        }
+    }
+};
+
+void run_nopool(mysql::any_address server_addr, bool use_ssl)
 {
     // Setup
     asio::io_context ctx;
     mysql::connect_params params{
-        mysql::any_address::make_tcp("localhost"),
-        // mysql::any_address::make_unix("/var/run/mysqld/mysqld.sock"),
+        std::move(server_addr),
         "example_user",
         "example_password",
         "boost_mysql_examples",
     };
-    // params.ssl = mysql::ssl_mode::disable;
-    std::vector<per_connection> conns;
+    params.ssl = use_ssl ? mysql::ssl_mode::require : mysql::ssl_mode::disable;
+    std::vector<task_nopool> conns;
     coordinator coord;
 
     // Create connections
     for (std::size_t i = 0; i < num_parallel; ++i)
-        conns.push_back(per_connection{ctx, {}, {}, &coord, &params});
+        conns.emplace_back(ctx.get_executor(), coord, params);
 
     // Launch
     coord.record_start();
     for (auto& conn : conns)
-        conn.start();
+        conn.resume(error_code());
 
     // Run
     ctx.run();
@@ -236,35 +232,34 @@ void without_pool()
     std::cout << "Ellapsed: " << coord.ellapsed().count() << std::endl;
 }
 
-void with_pool()
+void run_pool(mysql::any_address server_addr, bool use_ssl, bool thread_safe)
 {
     // Setup
     asio::io_context ctx;
     mysql::pool_params params{
-        mysql::any_address::make_tcp("localhost"),
-        // mysql::any_address::make_unix("/var/run/mysqld/mysqld.sock"),
+        std::move(server_addr),
         "example_user",
         "example_password",
         "boost_mysql_examples",
     };
     params.max_size = num_parallel;
-    // params.enable_thread_safety = false;
-    // params.ssl = mysql::ssl_mode::disable;
+    params.ssl = use_ssl ? mysql::ssl_mode::require : mysql::ssl_mode::disable;
+    params.enable_thread_safety = thread_safe;
 
     mysql::connection_pool pool(ctx, std::move(params));
     pool.async_run(asio::detached);
 
-    std::vector<per_connection_2> conns;
+    std::vector<task_pool_1> conns;
     coordinator coord(&pool);
 
     // Create connections
     for (std::size_t i = 0; i < num_parallel; ++i)
-        conns.push_back(per_connection_2{&pool, {}, {}, &coord, {}});
+        conns.emplace_back(pool, coord);
 
     // Launch
     coord.record_start();
     for (auto& conn : conns)
-        conn.start();
+        conn.resume(error_code());
 
     // Run
     ctx.run();
@@ -273,4 +268,50 @@ void with_pool()
     std::cout << "Ellapsed: " << coord.ellapsed().count() << std::endl;
 }
 
-int main(int, char**) { with_pool(); }
+static constexpr const char* options[] = {
+    "nopool-tcp",
+    "nopool-tcpssl",
+    "nopool-unix",
+    "pool-tcp",
+    "pool-tcpssl",
+    "pool-unix",
+    "pool-tcp-nothreadsafe",
+};
+
+void usage(const char* progname)
+{
+    std::cerr << "Usage: " << progname << " <benchmark-type> <server-addr>\nAvailable options:\n";
+    for (const char* opt : options)
+        std::cerr << "    " << opt << "\n";
+    exit(1);
+}
+
+}  // namespace
+
+int main(int argc, char** argv)
+{
+    if (argc != 3)
+    {
+        usage(argv[0]);
+    }
+
+    mysql::string_view opt = argv[1];
+    mysql::string_view addr = argv[2];
+
+    if (opt == "nopool-tcp")
+        run_nopool(mysql::any_address::make_tcp(addr), false);
+    else if (opt == "nopool-tcpssl")
+        run_nopool(mysql::any_address::make_tcp(addr), true);
+    else if (opt == "nopool-unix")
+        run_nopool(mysql::any_address::make_unix(default_unix_path), false);
+    else if (opt == "pool-tcp")
+        run_pool(mysql::any_address::make_tcp(addr), false, true);
+    else if (opt == "pool-tcpssl")
+        run_pool(mysql::any_address::make_tcp(addr), true, true);
+    else if (opt == "pool-unix")
+        run_pool(mysql::any_address::make_unix(default_unix_path), false, true);
+    else if (opt == "pool-tcp-nothreadsafe")
+        run_pool(mysql::any_address::make_tcp(addr), false, false);
+    else
+        usage(argv[0]);
+}
