@@ -146,7 +146,6 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         void complete_success(Self& self)
         {
             BOOST_ASSERT(result_ != nullptr);
-            result_->mark_as_in_use();
             do_complete(self, error_code(), access::construct<pooled_connection>(*result_, std::move(obj_)));
         }
 
@@ -193,6 +192,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 if (result_)
                 {
                     // There was a connection. Done.
+                    result_->mark_as_in_use();
                     BOOST_ASIO_CORO_YIELD
                     asio::post(obj_->ex_, std::move(self));
 
@@ -258,6 +258,8 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     result_ = obj_->shared_st_.iddle_list.try_get_one();
                     if (result_)
                     {
+                        result_->mark_as_in_use();
+
                         // If we're in thread-safe mode, we're running within the
                         // strand. Make sure we exit, so the final handler is not called
                         // within the strand.
