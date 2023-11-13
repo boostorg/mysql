@@ -27,6 +27,7 @@ BASE_FOLDERS = [
     'src',
     'test',
     'tools',
+    'bench',
     '.github'
 ]
 BASE_FILES = [
@@ -225,6 +226,7 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('.csv', IgnoreProcessor()),
     ('.tar.gz', IgnoreProcessor()),
     ('.json', IgnoreProcessor()),
+    ('.txt', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):
