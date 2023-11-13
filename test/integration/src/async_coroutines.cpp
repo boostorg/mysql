@@ -76,5 +76,5 @@ public:
 void boost::mysql::test::add_async_coroutines(std::vector<er_network_variant*>& output)
 {
     add_variant<async_coroutine_connection<tcp_socket>>(output);
-    add_variant_any<address_type::tcp_address, any_async_coroutine_connection>(output);
+    add_variant_any<address_type::host_and_port, any_async_coroutine_connection>(output);
 }

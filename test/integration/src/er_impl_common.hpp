@@ -135,10 +135,10 @@ public:
     connect_params get_connect_params(const handshake_params& input) const noexcept
     {
         connect_params res;
-        if (addr_type_ == address_type::tcp_address)
-            res.server_address.set_host_and_port(get_hostname());
+        if (addr_type_ == address_type::host_and_port)
+            res.server_address.emplace_host_and_port(get_hostname());
         else if (addr_type_ == address_type::unix_path)
-            res.server_address.set_unix_path(default_unix_path);
+            res.server_address.emplace_unix_path(default_unix_path);
         res.username = input.username();
         res.password = input.password();
         res.database = input.database();
@@ -452,13 +452,13 @@ template <address_type addr_type, class ErConnection>
 class er_network_variant_any_impl : public er_network_variant
 {
 public:
-    bool supports_ssl() const override { return addr_type == address_type::tcp_address; }
+    bool supports_ssl() const override { return addr_type == address_type::host_and_port; }
     bool is_unix_socket() const override { return addr_type == address_type::unix_path; }
     bool supports_handshake() const override { return false; }
     const char* stream_name() const override
     {
-        static_assert(addr_type == address_type::tcp_address || addr_type == address_type::unix_path);
-        if (addr_type == address_type::tcp_address)
+        static_assert(addr_type == address_type::host_and_port || addr_type == address_type::unix_path);
+        if (addr_type == address_type::host_and_port)
             return "any_tcp";
         else
             return "any_unix";

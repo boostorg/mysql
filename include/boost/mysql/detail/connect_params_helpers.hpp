@@ -25,7 +25,7 @@ namespace detail {
 
 struct any_address_view
 {
-    address_type type{address_type::tcp_address};
+    address_type type{address_type::host_and_port};
     string_view address;
     unsigned short port{};
 };
@@ -38,7 +38,7 @@ inline any_address_view make_view(const any_address& input) noexcept
 
 inline ssl_mode adjust_ssl_mode(ssl_mode input, address_type addr_type) noexcept
 {
-    return addr_type == address_type::tcp_address ? input : ssl_mode::disable;
+    return addr_type == address_type::host_and_port ? input : ssl_mode::disable;
 }
 
 inline handshake_params make_hparams(const connect_params& input) noexcept

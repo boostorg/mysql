@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_POOL_PARAMS_HPP
 #define BOOST_MYSQL_POOL_PARAMS_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/handshake_params.hpp>
@@ -24,7 +25,7 @@ namespace mysql {
 
 struct pool_params
 {
-    any_address server_address{any_address::make_tcp("localhost")};
+    any_address server_address{host_and_port("localhost")};
     std::string username;
     std::string password;
     std::string database;

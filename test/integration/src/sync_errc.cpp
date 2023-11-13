@@ -83,7 +83,7 @@ void boost::mysql::test::add_sync_errc(std::vector<er_network_variant*>& output)
     // Verify that all streams work
     add_sync_errc_variant<tcp_socket>(output);
     add_sync_errc_variant<tcp_ssl_socket>(output);
-    add_variant_any<address_type::tcp_address, any_sync_errc_connection>(output);
+    add_variant_any<address_type::host_and_port, any_sync_errc_connection>(output);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
     add_sync_errc_variant<unix_socket>(output);
     add_sync_errc_variant<unix_ssl_socket>(output);

@@ -181,7 +181,7 @@ public:
         if (ec)
             return;
 
-        if (address_.type == address_type::tcp_address)
+        if (address_.type == address_type::host_and_port)
         {
             // Resolve endpoints. TODO: we can save the to_string allocation
             auto& tcp_sock = variant2::unsafe_get<1>(sock_);
@@ -242,7 +242,7 @@ private:
     error_code setup_stream()
     {
         BOOST_ASSERT(!address_.address.empty());
-        if (address_.type == address_type::tcp_address)
+        if (address_.type == address_type::host_and_port)
         {
             // Clean up any previous state
             sock_.emplace<socket_and_resolver>(ex_);
@@ -297,7 +297,7 @@ private:
                     return;
                 }
 
-                if (this_obj_.address_.type == address_type::tcp_address)
+                if (this_obj_.address_.type == address_type::host_and_port)
                 {
                     // Resolve endpoints
                     BOOST_ASIO_CORO_YIELD

@@ -70,7 +70,7 @@ void main_impl(int argc, char** argv)
     // allows disabling it.
     boost::mysql::connect_params params{
         // The server address. any_address can contain UNIX socket paths, too
-        boost::mysql::any_address::make_tcp(hostname),
+        boost::mysql::host_and_port(hostname),
 
         // username
         argv[1],

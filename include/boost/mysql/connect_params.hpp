@@ -22,7 +22,7 @@ namespace mysql {
 
 struct connect_params
 {
-    any_address server_address{any_address::make_tcp("localhost")};
+    any_address server_address{host_and_port("localhost")};
     std::string username;
     std::string password;
     std::string database;

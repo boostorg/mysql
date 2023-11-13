@@ -299,19 +299,19 @@ int main(int argc, char** argv)
     mysql::string_view addr = argv[2];
 
     if (opt == "nopool-tcp")
-        run_nopool(mysql::any_address::make_tcp(addr), false);
+        run_nopool(mysql::host_and_port(addr), false);
     else if (opt == "nopool-tcpssl")
-        run_nopool(mysql::any_address::make_tcp(addr), true);
+        run_nopool(mysql::host_and_port(addr), true);
     else if (opt == "nopool-unix")
-        run_nopool(mysql::any_address::make_unix(default_unix_path), false);
+        run_nopool(mysql::unix_path{default_unix_path}, false);
     else if (opt == "pool-tcp")
-        run_pool(mysql::any_address::make_tcp(addr), false, true);
+        run_pool(mysql::host_and_port(addr), false, true);
     else if (opt == "pool-tcpssl")
-        run_pool(mysql::any_address::make_tcp(addr), true, true);
+        run_pool(mysql::host_and_port(addr), true, true);
     else if (opt == "pool-unix")
-        run_pool(mysql::any_address::make_unix(default_unix_path), false, true);
+        run_pool(mysql::unix_path{default_unix_path}, false, true);
     else if (opt == "pool-tcp-nothreadsafe")
-        run_pool(mysql::any_address::make_tcp(addr), false, false);
+        run_pool(mysql::host_and_port(addr), false, false);
     else
         usage(argv[0]);
 }

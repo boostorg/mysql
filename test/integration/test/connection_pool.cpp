@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_SUITE(test_connection_pool)
 pool_params default_pool_params()
 {
     pool_params res;
-    res.server_address.set_host_and_port(get_hostname());
+    res.server_address.emplace_host_and_port(get_hostname());
     res.username = default_user;
     res.password = default_passwd;
     res.database = default_db;
@@ -315,7 +315,7 @@ BOOST_AUTO_TEST_CASE(unix_sockets)
         error_code ec;
         results r;
         auto params = default_pool_params();
-        params.server_address.set_unix_path(default_unix_path);
+        params.server_address.emplace_unix_path(default_unix_path);
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool.async_run([](error_code ec) { throw_on_error(ec); });

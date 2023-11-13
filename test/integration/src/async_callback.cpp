@@ -90,7 +90,7 @@ void boost::mysql::test::add_async_callback(std::vector<er_network_variant*>& ou
     // Spotcheck for both streams
     add_async_callback_variant<tcp_socket>(output);
     add_async_callback_variant<tcp_ssl_socket>(output);
-    add_variant_any<address_type::tcp_address, any_async_callback_connection>(output);
+    add_variant_any<address_type::host_and_port, any_async_callback_connection>(output);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
     add_async_callback_variant<unix_socket>(output);
     add_variant_any<address_type::unix_path, any_async_callback_connection>(output);

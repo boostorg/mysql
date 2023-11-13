@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_SUITE(test_reconnect)
 connect_params base_connect_params()
 {
     return {
-        any_address::make_tcp(get_hostname()),
+        host_and_port(get_hostname()),
         default_user,
         default_passwd,
         default_db,
@@ -195,7 +195,7 @@ BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp_tcpssl, network_fixture_base)
     tcp_params.ssl = ssl_mode::disable;
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
     auto unix_params = base_connect_params();
-    unix_params.server_address.set_unix_path(default_unix_path);
+    unix_params.server_address.emplace_unix_path(default_unix_path);
 #endif
 
     // Test cases. Note that some sync cases are not included, to save testing time

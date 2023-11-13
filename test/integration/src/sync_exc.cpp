@@ -83,7 +83,7 @@ void boost::mysql::test::add_sync_exc(std::vector<er_network_variant*>& output)
 {
     // Spotcheck
     add_variant<sync_exc_connection<tcp_socket>>(output);
-    add_variant_any<address_type::tcp_address, any_sync_exc_connection>(output);
+    add_variant_any<address_type::host_and_port, any_sync_exc_connection>(output);
 }
 
 #ifdef BOOST_MSVC
