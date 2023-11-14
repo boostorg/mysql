@@ -106,8 +106,6 @@ struct any_connection_params
  */
 class any_connection
 {
-    detail::connection_impl impl_;
-
 public:
     /**
      * \brief Constructs a connection object from an executor and an optional set of parameters.
@@ -164,6 +162,15 @@ public:
     any_connection& operator=(const any_connection&) = delete;
 #endif
 
+    /**
+     * \brief Destructor.
+     * \details
+     * Closes the connection at the transport layer (by closing any underlying socket objects).
+     * If you require a clean close, call \ref close or \ref async_close before the connection
+     * is destroyed.
+     */
+    ~any_connection() = default;
+
     /// The executor type associated to this object.
     using executor_type = asio::any_io_executor;
 
@@ -179,6 +186,38 @@ public:
     /// \copydoc connection::set_meta_mode
     void set_meta_mode(metadata_mode v) noexcept { impl_.set_meta_mode(v); }
 
+    /**
+     * \brief Establishes a connection to a MySQL server.
+     * \details
+     * This function performs the following:
+     * \n
+     * \li If a connection has already been established (by a previous call to \ref connect)
+     *     or \ref async_connect), closes it at the transport layer (by closing any underlying socket)
+     *     and discards any protocol state associated to it. (If you require
+     *     a clean close, call \ref close or \ref async_close).
+     * \li If the connection is configured to use TCP (`params.server_address.type() ==
+     *     address_type::host_and_port`), resolves the passed hostname to a set of endpoints. An empty
+     *     hostname is equivalent to `"localhost"`.
+     * \li Establishes the physical connection (performing the
+     *     TCP or UNIX socket connect).
+     * \li Performs the MySQL handshake to establish a session. If the
+     *     connection is configured to use TLS, the TLS handshake is performed as part of this step.
+     * \li If any of the above steps fail, the TCP or UNIX socket connection is closed.
+     * \n
+     * You can configure some options using the \ref connect_params struct.
+     * \n
+     * The decision to use TLS or not is performed using the following:
+     * \n
+     * \li If the transport is not TCP (`params.server_address.type() != address_type::host_and_port`),
+     *     the connection will never use TLS.
+     * \li If the transport is TCP, and `params.ssl == ssl_mode::disable`, the connection will not use TLS.
+     * \li If the transport is TCP, and `params.ssl == ssl_mode::enable`, the connection will use TLS
+     *     only if the server supports it.
+     * \li If the transport is TCP, and `params.ssl == ssl_mode::require`, the connection will always use TLS.
+     *     If the server doesn't support it, this function will fail with \ref
+     *     client_errc::server_doesnt_support_ssl.
+     * \n
+     */
     void connect(const connect_params& params, error_code& ec, diagnostics& diag)
     {
         impl_.connect(detail::make_view(params.server_address), detail::make_hparams(params), ec, diag);
@@ -193,6 +232,16 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
+    /**
+     * \copydoc connect
+     *
+     * \par Object lifetimes
+     * The implementation will copy `params` as required, so it needs not be
+     * kept alive.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(const connect_params& params, CompletionToken&& token)
@@ -200,6 +249,7 @@ public:
         return async_connect(params, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
+    /// \copydoc async_connect
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(const connect_params& params, diagnostics& diag, CompletionToken&& token)
@@ -213,6 +263,20 @@ public:
         );
     }
 
+    /**
+     * \copydoc connect
+     * \par Object lifetimes
+     * Zero-copy overload: no copies of the value pointed to by `params`
+     * will be made. It must be kept alive for the duration of the operation,
+     * until the final completion handler is called. If you are in doubt,
+     * prefer \ref async_connect(const connect_params&,CompletionToken&&)
+     *
+     * \par Preconditions
+     * `params != nullptr`
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
@@ -286,30 +350,7 @@ public:
         );
     }
 
-    /**
-     * \brief Starts a SQL execution as a multi-function operation.
-     * \details
-     * Writes the execution request and reads the initial server response and the column
-     * metadata, but not the generated rows or subsequent resultsets, if any.
-     * `st` may be either an \ref execution_state or \ref static_execution_state object.
-     * \n
-     * After this operation completes, `st` will have
-     * \ref execution_state::meta populated.
-     * Metadata will be populated according to `this->meta_mode()`.
-     * \n
-     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
-     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
-     * Otherwise, the results are undefined.
-     * \n
-     * req may be either a type convertible to \ref string_view containing valid SQL
-     * or a bound prepared statement, obtained by calling \ref statement::bind.
-     * If a string, it must be encoded using the connection's character set.
-     * Any string parameters provided to \ref statement::bind should also be encoded
-     * using the connection's character set.
-     * \n
-     * When using the static interface, this function will detect schema mismatches for the first
-     * resultset. Further errors may be detected by \ref read_resultset_head and \ref read_some_rows.
-     */
+    /// \copydoc connection::start_execution
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
@@ -335,23 +376,7 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /**
-     * \copydoc start_execution
-     * \par Object lifetimes
-     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the caller is
-     * responsible for managing `req`'s validity following these rules:
-     * \n
-     * \li If `req` is `string_view`, the string pointed to by `req`
-     *     must be kept alive by the caller until the operation is initiated.
-     * \li If `req` is a \ref bound_statement_tuple, and any of the parameters is a reference
-     *     type (like `string_view`), the caller must keep the values pointed by these references alive
-     *     until the operation is initiated.
-     * \li If `req` is a \ref bound_statement_iterator_range, the caller must keep objects in
-     *     the iterator range passed to \ref statement::bind alive until the  operation is initiated.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc connection::async_start_execution
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
@@ -394,13 +419,7 @@ public:
         );
     }
 
-    /**
-     * \brief Prepares a statement server-side.
-     * \details
-     * `stmt` should be encoded using the connection's character set.
-     * \n
-     * The returned statement has `valid() == true`.
-     */
+    /// \copydoc connection::prepare_statement
     statement prepare_statement(string_view stmt, error_code& err, diagnostics& diag)
     {
         return impl_.run(detail::prepare_statement_algo_params{&diag, stmt}, err);
@@ -416,17 +435,7 @@ public:
         return res;
     }
 
-    /**
-     * \copydoc prepare_statement
-     * \details
-     * \par Object lifetimes
-     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
-     * pointed to by `stmt` must be kept alive by the caller until the operation is
-     * initiated.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code, boost::mysql::statement)`.
-     */
+    /// \copydoc connection::async_prepare_statement
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, statement))
@@ -454,14 +463,7 @@ public:
         );
     }
 
-    /**
-     * \brief Closes a statement, deallocating it from the server.
-     * \details
-     * After this operation succeeds, `stmt` must not be used again for execution.
-     * \n
-     * \par Preconditions
-     *    `stmt.valid() == true`
-     */
+    /// \copydoc connection::close_statement
     void close_statement(const statement& stmt, error_code& err, diagnostics& diag)
     {
         impl_.run(impl_.make_params_close_statement(stmt, diag), err);
@@ -476,15 +478,7 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /**
-     * \copydoc close_statement
-     * \details
-     * \par Object lifetimes
-     * It is not required to keep `stmt` alive, as copies are made by the implementation as required.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc connection::async_close_statement
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -512,21 +506,7 @@ public:
         );
     }
 
-    /**
-     * \brief Reads a batch of rows.
-     * \details
-     * The number of rows that will be read is unspecified. If the operation represented by `st`
-     * has still rows to read, at least one will be read. If there are no more rows, or
-     * `st.should_read_rows() == false`, returns an empty `rows_view`.
-     * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
-     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
-     * grown bigger by other read operations, if required.
-     * \n
-     * The returned view points into memory owned by `*this`. It will be valid until
-     * `*this` performs the next network operation or is destroyed.
-     */
+    /// \copydoc connection::read_some_rows
     rows_view read_some_rows(execution_state& st, error_code& err, diagnostics& diag)
     {
         return impl_.run(impl_.make_params_read_some_rows(st, diag), err);
@@ -542,13 +522,7 @@ public:
         return res;
     }
 
-    /**
-     * \copydoc read_some_rows(execution_state&,error_code&,diagnostics&)
-     * \details
-     * \par Handler signature
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::rows_view)`.
-     */
+    /// \copydoc connection::async_read_some_rows(execution_state&,CompletionToken&&)
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, rows_view))
@@ -756,25 +730,7 @@ public:
     }
 #endif
 
-    /**
-     * \brief Reads metadata for subsequent resultsets in a multi-resultset operation.
-     * \details
-     * If `st.should_read_head() == true`, this function will read the next resultset's
-     * initial response message and metadata, if any. If the resultset indicates a failure
-     * (e.g. the query associated to this resultset contained an error), this function will fail
-     * with that error.
-     * \n
-     * If `st.should_read_head() == false`, this function is a no-op.
-     * \n
-     * `st` may be either an \ref execution_state or \ref static_execution_state object.
-     * \n
-     * This function is only relevant when using multi-function operations with statements
-     * that return more than one resultset.
-     * \n
-     * When using the static interface, this function will detect schema mismatches for the resultset
-     * currently being read. Further errors may be detected by subsequent invocations of this function
-     * and by \ref read_some_rows.
-     */
+    /// \copydoc connection::read_resultset_head
     template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
     void read_resultset_head(ExecutionStateType& st, error_code& err, diagnostics& diag)
     {
@@ -791,12 +747,7 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /**
-     * \copydoc read_resultset_head
-     * \par Handler signature
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc connection::async_read_resultset_head
     template <
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -828,17 +779,7 @@ public:
         );
     }
 
-    /**
-     * \brief Checks whether the server is alive.
-     * \details
-     * If the server is alive, this function will complete without error.
-     * If it's not, it will fail with the relevant network or protocol error.
-     * \n
-     * Note that ping requests are treated as any other type of request at the protocol
-     * level, and won't be prioritized anyhow by the server. If the server is stuck
-     * in a long-running query, the ping request won't be answered until the query is
-     * finished.
-     */
+    /// \copydoc connection::ping
     void ping(error_code& err, diagnostics& diag) { impl_.run(impl_.make_params_ping(diag), err); }
 
     /// \copydoc ping
@@ -850,13 +791,7 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /**
-     * \copydoc ping
-     * \details
-     * \n
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc connection::async_ping
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -874,26 +809,7 @@ public:
         return impl_.async_run(impl_.make_params_ping(diag), std::forward<CompletionToken>(token));
     }
 
-    /**
-     * \brief Resets server-side session state, like variables and prepared statements.
-     * \details
-     * Resets all server-side state for the current session:
-     * \n
-     *   \li Rolls back any active transactions and resets autocommit mode.
-     *   \li Releases all table locks.
-     *   \li Drops all temporary tables.
-     *   \li Resets all session system variables to their default values (including the ones set by `SET
-     * NAMES`) and clears all user-defined variables. \li Closes all prepared statements.
-     * \n
-     * A full reference on the affected session state can be found
-     * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html">here</a>.
-     * \n
-     * This function will not reset the current physical connection and won't cause re-authentication.
-     * It is faster than closing and re-opening a connection.
-     * \n
-     * The connection must be connected and authenticated before calling this function.
-     * This function involves communication with the server, and thus may fail.
-     */
+    /// \copydoc connection::reset_connection
     void reset_connection(error_code& err, diagnostics& diag)
     {
         impl_.run(impl_.make_params_reset_connection(diag), err);
@@ -908,13 +824,7 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /**
-     * \copydoc reset_connection
-     * \details
-     * \n
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
+    /// \copydoc connection::async_reset_connection
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -938,6 +848,25 @@ public:
         );
     }
 
+    /**
+     * \brief Cleanly closes the connection to the server.
+     * \details
+     * This function does the following:
+     * \n
+     * \li Sends a quit request. This is required by the MySQL protocol, to inform
+     *     the server that we're closing the connection gracefully.
+     * \li If the connection is using TLS (`this->uses_ssl() == true`), performs
+     *     the TLS shutdown.
+     * \li Closes the transport-level connection (the TCP or UNIX socket).
+     * \n
+     * Since this function involves writing a message to the server, it can fail.
+     * Only use this function if you know that the connection is healthy and you want
+     * to cleanly close it.
+     * \n
+     * If you don't call this function, the destructor or successive connects will
+     * perform a transport-layer close. This doesn't cause any resource leaks, but may
+     * cause warnings to be written to the server logs.
+     */
     void close(error_code& err, diagnostics& diag)
     {
         this->impl_.run(this->impl_.make_params_close(diag), err);
@@ -952,6 +881,12 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
+    /**
+     * \copydoc close
+     * \details
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_close(CompletionToken&& token)
@@ -971,6 +906,8 @@ public:
     }
 
 private:
+    detail::connection_impl impl_;
+
     BOOST_MYSQL_DECL
     static std::unique_ptr<detail::any_stream> create_stream(
         asio::any_io_executor ex,

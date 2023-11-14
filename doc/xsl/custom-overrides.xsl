@@ -33,6 +33,7 @@
     'Stream',
     'SocketStream',
     'Executor',
+    'ExecutionContext',
     'WritableFieldTuple',
     'FieldViewFwdIterator',
     'ExecutionRequest',
