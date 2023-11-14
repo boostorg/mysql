@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_BUFFER_PARAMS_HPP
 #define BOOST_MYSQL_BUFFER_PARAMS_HPP
 
+#include <boost/mysql/defaults.hpp>
+
 #include <cstddef>
 
 namespace boost {
@@ -22,7 +24,7 @@ class buffer_params
 
 public:
     /// The default value of \ref initial_read_size.
-    static constexpr std::size_t default_initial_read_size = 1024;
+    static constexpr std::size_t default_initial_read_size = default_initial_read_buffer_size;
 
     /**
      * \brief Initializing constructor.

@@ -8,12 +8,11 @@
 #ifndef BOOST_MYSQL_ANY_CONNECTION_HPP
 #define BOOST_MYSQL_ANY_CONNECTION_HPP
 
-#include <boost/mysql/buffer_params.hpp>
 #include <boost/mysql/connect_params.hpp>
+#include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -80,7 +79,7 @@ struct any_connection_params
      * \details A bigger read buffer can increase the number of rows
      * returned by \ref any_connection::read_some_rows.
      */
-    std::size_t initial_read_buffer_size{buffer_params::default_initial_read_size};
+    std::size_t initial_read_buffer_size{default_initial_read_buffer_size};
 };
 
 /**
@@ -565,9 +564,8 @@ public:
      * zero.
      * \n
      * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
-     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
-     * grown bigger by other read operations, if required.
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in the
+     * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
@@ -603,9 +601,8 @@ public:
      * zero.
      * \n
      * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
-     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
-     * grown bigger by other read operations, if required.
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in the
+     * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
@@ -640,9 +637,8 @@ public:
      * zero.
      * \n
      * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
-     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
-     * grown bigger by other read operations, if required.
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in the
+     * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
@@ -689,9 +685,8 @@ public:
      * zero.
      * \n
      * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
-     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
-     * grown bigger by other read operations, if required.
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in the
+     * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).

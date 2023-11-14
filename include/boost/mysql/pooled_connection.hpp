@@ -19,10 +19,6 @@
 namespace boost {
 namespace mysql {
 
-namespace detail {
-class connection_pool_impl;
-}
-
 class pooled_connection
 {
 #ifndef BOOST_MYSQL_DOXYGEN

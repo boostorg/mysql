@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
@@ -15,6 +16,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/pool_params.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool/iddle_connection_list.hpp>
@@ -30,7 +32,9 @@
 #include <boost/asio/experimental/concurrent_channel.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/post.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/optional/optional.hpp>
 
 #include <atomic>
 #include <chrono>
@@ -42,32 +46,50 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+class connection_pool_impl;
+
 // Same as pool_params, but structured in a way that is more helpful for the impl
 struct internal_pool_params
 {
     connect_params connect_config;
-    any_connection_params ctor_config;
+    optional<asio::ssl::context> ssl_ctx;
+    std::size_t initial_read_buffer_size;
     std::size_t initial_size;
     std::size_t max_size;
     std::chrono::steady_clock::duration connect_timeout;
     std::chrono::steady_clock::duration ping_timeout;
     std::chrono::steady_clock::duration retry_interval;
     std::chrono::steady_clock::duration ping_interval;
+
+    any_connection_params make_ctor_params() noexcept
+    {
+        return {
+            ssl_ctx.has_value() ? &ssl_ctx.value() : nullptr,
+            initial_read_buffer_size,
+        };
+    }
 };
 
 inline internal_pool_params make_internal_pool_params(pool_params&& params)
 {
+    optional<asio::ssl::context> ssl_ctx{std::move(params.ssl_ctx)};
+    if (!ssl_ctx.has_value() && params.ssl != ssl_mode::disable &&
+        params.server_address.type() == address_type::host_and_port)
+    {
+        ssl_ctx.emplace(asio::ssl::context::tlsv12_client);
+    }
+
     return {
-        {std::move(params.server_address),
+        {
+         std::move(params.server_address),
          std::move(params.username),
          std::move(params.password),
          std::move(params.database),
          params.ssl,
-         params.multi_queries},
-        {
-         params.ssl_ctx,
-         params.initial_read_buffer_size,
+         params.multi_queries,
          },
+        std::move(ssl_ctx),
+        params.initial_read_buffer_size,
         params.initial_size,
         params.max_size,
         params.connect_timeout,
@@ -404,13 +426,13 @@ class connection_node : public hook_type
 
 public:
     connection_node(
-        const internal_pool_params& params,
+        internal_pool_params& params,
         boost::asio::any_io_executor ex,
         boost::asio::any_io_executor strand_ex,
         conn_shared_state& shared_st
     )
         : params_(&params),
-          conn_(ex, params.ctor_config),
+          conn_(ex, params.make_ctor_params()),
           timer_(strand_ex),
           shared_st_(&shared_st),
           collection_channel_(strand_ex, 1)

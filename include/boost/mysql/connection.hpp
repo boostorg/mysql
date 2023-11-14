@@ -1116,8 +1116,8 @@ public:
      * `st.should_read_rows() == false`, returns an empty `rows_view`.
      * \n
      * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
-     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in the
+     * constructor. The buffer may be
      * grown bigger by other read operations, if required.
      * \n
      * The returned view points into memory owned by `*this`. It will be valid until
