@@ -241,7 +241,6 @@ private:
 
     error_code setup_stream()
     {
-        BOOST_ASSERT(!address_.address.empty());
         if (address_.type == address_type::host_and_port)
         {
             // Clean up any previous state

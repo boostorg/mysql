@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/handshake_params.hpp>
+
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 
 namespace boost {
@@ -56,7 +58,7 @@ boost::mysql::detail::stable_connect_params boost::mysql::detail::make_stable(co
             username,
             password,
             database,
-            input.connection_collation,
+            handshake_params::default_collation,
             adjust_ssl_mode(input.ssl, input.server_address.type()),
             input.multi_queries
         ),

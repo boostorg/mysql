@@ -47,7 +47,8 @@ public:
     /**
      * \brief Constructs an empty host and port.
      * \details The constructed object has `this->hostname() == ""` and
-     * `this->port() == default_port`.
+     * `this->port() == default_port`. This identifies a server listening on
+     * localhost, using the default port.
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -104,6 +105,7 @@ public:
 
     /**
      * \brief Retrieves the hostname.
+     * \details An empty value is equivalent to `localhost`.
      * \par Exception safety
      * No-throw guarantee.
      * \par Object lifetimes
@@ -235,7 +237,8 @@ public:
     /**
      * \brief Constructs an empty address.
      * \details Results in an address with `this->type() == address_type::host_and_port`,
-     * `this->hostname() == ""` and `this->port() == default_port`.
+     * `this->hostname() == ""` and `this->port() == default_port`, which identifies
+     * a server running on `localhost` using the default port.
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -373,6 +376,8 @@ public:
      * \n
      * The constructed object has `this->type() == address_type::host_and_port`,
      * `this->hostname() == hostname` and `this->port() == port`.
+     * \n
+     * An empty hostname is equivalent to `localhost`.
      * \n
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.

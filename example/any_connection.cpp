@@ -68,19 +68,19 @@ void main_impl(int argc, char** argv)
     // credentials, and other configuration used during connection establishment.
     // Note that, by default, TCP connections will use TLS. connect_params::ssl
     // allows disabling it.
-    boost::mysql::connect_params params{
-        // The server address. any_address can contain UNIX socket paths, too
-        boost::mysql::host_and_port(hostname),
+    boost::mysql::connect_params params;
 
-        // username
-        argv[1],
+    // The server address. This can either be a host and port or a UNIX socket path
+    params.server_address.emplace_host_and_port(hostname);
 
-        // password
-        argv[2],
+    // Username to log in as
+    params.username = argv[1];
 
-        // database to use; leave empty or omit for no database
-        "boost_mysql_examples",
-    };
+    // Password to use
+    params.password = argv[2];
+
+    // Database to use; leave empty or omit for no database
+    params.database = "boost_mysql_examples";
 
     /**
      * The entry point. We spawn a stackful coroutine using boost::asio::spawn.

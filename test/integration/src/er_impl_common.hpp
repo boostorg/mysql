@@ -142,7 +142,6 @@ public:
         res.username = input.username();
         res.password = input.password();
         res.database = input.database();
-        res.connection_collation = input.connection_collation();
         res.multi_queries = input.multi_queries();
         return res;
     }

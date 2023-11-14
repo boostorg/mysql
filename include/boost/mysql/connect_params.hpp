@@ -9,26 +9,55 @@
 #define BOOST_MYSQL_CONNECT_PARAMS_HPP
 
 #include <boost/mysql/any_address.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
-
-#include <boost/mysql/detail/access.hpp>
 
 #include <string>
 
 namespace boost {
 namespace mysql {
 
+/**
+ * \brief (EXPERIMENTAL) Parameters to be used with \ref any_connection functions.
+ * \details
+ * To be passed to \ref any_connection::connect and \ref any_connection::async_connect.
+ * Includes the server address and MySQL handshake parameters.
+ * \n
+ * Contrary to \ref handshake_params, this is an owning type.
+ */
 struct connect_params
 {
-    any_address server_address{host_and_port("localhost")};
+    /**
+     * \brief Determines how to establish a physical connection to the MySQL server.
+     * \details
+     * This can be either a host and port or a UNIX socket path.
+     * Defaults to (localhost, 3306).
+     */
+    any_address server_address;
+
+    /// User name to authenticate as.
     std::string username;
+
+    /// Password for that username, possibly empty.
     std::string password;
+
+    /// Database name to use, or empty string for no database (this is the default).
     std::string database;
-    std::uint16_t connection_collation{handshake_params::default_collation};
+
+    /**
+     * \brief Controls whether to use TLS or not.
+     * \details
+     * See \ref ssl_mode for more information about the possible modes.
+     * This option is only relevant when `server_address.type() == address_type::host_and_port`.
+     * UNIX socket connections will never use TLS, regardless of this value.
+     */
     ssl_mode ssl{ssl_mode::require};
-    bool multi_queries{};
+
+    /**
+     * \brief Whether to enable support for executing semicolon-separated text queries.
+     * \details Disabled by default.
+     */
+    bool multi_queries{false};
 };
 
 }  // namespace mysql

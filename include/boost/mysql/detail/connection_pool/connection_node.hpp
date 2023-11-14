@@ -47,12 +47,12 @@ struct internal_pool_params
 {
     connect_params connect_config;
     any_connection_params ctor_config;
-    std::size_t initial_size{};
-    std::size_t max_size{};
-    std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};
-    std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
-    std::chrono::steady_clock::duration retry_interval{std::chrono::seconds(30)};
-    std::chrono::steady_clock::duration ping_interval{std::chrono::hours(1)};
+    std::size_t initial_size;
+    std::size_t max_size;
+    std::chrono::steady_clock::duration connect_timeout;
+    std::chrono::steady_clock::duration ping_timeout;
+    std::chrono::steady_clock::duration retry_interval;
+    std::chrono::steady_clock::duration ping_interval;
 };
 
 inline internal_pool_params make_internal_pool_params(pool_params&& params)
@@ -62,7 +62,6 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
          std::move(params.username),
          std::move(params.password),
          std::move(params.database),
-         handshake_params::default_collation,  // reset wipes out this. TODO: figure out a way
          params.ssl,
          params.multi_queries},
         {

@@ -49,27 +49,101 @@ namespace mysql {
 template <class... StaticRow>
 class static_execution_state;
 
+/**
+ * \brief (EXPERIMENTAL) Configuration parameters that can be passed to \ref any_connection.
+ */
 struct any_connection_params
 {
+    /**
+     * \brief An external SSL context containing options to configure TLS.
+     * \details
+     * Relevant only for SSL connections (those that result on \ref
+     * any_connection::uses_ssl returning `true`).
+     * \n
+     * If the connection is configured to use TLS, an internal `asio::ssl::stream`
+     * object will be created. If this member is set to a non-null value,
+     * these internal objects will be initialized using the passed context.
+     * This is the only way to configure TLS options in `any_connection`.
+     * \n
+     * If the connection is configured to use TLS and this member is `nullptr`,
+     * an internal `asio::ssl::context` object with suitable default options
+     * will be created.
+     *
+     * \par Object lifetimes
+     * If set to non-null, the pointee object must be kept alive until
+     * all \ref any_connection objects constructed from `*this` are destroyed.
+     */
     asio::ssl::context* ssl_context{};
+
+    /**
+     * \brief The initial size of the connection's read buffer.
+     * \details A bigger read buffer can increase the number of rows
+     * returned by \ref any_connection::read_some_rows.
+     */
     std::size_t initial_read_buffer_size{buffer_params::default_initial_read_size};
 };
 
+/**
+ * \brief (EXPERIMENTAL) A type-erased connection to a MySQL server.
+ * \details
+ * Represents a connection to a MySQL server. Compared to \ref connection, this class:
+ * \n
+ * \li Is type-erased. The type of the connection doesn't depend on the transport being used.
+ *     Supported transports include plaintext TCP, TCP over SSL and UNIX domain sockets.
+ * \li Is easier to connect, as \ref connect and \ref async_connect handle hostname resolution.
+ * \li Can always be re-connected after being used or encountering an error.
+ * \li Doesn't support default completion tokens.
+ * \n
+ * Provides a level of performance similar to \ref connection.
+ * \n
+ * This is a move-only type.
+ * \n
+ * \par Thread safety
+ * Distinct objects: safe. \n
+ * Shared objects: unsafe. \n
+ * This class is <b>not thread-safe</b>: for a single object, if you
+ * call its member functions concurrently from separate threads, you will get a race condition.
+ */
 class any_connection
 {
     detail::connection_impl impl_;
 
 public:
+    /**
+     * \brief Constructs a connection object from an executor and an optional set of parameters.
+     * \details
+     * The resulting connection has `this->get_executor() == ex`. Any internally required I/O objects
+     * will be constructed using this executor.
+     * \n
+     * You can configure extra parameters, like the SSL context and buffer sizes, by passing
+     * an extra `params` struct. See \ref any_connection_params for details.
+     */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
         : impl_(params.initial_read_buffer_size, create_stream(std::move(ex), params.ssl_context))
     {
     }
 
+    /**
+     * \brief Constructs a connection object from an execution context and an optional set of parameters.
+     * \details
+     * The resulting connection has `this->get_executor() == ctx.get_executor()`.
+     * Any internally required I/O objects will be constructed using this executor.
+     * \n
+     * You can configure extra parameters, like the SSL context and buffer sizes, by passing
+     * an extra `params` struct. See \ref any_connection_params for details.
+     * \n
+     * This function participates in overload resolution only if `ExecutionContext`
+     * satisfies the `ExecutionContext` requirements imposed by Boost.Asio.
+     */
     template <
-        class ExecutionContext,
-        class = typename std::enable_if<std::is_constructible<
-            asio::any_io_executor,
-            decltype(std::declval<ExecutionContext&>().get_executor())>::value>::type>
+        class ExecutionContext
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
+        class = typename std::enable_if<std::is_convertible<
+            decltype(std::declval<ExecutionContext&>().get_executor()),
+            asio::any_io_executor>::value>::type
+#endif
+        >
     any_connection(ExecutionContext& ctx, any_connection_params params = {})
         : any_connection(ctx.get_executor(), params)
     {

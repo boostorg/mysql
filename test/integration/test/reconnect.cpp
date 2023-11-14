@@ -66,12 +66,12 @@ BOOST_AUTO_TEST_SUITE(test_reconnect)
 
 connect_params base_connect_params()
 {
-    return {
-        host_and_port(get_hostname()),
-        default_user,
-        default_passwd,
-        default_db,
-    };
+    connect_params res;
+    res.server_address.emplace_host_and_port(get_hostname());
+    res.username = default_user;
+    res.password = default_passwd;
+    res.database = default_db;
+    return res;
 }
 
 struct reconnect_fixture : network_fixture
