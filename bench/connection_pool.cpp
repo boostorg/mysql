@@ -190,7 +190,7 @@ public:
                 BOOST_ASIO_CORO_YIELD
                 conn_->async_execute(stmt_.bind("HGS"), r_, diag_, [this](error_code ec) { resume(ec); });
 
-                conn_.return_to_pool();
+                conn_ = boost::mysql::pooled_connection();
 
                 if (!coord_->on_loop_finish())
                 {

@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(return_connection_with_reset)
         throw_on_error(ec, diag);
 
         // Return the connection
-        conn.return_to_pool();
+        conn = pooled_connection();
 
         // Get the same connection again
         conn = pool.async_get_connection(diag, yield[ec]);
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(return_connection_without_reset)
         throw_on_error(ec, diag);
 
         // Return the connection
-        conn.return_to_pool(false);
+        conn.return_without_reset();
 
         // Get the same connection again
         conn = pool.async_get_connection(diag, yield[ec]);
