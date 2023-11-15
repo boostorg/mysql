@@ -197,6 +197,38 @@ public:
      */
     executor_type get_executor() noexcept { return impl_->get_executor(); }
 
+    /**
+     * \brief Runs the pool task in charge of managing connections.
+     * \details
+     * This function creates and connects new connections, and resets and pings
+     * already created ones. You need to call this function for \ref async_get_connection
+     * to succeed.
+     * \n
+     * The async operation will run indefinitely, until the pool is cancelled
+     * (by being destroyed or calling \ref cancel). The operation completes once
+     * all internal connection operations (including connects, pings and resets)
+     * complete.
+     * \n
+     * It is safe to call this function after calling \ref cancel.
+     *
+     * \par Preconditions
+     * This function can be called at most once for a single pool.
+     * Formal precondition: `async_run` hasn't been called before on `*this` or any object
+     * used to move-construct or move-assign `*this`.
+     * \n
+     * Additionally, `this->valid() == true`.
+     *
+     * \par Object lifetimes
+     * While the operation is outstanding, the pool's internal data will be kept alive.
+     * It is safe to destroy `*this` while the operation is outstanding.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`
+     *
+     * \par Errors
+     * This function always complete successfully. The handler signature ensures
+     * maximum compatibility with Boost.Asio infrastructure.
+     */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_run(CompletionToken&& token)
@@ -205,6 +237,11 @@ public:
         return impl_->async_run(std::forward<CompletionToken>(token));
     }
 
+    /**
+     * \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
+     * \details
+     * A timeout of 30 seconds will be used.
+     */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
@@ -216,6 +253,11 @@ public:
             ->async_get_connection(get_default_timeout(), nullptr, std::forward<CompletionToken>(token));
     }
 
+    /**
+     * \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
+     * \details
+     * A timeout of 30 seconds will be used.
+     */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
@@ -227,6 +269,7 @@ public:
             ->async_get_connection(get_default_timeout(), &diag, std::forward<CompletionToken>(token));
     }
 
+    /// \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
@@ -237,6 +280,46 @@ public:
         return impl_->async_get_connection(timeout, nullptr, std::forward<CompletionToken>(token));
     }
 
+    /**
+     * \brief Retrieves a connection from the pool.
+     * \details
+     * Retrieves an iddle connection from the pool to be used.
+     * \n
+     * If this function completes successfully (empty error code), the return \ref pooled_connection
+     * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
+     * it will have `valid() == false`.
+     * \n
+     * The returned connection is *not* thread-safe, even if the pool has been configured
+     * with thread-safety enabled.
+     * \n
+     * If a connection is iddle when the operation is started, it will complete immediately
+     * with such connection. Otherwise, it will wait for a connection to become iddle
+     * (possibly creating one in the process, if pool configuration allows it), up to
+     * a duration of `timeout`. A zero timeout disables it.
+     * \n
+     * If a timeout happens because connection establishment has failed, appropriate
+     * diagnostics will be returned.
+     *
+     * \par Preconditions
+     * `this->valid() == true` \n
+     * `timeout.count() >= 0` (timeout values must be positive).
+     *
+     * \par Object lifetimes
+     * While the operation is outstanding, the pool's internal data will be kept alive.
+     * It is safe to destroy `*this` while the operation is outstanding.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
+     *
+     * \par Errors
+     * \li Any error returned by \ref any_connection::async_connect, if a timeout
+     *     happens because connection establishment failed.
+     * \li \ref client_errc::timeout, if a timeout happens for any other reason
+     *     (e.g. all connections are in use and limits forbid creating more).
+     * \li `asio::error::operation_aborted` if \ref cancel was called before or while
+     *     the operation is outstanding, or if the pool is not running.
+     */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
@@ -251,6 +334,28 @@ public:
         return impl_->async_get_connection(timeout, &diag, std::forward<CompletionToken>(token));
     }
 
+    /**
+     * \brief Stops any current outstanding operation and marks the pool as cancelled.
+     * \details
+     * This function has the following effects:
+     * \n
+     * \li Stops the currently outstanding \ref async_run operation, if any, which will complete
+     *     with a success error code.
+     * \li Cancels any outstanding \ref async_get_connection operations, which will complete with
+     *     `asio::error::operation_aborted`.
+     * \li Marks the pool as cancelled. Successive `async_get_connection` calls will complete
+     *     immediately with `asio::error::operation_aborted`.
+     * \n
+     * This function will return immediately, without waiting for the cancelled operations to complete.
+     * \n
+     * You may call this function any number of times. Successive calls will have no effect.
+     *
+     * \par Preconditions
+     * `this->valid() == true`
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations and acquiring mutexes may throw.
+     */
     void cancel()
     {
         BOOST_ASSERT(valid());

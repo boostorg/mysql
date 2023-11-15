@@ -318,6 +318,7 @@ public:
         CompletionToken&& token
     )
     {
+        BOOST_ASSERT(timeout.count() >= 0);
         return asio::async_compose<CompletionToken, void(error_code, pooled_connection)>(
             get_connection_op(shared_from_this(), timeout, diag),
             token,
