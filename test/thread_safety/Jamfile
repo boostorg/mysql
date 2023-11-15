@@ -1,0 +1,17 @@
+#
+# Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+run
+        /boost/mysql/test//boost_mysql_compiled
+        main.cpp
+    : requirements
+        <testing.arg>"localhost"
+        <thread-sanitizer>norecover
+    : target-name boost_mysql_thread_safety
+;
+
+explicit boost_mysql_thread_safety ;

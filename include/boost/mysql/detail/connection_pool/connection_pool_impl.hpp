@@ -66,7 +66,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
     void create_connection()
     {
-        auto& new_conn = all_conns_.emplace_back(params_, ex_, ex_, shared_st_);
+        auto& new_conn = all_conns_.emplace_back(params_, ex_, get_io_executor(), shared_st_);
         new_conn.async_run(asio::bind_executor(get_io_executor(), asio::detached));
     }
 
