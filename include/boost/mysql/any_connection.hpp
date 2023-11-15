@@ -173,8 +173,12 @@ public:
     /// The executor type associated to this object.
     using executor_type = asio::any_io_executor;
 
-    /// Retrieves the executor associated to this object.
-    executor_type get_executor() { return impl_.stream().get_executor(); }
+    /**
+     * \brief Retrieves the executor associated to this object.
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    executor_type get_executor() noexcept { return impl_.stream().get_executor(); }
 
     /// \copydoc connection::uses_ssl
     bool uses_ssl() const noexcept { return impl_.ssl_active(); }

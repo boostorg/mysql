@@ -35,11 +35,13 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/optional/optional.hpp>
+#include <boost/throw_exception.hpp>
 
 #include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 namespace boost {
@@ -70,8 +72,32 @@ struct internal_pool_params
     }
 };
 
+inline void check_validity(const pool_params& params) noexcept
+{
+    const char* msg = nullptr;
+    if (params.max_size == 0)
+        msg = "pool_params::max_size must be greater than zero";
+    else if (params.max_size < params.initial_size)
+        msg = "pool_params::max_size must be greater than pool_params::initial_size";
+    else if (params.connect_timeout.count() < 0)
+        msg = "pool_params::connect_timeout can't be negative";
+    else if (params.retry_interval.count() <= 0)
+        msg = "pool_params::retry_interval must be greater than zero";
+    else if (params.ping_interval.count() < 0)
+        msg = "pool_params::ping_interval can't be negative";
+    else if (params.ping_timeout.count() < 0)
+        msg = "pool_params::ping_timeout can't be negative";
+
+    if (msg != nullptr)
+    {
+        BOOST_THROW_EXCEPTION(std::invalid_argument(msg));
+    }
+}
+
 inline internal_pool_params make_internal_pool_params(pool_params&& params)
 {
+    check_validity(params);
+
     optional<asio::ssl::context> ssl_ctx{std::move(params.ssl_ctx)};
     if (!ssl_ctx.has_value() && params.ssl != ssl_mode::disable &&
         params.server_address.type() == address_type::host_and_port)

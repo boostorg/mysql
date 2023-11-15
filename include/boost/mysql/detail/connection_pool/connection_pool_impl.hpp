@@ -10,6 +10,7 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/pooled_connection.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -46,8 +47,14 @@ namespace detail {
 
 class connection_pool_impl : public std::enable_shared_from_this<connection_pool_impl>
 {
-    bool cancelled_{};
-    bool running_{};
+    enum class state_t
+    {
+        initial,
+        running,
+        cancelled,
+    };
+
+    state_t state_{state_t::initial};
     internal_pool_params params_;
     asio::any_io_executor ex_;
     asio::any_io_executor strand_ex_;
@@ -74,6 +81,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
+            // TODO: per-operation cancellation here doesn't do the right thing
             boost::ignore_unused(ec);
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -84,11 +92,9 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     asio::dispatch(obj_->strand_ex_, std::move(self));
                 }
 
-                BOOST_ASSERT(!obj_->running_);
-                obj_->running_ = true;
-
-                // TODO: check that we're not running
-                // TODO: should we support running twice?
+                // TODO: we could support running twice
+                BOOST_ASSERT(obj_->state_ == state_t::initial);
+                obj_->state_ = state_t::running;
 
                 // Create the initial connections
                 for (std::size_t i = 0; i < obj_->params_.initial_size; ++i)
@@ -99,7 +105,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 obj_->cancel_chan_.async_receive(std::move(self));
 
                 // Deliver the cancel notification to all other tasks
-                obj_->cancelled_ = true;
+                obj_->state_ = state_t::cancelled;
                 obj_->shared_st_.iddle_list.close_channel();
                 for (auto& conn : obj_->all_conns_)
                     conn.stop_task();
@@ -109,7 +115,6 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 obj_->shared_st_.wait_gp.join_tasks(std::move(self));
 
                 // Done
-                obj_->running_ = false;  // TODO: RAII?
                 obj_.reset();
                 self.complete(error_code());
             }
@@ -176,8 +181,10 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     asio::dispatch(obj_->strand_ex_, std::move(self));
                 }
 
-                // Double check that we weren't cancelled
-                if (obj_->cancelled_ || !obj_->running_)
+                // If we're not running yet, or were cancelled, just return
+                // TODO: for initial, we could wait the timeout, and if nothing
+                // happens after the timeout, issue a descriptive error
+                if (obj_->state_ != state_t::running)
                 {
                     BOOST_ASIO_CORO_YIELD
                     asio::post(obj_->ex_, std::move(self));
@@ -187,7 +194,6 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 }
 
                 // Try to get a connection without blocking
-                // TODO: could we expose a try_get_connection? is this useful?
                 result_ = obj_->shared_st_.iddle_list.try_get_one();
                 if (result_)
                 {
