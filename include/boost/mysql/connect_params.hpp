@@ -51,7 +51,7 @@ struct connect_params
      * This option is only relevant when `server_address.type() == address_type::host_and_port`.
      * UNIX socket connections will never use TLS, regardless of this value.
      */
-    ssl_mode ssl{ssl_mode::require};
+    ssl_mode ssl{ssl_mode::enable};
 
     /**
      * \brief Whether to enable support for executing semicolon-separated text queries.

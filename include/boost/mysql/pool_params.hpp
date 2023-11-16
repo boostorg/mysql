@@ -239,7 +239,7 @@ struct pool_params
      * \brief The timeout to use for pings and session resets.
      * \details
      * If pings (as per \ref any_connection::async_ping) or session resets
-     * (as per \ref any_connection::async_reset_session) take longer than this
+     * (as per \ref any_connection::async_reset_connection) take longer than this
      * timeout, they will be cancelled, and the operation will be considered failed.
      * \n
      * Set this timeout to zero to disable it.
