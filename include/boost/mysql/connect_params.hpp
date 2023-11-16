@@ -18,7 +18,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) Parameters to be used with \ref any_connection functions.
+ * \brief (EXPERIMENTAL) Parameters to be used with \ref any_connection connect functions.
  * \details
  * To be passed to \ref any_connection::connect and \ref any_connection::async_connect.
  * Includes the server address and MySQL handshake parameters.

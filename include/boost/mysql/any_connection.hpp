@@ -49,7 +49,7 @@ template <class... StaticRow>
 class static_execution_state;
 
 /**
- * \brief (EXPERIMENTAL) Configuration parameters that can be passed to \ref any_connection.
+ * \brief (EXPERIMENTAL) Configuration parameters that can be passed to \ref any_connection's constructor.
  */
 struct any_connection_params
 {
