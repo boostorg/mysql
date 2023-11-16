@@ -51,12 +51,13 @@ namespace mysql {
  * This is a move-only type.
  *
  * \par Thread-safety
- * Thead-safety is determined at runtime by the value of
- * \ref pool_params::enable_thread_safety. By default, thread-safety is enabled.
+ * By default, connection pools are *not* thread-safe, but they can
+ * be made thread-safe by passing an adequate \ref pool_executor_params objects
+ * to the constructor. See \ref pool_executor_params::thread_safe and the discussion
+ * and examples for details.
  * \n
- * Distinct objects: always safe, regardless of \ref pool_params::enable_thread_safety. \n
- * Shared objects: if constructed from a `params` object with `params.enable_thread_safety == true`,
- *    safe. Otherwise, unsafe.
+ * Distinct objects: safe. \n
+ * Shared objects: unsafe, unless passing adequate values to the constructor.
  *
  * \par Object lifetimes
  * Connection pool objects create an internal state object that is referenced
@@ -77,10 +78,10 @@ public:
     /**
      * \brief Constructs a connection pool from an executor.
      * \details
-     * The passed executor is used to create all \ref any_connection objects,
-     * and any other internally required I/O object. If `params.enable_thread_safety == true`,
-     * an internal `asio::strand` object will be created, wrapping `ex`, for ensuring thread
-     * safety. The strand is only used internally, and *not* by the returned connection ojects.
+     * Internal I/O objects (like timers and channels) are constructed using
+     * \ref pool_executor_params::pool_executor on `ex_params`. Connections are constructed using
+     * \ref pool_executor_params::connection_executor. This can be used to create
+     * thread-safe pools.
      * \n
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
      * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
@@ -93,8 +94,8 @@ public:
      * \throws `std::invalid_argument` If `params` contains values that violate the rules described in \ref
      *         pool_params.
      */
-    connection_pool(pool_executor_params ex, pool_params params)
-        : impl_(std::make_shared<detail::connection_pool_impl>(std::move(ex), std::move(params)))
+    connection_pool(const pool_executor_params& ex_params, pool_params params)
+        : impl_(std::make_shared<detail::connection_pool_impl>(ex_params, std::move(params)))
     {
     }
 
@@ -164,9 +165,8 @@ public:
     /**
      * \brief Retrieves the executor associated to this object.
      * \details
-     * If the pool has been configured with thread-safety enabled, this function
-     * returns the original executor passed to the object, instead of the internal
-     * strand.
+     * Returns the pool executor passed to the constructor, as per
+     * \ref pool_executor_params::pool_executor.
      *
      * \par Exception safety
      * No-throw guarantee.

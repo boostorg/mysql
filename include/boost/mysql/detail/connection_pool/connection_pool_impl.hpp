@@ -255,10 +255,10 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
     };
 
 public:
-    connection_pool_impl(pool_executor_params&& ex_params, pool_params&& params)
+    connection_pool_impl(const pool_executor_params& ex_params, pool_params&& params)
         : params_(make_internal_pool_params(std::move(params))),
-          ex_(std::move(access::get_impl(ex_params).pool_ex)),
-          conn_ex_(std::move(access::get_impl(ex_params).conn_ex)),
+          ex_(ex_params.pool_executor()),
+          conn_ex_(ex_params.connection_executor()),
           shared_st_(get_io_executor()),
           cancel_chan_(get_io_executor(), 1)
     {
