@@ -93,32 +93,8 @@ public:
      * \throws `std::invalid_argument` If `params` contains values that violate the rules described in \ref
      *         pool_params.
      */
-    connection_pool(asio::any_io_executor ex, pool_params params)
-        : impl_(std::make_shared<detail::connection_pool_impl>(std::move(params), std::move(ex)))
-    {
-    }
-
-    /**
-     * \brief Constructs a connection pool from an execution context.
-     * \details
-     * Equivalent to `connection_pool(ctx.get_executor(), std::move(params))`.
-     * \n
-     * This function participates in overload resolution only if `ExecutionContext`
-     * satisfies the `ExecutionContext` requirements imposed by Boost.Asio.
-     *
-     * \copydetail connection_pool::connection_pool
-     */
-    template <
-        class ExecutionContext
-#ifndef BOOST_MYSQL_DOXYGEN
-        ,
-        class = typename std::enable_if<std::is_convertible<
-            decltype(std::declval<ExecutionContext&>().get_executor()),
-            asio::any_io_executor>::value>::type
-#endif
-        >
-    connection_pool(ExecutionContext& ctx, pool_params params)
-        : connection_pool(ctx.get_executor(), std::move(params))
+    connection_pool(pool_executor_params ex, pool_params params)
+        : impl_(std::make_shared<detail::connection_pool_impl>(std::move(ex), std::move(params)))
     {
     }
 

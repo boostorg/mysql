@@ -12,7 +12,11 @@
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
+#include <boost/mysql/detail/access.hpp>
+
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <chrono>
@@ -21,6 +25,43 @@
 
 namespace boost {
 namespace mysql {
+
+class pool_executor_params
+{
+    struct
+    {
+        asio::any_io_executor pool_ex;
+        asio::any_io_executor conn_ex;
+    } impl_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
+public:
+    pool_executor_params(asio::any_io_executor pool_ex, asio::any_io_executor conn_ex = {})
+        : impl_{pool_ex, conn_ex ? std::move(conn_ex) : pool_ex}
+    {
+    }
+
+    template <
+        class ExecutionContext
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
+        class = typename std::enable_if<std::is_convertible<
+            decltype(std::declval<ExecutionContext&>().get_executor()),
+            asio::any_io_executor>::value>::type
+#endif
+        >
+    pool_executor_params(ExecutionContext& ctx) : pool_executor_params(ctx.get_executor())
+    {
+    }
+
+    static pool_executor_params thread_safe(asio::any_io_executor ex)
+    {
+        return pool_executor_params(asio::make_strand(ex), ex);
+    }
+};
 
 /**
  * \brief (EXPERIMENTAL) Configuration parameters for \ref connection_pool.
@@ -89,19 +130,6 @@ struct pool_params
      * This value must be `> 0` and `>= initial_size`.
      */
     std::size_t max_size{151};
-
-    /**
-     * \brief Whether to enable thread-safety or not (enabled by default).
-     * \details
-     * If set to `true` (the default), \ref connection_pool will internally
-     * create an `asio::strand` object and use it to guarantee that all
-     * its functions can be used safely from different threads.
-     * \n
-     * Setting it to `false` will disable the `strand`, which can provide a
-     * minor performance benefit. You can safely set this to `false` in
-     * single-threaded environments.
-     */
-    bool enable_thread_safety{true};
 
     /**
      * \brief The SSL context to use for connections using TLS.

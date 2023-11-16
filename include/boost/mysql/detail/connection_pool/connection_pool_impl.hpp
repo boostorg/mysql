@@ -57,20 +57,18 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
     state_t state_{state_t::initial};
     internal_pool_params params_;
     asio::any_io_executor ex_;
-    asio::any_io_executor strand_ex_;
+    asio::any_io_executor conn_ex_;
     std::list<connection_node> all_conns_;
     conn_shared_state shared_st_;
     asio::experimental::concurrent_channel<void(error_code)> cancel_chan_;
 
-    boost::asio::any_io_executor get_io_executor() const { return strand_ex_ ? strand_ex_ : ex_; }
+    boost::asio::any_io_executor get_io_executor() const { return conn_ex_ ? conn_ex_ : ex_; }
 
     void create_connection()
     {
-        auto& new_conn = all_conns_.emplace_back(params_, ex_, get_io_executor(), shared_st_);
-        new_conn.async_run(asio::bind_executor(get_io_executor(), asio::detached));
+        auto& new_conn = all_conns_.emplace_back(params_, ex_, conn_ex_, shared_st_);
+        new_conn.async_run(asio::bind_executor(ex_, asio::detached));
     }
-
-    bool is_thread_safe() const noexcept { return static_cast<bool>(strand_ex_); }
 
     struct run_op : asio::coroutine
     {
@@ -85,12 +83,9 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
             boost::ignore_unused(ec);
             BOOST_ASIO_CORO_REENTER(*this)
             {
-                // Ensure we run within the strand (if thread-safety enabled)
-                if (obj_->is_thread_safe())
-                {
-                    BOOST_ASIO_CORO_YIELD
-                    asio::dispatch(obj_->strand_ex_, std::move(self));
-                }
+                // Ensure we run within the pool executor (possibly a strand)
+                BOOST_ASIO_CORO_YIELD
+                asio::dispatch(obj_->ex_, std::move(self));
 
                 // TODO: we could support running twice
                 BOOST_ASSERT(obj_->state_ == state_t::initial);
@@ -174,21 +169,15 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 if (diag_)
                     diag_->clear();
 
-                // Ensure we run within the strand (if thread-safety enabled)
-                if (obj_->is_thread_safe())
-                {
-                    BOOST_ASIO_CORO_YIELD
-                    asio::dispatch(obj_->strand_ex_, std::move(self));
-                }
+                // Ensure we run within the pool's executor (or the handler's) (possibly a strand)
+                BOOST_ASIO_CORO_YIELD
+                asio::post(obj_->ex_, std::move(self));
 
                 // If we're not running yet, or were cancelled, just return
                 // TODO: for initial, we could wait the timeout, and if nothing
                 // happens after the timeout, issue a descriptive error
                 if (obj_->state_ != state_t::running)
                 {
-                    BOOST_ASIO_CORO_YIELD
-                    asio::post(obj_->ex_, std::move(self));
-
                     do_complete(self, asio::error::operation_aborted, pooled_connection());
                     return;
                 }
@@ -199,9 +188,6 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 {
                     // There was a connection. Done.
                     result_->mark_as_in_use();
-                    BOOST_ASIO_CORO_YIELD
-                    asio::post(obj_->ex_, std::move(self));
-
                     complete_success(self);
                     return;
                 }
@@ -218,7 +204,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
                 // Allocate a timer to perform waits.
                 // TODO: do this correctly
-                timer_.reset(new asio::steady_timer(obj_->get_io_executor()));
+                timer_.reset(new asio::steady_timer(obj_->ex_));
 
                 // Wait for a connection to become iddle and return it
                 while (true)
@@ -249,12 +235,6 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                             stored_ec_ = ec;
                         }
 
-                        if (obj_->is_thread_safe())
-                        {
-                            BOOST_ASIO_CORO_YIELD
-                            asio::post(obj_->ex_, std::move(self));
-                        }
-
                         do_complete(self, stored_ec_, pooled_connection());
                         return;
                     }
@@ -266,15 +246,6 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     {
                         result_->mark_as_in_use();
 
-                        // If we're in thread-safe mode, we're running within the
-                        // strand. Make sure we exit, so the final handler is not called
-                        // within the strand.
-                        if (obj_->is_thread_safe())
-                        {
-                            BOOST_ASIO_CORO_YIELD
-                            asio::post(obj_->ex_, std::move(self));
-                        }
-
                         complete_success(self);
                         return;
                     }
@@ -284,10 +255,10 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
     };
 
 public:
-    connection_pool_impl(pool_params&& params, asio::any_io_executor ex)
+    connection_pool_impl(pool_executor_params&& ex_params, pool_params&& params)
         : params_(make_internal_pool_params(std::move(params))),
-          ex_(std::move(ex)),
-          strand_ex_(params.enable_thread_safety ? asio::make_strand(ex_) : asio::any_io_executor()),
+          ex_(std::move(access::get_impl(ex_params).pool_ex)),
+          conn_ex_(std::move(access::get_impl(ex_params).conn_ex)),
           shared_st_(get_io_executor()),
           cancel_chan_(get_io_executor(), 1)
     {

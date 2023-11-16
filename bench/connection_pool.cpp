@@ -232,7 +232,7 @@ void run_nopool(mysql::any_address server_addr, bool use_ssl)
     std::cout << "Ellapsed: " << coord.ellapsed().count() << std::endl;
 }
 
-void run_pool(mysql::any_address server_addr, bool use_ssl, bool thread_safe)
+void run_pool(mysql::any_address server_addr, bool use_ssl)
 {
     // Setup
     asio::io_context ctx;
@@ -244,7 +244,6 @@ void run_pool(mysql::any_address server_addr, bool use_ssl, bool thread_safe)
     };
     params.max_size = num_parallel;
     params.ssl = use_ssl ? mysql::ssl_mode::require : mysql::ssl_mode::disable;
-    params.enable_thread_safety = thread_safe;
 
     mysql::connection_pool pool(ctx, std::move(params));
     pool.async_run(asio::detached);
@@ -275,7 +274,6 @@ static constexpr const char* options[] = {
     "pool-tcp",
     "pool-tcpssl",
     "pool-unix",
-    "pool-tcp-nothreadsafe",
 };
 
 void usage(const char* progname)
@@ -305,13 +303,11 @@ int main(int argc, char** argv)
     else if (opt == "nopool-unix")
         run_nopool(mysql::unix_path{default_unix_path}, false);
     else if (opt == "pool-tcp")
-        run_pool(mysql::host_and_port(addr), false, true);
+        run_pool(mysql::host_and_port(addr), false);
     else if (opt == "pool-tcpssl")
-        run_pool(mysql::host_and_port(addr), true, true);
+        run_pool(mysql::host_and_port(addr), true);
     else if (opt == "pool-unix")
-        run_pool(mysql::unix_path{default_unix_path}, false, true);
-    else if (opt == "pool-tcp-nothreadsafe")
-        run_pool(mysql::host_and_port(addr), false, false);
+        run_pool(mysql::unix_path{default_unix_path}, false);
     else
         usage(argv[0]);
 }

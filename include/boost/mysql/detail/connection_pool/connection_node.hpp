@@ -308,8 +308,6 @@ class connection_node : public hook_type
     std::atomic<collection_state> collection_state_{collection_state::none};
     asio::experimental::concurrent_channel<void(error_code)> collection_channel_;
 
-    boost::asio::any_io_executor get_strand_executor() { return timer_.get_executor(); }
-
     void process_status_change(connection_status old_status, connection_status new_status)
     {
         // Update the iddle list if required
@@ -454,14 +452,14 @@ public:
     connection_node(
         internal_pool_params& params,
         boost::asio::any_io_executor ex,
-        boost::asio::any_io_executor strand_ex,
+        boost::asio::any_io_executor conn_ex,
         conn_shared_state& shared_st
     )
         : params_(&params),
-          conn_(ex, params.make_ctor_params()),
-          timer_(strand_ex),
+          conn_(std::move(conn_ex), params.make_ctor_params()),
+          timer_(ex),
           shared_st_(&shared_st),
-          collection_channel_(strand_ex, 1)
+          collection_channel_(ex, 1)
     {
     }
 

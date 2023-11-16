@@ -127,9 +127,11 @@ void run(const char* hostname)
     params.password = "integ_password";
     params.max_size = num_parallel - 10;    // create some contention
     params.ssl = mysql::ssl_mode::require;  // double check sharing SSL contexts is OK
-    params.enable_thread_safety = true;
 
-    mysql::connection_pool pool(ctx, std::move(params));
+    mysql::connection_pool pool(
+        mysql::pool_executor_params::thread_safe(ctx.get_executor()),
+        std::move(params)
+    );
     pool.async_run(asio::detached);
 
     std::vector<task> conns;
