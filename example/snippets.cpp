@@ -1250,7 +1250,8 @@ void section_any_connection(string_view server_hostname, string_view username, s
 
         boost::asio::io_context ctx;
         boost::mysql::any_connection conn(ctx);
-        connect_with_retries(conn, params);
+        auto ec = connect_with_retries(conn, params);
+        ASSERT(ec == error_code());
     }
 
     {
@@ -1303,6 +1304,8 @@ void section_any_connection(string_view server_hostname, string_view username, s
             // Handle error
         }
         //]
+        ASSERT(ec != error_code());
+        ASSERT(diag.server_message().find("certificate verify failed") != string_view::npos);
     }
 }
 
