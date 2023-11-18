@@ -32,6 +32,11 @@ CREATE TABLE audit_log(
     t TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     msg TEXT
 );
+CREATE TABLE notes(
+    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL
+);
     
 INSERT INTO company (name, id, tax_id) VALUES
     ("Award Winning Company, Inc.", "AWC", "IE1234567V"),

@@ -11,6 +11,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -20,6 +21,7 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
@@ -38,6 +40,7 @@
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
+#include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
@@ -1306,6 +1309,37 @@ void section_any_connection(string_view server_hostname, string_view username, s
         //]
         ASSERT(ec != error_code());
         ASSERT(diag.server_message().find("certificate verify failed") != string_view::npos);
+    }
+}
+
+void section_connection_pool(string_view server_hostname, string_view username, string_view password)
+{
+    {
+        //[connection_pool_create
+        // pool_params contains configuration for the pool.
+        // You must specify enough information to establish a connection,
+        // including the server address and credentials.
+        // You can configure a lot of other things, like pool limits
+        boost::mysql::pool_params params;
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = username;
+        params.password = password;
+        params.database = "boost_mysql_examples";
+
+        // The I/O context, required by all I/O operations
+        boost::asio::io_context ctx;
+
+        // Construct a pool of connections. The context will be used internally
+        // to create the connections and other I/O objects
+        boost::mysql::connection_pool pool(ctx, std::move(params));
+
+        // You need to call async_run on the pool before doing anything useful with it.
+        // async_run creates connections and keeps them healthy. It must be called
+        // only once per pool.
+        // The detached completion token means that we don't want to be notified about when
+        // the operation ends
+        pool.async_run(boost::asio::detached);
+        //]
     }
 }
 
