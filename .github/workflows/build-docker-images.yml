@@ -30,6 +30,7 @@ jobs:
           - { image: build-gcc10,        dockerfile: build-gcc10,        platforms: "linux/amd64",                }
           - { image: build-gcc11,        dockerfile: build-gcc11,        platforms: "linux/amd64, linux/arm64/v8" }
           - { image: build-gcc13,        dockerfile: build-gcc13,        platforms: "linux/amd64"                 }
+          - { image: build-intel,        dockerfile: build-intel,        platforms: "linux/amd64"                 }
           - { image: build-cmake3_8,     dockerfile: build-cmake3_8,     platforms: "linux/amd64",                }
           - { image: build-noopenssl,    dockerfile: build-noopenssl,    platforms: "linux/amd64",                }
           - { image: build-docs,         dockerfile: build-docs,         platforms: "linux/amd64",                }
