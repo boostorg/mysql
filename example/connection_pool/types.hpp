@@ -21,7 +21,7 @@
 // static interface (i.e. static_results<T>) to parse query results,
 // and Boost.JSON automatic serialization/deserialization.
 
-namespace orders {
+namespace notes {
 
 struct note_t
 {
@@ -79,6 +79,6 @@ struct delete_note_response
 };
 BOOST_DESCRIBE_STRUCT(delete_note_response, (), (deleted))
 
-}  // namespace orders
+}  // namespace notes
 
 #endif

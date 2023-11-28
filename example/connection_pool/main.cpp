@@ -38,7 +38,7 @@
 // All communication happens asynchronously. We use stackful coroutines to simplify
 //   development, using boost::asio::spawn and boost::asio::yield_context.
 
-using namespace orders;
+using namespace notes;
 
 int main(int argc, char* argv[])
 {

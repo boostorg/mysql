@@ -18,7 +18,7 @@
 
 #include "types.hpp"
 
-namespace orders {
+namespace notes {
 
 using boost::optional;
 using boost::mysql::string_view;
@@ -63,6 +63,6 @@ public:
     bool delete_note(std::int64_t note_id, boost::asio::yield_context yield);
 };
 
-}  // namespace orders
+}  // namespace notes
 
 #endif

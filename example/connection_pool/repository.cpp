@@ -28,7 +28,7 @@
 
 #include "types.hpp"
 
-using namespace orders;
+using namespace notes;
 namespace mysql = boost::mysql;
 
 // SQL code to create the notes table is located under $REPO_ROOT/example/db_setup.sql

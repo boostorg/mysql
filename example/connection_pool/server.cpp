@@ -48,10 +48,11 @@ namespace asio = boost::asio;
 namespace http = boost::beast::http;
 using boost::mysql::error_code;
 using boost::mysql::string_view;
-using namespace orders;
+using namespace notes;
 
 namespace {
 
+// Log an error to stderr
 static void log_error(error_code ec, const char* msg)
 {
     std::cerr << "Error in " << msg << ": " << ec << std::endl;
@@ -347,7 +348,7 @@ static void do_accept(std::shared_ptr<asio::ip::tcp::acceptor> acceptor, std::sh
 
 }  // namespace
 
-error_code orders::launch_server(boost::asio::io_context& ctx, std::shared_ptr<shared_state> st)
+error_code notes::launch_server(boost::asio::io_context& ctx, std::shared_ptr<shared_state> st)
 {
     error_code ec;
 

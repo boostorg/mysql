@@ -18,7 +18,7 @@
 
 #include "repository.hpp"
 
-namespace orders {
+namespace notes {
 
 // State shared by all sessions created by our server.
 // For this application, we only need a connection_pool object.
@@ -38,6 +38,6 @@ struct shared_state
 // until ctx is stopped
 boost::system::error_code launch_server(boost::asio::io_context& ctx, std::shared_ptr<shared_state> state);
 
-}  // namespace orders
+}  // namespace notes
 
 #endif
