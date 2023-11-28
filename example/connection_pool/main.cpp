@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_connection_pool_main_cpp
+
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/pool_params.hpp>
@@ -105,3 +107,5 @@ int main(int argc, char* argv[])
     // (If we get here, it means we got a SIGINT or SIGTERM)
     return EXIT_SUCCESS;
 }
+
+//]

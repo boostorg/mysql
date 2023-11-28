@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_connection_pool_server_cpp
+
 #include "server.hpp"
 
 #include <boost/mysql/connection_pool.hpp>
@@ -492,3 +494,5 @@ error_code notes::launch_server(boost::asio::io_context& ctx, std::shared_ptr<sh
     // Done
     return error_code();
 }
+
+//]

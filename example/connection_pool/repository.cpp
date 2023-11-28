@@ -5,21 +5,18 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_connection_pool_repository_cpp
+
 #include "repository.hpp"
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/pooled_connection.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
-#include <boost/core/span.hpp>
-
-#include <array>
-#include <cassert>
 #include <cstddef>
 #include <iterator>
 #include <string>
@@ -219,3 +216,5 @@ bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_conte
     // There's no need to return the connection explicitly to the pool,
     // pooled_connection's destructor takes care of it.
 }
+
+//]

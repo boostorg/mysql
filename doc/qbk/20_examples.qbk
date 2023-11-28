@@ -26,6 +26,9 @@ Here is a list of available examples:
 # [link mysql.examples.unix_socket UNIX sockets]
 # [link mysql.examples.ssl Setting SSL options]
 # [link mysql.examples.source_script Using multi-queries to source a .sql file]
+# [link mysql.examples.any_connection Using type-erased connections]
+# [link mysql.examples.connection_pool A REST API server that uses connection pooling]
+# [@https://github.com/anarthal/servertech-chat The BoostServerTech chat project uses Boost.MySQL to implement a chat server]
 
 [heading Setup]
 
@@ -292,5 +295,74 @@ __assume_setup__
 [example_source_script]
 
 [endsect]
+
+
+
+
+
+[section:any_connection Using type-erased connections]
+
+This example demonstrates how to use [reflink any_connection].
+
+The example employs async functions with stackful coroutines.
+
+__assume_setup__
+
+[import ../../example/any_connection.cpp]
+[example_any_connection]
+
+[endsect]
+
+
+
+
+
+
+
+[section:connection_pool Connection pools]
+
+This example demonstrates how to use [reflink connection_pool].
+It implements an HTTP REST API server for a text notes
+application. The API provides CRUD methods on note objects.
+Instead of opening a new MySQL connection per HTTP request,
+the server uses a connection pool to reuse connections. 
+
+The example employs async functions with stackful coroutines.
+
+This example contains multiple files, and requires linking to
+__Context__, [@boost:/libs/json/index.html Boost.Json] and
+and [@boost:/libs/url/index.html Boost.Url].
+__assume_setup__
+
+[import ../../example/connection_pool/main.cpp]
+[import ../../example/connection_pool/repository.cpp]
+[import ../../example/connection_pool/repository.hpp]
+[import ../../example/connection_pool/server.cpp]
+[import ../../example/connection_pool/server.hpp]
+[import ../../example/connection_pool/types.hpp]
+
+File `main.cpp`:
+[example_connection_pool_main_cpp]
+
+File `types.hpp`:
+[example_connection_pool_types_hpp]
+
+File `repository.hpp`:
+[example_connection_pool_repository_hpp]
+
+File `repository.cpp`:
+[example_connection_pool_repository_cpp]
+
+File `server.hpp`:
+[example_connection_pool_server_hpp]
+
+File `server.cpp`:
+[example_connection_pool_server_cpp]
+
+[endsect]
+
+
+
+
 
 [endsect] [/ examples]

@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+//[example_connection_pool_types_hpp
+
 #ifndef BOOST_MYSQL_EXAMPLE_ORDER_MANAGEMENT_HTTP_API_TYPES_HPP
 #define BOOST_MYSQL_EXAMPLE_ORDER_MANAGEMENT_HTTP_API_TYPES_HPP
 
@@ -82,3 +84,5 @@ BOOST_DESCRIBE_STRUCT(delete_note_response, (), (deleted))
 }  // namespace notes
 
 #endif
+
+//]
