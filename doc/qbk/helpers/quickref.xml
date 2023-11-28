@@ -51,6 +51,39 @@
         </simplelist>
       </entry>
       <entry valign="top">
+        <bridgehead renderas="sect3">Enumerations</bridgehead>
+        <simplelist type="vert" columns="1">
+          <member><link linkend="mysql.ref.boost__mysql__address_type">address_type</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__client_errc">client_errc</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__column_type">column_type</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__common_server_errc">common_server_errc</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__field_kind">field_kind</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__metadata_mode">metadata_mode</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__ssl_mode">ssl_mode</link></member>
+        </simplelist>
+        <bridgehead renderas="sect3">Constants</bridgehead>
+        <simplelist type="vert" columns="1">
+          <member><link linkend="mysql.ref.boost__mysql__default_initial_read_buffer_size">default_initial_read_buffer_size</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__default_port">default_port</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__default_port_string">default_port_string</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__max_date">max_date</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__min_date">min_date</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__max_datetime">max_datetime</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__min_datetime">min_datetime</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__max_time">max_time</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__min_time">min_time</link></member>
+        </simplelist>
+        <bridgehead renderas="sect3">Functions</bridgehead>
+        <simplelist type="vert" columns="1">
+          <member><link linkend="mysql.ref.boost__mysql__get_client_category">get_client_category</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__get_common_server_category">get_common_server_category</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__get_mysql_server_category">get_mysql_server_category</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__get_mariadb_server_category">get_mariadb_server_category</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__make_error_code">make_error_code</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__throw_on_error">throw_on_error</link></member>
+        </simplelist>
+      </entry>
+      <entry valign="top">
         <bridgehead renderas="sect3">Type aliases</bridgehead>
         <simplelist type="vert" columns="1">
           <member><link linkend="mysql.ref.boost__mysql__blob">blob</link></member>
@@ -75,41 +108,6 @@
           <member><link linkend="mysql.ref.boost__mysql__StaticRow">StaticRow</link></member>
           <member><link linkend="mysql.ref.boost__mysql__Stream">Stream</link></member>
           <member><link linkend="mysql.ref.boost__mysql__WritableFieldTuple">WritableFieldTuple</link></member>
-        </simplelist>
-      </entry>
-      <entry valign="top">
-        <bridgehead renderas="sect3">Enumerations</bridgehead>
-        <simplelist type="vert" columns="1">
-          <member><link linkend="mysql.ref.boost__mysql__address_type">address_type</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__client_errc">client_errc</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__column_type">column_type</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__common_server_errc">common_server_errc</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__field_kind">field_kind</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__metadata_mode">metadata_mode</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__ssl_mode">ssl_mode</link></member>
-        </simplelist>
-        <bridgehead renderas="sect3">Constants</bridgehead>
-        <simplelist type="vert" columns="1">
-          <member><link linkend="mysql.ref.boost__mysql__default_initial_read_buffer_size">default_initial_read_buffer_size</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__default_port">default_port</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__default_port_string">default_port_string</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__max_date">max_date</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__min_date">min_date</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__max_datetime">max_datetime</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__min_datetime">min_datetime</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__max_time">max_time</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__min_time">min_time</link></member>
-        </simplelist>
-      </entry>
-      <entry valign="top">
-        <bridgehead renderas="sect3">Functions</bridgehead>
-        <simplelist type="vert" columns="1">
-          <member><link linkend="mysql.ref.boost__mysql__get_client_category">get_client_category</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__get_common_server_category">get_common_server_category</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__get_mysql_server_category">get_mysql_server_category</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__get_mariadb_server_category">get_mariadb_server_category</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__make_error_code">make_error_code</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__throw_on_error">throw_on_error</link></member>
         </simplelist>
         <bridgehead renderas="sect3">Reference tables</bridgehead>
         <simplelist type="vert" columns="1">
