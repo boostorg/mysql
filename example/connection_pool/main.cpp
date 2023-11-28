@@ -42,10 +42,18 @@ int main(int argc, char* argv[])
     // threaded, so we set the concurrency hint to 1
     boost::asio::io_context ioc{1};
 
+    // Configuration for the connection pool
     boost::mysql::pool_params pool_prms{
+        // Connect using TCP, to the given hostname and using the default port
         boost::mysql::host_and_port(mysql_hostname),
+
+        // Authenticate using the given username
         mysql_username,
+
+        // Password for the above username
         mysql_password,
+
+        // Database to use when connecting
         "boost_mysql_examples",
     };
     auto shared_st = std::make_shared<shared_state>(boost::mysql::connection_pool(ioc, std::move(pool_prms)));
