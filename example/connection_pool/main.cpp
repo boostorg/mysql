@@ -16,6 +16,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include "repository.hpp"
@@ -47,18 +48,17 @@ int main(int argc, char* argv[])
         mysql_password,
         "boost_mysql_examples",
     };
-    boost::mysql::connection_pool pool(ioc, std::move(pool_prms));
-    note_repository repo(pool);
+    auto shared_st = std::make_shared<shared_state>(boost::mysql::connection_pool(ioc, std::move(pool_prms)));
 
     // A signal_set allows us to intercept SIGINT and SIGTERM and
     // exit gracefully
     boost::asio::signal_set signals{ioc.get_executor(), SIGINT, SIGTERM};
 
     // Launch the MySQL pool
-    pool.async_run(boost::asio::detached);
+    shared_st->pool.async_run(boost::asio::detached);
 
     // Start listening for HTTP connections. This will run until the context is stopped
-    auto ec = launch_server(ioc, 4000, repo);
+    auto ec = launch_server(ioc, 4000, shared_st);
     if (ec)
     {
         std::cerr << "Error launching server: " << ec << std::endl;
@@ -66,9 +66,9 @@ int main(int argc, char* argv[])
     }
 
     // Capture SIGINT and SIGTERM to perform a clean shutdown
-    signals.async_wait([&pool, &ioc](boost::system::error_code, int) {
+    signals.async_wait([shared_st, &ioc](boost::system::error_code, int) {
         // Stop the MySQL pool
-        pool.cancel();
+        shared_st->pool.cancel();
 
         // Stop the io_context. This will cause run() to return
         ioc.stop();

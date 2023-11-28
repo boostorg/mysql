@@ -14,14 +14,23 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/system/error_code.hpp>
 
+#include <memory>
+
 #include "repository.hpp"
 
 namespace orders {
 
+struct shared_state
+{
+    boost::mysql::connection_pool pool;
+
+    shared_state(boost::mysql::connection_pool pool) : pool(std::move(pool)) {}
+};
+
 boost::system::error_code launch_server(
     boost::asio::io_context& ctx,
     unsigned short port,
-    note_repository& repo
+    std::shared_ptr<shared_state> state
 );
 
 }  // namespace orders

@@ -33,6 +33,7 @@
 
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <string>
 
 #include "repository.hpp"
@@ -261,7 +262,7 @@ static http::response<http::string_body> handle_request(
 
 static void run_http_session(
     boost::asio::ip::tcp::socket&& stream,
-    note_repository& repo,
+    std::shared_ptr<shared_state> st,
     boost::asio::yield_context yield
 )
 {
@@ -299,6 +300,7 @@ static void run_http_session(
 
         // Process the request to generate a response.
         // This invokes the business logic, which will need to access MySQL data
+        note_repository repo(st->pool);
         auto response = handle_request(parser.get(), repo, yield);
 
         // Determine if we should close the connection
@@ -320,7 +322,11 @@ static void run_http_session(
 }
 
 // The actual accept loop, coroutine-based
-static void accept_loop(asio::ip::tcp::acceptor acceptor, note_repository& repo, asio::yield_context yield)
+static void accept_loop(
+    asio::ip::tcp::acceptor acceptor,
+    std::shared_ptr<shared_state> st,
+    asio::yield_context yield
+)
 {
     error_code ec;
 
@@ -338,15 +344,19 @@ static void accept_loop(asio::ip::tcp::acceptor acceptor, note_repository& repo,
         // own stackful coroutine, so we can get back to listening for new connections.
         boost::asio::spawn(
             sock.get_executor(),
-            [&repo, socket = std::move(sock)](boost::asio::yield_context yield) mutable {
-                run_http_session(std::move(socket), repo, yield);
+            [st, socket = std::move(sock)](boost::asio::yield_context yield) mutable {
+                run_http_session(std::move(socket), st, yield);
             },
             rethrow_handler  // Propagate exceptions to the io_context
         );
     }
 }
 
-error_code orders::launch_server(boost::asio::io_context& ctx, unsigned short port, note_repository& repo)
+error_code orders::launch_server(
+    boost::asio::io_context& ctx,
+    unsigned short port,
+    std::shared_ptr<shared_state> st
+)
 {
     error_code ec;
 
@@ -379,8 +389,8 @@ error_code orders::launch_server(boost::asio::io_context& ctx, unsigned short po
     // everything is handled asynchronously, with stackful coroutines.
     boost::asio::spawn(
         ctx,
-        [acceptor = std::move(acceptor), &repo](boost::asio::yield_context yield) mutable {
-            accept_loop(std::move(acceptor), repo, yield);
+        [acceptor = std::move(acceptor), st](boost::asio::yield_context yield) mutable {
+            accept_loop(std::move(acceptor), st, yield);
         },
         rethrow_handler  // Propagate exceptions to the io_context
     );
