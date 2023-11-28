@@ -15,6 +15,12 @@
 #include <string>
 #include <vector>
 
+// Contains type definitions used in the REST API and database code.
+// We use Boost.Describe (BOOST_DESCRIBE_STRUCT) to add reflection
+// capabilities to our types. This allows using Boost.MySQL
+// static interface (i.e. static_results<T>) to parse query results,
+// and Boost.JSON automatic serialization/deserialization.
+
 namespace orders {
 
 struct note_t
@@ -22,46 +28,53 @@ struct note_t
     // The unique database ID of the object.
     std::int64_t id;
 
-    // The order status (draft, pending_payment, complete).
+    // The note's title.
     std::string title;
 
+    // The note's actual content.
     std::string content;
 };
 BOOST_DESCRIBE_STRUCT(note_t, (), (id, title, content))
 
 //
-// API requests.
+// REST API requests.
 //
 
 // Used for creating and replacing notes
 struct note_request_body
 {
+    // The title that the new note should have.
     std::string title;
+
+    // The content that the new note should have.
     std::string content;
 };
 BOOST_DESCRIBE_STRUCT(note_request_body, (), (title, content))
 
 //
-// API responses
+// REST API responses.
 //
 
-// Used for endpoints returning several notes
+// Used by endpoints returning several notes (like GET /notes).
 struct multi_notes_response
 {
+    // The retrieved notes.
     std::vector<note_t> notes;
 };
 BOOST_DESCRIBE_STRUCT(multi_notes_response, (), (notes))
 
-// Used for endpoints returning a single note
+// Used by endpoints returning a single note (like GET /notes/<id>)
 struct single_note_response
 {
+    // The retrieved note.
     note_t note;
 };
 BOOST_DESCRIBE_STRUCT(single_note_response, (), (note))
 
-// Used for the delete note endpoint
+// Used by DELETE /notes/<id>
 struct delete_note_response
 {
+    // true if the note was found and deleted, false if the note didn't exist.
     bool deleted;
 };
 BOOST_DESCRIBE_STRUCT(delete_note_response, (), (deleted))
