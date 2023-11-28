@@ -8,6 +8,7 @@
 #include "server.hpp"
 
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -39,229 +40,222 @@
 #include "repository.hpp"
 #include "types.hpp"
 
+// This file contains all the boilerplate code to implement a HTTP
+// server that provides the REST API described in main.cpp.
+// Functions here end up invoking note_repository member functions.
+
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
 using boost::mysql::error_code;
 using boost::mysql::string_view;
 using namespace orders;
 
-// An exception handler for coroutines that rethrows any exception thrown by
-// the coroutine. We handle all known error cases with error_code's. If an
-// exception is raised, it's something critical, e.g. out of memory.
-// Re-raising it in the exception handler will case io_context::run()
-// to throw and terminate the program.
-static constexpr auto rethrow_handler = [](std::exception_ptr ex) {
-    if (ex)
-        std::rethrow_exception(ex);
-};
+namespace {
 
 static void log_error(error_code ec, const char* msg)
 {
     std::cerr << "Error in " << msg << ": " << ec << std::endl;
 }
 
-static http::response<http::string_body> error_response(
-    const http::request<http::string_body>& req,
-    http::status code,
-    string_view msg
-)
+class request_handler
 {
-    http::response<http::string_body> res;
-    res.result(code);
-    res.keep_alive(req.keep_alive());
-    res.body() = msg;
-    res.prepare_payload();
-    return res;
-}
+    const http::request<http::string_body>& request_;
+    note_repository repo_;
 
-static http::response<http::string_body> invalid_content_type(const http::request<http::string_body>& req)
-{
-    return error_response(req, http::status::bad_request, "Invalid content-type");
-}
-
-static http::response<http::string_body> invalid_body(const http::request<http::string_body>& req)
-{
-    return error_response(req, http::status::bad_request, "Invalid body");
-}
-
-static http::response<http::string_body> method_not_allowed(const http::request<http::string_body>& req)
-{
-    return error_response(req, http::status::method_not_allowed, "Method not allowed");
-}
-
-static http::response<http::string_body> endpoint_not_found(const http::request<http::string_body>& req)
-{
-    return error_response(req, http::status::not_found, "The requested resource was not found");
-}
-
-static http::response<http::string_body> note_not_found(const http::request<http::string_body>& req)
-{
-    return error_response(req, http::status::not_found, "The requested note was not found");
-}
-
-template <class T>
-static http::response<http::string_body> json_response(
-    const http::request<http::string_body>& req,
-    const T& input
-)
-{
-    http::response<http::string_body> res;
-    res.result(http::status::ok);
-    res.keep_alive(req.keep_alive());
-    res.body() = boost::json::serialize(boost::json::value_from(input));
-    res.prepare_payload();
-    return res;
-}
-
-static bool has_json_content_type(const http::request<http::string_body>& req)
-{
-    auto it = req.find("Content-Type");
-    return it != req.end() && it->value() == "application/json";
-}
-
-template <class T>
-static boost::system::result<T> parse_json_request(const http::request<http::string_body>& req)
-{
-    error_code ec;
-    auto val = boost::json::parse(req.body(), ec);
-    if (ec)
-        return ec;
-    return boost::json::try_value_to<T>(val);
-}
-
-static http::response<http::string_body> handle_request_impl(
-    const http::request<http::string_body>& req,
-    orders::note_repository& repo,
-    boost::asio::yield_context yield
-)
-{
-    // Parse the request target
-    auto url = boost::urls::parse_origin_form(req.target());
-    if (url.has_error())
-        return error_response(req, http::status::bad_request, "Invalid request target");
-
-    // We will be iterating over the target's segments to determine
-    // which endpoint we are being requested
-    auto segs = url->segments();
-    auto segit = segs.begin();
-    auto seg = *segit++;
-
-    // All endpoints start with /notes
-    if (seg != "notes")
-        return endpoint_not_found(req);
-
-    if (segit == segs.end())
+    http::response<http::string_body> error_response(http::status code, string_view msg) const
     {
-        if (req.method() == http::verb::get)
-        {
-            // GET /notes
-            auto res = repo.get_notes(yield);
-            return json_response(req, multi_notes_response{std::move(res)});
-        }
-        else if (req.method() == http::verb::post)
-        {
-            // POST /notes. This has a JSON body with details, parse it
-            if (!has_json_content_type(req))
-                return invalid_content_type(req);
-            auto args = parse_json_request<note_request_body>(req);
-            if (args.has_error())
-                return invalid_body(req);
+        http::response<http::string_body> res;
+        res.result(code);
+        res.keep_alive(request_.keep_alive());
+        res.body() = msg;
+        res.prepare_payload();
+        return res;
+    }
 
-            // Actually create the note
-            auto res = repo.create_note(args->title, args->content, yield);
+    http::response<http::string_body> invalid_content_type() const
+    {
+        return error_response(http::status::bad_request, "Invalid content-type");
+    }
 
-            // Return the newly crated note as response
-            return json_response(req, single_note_response{std::move(res)});
+    http::response<http::string_body> invalid_body() const
+    {
+        return error_response(http::status::bad_request, "Invalid body");
+    }
+
+    http::response<http::string_body> method_not_allowed() const
+    {
+        return error_response(http::status::method_not_allowed, "Method not allowed");
+    }
+
+    http::response<http::string_body> endpoint_not_found() const
+    {
+        return error_response(http::status::not_found, "The requested resource was not found");
+    }
+
+    http::response<http::string_body> note_not_found() const
+    {
+        return error_response(http::status::not_found, "The requested note was not found");
+    }
+
+    template <class T>
+    http::response<http::string_body> json_response(const T& input) const
+    {
+        http::response<http::string_body> res;
+        res.result(http::status::ok);
+        res.keep_alive(request_.keep_alive());
+        res.body() = boost::json::serialize(boost::json::value_from(input));
+        res.prepare_payload();
+        return res;
+    }
+
+    bool has_json_content_type() const
+    {
+        auto it = request_.find("Content-Type");
+        return it != request_.end() && it->value() == "application/json";
+    }
+
+    template <class T>
+    boost::system::result<T> parse_json_request() const
+    {
+        error_code ec;
+        auto val = boost::json::parse(request_.body(), ec);
+        if (ec)
+            return ec;
+        return boost::json::try_value_to<T>(val);
+    }
+
+    http::response<http::string_body> handle_request_impl(boost::asio::yield_context yield)
+    {
+        // Parse the request target
+        auto url = boost::urls::parse_origin_form(request_.target());
+        if (url.has_error())
+            return error_response(http::status::bad_request, "Invalid request target");
+
+        // We will be iterating over the target's segments to determine
+        // which endpoint we are being requested
+        auto segs = url->segments();
+        auto segit = segs.begin();
+        auto seg = *segit++;
+
+        // All endpoints start with /notes
+        if (seg != "notes")
+            return endpoint_not_found();
+
+        if (segit == segs.end())
+        {
+            if (request_.method() == http::verb::get)
+            {
+                // GET /notes
+                auto res = repo_.get_notes(yield);
+                return json_response(multi_notes_response{std::move(res)});
+            }
+            else if (request_.method() == http::verb::post)
+            {
+                // POST /notes. This has a JSON body with details, parse it
+                if (!has_json_content_type())
+                    return invalid_content_type();
+                auto args = parse_json_request<note_request_body>();
+                if (args.has_error())
+                    return invalid_body();
+
+                // Actually create the note
+                auto res = repo_.create_note(args->title, args->content, yield);
+
+                // Return the newly crated note as response
+                return json_response(single_note_response{std::move(res)});
+            }
+            else
+            {
+                return method_not_allowed();
+            }
         }
         else
         {
-            return method_not_allowed(req);
+            // The URL has the form /notes/<note-id>. Parse the note ID
+            // TODO: could we make this non-throwing?
+            auto note_id = std::stoi(*segit++);
+
+            // /notes/<note-id>/<something-else> is not supported
+            if (segit != segs.end())
+                return endpoint_not_found();
+
+            if (request_.method() == http::verb::get)
+            {
+                // GET /notes/<note-id>. Retrieve the note
+                auto res = repo_.get_note(note_id, yield);
+
+                // Check that we did find it
+                if (!res.has_value())
+                    return note_not_found();
+
+                // Return it as response
+                return json_response(single_note_response{std::move(*res)});
+            }
+            else if (request_.method() == http::verb::put)
+            {
+                // PUT /notes/<note-id>. This has a JSON body with details. Parse it
+                if (!has_json_content_type())
+                    return invalid_content_type();
+                auto args = parse_json_request<note_request_body>();
+                if (args.has_error())
+                    return invalid_body();
+
+                // Perform the update
+                auto res = repo_.replace_note(note_id, args->title, args->content, yield);
+
+                // Check that it took effect. Otherwise, it's because the note wasn't there
+                if (!res.has_value())
+                    return note_not_found();
+
+                // Return the updated note as response
+                return json_response(single_note_response{std::move(*res)});
+            }
+            else if (request_.method() == http::verb::delete_)
+            {
+                // DELETE /notes/<note-id>
+
+                // Attempt to delete the note
+                bool deleted = repo_.delete_note(note_id, yield);
+
+                // Return whether the delete was successful in the response.
+                // We don't fail DELETEs for notes that don't exist.
+                return json_response(delete_note_response{deleted});
+            }
+            else
+            {
+                return method_not_allowed();
+            }
         }
     }
-    else
+
+public:
+    request_handler(const http::request<http::string_body>& req, note_repository repo)
+        : request_(req), repo_(repo)
     {
-        // The URL has the form /notes/<note-id>. Parse the note ID
-        // TODO: could we make this non-throwing?
-        auto note_id = std::stoi(*segit++);
-
-        // /notes/<note-id>/<something-else> is not supported
-        if (segit != segs.end())
-            return endpoint_not_found(req);
-
-        if (req.method() == http::verb::get)
-        {
-            // GET /notes/<note-id>. Retrieve the note
-            auto res = repo.get_note(note_id, yield);
-
-            // Check that we did find it
-            if (!res.has_value())
-                return note_not_found(req);
-
-            // Return it as response
-            return json_response(req, single_note_response{std::move(*res)});
-        }
-        else if (req.method() == http::verb::put)
-        {
-            // PUT /notes/<note-id>. This has a JSON body with details. Parse it
-            if (!has_json_content_type(req))
-                return invalid_content_type(req);
-            auto args = parse_json_request<note_request_body>(req);
-            if (args.has_error())
-                return invalid_body(req);
-
-            // Perform the update
-            auto res = repo.replace_note(note_id, args->title, args->content, yield);
-
-            // Check that it took effect. Otherwise, it's because the note wasn't there
-            if (!res.has_value())
-                return note_not_found(req);
-
-            // Return the updated note as response
-            return json_response(req, single_note_response{std::move(*res)});
-        }
-        else if (req.method() == http::verb::delete_)
-        {
-            // DELETE /notes/<note-id>
-
-            // Attempt to delete the note
-            bool deleted = repo.delete_note(note_id, yield);
-
-            // Return whether the delete was successful in the response.
-            // We don't fail DELETEs for notes that don't exist.
-            return json_response(req, delete_note_response{deleted});
-        }
-        else
-        {
-            return method_not_allowed(req);
-        }
     }
-}
 
-static http::response<http::string_body> handle_request(
-    const http::request<http::string_body>& req,
-    orders::note_repository& repo,
-    boost::asio::yield_context yield
-)
-{
-    try
+    http::response<http::string_body> handle_request(boost::asio::yield_context yield)
     {
-        return handle_request_impl(req, repo, yield);
+        try
+        {
+            return handle_request_impl(yield);
+        }
+        catch (const boost::mysql::error_with_diagnostics& err)
+        {
+            std::cerr << "Uncaught exception: " << err.what()
+                      << "\nServer diagnostics: " << err.get_diagnostics().server_message() << '\n';
+            return error_response(http::status::internal_server_error, "Internal error");
+        }
+        catch (const std::exception& err)
+        {
+            std::cerr << "Uncaught exception: " << err.what() << '\n';
+            return error_response(http::status::internal_server_error, "Internal error");
+        }
     }
-    catch (const boost::mysql::error_with_diagnostics& err)
-    {
-        std::cerr << "Uncaught exception: " << err.what()
-                  << "\nServer diagnostics: " << err.get_diagnostics().server_message() << '\n';
-        return error_response(req, http::status::internal_server_error, "Internal error");
-    }
-    catch (const std::exception& err)
-    {
-        std::cerr << "Uncaught exception: " << err.what() << '\n';
-        return error_response(req, http::status::internal_server_error, "Internal error");
-    }
-}
+};
 
 static void run_http_session(
-    boost::asio::ip::tcp::socket&& stream,
+    boost::asio::ip::tcp::socket sock,
     std::shared_ptr<shared_state> st,
     boost::asio::yield_context yield
 )
@@ -281,14 +275,14 @@ static void run_http_session(
         parser.body_limit(10000);
 
         // Read a request
-        http::async_read(stream, buff, parser.get(), yield[ec]);
+        http::async_read(sock, buff, parser.get(), yield[ec]);
 
         if (ec)
         {
             if (ec == http::error::end_of_stream)
             {
                 // This means they closed the connection
-                stream.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
+                sock.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
             }
             else
             {
@@ -300,14 +294,13 @@ static void run_http_session(
 
         // Process the request to generate a response.
         // This invokes the business logic, which will need to access MySQL data
-        note_repository repo(st->pool);
-        auto response = handle_request(parser.get(), repo, yield);
+        auto response = request_handler(parser.get(), note_repository(st->pool)).handle_request(yield);
 
         // Determine if we should close the connection
         bool keep_alive = response.keep_alive();
 
         // Send the response
-        http::async_write(stream, response, yield[ec]);
+        http::async_write(sock, response, yield[ec]);
         if (ec)
             return log_error(ec, "write");
 
@@ -315,28 +308,18 @@ static void run_http_session(
         // the response indicated the "Connection: close" semantic.
         if (!keep_alive)
         {
-            stream.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
+            sock.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
             return;
         }
     }
 }
 
-// The actual accept loop, coroutine-based
-static void accept_loop(
-    asio::ip::tcp::acceptor acceptor,
-    std::shared_ptr<shared_state> st,
-    asio::yield_context yield
-)
+// Implements the server's accept loop. The server will
+// listen for connections until stopped.
+static void do_accept(std::shared_ptr<asio::ip::tcp::acceptor> acceptor, std::shared_ptr<shared_state> st)
 {
-    error_code ec;
-
-    // We accept connections in an infinite loop. When the io_context is stopped,
-    // coroutines are "cancelled" by throwing an internal exception, exiting
-    // the loop.
-    while (true)
-    {
-        // Accept a new connection
-        auto sock = acceptor.async_accept(yield[ec]);
+    acceptor->async_accept([st, acceptor](error_code ec, asio::ip::tcp::socket sock) {
+        // If there was an error accepting the connection, exit our loop
         if (ec)
             return log_error(ec, "accept");
 
@@ -347,53 +330,54 @@ static void accept_loop(
             [st, socket = std::move(sock)](boost::asio::yield_context yield) mutable {
                 run_http_session(std::move(socket), st, yield);
             },
-            rethrow_handler  // Propagate exceptions to the io_context
+            // All errors in the session are handled via error codes or by catching
+            // exceptions explicitly. An unhandled exception here means an error.
+            // Rethrowing it will propagate the exception, making io_context::run()
+            // to throw and terminate the program.
+            [](std::exception_ptr ex) {
+                if (ex)
+                    std::rethrow_exception(ex);
+            }
         );
-    }
+
+        // Accept a new connection
+        do_accept(acceptor, st);
+    });
 }
 
-error_code orders::launch_server(
-    boost::asio::io_context& ctx,
-    unsigned short port,
-    std::shared_ptr<shared_state> st
-)
+}  // namespace
+
+error_code orders::launch_server(boost::asio::io_context& ctx, std::shared_ptr<shared_state> st)
 {
     error_code ec;
 
     // An object that allows us to acept incoming TCP connections
-    asio::ip::tcp::acceptor acceptor{ctx};
+    auto acceptor = std::make_shared<asio::ip::tcp::acceptor>(ctx);
 
-    boost::asio::ip::tcp::endpoint listening_endpoint(boost::asio::ip::make_address("0.0.0.0"), port);
+    boost::asio::ip::tcp::endpoint listening_endpoint(boost::asio::ip::make_address("0.0.0.0"), 4000);
 
     // Open the acceptor
-    acceptor.open(listening_endpoint.protocol(), ec);
+    acceptor->open(listening_endpoint.protocol(), ec);
     if (ec)
         return ec;
 
     // Allow address reuse
-    acceptor.set_option(asio::socket_base::reuse_address(true), ec);
+    acceptor->set_option(asio::socket_base::reuse_address(true), ec);
     if (ec)
         return ec;
 
     // Bind to the server address
-    acceptor.bind(listening_endpoint, ec);
+    acceptor->bind(listening_endpoint, ec);
     if (ec)
         return ec;
 
     // Start listening for connections
-    acceptor.listen(asio::socket_base::max_listen_connections, ec);
+    acceptor->listen(asio::socket_base::max_listen_connections, ec);
     if (ec)
         return ec;
 
-    // Spawn a coroutine that will accept the connections. From this point,
-    // everything is handled asynchronously, with stackful coroutines.
-    boost::asio::spawn(
-        ctx,
-        [acceptor = std::move(acceptor), st](boost::asio::yield_context yield) mutable {
-            accept_loop(std::move(acceptor), st, yield);
-        },
-        rethrow_handler  // Propagate exceptions to the io_context
-    );
+    // Launch the acceptor loop
+    do_accept(std::move(acceptor), std::move(st));
 
     return error_code();
 }

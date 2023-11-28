@@ -20,6 +20,11 @@
 
 namespace orders {
 
+// State shared by all sessions created by our server.
+// For this application, we only need a connection_pool object.
+// Place here any other singleton objects your application may need.
+// We will use std::shared_ptr<shared_state> to ensure that objects
+// are kept alive until all sessions are terminated.
 struct shared_state
 {
     boost::mysql::connection_pool pool;
@@ -27,11 +32,11 @@ struct shared_state
     shared_state(boost::mysql::connection_pool pool) : pool(std::move(pool)) {}
 };
 
-boost::system::error_code launch_server(
-    boost::asio::io_context& ctx,
-    unsigned short port,
-    std::shared_ptr<shared_state> state
-);
+// Launches a HTTP server that will listen on 0.0.0.0:4000.
+// If the server fails to launch (e.g. because the port is aleady in use),
+// returns a non-zero error code. The server runs in the background
+// until ctx is stopped
+boost::system::error_code launch_server(boost::asio::io_context& ctx, std::shared_ptr<shared_state> state);
 
 }  // namespace orders
 
