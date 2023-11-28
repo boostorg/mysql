@@ -28,9 +28,7 @@ int main(int argc, char* argv[])
     // Check command line arguments.
     if (argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <mysql-hostname>\n"
-                  << "Example:\n"
-                  << "    " << argv[0] << " 0.0.0.0 8080 .\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <mysql-hostname>\n";
         return EXIT_FAILURE;
     }
 

@@ -85,7 +85,7 @@ note_t note_repository::create_note(string_view title, string_view content, boos
     mysql::throw_on_error(ec, diag);
 
     mysql::statement stmt = conn->async_prepare_statement(
-        "INSERT INTO notes (id, title) VALUES (?, ?)",
+        "INSERT INTO notes (title, content) VALUES (?, ?)",
         diag,
         yield[ec]
     );

@@ -8,6 +8,7 @@
 #include "server.hpp"
 
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/io_context.hpp>
@@ -38,7 +39,6 @@
 #include "types.hpp"
 
 namespace asio = boost::asio;
-namespace mysql = boost::mysql;
 namespace http = boost::beast::http;
 using boost::mysql::error_code;
 using boost::mysql::string_view;
@@ -245,6 +245,12 @@ static http::response<http::string_body> handle_request(
     try
     {
         return handle_request_impl(req, repo, yield);
+    }
+    catch (const boost::mysql::error_with_diagnostics& err)
+    {
+        std::cerr << "Uncaught exception: " << err.what()
+                  << "\nServer diagnostics: " << err.get_diagnostics().server_message() << '\n';
+        return error_response(req, http::status::internal_server_error, "Internal error");
     }
     catch (const std::exception& err)
     {
