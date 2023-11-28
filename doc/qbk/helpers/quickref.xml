@@ -9,7 +9,7 @@
 -->
 
 <informaltable frame="all">
-  <tgroup cols="4">
+  <tgroup cols="3">
     <colspec colname="a"/><colspec colname="b"/><colspec colname="c"/><colspec colname="d"/>
     <tbody><row>
       <entry valign="top">
