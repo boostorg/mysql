@@ -47,7 +47,7 @@ inline handshake_params make_hparams(const connect_params& input) noexcept
         input.username,
         input.password,
         input.database,
-        handshake_params::default_collation,
+        input.connection_collation,
         adjust_ssl_mode(input.ssl, input.server_address.type()),
         input.multi_queries
     );

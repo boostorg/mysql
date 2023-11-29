@@ -111,7 +111,8 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
          std::move(params.username),
          std::move(params.password),
          std::move(params.database),
-         params.ssl,
+         std::uint16_t(0), // use the server's default collation
+            params.ssl,
          params.multi_queries,
          },
         std::move(ssl_ctx),

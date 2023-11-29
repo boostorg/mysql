@@ -45,6 +45,13 @@ struct connect_params
     std::string database;
 
     /**
+     * \brief The ID of the collation to use for the connection.
+     * \details Impacts how text queries and prepared statements are interpreted. Defaults to
+     * `utf8mb4_general_ci`, which is compatible with MySQL 5.x, 8.x and MariaDB.
+     */
+    std::uint16_t connection_collation{45};
+
+    /**
      * \brief Controls whether to use TLS or not.
      * \details
      * See \ref ssl_mode for more information about the possible modes.

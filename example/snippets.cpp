@@ -22,6 +22,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/pool_params.hpp>
+#include <boost/mysql/pooled_connection.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
@@ -37,6 +38,7 @@
 #include <boost/mysql/tcp_ssl.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -55,6 +57,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -95,6 +98,19 @@ using boost::mysql::static_results;
         std::cerr << "Assertion failed: " #expr << std::endl; \
         exit(1);                                              \
     }
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+void run_coro(boost::asio::any_io_executor ex, std::function<boost::asio::awaitable<void>(void)> fn)
+{
+    boost::asio::co_spawn(ex, fn, [](std::exception_ptr ptr) {
+        if (ptr)
+        {
+            std::rethrow_exception(ptr);
+        }
+    });
+    static_cast<boost::asio::io_context&>(ex.context()).run();
+}
+#endif
 
 const char* get_value_from_user() { return ""; }
 int get_int_value_from_user() { return 42; }
@@ -229,21 +245,6 @@ boost::asio::awaitable<void> overview_coro(tcp_ssl_connection& conn)
     // This will throw an error_with_diagnostics in case of failure
     boost::mysql::throw_on_error(ec, diag);
     //]
-}
-
-void run_overview_coro(tcp_ssl_connection& conn)
-{
-    boost::asio::co_spawn(
-        conn.get_executor(),
-        [&conn] { return overview_coro(conn); },
-        [](std::exception_ptr ptr) {
-            if (ptr)
-            {
-                std::rethrow_exception(ptr);
-            }
-        }
-    );
-    static_cast<boost::asio::io_context&>(conn.get_executor().context()).run();
 }
 
 boost::asio::awaitable<void> dont_run()
@@ -409,7 +410,9 @@ void section_overview(tcp_ssl_connection& conn)
         //]
     }
     {
-        run_overview_coro(conn);
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+        run_coro(conn.get_executor(), [&conn] { return overview_coro(conn); });
+#endif
     }
     {
         results r;
@@ -1333,6 +1336,24 @@ boost::asio::awaitable<std::int64_t> get_num_employees(boost::mysql::connection_
     // When conn is destroyed, the connection is returned to the pool
 }
 //]
+
+boost::asio::awaitable<void> return_without_reset(boost::mysql::connection_pool& pool)
+{
+    //[connection_pool_return_without_reset
+    // Get a connection from the pool
+    boost::mysql::pooled_connection conn = co_await pool.async_get_connection(boost::asio::use_awaitable);
+
+    // Use the connection in a way that doesn't mutate session state.
+    // We're not setting variables, preparing statements or starting transactions,
+    // so it's safe to skip reset
+    boost::mysql::results result;
+    co_await conn->async_execute("SELECT COUNT(*) FROM employee", result, boost::asio::use_awaitable);
+
+    // Explicitly return the connection to the pool, skipping reset
+    conn.return_without_reset();
+    //]
+}
+
 #endif
 
 void section_connection_pool(string_view server_hostname, string_view username, string_view password)
@@ -1363,9 +1384,14 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         // the operation ends
         pool.async_run(boost::asio::detached);
         //]
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+        run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
+            co_await get_num_employees(pool);
+        });
+#endif
     }
     {
-        // The I/O context, required by all I/O operations
         boost::asio::io_context ctx;
 
         //[connection_pool_configure_size
@@ -1383,6 +1409,10 @@ void section_connection_pool(string_view server_hostname, string_view username, 
 
         boost::mysql::connection_pool pool(ctx, std::move(params));
         //]
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+        run_coro(ctx.get_executor(), [&pool] { return return_without_reset(pool); });
+#endif
     }
 }
 

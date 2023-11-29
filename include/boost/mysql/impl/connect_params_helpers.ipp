@@ -58,7 +58,7 @@ boost::mysql::detail::stable_connect_params boost::mysql::detail::make_stable(co
             username,
             password,
             database,
-            handshake_params::default_collation,
+            input.connection_collation,
             adjust_ssl_mode(input.ssl, input.server_address.type()),
             input.multi_queries
         ),

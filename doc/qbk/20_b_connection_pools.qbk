@@ -47,7 +47,7 @@ Note that pooling works only with [reflink any_connection].
 
 
 
-[section:size Pool size]
+[section Pool size]
 
 Pools start with a fixed initial size, and will be dynamically resized up
 to an upper limit if required. You can configure these sizes using
@@ -80,6 +80,69 @@ This is how you configure pool sizes:
 [endsect]
 
 
+[section Session state]
+
+MySQL connections hold state. You change session state when you prepare statements,
+create temporary tables, start transactions, or set session variables. When using
+pooled connections, session state can be problematic: if not reset properly,
+state from a previous operation may affect subsequent ones.
+
+After you return a connection to the pool, it uses [refmem any_connection async_reset_connection]
+to wipe session state before the connection can be obtained again. This will deallocate
+prepared statements, rollback uncommited transactions and clear variables.
+
+Resetting a connection is cheap but entails a cost (a roundtrip to the server).
+If you've used a connection and are sure that you didn't mutate session state,
+you can use [refmem pooled_connection return_without_reset] to skip resetting.
+For instance:
+
+[connection_pool_return_without_reset]
+
+Connection reset happens in the background, after the connection has been
+returned, so it does not affect latency. If you're not sure if an operation
+affects state or not, assume it does.
+
+[endsect]
+
+[section Character sets]
+
+[warning
+    The current implementation, together with unintuitive MySQL defaults,
+    can yield to surprising behavior.
+]
+
+When using pooled connections, [*all connections use the server's default character set].
+This is because [refmem any_connection async_reset_connection] discards the character set
+options specified during connection establishment.
+
+You can obtain this character set by running:
+
+```
+SELECT @@global.character_set_client, @@global.character_set_connection, @@global.character_set_results;
+```
+
+MySQL v8.0+ defaults to `utf8mb4`, but older MySQL and MariaDB servers default to
+`latin1`, which is not usually what you want. Issue a __SET_NAMES__ statement
+after you get a connection to change it. [@https://github.com/boostorg/mysql/issues/187 This issue]
+tracks solving this limitation.
+
+[endsect]
+
+[warning
+    Pooled connections will always use the server's default 
+    Resetting a session will restore the connection character set to the server's
+    default. For MySQL 5.7.x, this is usually `latin1`, which is almost never what you want.
+
+]
+
+  * State, character set, and time_zone: `reset_connection` clears session variables,
+    including any character set and time_zone settings. TBC: how do we do this
+  * Prepared statements and `reset_connection`: `reset_connection` will clear any
+    prepared statement. This means you need to prepare them dynamically, and that you
+    don't need to call `async_close_statement` - handled for you.
+
+[endsect]
+
 * When to use
 
 * mention TLS? benchmarks
@@ -88,33 +151,6 @@ This is how you configure pool sizes:
 
 
 
-
-* Session state. MySQL connections hold state. You change session state when preparing statements,
-  create temporary tables, start transactions, set session variables or lock tables.
-  * When re-using connections, session state can be problematic: you get a connection,
-    change some state, return it to the pool. When the connection is get again, if session
-    state hasn't been reset, you may encounter unexpected results (leftovers from the previous logical operation).
-  * The pool will use `any_connection::reset_connection`, to wipe session state. But this is configurable.
-  * There are two ways to return a connection to the pool:
-    * By default (`pooled_connection` destructor) will mark the connection as requiring a reset.
-      After the connection is returned (in background), `reset_connection` will be used to wipe
-      state before the connection can be re-used.
-    * You can opt-out from this behavior by calling `pooled_connection::return_connection(false)`.
-      Connections returned like this become iddle as they are returned - so you're responsible
-      for not leaving any state behind.
-  * Use case for `return_connection(false)`: read-only queries:
-
-```
-  auto conn = co_await pool.async_get_connection(asio::use_awaitable);
-  conn->async_query("SELECT COUNT(*) FROM USERS", result);
-  conn.return_connection(false);
-```
-
-  * State, character set, and time_zone: `reset_connection` clears session variables,
-    including any character set and time_zone settings. TBC: how do we do this
-  * Prepared statements and `reset_connection`: `reset_connection` will clear any
-    prepared statement. This means you need to prepare them dynamically, and that you
-    don't need to call `async_close_statement` - handled for you.
   
 
 * The connection lifecycle. Connections managed by the pool follow this state model:
