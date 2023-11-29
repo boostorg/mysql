@@ -54,6 +54,7 @@
 
 #include <array>
 #include <chrono>
+#include <cstddef>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -1312,6 +1313,28 @@ void section_any_connection(string_view server_hostname, string_view username, s
     }
 }
 
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+//[connection_pool_get_connection
+// Use connection pools for functions that will be called
+// repeatedly during the application lifetime.
+// An HTTP server handler function is a good candidate.
+boost::asio::awaitable<std::int64_t> get_num_employees(boost::mysql::connection_pool& pool)
+{
+    // Get a fresh connection from the pool.
+    // pooled_connection is a proxy to an any_connection object.
+    boost::mysql::pooled_connection conn = co_await pool.async_get_connection(boost::asio::use_awaitable);
+
+    // Use pooled_connection::operator-> to access the underlying any_connection.
+    // Let's use the connection
+    results result;
+    co_await conn->async_execute("SELECT COUNT(*) FROM employee", result, boost::asio::use_awaitable);
+    co_return result.rows().at(0).at(0).as_int64();
+
+    // When conn is destroyed, the connection is returned to the pool
+}
+//]
+#endif
+
 void section_connection_pool(string_view server_hostname, string_view username, string_view password)
 {
     {
@@ -1339,6 +1362,26 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         // The detached completion token means that we don't want to be notified about when
         // the operation ends
         pool.async_run(boost::asio::detached);
+        //]
+    }
+    {
+        // The I/O context, required by all I/O operations
+        boost::asio::io_context ctx;
+
+        //[connection_pool_configure_size
+        boost::mysql::pool_params params;
+
+        // Set the usual params
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = username;
+        params.password = password;
+        params.database = "boost_mysql_examples";
+
+        // Create 10 connections at startup, and allow up to 1000 connections
+        params.initial_size = 10;
+        params.max_size = 1000;
+
+        boost::mysql::connection_pool pool(ctx, std::move(params));
         //]
     }
 }

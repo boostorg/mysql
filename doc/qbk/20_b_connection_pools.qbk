@@ -22,101 +22,72 @@ This is how you can create a pool of connections:
 [connection_pool_create]
 
 [reflink connection_pool] is an I/O object that manages connections.
-It can be constructed from an execution context (like all I/O objects)
+It can be constructed from an executor or execution context (like all I/O objects)
 and a [reflink pool_params] object.
 
 [refmem connection_pool async_run] must be called exactly once per pool.
 This function takes care of actually keeping connections healthy.
 
-We're now ready to obtain connections using [refmem connection_pool async_get_connection]:
+We're now ready to obtain connections using [refmem connection_pool async_get_connection].
+We will use C++20 coroutines to make async code simpler:
+
+[connection_pool_get_connection]
+
+By default, [refmem connection_pool async_run] will run forever. When
+your application exits, you will want to stop it using [refmem connection_pool cancel].
+This is typical in signal handlers, to guarantee a clean shutdown.
+
+Note that pooling works only with [reflink any_connection].
+
+[note
+    `connection_pool` exposes async functions only. This has to do
+    with efficiency and oddities in Boost.Asio executor model.
+    If you need a sync API, please visit [link mysql.connection_pool.sync this section].
+]
 
 
-```
-    io_context ctx;
 
-    pool_params params {
-        host_and_port(my_server_hostname),
-        my_username,
-        my_password,
-        my_database,
-    };
+[section:size Pool size]
 
-    connection_pool pool (ctx, std::move(params));
+Pools start with a fixed initial size, and will be dynamically resized up
+to an upper limit if required. You can configure these sizes using
+[refmem pool_params initial_size] and [refmem pool_params max_size].
 
-    pool.async_run(asio::detached);
+The resizing algorithm works like this:
+* When the pool is created, [refmem pool_params initial_size] number of connections are created and
+  connected (by default, `initial_size` is 1).
+* If a connection is requested, but all available connections are in use, a
+  new one is created, until `max_size` is reached. 
+* If a connection is requested, and there are `max_size` connections in use,
+  [refmem connection_pool async_get_connection] waits for a connection to become available,
+  up to a certain period of time. After this period of time, if no connection is available, the operation fails.
+* Once created, connections never get deallocated.
 
-// ...
+By default, [refmem pool_params max_size] is 151, which is
+MySQL's default value for the [mysqllink server-system-variables.html#sysvar_max_connections `max_connections`]
+system variable, controlling the maximum number of concurrent connections allowed by the server.
 
-asio::awaitable<void> handle_request(
-    connection_pool& pool
-)
-{
-    // Get a connection. pooled_connection is a proxy to an any_connection object
-    pooled_connection conn = pool.async_get_connection(asio::use_awaitable);
+[note
+    Before increasing [refmem pool_params max_size], make sure to also increase
+    the value of `max_connections` in the server. Otherwise, your connections
+    will be rejected by the connection limit.
+]
 
-    // Use it as required
-    results result;
-    conn->async_execute("SELECT * FROM my_table", result, asio::use_awaitable);
+This is how you configure pool sizes:
 
-    // Use the result to compose the response. When conn is destroyed,
-    // the underlying connection is returned to the pool
-}
-```
+[connection_pool_configure_size]
 
-* `pool_params` specifies configuration for the pool. This includes the server hostname,
-  credentials, initial and max size, etc.
-* The pool requires you calling `async_run`. This function takes care of connecting
-  connections, sending keep alives, returning them, and any other cleanup tasks that
-  happen behind the scenes. `async_run` must be called only once.
-* You then call `async_get_connection`. This returns you a `pooled_connection` object.
-  This is a proxy object to an `any_connection`. When it's destroyed, the underlying
-  `any_connection` is returned to the pool.
+[endsect]
 
-* `connection_pool` only works with `any_connection`.
-* `connection_pool` only has async functions, for performance (but see section on sync).
+
+* When to use
+
 * mention TLS? benchmarks
 
-* Cancelling: `async_run` will run forever, by default. If you want it to stop, call `cancel`:
 
-```
-connection_pool pool (ctx, std::move(params));
-pool.async_run(asio::detached);
 
-// wait until the program should exit, e.g. on SIGINT
-// This will make async_run exit
-pool.cancel();
-```
 
-In general, lifetimes are foolproof. `connection_pool`'s internals will be kept alive
-until all `pooled_connection` s are destroyed and all async operations complete.
-Destructor cancels.
 
-* Pool sizes.
-  * Two params control pool size: `initial_size` and `max_size`.
-  * When the pool is created, `initial_size` number of connections are created and
-    connected (by default 1).
-  * If a connection is requested, but all available connections are in use, a
-    new one is created, up to `max_size` (by default 151, which is MySQL's default value for `max_connections`).
-  * If a connection is requested, and all available connections are in use, and there are `max_size`
-    connections, then `async_get_connection` will wait for a connection to become available.
-  * `async_get_connection` admits an optional timeout. If no connection is available after that timeout,
-    the operation fails.
-  * Once created, connections never get deallocated.
-
-```
-    pool_params params {
-        // Hostname, username, password...
-    };
-
-    // Create 10 connections at startup
-    params.initial_size = 10;
-
-    // Increase upper limit. Note that you will need to adjust
-    // your server configuration to allow more connections for this
-    // setting to make sense (TODO: link) - otherwise your connections
-    // will be stuck being rejected by the connection limit.
-    params.max_size = 1000;
-```
 
 * Session state. MySQL connections hold state. You change session state when preparing statements,
   create temporary tables, start transactions, set session variables or lock tables.
@@ -178,5 +149,23 @@ Destructor cancels.
     Just set `server_address` and `ssl_mode` appropriately.
   * By default, TCP connections use SSL. An SSL context is created internally, but can be overriden
     by using `ssl_context`. Can be used to set SSL options.
+  
+
+[section:sync Implementing sync functions]
+
+* Has only async functions (async_run and async_get_connection)
+* Internally async functions must be used to provide timeouts and efficiency
+* Due to oddities in the executor model, there's no way for the library to expose
+  sync functions that work for any executor.
+* But if you're using `io_context` or `thread_pool`, super easy to do so:
+
+TODO: thread-safety
+```
+
+
+```
+
+
+[endsect]
 
 [endsect]

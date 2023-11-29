@@ -24,7 +24,8 @@
 #include "repository.hpp"
 #include "server.hpp"
 
-// This example implements a minimal REST API to manage notes.
+// This example demonstrates how to use a connection_pool.
+// It implements a minimal REST API to manage notes.
 // A note is a simple object containing a user-defined title and content.
 // The REST API offers CRUD operations on such objects:
 //    POST   /notes        Creates a new note.
@@ -39,6 +40,8 @@
 //   match URLs to API endpoints, and invoke the relevant note_repository functions.
 // All communication happens asynchronously. We use stackful coroutines to simplify
 //   development, using boost::asio::spawn and boost::asio::yield_context.
+//
+// Note: connection_pool is an experimental feature.
 
 using namespace notes;
 
