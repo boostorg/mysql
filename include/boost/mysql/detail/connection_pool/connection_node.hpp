@@ -20,6 +20,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool/iddle_connection_list.hpp>
+#include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/detail/connection_pool/task_joiner.hpp>
 
 #include <boost/asio/async_result.hpp>
@@ -278,23 +279,6 @@ public:
     connection_status status() const noexcept { return status_; }
 };
 
-inline error_code to_error_code(
-    std::array<std::size_t, 2> completion_order,
-    error_code io_ec,
-    error_code timer_ec
-) noexcept
-{
-    if (completion_order[0] == 0u)  // I/O finished first
-        return io_ec == asio::experimental::error::channel_cancelled ||
-                       io_ec == asio::experimental::error::channel_closed
-                   ? asio::error::operation_aborted
-                   : io_ec;
-    else if (completion_order[1] == 0u && !timer_ec)  // Timer fired. Operation timed out
-        return client_errc::timeout;
-    else  // Timer was cancelled
-        return asio::error::operation_aborted;
-}
-
 class connection_node : public hook_type
 {
     // Not thread-safe, should only be manipulated within the connection pool strand context
@@ -330,35 +314,6 @@ class connection_node : public hook_type
 
         connection_task_op(connection_node& node) noexcept : node_(node) {}
 
-        template <class Self, class Op>
-        void run_with_timeout(Self& self, Op&& op, std::chrono::steady_clock::duration timeout)
-        {
-            // Set the timeout
-            node_.timer_.expires_after(timeout);
-
-            // Initiate the wait
-            asio::experimental::make_parallel_group(
-                std::forward<Op>(op),
-                node_.timer_.async_wait(asio::deferred)
-            )
-                .async_wait(asio::experimental::wait_for_one(), std::move(self));
-        }
-
-        template <class Self>
-        void operator()(
-            Self& self,
-            std::array<std::size_t, 2> completion_order,
-            error_code io_ec,
-            error_code timer_ec
-        )
-        {
-            // Completion handler for all parallel_group operations involving
-            // an I/O operation returning an error_code (connect, ping, reset or iddle wait)
-            // and a timer. Timer must always be second.
-            // Transform this into a single error_code we can process easier
-            (*this)(self, to_error_code(completion_order, io_ec, timer_ec));
-        }
-
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
@@ -389,10 +344,11 @@ class connection_node : public hook_type
                         // Connect
                         BOOST_ASIO_CORO_YIELD
                         run_with_timeout(
-                            self,
+                            node_.timer_,
+                            node_.params_->connect_timeout,
                             node_.conn_
                                 .async_connect(&node_.params_->connect_config, node_.diag_, asio::deferred),
-                            node_.params_->connect_timeout
+                            std::move(self)
                         );
 
                         // Store the result so get_connection can return meaningful diagnostics
@@ -400,8 +356,7 @@ class connection_node : public hook_type
                     }
                     else if (act == next_connection_action::sleep_connect_failed)
                     {
-                        // Just sleep. The timer already already uses the strand executor,
-                        // no need to bind any executor here.
+                        // Sleep
                         node_.timer_.expires_after(node_.params_->retry_interval);
 
                         BOOST_ASIO_CORO_YIELD
@@ -411,27 +366,30 @@ class connection_node : public hook_type
                     {
                         BOOST_ASIO_CORO_YIELD
                         run_with_timeout(
-                            self,
+                            node_.timer_,
+                            node_.params_->ping_timeout,
                             node_.conn_.async_ping(asio::deferred),
-                            node_.params_->ping_timeout
+                            std::move(self)
                         );
                     }
                     else if (act == next_connection_action::reset)
                     {
                         BOOST_ASIO_CORO_YIELD
                         run_with_timeout(
-                            self,
+                            node_.timer_,
+                            node_.params_->ping_timeout,
                             node_.conn_.async_reset_connection(asio::deferred),
-                            node_.params_->ping_timeout
+                            std::move(self)
                         );
                     }
                     else if (act == next_connection_action::iddle_wait)
                     {
                         BOOST_ASIO_CORO_YIELD
                         run_with_timeout(
-                            self,
+                            node_.timer_,
+                            node_.params_->ping_interval,
                             node_.collection_channel_.async_receive(asio::deferred),
-                            node_.params_->ping_interval
+                            std::move(self)
                         );
 
                         // Iddle wait may yield a collection state. Load it and pass it to the sans-io

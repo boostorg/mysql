@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_connection_pool_server_hpp
+#ifndef BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_SERVER_HPP
+#define BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_SERVER_HPP
 
-#ifndef BOOST_MYSQL_EXAMPLE_ORDER_MANAGEMENT_HTTP_SERVER_HPP
-#define BOOST_MYSQL_EXAMPLE_ORDER_MANAGEMENT_HTTP_SERVER_HPP
+//[example_connection_pool_server_hpp
 
 #include <boost/mysql/connection_pool.hpp>
 
@@ -41,6 +41,6 @@ boost::system::error_code launch_server(boost::asio::io_context& ctx, std::share
 
 }  // namespace notes
 
-#endif
-
 //]
+
+#endif

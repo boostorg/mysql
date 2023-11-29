@@ -17,6 +17,7 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool/connection_node.hpp>
 #include <boost/mysql/detail/connection_pool/iddle_connection_list.hpp>
+#include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/detail/connection_pool/task_joiner.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
@@ -150,17 +151,6 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         }
 
         template <class Self>
-        void operator()(
-            Self& self,
-            std::array<std::size_t, 2> completion_order,
-            error_code channel_ec,
-            error_code timer_ec
-        )
-        {
-            (*this)(self, to_error_code(completion_order, channel_ec, timer_ec));
-        }
-
-        template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
             BOOST_ASIO_CORO_REENTER(*this)
@@ -210,14 +200,13 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 while (true)
                 {
                     // Wait to be notified, or until a timeout happens
-                    timer_->expires_at(timeout_tp_);
-
                     BOOST_ASIO_CORO_YIELD
-                    asio::experimental::make_parallel_group(
+                    run_with_timeout(
+                        *timer_,
+                        timeout_tp_,
                         obj_->shared_st_.iddle_list.async_wait(asio::deferred),
-                        timer_->async_wait(asio::deferred)
-                    )
-                        .async_wait(asio::experimental::wait_for_one(), std::move(self));
+                        std::move(self)
+                    );
 
                     // Check result
                     if (ec)

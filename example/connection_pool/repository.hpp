@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_connection_pool_repository_hpp
+#ifndef BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_REPOSITORY_HPP
+#define BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_REPOSITORY_HPP
 
-#ifndef BOOST_MYSQL_EXAMPLE_ORDER_MANAGEMENT_HTTP_BUSINESS_HPP
-#define BOOST_MYSQL_EXAMPLE_ORDER_MANAGEMENT_HTTP_BUSINESS_HPP
+//[example_connection_pool_repository_hpp
 
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -67,6 +67,6 @@ public:
 
 }  // namespace notes
 
-#endif
-
 //]
+
+#endif
