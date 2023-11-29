@@ -16,6 +16,7 @@
 #include <boost/asio/experimental/cancellation_condition.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/optional/optional.hpp>
 
 #include <array>
 #include <chrono>
@@ -54,14 +55,22 @@ void run_with_timeout_impl(asio::steady_timer& timer, Op&& op, Handler&& handler
 
 template <class Op, class Handler>
 void run_with_timeout(
-    asio::steady_timer& timer,
-    std::chrono::steady_clock::time_point tp,
+    asio::steady_timer* timer,
+    boost::optional<std::chrono::steady_clock::time_point> tp,
     Op&& op,
     Handler&& handler
 )
 {
-    timer.expires_at(tp);
-    run_with_timeout_impl(timer, std::forward<Op>(op), std::forward<Handler>(handler));
+    if (tp)
+    {
+        BOOST_ASSERT(timer != nullptr);
+        timer->expires_at(*tp);
+        run_with_timeout_impl(*timer, std::forward<Op>(op), std::forward<Handler>(handler));
+    }
+    else
+    {
+        std::forward<Op>(op)(std::forward<Handler>(handler));
+    }
 }
 
 template <class Op, class Handler>
@@ -72,8 +81,15 @@ void run_with_timeout(
     Handler&& handler
 )
 {
-    timer.expires_after(dur);
-    run_with_timeout_impl(timer, std::forward<Op>(op), std::forward<Handler>(handler));
+    if (dur.count() > 0)
+    {
+        timer.expires_after(dur);
+        run_with_timeout_impl(timer, std::forward<Op>(op), std::forward<Handler>(handler));
+    }
+    else
+    {
+        std::forward<Op>(op)(std::forward<Handler>(handler));
+    }
 }
 
 }  // namespace detail

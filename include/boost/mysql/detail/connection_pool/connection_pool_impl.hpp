@@ -23,6 +23,7 @@
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
@@ -37,6 +38,7 @@
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <boost/optional/optional.hpp>
 
 #include <array>
 #include <chrono>
@@ -122,17 +124,19 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
     struct get_connection_op : asio::coroutine
     {
         std::shared_ptr<connection_pool_impl> obj_;
-        std::chrono::steady_clock::time_point timeout_tp_;
+        boost::optional<std::chrono::steady_clock::time_point> timeout_tp_;
         diagnostics* diag_;
-        std::unique_ptr<asio::steady_timer> timer_;
+        std::shared_ptr<asio::steady_timer> timer_;
 
         get_connection_op(
             std::shared_ptr<connection_pool_impl> obj,
             std::chrono::steady_clock::duration timeout,
             diagnostics* diag
         ) noexcept
-            : obj_(std::move(obj)), timeout_tp_(std::chrono::steady_clock::now() + timeout), diag_(diag)
+            : obj_(std::move(obj)), diag_(diag)
         {
+            if (timeout.count() > 0)
+                timeout_tp_ = std::chrono::steady_clock::now() + timeout;
         }
 
         template <class Self>
@@ -192,8 +196,13 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 }
 
                 // Allocate a timer to perform waits.
-                // TODO: do this correctly
-                timer_.reset(new asio::steady_timer(obj_->ex_));
+                if (timeout_tp_)
+                {
+                    timer_ = std::allocate_shared<asio::steady_timer>(
+                        asio::get_associated_allocator(self),
+                        obj_->ex_
+                    );
+                }
 
                 // Wait for a connection to become iddle and return it
                 while (true)
@@ -201,7 +210,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     // Wait to be notified, or until a timeout happens
                     BOOST_ASIO_CORO_YIELD
                     run_with_timeout(
-                        *timer_,
+                        timer_.get(),
                         timeout_tp_,
                         obj_->shared_st_.iddle_list.async_wait(asio::deferred),
                         std::move(self)
