@@ -90,6 +90,8 @@ state from a previous operation may affect subsequent ones.
 After you return a connection to the pool, it uses [refmem any_connection async_reset_connection]
 to wipe session state before the connection can be obtained again. This will deallocate
 prepared statements, rollback uncommited transactions and clear variables.
+In particular, you don't need to call [refmem any_connection async_close_statement]
+to deallocate statements.
 
 Resetting a connection is cheap but entails a cost (a roundtrip to the server).
 If you've used a connection and are sure that you didn't mutate session state,
@@ -128,20 +130,35 @@ tracks solving this limitation.
 
 [endsect]
 
-[warning
-    Pooled connections will always use the server's default 
-    Resetting a session will restore the connection character set to the server's
-    default. For MySQL 5.7.x, this is usually `latin1`, which is almost never what you want.
+[section Connection lifecycle]
 
-]
+The behavior already explained can be summarized using a state model like the following:
 
-  * State, character set, and time_zone: `reset_connection` clears session variables,
-    including any character set and time_zone settings. TBC: how do we do this
-  * Prepared statements and `reset_connection`: `reset_connection` will clear any
-    prepared statement. This means you need to prepare them dynamically, and that you
-    don't need to call `async_close_statement` - handled for you.
+[$mysql/images/pooled_connection_lifecycle.svg [align center]]
+
+In short:
+
+* When a connection is created, it goes into the `pending_connect` state.
+* Connection establishment is attempted. If it succeeds, the connection becomes `iddle`.
+  Otherwise, it stays `pending_connect`, and another attempt will be performed
+  after [refmem pool_params retry_interval] has ellapsed.
+* `iddle` connections can be retrieved by [refmem connection_pool async_get_connection],
+  and they become `in_use`.
+* If a connection is returned by [reflink pooled_connection return_without_reset],
+  it becomes `iddle` again.
+* If a connection is returned by [reflink pooled_connection]'s destructor, it becomes
+  `pending_reset`.
+* [refmem any_connection async_reset_connection] is applied to `pending_reset` connections.
+  On success, they become `iddle` again. Otherwise, they become `pending_connect` and will
+  be reconnected.
+* If a connection stays `iddle` for [refmem pool_params ping_interval], it becomes `pending_ping`.
+  At this point, the connection is probed. If it's alive, it will return to being `iddle`.
+  Otherwise, it becomes `pending_connect` to be reconnected. Pings can be disabled by
+  setting [refmem pool_params ping_interval] to zero.
 
 [endsect]
+
+
 
 * When to use
 
@@ -151,23 +168,6 @@ tracks solving this limitation.
 
 
 
-  
-
-* The connection lifecycle. Connections managed by the pool follow this state model:
-  * They're created, initially or because no connections were available.
-  * They're connected.
-  * If connect fails, we wait some time, then try to connect again. This period is
-    given by `retry_interval`.
-  * After successful connection, they become iddle. At this point, they're ready to get picked by `async_get_connection`.
-  * When they're picked, they become in use.
-  * When you return them, if you marked them as `reset=false`, they become iddle.
-  * If `reset=true`, they become pending reset.
-  * After they are reset, they become iddle again.
-  * If a connection stays iddle for a very long time, by default, the pool will run a healthcheck
-    (`async_ping`). After the ping period ellapses, they become pending ping, pinged, and back to iddle.
-    This prevents connections from closing, and helps detect network problems to attempt reconnections.
-    Ping period (`ping_interval`) is 1h by default, and can be disabled by setting it to 0.
-  * If ping or reset fail, the connection is marked as failed, and the reconnect loop starts again.
 
 * Thread-safety. By default, `connection_pool` is thread-safe. You can use it in a MT context,
   share a single instance between threads, without race conditions. How this works:
