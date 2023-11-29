@@ -85,7 +85,7 @@ public:
      * \n
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
      * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
-     * with `asio::error::operation_aborted`.
+     * with \ref client_errc::cancelled.
      * \n
      * The constructed pool is always valid (`this->valid() == true`).
      *
@@ -293,7 +293,7 @@ public:
      *     happens because connection establishment failed.
      * \li \ref client_errc::timeout, if a timeout happens for any other reason
      *     (e.g. all connections are in use and limits forbid creating more).
-     * \li `asio::error::operation_aborted` if \ref cancel was called before or while
+     * \li \ref client_errc::cancelled if \ref cancel was called before or while
      *     the operation is outstanding, or if the pool is not running.
      */
     template <
@@ -318,9 +318,9 @@ public:
      * \li Stops the currently outstanding \ref async_run operation, if any, which will complete
      *     with a success error code.
      * \li Cancels any outstanding \ref async_get_connection operations, which will complete with
-     *     `asio::error::operation_aborted`.
+     *     \ref client_errc::cancelled.
      * \li Marks the pool as cancelled. Successive `async_get_connection` calls will complete
-     *     immediately with `asio::error::operation_aborted`.
+     *     immediately with \ref client_errc::cancelled.
      * \n
      * This function will return immediately, without waiting for the cancelled operations to complete.
      * \n

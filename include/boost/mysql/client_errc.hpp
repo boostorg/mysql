@@ -70,6 +70,9 @@ enum class client_errc : int
 
     /// An operation controlled by Boost.MySQL timed out.
     timeout,
+
+    /// An operation controlled by Boost.MySQL was cancelled.
+    cancelled,
 };
 
 BOOST_MYSQL_DECL

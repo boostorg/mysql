@@ -154,7 +154,7 @@ inline bool is_pending(connection_status status) noexcept
 
 enum class next_connection_action
 {
-    none,
+    invalid,
     connect,
     sleep_connect_failed,
     iddle_wait,
@@ -188,18 +188,10 @@ public:
                     BOOST_ASIO_CORO_YIELD return next_connection_action::connect;
                     if (ec)
                     {
-                        // We were cancelled, exit
-                        if (ec == asio::error::operation_aborted)
-                            return next_connection_action::none;
-
                         // Sleep
                         BOOST_ASIO_CORO_YIELD return next_connection_action::sleep_connect_failed;
 
-                        // We were cancelled, exit
-                        if (ec == asio::error::operation_aborted)
-                            return next_connection_action::none;
-
-                        // We're still pending connect, just retry. No need to close here.
+                        // We're still pending connect, just retry.
                     }
                     else
                     {
@@ -212,12 +204,7 @@ public:
                     // Iddle wait. Note that, if a connection is taken, status_ will be
                     // changed externally, not by this coroutine. This saves rescheduling.
                     BOOST_ASIO_CORO_YIELD return next_connection_action::iddle_wait;
-                    if (ec == asio::error::operation_aborted)
-                    {
-                        // We were cancelled. Return
-                        return next_connection_action::none;
-                    }
-                    else if (col_st != collection_state::none)
+                    if (col_st != collection_state::none)
                     {
                         // The user has notified us to collect the connection.
                         // This happens after they return the connection to the pool.
@@ -247,10 +234,6 @@ public:
                     // Check result
                     if (ec)
                     {
-                        // The operation was cancelled. Exit
-                        if (ec == asio::error::operation_aborted)
-                            return next_connection_action::none;
-
                         // The operation had an error but weren't cancelled. Reconnect
                         status_ = connection_status::pending_connect;
                     }
@@ -267,7 +250,7 @@ public:
             }
         }
 
-        return next_connection_action::none;
+        return next_connection_action::invalid;
     }
 
     void mark_as_in_use() noexcept
@@ -288,6 +271,7 @@ class connection_node : public hook_type
     boost::asio::steady_timer timer_;
     conn_shared_state* shared_st_;
     diagnostics diag_;
+    bool cancelled_{false};
 
     // Thread-safe, may be called from any thread
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -330,6 +314,14 @@ class connection_node : public hook_type
 
                 while (true)
                 {
+                    // Check for cancellation
+                    if (node_.cancelled_)
+                    {
+                        node_.shared_st_->wait_gp.on_task_finish();
+                        self.complete(error_code());
+                        return;
+                    }
+
                     // Invoke the sans-io algorithm
                     old_status = node_.sansio_impl_.status();
                     act = node_.sansio_impl_.resume(ec, col_st);
@@ -396,11 +388,9 @@ class connection_node : public hook_type
                         // algorithm.
                         col_st = node_.collection_state_.exchange(collection_state::none);
                     }
-                    else if (act == next_connection_action::none)
+                    else
                     {
-                        node_.shared_st_->wait_gp.on_task_finish();
-                        self.complete(error_code());
-                        return;
+                        BOOST_ASSERT(false);
                     }
                 }
             }
@@ -424,6 +414,7 @@ public:
 
     void stop_task()
     {
+        cancelled_ = true;
         timer_.cancel();
         collection_channel_.close();
     }

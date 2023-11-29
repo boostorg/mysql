@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(cancel_get_connection)
 
         // Try to get a new one. This will not complete, since there is no room for more connections
         pool.async_get_connection(diag, [&](error_code ec, pooled_connection conn) {
-            BOOST_TEST(ec == boost::asio::error::operation_aborted);
+            BOOST_TEST(ec == client_errc::cancelled);
             BOOST_TEST(!conn.valid());
             getconn_chan.try_send(error_code());
         });
@@ -273,10 +273,10 @@ BOOST_AUTO_TEST_CASE(cancel_get_connection)
         run_chan.async_receive(yield);
         getconn_chan.async_receive(yield);
 
-        // Calling get_connection after cancel will return operation_aborted
+        // Calling get_connection after cancel will return client_errc::cancelled
         conn = pool.async_get_connection(diag, yield[ec]);
         BOOST_TEST(!conn.valid());
-        BOOST_TEST(ec == boost::asio::error::operation_aborted);
+        BOOST_TEST(ec == client_errc::cancelled);
     });
 }
 

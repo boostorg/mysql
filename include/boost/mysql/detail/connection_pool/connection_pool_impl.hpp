@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
@@ -29,6 +30,7 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
+#include <boost/asio/experimental/channel_error.hpp>
 #include <boost/asio/experimental/concurrent_channel.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/post.hpp>
@@ -122,9 +124,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         std::shared_ptr<connection_pool_impl> obj_;
         std::chrono::steady_clock::time_point timeout_tp_;
         diagnostics* diag_;
-        connection_node* result_;
         std::unique_ptr<asio::steady_timer> timer_;
-        error_code stored_ec_;
 
         get_connection_op(
             std::shared_ptr<connection_pool_impl> obj,
@@ -144,15 +144,17 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         }
 
         template <class Self>
-        void complete_success(Self& self)
+        void complete_success(Self& self, connection_node& node)
         {
-            BOOST_ASSERT(result_ != nullptr);
-            do_complete(self, error_code(), access::construct<pooled_connection>(*result_, std::move(obj_)));
+            node.mark_as_in_use();
+            do_complete(self, error_code(), access::construct<pooled_connection>(node, std::move(obj_)));
         }
 
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
+            connection_node* node{};
+
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Clear diagnostics
@@ -164,21 +166,18 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 asio::post(obj_->ex_, std::move(self));
 
                 // If we're not running yet, or were cancelled, just return
-                // TODO: for initial, we could wait the timeout, and if nothing
-                // happens after the timeout, issue a descriptive error
                 if (obj_->state_ != state_t::running)
                 {
-                    do_complete(self, asio::error::operation_aborted, pooled_connection());
+                    do_complete(self, client_errc::cancelled, pooled_connection());
                     return;
                 }
 
                 // Try to get a connection without blocking
-                result_ = obj_->shared_st_.iddle_list.try_get_one();
-                if (result_)
+                node = obj_->shared_st_.iddle_list.try_get_one();
+                if (node)
                 {
                     // There was a connection. Done.
-                    result_->mark_as_in_use();
-                    complete_success(self);
+                    complete_success(self, *node);
                     return;
                 }
 
@@ -215,27 +214,26 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                         {
                             // The operation timed out. Attempt to provide as better diagnostics as we can.
                             // If no diagnostics are available, just leave the timeout error as-is.
-                            stored_ec_ = obj_->shared_st_.iddle_list.last_error();
+                            ec = obj_->shared_st_.iddle_list.last_error();
                             if (diag_)
                                 *diag_ = obj_->shared_st_.iddle_list.last_diagnostics();
                         }
-                        else
+                        else if (ec == asio::experimental::channel_errc::channel_closed)
                         {
-                            stored_ec_ = ec;
+                            // Having the channel closed means that the pool is no longer running
+                            ec = client_errc::cancelled;
                         }
 
-                        do_complete(self, stored_ec_, pooled_connection());
+                        do_complete(self, ec, pooled_connection());
                         return;
                     }
 
                     // Attempt to get a node. This will almost likely succeed,
                     // but the loop guards against possible race conditions.
-                    result_ = obj_->shared_st_.iddle_list.try_get_one();
-                    if (result_)
+                    node = obj_->shared_st_.iddle_list.try_get_one();
+                    if (node)
                     {
-                        result_->mark_as_in_use();
-
-                        complete_success(self);
+                        complete_success(self, *node);
                         return;
                     }
                 }

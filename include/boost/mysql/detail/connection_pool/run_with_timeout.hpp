@@ -14,7 +14,6 @@
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/experimental/cancellation_condition.hpp>
-#include <boost/asio/experimental/channel_error.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/steady_timer.hpp>
 
@@ -34,14 +33,11 @@ inline error_code to_error_code(
 ) noexcept
 {
     if (completion_order[0] == 0u)  // I/O finished first
-        return io_ec == asio::experimental::error::channel_cancelled ||
-                       io_ec == asio::experimental::error::channel_closed
-                   ? asio::error::operation_aborted
-                   : io_ec;
+        return io_ec;
     else if (completion_order[1] == 0u && !timer_ec)  // Timer fired. Operation timed out
         return client_errc::timeout;
     else  // Timer was cancelled
-        return asio::error::operation_aborted;
+        return client_errc::cancelled;
 }
 
 // Timer's expiry should be set by the caller

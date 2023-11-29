@@ -58,6 +58,7 @@ const char* error_to_string(client_errc error) noexcept
         return "The StaticRow type passed to read_some_rows does not correspond to the resultset type being "
                "read";
     case boost::mysql::client_errc::timeout: return "An operation controlled by Boost.MySQL timed out";
+    case boost::mysql::client_errc::cancelled: return "An operation controlled by Boost.MySQL was cancelled";
 
     default: return "<unknown MySQL client error>";
     }
