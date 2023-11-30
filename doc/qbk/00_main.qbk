@@ -141,8 +141,10 @@ END
 [include 17_reconnecting.qbk]
 [include 18_charsets.qbk]
 [include 19_time_types.qbk]
-[include 20_examples.qbk]
-[include 21_tests.qbk]
+[include 20_any_connection.qbk]
+[include 21_connection_pool.qbk]
+[include 22_examples.qbk]
+[include 23_tests.qbk]
 
 
 [section:ref Reference]
