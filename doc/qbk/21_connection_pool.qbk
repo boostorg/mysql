@@ -123,6 +123,7 @@ options specified during connection establishment.
 
 You can obtain this character set by running:
 
+[!teletype]
 ```
 SELECT @@global.character_set_client, @@global.character_set_connection, @@global.character_set_results;
 ```
@@ -148,7 +149,7 @@ In short:
   after [refmem pool_params retry_interval] has ellapsed.
 * `iddle` connections can be retrieved by [refmem connection_pool async_get_connection],
   and they become `in_use`.
-* If a connection is returned by [reflink pooled_connection return_without_reset],
+* If a connection is returned by [refmem pooled_connection return_without_reset],
   it becomes `iddle` again.
 * If a connection is returned by [reflink pooled_connection]'s destructor, it becomes
   `pending_reset`.
@@ -169,7 +170,7 @@ be easily made thread-safe by using:
 
 [connection_pool_thread_safe]
 
-This works by using strands. Recall that a [asioreflink strand] is Asio's method to enable concurrency
+This works by using strands. Recall that a [asioreflink strand strand] is Asio's method to enable concurrency
 without explicit locking. A strand is an executor that wraps another executor.
 All handlers dispatched through a strand will be serialized: no two handlers
 will be run in parallel, which avoids data races.
@@ -196,7 +197,7 @@ falling back to plaintext TLS if it does not.
 You can use [refmem pool_params ssl_ctx] to configure TLS options for
 connections created by the pool. If no context is provided, one will be created for you internally.
 
-[endsec]
+[endsect]
 
 [section:sync Implementing sync functions]
 
