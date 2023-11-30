@@ -8,10 +8,14 @@
 [section:connection_pool Connection pools]
 [nochunk]
 
-Establishing a MySQL session is expensive. If you create, connect and destroy a connection
-every time you need to execute a query, your application performance may degrade.
-Connection pooling can boost your performance by maintaining long-lived
-sessions that you can reuse.
+Connection pooling is a technique where several long-lived connections
+are re-used for independent logical operations. When compared to
+establishing individual connections, it has the following benefits:
+
+* It provides better performance. Please consult [link mysql.connection_pool.benchmarks our benchmarks]
+  for more info.
+* It simplifies connection management. The connection pool will establish sessions,
+  perform retries and apply timeouts out of the box.
 
 [note
     This feature is experimental. Its API may change in subsequent releases.
@@ -194,28 +198,23 @@ connections created by the pool. If no context is provided, one will be created 
 
 [endsec]
 
-
-
-* When to use
-*  benchmarks
-
-
-
-
-
 [section:sync Implementing sync functions]
 
-* Has only async functions (async_run and async_get_connection)
-* Internally async functions must be used to provide timeouts and efficiency
-* Due to oddities in the executor model, there's no way for the library to expose
-  sync functions that work for any executor.
-* But if you're using `io_context` or `thread_pool`, super easy to do so:
+`connection_pool` is internally implemented in terms of `any_connection` async functions because:
 
-TODO: thread-safety
-```
+* When managing hundrends of connections, it's much more efficient to use
+  async functions and a limited number of threads, than a thread per connection.
+* Sync functions don't allow setting timeouts.
+
+You can build a sync connection pool on top of `connection_pool` using code like this:
+
+[connection_pool_sync]
+
+[endsect]
+
+[section:benchmarks Benchmarks]
 
 
-```
 
 
 [endsect]

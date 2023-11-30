@@ -48,6 +48,8 @@
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/asio/this_coro.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/asio/use_future.hpp>
 #include <boost/config.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/describe/class.hpp>
@@ -1353,8 +1355,77 @@ boost::asio::awaitable<void> return_without_reset(boost::mysql::connection_pool&
     conn.return_without_reset();
     //]
 }
-
 #endif
+
+//[connection_pool_sync
+// Wraps a connection_pool and offers a sync interface.
+// sync_pool is thread-safe
+class sync_pool
+{
+    // A thread pool with a single thread. This is used to
+    // run the connection pool. The thread is automatically
+    // joined when sync_pool is destroyed.
+    boost::asio::thread_pool thread_pool_{1};
+
+    // The async connection pool
+    boost::mysql::connection_pool conn_pool_;
+
+public:
+    // Constructor: constructs the connection_pool object from
+    // the single-thread pool and calls async_run.
+    // The pool has a single thread, which creates an implicit strand.
+    // There is no need to use pool_executor_params::thread_safe
+    sync_pool(boost::mysql::pool_params params) : conn_pool_(thread_pool_, std::move(params))
+    {
+        // Run the pool in the background (this is performed by the thread_pool thread).
+        // When sync_pool is destroyed, this task will be stopped and joined automatically.
+        conn_pool_.async_run(boost::asio::detached);
+    }
+
+    // Retrieves a connection from the pool (error code version)
+    boost::mysql::pooled_connection get_connection(
+        boost::mysql::error_code& ec,
+        boost::mysql::diagnostics& diag,
+        std::chrono::steady_clock::duration timeout = std::chrono::seconds(30)
+    )
+    {
+        // The completion token to use for the async initiation function.
+        // use_future will make the async function return a std::future object, which will
+        // become ready when the operation completes.
+        // as_tuple prevents the future from throwing on error, and packages the result as a tuple.
+        // The returned future will be std::future<std::tuple<error_code, pooled_connection>>.
+        constexpr auto completion_token = boost::asio::as_tuple(boost::asio::use_future);
+
+        // We will use std::tie to decompose the tuple into its components.
+        // We need to declare the connection before using std::tie
+        boost::mysql::pooled_connection res;
+
+        // async_get_connection returns a future. Calling std::future::get will
+        // wait for the future to become ready
+        std::tie(ec, res) = conn_pool_.async_get_connection(timeout, diag, completion_token).get();
+
+        // Done!
+        return res;
+    }
+
+    // Retrieves a connection from the pool (exception version)
+    boost::mysql::pooled_connection get_connection(
+        std::chrono::steady_clock::duration timeout = std::chrono::seconds(30)
+    )
+    {
+        // Call the error code version
+        boost::mysql::error_code ec;
+        boost::mysql::diagnostics diag;
+        auto res = get_connection(ec, diag, timeout);
+
+        // This will throw boost::mysql::error_with_diagnostics on error
+        boost::mysql::throw_on_error(ec, diag);
+
+        // Done
+        return res;
+    }
+};
+//]
 
 void section_connection_pool(string_view server_hostname, string_view username, string_view password)
 {
