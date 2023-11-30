@@ -33,6 +33,10 @@ enum class address_type
  * \details
  * This is an owning type with value semantics.
  * \see any_address
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class host_and_port
 {

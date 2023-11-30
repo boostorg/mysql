@@ -38,6 +38,10 @@ namespace mysql {
  * \n
  * Distinct objects: safe. \n
  * Shared objects: unsafe. \n
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class pooled_connection
 {

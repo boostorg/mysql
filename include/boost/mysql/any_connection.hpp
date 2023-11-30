@@ -37,7 +37,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -50,6 +49,10 @@ class static_execution_state;
 
 /**
  * \brief (EXPERIMENTAL) Configuration parameters that can be passed to \ref any_connection's constructor.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 struct any_connection_params
 {
@@ -102,6 +105,10 @@ struct any_connection_params
  * Shared objects: unsafe. \n
  * This class is <b>not thread-safe</b>: for a single object, if you
  * call its member functions concurrently from separate threads, you will get a race condition.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class any_connection
 {

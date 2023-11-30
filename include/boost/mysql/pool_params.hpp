@@ -34,6 +34,10 @@ namespace mysql {
  * \n
  * You may use \ref thread_safe to create an instance of this class
  * that makes pools thread-safe.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class pool_executor_params
 {
@@ -120,6 +124,10 @@ public:
  * \brief (EXPERIMENTAL) Configuration parameters for \ref connection_pool.
  * \details
  * This is an owning type.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 struct pool_params
 {

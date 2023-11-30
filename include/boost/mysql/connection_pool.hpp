@@ -64,6 +64,10 @@ namespace mysql {
  * by other objects and operations (like \ref pooled_connection). This object
  * will be kept alive using shared ownership semantics even after the `connection_pool`
  * object is destroyed. This results in intuitive lifetime rules.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class connection_pool
 {
