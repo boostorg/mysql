@@ -158,6 +158,35 @@ In short:
 
 [endsect]
 
+[section Thread-safety and executors]
+
+By default, [reflink connection_pool] is [*NOT thread-safe], but it can
+be easily made thread-safe by using:
+
+[connection_pool_thread_safe]
+
+This works by using strands. Recall that a [asioreflink strand] is Asio's method to enable concurrency
+without explicit locking. A strand is an executor that wraps another executor.
+All handlers dispatched through a strand will be serialized: no two handlers
+will be run in parallel, which avoids data races.
+
+We're passing a [reflink pool_executor_params] instance to the pool's
+constructor, which contains two executors:
+
+* [refmem pool_executor_params pool_executor] is used to run [refmem connection_pool async_run]
+  and [refmem connection_pool async_get_connection] intermediate handlers. By using
+  [refmem pool_executor_params thread_safe], a strand is created, and all these handlers
+  will be serialized.
+* [refmem pool_executor_params connection_executor] is used to construct connections.
+  By default, this won't be wrapped in any strand, and inividual connections will not be thread-safe.
+
+
+
+
+
+
+[endsect]
+
 
 
 * When to use
@@ -169,16 +198,6 @@ In short:
 
 
 
-* Thread-safety. By default, `connection_pool` is thread-safe. You can use it in a MT context,
-  share a single instance between threads, without race conditions. How this works:
-  * The pool will internally create an `asio::strand` around the executor you pass to the pool's ctor.
-  * All functions are either inherently thread-safe (e.g. use `std::amotic<T>`), or will use
-    `asio::post`/`asio::dispatch` to ensure that all the intermediate handlers are run in a thread-safe manner.
-  * Individual connections returned by the pool are *NOT* thread-safe. You're responsible for
-    not incurring in race-conditions with them. They are constructed using the executor you pass.
-  * This thread-safety mechanism can be disabled using `enable_thread_safety=false`. It's enabled by
-    default. By disabling it, you're responsible for keeping thread-safety. Can be used to increase
-    performance or to build custom thread-safety mechanisms on top.
 
 * Transport types and SSL.
   * The connection pool uses `any_connection`, so it can be used with TCP, TCP with SSL and UNIX sockets.

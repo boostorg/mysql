@@ -1414,6 +1414,31 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         run_coro(ctx.get_executor(), [&pool] { return return_without_reset(pool); });
 #endif
     }
+    {
+        //[connection_pool_thread_safe
+        // The I/O context, required by all I/O operations
+        boost::asio::io_context ctx;
+
+        // The usual pool configuration params
+        boost::mysql::pool_params params;
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = username;
+        params.password = password;
+        params.database = "boost_mysql_examples";
+
+        // By passing pool_executor_params::thread_safe to connection_pool,
+        // we make all its member functions thread-safe.
+        // This works by creating a strand
+        boost::mysql::connection_pool pool(
+            boost::mysql::pool_executor_params::thread_safe(ctx.get_executor()),
+            std::move(params)
+        );
+
+        // We can now pass a reference to pool to other threads,
+        // and call async_get_connection concurrently without problem.
+        // Inidivudal connections are still not thread-safe.
+        //]
+    }
 }
 
 void main_impl(int argc, char** argv)

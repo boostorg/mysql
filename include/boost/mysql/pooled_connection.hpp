@@ -111,6 +111,12 @@ public:
      * If `this->valid() == true`, returns the owned connection to the pool
      * and marks it as pending reset. If your connection doesn't need to be reset
      * (e.g. because you didn't mutate session state), use \ref return_without_reset.
+     *
+     * \par Thead-safety
+     * If the \ref connection_pool object that `*this` references has been constructed
+     * with adequate executor configuration, this function is safe to be called concurrently
+     * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
+     * \ref connection_pool::cancel and \ref return_without_reset on other `pooled_connection` objects.
      */
     ~pooled_connection() = default;
 
@@ -132,11 +138,6 @@ public:
      *
      * \par Exception safety
      * No-throw guarantee.
-     *
-     * \par Thread-safety
-     * The returned connection doesn't have any synchronization mechanisms built-in.
-     * It is unsafe to call functions concurrently on the same object from different
-     * threads. Treat it as if it was a \ref any_connection you created manually.
      */
     any_connection& get() noexcept { return impl_->connection(); }
 
@@ -171,6 +172,12 @@ public:
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Thead-safety
+     * If the \ref connection_pool object that `*this` references has been constructed
+     * with adequate executor configuration, this function is safe to be called concurrently
+     * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
+     * \ref connection_pool::cancel and \ref ~pooled_connection (on other objects).
      */
     void return_without_reset() noexcept
     {

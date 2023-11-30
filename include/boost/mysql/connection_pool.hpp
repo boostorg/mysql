@@ -51,10 +51,10 @@ namespace mysql {
  * This is a move-only type.
  *
  * \par Thread-safety
- * By default, connection pools are *not* thread-safe, but they can
+ * By default, connection pools are *not* thread-safe, but most functions can
  * be made thread-safe by passing an adequate \ref pool_executor_params objects
  * to the constructor. See \ref pool_executor_params::thread_safe and the discussion
- * and examples for details.
+ * for details.
  * \n
  * Distinct objects: safe. \n
  * Shared objects: unsafe, unless passing adequate values to the constructor.
@@ -117,6 +117,11 @@ public:
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Thead-safety
+     * This function is never thread-safe, regardless of the executor
+     * configuration passed to the constructor. Calling this function
+     * concurrently with any other function introduces data races.
      */
     connection_pool(connection_pool&& other) = default;
 
@@ -133,6 +138,11 @@ public:
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Thead-safety
+     * This function is never thread-safe, regardless of the executor
+     * configuration passed to the constructor. Calling this function
+     * concurrently with any other function introduces data races.
      */
     connection_pool& operator=(connection_pool&& other) = default;
 
@@ -156,6 +166,11 @@ public:
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Thead-safety
+     * This function is never thread-safe, regardless of the executor
+     * configuration passed to the constructor. Calling this function
+     * concurrently with any other function introduces data races.
      */
     bool valid() const noexcept { return impl_.get() != nullptr; }
 
@@ -170,6 +185,11 @@ public:
      *
      * \par Exception safety
      * No-throw guarantee.
+     *
+     * \par Thead-safety
+     * This function is never thread-safe, regardless of the executor
+     * configuration passed to the constructor. Calling this function
+     * concurrently with any other function introduces data races.
      */
     executor_type get_executor() noexcept { return impl_->get_executor(); }
 
@@ -204,6 +224,15 @@ public:
      * \par Errors
      * This function always complete successfully. The handler signature ensures
      * maximum compatibility with Boost.Asio infrastructure.
+     *
+     * \par Executor
+     * All intermediate completion handlers are dispatched through the pool's
+     * executor (as given by `this->get_executor()`).
+     *
+     * \par Thead-safety
+     * When the pool is constructed with adequate executor configuration, this function
+     * is safe to be called concurrently with \ref async_get_connection, \ref cancel,
+     * \ref pooled_connection::~pooled_connection and \ref pooled_connection::return_without_reset.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -295,6 +324,15 @@ public:
      *     (e.g. all connections are in use and limits forbid creating more).
      * \li \ref client_errc::cancelled if \ref cancel was called before or while
      *     the operation is outstanding, or if the pool is not running.
+     *
+     * \par Executor
+     * All intermediate completion handlers are dispatched through the pool's
+     * executor (as given by `this->get_executor()`).
+     *
+     * \par Thead-safety
+     * When the pool is constructed with adequate executor configuration, this function
+     * is safe to be called concurrently with \ref async_run, \ref cancel,
+     * \ref pooled_connection::~pooled_connection and \ref pooled_connection::return_without_reset.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
@@ -331,6 +369,11 @@ public:
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations and acquiring mutexes may throw.
+     *
+     * \par Thead-safety
+     * When the pool is constructed with adequate executor configuration, this function
+     * is safe to be called concurrently with \ref async_run, \ref async_get_connection,
+     * \ref pooled_connection::~pooled_connection and \ref pooled_connection::return_without_reset.
      */
     void cancel()
     {
