@@ -75,7 +75,7 @@ server supports it. You can change this setting using [refmem connect_params ssl
 
 See [link mysql.ssl.negotiation this section] for more info on MySQL TLS negotiation.
 
-By default, `any_connection` will create an [asioreflink ssl__context asio::ssl::context] object with suitable
+By default, `any_connection` will create an [asioreflink ssl__context ssl::context] object with suitable
 default options for you, if required. If you want to configure TLS options beyond defaults,
 you can pass your own context to `any_connection`'s constructor, and
 it will be used:

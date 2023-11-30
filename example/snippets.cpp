@@ -1452,8 +1452,8 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         // You need to call async_run on the pool before doing anything useful with it.
         // async_run creates connections and keeps them healthy. It must be called
         // only once per pool.
-        // The detached completion token means that we don't want to be notified about when
-        // the operation ends
+        // The detached completion token means that we don't want to be notified when
+        // the operation ends. It's similar to a no-op callback.
         pool.async_run(boost::asio::detached);
         //]
 
@@ -1500,7 +1500,7 @@ void section_connection_pool(string_view server_hostname, string_view username, 
 
         // By passing pool_executor_params::thread_safe to connection_pool,
         // we make all its member functions thread-safe.
-        // This works by creating a strand
+        // This works by creating a strand.
         boost::mysql::connection_pool pool(
             boost::mysql::pool_executor_params::thread_safe(ctx.get_executor()),
             std::move(params)
