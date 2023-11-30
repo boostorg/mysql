@@ -214,8 +214,40 @@ You can build a sync connection pool on top of `connection_pool` using code like
 
 [section:benchmarks Benchmarks]
 
+A throughput benchmark has been conducted to assess the performance gain provided by
+`connection_pool`. Benchmark code is under `bench/connection_pool.cpp`. The test
+goes as follows:
 
+* The test consists of N = 10000 logically independent sessions. In an application
+  like a webserver, this would map to handling N HTTP requests.
+* Every logical session prepares a `SELECT` statement and executes it.
+  The statement matches a single row by primary key and retrieves a single, short string field
+  (i.e. a lightweight query).
+* `num_parallel` = 100 async agents are run in parallel. That means that, at any given
+  point in time, no more than 100 parallel connections to MySQL are made.
+* The test measures the time ellapsed between launching the first async agent
+  and receiving the response for the last query.
+* The test is repeated 10 times for each different configuration, and results are averaged.
+  This time is used to measure the throughput, in "connections/s" (as given by `N/time_ellapsed`).
+* Connection pool scenarios use `pooled_connection::~pooled_connection`, which causes a connection
+  reset to be issued. Raw connection scenarios use [refmem any_connection async_connect] and
+  [refmem any_connection async_close] for every session. All tests are single-threaded.
+* The server runs MySQL v8.0.33 in a Docker container, in the same machine as the benchmarks.
+* Benchmarks have been compiled using clang-18 using CMake's Release build type and C++20.
+  They've been run in a Ubuntu 22.04 machine with an 8 core i7-10510U and 24GB of RAM.
 
+[$mysql/images/connection_pool_bench.svg]
+
+We can see that pooling significantly increases throughput.
+This is specially true when communication with the server is expensive
+(as is the case when using TLS over TCP). The performance gain is likely
+to increase over high-latency networks, and to decrease for heavyweight queries,
+since the connection establishment has less overall weight.
+
+[tip
+  When using TLS or running small and frequent queries,
+  pooling can help you.
+]
 
 [endsect]
 
