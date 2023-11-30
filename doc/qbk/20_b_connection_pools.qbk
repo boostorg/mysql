@@ -180,31 +180,28 @@ constructor, which contains two executors:
 * [refmem pool_executor_params connection_executor] is used to construct connections.
   By default, this won't be wrapped in any strand, and inividual connections will not be thread-safe.
 
-
-
-
-
-
 [endsect]
+
+[section Transport types and TLS]
+
+You can use the same set of transports as when working with [reflink any_connection]:
+plaintext TCP, TCP over TLS or UNIX sockets. You can configure them using [refmem pool_params server_address]
+and [refmem pool_params ssl]. By default, TCP over TLS will be used if the server supports it,
+falling back to plaintext TLS if it does not.
+
+You can use [refmem pool_params ssl_ctx] to configure TLS options for
+connections created by the pool. If no context is provided, one will be created for you internally.
+
+[endsec]
 
 
 
 * When to use
-
-* mention TLS? benchmarks
-
+*  benchmarks
 
 
 
 
-
-
-* Transport types and SSL.
-  * The connection pool uses `any_connection`, so it can be used with TCP, TCP with SSL and UNIX sockets.
-    Just set `server_address` and `ssl_mode` appropriately.
-  * By default, TCP connections use SSL. An SSL context is created internally, but can be overriden
-    by using `ssl_context`. Can be used to set SSL options.
-  
 
 [section:sync Implementing sync functions]
 
