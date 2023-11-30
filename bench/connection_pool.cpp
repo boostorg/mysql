@@ -229,7 +229,7 @@ void run_nopool(mysql::any_address server_addr, bool use_ssl)
     ctx.run();
 
     // Print ellapsed time
-    std::cout << "Ellapsed: " << coord.ellapsed().count() << std::endl;
+    std::cout << coord.ellapsed().count() << std::flush;
 }
 
 void run_pool(mysql::any_address server_addr, bool use_ssl)
@@ -264,7 +264,7 @@ void run_pool(mysql::any_address server_addr, bool use_ssl)
     ctx.run();
 
     // Print ellapsed time
-    std::cout << "Ellapsed: " << coord.ellapsed().count() << std::endl;
+    std::cout << coord.ellapsed().count() << std::flush;
 }
 
 static constexpr const char* options[] = {

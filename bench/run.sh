@@ -13,14 +13,18 @@ benchs=(
    "pool-tcp"
    "pool-tcpssl"
    "pool-unix"
-   "pool-tcp-nothreadsafe"
 )
+
+outfile=private/benchmark-results.txt
+
+echo "bench,ellapsed" > $outfile
 
 for bench in ${benchs[@]}
 do
    echo $bench
    for i in {1..10}
    do
-      ./__build/bench/boost_mysql_bench_connection_pool $bench localhost
+      ellapsed=$(./__build/bench/boost_mysql_bench_connection_pool $bench localhost)
+      echo "$bench,$ellapsed" | tee -a $outfile
    done
 done
