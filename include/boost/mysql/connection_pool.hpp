@@ -236,7 +236,7 @@ public:
      * \par Thead-safety
      * When the pool is constructed with adequate executor configuration, this function
      * is safe to be called concurrently with \ref async_get_connection, \ref cancel,
-     * \ref pooled_connection::~pooled_connection and \ref pooled_connection::return_without_reset.
+     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -336,7 +336,7 @@ public:
      * \par Thead-safety
      * When the pool is constructed with adequate executor configuration, this function
      * is safe to be called concurrently with \ref async_run, \ref cancel,
-     * \ref pooled_connection::~pooled_connection and \ref pooled_connection::return_without_reset.
+     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
@@ -377,7 +377,7 @@ public:
      * \par Thead-safety
      * When the pool is constructed with adequate executor configuration, this function
      * is safe to be called concurrently with \ref async_run, \ref async_get_connection,
-     * \ref pooled_connection::~pooled_connection and \ref pooled_connection::return_without_reset.
+     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
     void cancel()
     {

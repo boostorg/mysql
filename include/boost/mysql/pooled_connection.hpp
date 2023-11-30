@@ -33,7 +33,7 @@ namespace mysql {
  * automatically. It's safe to destroy the `connection_pool` object before `*this`.
  *
  * \par Thread safety
- * As opposed to \ref connection_pool, individual connections created by the pool are *not*
+ * As opposed to \ref connection_pool, individual connections created by the pool are **not**
  * thread-safe. Care must be taken not to use them in an unsafe manner.
  * \n
  * Distinct objects: safe. \n
@@ -181,7 +181,7 @@ public:
      * If the \ref connection_pool object that `*this` references has been constructed
      * with adequate executor configuration, this function is safe to be called concurrently
      * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
-     * \ref connection_pool::cancel and \ref ~pooled_connection (on other objects).
+     * \ref connection_pool::cancel and `~pooled_connection` (on other objects).
      */
     void return_without_reset() noexcept
     {
