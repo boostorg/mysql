@@ -12,6 +12,7 @@
 
 #include <boost/mysql/connection_pool.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/system/error_code.hpp>
 
@@ -35,9 +36,10 @@ struct shared_state
 
 // Launches a HTTP server that will listen on 0.0.0.0:4000.
 // If the server fails to launch (e.g. because the port is aleady in use),
-// returns a non-zero error code. The server runs in the background
-// until ctx is stopped
-boost::system::error_code launch_server(boost::asio::io_context& ctx, std::shared_ptr<shared_state> state);
+// returns a non-zero error code. ex should identify the io_context or thread_pool
+// where the server should run. The server is run until the underlying execution
+// context is stopped.
+boost::system::error_code launch_server(boost::asio::any_io_executor ex, std::shared_ptr<shared_state> state);
 
 }  // namespace notes
 

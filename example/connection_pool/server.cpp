@@ -14,10 +14,12 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/spawn.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/error.hpp>
 #include <boost/beast/http/message.hpp>
@@ -426,9 +428,13 @@ static void run_http_session(
 
 // Implements the server's accept loop. The server will
 // listen for connections until stopped.
-static void do_accept(std::shared_ptr<asio::ip::tcp::acceptor> acceptor, std::shared_ptr<shared_state> st)
+static void do_accept(
+    asio::any_io_executor executor,  // The original executor (without strands)
+    std::shared_ptr<asio::ip::tcp::acceptor> acceptor,
+    std::shared_ptr<shared_state> st
+)
 {
-    acceptor->async_accept([st, acceptor](error_code ec, asio::ip::tcp::socket sock) {
+    acceptor->async_accept([executor, st, acceptor](error_code ec, asio::ip::tcp::socket sock) {
         // If there was an error accepting the connection, exit our loop
         if (ec)
             return log_error(ec, "accept");
@@ -436,10 +442,14 @@ static void do_accept(std::shared_ptr<asio::ip::tcp::acceptor> acceptor, std::sh
         // Launch a new session for this connection. Each session gets its
         // own stackful coroutine, so we can get back to listening for new connections.
         boost::asio::spawn(
-            sock.get_executor(),
+            // Every session gets its own strand. This prevents data races.
+            asio::make_strand(executor),
+
+            // The actual coroutine
             [st, socket = std::move(sock)](boost::asio::yield_context yield) mutable {
-                run_http_session(std::move(socket), st, yield);
+                run_http_session(std::move(socket), std::move(st), yield);
             },
+
             // All errors in the session are handled via error codes or by catching
             // exceptions explicitly. An unhandled exception here means an error.
             // Rethrowing it will propagate the exception, making io_context::run()
@@ -451,18 +461,20 @@ static void do_accept(std::shared_ptr<asio::ip::tcp::acceptor> acceptor, std::sh
         );
 
         // Accept a new connection
-        do_accept(acceptor, st);
+        do_accept(executor, acceptor, st);
     });
 }
 
 }  // namespace
 
-error_code notes::launch_server(boost::asio::io_context& ctx, std::shared_ptr<shared_state> st)
+error_code notes::launch_server(boost::asio::any_io_executor ex, std::shared_ptr<shared_state> st)
 {
     error_code ec;
 
-    // An object that allows us to acept incoming TCP connections
-    auto acceptor = std::make_shared<asio::ip::tcp::acceptor>(ctx);
+    // An object that allows us to acept incoming TCP connections.
+    // Since we're in a multi-threaded environment, we create a strand for the acceptor,
+    // so all accept handlers are run serialized
+    auto acceptor = std::make_shared<asio::ip::tcp::acceptor>(asio::make_strand(ex));
 
     // The endpoint where the server will listen. Edit this if you want to
     // change the address or port we bind to.
@@ -489,7 +501,7 @@ error_code notes::launch_server(boost::asio::io_context& ctx, std::shared_ptr<sh
         return ec;
 
     // Launch the acceptor loop
-    do_accept(std::move(acceptor), std::move(st));
+    do_accept(std::move(ex), std::move(acceptor), std::move(st));
 
     // Done
     return error_code();

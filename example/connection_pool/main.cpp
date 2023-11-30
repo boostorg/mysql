@@ -12,10 +12,11 @@
 #include <boost/mysql/pool_params.hpp>
 
 #include <boost/asio/detached.hpp>
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <boost/system/detail/error_code.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/system/error_code.hpp>
 
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -45,6 +46,9 @@
 
 using namespace notes;
 
+// The number of threads to use
+static constexpr std::size_t num_threads = 5;
+
 int main(int argc, char* argv[])
 {
     // Check command line arguments.
@@ -59,9 +63,10 @@ int main(int argc, char* argv[])
     const char* mysql_password = argv[2];
     const char* mysql_hostname = argv[3];
 
-    // An event loop, where the application will run. The server is single-
-    // threaded, so we set the concurrency hint to 1
-    boost::asio::io_context ioc{1};
+    // An event loop, where the application will run.
+    // We will use the main thread to run the pool, too, so we use
+    // one thread less than configured
+    boost::asio::thread_pool th_pool(num_threads - 1);
 
     // Configuration for the connection pool
     boost::mysql::pool_params pool_prms{
@@ -77,17 +82,27 @@ int main(int argc, char* argv[])
         // Database to use when connecting
         "boost_mysql_examples",
     };
-    auto shared_st = std::make_shared<shared_state>(boost::mysql::connection_pool(ioc, std::move(pool_prms)));
+
+    // Create the connection pool
+    auto shared_st = std::make_shared<shared_state>(boost::mysql::connection_pool(
+        // Using thread_safe will create a strand for the connection pool.
+        // This allows us to share the pool between sessions, which may run
+        // concurrently, on different threads.
+        boost::mysql::pool_executor_params::thread_safe(th_pool.get_executor()),
+
+        // Pool config
+        std::move(pool_prms)
+    ));
 
     // A signal_set allows us to intercept SIGINT and SIGTERM and
     // exit gracefully
-    boost::asio::signal_set signals{ioc.get_executor(), SIGINT, SIGTERM};
+    boost::asio::signal_set signals{th_pool.get_executor(), SIGINT, SIGTERM};
 
     // Launch the MySQL pool
     shared_st->pool.async_run(boost::asio::detached);
 
     // Start listening for HTTP connections. This will run until the context is stopped
-    auto ec = launch_server(ioc, shared_st);
+    auto ec = launch_server(th_pool.get_executor(), shared_st);
     if (ec)
     {
         std::cerr << "Error launching server: " << ec << std::endl;
@@ -95,17 +110,20 @@ int main(int argc, char* argv[])
     }
 
     // Capture SIGINT and SIGTERM to perform a clean shutdown
-    signals.async_wait([shared_st, &ioc](boost::system::error_code, int) {
+    signals.async_wait([shared_st, &th_pool](boost::system::error_code, int) {
         // Stop the connection pool. This will cause
         shared_st->pool.cancel();
 
-        // Stop the io_context. This will cause run() to return
-        ioc.stop();
+        // Stop the execution context. This will cause main to exit
+        th_pool.stop();
     });
 
-    // Run the io_context. This will block until the context is stopped by
-    // a signal and all outstanding async tasks are finished.
-    ioc.run();
+    // Attach the current thread to the thread pool. This will block
+    // until stop() is called
+    th_pool.attach();
+
+    // Wait until all threads have exited
+    th_pool.join();
 
     // (If we get here, it means we got a SIGINT or SIGTERM)
     return EXIT_SUCCESS;
