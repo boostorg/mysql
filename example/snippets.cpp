@@ -1292,7 +1292,8 @@ void section_any_connection(string_view server_hostname, string_view username, s
         ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
         ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("mysql"));
 
-        // Construct an any_connection object passing the SSL context
+        // Construct an any_connection object passing the SSL context.
+        // You must keep ssl_ctx alive while using the connection.
         boost::mysql::any_connection_params ctor_params;
         ctor_params.ssl_context = &ssl_ctx;
         boost::mysql::any_connection conn(ctx, ctor_params);
@@ -1510,6 +1511,18 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         // Inidivudal connections are still not thread-safe.
         //]
     }
+    {
+        boost::mysql::pool_params params;
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = username;
+        params.password = password;
+        params.database = "boost_mysql_examples";
+
+        sync_pool spool(std::move(params));
+
+        auto conn1 = spool.get_connection();
+        ASSERT(conn1.valid());
+    }
 }
 
 void main_impl(int argc, char** argv)
@@ -1563,6 +1576,7 @@ void main_impl(int argc, char** argv)
     section_charsets(conn);
     section_time_types(conn);
     section_any_connection(argv[3], argv[1], argv[2]);
+    section_connection_pool(argv[3], argv[1], argv[2]);
 
     conn.close();
 }

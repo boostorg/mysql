@@ -18,18 +18,18 @@ It's easier to use and features more functionality than plain `connection`.
 When compared to [reflink connection], `any_connection`:
 
 * Is type-erased. The type of the connection doesn't depend on the transport being used.
-  Supported transports include plaintext TCP, TCP over SSL and UNIX domain sockets.
+  Supported transports include plaintext TCP, TLS on top of TCP and UNIX domain sockets.
 * Is easier to connect. For example, when using TCP, connection establishment methods will
   handle hostname resolution for you. This must be handled manually with `connection`.
 * It can always be reconnected after closing it or after encountering an error.
-  `connection` can't make this guarantee, especially when using SSL.
+  `connection` can't make this guarantee, especially when using TLS.
 * Doesn't allow to customize the internal `Stream` type. Doing this
   allows supporting the point above.
 * Doesn't support default completion tokens.
 * Has equivalent performance.
 * Other than session establishment, it has the same API as `connection`.
 
-In general, prefer using `any_connection` over `connection`.
+`any_connection` is expected to replace `connection` in the long run.
 
 
 
@@ -40,8 +40,8 @@ To connect to a server using TCP, use the following:
 [any_connection_tcp]
 
 [refmem connect_params server_address] is an [reflink any_address], which is
-a variant-like type that can hold TCP (hostname, port) pairs or UNIX socket paths.
-For example:
+a variant-like type that can hold a (hostname, port) pair or a UNIX socket path.
+For example, to connect using a UNIX socket:
 
 [any_connection_unix]
 
@@ -59,7 +59,7 @@ For instance, the following can be used to implement retries for connection esta
 
 Likewise, if you encounter a fatal error (like a network error), just call `connect` or `async_connect`.
 
-If you need reliable, long-lived connections, consider using [link mysql.connection_pool using a connection pool]
+If you need reliable, long-lived connections, consider [link mysql.connection_pool using a connection pool]
 instead of rolling out your own strategy.
 
 
@@ -75,9 +75,9 @@ server supports it. You can change this setting using [refmem connect_params ssl
 
 See [link mysql.ssl.negotiation this section] for more info on MySQL TLS negotiation.
 
-By default, `any_connection` will create an `asio::ssl::context` object with suitable
+By default, `any_connection` will create an [asioreflink ssl__context asio::ssl::context] object with suitable
 default options for you, if required. If you want to configure TLS options beyond defaults,
-you can pass an `asio::ssl::context` to [refmem any_connection any_connection], and
+you can pass your own context to `any_connection`'s constructor, and
 it will be used:
 
 [any_connection_ssl_ctx]
