@@ -500,6 +500,8 @@ error_code notes::launch_server(boost::asio::any_io_executor ex, std::shared_ptr
     if (ec)
         return ec;
 
+    std::cout << "Server listening at " << listening_endpoint << std::endl;
+
     // Launch the acceptor loop
     do_accept(std::move(ex), std::move(acceptor), std::move(st));
 
