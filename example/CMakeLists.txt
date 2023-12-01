@@ -138,3 +138,11 @@ target_link_libraries(
     Boost::url
 )
 boost_mysql_common_target_settings(boost_mysql_example_connection_pool)
+add_test(
+    NAME boost_mysql_example_connection_pool
+    COMMAND
+        python
+        ${CMAKE_CURRENT_SOURCE_DIR}/private/run_connection_pool.py
+        $<TARGET_FILE:boost_mysql_example_connection_pool>
+        ${SERVER_HOST}
+)
