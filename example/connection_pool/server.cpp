@@ -42,7 +42,6 @@
 #include <cstdlib>
 #include <exception>
 #include <iostream>
-#include <limits>
 #include <memory>
 #include <string>
 
@@ -467,7 +466,11 @@ static void do_accept(
 
 }  // namespace
 
-error_code notes::launch_server(boost::asio::any_io_executor ex, std::shared_ptr<shared_state> st)
+error_code notes::launch_server(
+    boost::asio::any_io_executor ex,
+    std::shared_ptr<shared_state> st,
+    unsigned short port
+)
 {
     error_code ec;
 
@@ -478,7 +481,7 @@ error_code notes::launch_server(boost::asio::any_io_executor ex, std::shared_ptr
 
     // The endpoint where the server will listen. Edit this if you want to
     // change the address or port we bind to.
-    boost::asio::ip::tcp::endpoint listening_endpoint(boost::asio::ip::make_address("0.0.0.0"), 4000);
+    boost::asio::ip::tcp::endpoint listening_endpoint(boost::asio::ip::make_address("0.0.0.0"), port);
 
     // Open the acceptor
     acceptor->open(listening_endpoint.protocol(), ec);
@@ -500,7 +503,7 @@ error_code notes::launch_server(boost::asio::any_io_executor ex, std::shared_ptr
     if (ec)
         return ec;
 
-    std::cout << "Server listening at " << listening_endpoint << std::endl;
+    std::cout << "Server listening at " << acceptor->local_endpoint() << std::endl;
 
     // Launch the acceptor loop
     do_accept(std::move(ex), std::move(acceptor), std::move(st));

@@ -17,9 +17,7 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
-#include <cstddef>
 #include <iterator>
-#include <string>
 #include <tuple>
 #include <utility>
 

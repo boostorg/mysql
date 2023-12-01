@@ -22,7 +22,6 @@
 #include <memory>
 #include <string>
 
-#include "repository.hpp"
 #include "server.hpp"
 
 // This example demonstrates how to use a connection_pool.
@@ -52,9 +51,9 @@ static constexpr std::size_t num_threads = 5;
 int main(int argc, char* argv[])
 {
     // Check command line arguments.
-    if (argc != 4)
+    if (argc != 5)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <mysql-hostname>\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <mysql-hostname> <port>\n";
         return EXIT_FAILURE;
     }
 
@@ -62,6 +61,7 @@ int main(int argc, char* argv[])
     const char* mysql_username = argv[1];
     const char* mysql_password = argv[2];
     const char* mysql_hostname = argv[3];
+    auto port = static_cast<unsigned short>(std::stoi(argv[4]));
 
     // An event loop, where the application will run.
     // We will use the main thread to run the pool, too, so we use
@@ -102,7 +102,7 @@ int main(int argc, char* argv[])
     shared_st->pool.async_run(boost::asio::detached);
 
     // Start listening for HTTP connections. This will run until the context is stopped
-    auto ec = launch_server(th_pool.get_executor(), shared_st);
+    auto ec = launch_server(th_pool.get_executor(), shared_st, port);
     if (ec)
     {
         std::cerr << "Error launching server: " << ec << std::endl;
