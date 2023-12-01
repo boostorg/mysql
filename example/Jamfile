@@ -84,3 +84,18 @@ run
     : requirements
         <testing.arg>"example_user example_password $(hostname) $(this_dir)/private/test_script.sql"
     ;
+
+# Connection pool
+run
+        connection_pool/main.cpp
+        connection_pool/repository.cpp
+        connection_pool/server.cpp
+        /boost/mysql/test//boost_mysql_compiled
+        /boost/json//boost_json
+        /boost/url//boost_url
+        /boost/context//boost_context
+    : requirements
+            <testing.launcher>"python $(this_dir)/private/run_connection_pool.py"
+            <testing.arg>$(hostname)
+    : target-name boost_mysql_example_connection_pool
+    ;
