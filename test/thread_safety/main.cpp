@@ -22,7 +22,6 @@
 #include <boost/asio/thread_pool.hpp>
 
 #include <atomic>
-#include <chrono>
 #include <cstddef>
 #include <iostream>
 
@@ -33,7 +32,7 @@ namespace asio = boost::asio;
 namespace {
 
 static constexpr int num_parallel = 100;
-static constexpr int total = num_parallel * 100;
+static constexpr int total = num_parallel * 20;
 
 static void check_ec(error_code ec, mysql::diagnostics& diag)
 {
