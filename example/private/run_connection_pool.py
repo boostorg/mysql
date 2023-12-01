@@ -120,8 +120,6 @@ def main():
     parser.add_argument('host')
     args = parser.parse_args()
 
-    # Choose a port. This limits the chance 
-
     # Launch the server
     with _launch_server(args.executable, args.host) as listening_port:
         # Run the tests
