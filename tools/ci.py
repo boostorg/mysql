@@ -271,10 +271,10 @@ def _cmake_build(
         _run([
             'b2',
             '--prefix={}'.format(b2_distro),
-            '--with-system',
             '--with-context',
-            '--with-date_time',
             '--with-test',
+            '--with-json',
+            '--with-url',
             '-d0',
         ] + (['cxxstd={}'.format(cxxstd)] if cxxstd else []) + [
             'install'
