@@ -16,6 +16,7 @@
         <bridgehead renderas="sect3">Classes</bridgehead>
         <simplelist type="vert" columns="1">
           <member><link linkend="mysql.ref.boost__mysql__any_address">any_address</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__any_connection">any_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__any_connection_params">any_connection_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__bad_field_access">bad_field_access</link></member>
           <member><link linkend="mysql.ref.boost__mysql__bound_statement_tuple">bound_statement_tuple</link></member>

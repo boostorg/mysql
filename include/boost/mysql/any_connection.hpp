@@ -64,7 +64,7 @@ struct any_connection_params
      * \n
      * If the connection is configured to use TLS, an internal `asio::ssl::stream`
      * object will be created. If this member is set to a non-null value,
-     * these internal objects will be initialized using the passed context.
+     * this internal object will be initialized using the passed context.
      * This is the only way to configure TLS options in `any_connection`.
      * \n
      * If the connection is configured to use TLS and this member is `nullptr`,
@@ -91,7 +91,7 @@ struct any_connection_params
  * Represents a connection to a MySQL server. Compared to \ref connection, this class:
  * \n
  * \li Is type-erased. The type of the connection doesn't depend on the transport being used.
- *     Supported transports include plaintext TCP, TCP over SSL and UNIX domain sockets.
+ *     Supported transports include plaintext TCP, SSL over TCP and UNIX domain sockets.
  * \li Is easier to connect, as \ref connect and \ref async_connect handle hostname resolution.
  * \li Can always be re-connected after being used or encountering an error.
  * \li Doesn't support default completion tokens.
@@ -120,7 +120,7 @@ public:
      * will be constructed using this executor.
      * \n
      * You can configure extra parameters, like the SSL context and buffer sizes, by passing
-     * an extra `params` struct. See \ref any_connection_params for details.
+     * an \ref any_connection_params object to this constructor.
      */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
         : impl_(params.initial_read_buffer_size, create_stream(std::move(ex), params.ssl_context))
@@ -134,7 +134,7 @@ public:
      * Any internally required I/O objects will be constructed using this executor.
      * \n
      * You can configure extra parameters, like the SSL context and buffer sizes, by passing
-     * an extra `params` struct. See \ref any_connection_params for details.
+     * an \ref any_connection_params object to this constructor.
      * \n
      * This function participates in overload resolution only if `ExecutionContext`
      * satisfies the `ExecutionContext` requirements imposed by Boost.Asio.
@@ -187,7 +187,19 @@ public:
      */
     executor_type get_executor() noexcept { return impl_.stream().get_executor(); }
 
-    /// \copydoc connection::uses_ssl
+    /**
+     * \brief Returns whether the connection negotiated the use of SSL or not.
+     * \details
+     * This function can be used to determine whether you are using a SSL
+     * connection or not when using SSL negotiation.
+     * \n
+     * This function always returns `false`
+     * for connections that haven't been established yet. If the connection establishment fails,
+     * the return value is undefined.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool uses_ssl() const noexcept { return impl_.ssl_active(); }
 
     /// \copydoc connection::meta_mode
@@ -201,10 +213,10 @@ public:
      * \details
      * This function performs the following:
      * \n
-     * \li If a connection has already been established (by a previous call to \ref connect)
+     * \li If a connection has already been established (by a previous call to \ref connect
      *     or \ref async_connect), closes it at the transport layer (by closing any underlying socket)
      *     and discards any protocol state associated to it. (If you require
-     *     a clean close, call \ref close or \ref async_close).
+     *     a clean close, call \ref close or \ref async_close before using this function).
      * \li If the connection is configured to use TCP (`params.server_address.type() ==
      *     address_type::host_and_port`), resolves the passed hostname to a set of endpoints. An empty
      *     hostname is equivalent to `"localhost"`.
@@ -275,11 +287,14 @@ public:
 
     /**
      * \copydoc connect
+     * This function has the same behavior as the other `async_connect` overloads,
+     * but perform less copies.
      * \par Object lifetimes
      * Zero-copy overload: no copies of the value pointed to by `params`
      * will be made. It must be kept alive for the duration of the operation,
      * until the final completion handler is called. If you are in doubt,
-     * prefer \ref async_connect(const connect_params&,CompletionToken&&)
+     * prefer the overloads taking a `const connect_params&`, which will ensure
+     * lifetime correctness for you.
      *
      * \par Preconditions
      * `params != nullptr`

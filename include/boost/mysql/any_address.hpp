@@ -222,6 +222,7 @@ public:
  */
 class any_address
 {
+#ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
         address_type type{address_type::host_and_port};
@@ -233,7 +234,6 @@ class any_address
         : impl_{t, std::move(addr), port}
     {
     }
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
 #endif
 

@@ -29,7 +29,7 @@ namespace mysql {
 /**
  * \brief (EXPERIMENTAL) Executor configuration for connection pools.
  * \details
- * Contains two executors: for the pool's internal objects, and for the connections
+ * Contains two executors: one for the pool's internal objects, and another for the connections
  * created by the pool.
  * \n
  * You may use \ref thread_safe to create an instance of this class
@@ -41,11 +41,13 @@ namespace mysql {
  */
 class pool_executor_params
 {
+#ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
         asio::any_io_executor pool_ex;
         asio::any_io_executor conn_ex;
     } impl_;
+#endif
 
 public:
     /**
@@ -109,7 +111,10 @@ public:
      * \details
      * Creates an `asio::strand` object wrapping `ex` and uses it as the pool
      * executor. Uses `ex` directly for the connections. The resulting configuration
-     * makes all functions within \ref connection_pool thread-safe.
+     * makes safe to call \ref connection_pool::async_get_connection,
+     * \ref connection_pool::async_run, \ref connection_pool::cancel,
+     * `~pooled_connection` and \ref pooled_connection::return_without_reset
+     * concurrently from different threads.
      *
      * \par Exception safety
      * Strong guarantee. Creating the strand may throw.
@@ -186,7 +191,7 @@ struct pool_params
      * \n
      * Defaults to the maximum number of concurrent connections that MySQL
      * servers allow by default. If you increase this value, increase the server's
-     * max number of connections, too (by setting the `max_connections` variable).
+     * max number of connections, too (by setting the `max_connections` global variable).
      * \n
      * This value must be `> 0` and `>= initial_size`.
      */
@@ -208,9 +213,9 @@ struct pool_params
      * \brief The timeout to use when connecting.
      * \details
      * Connections will be connected by the pool before being handed to the user
-     * (as per \ref any_connection::async_connect).
+     * (using \ref any_connection::async_connect).
      * If the operation takes longer than this timeout,
-     * the operation will be interrupted and be considered as failed.
+     * the operation will be interrupted, considered as failed and retried later.
      * \n
      * Set this timeout to zero to disable it.
      * \n
@@ -233,7 +238,7 @@ struct pool_params
      * \brief The health-check interval.
      * \details
      * If a connection becomes iddle and hasn't been handed to the user for
-     * `ping_interval`, a health-check will be performed (as per \ref any_connection::async_ping).
+     * `ping_interval`, a health-check will be performed (using \ref any_connection::async_ping).
      * Pings will be sent with a periodicity of `ping_interval` until the connection
      * is handed to the user, or a ping fails.
      * \n

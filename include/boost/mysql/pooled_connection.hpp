@@ -22,9 +22,9 @@ namespace mysql {
 /**
  * \brief (EXPERIMENTAL) A proxy to a connection owned by a pool that returns it to the pool when destroyed.
  * \details
- * A `pooled_connection` behaves like to a `std::unique_ptr`: it has exclusive ownership of a
+ * A `pooled_connection` behaves like to a `std::unique_ptr`: it has exclusive ownership of an
  * \ref any_connection created by the pool. When destroyed, it returns the connection to the pool.
- * A `pooled_connection` may own nothing. We say it's invalid (`this->valid() == false`).
+ * A `pooled_connection` may own nothing. We say such a connection is invalid (`this->valid() == false`).
  * \n
  * This class is movable but not copyable.
  *
@@ -33,8 +33,8 @@ namespace mysql {
  * automatically. It's safe to destroy the `connection_pool` object before `*this`.
  *
  * \par Thread safety
- * As opposed to \ref connection_pool, individual connections created by the pool are **not**
- * thread-safe. Care must be taken not to use them in an unsafe manner.
+ * By default, individual connections created by the pool are **not** thread-safe,
+ * even if the pool was created using \ref pool_executor_params::thread_safe.
  * \n
  * Distinct objects: safe. \n
  * Shared objects: unsafe. \n
@@ -92,8 +92,8 @@ public:
     /**
      * \brief Move assignment.
      * \details
-     * If `this->valid()`, returns the owned connection to the pool and marks
-     * it as pending reset.
+     * If `this->valid()`, returns the connection owned by `*this` to the pool and marks
+     * it as pending reset (as if the destructor was called).
      * It then transfers connection ownership from `other` to `*this`.
      * \n
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
@@ -155,15 +155,15 @@ public:
     const any_connection* operator->() const noexcept { return &get(); }
 
     /**
-     * \brief Returns owned connection to the pool and skips reset.
+     * \brief Returns the owned connection to the pool and marks it as not requiring reset.
      * \details
      * Returns a connection to the pool and marks it as iddle. This will
      * skip the \ref any_connection::async_reset_connection call to wipe session state.
      * \n
      * This can provide a performance gain, but must be used with care. Failing to wipe
-     * session state can lead to resource leaks (prepared statements not being released)
+     * session state can lead to resource leaks (prepared statements not being released),
      * incorrect results and vulnerabilities (different logical operations interacting due
-     * to leaftover state).
+     * to leftover state).
      * \n
      * Please read the documentation on \ref any_connection::async_reset_connection before
      * calling this function. If in doubt, don't use it, and leave the destructor return
@@ -181,7 +181,7 @@ public:
      * If the \ref connection_pool object that `*this` references has been constructed
      * with adequate executor configuration, this function is safe to be called concurrently
      * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
-     * \ref connection_pool::cancel and `~pooled_connection` (on other objects).
+     * \ref connection_pool::cancel and `~pooled_connection`.
      */
     void return_without_reset() noexcept
     {

@@ -1054,6 +1054,10 @@ public:
      * \brief Closes a statement, deallocating it from the server.
      * \details
      * After this operation succeeds, `stmt` must not be used again for execution.
+     * \par Performance warning
+     * This function is currently affected by a peformance issue described
+     * in https://github.com/boostorg/mysql/issues/181. Consider using
+     * \ref reset_connection or \ref async_reset_connection instead.
      * \n
      * \par Preconditions
      *    `stmt.valid() == true`
@@ -1479,7 +1483,8 @@ public:
      *   \li Releases all table locks.
      *   \li Drops all temporary tables.
      *   \li Resets all session system variables to their default values (including the ones set by `SET
-     * NAMES`) and clears all user-defined variables. \li Closes all prepared statements.
+     *       NAMES`) and clears all user-defined variables.
+     *   \li Closes all prepared statements.
      * \n
      * A full reference on the affected session state can be found
      * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html">here</a>.
@@ -1489,6 +1494,18 @@ public:
      * \n
      * The connection must be connected and authenticated before calling this function.
      * This function involves communication with the server, and thus may fail.
+     *
+     * \par Warning on character sets
+     * This function will restore the connection's character set and collation **to the server's default**,
+     * and not to the one specified during connection establishment. Some servers have `latin1` as their
+     * default character set, which is not usually what you want. Use a `SET NAMES` statement after using
+     * this function to be sure.
+     * \n
+     * You can find the character set that your server will use after reset by running:
+     * \code
+     * SELECT @@global.character_set_client, @@global.character_set_connection,
+     * @@global.character_set_results;
+     * \endcode
      */
     void reset_connection(error_code& err, diagnostics& diag)
     {

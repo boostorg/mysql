@@ -46,7 +46,7 @@ namespace mysql {
  * \n
  * Due to oddities in Boost.Asio's universal async model, this class only
  * exposes async functions. You can use `asio::use_future` to transform them
- * into sync functions (see the examples for details).
+ * into sync functions (please read the discussion for details).
  * \n
  * This is a move-only type.
  *
@@ -80,7 +80,7 @@ class connection_pool
 
 public:
     /**
-     * \brief Constructs a connection pool from an executor.
+     * \brief Constructs a connection pool.
      * \details
      * Internal I/O objects (like timers and channels) are constructed using
      * \ref pool_executor_params::pool_executor on `ex_params`. Connections are constructed using
@@ -95,7 +95,7 @@ public:
      *
      * \par Exception safety
      * Strong guarantee. Exceptions may be thrown by memory allocations.
-     * \throws `std::invalid_argument` If `params` contains values that violate the rules described in \ref
+     * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
      *         pool_params.
      */
     connection_pool(const pool_executor_params& ex_params, pool_params params)
@@ -213,7 +213,7 @@ public:
      *
      * \par Preconditions
      * This function can be called at most once for a single pool.
-     * Formal precondition: `async_run` hasn't been called before on `*this` or any object
+     * Formally, `async_run` hasn't been called before on `*this` or any object
      * used to move-construct or move-assign `*this`.
      * \n
      * Additionally, `this->valid() == true`.
@@ -230,8 +230,9 @@ public:
      * maximum compatibility with Boost.Asio infrastructure.
      *
      * \par Executor
-     * All intermediate completion handlers are dispatched through the pool's
-     * executor (as given by `this->get_executor()`).
+     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
+     * No internal data will be accessed or modified as part of the initiating function.
+     * This simplifies thread-safety.
      *
      * \par Thead-safety
      * When the pool is constructed with adequate executor configuration, this function
@@ -246,11 +247,7 @@ public:
         return impl_->async_run(std::forward<CompletionToken>(token));
     }
 
-    /**
-     * \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
-     * \details
-     * A timeout of 30 seconds will be used.
-     */
+    /// \copydoc async_get_connection(diagnostics&,CompletionToken&&)
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
@@ -263,9 +260,50 @@ public:
     }
 
     /**
-     * \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
+     * \brief Retrieves a connection from the pool.
      * \details
-     * A timeout of 30 seconds will be used.
+     * Retrieves an iddle connection from the pool to be used.
+     * \n
+     * If this function completes successfully (empty error code), the return \ref pooled_connection
+     * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
+     * it will have `valid() == false`.
+     * \n
+     * If a connection is iddle when the operation is started, it will complete immediately
+     * with that connection. Otherwise, it will wait for a connection to become iddle
+     * (possibly creating one in the process, if pool configuration allows it), up to
+     * a duration of 30 seconds.
+     * \n
+     * If a timeout happens because connection establishment has failed, appropriate
+     * diagnostics will be returned.
+     *
+     * \par Preconditions
+     * `this->valid() == true` \n
+     *
+     * \par Object lifetimes
+     * While the operation is outstanding, the pool's internal data will be kept alive.
+     * It is safe to destroy `*this` while the operation is outstanding.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
+     *
+     * \par Errors
+     * \li Any error returned by \ref any_connection::async_connect, if a timeout
+     *     happens because connection establishment is failing.
+     * \li \ref client_errc::timeout, if a timeout happens for any other reason
+     *     (e.g. all connections are in use and limits forbid creating more).
+     * \li \ref client_errc::cancelled if \ref cancel was called before the operation is started or while
+     *     it is outstanding, or if the pool is not running.
+     *
+     * \par Executor
+     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
+     * No internal data will be accessed or modified as part of the initiating function.
+     * This simplifies thread-safety.
+     *
+     * \par Thead-safety
+     * When the pool is constructed with adequate executor configuration, this function
+     * is safe to be called concurrently with \ref async_run, \ref cancel,
+     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
@@ -298,11 +336,8 @@ public:
      * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
      * it will have `valid() == false`.
      * \n
-     * The returned connection is *not* thread-safe, even if the pool has been configured
-     * with thread-safety enabled.
-     * \n
      * If a connection is iddle when the operation is started, it will complete immediately
-     * with such connection. Otherwise, it will wait for a connection to become iddle
+     * with that connection. Otherwise, it will wait for a connection to become iddle
      * (possibly creating one in the process, if pool configuration allows it), up to
      * a duration of `timeout`. A zero timeout disables it.
      * \n
@@ -311,7 +346,7 @@ public:
      *
      * \par Preconditions
      * `this->valid() == true` \n
-     * `timeout.count() >= 0` (timeout values must be positive).
+     * Timeout values must be positive: `timeout.count() >= 0`.
      *
      * \par Object lifetimes
      * While the operation is outstanding, the pool's internal data will be kept alive.
@@ -323,15 +358,16 @@ public:
      *
      * \par Errors
      * \li Any error returned by \ref any_connection::async_connect, if a timeout
-     *     happens because connection establishment failed.
+     *     happens because connection establishment is failing.
      * \li \ref client_errc::timeout, if a timeout happens for any other reason
      *     (e.g. all connections are in use and limits forbid creating more).
-     * \li \ref client_errc::cancelled if \ref cancel was called before or while
-     *     the operation is outstanding, or if the pool is not running.
+     * \li \ref client_errc::cancelled if \ref cancel was called before the operation is started or while
+     *     it is outstanding, or if the pool is not running.
      *
      * \par Executor
-     * All intermediate completion handlers are dispatched through the pool's
-     * executor (as given by `this->get_executor()`).
+     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
+     * No internal data will be accessed or modified as part of the initiating function.
+     * This simplifies thread-safety.
      *
      * \par Thead-safety
      * When the pool is constructed with adequate executor configuration, this function
