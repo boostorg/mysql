@@ -39,8 +39,8 @@ public:
     connection_node* try_get_one() noexcept { return list_.empty() ? nullptr : &list_.back(); }
 
     template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_wait(CompletionToken&& token)
+    auto async_wait(CompletionToken&& token)
+        -> decltype(chan_.async_receive(std::forward<CompletionToken>(token)))
     {
         return chan_.async_receive(std::forward<CompletionToken>(token));
     }

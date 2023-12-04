@@ -39,6 +39,13 @@
     #define BOOST_MYSQL_STATIC_OR_INLINE inline
 #endif
 
+// Auto return type. Having this as a macro helps the documentation tool.
+#ifdef BOOST_NO_CXX14_RETURN_TYPE_DEDUCTION
+#define BOOST_MYSQL_RETURN_TYPE(...) -> __VA_ARGS__
+#else
+#define BOOST_MYSQL_RETURN_TYPE(...)
+#endif
+
 // clang-format on
 
 #endif
