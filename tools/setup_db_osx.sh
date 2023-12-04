@@ -13,6 +13,9 @@
 brew install mysql@8.0
 export PATH="/usr/local/opt/mysql@8.0/bin:$PATH"
 
+# Install Python packages
+sudo pip install requests
+
 # Copy config files and set up paths
 cp tools/osx-ci.cnf ~/.my.cnf
 sudo mkdir -p /etc/ssl/certs/mysql/
