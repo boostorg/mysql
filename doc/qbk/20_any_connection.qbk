@@ -21,7 +21,7 @@ When compared to [reflink connection], `any_connection`:
   Supported transports include plaintext TCP, TLS on top of TCP and UNIX domain sockets.
 * Is easier to connect. For example, when using TCP, connection establishment methods will
   handle hostname resolution for you. This must be handled manually with `connection`.
-* It can always be reconnected after closing it or after encountering an error.
+* Can always be reconnected after closing it or after encountering an error.
   `connection` can't make this guarantee, especially when using TLS.
 * Doesn't allow to customize the internal `Stream` type. Doing this
   allows supporting the point above.
