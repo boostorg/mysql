@@ -19,10 +19,9 @@ RUN \
         libstdc++-13-dev:i386 \
         libssl-dev:i386 \
         python3 \
-        python3-pip \
+        python3-requests \
         python-is-python3 \
         git \
         mysql-client && \
     ln -s /usr/bin/clang++-16 /usr/bin/clang++ && \
-    ln -s /usr/bin/clang-16 /usr/bin/clang && \
-    python -m pip install requests
+    ln -s /usr/bin/clang-16 /usr/bin/clang

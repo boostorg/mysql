@@ -16,10 +16,9 @@ RUN \
         libssl-dev \
         git \
         python3 \
-        python3-pip \
+        python3-requests \
         python-is-python3 \
         mysql-client && \
     ln -s /usr/bin/g++-10 /usr/bin/g++ && \
-    ln -s /usr/bin/gcc-10 /usr/bin/gcc && \
-    python -m pip install requests
+    ln -s /usr/bin/gcc-10 /usr/bin/gcc
 

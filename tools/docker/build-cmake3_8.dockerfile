@@ -14,15 +14,14 @@ RUN \
         ca-certificates \
         git \
         python3 \
-        python3-pip \
+        python3-requests \
         g++ \
         gnupg-curl \
         libssl-dev \
         ninja-build \
         curl \
         mysql-client && \
-    ln -s /usr/bin/python3 /usr/bin/python && \
-    python -m pip install requests
+    ln -s /usr/bin/python3 /usr/bin/python
 
 RUN \
     mkdir -p ~/cmake && \

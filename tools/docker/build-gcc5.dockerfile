@@ -15,11 +15,10 @@ RUN \
         libssl-dev \
         git \
         python3 \
-        python3-pip \
+        python3-requests \
         mysql-client && \
     add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get --no-install-recommends -y install gcc-5 g++-5 && \
     ln -s /usr/bin/g++-5 /usr/bin/g++ && \
     ln -s /usr/bin/gcc-5 /usr/bin/gcc && \
-    ln -s /usr/bin/python3 /usr/bin/python && \
-    python -m pip install requests
+    ln -s /usr/bin/python3 /usr/bin/python
