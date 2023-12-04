@@ -65,6 +65,8 @@ public:
     pool_executor_params(asio::any_io_executor pool_ex, asio::any_io_executor conn_ex = {})
         : impl_{std::move(pool_ex), std::move(conn_ex)}
     {
+        if (!impl_.conn_ex)
+            impl_.conn_ex = impl_.pool_ex;
     }
 
     /**
@@ -101,10 +103,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    asio::any_io_executor connection_executor() const noexcept
-    {
-        return impl_.conn_ex ? impl_.conn_ex : impl_.pool_ex;
-    }
+    asio::any_io_executor connection_executor() const noexcept { return impl_.conn_ex; }
 
     /**
      * \brief Creates a pool_executor_params object that makes pools thread-safe.
