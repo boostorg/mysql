@@ -237,7 +237,7 @@ struct pool_params
     /**
      * \brief The health-check interval.
      * \details
-     * If a connection becomes iddle and hasn't been handed to the user for
+     * If a connection becomes idle and hasn't been handed to the user for
      * `ping_interval`, a health-check will be performed (using \ref any_connection::async_ping).
      * Pings will be sent with a periodicity of `ping_interval` until the connection
      * is handed to the user, or a ping fails.

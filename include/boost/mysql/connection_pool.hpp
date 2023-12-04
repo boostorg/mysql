@@ -262,14 +262,14 @@ public:
     /**
      * \brief Retrieves a connection from the pool.
      * \details
-     * Retrieves an iddle connection from the pool to be used.
+     * Retrieves an idle connection from the pool to be used.
      * \n
      * If this function completes successfully (empty error code), the return \ref pooled_connection
      * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
      * it will have `valid() == false`.
      * \n
-     * If a connection is iddle when the operation is started, it will complete immediately
-     * with that connection. Otherwise, it will wait for a connection to become iddle
+     * If a connection is idle when the operation is started, it will complete immediately
+     * with that connection. Otherwise, it will wait for a connection to become idle
      * (possibly creating one in the process, if pool configuration allows it), up to
      * a duration of 30 seconds.
      * \n
@@ -330,14 +330,14 @@ public:
     /**
      * \brief Retrieves a connection from the pool.
      * \details
-     * Retrieves an iddle connection from the pool to be used.
+     * Retrieves an idle connection from the pool to be used.
      * \n
      * If this function completes successfully (empty error code), the return \ref pooled_connection
      * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
      * it will have `valid() == false`.
      * \n
-     * If a connection is iddle when the operation is started, it will complete immediately
-     * with that connection. Otherwise, it will wait for a connection to become iddle
+     * If a connection is idle when the operation is started, it will complete immediately
+     * with that connection. Otherwise, it will wait for a connection to become idle
      * (possibly creating one in the process, if pool configuration allows it), up to
      * a duration of `timeout`. A zero timeout disables it.
      * \n

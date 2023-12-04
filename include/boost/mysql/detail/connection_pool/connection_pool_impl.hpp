@@ -17,7 +17,7 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool/connection_node.hpp>
-#include <boost/mysql/detail/connection_pool/iddle_connection_list.hpp>
+#include <boost/mysql/detail/connection_pool/idle_connection_list.hpp>
 #include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/detail/connection_pool/task_joiner.hpp>
 
@@ -106,7 +106,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
                 // Deliver the cancel notification to all other tasks
                 obj_->state_ = state_t::cancelled;
-                obj_->shared_st_.iddle_list.close_channel();
+                obj_->shared_st_.idle_list.close_channel();
                 for (auto& conn : obj_->all_conns_)
                     conn.stop_task();
 
@@ -177,7 +177,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 }
 
                 // Try to get a connection without blocking
-                node = obj_->shared_st_.iddle_list.try_get_one();
+                node = obj_->shared_st_.idle_list.try_get_one();
                 if (node)
                 {
                     // There was a connection. Done.
@@ -204,7 +204,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     );
                 }
 
-                // Wait for a connection to become iddle and return it
+                // Wait for a connection to become idle and return it
                 while (true)
                 {
                     // Wait to be notified, or until a timeout happens
@@ -212,20 +212,20 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     run_with_timeout(
                         timer_.get(),
                         timeout_tp_,
-                        obj_->shared_st_.iddle_list.async_wait(asio::deferred),
+                        obj_->shared_st_.idle_list.async_wait(asio::deferred),
                         std::move(self)
                     );
 
                     // Check result
                     if (ec)
                     {
-                        if (ec == client_errc::timeout && obj_->shared_st_.iddle_list.last_error())
+                        if (ec == client_errc::timeout && obj_->shared_st_.idle_list.last_error())
                         {
                             // The operation timed out. Attempt to provide as better diagnostics as we can.
                             // If no diagnostics are available, just leave the timeout error as-is.
-                            ec = obj_->shared_st_.iddle_list.last_error();
+                            ec = obj_->shared_st_.idle_list.last_error();
                             if (diag_)
-                                *diag_ = obj_->shared_st_.iddle_list.last_diagnostics();
+                                *diag_ = obj_->shared_st_.idle_list.last_diagnostics();
                         }
                         else if (ec == asio::experimental::channel_errc::channel_closed)
                         {
@@ -239,7 +239,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
                     // Attempt to get a node. This will almost likely succeed,
                     // but the loop guards against possible race conditions.
-                    node = obj_->shared_st_.iddle_list.try_get_one();
+                    node = obj_->shared_st_.idle_list.try_get_one();
                     if (node)
                     {
                         complete_success(self, *node);

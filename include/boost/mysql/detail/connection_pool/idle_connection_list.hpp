@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_IDDLE_CONNECTION_LIST_HPP
-#define BOOST_MYSQL_DETAIL_CONNECTION_POOL_IDDLE_CONNECTION_LIST_HPP
+#ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_IDLE_CONNECTION_LIST_HPP
+#define BOOST_MYSQL_DETAIL_CONNECTION_POOL_IDLE_CONNECTION_LIST_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -24,7 +24,7 @@ using hook_type = intrusive::list_base_hook<>;
 
 class connection_node;
 
-class iddle_connection_list
+class idle_connection_list
 {
     intrusive::list<connection_node, intrusive::base_hook<hook_type>> list_;
     asio::experimental::channel<void(error_code)> chan_;  // TODO: could we make these void()?
@@ -32,7 +32,7 @@ class iddle_connection_list
     diagnostics last_diag_;
 
 public:
-    iddle_connection_list(boost::asio::any_io_executor ex) : chan_(ex, 1) {}
+    idle_connection_list(boost::asio::any_io_executor ex) : chan_(ex, 1) {}
 
     boost::asio::any_io_executor get_executor() { return chan_.get_executor(); }
 

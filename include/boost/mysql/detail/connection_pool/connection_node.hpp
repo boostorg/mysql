@@ -19,7 +19,7 @@
 #include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connection_pool/iddle_connection_list.hpp>
+#include <boost/mysql/detail/connection_pool/idle_connection_list.hpp>
 #include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/detail/connection_pool/task_joiner.hpp>
 
@@ -132,10 +132,10 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
 struct conn_shared_state
 {
     wait_group wait_gp;
-    iddle_connection_list iddle_list;
+    idle_connection_list idle_list;
     std::size_t num_pending_connections{0};
 
-    conn_shared_state(boost::asio::any_io_executor ex) : wait_gp(ex), iddle_list(std::move(ex)) {}
+    conn_shared_state(boost::asio::any_io_executor ex) : wait_gp(ex), idle_list(std::move(ex)) {}
 };
 
 // Status enums
@@ -144,13 +144,13 @@ enum class connection_status
     pending_connect,
     pending_reset,
     pending_ping,
-    iddle,
+    idle,
     in_use,
 };
 
 inline bool is_pending(connection_status status) noexcept
 {
-    return status != connection_status::iddle && status != connection_status::in_use;
+    return status != connection_status::idle && status != connection_status::in_use;
 }
 
 enum class next_connection_action
@@ -158,7 +158,7 @@ enum class next_connection_action
     invalid,
     connect,
     sleep_connect_failed,
-    iddle_wait,
+    idle_wait,
     reset,
     ping,
 };
@@ -196,34 +196,34 @@ public:
                     }
                     else
                     {
-                        // We're iddle
-                        status_ = connection_status::iddle;
+                        // We're idle
+                        status_ = connection_status::idle;
                     }
                 }
-                else if (status_ == connection_status::iddle || status_ == connection_status::in_use)
+                else if (status_ == connection_status::idle || status_ == connection_status::in_use)
                 {
-                    // Iddle wait. Note that, if a connection is taken, status_ will be
+                    // Idle wait. Note that, if a connection is taken, status_ will be
                     // changed externally, not by this coroutine. This saves rescheduling.
-                    BOOST_ASIO_CORO_YIELD return next_connection_action::iddle_wait;
+                    BOOST_ASIO_CORO_YIELD return next_connection_action::idle_wait;
                     if (col_st != collection_state::none)
                     {
                         // The user has notified us to collect the connection.
                         // This happens after they return the connection to the pool.
                         // Update status and continue
                         status_ = col_st == collection_state::needs_collect
-                                      ? connection_status::iddle
+                                      ? connection_status::idle
                                       : connection_status::pending_reset;
                     }
-                    else if (status_ == connection_status::iddle)
+                    else if (status_ == connection_status::idle)
                     {
                         // The wait finished with no interruptions, and the connection
-                        // is still iddle. Time to ping.
+                        // is still idle. Time to ping.
                         status_ = connection_status::pending_ping;
                     }
 
                     // Otherwise (status is in_use and there's no collection request),
                     // the user is still using the connection (it's taking long, but can happen).
-                    // Iddle wait again until they return the connection.
+                    // Idle wait again until they return the connection.
                 }
                 else if (status_ == connection_status::pending_ping || status_ == connection_status::pending_reset)
                 {
@@ -240,8 +240,8 @@ public:
                     }
                     else
                     {
-                        // The operation succeeded. We're iddle again.
-                        status_ = connection_status::iddle;
+                        // The operation succeeded. We're idle again.
+                        status_ = connection_status::idle;
                     }
                 }
                 else
@@ -256,7 +256,7 @@ public:
 
     void mark_as_in_use() noexcept
     {
-        BOOST_ASSERT(status_ == connection_status::iddle);
+        BOOST_ASSERT(status_ == connection_status::idle);
         status_ = connection_status::in_use;
     }
 
@@ -280,11 +280,11 @@ class connection_node : public hook_type
 
     void process_status_change(connection_status old_status, connection_status new_status)
     {
-        // Update the iddle list if required
-        if (new_status == connection_status::iddle && old_status != connection_status::iddle)
-            shared_st_->iddle_list.add_one(*this);
-        else if (new_status != connection_status::iddle && old_status == connection_status::iddle)
-            shared_st_->iddle_list.remove(*this);
+        // Update the idle list if required
+        if (new_status == connection_status::idle && old_status != connection_status::idle)
+            shared_st_->idle_list.add_one(*this);
+        else if (new_status != connection_status::idle && old_status == connection_status::idle)
+            shared_st_->idle_list.remove(*this);
 
         // Update the number of pending connections if required
         if (!is_pending(old_status) && is_pending(new_status))
@@ -345,7 +345,7 @@ class connection_node : public hook_type
                         );
 
                         // Store the result so get_connection can return meaningful diagnostics
-                        node_.shared_st_->iddle_list.set_last_error(ec, diagnostics(node_.diag_));
+                        node_.shared_st_->idle_list.set_last_error(ec, diagnostics(node_.diag_));
                     }
                     else if (act == next_connection_action::sleep_connect_failed)
                     {
@@ -375,7 +375,7 @@ class connection_node : public hook_type
                             std::move(self)
                         );
                     }
-                    else if (act == next_connection_action::iddle_wait)
+                    else if (act == next_connection_action::idle_wait)
                     {
                         BOOST_ASIO_CORO_YIELD
                         run_with_timeout(
@@ -385,7 +385,7 @@ class connection_node : public hook_type
                             std::move(self)
                         );
 
-                        // Iddle wait may yield a collection state. Load it and pass it to the sans-io
+                        // Idle wait may yield a collection state. Load it and pass it to the sans-io
                         // algorithm.
                         col_st = node_.collection_state_.exchange(collection_state::none);
                     }
@@ -432,9 +432,9 @@ public:
 
     void mark_as_in_use() noexcept
     {
-        BOOST_ASSERT(sansio_impl_.status() == connection_status::iddle);
+        BOOST_ASSERT(sansio_impl_.status() == connection_status::idle);
         sansio_impl_.mark_as_in_use();
-        process_status_change(connection_status::iddle, connection_status::in_use);
+        process_status_change(connection_status::idle, connection_status::in_use);
     }
 
     // Thread-safe. May be safely be called without getting into the strand.

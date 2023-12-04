@@ -157,7 +157,7 @@ public:
     /**
      * \brief Returns the owned connection to the pool and marks it as not requiring reset.
      * \details
-     * Returns a connection to the pool and marks it as iddle. This will
+     * Returns a connection to the pool and marks it as idle. This will
      * skip the \ref any_connection::async_reset_connection call to wipe session state.
      * \n
      * This can provide a performance gain, but must be used with care. Failing to wipe

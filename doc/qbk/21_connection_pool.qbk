@@ -143,20 +143,20 @@ The behavior already explained can be summarized using a state model like the fo
 In short:
 
 * When a connection is created, it goes into the `pending_connect` state.
-* Connection establishment is attempted. If it succeeds, the connection becomes `iddle`.
+* Connection establishment is attempted. If it succeeds, the connection becomes `idle`.
   Otherwise, it stays `pending_connect`, and another attempt will be performed
   after [refmem pool_params retry_interval] has ellapsed.
-* `iddle` connections can be retrieved by [refmem connection_pool async_get_connection],
+* `idle` connections can be retrieved by [refmem connection_pool async_get_connection],
   and they become `in_use`.
 * If a connection is returned by [refmem pooled_connection return_without_reset],
-  it becomes `iddle` again.
+  it becomes `idle` again.
 * If a connection is returned by [reflink pooled_connection]'s destructor, it becomes
   `pending_reset`.
 * [refmem any_connection async_reset_connection] is applied to `pending_reset` connections.
-  On success, they become `iddle` again. Otherwise, they become `pending_connect` and will
+  On success, they become `idle` again. Otherwise, they become `pending_connect` and will
   be reconnected.
-* If a connection stays `iddle` for [refmem pool_params ping_interval], it becomes `pending_ping`.
-  At this point, the connection is probed. If it's alive, it will return to being `iddle`.
+* If a connection stays `idle` for [refmem pool_params ping_interval], it becomes `pending_ping`.
+  At this point, the connection is probed. If it's alive, it will return to being `idle`.
   Otherwise, it becomes `pending_connect` to be reconnected. Pings can be disabled by
   setting [refmem pool_params ping_interval] to zero.
 
