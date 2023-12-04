@@ -5,9 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_connection_pool_repository_cpp
+#include <boost/mysql/static_results.hpp>
 
-#include "repository.hpp"
+#ifdef BOOST_MYSQL_CXX14
+
+//[example_connection_pool_repository_cpp
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -21,6 +23,7 @@
 #include <tuple>
 #include <utility>
 
+#include "repository.hpp"
 #include "types.hpp"
 
 using namespace notes;
@@ -216,3 +219,5 @@ bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_conte
 }
 
 //]
+
+#endif

@@ -5,6 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/static_results.hpp>
+
+#ifdef BOOST_MYSQL_CXX14
+
 //[example_connection_pool_main_cpp
 
 #include <boost/mysql/any_address.hpp>
@@ -130,3 +134,11 @@ int main(int argc, char* argv[])
 }
 
 //]
+
+#else
+
+#include <iostream>
+
+int main() { std::cout << "Sorry, your compiler doesn't support C++14\n"; }
+
+#endif

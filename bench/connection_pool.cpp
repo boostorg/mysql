@@ -206,12 +206,11 @@ void run_nopool(mysql::any_address server_addr, bool use_ssl)
 {
     // Setup
     asio::io_context ctx;
-    mysql::connect_params params{
-        std::move(server_addr),
-        "example_user",
-        "example_password",
-        "boost_mysql_examples",
-    };
+    mysql::connect_params params;
+    params.server_address = std::move(server_addr);
+    params.username = "example_user";
+    params.password = "example_password";
+    params.database = "boost_mysql_examples";
     params.ssl = use_ssl ? mysql::ssl_mode::require : mysql::ssl_mode::disable;
     std::vector<task_nopool> conns;
     coordinator coord;
@@ -236,12 +235,11 @@ void run_pool(mysql::any_address server_addr, bool use_ssl)
 {
     // Setup
     asio::io_context ctx;
-    mysql::pool_params params{
-        std::move(server_addr),
-        "example_user",
-        "example_password",
-        "boost_mysql_examples",
-    };
+    mysql::pool_params params;
+    params.server_address = std::move(server_addr);
+    params.username = "example_user";
+    params.password = "example_password";
+    params.database = "boost_mysql_examples";
     params.max_size = num_parallel;
     params.ssl = use_ssl ? mysql::ssl_mode::require : mysql::ssl_mode::disable;
 

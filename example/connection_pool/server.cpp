@@ -7,7 +7,9 @@
 
 //[example_connection_pool_server_cpp
 
-#include "server.hpp"
+#include <boost/mysql/static_results.hpp>
+
+#ifdef BOOST_MYSQL_CXX14
 
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -46,6 +48,7 @@
 #include <string>
 
 #include "repository.hpp"
+#include "server.hpp"
 #include "types.hpp"
 
 // This file contains all the boilerplate code to implement a HTTP
@@ -511,5 +514,7 @@ error_code notes::launch_server(
     // Done
     return error_code();
 }
+
+#endif
 
 //]
