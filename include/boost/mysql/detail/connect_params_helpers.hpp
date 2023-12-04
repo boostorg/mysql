@@ -25,15 +25,24 @@ namespace detail {
 
 struct any_address_view
 {
-    address_type type{address_type::host_and_port};
+    address_type type;
     string_view address;
-    unsigned short port{};
+    unsigned short port;
+
+    any_address_view(
+        address_type t = address_type::host_and_port,
+        string_view addr = {},
+        unsigned short port = 0
+    ) noexcept
+        : type(t), address(addr), port(port)
+    {
+    }
 };
 
 inline any_address_view make_view(const any_address& input) noexcept
 {
     const auto& impl = access::get_impl(input);
-    return {impl.type, impl.address, impl.port};
+    return any_address_view(impl.type, impl.address, impl.port);
 }
 
 inline ssl_mode adjust_ssl_mode(ssl_mode input, address_type addr_type) noexcept

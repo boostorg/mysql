@@ -225,9 +225,9 @@ class any_address
 #ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
-        address_type type{address_type::host_and_port};
+        address_type type;
         std::string address;
-        unsigned short port{default_port};
+        unsigned short port;
     } impl_;
 
     any_address(address_type t, std::string&& addr, unsigned short port) noexcept
@@ -246,7 +246,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    any_address() noexcept = default;
+    any_address() noexcept : any_address(address_type::host_and_port, std::string(), default_port) {}
 
     /**
      * \brief Copy constructor.

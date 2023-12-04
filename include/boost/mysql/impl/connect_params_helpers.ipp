@@ -14,6 +14,8 @@
 
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 
+#include <memory>
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -43,7 +45,7 @@ boost::mysql::detail::stable_connect_params boost::mysql::detail::make_stable(co
                                 input.database.size();
 
     // Allocate space for strings
-    auto ptr = std::make_unique<char[]>(required_size);
+    std::unique_ptr<char[]> ptr{new char[required_size]};
 
     // Copy them to the new buffer
     char* it = ptr.get();

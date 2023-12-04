@@ -66,10 +66,10 @@ struct internal_pool_params
 
     any_connection_params make_ctor_params() noexcept
     {
-        return {
-            ssl_ctx.has_value() ? &ssl_ctx.value() : nullptr,
-            initial_read_buffer_size,
-        };
+        any_connection_params res;
+        res.ssl_context = ssl_ctx.has_value() ? &ssl_ctx.value() : nullptr;
+        res.initial_read_buffer_size = initial_read_buffer_size;
+        return res;
     }
 };
 
@@ -106,16 +106,17 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
         ssl_ctx.emplace(asio::ssl::context::tlsv12_client);
     }
 
+    connect_params connect_prms;
+    connect_prms.server_address = std::move(params.server_address);
+    connect_prms.username = std::move(params.username);
+    connect_prms.password = std::move(params.password);
+    connect_prms.database = std::move(params.database);
+    connect_prms.connection_collation = 0;  // use the server's default collation
+    connect_prms.ssl = params.ssl;
+    connect_prms.multi_queries = params.multi_queries;
+
     return {
-        {
-         std::move(params.server_address),
-         std::move(params.username),
-         std::move(params.password),
-         std::move(params.database),
-         std::uint16_t(0), // use the server's default collation
-            params.ssl,
-         params.multi_queries,
-         },
+        std::move(connect_prms),
         std::move(ssl_ctx),
         params.initial_read_buffer_size,
         params.initial_size,

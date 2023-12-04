@@ -126,6 +126,13 @@ private:
 
 class any_connection_base : public er_connection
 {
+    static any_connection_params make_ctor_params(asio::ssl::context& ctx) noexcept
+    {
+        any_connection_params res;
+        res.ssl_context = &ctx;
+        return res;
+    }
+
 public:
     using conn_type = any_connection;
     using base_type = any_connection_base;
@@ -152,7 +159,7 @@ public:
         er_network_variant& var,
         address_type addr
     )
-        : conn_(executor, {&ssl_ctx}), var_(var), addr_type_(addr)
+        : conn_(executor, make_ctor_params(ssl_ctx)), var_(var), addr_type_(addr)
     {
     }
 
@@ -456,7 +463,10 @@ public:
     bool supports_handshake() const override { return false; }
     const char* stream_name() const override
     {
-        static_assert(addr_type == address_type::host_and_port || addr_type == address_type::unix_path);
+        static_assert(
+            addr_type == address_type::host_and_port || addr_type == address_type::unix_path,
+            "Bad addr_type"
+        );
         if (addr_type == address_type::host_and_port)
             return "any_tcp";
         else

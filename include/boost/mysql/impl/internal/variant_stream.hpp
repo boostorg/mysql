@@ -30,12 +30,23 @@
 #include <boost/optional/optional.hpp>
 #include <boost/variant2/variant.hpp>
 
-#include <memory>
 #include <string>
 
 namespace boost {
 namespace mysql {
 namespace detail {
+
+// Asio defines a "string view parameter" to be either const std::string&,
+// std::experimental::string_view or std::string_view. Casting from the Boost
+// version doesn't work for std::experimental::string_view
+#if !defined(BOOST_ASIO_HAS_STD_STRING_VIEW) && defined(BOOST_ASIO_HAS_STD_EXPERIMENTAL_STRING_VIEW)
+inline std::experimental::string_view cast_asio_sv_param(string_view input) noexcept
+{
+    return {input.data(), input.size()};
+}
+#else
+inline string_view cast_asio_sv_param(string_view input) noexcept { return input; }
+#endif
 
 class variant_stream final : public any_stream
 {
@@ -99,6 +110,7 @@ public:
         else
         {
             BOOST_ASSERT(false);
+            return 0u;
         }
     }
 
@@ -146,6 +158,7 @@ public:
         else
         {
             BOOST_ASSERT(false);
+            return 0u;
         }
     }
 
@@ -185,7 +198,11 @@ public:
         {
             // Resolve endpoints. TODO: we can save the to_string allocation
             auto& tcp_sock = variant2::unsafe_get<1>(sock_);
-            auto endpoints = tcp_sock.resolv.resolve(address_.address, std::to_string(address_.port), ec);
+            auto endpoints = tcp_sock.resolv.resolve(
+                cast_asio_sv_param(address_.address),
+                std::to_string(address_.port),
+                ec
+            );
             if (ec)
                 return;
 
@@ -302,7 +319,7 @@ private:
                     BOOST_ASIO_CORO_YIELD
                     variant2::unsafe_get<1>(this_obj_.sock_)
                         .resolv.async_resolve(
-                            this_obj_.address_.address,
+                            cast_asio_sv_param(this_obj_.address_.address),
                             std::to_string(this_obj_.address_.port),
                             std::move(self)
                         );
