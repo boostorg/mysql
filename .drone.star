@@ -104,10 +104,7 @@ def _pipeline(
                 "name": "mysql-socket",
                 "path": "/var/run/mysqld"
             }] if db != None else [],
-            "commands": [
-                "pip install requests",
-                command
-            ],
+            "commands": [command],
             "environment": {
                 "CODECOV_TOKEN": {
                     "from_secret": "CODECOV_TOKEN"

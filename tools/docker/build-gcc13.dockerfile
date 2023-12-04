@@ -15,10 +15,12 @@ RUN \
         g++-13 \
         libssl-dev \
         python3 \
+        python3-pip \
         python-is-python3 \
         ninja-build \
         git \
         cmake \
         mysql-client && \
     ln -s /usr/bin/g++-13 /usr/bin/g++ && \
-    ln -s /usr/bin/gcc-13 /usr/bin/gcc
+    ln -s /usr/bin/gcc-13 /usr/bin/gcc && \
+    python -m pip install requests

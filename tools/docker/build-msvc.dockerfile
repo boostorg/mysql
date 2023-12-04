@@ -20,4 +20,5 @@ RUN powershell -Command \
     Copy-Item 'C:/Program Files (x86)/OpenSSL-Win32/' -Recurse -Destination 'C:/openssl-32/' ; \
     choco install --no-progress -y --force --version $OPENSSL_VERSION openssl ; \
     Copy-Item 'C:/Program Files/OpenSSL-Win64/' -Recurse -Destination 'C:/openssl-64/' ; \
-    choco uninstall -y openssl
+    choco uninstall -y openssl ; \
+    pip install requests

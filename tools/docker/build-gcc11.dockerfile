@@ -20,6 +20,7 @@ RUN \
         libssl-dev \
         wget \
         python3 \
+        python3-pip \
         python-is-python3 \
         ninja-build \
         valgrind \
@@ -30,7 +31,8 @@ RUN \
         mysql-client && \
     unlink /usr/bin/gcc && \
     ln -s /usr/bin/g++-11 /usr/bin/g++ && \
-    ln -s /usr/bin/gcc-11 /usr/bin/gcc && \
+    ln -s /usr/bin/gcc-11 /usr/bin/gcc && \ 
+    python -m pip install requests && \
     wget https://keybase.io/codecovsecurity/pgp_keys.asc && \
     gpg --no-default-keyring --keyring trustedkeys.gpg --import pgp_keys.asc && \
     wget -q https://uploader.codecov.io/latest/linux/codecov && \
