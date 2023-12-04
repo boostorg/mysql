@@ -1315,7 +1315,7 @@ void section_any_connection(string_view server_hostname, string_view username, s
         }
         //]
         ASSERT(ec != error_code());
-        ASSERT(diag.server_message().find("certificate verify failed") != string_view::npos);
+        ASSERT(ec.message().find("certificate verify failed") != string_view::npos);
     }
 }
 
