@@ -12,7 +12,6 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connection_pool/idle_connection_list.hpp>
 
 #include <boost/asio/coroutine.hpp>
 #include <boost/assert.hpp>
@@ -166,8 +165,8 @@ public:
                         // This happens after they return the connection to the pool.
                         // Update status and continue
                         set_status(
-                            col_st == collection_state::needs_collect ? connection_status::idle
-                                                                      : connection_status::pending_reset
+                            col_st == collection_state::needs_collect ? connection_status::pending_reset
+                                                                      : connection_status::idle
                         );
                     }
                     else if (status_ == connection_status::idle)

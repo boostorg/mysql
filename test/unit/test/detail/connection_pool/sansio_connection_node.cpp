@@ -21,6 +21,14 @@ using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_sansio_connection_node)
 
+enum hooks_t : int
+{
+    enter_idle = 1,
+    exit_idle = 2,
+    enter_pending = 4,
+    exit_pending = 8,
+};
+
 struct mock_node : public sansio_connection_node<mock_node>
 {
     std::size_t num_entering_idle{};
@@ -41,18 +49,12 @@ struct mock_node : public sansio_connection_node<mock_node>
         num_exiting_pending = 0;
     }
 
-    void check_hooks(
-        std::size_t enter_idle,
-        std::size_t exit_idle,
-        std::size_t enter_pending,
-        std::size_t exit_pending
-    )
+    void check_hooks(int hooks)
     {
-        BOOST_TEST(num_entering_idle == enter_idle);
-        BOOST_TEST(num_exiting_idle == exit_idle);
-        BOOST_TEST(num_entering_pending == enter_pending);
-        BOOST_TEST(num_entering_pending == exit_pending);
-
+        BOOST_TEST(num_entering_idle == (hooks & enter_idle ? 1u : 0u));
+        BOOST_TEST(num_exiting_idle == (hooks & exit_idle ? 1u : 0u));
+        BOOST_TEST(num_entering_pending == (hooks & enter_pending ? 1u : 0u));
+        BOOST_TEST(num_exiting_pending == (hooks & exit_pending ? 1u : 0u));
         clear_hooks();
     }
 };
@@ -61,31 +63,31 @@ BOOST_AUTO_TEST_CASE(normal_lifecyle)
 {
     // Initial
     mock_node nod;
-    nod.check_hooks(0, 0, 0, 0);
+    nod.check_hooks(0);
 
     // First resume yields connect
     auto act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
-    nod.check_hooks(0, 0, 1, 0);
+    nod.check_hooks(enter_pending);
 
     // Connect success
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check_hooks(1, 0, 0, 1);
+    nod.check_hooks(exit_pending | enter_idle);
 
     // Connection taken by user
     nod.mark_as_in_use();
-    nod.check_hooks(0, 1, 0, 0);
+    nod.check_hooks(exit_idle);
 
     // Connection returned by user
     act = nod.resume(error_code(), collection_state::needs_collect);
     BOOST_TEST(act == next_connection_action::reset);
-    nod.check_hooks(0, 0, 1, 0);
+    nod.check_hooks(enter_pending);
 
     // Reset successful
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check_hooks(1, 0, 0, 1);
+    nod.check_hooks(exit_pending | enter_idle);
 }
 
 BOOST_AUTO_TEST_CASE(connect_fail)
@@ -99,17 +101,17 @@ BOOST_AUTO_TEST_CASE(connect_fail)
     // Fail connecting
     act = nod.resume(boost::mysql::client_errc::wrong_num_params, collection_state::none);
     BOOST_TEST(act == next_connection_action::sleep_connect_failed);
-    nod.check_hooks(0, 0, 0, 0);
+    nod.check_hooks(0);
 
     // Sleep done
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
-    nod.check_hooks(0, 0, 0, 0);
+    nod.check_hooks(0);
 
     // Connect success
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check_hooks(1, 0, 0, 1);
+    nod.check_hooks(exit_pending | enter_idle);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
