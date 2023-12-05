@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_IDLE_CONNECTION_LIST_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_IDLE_CONNECTION_LIST_HPP
 
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/asio/error.hpp>
@@ -28,8 +27,6 @@ class idle_connection_list
 {
     intrusive::list<connection_node, intrusive::base_hook<hook_type>> list_;
     asio::experimental::channel<void(error_code)> chan_;
-    error_code last_ec_;
-    diagnostics last_diag_;
 
 public:
     idle_connection_list(boost::asio::any_io_executor ex) : chan_(ex, 1) {}
@@ -54,17 +51,6 @@ public:
     void close_channel() { chan_.close(); }
 
     void remove(connection_node& node) { list_.erase(list_.iterator_to(node)); }
-
-    std::size_t size() const noexcept { return list_.size(); }
-
-    void set_last_error(error_code ec, diagnostics&& diag)
-    {
-        last_ec_ = ec;
-        last_diag_ = std::move(diag);
-    }
-
-    error_code last_error() const noexcept { return last_ec_; }
-    const diagnostics& last_diagnostics() const noexcept { return last_diag_; }
 };
 
 }  // namespace detail

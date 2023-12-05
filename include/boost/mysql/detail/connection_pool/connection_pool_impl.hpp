@@ -19,7 +19,7 @@
 #include <boost/mysql/detail/connection_pool/connection_node.hpp>
 #include <boost/mysql/detail/connection_pool/idle_connection_list.hpp>
 #include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
-#include <boost/mysql/detail/connection_pool/task_joiner.hpp>
+#include <boost/mysql/detail/connection_pool/wait_group.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
@@ -40,7 +40,6 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/optional/optional.hpp>
 
-#include <array>
 #include <chrono>
 #include <cstddef>
 #include <list>
@@ -65,6 +64,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
     asio::any_io_executor conn_ex_;
     std::list<connection_node> all_conns_;
     conn_shared_state shared_st_;
+    wait_group wait_gp_;
     asio::experimental::concurrent_channel<void(error_code)> cancel_chan_;
 
     boost::asio::any_io_executor get_io_executor() const { return conn_ex_ ? conn_ex_ : ex_; }
@@ -72,7 +72,17 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
     void create_connection()
     {
         all_conns_.emplace_back(params_, ex_, conn_ex_, shared_st_);
-        all_conns_.back().async_run(asio::bind_executor(ex_, asio::detached));
+        all_conns_.back().async_run_with_group(wait_gp_);
+    }
+
+    void try_get_diagnostics(error_code& ec, diagnostics* diag) const
+    {
+        if (shared_st_.last_ec)
+        {
+            ec = shared_st_.last_ec;
+            if (diag)
+                *diag = shared_st_.last_diag;
+        }
     }
 
     struct run_op : asio::coroutine
@@ -108,11 +118,11 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 obj_->state_ = state_t::cancelled;
                 obj_->shared_st_.idle_list.close_channel();
                 for (auto& conn : obj_->all_conns_)
-                    conn.stop_task();
+                    conn.cancel();
 
                 // Wait for all connection tasks to exit
                 BOOST_ASIO_CORO_YIELD
-                obj_->shared_st_.wait_gp.join_tasks(std::move(self));
+                obj_->wait_gp_.join_tasks(std::move(self));
 
                 // Done
                 obj_.reset();
@@ -219,13 +229,11 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     // Check result
                     if (ec)
                     {
-                        if (ec == client_errc::timeout && obj_->shared_st_.idle_list.last_error())
+                        if (ec == client_errc::timeout)
                         {
                             // The operation timed out. Attempt to provide as better diagnostics as we can.
                             // If no diagnostics are available, just leave the timeout error as-is.
-                            ec = obj_->shared_st_.idle_list.last_error();
-                            if (diag_)
-                                *diag_ = obj_->shared_st_.idle_list.last_diagnostics();
+                            obj_->try_get_diagnostics(ec, diag_);
                         }
                         else if (ec == asio::experimental::channel_errc::channel_closed)
                         {
@@ -233,6 +241,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                             ec = client_errc::cancelled;
                         }
 
+                        // TODO: dispatch
                         do_complete(self, ec, pooled_connection());
                         return;
                     }
@@ -242,6 +251,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     node = obj_->shared_st_.idle_list.try_get_one();
                     if (node)
                     {
+                        // TODO: dispatch
                         complete_success(self, *node);
                         return;
                     }
@@ -255,8 +265,9 @@ public:
         : params_(make_internal_pool_params(std::move(params))),
           ex_(ex_params.pool_executor()),
           conn_ex_(ex_params.connection_executor()),
-          shared_st_(get_io_executor()),
-          cancel_chan_(get_io_executor(), 1)
+          shared_st_(ex_),
+          wait_gp_(ex_),
+          cancel_chan_(ex_, 1)
     {
     }
 
