@@ -52,11 +52,14 @@ add_executable(
     test/detail/execution_concepts.cpp
     test/detail/writable_field_traits.cpp
     test/detail/socket_stream.cpp
+
     test/detail/typing/meta_check_context.cpp
     test/detail/typing/pos_map.cpp
     test/detail/typing/readable_field_traits.cpp
     test/detail/typing/row_traits.cpp
     test/detail/typing/get_type_index.cpp
+    
+    test/detail/connection_pool/sansio_connection_node.cpp
 
     test/impl/ssl_context_with_default.cpp
 
