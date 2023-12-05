@@ -44,6 +44,8 @@ def _launch_server(exe: str, host: str):
             # Wait until the server is ready
             ready_line = server.stdout.readline().decode()
             print(ready_line, end='')
+            if ready_line.startswith('Sorry'): # C++14 unsupported, skip the test
+                exit(0)
             yield _parse_server_start_line(ready_line)
         finally:
             # Send SIGTERM
