@@ -58,14 +58,22 @@ for local example in $(order_examples)
     ;
 }
 
-# Coroutines, which requires Boost.Context
-run
-        async_coroutines.cpp
-        /boost/mysql/test//boost_mysql_compiled
-        /boost/context//boost_context
-    :
-        <testing.arg>"example_user example_password $(hostname)"
-    ;
+# Coroutines and any_connection, which requires Boost.Context
+local coro_examples =
+    async_coroutines
+    any_connection
+;
+
+for local example in $(coro_examples)
+{
+    run
+            "$(example).cpp"
+            /boost/mysql/test//boost_mysql_compiled
+            /boost/context//boost_context
+        :
+            <testing.arg>"example_user example_password $(hostname)"
+        ;
+}
 
 # UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
 if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
