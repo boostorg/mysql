@@ -21,12 +21,13 @@ inline std::ostream& operator<<(std::ostream& os, connection_status v)
     switch (v)
     {
     case connection_status::initial: return os << "connection_status::initial";
+    case connection_status::connect_in_progress: return os << "connection_status::connect_in_progress";
+    case connection_status::sleep_connect_failed_in_progress:
+        return os << "connection_status::sleep_connect_failed_in_progress";
+    case connection_status::reset_in_progress: return os << "connection_status::reset_in_progress";
+    case connection_status::ping_in_progress: return os << "connection_status::ping_in_progress";
     case connection_status::idle: return os << "connection_status::idle";
     case connection_status::in_use: return os << "connection_status::in_use";
-    case connection_status::pending_connect: return os << "connection_status::pending_connect";
-    case connection_status::pending_reset: return os << "connection_status::pending_reset";
-    case connection_status::pending_ping: return os << "connection_status::pending_ping";
-    case connection_status::terminated: return os << "connection_status::terminated";
     default: return os << "<unknown connection_status>";
     }
 }

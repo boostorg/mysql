@@ -28,23 +28,22 @@ enum class connection_status
     initial,
 
     // Connection is trying to connect
-    pending_connect,
+    connect_in_progress,
+
+    // Connect failed and we're sleeping
+    sleep_connect_failed_in_progress,
 
     // Connection is trying to reset
-    pending_reset,
+    reset_in_progress,
 
     // Connection is trying to ping
-    pending_ping,
+    ping_in_progress,
 
     // Connection can be handed to the user
     idle,
 
     // Connection has been handed to the user
     in_use,
-
-    // Connection has been terminated.
-    // This status doesn't count as pending. This facilitates tracking pending connections.
-    terminated,
 };
 
 // The next I/O action the connection should take. There's
@@ -84,21 +83,36 @@ enum class collection_state
     needs_collect_with_reset
 };
 
-inline bool is_pending(connection_status status) noexcept
-{
-    return status == connection_status::pending_connect || status == connection_status::pending_reset ||
-           status == connection_status::pending_ping;
-}
-
 // CRTP. Derived should implement the entering_xxx and exiting_xxx hook functions.
 // Derived must derive from this class
 template <class Derived>
 class sansio_connection_node
 {
-    asio::coroutine coro_;
+    bool alive_{true};
     connection_status status_{connection_status::initial};
 
-    void set_status(connection_status new_status)
+    inline bool is_pending(connection_status status) noexcept
+    {
+        return status != connection_status::initial && status != connection_status::idle &&
+               status != connection_status::in_use;
+    }
+
+    inline static next_connection_action status_to_action(connection_status status) noexcept
+    {
+        switch (status)
+        {
+        case connection_status::connect_in_progress: return next_connection_action::connect;
+        case connection_status::sleep_connect_failed_in_progress:
+            return next_connection_action::sleep_connect_failed;
+        case connection_status::ping_in_progress: return next_connection_action::ping;
+        case connection_status::reset_in_progress: return next_connection_action::reset;
+        case connection_status::idle:
+        case connection_status::in_use: return next_connection_action::idle_wait;
+        default: next_connection_action::none;
+        }
+    }
+
+    next_connection_action set_status(connection_status new_status)
     {
         auto& derived = static_cast<Derived&>(*this);
 
@@ -116,6 +130,8 @@ class sansio_connection_node
 
         // Actually update status
         status_ = new_status;
+
+        return status_to_action(new_status);
     }
 
 public:
@@ -125,88 +141,48 @@ public:
         set_status(connection_status::in_use);
     }
 
-    void cancel() noexcept { set_status(connection_status::terminated); }
+    void cancel() noexcept { alive_ = false; }
 
     next_connection_action resume(error_code ec, collection_state col_st)
     {
-        BOOST_ASIO_CORO_REENTER(coro_)
+        while (alive_)
         {
-            while (true)
+            switch (status_)
             {
-                if (status_ == connection_status::initial)
+            case connection_status::initial: return set_status(connection_status::connect_in_progress);
+            case connection_status::connect_in_progress:
+                return ec ? set_status(connection_status::sleep_connect_failed_in_progress)
+                          : set_status(connection_status::idle);
+            case connection_status::sleep_connect_failed_in_progress:
+                return set_status(connection_status::connect_in_progress);
+            case connection_status::idle:
+                // The wait finished with no interruptions, and the connection
+                // is still idle. Time to ping.
+                return set_status(connection_status::ping_in_progress);
+            case connection_status::in_use:
+                // If col_st != none, the user has notified us to collect the connection.
+                // This happens after they return the connection to the pool.
+                // Update status and continue
+                if (col_st == collection_state::needs_collect)
                 {
-                    set_status(connection_status::pending_connect);
+                    // No reset needed, we're idle
+                    return set_status(connection_status::idle);
                 }
-                else if (status_ == connection_status::pending_connect)
+                else if (col_st == collection_state::needs_collect_with_reset)
                 {
-                    // Try to connect
-                    BOOST_ASIO_CORO_YIELD return next_connection_action::connect;
-                    if (ec)
-                    {
-                        // Sleep
-                        BOOST_ASIO_CORO_YIELD return next_connection_action::sleep_connect_failed;
-
-                        // We're still pending connect, just retry.
-                    }
-                    else
-                    {
-                        // We're idle
-                        set_status(connection_status::idle);
-                    }
-                }
-                else if (status_ == connection_status::idle || status_ == connection_status::in_use)
-                {
-                    // Idle wait. Note that, if a connection is taken, status_ will be
-                    // changed externally, not by this coroutine. This saves rescheduling.
-                    BOOST_ASIO_CORO_YIELD return next_connection_action::idle_wait;
-                    if (col_st != collection_state::none)
-                    {
-                        // The user has notified us to collect the connection.
-                        // This happens after they return the connection to the pool.
-                        // Update status and continue
-                        set_status(
-                            col_st == collection_state::needs_collect ? connection_status::pending_reset
-                                                                      : connection_status::idle
-                        );
-                    }
-                    else if (status_ == connection_status::idle)
-                    {
-                        // The wait finished with no interruptions, and the connection
-                        // is still idle. Time to ping.
-                        set_status(connection_status::pending_ping);
-                    }
-
-                    // Otherwise (status is in_use and there's no collection request),
-                    // the user is still using the connection (it's taking long, but can happen).
-                    // Idle wait again until they return the connection.
-                }
-                else if (status_ == connection_status::pending_ping || status_ == connection_status::pending_reset)
-                {
-                    // Do ping or reset
-                    BOOST_ASIO_CORO_YIELD return status_ == connection_status::pending_ping
-                        ? next_connection_action::ping
-                        : next_connection_action::reset;
-
-                    // Check result
-                    if (ec)
-                    {
-                        // The operation had an error but weren't cancelled. Reconnect
-                        set_status(connection_status::pending_connect);
-                    }
-                    else
-                    {
-                        // The operation succeeded. We're idle again.
-                        set_status(connection_status::idle);
-                    }
-                }
-                else if (status_ == connection_status::terminated)
-                {
-                    return next_connection_action::none;
+                    return set_status(connection_status::reset_in_progress);
                 }
                 else
                 {
-                    BOOST_ASSERT(false);
+                    // The user is still using the connection (it's taking long, but can happen).
+                    // Idle wait again until they return the connection.
+                    return next_connection_action::idle_wait;
                 }
+            case connection_status::ping_in_progress:
+            case connection_status::reset_in_progress:
+                // Reconnect if there was an error. Otherwise, we're idle
+                return ec ? set_status(connection_status::connect_in_progress)
+                          : set_status(connection_status::idle);
             }
         }
 

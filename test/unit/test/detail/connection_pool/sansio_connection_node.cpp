@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(normal_lifecyle)
     nod.check_hooks(exit_idle);
 
     // Connection returned by user
-    act = nod.resume(error_code(), collection_state::needs_collect);
+    act = nod.resume(error_code(), collection_state::needs_collect_with_reset);
     BOOST_TEST(act == next_connection_action::reset);
     nod.check_hooks(enter_pending);
 
