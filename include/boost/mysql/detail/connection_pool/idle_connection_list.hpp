@@ -27,7 +27,7 @@ class connection_node;
 class idle_connection_list
 {
     intrusive::list<connection_node, intrusive::base_hook<hook_type>> list_;
-    asio::experimental::channel<void(error_code)> chan_;  // TODO: could we make these void()?
+    asio::experimental::channel<void(error_code)> chan_;
     error_code last_ec_;
     diagnostics last_diag_;
 
