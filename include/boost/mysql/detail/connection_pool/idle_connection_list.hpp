@@ -11,7 +11,6 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/asio/error.hpp>
-#include <boost/asio/experimental/channel.hpp>
 #include <boost/intrusive/list.hpp>
 
 namespace boost {
@@ -26,29 +25,13 @@ class connection_node;
 class idle_connection_list
 {
     intrusive::list<connection_node, intrusive::base_hook<hook_type>> list_;
-    asio::experimental::channel<void(error_code)> chan_;
 
 public:
-    idle_connection_list(boost::asio::any_io_executor ex) : chan_(ex, 1) {}
-
-    boost::asio::any_io_executor get_executor() { return chan_.get_executor(); }
+    idle_connection_list() = default;
 
     connection_node* try_get_one() noexcept { return list_.empty() ? nullptr : &list_.back(); }
 
-    template <class CompletionToken>
-    auto async_wait(CompletionToken&& token)
-        -> decltype(chan_.async_receive(std::forward<CompletionToken>(token)))
-    {
-        return chan_.async_receive(std::forward<CompletionToken>(token));
-    }
-
-    void add_one(connection_node& node)
-    {
-        list_.push_back(node);
-        chan_.try_send(error_code());
-    }
-
-    void close_channel() { chan_.close(); }
+    void add_one(connection_node& node) { list_.push_back(node); }
 
     void remove(connection_node& node) { list_.erase(list_.iterator_to(node)); }
 };

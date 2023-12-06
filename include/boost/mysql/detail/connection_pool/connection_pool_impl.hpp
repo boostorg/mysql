@@ -116,7 +116,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
                 // Deliver the cancel notification to all other tasks
                 obj_->state_ = state_t::cancelled;
-                obj_->shared_st_.idle_list.close_channel();
+                obj_->shared_st_.idle_notification_chan.close();
                 for (auto& conn : obj_->all_conns_)
                     conn.cancel();
 
@@ -222,7 +222,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                     run_with_timeout(
                         timer_.get(),
                         timeout_tp_,
-                        obj_->shared_st_.idle_list.async_wait(asio::deferred),
+                        obj_->shared_st_.idle_notification_chan.async_receive(asio::deferred),
                         std::move(self)
                     );
 

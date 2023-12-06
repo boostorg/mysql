@@ -22,6 +22,7 @@
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/experimental/concurrent_channel.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -37,11 +38,12 @@ class connection_pool_impl;
 struct conn_shared_state
 {
     idle_connection_list idle_list;
+    asio::experimental::channel<void(error_code)> idle_notification_chan;
     std::size_t num_pending_connections{0};
     error_code last_ec;
     diagnostics last_diag;
 
-    conn_shared_state(boost::asio::any_io_executor ex) : idle_list(std::move(ex)) {}
+    conn_shared_state(boost::asio::any_io_executor ex) : idle_notification_chan(std::move(ex), 1) {}
 };
 
 class connection_node : public hook_type, public sansio_connection_node<connection_node>
@@ -59,7 +61,11 @@ class connection_node : public hook_type, public sansio_connection_node<connecti
 
     // Hooks for sansio_connection_node
     friend class sansio_connection_node<connection_node>;
-    void entering_idle() { shared_st_->idle_list.add_one(*this); }
+    void entering_idle()
+    {
+        shared_st_->idle_list.add_one(*this);
+        shared_st_->idle_notification_chan.try_send(error_code());
+    }
     void exiting_idle() { shared_st_->idle_list.remove(*this); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
