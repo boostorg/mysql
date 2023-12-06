@@ -20,6 +20,7 @@
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/cancellation_type.hpp>
+#include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
@@ -30,17 +31,24 @@
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/use_future.hpp>
+#include <boost/test/tools/interface.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
+#include <exception>
 #include <functional>
 #include <list>
+#include <stdexcept>
 
 #include "pool_printing.hpp"
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/run_stackful_coro.hpp"
+#include "test_unit/run_coroutine.hpp"
 
 using namespace boost::mysql::detail;
+using namespace boost::mysql::test;
 namespace asio = boost::asio;
+using boost::mysql::common_server_errc;
 using boost::mysql::connect_params;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
@@ -92,8 +100,8 @@ public:
         }
         else
         {
-            auto slot = asio::get_associated_cancellation_slot(t.handler);
             pending_.push_front(std::move(t));
+            auto slot = asio::get_associated_cancellation_slot(pending_.front().handler);
             if (slot.is_connected())
             {
                 slot.emplace<cancel_handler>(cancel_handler{this, pending_.begin()});
@@ -103,22 +111,28 @@ public:
 
     void cancel(int timer_id)
     {
-        for (auto it = pending_.begin(); it != pending_.end(); ++it)
+        for (auto it = pending_.begin(); it != pending_.end();)
         {
             if (it->timer_id == timer_id)
-                fire_timer(it, asio::error::operation_aborted);
+                it = fire_timer(it, asio::error::operation_aborted);
+            else
+                ++it;
         }
     }
 
-    void advance_time(steady_clock::time_point new_time)
+    void advance_time_to(steady_clock::time_point new_time)
     {
-        for (auto it = pending_.begin(); it != pending_.end(); ++it)
+        for (auto it = pending_.begin(); it != pending_.end();)
         {
             if (it->expiry <= new_time)
-                fire_timer(it, error_code());
+                it = fire_timer(it, error_code());
+            else
+                ++it;
         }
         current_time_ = new_time;
     }
+
+    void advance_time_by(steady_clock::duration by) { advance_time_to(current_time_ + by); }
 
     int allocate_timer_id() { return ++current_timer_id_; }
 
@@ -134,11 +148,12 @@ private:
         asio::post(std::move(t.timer_ex), asio::append(std::move(t.handler), ec));
     }
 
-    void fire_timer(std::list<pending_timer>::iterator it, error_code ec)
+    std::list<pending_timer>::iterator fire_timer(std::list<pending_timer>::iterator it, error_code ec)
     {
         auto t = std::move(*it);
-        pending_.erase(it);
+        auto res = pending_.erase(it);
         call_handler(std::move(t), ec);
+        return res;
     }
 };
 
@@ -188,52 +203,56 @@ public:
 
 class mock_connection
 {
-    using validator_fn = std::function<error_code(next_connection_action, diagnostics*)>;
+    asio::experimental::channel<void(error_code, next_connection_action)> recv_chan_;
+    asio::experimental::channel<void(error_code, diagnostics)> send_chan_;
 
-    // asio::experimental::channel<void(error_code, next_connection_action)> recv_chan_;
-    // asio::experimental::channel<void(error_code, diagnostics)> send_chan_;
-
-    asio::any_io_executor ex_;
-    asio::steady_timer tim_;
-    validator_fn fn_{[](next_connection_action, diagnostics*) { return error_code(); }};
-
-    struct initiation
+    struct run_op
     {
-        template <class Handler>
-        void operator()(Handler&& h, asio::steady_timer* tim, error_code ec)
+        mock_connection& obj;
+        next_connection_action act;
+        diagnostics* diag;
+
+        template <class Self>
+        void operator()(Self& self)
         {
-            tim->async_wait(asio::deferred([ec](error_code ec2) {
-                return asio::deferred.values(ec2 ? ec2 : ec);
-            }))(std::move(h));
+            obj.recv_chan_.async_send(error_code(), act, std::move(self));
+        }
+
+        template <class Self>
+        void operator()(Self& self, error_code ec)
+        {
+            if (ec)
+            {
+                self.complete(ec);
+            }
+            else
+            {
+                obj.send_chan_.async_receive(std::move(self));
+            }
+        }
+
+        template <class Self>
+        void operator()(Self& self, error_code ec, diagnostics recv_diag)
+        {
+            if (diag)
+                *diag = std::move(recv_diag);
+            self.complete(ec);
         }
     };
 
     template <class CompletionToken>
     auto op_impl(next_connection_action act, diagnostics* diag, CompletionToken&& token)
-        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-            initiation{},
-            token,
-            &tim_,
-            error_code()
-        ))
     {
-        error_code ec = fn_(act, diag);
-        tim_.expires_at(
-            ec == boost::mysql::client_errc::cancelled ? steady_clock::time_point::max()
-                                                       : steady_clock::time_point()
-        );
-
-        return asio::async_initiate<CompletionToken, void(error_code)>(
-            initiation{},
+        return asio::async_compose<CompletionToken, void(error_code)>(
+            run_op{*this, act, diag},
             token,
-            &tim_,
-            error_code(ec)
+            recv_chan_.get_executor()
         );
     }
 
 public:
     mock_connection(asio::any_io_executor ex, boost::mysql::any_connection_params)
-        : ex_(std::move(ex)), tim_(ex_, steady_clock::time_point::max())
+        : recv_chan_(ex), send_chan_(std::move(ex))
     {
     }
 
@@ -258,49 +277,97 @@ public:
         return op_impl(next_connection_action::reset, nullptr, std::forward<CompletionToken>(token));
     }
 
-    void set_validator(validator_fn fn) { fn_ = std::move(fn); }
+    void wait_for_step(
+        next_connection_action act,
+        asio::yield_context yield,
+        error_code ec = {},
+        diagnostics diag = {}
+    )
+    {
+        auto actual_act = recv_chan_.async_receive(yield);
+        BOOST_TEST(actual_act == act);
+        send_chan_.async_send(ec, std::move(diag), yield);
+    }
 };
+
+using mock_node = basic_connection_node<mock_connection, mock_timer>;
+
+void rethrow_on_err(std::exception_ptr err)
+{
+    if (err)
+        std::rethrow_exception(err);
+}
+
+void check_err(error_code ec) { BOOST_TEST(ec == error_code()); }
+
+void post_until(std::function<bool()> cond, asio::yield_context yield)
+{
+    for (int i = 0; i < 10; ++i)
+    {
+        if (cond())
+            return;
+        asio::post(yield);
+    }
+    BOOST_TEST_REQUIRE(false);
+}
 
 BOOST_AUTO_TEST_CASE(connect_timeout)
 {
     asio::io_context ctx;
     boost::mysql::pool_params params;
+    params.retry_interval = std::chrono::seconds(2);
     auto internal_params = make_internal_pool_params(std::move(params));
     conn_shared_state st(ctx.get_executor());
-    basic_connection_node<mock_connection, mock_timer>
-        node(internal_params, ctx.get_executor(), ctx.get_executor(), st);
 
-    struct validator_t : asio::coroutine
-    {
-        error_code operator()(next_connection_action act, diagnostics* diag)
-        {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                BOOST_TEST(act == next_connection_action::connect);
-                *diag = boost::mysql::test::create_server_diag("Connect failed!");
-                BOOST_ASIO_CORO_YIELD return boost::mysql::common_server_errc::er_bad_db_error;
-                BOOST_TEST(act == next_connection_action::connect);
-                diag->clear();
-                return error_code();
-            }
-            assert(false);
-            return error_code();
-        }
-    };
+    mock_node node(internal_params, ctx.get_executor(), ctx.get_executor(), st);
+    bool finished = false;
 
-    node.connection().set_validator(validator_t());
+    asio::spawn(
+        ctx,
+        [&](asio::yield_context yield) {
+            // Connection tries to connect and fails
+            node.connection().wait_for_step(
+                next_connection_action::connect,
+                yield,
+                common_server_errc::er_aborting_connection,
+                create_server_diag("Connection error!")
+            );
 
-    st.idle_notification_chan.async_receive([&node](error_code ec) {
-        BOOST_TEST(ec == error_code());
-        node.cancel();
-    });
+            // Wait until the connection is sleeping
+            post_until(
+                [&] { return node.status() == connection_status::sleep_connect_failed_in_progress; },
+                yield
+            );
 
-    auto fut = node.async_run(asio::use_future);
+            // Diagnostics are stored in shared state
+            BOOST_TEST(st.last_ec == error_code(common_server_errc::er_aborting_connection));
+            BOOST_TEST(st.last_diag == create_server_diag("Connection error!"));
 
-    ctx.run();
-    fut.get();
+            // Advance until it's time to retry again
+            asio::use_service<mock_timer_service>(ctx).advance_time_by(std::chrono::seconds(2));
 
-    // TODO: check actual state
+            // Connection connects successfully this time
+            node.connection().wait_for_step(next_connection_action::connect, yield, error_code());
+
+            // Diagnostics have been cleared
+            BOOST_TEST(st.last_ec == error_code());
+            BOOST_TEST(st.last_diag == diagnostics());
+
+            // The connection is marked as idle
+            st.idle_notification_chan.async_receive(yield);
+            BOOST_TEST(st.idle_list.try_get_first_as<mock_node>() == &node);
+
+            // Finish
+            node.cancel();
+            finished = true;
+        },
+        rethrow_on_err
+    );
+
+    node.async_run(check_err);
+
+    ctx.run_for(std::chrono::seconds(10));
+    BOOST_TEST(finished == true);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

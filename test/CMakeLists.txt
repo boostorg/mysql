@@ -7,7 +7,7 @@
 
 # This may be called from add_subdirectory, too
 if(BOOST_MYSQL_IS_ROOT)
-    find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS unit_test_framework)
+    find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS unit_test_framework context)
 endif()
 
 # Separately compiled Boost.MySQL and Boost.Asio
@@ -43,6 +43,7 @@ if(BOOST_MYSQL_IS_ROOT)
         INTERFACE
         Boost::unit_test_framework
         Boost::disable_autolinking
+        Boost::context
     )
 else()
     target_link_libraries(
@@ -50,6 +51,7 @@ else()
         INTERFACE
         Boost::unit_test_framework
         Boost::optional
+        Boost::context
     )
 endif()
 
