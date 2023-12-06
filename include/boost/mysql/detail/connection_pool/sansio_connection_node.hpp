@@ -89,7 +89,7 @@ template <class Derived>
 class sansio_connection_node
 {
     bool alive_{true};
-    connection_status status_{connection_status::initial};
+    connection_status status_;
 
     inline bool is_pending(connection_status status) noexcept
     {
@@ -135,6 +135,11 @@ class sansio_connection_node
     }
 
 public:
+    sansio_connection_node(connection_status initial_status = connection_status::initial) noexcept
+        : status_(initial_status)
+    {
+    }
+
     void mark_as_in_use() noexcept
     {
         BOOST_ASSERT(status_ == connection_status::idle);
