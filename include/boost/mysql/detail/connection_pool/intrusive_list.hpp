@@ -23,7 +23,6 @@ struct list_node
     list_node(list_node* prev = nullptr, list_node* next = nullptr) noexcept : prev(prev), next(next) {}
 };
 
-template <class T>
 class intrusive_list
 {
     list_node head_;
@@ -34,11 +33,16 @@ public:
     // Exposed for testing
     const list_node& head() const noexcept { return head_; }
 
-    T* try_get_first() noexcept { return head_.next == &head_ ? nullptr : static_cast<T*>(head_.next); }
+    list_node* try_get_first() noexcept { return head_.next == &head_ ? nullptr : head_.next; }
 
-    void push_back(T& elm)
+    template <class T>
+    T* try_get_first_as() noexcept
     {
-        list_node& node = elm;
+        return static_cast<T*>(try_get_first());
+    }
+
+    void push_back(list_node& node)
+    {
         list_node& prev = *head_.prev;
 
         BOOST_ASSERT(node.prev == nullptr);
@@ -50,9 +54,8 @@ public:
         prev.next = &node;
     }
 
-    void erase(T& elm)
+    void erase(list_node& node)
     {
-        list_node& node = elm;
         list_node* prev = node.prev;
         list_node* next = node.next;
 

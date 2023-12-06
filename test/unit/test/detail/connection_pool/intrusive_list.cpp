@@ -20,9 +20,7 @@ struct mock_node : list_node
     mock_node() = default;
 };
 
-using mock_list = intrusive_list<mock_node>;
-
-void check(const mock_list& list, const std::vector<const mock_node*>& expected)
+void check(const intrusive_list& list, const std::vector<const mock_node*>& expected)
 {
     std::vector<const mock_node*> actual;
     const auto& head = list.head();
@@ -33,14 +31,14 @@ void check(const mock_list& list, const std::vector<const mock_node*>& expected)
 
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
-    mock_list l;
+    intrusive_list l;
     check(l, {});
     BOOST_TEST(l.try_get_first() == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(push_back)
 {
-    mock_list l;
+    intrusive_list l;
     mock_node n1, n2, n3;
 
     // Add one
@@ -61,7 +59,7 @@ BOOST_AUTO_TEST_CASE(push_back)
 
 BOOST_AUTO_TEST_CASE(erase)
 {
-    mock_list l;
+    intrusive_list l;
     mock_node n1, n2, n3, n4;
 
     l.push_back(n1);
@@ -92,7 +90,7 @@ BOOST_AUTO_TEST_CASE(erase)
 
 BOOST_AUTO_TEST_CASE(push_back_erase_interleaved)
 {
-    mock_list l;
+    intrusive_list l;
     mock_node n1, n2, n3, n4;
 
     l.push_back(n1);

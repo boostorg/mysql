@@ -42,8 +42,8 @@ inline error_code to_error_code(
 }
 
 // Timer's expiry should be set by the caller
-template <class Op, class Handler>
-void run_with_timeout_impl(asio::steady_timer& timer, Op&& op, Handler&& handler)
+template <class TimerType, class Op, class Handler>
+void run_with_timeout_impl(TimerType& timer, Op&& op, Handler&& handler)
 {
     auto adapter = [](std::array<std::size_t, 2> completion_order, error_code io_ec, error_code timer_ec) {
         return asio::deferred.values(to_error_code(completion_order, io_ec, timer_ec));
@@ -53,9 +53,9 @@ void run_with_timeout_impl(asio::steady_timer& timer, Op&& op, Handler&& handler
         ));
 }
 
-template <class Op, class Handler>
+template <class TimerType, class Op, class Handler>
 void run_with_timeout(
-    asio::steady_timer* timer,
+    TimerType* timer,
     boost::optional<std::chrono::steady_clock::time_point> tp,
     Op&& op,
     Handler&& handler
@@ -73,13 +73,8 @@ void run_with_timeout(
     }
 }
 
-template <class Op, class Handler>
-void run_with_timeout(
-    asio::steady_timer& timer,
-    std::chrono::steady_clock::duration dur,
-    Op&& op,
-    Handler&& handler
-)
+template <class TimerType, class Op, class Handler>
+void run_with_timeout(TimerType& timer, std::chrono::steady_clock::duration dur, Op&& op, Handler&& handler)
 {
     if (dur.count() > 0)
     {

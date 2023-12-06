@@ -115,9 +115,9 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
                 // Deliver the cancel notification to all other tasks
                 obj_->state_ = state_t::cancelled;
-                obj_->shared_st_.idle_notification_chan.close();
                 for (auto& conn : obj_->all_conns_)
                     conn.cancel();
+                obj_->shared_st_.idle_notification_chan.close();
 
                 // Wait for all connection tasks to exit
                 BOOST_ASIO_CORO_YIELD
@@ -186,7 +186,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 }
 
                 // Try to get a connection without blocking
-                node = obj_->shared_st_.idle_list.try_get_first();
+                node = obj_->shared_st_.idle_list.try_get_first_as<connection_node>();
                 if (node)
                 {
                     // There was a connection. Done.
@@ -247,7 +247,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
                     // Attempt to get a node. This will almost likely succeed,
                     // but the loop guards against possible race conditions.
-                    node = obj_->shared_st_.idle_list.try_get_first();
+                    node = obj_->shared_st_.idle_list.try_get_first_as<connection_node>();
                     if (node)
                     {
                         // TODO: dispatch

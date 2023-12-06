@@ -27,8 +27,6 @@
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/steady_timer.hpp>
 
-#include <chrono>
-
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -36,12 +34,10 @@ namespace detail {
 // Forward decl. for convenience, used by pooled_connection
 class connection_pool_impl;
 
-class connection_node;
-
 // State shared between connection tasks
 struct conn_shared_state
 {
-    intrusive_list<connection_node> idle_list;
+    intrusive_list idle_list;
     asio::experimental::channel<void(error_code)> idle_notification_chan;
     std::size_t num_pending_connections{0};
     error_code last_ec;
@@ -50,101 +46,25 @@ struct conn_shared_state
     conn_shared_state(boost::asio::any_io_executor ex) : idle_notification_chan(std::move(ex), 1) {}
 };
 
-// I/O operations called by connection_node
-class connection_node_io
+template <class ConnectionType, class TimerType>
+class basic_connection_node : public list_node,
+                              public sansio_connection_node<basic_connection_node<ConnectionType, TimerType>>
 {
-    any_connection conn_;
-    asio::steady_timer timer_;
-    asio::experimental::concurrent_channel<void(error_code)> collection_channel_;
+    using this_type = basic_connection_node<ConnectionType, TimerType>;
 
-public:
-    connection_node_io(
-        asio::any_io_executor pool_ex,
-        asio::any_io_executor conn_ex,
-        any_connection_params ctor_params
-    )
-        : conn_(std::move(conn_ex), ctor_params), timer_(pool_ex), collection_channel_(std::move(pool_ex), 1)
-    {
-    }
-
-    template <class CompletionToken>
-    void async_connect(
-        std::chrono::steady_clock::duration timeout,
-        const connect_params& connect_config,
-        diagnostics& diag,
-        CompletionToken&& token
-    )
-    {
-        run_with_timeout(
-            timer_,
-            timeout,
-            conn_.async_connect(&connect_config, diag, asio::deferred),
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    template <class CompletionToken>
-    void async_sleep(std::chrono::steady_clock::duration timeout, CompletionToken&& token)
-    {
-        timer_.expires_after(timeout);
-        timer_.async_wait(std::forward<CompletionToken>(token));
-    }
-
-    template <class CompletionToken>
-    void async_ping(std::chrono::steady_clock::duration timeout, CompletionToken&& token)
-    {
-        run_with_timeout(
-            timer_,
-            timeout,
-            conn_.async_ping(asio::deferred),
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    template <class CompletionToken>
-    void async_reset(std::chrono::steady_clock::duration timeout, CompletionToken&& token)
-    {
-        run_with_timeout(
-            timer_,
-            timeout,
-            conn_.async_reset_connection(asio::deferred),
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    template <class CompletionToken>
-    void async_idle_wait(std::chrono::steady_clock::duration timeout, CompletionToken&& token)
-    {
-        run_with_timeout(
-            timer_,
-            timeout,
-            collection_channel_.async_receive(asio::deferred),
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    any_connection& connection() noexcept { return conn_; }
-    const any_connection& connection() const noexcept { return conn_; }
-
-    void notify_collectable() { collection_channel_.try_send(error_code()); }
-
-    void cancel()
-    {
-        timer_.cancel();
-        collection_channel_.close();
-    }
-};
-
-class connection_node : public list_node, public sansio_connection_node<connection_node>
-{
+    // Not thread-safe, must be manipulated within the pool's executor
     const internal_pool_params* params_;
     conn_shared_state* shared_st_;
-    connection_node_io io_;
+    ConnectionType conn_;
+    TimerType timer_;
     diagnostics connect_diag_;
+
+    // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
+    asio::experimental::concurrent_channel<void(error_code)> collection_channel_;
 
     // Hooks for sansio_connection_node
-    friend class sansio_connection_node<connection_node>;
+    friend class sansio_connection_node<basic_connection_node<ConnectionType, TimerType>>;
     void entering_idle()
     {
         shared_st_->idle_list.push_back(*this);
@@ -163,10 +83,10 @@ class connection_node : public list_node, public sansio_connection_node<connecti
 
     struct connection_task_op
     {
-        connection_node& node_;
+        this_type& node_;
         next_connection_action last_act_{next_connection_action::none};
 
-        connection_task_op(connection_node& node) noexcept : node_(node) {}
+        connection_task_op(this_type& node) noexcept : node_(node) {}
 
         template <class Self>
         void operator()(Self& self, error_code ec = {})
@@ -188,24 +108,41 @@ class connection_node : public list_node, public sansio_connection_node<connecti
             switch (last_act_)
             {
             case next_connection_action::connect:
-                node_.io_.async_connect(
+                run_with_timeout(
+                    node_.timer_,
                     node_.params_->connect_timeout,
-                    node_.params_->connect_config,
-                    node_.connect_diag_,
+                    node_.conn_
+                        .async_connect(&node_.params_->connect_config, node_.connect_diag_, asio::deferred),
                     std::move(self)
                 );
                 break;
             case next_connection_action::sleep_connect_failed:
-                node_.io_.async_sleep(node_.params_->retry_interval, std::move(self));
+                node_.timer_.expires_after(node_.params_->retry_interval);
+                node_.timer_.async_wait(std::move(self));
                 break;
             case next_connection_action::ping:
-                node_.io_.async_ping(node_.params_->ping_timeout, std::move(self));
+                run_with_timeout(
+                    node_.timer_,
+                    node_.params_->ping_timeout,
+                    node_.conn_.async_ping(asio::deferred),
+                    std::move(self)
+                );
                 break;
             case next_connection_action::reset:
-                node_.io_.async_reset(node_.params_->ping_timeout, std::move(self));
+                run_with_timeout(
+                    node_.timer_,
+                    node_.params_->ping_timeout,
+                    node_.conn_.async_reset_connection(asio::deferred),
+                    std::move(self)
+                );
                 break;
             case next_connection_action::idle_wait:
-                node_.io_.async_idle_wait(node_.params_->ping_interval, std::move(self));
+                run_with_timeout(
+                    node_.timer_,
+                    node_.params_->ping_interval,
+                    node_.collection_channel_.async_receive(asio::deferred),
+                    std::move(self)
+                );
                 break;
             case next_connection_action::none: self.complete(error_code()); break;
             default: BOOST_ASSERT(false);
@@ -214,7 +151,7 @@ class connection_node : public list_node, public sansio_connection_node<connecti
     };
 
 public:
-    connection_node(
+    basic_connection_node(
         internal_pool_params& params,
         boost::asio::any_io_executor ex,
         boost::asio::any_io_executor conn_ex,
@@ -222,19 +159,23 @@ public:
     )
         : params_(&params),
           shared_st_(&shared_st),
-          io_(std::move(ex), std::move(conn_ex), params.make_ctor_params())
+          conn_(std::move(conn_ex), params.make_ctor_params()),
+          timer_(ex),
+          collection_channel_(ex, 1)
     {
     }
 
     void cancel()
     {
-        sansio_connection_node<connection_node>::cancel();
-        io_.cancel();
+        sansio_connection_node<this_type>::cancel();
+        timer_.cancel();
+        collection_channel_.close();
     }
 
     // This initiation must be invoked within the pool's executor
     template <class CompletionToken>
-    void async_run(CompletionToken&& token)
+    auto async_run(CompletionToken&& token)
+        -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
     {
         return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token);
     }
@@ -247,8 +188,8 @@ public:
         async_run(asio::bind_executor(gp.get_executor(), [&gp](error_code) { gp.on_task_finish(); }));
     }
 
-    any_connection& connection() noexcept { return io_.connection(); }
-    const any_connection& connection() const noexcept { return io_.connection(); }
+    ConnectionType& connection() noexcept { return conn_; }
+    const ConnectionType& connection() const noexcept { return conn_; }
 
     // Thread-safe. May be safely be called without getting into the strand.
     void mark_as_collectable(bool should_reset) noexcept
@@ -261,13 +202,15 @@ public:
         // be collected when the next ping is due.
         try
         {
-            io_.notify_collectable();
+            collection_channel_.try_send(error_code());
         }
         catch (...)
         {
         }
     }
 };
+
+using connection_node = basic_connection_node<any_connection, asio::steady_timer>;
 
 }  // namespace detail
 }  // namespace mysql
