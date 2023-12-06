@@ -12,8 +12,8 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/connection_pool/idle_connection_list.hpp>
 #include <boost/mysql/detail/connection_pool/internal_pool_params.hpp>
+#include <boost/mysql/detail/connection_pool/intrusive_list.hpp>
 #include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/detail/connection_pool/sansio_connection_node.hpp>
 #include <boost/mysql/detail/connection_pool/wait_group.hpp>
@@ -34,10 +34,12 @@ namespace detail {
 // Forward decl. for convenience, used by pooled_connection
 class connection_pool_impl;
 
+class connection_node;
+
 // State shared between connection tasks
 struct conn_shared_state
 {
-    idle_connection_list idle_list;
+    intrusive_list<connection_node> idle_list;
     asio::experimental::channel<void(error_code)> idle_notification_chan;
     std::size_t num_pending_connections{0};
     error_code last_ec;
@@ -46,7 +48,7 @@ struct conn_shared_state
     conn_shared_state(boost::asio::any_io_executor ex) : idle_notification_chan(std::move(ex), 1) {}
 };
 
-class connection_node : public hook_type, public sansio_connection_node<connection_node>
+class connection_node : public list_node, public sansio_connection_node<connection_node>
 {
     // Not thread-safe, must be manipulated within the pool's executor
     const internal_pool_params* params_;
@@ -63,10 +65,10 @@ class connection_node : public hook_type, public sansio_connection_node<connecti
     friend class sansio_connection_node<connection_node>;
     void entering_idle()
     {
-        shared_st_->idle_list.add_one(*this);
+        shared_st_->idle_list.push_back(*this);
         shared_st_->idle_notification_chan.try_send(error_code());
     }
-    void exiting_idle() { shared_st_->idle_list.remove(*this); }
+    void exiting_idle() { shared_st_->idle_list.erase(*this); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
 

@@ -17,7 +17,6 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool/connection_node.hpp>
-#include <boost/mysql/detail/connection_pool/idle_connection_list.hpp>
 #include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/detail/connection_pool/wait_group.hpp>
 
@@ -187,7 +186,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 }
 
                 // Try to get a connection without blocking
-                node = obj_->shared_st_.idle_list.try_get_one();
+                node = obj_->shared_st_.idle_list.try_get_first();
                 if (node)
                 {
                     // There was a connection. Done.
@@ -248,7 +247,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
                     // Attempt to get a node. This will almost likely succeed,
                     // but the loop guards against possible race conditions.
-                    node = obj_->shared_st_.idle_list.try_get_one();
+                    node = obj_->shared_st_.idle_list.try_get_first();
                     if (node)
                     {
                         // TODO: dispatch
