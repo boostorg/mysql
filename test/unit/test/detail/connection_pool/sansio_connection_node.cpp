@@ -257,6 +257,43 @@ BOOST_AUTO_TEST_CASE(idle_wait_fail_in_use)
     nod.check(connection_status::reset_in_progress, enter_pending);
 }
 
-// TODO: cancelations
+// Cancellations
+BOOST_AUTO_TEST_CASE(cancel)
+{
+    struct
+    {
+        connection_status initial_status;
+        int hooks;
+    } test_cases[] = {
+        {connection_status::connect_in_progress,              exit_pending},
+        {connection_status::sleep_connect_failed_in_progress, exit_pending},
+        {connection_status::idle,                             exit_idle   },
+        {connection_status::in_use,                           0           },
+        {connection_status::ping_in_progress,                 exit_pending},
+        {connection_status::reset_in_progress,                exit_pending},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.initial_status)
+        {
+            mock_node nod(tc.initial_status);
+
+            // Cancel
+            nod.cancel();
+
+            // Next action will always return none
+            auto act = nod.resume(client_errc::cancelled, collection_state::none);
+            BOOST_TEST(act == next_connection_action::none);
+            nod.check(connection_status::terminated, tc.hooks);
+
+            // Cancel again does nothing
+            nod.cancel();
+            act = nod.resume(client_errc::cancelled, collection_state::none);
+            BOOST_TEST(act == next_connection_action::none);
+            nod.check(connection_status::terminated, 0);
+        }
+    }
+}
 
 BOOST_AUTO_TEST_SUITE_END()

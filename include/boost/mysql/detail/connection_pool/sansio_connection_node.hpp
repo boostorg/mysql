@@ -44,6 +44,9 @@ enum class connection_status
 
     // Connection has been handed to the user
     in_use,
+
+    // After cancel
+    terminated,
 };
 
 // The next I/O action the connection should take. There's
@@ -88,13 +91,12 @@ enum class collection_state
 template <class Derived>
 class sansio_connection_node
 {
-    bool alive_{true};
     connection_status status_;
 
     inline bool is_pending(connection_status status) noexcept
     {
         return status != connection_status::initial && status != connection_status::idle &&
-               status != connection_status::in_use;
+               status != connection_status::in_use && status != connection_status::terminated;
     }
 
     inline static next_connection_action status_to_action(connection_status status) noexcept
@@ -108,7 +110,7 @@ class sansio_connection_node
         case connection_status::reset_in_progress: return next_connection_action::reset;
         case connection_status::idle:
         case connection_status::in_use: return next_connection_action::idle_wait;
-        default: next_connection_action::none;
+        default: return next_connection_action::none;
         }
     }
 
@@ -146,52 +148,49 @@ public:
         set_status(connection_status::in_use);
     }
 
-    void cancel() noexcept { alive_ = false; }
+    void cancel() { set_status(connection_status::terminated); }
 
     next_connection_action resume(error_code ec, collection_state col_st)
     {
-        while (alive_)
+        switch (status_)
         {
-            switch (status_)
+        case connection_status::initial: return set_status(connection_status::connect_in_progress);
+        case connection_status::connect_in_progress:
+            return ec ? set_status(connection_status::sleep_connect_failed_in_progress)
+                      : set_status(connection_status::idle);
+        case connection_status::sleep_connect_failed_in_progress:
+            return set_status(connection_status::connect_in_progress);
+        case connection_status::idle:
+            // The wait finished with no interruptions, and the connection
+            // is still idle. Time to ping.
+            return set_status(connection_status::ping_in_progress);
+        case connection_status::in_use:
+            // If col_st != none, the user has notified us to collect the connection.
+            // This happens after they return the connection to the pool.
+            // Update status and continue
+            if (col_st == collection_state::needs_collect)
             {
-            case connection_status::initial: return set_status(connection_status::connect_in_progress);
-            case connection_status::connect_in_progress:
-                return ec ? set_status(connection_status::sleep_connect_failed_in_progress)
-                          : set_status(connection_status::idle);
-            case connection_status::sleep_connect_failed_in_progress:
-                return set_status(connection_status::connect_in_progress);
-            case connection_status::idle:
-                // The wait finished with no interruptions, and the connection
-                // is still idle. Time to ping.
-                return set_status(connection_status::ping_in_progress);
-            case connection_status::in_use:
-                // If col_st != none, the user has notified us to collect the connection.
-                // This happens after they return the connection to the pool.
-                // Update status and continue
-                if (col_st == collection_state::needs_collect)
-                {
-                    // No reset needed, we're idle
-                    return set_status(connection_status::idle);
-                }
-                else if (col_st == collection_state::needs_collect_with_reset)
-                {
-                    return set_status(connection_status::reset_in_progress);
-                }
-                else
-                {
-                    // The user is still using the connection (it's taking long, but can happen).
-                    // Idle wait again until they return the connection.
-                    return next_connection_action::idle_wait;
-                }
-            case connection_status::ping_in_progress:
-            case connection_status::reset_in_progress:
-                // Reconnect if there was an error. Otherwise, we're idle
-                return ec ? set_status(connection_status::connect_in_progress)
-                          : set_status(connection_status::idle);
+                // No reset needed, we're idle
+                return set_status(connection_status::idle);
             }
+            else if (col_st == collection_state::needs_collect_with_reset)
+            {
+                return set_status(connection_status::reset_in_progress);
+            }
+            else
+            {
+                // The user is still using the connection (it's taking long, but can happen).
+                // Idle wait again until they return the connection.
+                return next_connection_action::idle_wait;
+            }
+        case connection_status::ping_in_progress:
+        case connection_status::reset_in_progress:
+            // Reconnect if there was an error. Otherwise, we're idle
+            return ec ? set_status(connection_status::connect_in_progress)
+                      : set_status(connection_status::idle);
+        case connection_status::terminated:
+        default: return next_connection_action::none;
         }
-
-        return next_connection_action::none;
     }
 
     // Exposed for testing
