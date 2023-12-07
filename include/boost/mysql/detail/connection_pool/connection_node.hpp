@@ -14,9 +14,9 @@
 #include <boost/mysql/pooled_connection.hpp>
 
 #include <boost/mysql/detail/connection_pool/internal_pool_params.hpp>
-#include <boost/mysql/detail/connection_pool/intrusive_list.hpp>
 #include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/detail/connection_pool/sansio_connection_node.hpp>
+#include <boost/mysql/detail/connection_pool/timer_list.hpp>
 #include <boost/mysql/detail/connection_pool/wait_group.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
@@ -27,24 +27,22 @@
 #include <boost/asio/experimental/concurrent_channel.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/intrusive/list.hpp>
+#include <boost/intrusive/list_hook.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// Forward decl. for convenience, used by pooled_connection
-class connection_pool_impl;
-
 // State shared between connection tasks
+template <class IoTraits>
 struct conn_shared_state
 {
-    intrusive_list idle_list;
-    asio::experimental::channel<void(error_code)> idle_notification_chan;
+    intrusive::list<basic_connection_node<IoTraits>> idle_list;
+    timer_list<typename IoTraits::timer_type> pending_requests;
     std::size_t num_pending_connections{0};
     error_code last_ec;
     diagnostics last_diag;
-
-    conn_shared_state(boost::asio::any_io_executor ex) : idle_notification_chan(std::move(ex), 1) {}
 };
 
 // Traits to use by default for nodes
@@ -57,7 +55,8 @@ struct io_traits
 // The templated type is never exposed to the user. We template
 // so tests can inject mocks.
 template <class IoTraits>
-class basic_connection_node : public list_node, public sansio_connection_node<basic_connection_node<IoTraits>>
+class basic_connection_node : public intrusive::list_base_hook<>,
+                              public sansio_connection_node<basic_connection_node<IoTraits>>
 {
     using this_type = basic_connection_node<IoTraits>;
     using connection_type = typename IoTraits::connection_type;
@@ -65,7 +64,7 @@ class basic_connection_node : public list_node, public sansio_connection_node<ba
 
     // Not thread-safe, must be manipulated within the pool's executor
     const internal_pool_params* params_;
-    conn_shared_state* shared_st_;
+    conn_shared_state<IoTraits>* shared_st_;
     connection_type conn_;
     timer_type timer_;
     diagnostics connect_diag_;
@@ -79,9 +78,9 @@ class basic_connection_node : public list_node, public sansio_connection_node<ba
     void entering_idle()
     {
         shared_st_->idle_list.push_back(*this);
-        shared_st_->idle_notification_chan.try_send(error_code());
+        shared_st_->pending_requests.notify_one();
     }
-    void exiting_idle() { shared_st_->idle_list.erase(*this); }
+    void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
     void exiting_pending() { --shared_st_->num_pending_connections; }
 
@@ -166,7 +165,7 @@ public:
         internal_pool_params& params,
         boost::asio::any_io_executor ex,
         boost::asio::any_io_executor conn_ex,
-        conn_shared_state& shared_st
+        conn_shared_state<IoTraits>& shared_st
     )
         : params_(&params),
           shared_st_(&shared_st),

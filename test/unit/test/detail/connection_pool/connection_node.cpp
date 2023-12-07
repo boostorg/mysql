@@ -121,15 +121,22 @@ public:
         }
     }
 
-    void cancel(int timer_id)
+    std::size_t cancel(int timer_id)
     {
+        std::size_t num_cancels = 0;
         for (auto it = pending_.begin(); it != pending_.end();)
         {
             if (it->timer_id == timer_id)
+            {
+                ++num_cancels;
                 it = fire_timer(it, asio::error::operation_aborted);
+            }
             else
+            {
                 ++it;
+            }
         }
+        return num_cancels;
     }
 
     void advance_time_to(steady_clock::time_point new_time)
@@ -149,8 +156,6 @@ public:
     int allocate_timer_id() { return ++current_timer_id_; }
 
     steady_clock::time_point current_time() const noexcept { return current_time_; }
-
-    std::size_t num_pending() const noexcept { return pending_.size(); }
 
 private:
     std::list<pending_timer> pending_;
@@ -205,7 +210,7 @@ public:
 
     void expires_after(steady_clock::duration dur) { expires_at(svc_->current_time() + dur); }
 
-    void cancel() { svc_->cancel(timer_id_); }
+    std::size_t cancel() { return svc_->cancel(timer_id_); }
 
     template <class CompletionToken>
     auto async_wait(CompletionToken&& token)
@@ -328,6 +333,8 @@ struct mock_pooled_connection
     }
 };
 
+using mock_shared_state = conn_shared_state<mock_io_traits>;
+
 void rethrow_on_err(std::exception_ptr err)
 {
     if (err)
@@ -353,7 +360,7 @@ BOOST_AUTO_TEST_CASE(connect_timeout)
     boost::mysql::pool_params params;
     params.retry_interval = std::chrono::seconds(2);
     auto internal_params = make_internal_pool_params(std::move(params));
-    conn_shared_state st(ctx.get_executor());
+    mock_shared_state st;
 
     mock_node node(internal_params, ctx.get_executor(), ctx.get_executor(), st);
     bool finished = false;
@@ -384,14 +391,14 @@ BOOST_AUTO_TEST_CASE(connect_timeout)
 
             // Connection connects successfully this time
             node.connection().wait_for_step(next_connection_action::connect, yield, error_code());
+            post_until([&] { return node.status() == connection_status::idle; }, yield);
 
             // Diagnostics have been cleared
             BOOST_TEST(st.last_ec == error_code());
             BOOST_TEST(st.last_diag == diagnostics());
 
             // The connection is marked as idle
-            st.idle_notification_chan.async_receive(yield);
-            BOOST_TEST(st.idle_list.try_get_first_as<mock_node>() == &node);
+            BOOST_TEST(&st.idle_list.front() == &node);
 
             // Finish
             node.cancel();
@@ -406,23 +413,7 @@ BOOST_AUTO_TEST_CASE(connect_timeout)
     BOOST_TEST(finished == true);
 }
 
-/**
- * get_connection
- *   not running
- *   terminated
- *   immediate
- *   with wait success
- *   with wait and retry (?)
- *   with wait timeout no diag
- *   with wait timeout diag
- *   no conn available, room for conns but some pending
- *   no conn available, room for conns
- *   no conn available, no room for conns
- *   the correct executor is used (token with executor)
- *   the correct executor is used (token without executor)
- *   the correct executor is used (immediate completion)
- *   connections and pool created with the adequate executor (maybe integ?)
- */
+// connection_pool_impl
 
 BOOST_AUTO_TEST_CASE(wait_success)
 {
@@ -457,7 +448,6 @@ BOOST_AUTO_TEST_CASE(wait_success)
 
             // A request for a connection is issued. The request doesn't find
             // any available connection, and the current one is pending, so no new connections are created
-            std::size_t num_timers_before = svc.num_pending();
             asio::experimental::channel<void(error_code, mock_pooled_connection)> subtask_chan{
                 yield.get_executor()
             };
@@ -468,7 +458,7 @@ BOOST_AUTO_TEST_CASE(wait_success)
                     subtask_chan.async_send(ec, std::move(c), asio::detached);
                 }
             );
-            post_until([&] { return svc.num_pending() == num_timers_before + 1; }, yield);
+            post_until([&] { return pool->num_pending_requests() > 0u; }, yield);
             BOOST_TEST(pool->nodes().size() == 1u);
 
             // Retry interval ellapses and connection retries and succeeds
@@ -479,9 +469,11 @@ BOOST_AUTO_TEST_CASE(wait_success)
             auto pooled_conn = subtask_chan.async_receive(yield);
             BOOST_TEST(pooled_conn.node == &node);
             BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(pool->nodes().size() == 1u);
+            BOOST_TEST(pool->num_pending_requests() == 0u);
 
             // Finish
-            node.cancel();
+            pool->cancel();
             finished = true;
         },
         rethrow_on_err
@@ -492,5 +484,74 @@ BOOST_AUTO_TEST_CASE(wait_success)
     ctx.run_for(std::chrono::seconds(10));
     BOOST_TEST(finished == true);
 }
+
+BOOST_AUTO_TEST_CASE(wait_timeout_no_diag)
+{
+    asio::io_context ctx;
+    boost::mysql::pool_params params;
+
+    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+
+    bool finished = false;
+
+    pool->async_run(check_err);
+
+    asio::spawn(
+        ctx,
+        [&](asio::yield_context yield) {
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            diagnostics diag;
+            asio::experimental::channel<void(error_code, mock_pooled_connection)> subtask_chan{
+                yield.get_executor()
+            };
+            pool->async_get_connection(
+                std::chrono::seconds(1),
+                &diag,
+                [&](error_code ec, mock_pooled_connection c) {
+                    subtask_chan.async_send(ec, std::move(c), asio::detached);
+                }
+            );
+            post_until([&] { return pool->num_pending_requests() > 0u; }, yield);
+            BOOST_TEST(pool->nodes().size() == 1u);
+
+            // The request timeout ellapses, so the request fails
+            asio::use_service<mock_timer_service>(ctx).advance_time_by(std::chrono::seconds(1));
+            error_code ec;
+            auto pooled_conn = subtask_chan.async_receive(yield[ec]);
+            BOOST_TEST(pooled_conn.node == nullptr);
+            BOOST_TEST(pooled_conn.pool == nullptr);
+            BOOST_TEST(ec == boost::mysql::client_errc::timeout);
+            BOOST_TEST(diag == diagnostics());
+            BOOST_TEST(pool->nodes().size() == 1u);
+
+            // Finish
+            pool->cancel();
+            finished = true;
+        },
+        rethrow_on_err
+    );
+
+    ctx.run_for(std::chrono::seconds(100));
+    BOOST_TEST(finished == true);
+}
+
+/**
+ * get_connection
+ *   not running
+ *   terminated
+ *   immediate
+ *   with wait and retry (?)
+ *   with wait timeout no diag
+ *   with wait timeout diag
+ *   no conn available, room for conns but some pending
+ *   no conn available, room for conns
+ *   no conn available, no room for conns
+ *   the correct executor is used (token with executor)
+ *   the correct executor is used (token without executor)
+ *   the correct executor is used (immediate completion)
+ *   connections and pool created with the adequate executor (maybe integ?)
+ *   diag nullptr doesn't crash
+ */
 
 BOOST_AUTO_TEST_SUITE_END()

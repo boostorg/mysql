@@ -19,6 +19,7 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool/connection_node.hpp>
 #include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
+#include <boost/mysql/detail/connection_pool/timer_list.hpp>
 #include <boost/mysql/detail/connection_pool/wait_group.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
@@ -55,6 +56,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     using this_type = basic_pool_impl<IoTraits, ConnectionWrapper>;
     using node_type = basic_connection_node<IoTraits>;
     using timer_type = typename IoTraits::timer_type;
+    using timer_block_type = timer_block<timer_type>;
 
     enum class state_t
     {
@@ -68,7 +70,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     asio::any_io_executor ex_;
     asio::any_io_executor conn_ex_;
     std::list<node_type> all_conns_;
-    conn_shared_state shared_st_;
+    conn_shared_state<IoTraits> shared_st_;
     wait_group wait_gp_;
     asio::experimental::concurrent_channel<void(error_code)> cancel_chan_;
 
@@ -80,13 +82,21 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         all_conns_.back().async_run_with_group(wait_gp_);
     }
 
-    void try_get_diagnostics(error_code& ec, diagnostics* diag) const
+    error_code get_diagnostics(diagnostics* diag) const
     {
-        if (shared_st_.last_ec)
+        if (state_ == state_t::cancelled)
         {
-            ec = shared_st_.last_ec;
+            return client_errc::cancelled;
+        }
+        else if (shared_st_.last_ec)
+        {
             if (diag)
                 *diag = shared_st_.last_diag;
+            return shared_st_.last_ec;
+        }
+        else
+        {
+            return client_errc::timeout;
         }
     }
 
@@ -123,7 +133,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 obj_->state_ = state_t::cancelled;
                 for (auto& conn : obj_->all_conns_)
                     conn.cancel();
-                obj_->shared_st_.idle_notification_chan.close();
+                obj_->shared_st_.pending_requests.notify_all();
 
                 // Wait for all connection tasks to exit
                 BOOST_ASIO_CORO_YIELD
@@ -139,24 +149,25 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     struct get_connection_op : asio::coroutine
     {
         std::shared_ptr<this_type> obj_;
-        boost::optional<std::chrono::steady_clock::time_point> timeout_tp_;
+        std::chrono::steady_clock::duration timeout_;
         diagnostics* diag_;
-        std::shared_ptr<timer_type> timer_;
+        std::unique_ptr<timer_block_type> timer_;
 
         get_connection_op(
             std::shared_ptr<this_type> obj,
             std::chrono::steady_clock::duration timeout,
             diagnostics* diag
         ) noexcept
-            : obj_(std::move(obj)), diag_(diag)
+            : obj_(std::move(obj)),
+              timeout_(timeout.count() > 0 ? timeout : std::chrono::steady_clock::duration::max()),
+              diag_(diag)
         {
-            if (timeout.count() > 0)
-                timeout_tp_ = std::chrono::steady_clock::now() + timeout;
         }
 
         template <class Self>
         void do_complete(Self& self, error_code ec, ConnectionWrapper conn)
         {
+            // Resetting the timer will remove it from the list thanks to the auto-unlink feature
             timer_.reset();
             obj_.reset();
             self.complete(ec, std::move(conn));
@@ -172,8 +183,6 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
-            node_type* node{};
-
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Clear diagnostics
@@ -192,11 +201,10 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 }
 
                 // Try to get a connection without blocking
-                node = obj_->shared_st_.idle_list.template try_get_first_as<node_type>();
-                if (node)
+                if (!obj_->shared_st_.idle_list.empty())
                 {
                     // There was a connection. Done.
-                    complete_success(self, *node);
+                    complete_success(self, obj_->shared_st_.idle_list.front());
                     return;
                 }
 
@@ -211,56 +219,28 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 }
 
                 // Allocate a timer to perform waits.
-                if (timeout_tp_)
+                if (!timer_)
                 {
-                    timer_ = std::allocate_shared<timer_type>(
-                        asio::get_associated_allocator(self),
-                        obj_->ex_
-                    );
+                    timer_.reset(new timer_block_type(obj_->ex_));
+                    obj_->shared_st_.pending_requests.push_back(*timer_);
                 }
 
-                // Wait for a connection to become idle and return it
-                while (true)
+                // Wait to be notified, or until a timeout happens
+                timer_->timer.expires_after(timeout_);
+                BOOST_ASIO_CORO_YIELD timer_->timer.async_wait(std::move(self));
+
+                // If there is a connection available, return it
+                if (!obj_->shared_st_.idle_list.empty())
                 {
-                    // Wait to be notified, or until a timeout happens
-                    BOOST_ASIO_CORO_YIELD
-                    run_with_timeout(
-                        timer_.get(),
-                        timeout_tp_,
-                        obj_->shared_st_.idle_notification_chan.async_receive(asio::deferred),
-                        std::move(self)
-                    );
-
-                    // Check result
-                    if (ec)
-                    {
-                        if (ec == client_errc::timeout)
-                        {
-                            // The operation timed out. Attempt to provide as better diagnostics as we can.
-                            // If no diagnostics are available, just leave the timeout error as-is.
-                            obj_->try_get_diagnostics(ec, diag_);
-                        }
-                        else if (ec == asio::experimental::channel_errc::channel_closed)
-                        {
-                            // Having the channel closed means that the pool is no longer running
-                            ec = client_errc::cancelled;
-                        }
-
-                        // TODO: dispatch
-                        do_complete(self, ec, ConnectionWrapper());
-                        return;
-                    }
-
-                    // Attempt to get a node. This will almost likely succeed,
-                    // but the loop guards against possible race conditions.
-                    node = obj_->shared_st_.idle_list.template try_get_first_as<node_type>();
-                    if (node)
-                    {
-                        // TODO: dispatch
-                        complete_success(self, *node);
-                        return;
-                    }
+                    // There was a connection. Done.
+                    complete_success(self, obj_->shared_st_.idle_list.front());
+                    return;
                 }
+
+                // Otherwise, we've got a timeout. Try to give as much info as possible
+                ec = obj_->get_diagnostics(diag_);
+                // TODO: dispatch
+                do_complete(self, ec, ConnectionWrapper());
             }
         }
     };
@@ -270,7 +250,6 @@ public:
         : params_(make_internal_pool_params(std::move(params))),
           ex_(ex_params.pool_executor()),
           conn_ex_(ex_params.connection_executor()),
-          shared_st_(ex_),
           wait_gp_(ex_),
           cancel_chan_(ex_, 1)
     {
@@ -305,7 +284,6 @@ public:
         CompletionToken&& token
     )
     {
-        BOOST_ASSERT(timeout.count() >= 0);
         return asio::async_compose<CompletionToken, void(error_code, ConnectionWrapper)>(
             get_connection_op(this->shared_from_this(), timeout, diag),
             token,
@@ -315,6 +293,7 @@ public:
 
     // Exposed for testing
     std::list<node_type>& nodes() noexcept { return all_conns_; }
+    std::size_t num_pending_requests() noexcept { return shared_st_.pending_requests.size(); }
 };
 
 }  // namespace detail
