@@ -1,4 +1,9 @@
-// h
+//
+// Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
@@ -7,8 +12,10 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
+#include <boost/mysql/pooled_connection.hpp>
 
 #include <boost/mysql/detail/connection_pool/connection_node.hpp>
+#include <boost/mysql/detail/connection_pool/connection_pool_impl.hpp>
 #include <boost/mysql/detail/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/detail/connection_pool/sansio_connection_node.hpp>
 
@@ -23,6 +30,7 @@
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/detached.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/execution_context.hpp>
 #include <boost/asio/experimental/channel.hpp>
@@ -35,13 +43,16 @@
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
+#include <cstddef>
 #include <exception>
 #include <functional>
 #include <list>
+#include <memory>
 #include <stdexcept>
 
 #include "pool_printing.hpp"
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/printing.hpp"
 #include "test_common/run_stackful_coro.hpp"
 #include "test_unit/run_coroutine.hpp"
 
@@ -52,6 +63,7 @@ using boost::mysql::common_server_errc;
 using boost::mysql::connect_params;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
+using boost::mysql::pooled_connection;
 using std::chrono::steady_clock;
 using timeout_t = std::chrono::steady_clock::duration;
 
@@ -137,6 +149,8 @@ public:
     int allocate_timer_id() { return ++current_timer_id_; }
 
     steady_clock::time_point current_time() const noexcept { return current_time_; }
+
+    std::size_t num_pending() const noexcept { return pending_.size(); }
 
 private:
     std::list<pending_timer> pending_;
@@ -290,7 +304,29 @@ public:
     }
 };
 
-using mock_node = basic_connection_node<mock_connection, mock_timer>;
+struct mock_io_traits
+{
+    using connection_type = mock_connection;
+    using timer_type = mock_timer;
+};
+
+using mock_node = basic_connection_node<mock_io_traits>;
+
+struct mock_pooled_connection;
+
+using mock_pool = basic_pool_impl<mock_io_traits, mock_pooled_connection>;
+
+struct mock_pooled_connection
+{
+    std::shared_ptr<mock_pool> pool;
+    mock_node* node{};
+
+    mock_pooled_connection() = default;
+    mock_pooled_connection(mock_node& node, std::shared_ptr<mock_pool> pool) noexcept
+        : pool(std::move(pool)), node(&node)
+    {
+    }
+};
 
 void rethrow_on_err(std::exception_ptr err)
 {
@@ -365,6 +401,93 @@ BOOST_AUTO_TEST_CASE(connect_timeout)
     );
 
     node.async_run(check_err);
+
+    ctx.run_for(std::chrono::seconds(10));
+    BOOST_TEST(finished == true);
+}
+
+/**
+ * get_connection
+ *   not running
+ *   terminated
+ *   immediate
+ *   with wait success
+ *   with wait and retry (?)
+ *   with wait timeout no diag
+ *   with wait timeout diag
+ *   no conn available, room for conns but some pending
+ *   no conn available, room for conns
+ *   no conn available, no room for conns
+ *   the correct executor is used (token with executor)
+ *   the correct executor is used (token without executor)
+ *   the correct executor is used (immediate completion)
+ *   connections and pool created with the adequate executor (maybe integ?)
+ */
+
+BOOST_AUTO_TEST_CASE(wait_success)
+{
+    asio::io_context ctx;
+    boost::mysql::pool_params params;
+    params.retry_interval = std::chrono::seconds(2);
+
+    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+
+    bool finished = false;
+
+    asio::spawn(
+        ctx,
+        [&](asio::yield_context yield) {
+            // Wait for some connections to be created
+            post_until([&] { return !pool->nodes().empty(); }, yield);
+            auto& node = *pool->nodes().begin();
+            auto& svc = asio::use_service<mock_timer_service>(ctx);
+
+            // Connection tries to connect and fails
+            node.connection().wait_for_step(
+                next_connection_action::connect,
+                yield,
+                common_server_errc::er_aborting_connection
+            );
+
+            // Connection goes to sleep
+            post_until(
+                [&] { return node.status() == connection_status::sleep_connect_failed_in_progress; },
+                yield
+            );
+
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            std::size_t num_timers_before = svc.num_pending();
+            asio::experimental::channel<void(error_code, mock_pooled_connection)> subtask_chan{
+                yield.get_executor()
+            };
+            pool->async_get_connection(
+                std::chrono::seconds(5),
+                nullptr,
+                [&](error_code ec, mock_pooled_connection c) {
+                    subtask_chan.async_send(ec, std::move(c), asio::detached);
+                }
+            );
+            post_until([&] { return svc.num_pending() == num_timers_before + 1; }, yield);
+            BOOST_TEST(pool->nodes().size() == 1u);
+
+            // Retry interval ellapses and connection retries and succeeds
+            svc.advance_time_by(std::chrono::seconds(2));
+            node.connection().wait_for_step(next_connection_action::connect, yield);
+
+            // Request is fulfilled
+            auto pooled_conn = subtask_chan.async_receive(yield);
+            BOOST_TEST(pooled_conn.node == &node);
+            BOOST_TEST(node.status() == connection_status::in_use);
+
+            // Finish
+            node.cancel();
+            finished = true;
+        },
+        rethrow_on_err
+    );
+
+    pool->async_run(check_err);
 
     ctx.run_for(std::chrono::seconds(10));
     BOOST_TEST(finished == true);

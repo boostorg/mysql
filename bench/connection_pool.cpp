@@ -21,6 +21,7 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/coroutine.hpp>
+#include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 
 #include <chrono>

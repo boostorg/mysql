@@ -13,6 +13,7 @@
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/asio/error.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/optional/optional.hpp>
 

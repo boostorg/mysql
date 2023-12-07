@@ -15,8 +15,9 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connection_pool/connection_pool_impl.hpp>
+#include <boost/mysql/detail/connection_pool_fwd.hpp>
 
+#include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
 
@@ -71,11 +72,72 @@ namespace mysql {
  */
 class connection_pool
 {
-    std::shared_ptr<detail::connection_pool_impl> impl_;
+    std::shared_ptr<detail::pool_impl> impl_;
 
     static constexpr std::chrono::steady_clock::duration get_default_timeout() noexcept
     {
         return std::chrono::seconds(30);
+    }
+
+    struct initiate_run
+    {
+        template <class Handler>
+        void operator()(Handler&& h, std::shared_ptr<detail::pool_impl> self)
+        {
+            async_run_erased(std::move(self), std::forward<Handler>(h));
+        }
+    };
+
+    BOOST_MYSQL_DECL
+    static void async_run_erased(
+        std::shared_ptr<detail::pool_impl> pool,
+        asio::any_completion_handler<void(error_code)> handler
+    );
+
+    struct initiate_get_connection
+    {
+        template <class Handler>
+        void operator()(
+            Handler&& h,
+            std::shared_ptr<detail::pool_impl> self,
+            std::chrono::steady_clock::duration timeout,
+            diagnostics* diag
+        )
+        {
+            async_get_connection_erased(std::move(self), timeout, diag, std::forward<Handler>(h));
+        }
+    };
+
+    BOOST_MYSQL_DECL
+    static void async_get_connection_erased(
+        std::shared_ptr<detail::pool_impl> pool,
+        std::chrono::steady_clock::duration timeout,
+        diagnostics* diag,
+        asio::any_completion_handler<void(error_code, pooled_connection)> handler
+    );
+
+    template <class CompletionToken>
+    auto async_get_connection_impl(
+        std::chrono::steady_clock::duration timeout,
+        diagnostics* diag,
+        CompletionToken&& token
+    )
+        -> decltype(asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
+            initiate_get_connection{},
+            token,
+            impl_,
+            timeout,
+            diag
+        ))
+    {
+        BOOST_ASSERT(valid());
+        return asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
+            initiate_get_connection{},
+            token,
+            impl_,
+            timeout,
+            diag
+        );
     }
 
 public:
@@ -98,10 +160,8 @@ public:
      * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
      *         pool_params.
      */
-    connection_pool(const pool_executor_params& ex_params, pool_params params)
-        : impl_(std::make_shared<detail::connection_pool_impl>(ex_params, std::move(params)))
-    {
-    }
+    BOOST_MYSQL_DECL
+    connection_pool(const pool_executor_params& ex_params, pool_params params);
 
 #ifndef BOOST_MYSQL_DOXYGEN
     connection_pool(const connection_pool&) = delete;
@@ -195,7 +255,8 @@ public:
      * configuration passed to the constructor. Calling this function
      * concurrently with any other function introduces data races.
      */
-    executor_type get_executor() noexcept { return impl_->get_executor(); }
+    BOOST_MYSQL_DECL
+    executor_type get_executor() noexcept;
 
     /**
      * \brief Runs the pool task in charge of managing connections.
@@ -240,23 +301,27 @@ public:
      * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_run(CompletionToken&& token)
+    auto async_run(CompletionToken&& token) BOOST_MYSQL_RETURN_TYPE(
+        decltype(asio::async_initiate<CompletionToken, void(error_code)>(initiate_run{}, token, impl_))
+    )
     {
         BOOST_ASSERT(valid());
-        return impl_->async_run(std::forward<CompletionToken>(token));
+        return asio::async_initiate<CompletionToken, void(error_code)>(initiate_run{}, token, impl_);
     }
 
     /// \copydoc async_get_connection(diagnostics&,CompletionToken&&)
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
-    async_get_connection(CompletionToken&& token)
+    auto async_get_connection(CompletionToken&& token) BOOST_MYSQL_RETURN_TYPE(
+        decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
+    )
     {
-        BOOST_ASSERT(valid());
-        return impl_
-            ->async_get_connection(get_default_timeout(), nullptr, std::forward<CompletionToken>(token));
+        return async_get_connection_impl(
+            get_default_timeout(),
+            nullptr,
+            std::forward<CompletionToken>(token)
+        );
     }
 
     /**
@@ -308,23 +373,23 @@ public:
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
-    async_get_connection(diagnostics& diag, CompletionToken&& token)
+    auto async_get_connection(diagnostics& diag, CompletionToken&& token) BOOST_MYSQL_RETURN_TYPE(
+        decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
+    )
     {
-        BOOST_ASSERT(valid());
-        return impl_
-            ->async_get_connection(get_default_timeout(), &diag, std::forward<CompletionToken>(token));
+        return async_get_connection_impl(get_default_timeout(), &diag, std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
-    async_get_connection(std::chrono::steady_clock::duration timeout, CompletionToken&& token)
+    auto async_get_connection(std::chrono::steady_clock::duration timeout, CompletionToken&& token)
+        BOOST_MYSQL_RETURN_TYPE(
+            decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
+        )
     {
-        BOOST_ASSERT(valid());
-        return impl_->async_get_connection(timeout, nullptr, std::forward<CompletionToken>(token));
+        return async_get_connection_impl(timeout, nullptr, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -377,15 +442,16 @@ public:
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
-    async_get_connection(
+    auto async_get_connection(
         std::chrono::steady_clock::duration timeout,
         diagnostics& diag,
         CompletionToken&& token
     )
+        BOOST_MYSQL_RETURN_TYPE(
+            decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
+        )
     {
-        BOOST_ASSERT(valid());
-        return impl_->async_get_connection(timeout, &diag, std::forward<CompletionToken>(token));
+        return async_get_connection_impl(timeout, &diag, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -415,14 +481,15 @@ public:
      * is safe to be called concurrently with \ref async_run, \ref async_get_connection,
      * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
-    void cancel()
-    {
-        BOOST_ASSERT(valid());
-        impl_->cancel();
-    }
+    BOOST_MYSQL_DECL
+    void cancel();
 };
 
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/connection_pool.ipp>
+#endif
 
 #endif

@@ -12,7 +12,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connection_pool/connection_node.hpp>
+#include <boost/mysql/detail/connection_pool_fwd.hpp>
 
 #include <memory>
 
@@ -47,23 +47,24 @@ class pooled_connection
 {
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
+    friend class detail::basic_pool_impl<detail::io_traits, pooled_connection>;
 #endif
 
-    pooled_connection(
-        detail::connection_node& node,
-        std::shared_ptr<detail::connection_pool_impl> pool_impl
-    ) noexcept
+    pooled_connection(detail::connection_node& node, std::shared_ptr<detail::pool_impl> pool_impl) noexcept
         : impl_(&node), pool_impl_(std::move(pool_impl))
     {
     }
 
     struct deleter
     {
-        void operator()(detail::connection_node* node) const noexcept { node->mark_as_collectable(true); }
+        void operator()(detail::connection_node* node) const noexcept
+        {
+            detail::mark_as_collectable(*node, true);
+        }
     };
 
     std::unique_ptr<detail::connection_node, deleter> impl_;
-    std::shared_ptr<detail::connection_pool_impl> pool_impl_;
+    std::shared_ptr<detail::pool_impl> pool_impl_;
 
 public:
     /**
@@ -143,10 +144,10 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    any_connection& get() noexcept { return impl_->connection(); }
+    any_connection& get() noexcept { return detail::get_connection(*impl_); }
 
     /// \copydoc get
-    const any_connection& get() const noexcept { return impl_->connection(); }
+    const any_connection& get() const noexcept { return detail::get_connection(*impl_); }
 
     /// \copydoc get
     any_connection* operator->() noexcept { return &get(); }
@@ -186,7 +187,7 @@ public:
     void return_without_reset() noexcept
     {
         BOOST_ASSERT(valid());
-        impl_.release()->mark_as_collectable(false);
+        detail::mark_as_collectable(*impl_.release(), false);
     }
 };
 

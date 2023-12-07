@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -48,8 +49,13 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class connection_pool_impl : public std::enable_shared_from_this<connection_pool_impl>
+template <class IoTraits, class ConnectionWrapper>
+class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTraits, ConnectionWrapper>>
 {
+    using this_type = basic_pool_impl<IoTraits, ConnectionWrapper>;
+    using node_type = basic_connection_node<IoTraits>;
+    using timer_type = typename IoTraits::timer_type;
+
     enum class state_t
     {
         initial,
@@ -61,7 +67,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
     internal_pool_params params_;
     asio::any_io_executor ex_;
     asio::any_io_executor conn_ex_;
-    std::list<connection_node> all_conns_;
+    std::list<node_type> all_conns_;
     conn_shared_state shared_st_;
     wait_group wait_gp_;
     asio::experimental::concurrent_channel<void(error_code)> cancel_chan_;
@@ -86,9 +92,9 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
     struct run_op : asio::coroutine
     {
-        std::shared_ptr<connection_pool_impl> obj_;
+        std::shared_ptr<this_type> obj_;
 
-        run_op(std::shared_ptr<connection_pool_impl> obj) noexcept : obj_(std::move(obj)) {}
+        run_op(std::shared_ptr<this_type> obj) noexcept : obj_(std::move(obj)) {}
 
         template <class Self>
         void operator()(Self& self, error_code ec = {})
@@ -132,13 +138,13 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
 
     struct get_connection_op : asio::coroutine
     {
-        std::shared_ptr<connection_pool_impl> obj_;
+        std::shared_ptr<this_type> obj_;
         boost::optional<std::chrono::steady_clock::time_point> timeout_tp_;
         diagnostics* diag_;
-        std::shared_ptr<asio::steady_timer> timer_;
+        std::shared_ptr<timer_type> timer_;
 
         get_connection_op(
-            std::shared_ptr<connection_pool_impl> obj,
+            std::shared_ptr<this_type> obj,
             std::chrono::steady_clock::duration timeout,
             diagnostics* diag
         ) noexcept
@@ -149,7 +155,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         }
 
         template <class Self>
-        void do_complete(Self& self, error_code ec, pooled_connection conn)
+        void do_complete(Self& self, error_code ec, ConnectionWrapper conn)
         {
             timer_.reset();
             obj_.reset();
@@ -157,16 +163,16 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
         }
 
         template <class Self>
-        void complete_success(Self& self, connection_node& node)
+        void complete_success(Self& self, node_type& node)
         {
             node.mark_as_in_use();
-            do_complete(self, error_code(), access::construct<pooled_connection>(node, std::move(obj_)));
+            do_complete(self, error_code(), ConnectionWrapper(node, std::move(obj_)));
         }
 
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
-            connection_node* node{};
+            node_type* node{};
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -181,12 +187,12 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 // If we're not running yet, or were cancelled, just return
                 if (obj_->state_ != state_t::running)
                 {
-                    do_complete(self, client_errc::cancelled, pooled_connection());
+                    do_complete(self, client_errc::cancelled, ConnectionWrapper());
                     return;
                 }
 
                 // Try to get a connection without blocking
-                node = obj_->shared_st_.idle_list.try_get_first_as<connection_node>();
+                node = obj_->shared_st_.idle_list.template try_get_first_as<node_type>();
                 if (node)
                 {
                     // There was a connection. Done.
@@ -207,7 +213,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                 // Allocate a timer to perform waits.
                 if (timeout_tp_)
                 {
-                    timer_ = std::allocate_shared<asio::steady_timer>(
+                    timer_ = std::allocate_shared<timer_type>(
                         asio::get_associated_allocator(self),
                         obj_->ex_
                     );
@@ -241,13 +247,13 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
                         }
 
                         // TODO: dispatch
-                        do_complete(self, ec, pooled_connection());
+                        do_complete(self, ec, ConnectionWrapper());
                         return;
                     }
 
                     // Attempt to get a node. This will almost likely succeed,
                     // but the loop guards against possible race conditions.
-                    node = obj_->shared_st_.idle_list.try_get_first_as<connection_node>();
+                    node = obj_->shared_st_.idle_list.template try_get_first_as<node_type>();
                     if (node)
                     {
                         // TODO: dispatch
@@ -260,7 +266,7 @@ class connection_pool_impl : public std::enable_shared_from_this<connection_pool
     };
 
 public:
-    connection_pool_impl(const pool_executor_params& ex_params, pool_params&& params)
+    basic_pool_impl(const pool_executor_params& ex_params, pool_params&& params)
         : params_(make_internal_pool_params(std::move(params))),
           ex_(ex_params.pool_executor()),
           conn_ex_(ex_params.connection_executor()),
@@ -278,7 +284,11 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_run(CompletionToken&& token)
     {
-        return asio::async_compose<CompletionToken, void(error_code)>(run_op(shared_from_this()), token, ex_);
+        return asio::async_compose<CompletionToken, void(error_code)>(
+            run_op(this->shared_from_this()),
+            token,
+            ex_
+        );
     }
 
     void cancel()
@@ -288,7 +298,7 @@ public:
     }
 
     template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, pooled_connection))
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ConnectionWrapper))
     async_get_connection(
         std::chrono::steady_clock::duration timeout,
         diagnostics* diag,
@@ -296,12 +306,15 @@ public:
     )
     {
         BOOST_ASSERT(timeout.count() >= 0);
-        return asio::async_compose<CompletionToken, void(error_code, pooled_connection)>(
-            get_connection_op(shared_from_this(), timeout, diag),
+        return asio::async_compose<CompletionToken, void(error_code, ConnectionWrapper)>(
+            get_connection_op(this->shared_from_this(), timeout, diag),
             token,
             ex_
         );
     }
+
+    // Exposed for testing
+    std::list<node_type>& nodes() noexcept { return all_conns_; }
 };
 
 }  // namespace detail

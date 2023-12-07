@@ -11,6 +11,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/pooled_connection.hpp>
 
 #include <boost/mysql/detail/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/detail/connection_pool/intrusive_list.hpp>
@@ -46,17 +47,27 @@ struct conn_shared_state
     conn_shared_state(boost::asio::any_io_executor ex) : idle_notification_chan(std::move(ex), 1) {}
 };
 
-template <class ConnectionType, class TimerType>
-class basic_connection_node : public list_node,
-                              public sansio_connection_node<basic_connection_node<ConnectionType, TimerType>>
+// Traits to use by default for nodes
+struct io_traits
 {
-    using this_type = basic_connection_node<ConnectionType, TimerType>;
+    using connection_type = any_connection;
+    using timer_type = asio::steady_timer;
+};
+
+// The templated type is never exposed to the user. We template
+// so tests can inject mocks.
+template <class IoTraits>
+class basic_connection_node : public list_node, public sansio_connection_node<basic_connection_node<IoTraits>>
+{
+    using this_type = basic_connection_node<IoTraits>;
+    using connection_type = typename IoTraits::connection_type;
+    using timer_type = typename IoTraits::timer_type;
 
     // Not thread-safe, must be manipulated within the pool's executor
     const internal_pool_params* params_;
     conn_shared_state* shared_st_;
-    ConnectionType conn_;
-    TimerType timer_;
+    connection_type conn_;
+    timer_type timer_;
     diagnostics connect_diag_;
 
     // Thread-safe
@@ -64,7 +75,7 @@ class basic_connection_node : public list_node,
     asio::experimental::concurrent_channel<void(error_code)> collection_channel_;
 
     // Hooks for sansio_connection_node
-    friend class sansio_connection_node<basic_connection_node<ConnectionType, TimerType>>;
+    friend class sansio_connection_node<basic_connection_node<IoTraits>>;
     void entering_idle()
     {
         shared_st_->idle_list.push_back(*this);
@@ -188,8 +199,8 @@ public:
         async_run(asio::bind_executor(gp.get_executor(), [&gp](error_code) { gp.on_task_finish(); }));
     }
 
-    ConnectionType& connection() noexcept { return conn_; }
-    const ConnectionType& connection() const noexcept { return conn_; }
+    connection_type& connection() noexcept { return conn_; }
+    const connection_type& connection() const noexcept { return conn_; }
 
     // Thread-safe. May be safely be called without getting into the strand.
     void mark_as_collectable(bool should_reset) noexcept
@@ -209,8 +220,6 @@ public:
         }
     }
 };
-
-using connection_node = basic_connection_node<any_connection, asio::steady_timer>;
 
 }  // namespace detail
 }  // namespace mysql
