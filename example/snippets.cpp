@@ -1484,8 +1484,9 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         //]
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
-        run_coro(ctx.get_executor(), [&pool] {
-            return return_without_reset(pool);
+        pool.async_run(boost::asio::detached);
+        run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
+            co_await return_without_reset(pool);
             pool.cancel();
         });
 #endif
