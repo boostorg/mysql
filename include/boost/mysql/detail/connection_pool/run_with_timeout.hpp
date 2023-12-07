@@ -12,11 +12,9 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/asio/deferred.hpp>
-#include <boost/asio/error.hpp>
 #include <boost/asio/experimental/cancellation_condition.hpp>
 #include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/steady_timer.hpp>
-#include <boost/optional/optional.hpp>
 
 #include <array>
 #include <chrono>
@@ -41,45 +39,19 @@ inline error_code to_error_code(
         return client_errc::cancelled;
 }
 
-// Timer's expiry should be set by the caller
-template <class TimerType, class Op, class Handler>
-void run_with_timeout_impl(TimerType& timer, Op&& op, Handler&& handler)
-{
-    auto adapter = [](std::array<std::size_t, 2> completion_order, error_code io_ec, error_code timer_ec) {
-        return asio::deferred.values(to_error_code(completion_order, io_ec, timer_ec));
-    };
-    asio::experimental::make_parallel_group(std::forward<Op>(op), timer.async_wait(asio::deferred))
-        .async_wait(asio::experimental::wait_for_one(), asio::deferred(adapter))(std::forward<Handler>(handler
-        ));
-}
-
-template <class TimerType, class Op, class Handler>
-void run_with_timeout(
-    TimerType* timer,
-    boost::optional<std::chrono::steady_clock::time_point> tp,
-    Op&& op,
-    Handler&& handler
-)
-{
-    if (tp)
-    {
-        BOOST_ASSERT(timer != nullptr);
-        timer->expires_at(*tp);
-        run_with_timeout_impl(*timer, std::forward<Op>(op), std::forward<Handler>(handler));
-    }
-    else
-    {
-        std::forward<Op>(op)(std::forward<Handler>(handler));
-    }
-}
-
 template <class TimerType, class Op, class Handler>
 void run_with_timeout(TimerType& timer, std::chrono::steady_clock::duration dur, Op&& op, Handler&& handler)
 {
     if (dur.count() > 0)
     {
         timer.expires_after(dur);
-        run_with_timeout_impl(timer, std::forward<Op>(op), std::forward<Handler>(handler));
+        auto adapter = [](std::array<std::size_t, 2> completion_order, error_code io_ec, error_code timer_ec
+                       ) { return asio::deferred.values(to_error_code(completion_order, io_ec, timer_ec)); };
+
+        asio::experimental::make_parallel_group(std::forward<Op>(op), timer.async_wait(asio::deferred))
+            .async_wait(asio::experimental::wait_for_one(), asio::deferred(adapter))(
+                std::forward<Handler>(handler)
+            );
     }
     else
     {
