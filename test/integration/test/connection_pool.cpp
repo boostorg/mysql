@@ -280,33 +280,6 @@ BOOST_AUTO_TEST_CASE(cancel_get_connection)
     });
 }
 
-// If get_connection failed because connections are failing to
-// connect, appropriate diagnostics are returned
-// TODO: this test is unreliable. Move it to unit testing
-// BOOST_AUTO_TEST_CASE(get_connection_diagnostics)
-// {
-//     run_stackful_coro([](boost::asio::yield_context yield) {
-//         diagnostics diag;
-//         error_code ec;
-//         results r;
-//         auto params = default_pool_params();
-//         params.password = "bad";
-//         boost::asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
-//         boost::asio::experimental::channel<void(error_code)> getconn_chan(yield.get_executor(), 1);
-
-//         // Construct a pool and run it. This pool can't ever have
-//         // valid connections, since credentials are invalid
-//         connection_pool pool(yield.get_executor(), std::move(params));
-//         pool.async_run([](error_code ec) { throw_on_error(ec); });
-
-//         // Try to get a connection. This times out, but will return
-//         // the connection's diagnostics, instead
-//         auto conn = pool.async_get_connection(std::chrono::milliseconds(10), diag, yield[ec]);
-//         BOOST_TEST(ec == common_server_errc::er_access_denied_error);
-//         validate_string_contains(diag.server_message(), {"access denied"});
-//     });
-// }
-
 // Spotcheck: pool works with unix sockets, too
 BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
 BOOST_AUTO_TEST_CASE(unix_sockets)
