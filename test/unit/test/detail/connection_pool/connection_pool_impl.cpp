@@ -515,6 +515,26 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
     });
 }
 
+BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
+{
+    pool_params params;
+
+    pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
+        // Wait until a connection is successfully connected
+        auto& node = pool.nodes().front();
+        node.connection().wait_for_step(next_connection_action::connect, yield);
+        post_until([&] { return node.status() == connection_status::idle; }, yield);
+
+        // Simulate a user picking and returning the connection
+        node.mark_as_in_use();
+        node.mark_as_collectable(false);
+
+        // The connection goes back to idle without invoking resets
+        post_until([&] { return node.status() == connection_status::idle; }, yield);
+        BOOST_TEST(&pool.shared_state().idle_list.front() == &node);
+    });
+}
+
 BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
 {
     pool_params params;
