@@ -46,6 +46,10 @@ add_executable(
     test/execution_processor/results_impl.cpp
     test/execution_processor/static_results_impl.cpp
 
+    test/connection_pool/sansio_connection_node.cpp
+    test/connection_pool/connection_pool_impl.cpp
+    test/connection_pool/internal_pool_params.cpp
+
     test/detail/datetime.cpp
     test/detail/row_impl.cpp
     test/detail/rows_iterator.cpp
@@ -58,10 +62,6 @@ add_executable(
     test/detail/typing/readable_field_traits.cpp
     test/detail/typing/row_traits.cpp
     test/detail/typing/get_type_index.cpp
-    
-    test/detail/connection_pool/sansio_connection_node.cpp
-    test/detail/connection_pool/connection_pool_impl.cpp
-    test/detail/connection_pool/internal_pool_params.cpp
 
     test/impl/ssl_context_with_default.cpp
 

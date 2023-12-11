@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/detail/connection_pool/internal_pool_params.hpp>
+#include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 
 #include <boost/test/unit_test.hpp>
 

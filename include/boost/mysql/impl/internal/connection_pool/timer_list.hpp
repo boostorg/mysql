@@ -5,11 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_TIMER_LIST_HPP
-#define BOOST_MYSQL_DETAIL_CONNECTION_POOL_TIMER_LIST_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_TIMER_LIST_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_TIMER_LIST_HPP
 
 #include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/list_hook.hpp>
 

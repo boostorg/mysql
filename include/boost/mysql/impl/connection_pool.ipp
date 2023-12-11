@@ -12,8 +12,9 @@
 
 #include <boost/mysql/connection_pool.hpp>
 
-#include <boost/mysql/detail/connection_pool/connection_pool_impl.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
+
+#include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
 
 void boost::mysql::detail::mark_as_collectable(
     boost::mysql::detail::connection_node& node,

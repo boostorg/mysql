@@ -8,7 +8,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/connection_pool/sansio_connection_node.hpp>
+#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 
 #include <boost/test/unit_test.hpp>
 

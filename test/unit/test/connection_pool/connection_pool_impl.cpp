@@ -14,10 +14,10 @@
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
-#include <boost/mysql/detail/connection_pool/connection_node.hpp>
-#include <boost/mysql/detail/connection_pool/connection_pool_impl.hpp>
-#include <boost/mysql/detail/connection_pool/internal_pool_params.hpp>
-#include <boost/mysql/detail/connection_pool/sansio_connection_node.hpp>
+#include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
+#include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
+#include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
+#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>

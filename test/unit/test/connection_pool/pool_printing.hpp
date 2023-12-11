@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_TEST_DETAIL_CONNECTION_POOL_POOL_PRINTING_HPP
-#define BOOST_MYSQL_TEST_UNIT_TEST_DETAIL_CONNECTION_POOL_POOL_PRINTING_HPP
+#ifndef BOOST_MYSQL_TEST_UNIT_TEST_CONNECTION_POOL_POOL_PRINTING_HPP
+#define BOOST_MYSQL_TEST_UNIT_TEST_CONNECTION_POOL_POOL_PRINTING_HPP
 
-#include <boost/mysql/detail/connection_pool/sansio_connection_node.hpp>
+#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 
 #include <ostream>
 

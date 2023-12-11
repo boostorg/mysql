@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_RUN_WITH_TIMEOUT_HPP
-#define BOOST_MYSQL_DETAIL_CONNECTION_POOL_RUN_WITH_TIMEOUT_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_RUN_WITH_TIMEOUT_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_RUN_WITH_TIMEOUT_HPP
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>

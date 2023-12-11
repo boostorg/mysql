@@ -5,19 +5,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
-#define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_NODE_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_NODE_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/connection_pool/internal_pool_params.hpp>
-#include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
-#include <boost/mysql/detail/connection_pool/sansio_connection_node.hpp>
-#include <boost/mysql/detail/connection_pool/timer_list.hpp>
-#include <boost/mysql/detail/connection_pool/wait_group.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
+
+#include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
+#include <boost/mysql/impl/internal/connection_pool/run_with_timeout.hpp>
+#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
+#include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
+#include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/bind_executor.hpp>

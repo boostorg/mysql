@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
-#define BOOST_MYSQL_DETAIL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
@@ -16,10 +16,11 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connection_pool/connection_node.hpp>
-#include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
-#include <boost/mysql/detail/connection_pool/timer_list.hpp>
-#include <boost/mysql/detail/connection_pool/wait_group.hpp>
+
+#include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
+#include <boost/mysql/impl/internal/connection_pool/run_with_timeout.hpp>
+#include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
+#include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>

@@ -5,15 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_SANSIO_CONNECTION_NODE_HPP
-#define BOOST_MYSQL_DETAIL_CONNECTION_POOL_SANSIO_CONNECTION_NODE_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_SANSIO_CONNECTION_NODE_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_SANSIO_CONNECTION_NODE_HPP
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/config.hpp>
-
-#include <boost/asio/coroutine.hpp>
 #include <boost/assert.hpp>
 
 namespace boost {
