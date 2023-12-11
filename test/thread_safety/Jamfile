@@ -5,11 +5,22 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+import os ;
+
+path-constant this_dir : . ;
+
+# The hostname to use for tests
+local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
+if $(hostname) = ""
+{
+    hostname = "localhost" ;
+}
+
 run
         /boost/mysql/test//boost_mysql_compiled
         connection_pool.cpp
     : requirements
-        <testing.arg>"localhost"
+        <testing.arg>$(hostname)
         <thread-sanitizer>norecover
     : target-name boost_mysql_thread_safety
 ;
