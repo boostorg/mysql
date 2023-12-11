@@ -13,6 +13,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/pooled_connection.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/mysql/detail/connection_pool/connection_node.hpp>
 #include <boost/mysql/detail/connection_pool/connection_pool_impl.hpp>
@@ -266,6 +267,7 @@ class mock_connection
 
 public:
     boost::mysql::any_connection_params ctor_params;
+    boost::mysql::connect_params last_connect_params;
 
     mock_connection(asio::any_io_executor ex, boost::mysql::any_connection_params ctor_params)
         : recv_chan_(ex), send_chan_(std::move(ex)), ctor_params(ctor_params)
@@ -273,9 +275,11 @@ public:
     }
 
     template <class CompletionToken>
-    auto async_connect(const connect_params*, diagnostics& diag, CompletionToken&& token)
+    auto async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
         -> decltype(op_impl(next_connection_action{}, &diag, std::forward<CompletionToken>(token)))
     {
+        BOOST_TEST(params != nullptr);
+        last_connect_params = *params;
         return op_impl(next_connection_action::connect, &diag, std::forward<CompletionToken>(token));
     }
 
@@ -996,8 +1000,8 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
     });
 }
 
-// Adequate params passed to new connections
-BOOST_AUTO_TEST_CASE(created_connections_ctor_params)
+// pool_params have the intended effect
+BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
 {
     // Pass a custom ssl context and buffer size
     pool_params params;
@@ -1013,6 +1017,61 @@ BOOST_AUTO_TEST_CASE(created_connections_ctor_params)
         BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
         BOOST_TEST(ctor_params.ssl_context->native_handle() == handle);
         BOOST_TEST(ctor_params.initial_read_buffer_size == 16u);
+    });
+}
+
+BOOST_AUTO_TEST_CASE(params_connect_1)
+{
+    pool_params params;
+    params.server_address.emplace_host_and_port("myhost", 1234);
+    params.username = "myuser";
+    params.password = "mypasswd";
+    params.database = "mydb";
+    params.ssl = boost::mysql::ssl_mode::disable;
+    params.multi_queries = true;
+
+    pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
+        // Connect
+        auto& node = pool.nodes().front();
+        node.connection().step(next_connection_action::connect, yield);
+
+        // Check params
+        const auto& cparams = node.connection().last_connect_params;
+        BOOST_TEST(cparams.connection_collation == std::uint16_t(0));
+        BOOST_TEST(cparams.server_address.hostname() == "myhost");
+        BOOST_TEST(cparams.server_address.port() == std::uint16_t(1234));
+        BOOST_TEST(cparams.username == "myuser");
+        BOOST_TEST(cparams.password == "mypasswd");
+        BOOST_TEST(cparams.database == "mydb");
+        BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::disable);
+        BOOST_TEST(cparams.multi_queries == true);
+    });
+}
+
+BOOST_AUTO_TEST_CASE(params_connect_2)
+{
+    pool_params params;
+    params.server_address.emplace_unix_path("/mysock");
+    params.username = "myuser2";
+    params.password = "mypasswd2";
+    params.database = "mydb2";
+    params.ssl = boost::mysql::ssl_mode::require;
+    params.multi_queries = false;
+
+    pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
+        // Connect
+        auto& node = pool.nodes().front();
+        node.connection().step(next_connection_action::connect, yield);
+
+        // Check params
+        const auto& cparams = node.connection().last_connect_params;
+        BOOST_TEST(cparams.connection_collation == std::uint16_t(0));
+        BOOST_TEST(cparams.server_address.unix_socket_path() == "/mysock");
+        BOOST_TEST(cparams.username == "myuser2");
+        BOOST_TEST(cparams.password == "mypasswd2");
+        BOOST_TEST(cparams.database == "mydb2");
+        BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
+        BOOST_TEST(cparams.multi_queries == false);
     });
 }
 

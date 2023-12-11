@@ -15,6 +15,7 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -61,6 +62,17 @@ inline std::ostream& operator<<(std::ostream& os, metadata_mode v)
     case metadata_mode::full: return os << "full";
     case metadata_mode::minimal: return os << "minimal";
     default: return os << "<unknown metadata_mode>";
+    }
+}
+
+inline std::ostream& operator<<(std::ostream& os, ssl_mode v)
+{
+    switch (v)
+    {
+    case ssl_mode::disable: return os << "disable";
+    case ssl_mode::enable: return os << "enable";
+    case ssl_mode::require: return os << "require";
+    default: return os << "<unknown ssl_mode>";
     }
 }
 
