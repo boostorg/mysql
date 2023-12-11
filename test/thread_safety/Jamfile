@@ -7,7 +7,7 @@
 
 import os ;
 
-path-constant this_dir : . ;
+path-constant tsan_suppressions : suppressions.txt ;
 
 # The hostname to use for tests
 local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
@@ -22,5 +22,6 @@ run
     : requirements
         <testing.arg>$(hostname)
         <thread-sanitizer>norecover
+        <toolset>clang:<cxxflags>-fsanitize-blacklist=$(tsan_suppressions)
     : target-name boost_mysql_thread_safety
 ;
