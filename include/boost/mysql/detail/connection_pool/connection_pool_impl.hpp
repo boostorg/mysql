@@ -74,8 +74,6 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     wait_group wait_gp_;
     asio::experimental::concurrent_channel<void(error_code)> cancel_chan_;
 
-    boost::asio::any_io_executor get_io_executor() const { return conn_ex_ ? conn_ex_ : ex_; }
-
     void create_connection()
     {
         all_conns_.emplace_back(params_, ex_, conn_ex_, shared_st_);
@@ -128,6 +126,8 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 // Wait for the cancel notification to arrive
                 BOOST_ASIO_CORO_YIELD
                 obj_->cancel_chan_.async_receive(std::move(self));
+                BOOST_ASIO_CORO_YIELD
+                asio::dispatch(obj_->ex_, std::move(self));
 
                 // Deliver the cancel notification to all other tasks
                 obj_->state_ = state_t::cancelled;
@@ -149,18 +149,17 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     struct get_connection_op : asio::coroutine
     {
         std::shared_ptr<this_type> obj_;
-        std::chrono::steady_clock::duration timeout_;
+        std::chrono::steady_clock::time_point timeout_;
         diagnostics* diag_;
         std::unique_ptr<timer_block_type> timer_;
+        error_code stored_ec_;
 
         get_connection_op(
             std::shared_ptr<this_type> obj,
-            std::chrono::steady_clock::duration timeout,
+            std::chrono::steady_clock::time_point timeout,
             diagnostics* diag
         ) noexcept
-            : obj_(std::move(obj)),
-              timeout_(timeout.count() > 0 ? timeout : std::chrono::steady_clock::duration::max()),
-              diag_(diag)
+            : obj_(std::move(obj)), timeout_(timeout), diag_(diag)
         {
         }
 
@@ -193,54 +192,53 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 BOOST_ASIO_CORO_YIELD
                 asio::post(obj_->ex_, std::move(self));
 
-                // If we're not running yet, or were cancelled, just return
-                if (obj_->state_ != state_t::running)
+                while (true)
                 {
-                    do_complete(self, client_errc::cancelled, ConnectionWrapper());
-                    return;
+                    // If we're not running yet, or were cancelled, just return
+                    if (obj_->state_ != state_t::running)
+                    {
+                        do_complete(self, client_errc::cancelled, ConnectionWrapper());
+                        return;
+                    }
+
+                    // Try to get a connection without blocking
+                    if (!obj_->shared_st_.idle_list.empty())
+                    {
+                        // There was a connection. Done.
+                        complete_success(self, obj_->shared_st_.idle_list.front());
+                        return;
+                    }
+
+                    // No luck. If there is room for more connections, create one.
+                    // Don't create new connections if we have other connections pending
+                    // (i.e. being connected, reset... ) - otherwise pool size increases for
+                    // no reason when there is no connectivity.
+                    if (obj_->all_conns_.size() < obj_->params_.max_size &&
+                        obj_->shared_st_.num_pending_connections == 0u)
+                    {
+                        obj_->create_connection();
+                    }
+
+                    // Allocate a timer to perform waits.
+                    if (!timer_)
+                    {
+                        timer_.reset(new timer_block_type(obj_->ex_));
+                        obj_->shared_st_.pending_requests.push_back(*timer_);
+                    }
+
+                    // Wait to be notified, or until a timeout happens
+                    timer_->timer.expires_at(timeout_);
+                    BOOST_ASIO_CORO_YIELD timer_->timer.async_wait(std::move(self));
+                    stored_ec_ = ec;
+                    BOOST_ASIO_CORO_YIELD asio::dispatch(obj_->ex_, std::move(self));
+
+                    if (!stored_ec_)
+                    {
+                        // We've got a timeout. Try to give as much info as possible
+                        do_complete(self, obj_->get_diagnostics(diag_), ConnectionWrapper());
+                        return;
+                    }
                 }
-
-                // Try to get a connection without blocking
-                if (!obj_->shared_st_.idle_list.empty())
-                {
-                    // There was a connection. Done.
-                    complete_success(self, obj_->shared_st_.idle_list.front());
-                    return;
-                }
-
-                // No luck. If there is room for more connections, create one.
-                // Don't create new connections if we have other connections pending
-                // (i.e. being connected, reset... ) - otherwise pool size increases for
-                // no reason when there is no connectivity.
-                if (obj_->all_conns_.size() < obj_->params_.max_size &&
-                    obj_->shared_st_.num_pending_connections == 0u)
-                {
-                    obj_->create_connection();
-                }
-
-                // Allocate a timer to perform waits.
-                if (!timer_)
-                {
-                    timer_.reset(new timer_block_type(obj_->ex_));
-                    obj_->shared_st_.pending_requests.push_back(*timer_);
-                }
-
-                // Wait to be notified, or until a timeout happens
-                timer_->timer.expires_after(timeout_);
-                BOOST_ASIO_CORO_YIELD timer_->timer.async_wait(std::move(self));
-
-                // If there is a connection available, return it
-                if (!obj_->shared_st_.idle_list.empty())
-                {
-                    // There was a connection. Done.
-                    complete_success(self, obj_->shared_st_.idle_list.front());
-                    return;
-                }
-
-                // Otherwise, we've got a timeout. Try to give as much info as possible
-                ec = obj_->get_diagnostics(diag_);
-                // TODO: dispatch
-                do_complete(self, ec, ConnectionWrapper());
             }
         }
     };
@@ -279,7 +277,7 @@ public:
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ConnectionWrapper))
     async_get_connection(
-        std::chrono::steady_clock::duration timeout,
+        std::chrono::steady_clock::time_point timeout,
         diagnostics* diag,
         CompletionToken&& token
     )
@@ -288,6 +286,22 @@ public:
             get_connection_op(this->shared_from_this(), timeout, diag),
             token,
             ex_
+        );
+    }
+
+    template <class CompletionToken>
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ConnectionWrapper))
+    async_get_connection(
+        std::chrono::steady_clock::duration timeout,
+        diagnostics* diag,
+        CompletionToken&& token
+    )
+    {
+        return async_get_connection(
+            timeout.count() > 0 ? std::chrono::steady_clock::now() + timeout
+                                : std::chrono::steady_clock::time_point::max(),
+            diag,
+            std::forward<CompletionToken>(token)
         );
     }
 

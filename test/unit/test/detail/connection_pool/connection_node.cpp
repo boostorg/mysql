@@ -52,6 +52,7 @@
 #include "pool_printing.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/tracker_executor.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
@@ -417,6 +418,7 @@ class detached_get_connection
 {
     asio::experimental::channel<void(error_code, mock_pooled_connection)> chan;
     mock_pool& pool_;
+    executor_info exec_info_;
 
 public:
     detached_get_connection(
@@ -426,9 +428,18 @@ public:
     )
         : chan(pool.get_executor()), pool_(pool)
     {
-        pool.async_get_connection(timeout, diag, [&](error_code ec, mock_pooled_connection c) {
-            chan.async_send(ec, std::move(c), asio::detached);
-        });
+        auto ex = create_tracker_executor(chan.get_executor(), &exec_info_);
+        pool.async_get_connection(
+            asio::use_service<mock_timer_service>(ex.context()).current_time() + timeout,
+            diag,
+            asio::bind_executor(
+                ex,
+                [&](error_code ec, mock_pooled_connection c) {
+                    BOOST_TEST(exec_info_.total() > 0u);
+                    chan.async_send(ec, std::move(c), asio::detached);
+                }
+            )
+        );
     }
 
     void wait(mock_node& expected_node, asio::yield_context yield)
