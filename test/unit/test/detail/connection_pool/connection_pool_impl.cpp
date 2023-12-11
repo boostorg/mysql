@@ -619,6 +619,33 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
     });
 }
 
+BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
+{
+    pool_params params;
+    params.ping_timeout = std::chrono::seconds(0);
+
+    pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
+        // Connect, pick up and return a connection
+        auto& node = pool.nodes().front();
+        node.connection().step(next_connection_action::connect, yield);
+        wait_for_status(node, connection_status::idle, yield);
+        node.mark_as_in_use();
+        node.mark_as_collectable(true);
+        wait_for_status(node, connection_status::reset_in_progress, yield);
+
+        // Reset doesn't time out, regardless of how much time we wait
+        get_timer_service(pool).advance_time_by(std::chrono::hours(9999));
+        asio::post(yield);
+        BOOST_TEST(node.status() == connection_status::reset_in_progress);
+        check_shared_st(pool, error_code(), diagnostics(), 1, 0);
+
+        // Reset succeeds
+        node.connection().step(next_connection_action::reset, yield);
+        wait_for_status(node, connection_status::idle, yield);
+        check_shared_st(pool, error_code(), diagnostics(), 0, 1);
+    });
+}
+
 BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
 {
     pool_params params;
@@ -692,6 +719,53 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
         // Reconnection succeeds
         node.connection().step(next_connection_action::connect, yield);
         wait_for_status(node, connection_status::idle, yield);
+        check_shared_st(pool, error_code(), diagnostics(), 0, 1);
+    });
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
+{
+    pool_params params;
+    params.ping_interval = std::chrono::seconds(100);
+    params.ping_timeout = std::chrono::seconds(0);
+
+    pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
+        // Wait until a connection is successfully connected
+        auto& node = pool.nodes().front();
+        node.connection().step(next_connection_action::connect, yield);
+        wait_for_status(node, connection_status::idle, yield);
+
+        // Wait until ping interval ellapses
+        get_timer_service(pool).advance_time_by(std::chrono::seconds(100));
+        wait_for_status(node, connection_status::ping_in_progress, yield);
+
+        // Ping doesn't time out, regardless of how much we wait
+        get_timer_service(pool).advance_time_by(std::chrono::hours(9999));
+        asio::post(yield);
+        BOOST_TEST(node.status() == connection_status::ping_in_progress);
+
+        // Ping succeeds
+        node.connection().step(next_connection_action::ping, yield);
+        wait_for_status(node, connection_status::idle, yield);
+        check_shared_st(pool, error_code(), diagnostics(), 0, 1);
+    });
+}
+
+BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
+{
+    pool_params params;
+    params.ping_interval = std::chrono::seconds(0);
+
+    pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
+        // Wait until a connection is successfully connected
+        auto& node = pool.nodes().front();
+        node.connection().step(next_connection_action::connect, yield);
+        wait_for_status(node, connection_status::idle, yield);
+
+        // Connection won't ping, regardless of how much time we wait
+        get_timer_service(pool).advance_time_by(std::chrono::hours(9999));
+        asio::post(yield);
+        BOOST_TEST(node.status() == connection_status::idle);
         check_shared_st(pool, error_code(), diagnostics(), 0, 1);
     });
 }
