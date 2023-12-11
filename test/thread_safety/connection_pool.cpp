@@ -18,7 +18,9 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/bind_executor.hpp>
 #include <boost/asio/coroutine.hpp>
+#include <boost/asio/detached.hpp>
 #include <boost/asio/thread_pool.hpp>
 
 #include <atomic>
@@ -74,9 +76,13 @@ class task
     coordinator* coord_{};
     mysql::pooled_connection conn_;
     state_t state_{state_t::initial};
+    asio::any_io_executor base_ex_;
 
 public:
-    task(mysql::connection_pool& pool, coordinator& coord) : pool_(&pool), coord_(&coord) {}
+    task(mysql::connection_pool& pool, coordinator& coord, asio::any_io_executor base_ex)
+        : pool_(&pool), coord_(&coord), base_ex_(std::move(base_ex))
+    {
+    }
 
     void resume(error_code ec = {})
     {
@@ -89,10 +95,18 @@ public:
             {
             case state_t::initial:
                 state_ = state_t::after_get_connection;
-                pool_->async_get_connection(diag_, [this](error_code ec, mysql::pooled_connection c) {
-                    conn_ = std::move(c);
-                    resume(ec);
-                });
+                // Verify that we achieve thread-safety even if the token
+                // has a bound executor that is not a strand (regression check).
+                pool_->async_get_connection(
+                    diag_,
+                    asio::bind_executor(
+                        base_ex_,
+                        [this](error_code ec, mysql::pooled_connection c) {
+                            conn_ = std::move(c);
+                            resume(ec);
+                        }
+                    )
+                );
                 return;
 
             case state_t::after_get_connection:
@@ -138,7 +152,7 @@ void run(const char* hostname)
 
     // Create connections
     for (std::size_t i = 0; i < num_parallel; ++i)
-        conns.emplace_back(pool, coord);
+        conns.emplace_back(pool, coord, ctx.get_executor());
 
     // Launch
     for (auto& conn : conns)
