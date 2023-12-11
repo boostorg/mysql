@@ -137,6 +137,11 @@ class connection_impl
     };
 
     // Connect
+    static connect_algo_params make_params_connect(diagnostics& diag, const handshake_params& params) noexcept
+    {
+        return connect_algo_params{&diag, params};
+    }
+
     template <class EndpointType>
     struct connect_initiation
     {
@@ -151,7 +156,7 @@ class connection_impl
         )
         {
             stream->set_endpoint(&endpoint);
-            async_run_algo(*stream, *st, connect_algo_params{diag, params}, std::forward<Handler>(handler));
+            async_run_algo(*stream, *st, make_params_connect(*diag, params), std::forward<Handler>(handler));
         }
     };
 
@@ -262,7 +267,7 @@ public:
     )
     {
         stream_->set_endpoint(&endpoint);
-        run_algo(*stream_, *st_, connect_algo_params{&diag, params}, err);
+        run_algo(*stream_, *st_, make_params_connect(diag, params), err);
     }
 
     template <class EndpointType, class CompletionToken>
