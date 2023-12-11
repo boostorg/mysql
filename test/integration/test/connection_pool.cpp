@@ -332,8 +332,8 @@ BOOST_AUTO_TEST_CASE(ssl)
     });
 }
 
-// Spotcheck: a custom SSL context can be passed to the connection pool
-BOOST_AUTO_TEST_CASE(ssl_custom_ctx)
+// Spotcheck: custom ctor params (SSL context and buffer size) can be passed to the connection pool
+BOOST_AUTO_TEST_CASE(custom_ctor_params)
 {
     run_stackful_coro([](boost::asio::yield_context yield) {
         diagnostics diag;
@@ -342,6 +342,7 @@ BOOST_AUTO_TEST_CASE(ssl_custom_ctx)
         auto params = default_pool_params();
         params.ssl = ssl_mode::require;
         params.ssl_ctx.emplace(boost::asio::ssl::context::sslv23_client);
+        params.initial_read_buffer_size = 16u;
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool.async_run([](error_code ec) { throw_on_error(ec); });
@@ -353,6 +354,39 @@ BOOST_AUTO_TEST_CASE(ssl_custom_ctx)
         // Verify that works
         BOOST_TEST_REQUIRE(conn.valid());
         conn->async_ping(diag, yield[ec]);
+        throw_on_error(ec, diag);
+    });
+}
+
+// Spotcheck: the pool can work with zero timeouts
+BOOST_AUTO_TEST_CASE(zero_timeuts)
+{
+    run_stackful_coro([](boost::asio::yield_context yield) {
+        diagnostics diag;
+        error_code ec;
+        results r;
+        auto params = default_pool_params();
+        params.max_size = 1u;  // so we force a reset
+        params.connect_timeout = std::chrono::seconds(0);
+        params.ping_timeout = std::chrono::seconds(0);
+        params.ping_interval = std::chrono::seconds(0);
+
+        connection_pool pool(yield.get_executor(), std::move(params));
+        pool.async_run([](error_code ec) { throw_on_error(ec); });
+
+        // Get a connection
+        auto conn = pool.async_get_connection(diag, yield[ec]);
+        throw_on_error(ec, diag);
+        conn->ping(ec, diag);
+        throw_on_error(ec, diag);
+
+        // Return the connection
+        conn = pooled_connection();
+
+        // Get the same connection again
+        conn = pool.async_get_connection(diag, yield[ec]);
+        throw_on_error(ec, diag);
+        conn->ping(ec, diag);
         throw_on_error(ec, diag);
     });
 }
