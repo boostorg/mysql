@@ -62,20 +62,9 @@ using boost::mysql::common_server_errc;
 using boost::mysql::connect_params;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
+using boost::mysql::pool_params;
 using boost::mysql::pooled_connection;
 using std::chrono::steady_clock;
-using timeout_t = std::chrono::steady_clock::duration;
-
-/**
- * connection lifecycle
- *   connect error
- *   connect success
- *   idle wait results in ping, success
- *   idle wait results in ping, error & reconnection
- *   conn retrieved, returned without reset
- *   conn retrieved, returned with reset, success
- *   conn retrieved, returned with reset, error & reconnection
- */
 
 BOOST_AUTO_TEST_SUITE(test_connection_node)
 
@@ -334,15 +323,8 @@ struct mock_pooled_connection
 
 using mock_shared_state = conn_shared_state<mock_io_traits>;
 
-void rethrow_on_err(std::exception_ptr err)
-{
-    if (err)
-        std::rethrow_exception(err);
-}
-
-void check_err(error_code ec) { BOOST_TEST(ec == error_code()); }
-
-void post_until(std::function<bool()> cond, asio::yield_context yield)
+// Issue posts until a certain condition becomes true (with a sane limit)
+static void post_until(std::function<bool()> cond, asio::yield_context yield)
 {
     for (int i = 0; i < 10; ++i)
     {
@@ -352,67 +334,6 @@ void post_until(std::function<bool()> cond, asio::yield_context yield)
     }
     BOOST_TEST_REQUIRE(false);
 }
-
-BOOST_AUTO_TEST_CASE(connect_timeout)
-{
-    asio::io_context ctx;
-    boost::mysql::pool_params params;
-    params.retry_interval = std::chrono::seconds(2);
-    auto internal_params = make_internal_pool_params(std::move(params));
-    mock_shared_state st;
-
-    mock_node node(internal_params, ctx.get_executor(), ctx.get_executor(), st);
-    bool finished = false;
-
-    asio::spawn(
-        ctx,
-        [&](asio::yield_context yield) {
-            // Connection tries to connect and fails
-            node.connection().wait_for_step(
-                next_connection_action::connect,
-                yield,
-                common_server_errc::er_aborting_connection,
-                create_server_diag("Connection error!")
-            );
-
-            // Wait until the connection is sleeping
-            post_until(
-                [&] { return node.status() == connection_status::sleep_connect_failed_in_progress; },
-                yield
-            );
-
-            // Diagnostics are stored in shared state
-            BOOST_TEST(st.last_ec == error_code(common_server_errc::er_aborting_connection));
-            BOOST_TEST(st.last_diag == create_server_diag("Connection error!"));
-
-            // Advance until it's time to retry again
-            asio::use_service<mock_timer_service>(ctx).advance_time_by(std::chrono::seconds(2));
-
-            // Connection connects successfully this time
-            node.connection().wait_for_step(next_connection_action::connect, yield, error_code());
-            post_until([&] { return node.status() == connection_status::idle; }, yield);
-
-            // Diagnostics have been cleared
-            BOOST_TEST(st.last_ec == error_code());
-            BOOST_TEST(st.last_diag == diagnostics());
-
-            // The connection is marked as idle
-            BOOST_TEST(&st.idle_list.front() == &node);
-
-            // Finish
-            node.cancel();
-            finished = true;
-        },
-        rethrow_on_err
-    );
-
-    node.async_run(check_err);
-
-    ctx.run_for(std::chrono::seconds(10));
-    BOOST_TEST(finished == true);
-}
-
-// connection_pool_impl
 
 class detached_get_connection
 {
@@ -461,199 +382,223 @@ public:
     }
 };
 
-BOOST_AUTO_TEST_CASE(wait_success)
+static void pool_test(
+    boost::mysql::pool_params params,
+    std::function<void(asio::yield_context, mock_pool&)> test_fun
+)
 {
+    // I/O context
     asio::io_context ctx;
-    boost::mysql::pool_params params;
+
+    // Pool (must be created using dynamic memory)
+    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+
+    // This flag is only set to true after the test finishes.
+    // If the test timeouts, it will be false
+    bool finished = false;
+
+    // Run the test as a coroutine
+    asio::spawn(
+        ctx,
+        [&](asio::yield_context yield) {
+            // Invoke the test
+            test_fun(yield, *pool);
+
+            // Finish
+            pool->cancel();
+            finished = true;
+        },
+        [](std::exception_ptr exc) {
+            if (exc)
+                std::rethrow_exception(exc);
+        }
+    );
+
+    // Run the pool
+    pool->async_run([](error_code ec) { BOOST_TEST(ec == error_code()); });
+
+    // If the test doesn't complete in this time, there was an error
+    ctx.run_for(std::chrono::seconds(10));
+
+    // Check that we didn't timeout
+    BOOST_TEST(finished == true);
+}
+
+static mock_timer_service& get_timer_service(mock_pool& pool)
+{
+    return asio::use_service<mock_timer_service>(pool.get_executor().context());
+}
+
+// connection lifecycle
+BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
+{
+    pool_params params;
     params.retry_interval = std::chrono::seconds(2);
 
-    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+    pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
+        // Wait until a connection is created
+        post_until([&] { return !pool.nodes().empty(); }, yield);
+        auto& node = *pool.nodes().begin();
 
-    bool finished = false;
+        // Connection tries to connect and fails
+        node.connection().wait_for_step(
+            next_connection_action::connect,
+            yield,
+            common_server_errc::er_aborting_connection,
+            create_server_diag("Connection error!")
+        );
 
-    asio::spawn(
-        ctx,
-        [&](asio::yield_context yield) {
-            // Wait for some connections to be created
-            post_until([&] { return !pool->nodes().empty(); }, yield);
-            auto& node = *pool->nodes().begin();
-            auto& svc = asio::use_service<mock_timer_service>(ctx);
+        // Wait until the connection is sleeping
+        post_until(
+            [&] { return node.status() == connection_status::sleep_connect_failed_in_progress; },
+            yield
+        );
 
-            // Connection tries to connect and fails
-            node.connection().wait_for_step(
-                next_connection_action::connect,
-                yield,
-                common_server_errc::er_aborting_connection
-            );
+        // Diagnostics are stored in shared state
+        auto& st = pool.shared_state();
+        BOOST_TEST(st.last_ec == error_code(common_server_errc::er_aborting_connection));
+        BOOST_TEST(st.last_diag == create_server_diag("Connection error!"));
 
-            // Connection goes to sleep
-            post_until(
-                [&] { return node.status() == connection_status::sleep_connect_failed_in_progress; },
-                yield
-            );
+        // Advance until it's time to retry again
+        get_timer_service(pool).advance_time_by(std::chrono::seconds(2));
 
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            detached_get_connection task(*pool, std::chrono::seconds(5), nullptr);
-            post_until([&] { return pool->num_pending_requests() > 0u; }, yield);
-            BOOST_TEST(pool->nodes().size() == 1u);
+        // Connection connects successfully this time
+        node.connection().wait_for_step(next_connection_action::connect, yield, error_code());
+        post_until([&] { return node.status() == connection_status::idle; }, yield);
 
-            // Retry interval ellapses and connection retries and succeeds
-            svc.advance_time_by(std::chrono::seconds(2));
-            node.connection().wait_for_step(next_connection_action::connect, yield);
+        // Diagnostics have been cleared
+        BOOST_TEST(st.last_ec == error_code());
+        BOOST_TEST(st.last_diag == diagnostics());
 
-            // Request is fulfilled
-            task.wait(node, yield);
-            BOOST_TEST(node.status() == connection_status::in_use);
-            BOOST_TEST(pool->nodes().size() == 1u);
-            BOOST_TEST(pool->num_pending_requests() == 0u);
-
-            // Finish
-            pool->cancel();
-            finished = true;
-        },
-        rethrow_on_err
-    );
-
-    pool->async_run(check_err);
-
-    ctx.run_for(std::chrono::seconds(10));
-    BOOST_TEST(finished == true);
+        // The connection is marked as idle
+        BOOST_TEST(&st.idle_list.front() == &node);
+    });
 }
 
-BOOST_AUTO_TEST_CASE(wait_timeout_no_diag)
+// async_get_connection
+BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 {
-    asio::io_context ctx;
-    boost::mysql::pool_params params;
+    pool_params params;
+    params.retry_interval = std::chrono::seconds(2);
 
-    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+    pool_test(std::move(params), [&](asio::yield_context yield, mock_pool& pool) {
+        // Wait for some connections to be created
+        post_until([&] { return !pool.nodes().empty(); }, yield);
+        auto& node = *pool.nodes().begin();
+        auto& svc = get_timer_service(pool);
 
-    bool finished = false;
+        // Connection tries to connect and fails
+        node.connection().wait_for_step(
+            next_connection_action::connect,
+            yield,
+            common_server_errc::er_aborting_connection
+        );
 
-    pool->async_run(check_err);
+        // Connection goes to sleep
+        post_until(
+            [&] { return node.status() == connection_status::sleep_connect_failed_in_progress; },
+            yield
+        );
 
-    asio::spawn(
-        ctx,
-        [&](asio::yield_context yield) {
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            diagnostics diag;
-            detached_get_connection task(*pool, std::chrono::seconds(1), &diag);
-            post_until([&] { return pool->num_pending_requests() > 0u; }, yield);
-            BOOST_TEST(pool->nodes().size() == 1u);
+        // A request for a connection is issued. The request doesn't find
+        // any available connection, and the current one is pending, so no new connections are created
+        detached_get_connection task(pool, std::chrono::seconds(5), nullptr);
+        post_until([&] { return pool.num_pending_requests() > 0u; }, yield);
+        BOOST_TEST(pool.nodes().size() == 1u);
 
-            // The request timeout ellapses, so the request fails
-            asio::use_service<mock_timer_service>(ctx).advance_time_by(std::chrono::seconds(1));
-            task.wait(client_errc::timeout, yield);
-            BOOST_TEST(diag == diagnostics());
-            BOOST_TEST(pool->nodes().size() == 1u);
-            BOOST_TEST(pool->num_pending_requests() == 0u);
+        // Retry interval ellapses and connection retries and succeeds
+        svc.advance_time_by(std::chrono::seconds(2));
+        node.connection().wait_for_step(next_connection_action::connect, yield);
 
-            // Finish
-            pool->cancel();
-            finished = true;
-        },
-        rethrow_on_err
-    );
-
-    ctx.run_for(std::chrono::seconds(100));
-    BOOST_TEST(finished == true);
+        // Request is fulfilled
+        task.wait(node, yield);
+        BOOST_TEST(node.status() == connection_status::in_use);
+        BOOST_TEST(pool.nodes().size() == 1u);
+        BOOST_TEST(pool.num_pending_requests() == 0u);
+    });
 }
 
-BOOST_AUTO_TEST_CASE(wait_timeout_with_diag)
+BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 {
-    asio::io_context ctx;
-    boost::mysql::pool_params params;
+    pool_test(pool_params{}, [](asio::yield_context yield, mock_pool& pool) {
+        // A request for a connection is issued. The request doesn't find
+        // any available connection, and the current one is pending, so no new connections are created
+        diagnostics diag;
+        detached_get_connection task(pool, std::chrono::seconds(1), &diag);
+        post_until([&] { return pool.num_pending_requests() > 0u; }, yield);
+        BOOST_TEST(pool.nodes().size() == 1u);
 
-    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+        // The request timeout ellapses, so the request fails
+        get_timer_service(pool).advance_time_by(std::chrono::seconds(1));
+        task.wait(client_errc::timeout, yield);
+        BOOST_TEST(diag == diagnostics());
+        BOOST_TEST(pool.nodes().size() == 1u);
+        BOOST_TEST(pool.num_pending_requests() == 0u);
+    });
+}
 
-    bool finished = false;
+BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
+{
+    pool_test(pool_params{}, [](asio::yield_context yield, mock_pool& pool) {
+        // A request for a connection is issued. The request doesn't find
+        // any available connection, and the current one is pending, so no new connections are created
+        diagnostics diag;
+        detached_get_connection task(pool, std::chrono::seconds(1), &diag);
+        post_until([&] { return pool.num_pending_requests() > 0u; }, yield);
+        BOOST_TEST(pool.nodes().size() == 1u);
 
-    pool->async_run(check_err);
+        // The connection fails to connect
+        pool.nodes().begin()->connection().wait_for_step(
+            next_connection_action::connect,
+            yield,
+            common_server_errc::er_bad_db_error,
+            create_server_diag("Bad db")
+        );
 
-    asio::spawn(
-        ctx,
-        [&](asio::yield_context yield) {
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            diagnostics diag;
-            detached_get_connection task(*pool, std::chrono::seconds(1), &diag);
-            post_until([&] { return pool->num_pending_requests() > 0u; }, yield);
-            BOOST_TEST(pool->nodes().size() == 1u);
-
-            // The connection fails to connect
-            pool->nodes().begin()->connection().wait_for_step(
-                next_connection_action::connect,
-                yield,
-                common_server_errc::er_bad_db_error,
-                create_server_diag("Bad db")
-            );
-
-            // The request timeout ellapses, so the request fails
-            asio::use_service<mock_timer_service>(ctx).advance_time_by(std::chrono::seconds(1));
-            task.wait(common_server_errc::er_bad_db_error, yield);
-            BOOST_TEST(diag == create_server_diag("Bad db"));
-            BOOST_TEST(pool->nodes().size() == 1u);
-            BOOST_TEST(pool->num_pending_requests() == 0u);
-
-            // Finish
-            pool->cancel();
-            finished = true;
-        },
-        rethrow_on_err
-    );
-
-    ctx.run_for(std::chrono::seconds(100));
-    BOOST_TEST(finished == true);
+        // The request timeout ellapses, so the request fails
+        get_timer_service(pool).advance_time_by(std::chrono::seconds(1));
+        task.wait(common_server_errc::er_bad_db_error, yield);
+        BOOST_TEST(diag == create_server_diag("Bad db"));
+        BOOST_TEST(pool.nodes().size() == 1u);
+        BOOST_TEST(pool.num_pending_requests() == 0u);
+    });
 }
 
 // We don't crash if diag is nullptr
-BOOST_AUTO_TEST_CASE(wait_timeout_with_diag_nullptr)
+BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 {
-    asio::io_context ctx;
-    boost::mysql::pool_params params;
+    pool_test(pool_params{}, [](asio::yield_context yield, mock_pool& pool) {
+        // A request for a connection is issued. The request doesn't find
+        // any available connection, and the current one is pending, so no new connections are created
+        detached_get_connection task(pool, std::chrono::seconds(1), nullptr);
+        post_until([&] { return pool.num_pending_requests() > 0u; }, yield);
+        BOOST_TEST(pool.nodes().size() == 1u);
 
-    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+        // The connection fails to connect
+        pool.nodes().begin()->connection().wait_for_step(
+            next_connection_action::connect,
+            yield,
+            common_server_errc::er_bad_db_error,
+            create_server_diag("Bad db")
+        );
 
-    bool finished = false;
-
-    pool->async_run(check_err);
-
-    asio::spawn(
-        ctx,
-        [&](asio::yield_context yield) {
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            detached_get_connection task(*pool, std::chrono::seconds(1), nullptr);
-            post_until([&] { return pool->num_pending_requests() > 0u; }, yield);
-            BOOST_TEST(pool->nodes().size() == 1u);
-
-            // The connection fails to connect
-            pool->nodes().begin()->connection().wait_for_step(
-                next_connection_action::connect,
-                yield,
-                common_server_errc::er_bad_db_error,
-                create_server_diag("Bad db")
-            );
-
-            // The request timeout ellapses, so the request fails
-            asio::use_service<mock_timer_service>(ctx).advance_time_by(std::chrono::seconds(1));
-            task.wait(common_server_errc::er_bad_db_error, yield);
-            BOOST_TEST(pool->nodes().size() == 1u);
-            BOOST_TEST(pool->num_pending_requests() == 0u);
-
-            // Finish
-            pool->cancel();
-            finished = true;
-        },
-        rethrow_on_err
-    );
-
-    ctx.run_for(std::chrono::seconds(100));
-    BOOST_TEST(finished == true);
+        // The request timeout ellapses, so the request fails
+        get_timer_service(pool).advance_time_by(std::chrono::seconds(1));
+        task.wait(common_server_errc::er_bad_db_error, yield);
+        BOOST_TEST(pool.nodes().size() == 1u);
+        BOOST_TEST(pool.num_pending_requests() == 0u);
+    });
 }
 
 /**
+ * connection lifecycle
+ *   connect error
+ *   connect success
+ *   idle wait results in ping, success
+ *   idle wait results in ping, error & reconnection
+ *   conn retrieved, returned without reset
+ *   conn retrieved, returned with reset, success
+ *   conn retrieved, returned with reset, error & reconnection
  * get_connection
  *   not running
  *   terminated

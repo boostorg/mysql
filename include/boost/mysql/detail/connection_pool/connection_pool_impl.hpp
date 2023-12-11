@@ -57,6 +57,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     using node_type = basic_connection_node<IoTraits>;
     using timer_type = typename IoTraits::timer_type;
     using timer_block_type = timer_block<timer_type>;
+    using shared_state_type = conn_shared_state<IoTraits>;
 
     enum class state_t
     {
@@ -70,7 +71,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     asio::any_io_executor ex_;
     asio::any_io_executor conn_ex_;
     std::list<node_type> all_conns_;
-    conn_shared_state<IoTraits> shared_st_;
+    shared_state_type shared_st_;
     wait_group wait_gp_;
     asio::experimental::concurrent_channel<void(error_code)> cancel_chan_;
 
@@ -308,6 +309,7 @@ public:
     // Exposed for testing
     std::list<node_type>& nodes() noexcept { return all_conns_; }
     std::size_t num_pending_requests() noexcept { return shared_st_.pending_requests.size(); }
+    shared_state_type& shared_state() noexcept { return shared_st_; }
 };
 
 }  // namespace detail

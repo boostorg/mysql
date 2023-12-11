@@ -60,7 +60,7 @@ add_executable(
     test/detail/typing/get_type_index.cpp
     
     test/detail/connection_pool/sansio_connection_node.cpp
-    test/detail/connection_pool/connection_node.cpp
+    test/detail/connection_pool/connection_pool_impl.cpp
     test/detail/connection_pool/internal_pool_params.cpp
 
     test/impl/ssl_context_with_default.cpp
