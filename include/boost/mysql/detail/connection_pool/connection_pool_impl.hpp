@@ -193,6 +193,8 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 BOOST_ASIO_CORO_YIELD
                 asio::post(obj_->ex_, std::move(self));
 
+                // This loop guards us against possible race conditions
+                // between waiting on the pending request timer and getting the connection
                 while (true)
                 {
                     // If we're not running yet, or were cancelled, just return

@@ -931,16 +931,58 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     });
 }
 
+BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
+{
+    pool_params params;
+    params.initial_size = 2;
+    params.max_size = 2;
+
+    pool_test(std::move(params), [&](asio::yield_context yield, mock_pool& pool) {
+        // Issue some parallel requests
+        detached_get_connection task1(pool, std::chrono::seconds(5), nullptr);
+        detached_get_connection task2(pool, std::chrono::seconds(5), nullptr);
+        detached_get_connection task3(pool, std::chrono::seconds(5), nullptr);
+        detached_get_connection task4(pool, std::chrono::seconds(2), nullptr);
+        detached_get_connection task5(pool, std::chrono::seconds(5), nullptr);
+
+        // Two connections can be created. These fulfill two requests
+        post_until([&] { return pool.nodes().size() == 2u; }, yield);
+        auto& node1 = pool.nodes().front();
+        auto& node2 = *std::next(pool.nodes().begin());
+        node1.connection().step(next_connection_action::connect, yield);
+        node2.connection().step(next_connection_action::connect, yield);
+        task1.wait(node1, yield);
+        task2.wait(node2, yield);
+
+        // Time ellapses and task4 times out
+        get_timer_service(pool).advance_time_by(std::chrono::seconds(2));
+        task4.wait(client_errc::timeout, yield);
+
+        // A connection is returned. The first task to enter is served
+        node1.mark_as_collectable(true);
+        node1.connection().step(next_connection_action::reset, yield);
+        task3.wait(node1, yield);
+
+        // The next connection to be returned is for task5
+        node2.mark_as_collectable(false);
+        task5.wait(node2, yield);
+
+        // Done
+        BOOST_TEST(pool.num_pending_requests() == 0u);
+        BOOST_TEST(pool.nodes().size() == 2u);
+    });
+}
+
 /**
  * get_connection
  *   not running
  *   terminated
- *   race condition
- *   multiple requests
+ *   timer already expired/notified => to unit
  *   the correct executor is used (token with executor)
  *   the correct executor is used (token without executor)
  *   the correct executor is used (immediate completion)
  *   connections and pool created with the adequate executor (maybe integ?)
+ *   ssl for created connections
  */
 
 BOOST_AUTO_TEST_SUITE_END()
