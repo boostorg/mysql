@@ -48,6 +48,7 @@
 #include <functional>
 #include <list>
 #include <memory>
+#include <utility>
 
 #include "pool_printing.hpp"
 #include "test_common/create_diagnostics.hpp"
@@ -249,6 +250,11 @@ class mock_connection
 
     template <class CompletionToken>
     auto op_impl(next_connection_action act, diagnostics* diag, CompletionToken&& token)
+        -> decltype(asio::async_compose<CompletionToken, void(error_code)>(
+            std::declval<run_op>(),
+            token,
+            asio::any_io_executor()
+        ))
     {
         return asio::async_compose<CompletionToken, void(error_code)>(
             run_op{*this, act, diag},
