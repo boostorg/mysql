@@ -973,10 +973,29 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     });
 }
 
+BOOST_AUTO_TEST_CASE(get_connection_cancel)
+{
+    pool_test(pool_params{}, [&](asio::yield_context yield, mock_pool& pool) {
+        // Issue some requests
+        detached_get_connection task1(pool, std::chrono::seconds(5), nullptr);
+        detached_get_connection task2(pool, std::chrono::seconds(5), nullptr);
+        post_until([&] { return pool.num_pending_requests() == 2u; }, yield);
+
+        // While in flight, cancel the pool
+        pool.cancel();
+
+        // All tasks fail with a cancelled code
+        task1.wait(client_errc::cancelled, yield);
+        task2.wait(client_errc::cancelled, yield);
+
+        // Further tasks fail immediately
+        detached_get_connection(pool, std::chrono::seconds(5), nullptr).wait(client_errc::cancelled, yield);
+    });
+}
+
 /**
  * get_connection
  *   not running
- *   terminated
  *   timer already expired/notified => to unit
  *   the correct executor is used (token with executor)
  *   the correct executor is used (token without executor)
