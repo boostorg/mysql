@@ -14,12 +14,14 @@
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/pooled_connection.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/detached.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/spawn.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
@@ -42,6 +44,7 @@ pool_params default_pool_params()
     res.username = default_user;
     res.password = default_passwd;
     res.database = default_db;
+    res.ssl = ssl_mode::disable;
     return res;
 }
 
@@ -290,6 +293,55 @@ BOOST_AUTO_TEST_CASE(unix_sockets)
         results r;
         auto params = default_pool_params();
         params.server_address.emplace_unix_path(default_unix_path);
+
+        connection_pool pool(yield.get_executor(), std::move(params));
+        pool.async_run([](error_code ec) { throw_on_error(ec); });
+
+        // Get a connection
+        auto conn = pool.async_get_connection(diag, yield[ec]);
+        throw_on_error(ec, diag);
+
+        // Verify that works
+        BOOST_TEST_REQUIRE(conn.valid());
+        conn->async_ping(diag, yield[ec]);
+        throw_on_error(ec, diag);
+    });
+}
+
+// Spotcheck: pool works with TLS
+BOOST_AUTO_TEST_CASE(ssl)
+{
+    run_stackful_coro([](boost::asio::yield_context yield) {
+        diagnostics diag;
+        error_code ec;
+        results r;
+        auto params = default_pool_params();
+        params.ssl = ssl_mode::require;
+
+        connection_pool pool(yield.get_executor(), std::move(params));
+        pool.async_run([](error_code ec) { throw_on_error(ec); });
+
+        // Get a connection
+        auto conn = pool.async_get_connection(diag, yield[ec]);
+        throw_on_error(ec, diag);
+
+        // Verify that works
+        BOOST_TEST_REQUIRE(conn.valid());
+        conn->async_ping(diag, yield[ec]);
+        throw_on_error(ec, diag);
+    });
+}
+
+// Spotcheck: a custom SSL context can be passed to the connection pool
+BOOST_AUTO_TEST_CASE(ssl_custom_ctx)
+{
+    run_stackful_coro([](boost::asio::yield_context yield) {
+        diagnostics diag;
+        error_code ec;
+        results r;
+        auto params = default_pool_params();
+        params.ssl = ssl_mode::require;
+        params.ssl_ctx.emplace(boost::asio::ssl::context::sslv23_client);
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool.async_run([](error_code ec) { throw_on_error(ec); });

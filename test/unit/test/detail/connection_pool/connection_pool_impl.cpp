@@ -37,6 +37,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/spawn.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/use_future.hpp>
 #include <boost/test/tools/interface.hpp>
@@ -264,8 +265,10 @@ class mock_connection
     }
 
 public:
-    mock_connection(asio::any_io_executor ex, boost::mysql::any_connection_params)
-        : recv_chan_(ex), send_chan_(std::move(ex))
+    boost::mysql::any_connection_params ctor_params;
+
+    mock_connection(asio::any_io_executor ex, boost::mysql::any_connection_params ctor_params)
+        : recv_chan_(ex), send_chan_(std::move(ex)), ctor_params(ctor_params)
     {
     }
 
@@ -993,6 +996,26 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
     });
 }
 
+// Adequate params passed to new connections
+BOOST_AUTO_TEST_CASE(created_connections_ctor_params)
+{
+    // Pass a custom ssl context and buffer size
+    pool_params params;
+    params.ssl_ctx.emplace(boost::asio::ssl::context::tlsv12_client);
+    params.initial_read_buffer_size = 16u;
+
+    // SSL context matching is performed using the underlying handle
+    // because ssl::context provides no way to query the options previously set
+    auto handle = params.ssl_ctx->native_handle();
+
+    pool_test(std::move(params), [&](asio::yield_context, mock_pool& pool) {
+        auto ctor_params = pool.nodes().front().connection().ctor_params;
+        BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
+        BOOST_TEST(ctor_params.ssl_context->native_handle() == handle);
+        BOOST_TEST(ctor_params.initial_read_buffer_size == 16u);
+    });
+}
+
 /**
  * get_connection
  *   not running
@@ -1001,7 +1024,6 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
  *   the correct executor is used (token without executor)
  *   the correct executor is used (immediate completion)
  *   connections and pool created with the adequate executor (maybe integ?)
- *   ssl for created connections
  */
 
 BOOST_AUTO_TEST_SUITE_END()
