@@ -11,13 +11,13 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/pooled_connection.hpp>
 
 #include <boost/mysql/detail/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/detail/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/detail/connection_pool/sansio_connection_node.hpp>
 #include <boost/mysql/detail/connection_pool/timer_list.hpp>
 #include <boost/mysql/detail/connection_pool/wait_group.hpp>
+#include <boost/mysql/detail/connection_pool_fwd.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/bind_executor.hpp>

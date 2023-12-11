@@ -13,7 +13,6 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/pooled_connection.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>

@@ -22,7 +22,6 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/pool_params.hpp>
-#include <boost/mysql/pooled_connection.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
