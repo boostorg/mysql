@@ -15,40 +15,36 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline asio::ssl::context create_default_ssl_context()
+{
+    // As of MySQL 5.7.35, support for previous TLS versions is deprecated,
+    // so this is a secure default. User can override it if they want
+    asio::ssl::context ctx(asio::ssl::context::tlsv12_client);
+    return ctx;
+}
+
+inline asio::ssl::context& default_ssl_context()
+{
+    static asio::ssl::context ctx = create_default_ssl_context();
+    return ctx;
+}
+
 class ssl_context_with_default
 {
-    variant2::variant<asio::ssl::context*, asio::ssl::context> impl_;
+    asio::ssl::context* impl_;
 
 public:
     ssl_context_with_default(asio::ssl::context* ctx) noexcept : impl_(ctx) {}
 
     asio::ssl::context& get()
     {
-        // Do we have a default context already created?
-        auto* default_ctx = variant2::get_if<asio::ssl::context>(&impl_);
-        if (default_ctx)
-            return *default_ctx;
-
-        // Do we have an external context provided by the user?
-        BOOST_ASSERT(variant2::holds_alternative<asio::ssl::context*>(impl_));
-        auto* external_ctx = variant2::unsafe_get<0>(impl_);
-        if (external_ctx)
-            return *external_ctx;
-
-        // Create a default context and return it.
-        // As of MySQL 5.7.35, support for previous TLS versions is deprecated,
-        // so this is a secure default. User can override it if they want
-        return impl_.emplace<asio::ssl::context>(asio::ssl::context::tlsv12_client);
+        if (impl_ == nullptr)
+            impl_ = &default_ssl_context();
+        return *impl_;
     }
 
     // Exposed for the sake of testing
-    const asio::ssl::context* get_ptr() const noexcept
-    {
-        if (const auto* res = variant2::get_if<asio::ssl::context>(&impl_))
-            return res;
-        else
-            return variant2::unsafe_get<0>(impl_);
-    }
+    const asio::ssl::context* get_ptr() const noexcept { return impl_; }
 };
 
 }  // namespace detail

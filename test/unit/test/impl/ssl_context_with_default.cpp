@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_CASE(no_external_context)
     // Nothing created on construction
     BOOST_TEST(ctx_with_default.get_ptr() == nullptr);
 
-    // Calling get creates a new context
+    // Calling get uses the default context singleton
     auto& ctx = ctx_with_default.get();
     auto handle = ctx.native_handle();
     BOOST_TEST(handle != nullptr);

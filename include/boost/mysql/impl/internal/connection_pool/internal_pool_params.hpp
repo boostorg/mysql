@@ -43,7 +43,7 @@ struct internal_pool_params
     any_connection_params make_ctor_params() noexcept
     {
         any_connection_params res;
-        res.ssl_context = ssl_ctx.has_value() ? &ssl_ctx.value() : nullptr;
+        res.ssl_context = ssl_ctx.get_ptr();
         res.initial_read_buffer_size = initial_read_buffer_size;
         return res;
     }
@@ -75,13 +75,6 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
 {
     check_validity(params);
 
-    optional<asio::ssl::context> ssl_ctx{std::move(params.ssl_ctx)};
-    if (!ssl_ctx.has_value() && params.ssl != ssl_mode::disable &&
-        params.server_address.type() == address_type::host_and_port)
-    {
-        ssl_ctx.emplace(asio::ssl::context::tlsv12_client);
-    }
-
     connect_params connect_prms;
     connect_prms.server_address = std::move(params.server_address);
     connect_prms.username = std::move(params.username);
@@ -93,7 +86,7 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
 
     return {
         std::move(connect_prms),
-        std::move(ssl_ctx),
+        std::move(params.ssl_ctx),
         params.initial_read_buffer_size,
         params.initial_size,
         params.max_size,
