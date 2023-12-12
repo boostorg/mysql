@@ -14,17 +14,21 @@
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/detached.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/experimental/channel.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
 #include <chrono>
+#include <stdexcept>
 
 #include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
@@ -388,6 +392,22 @@ BOOST_AUTO_TEST_CASE(zero_timeuts)
         conn->ping(ec, diag);
         throw_on_error(ec, diag);
     });
+}
+
+// Spotcheck: constructing a connection_pool with invalid params throws
+BOOST_AUTO_TEST_CASE(invalid_params)
+{
+    boost::asio::io_context ctx;
+    pool_params params;
+    params.connect_timeout = std::chrono::seconds(-1);
+
+    BOOST_CHECK_EXCEPTION(
+        connection_pool(ctx, std::move(params)),
+        std::invalid_argument,
+        [](const std::invalid_argument& exc) {
+            return exc.what() == string_view("pool_params::connect_timeout must not be negative");
+        }
+    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -49,7 +49,7 @@ struct internal_pool_params
     }
 };
 
-inline void check_validity(const pool_params& params) noexcept
+inline void check_validity(const pool_params& params)
 {
     const char* msg = nullptr;
     if (params.max_size == 0)
@@ -57,13 +57,13 @@ inline void check_validity(const pool_params& params) noexcept
     else if (params.max_size < params.initial_size)
         msg = "pool_params::max_size must be greater than pool_params::initial_size";
     else if (params.connect_timeout.count() < 0)
-        msg = "pool_params::connect_timeout can't be negative";
+        msg = "pool_params::connect_timeout must not be negative";
     else if (params.retry_interval.count() <= 0)
         msg = "pool_params::retry_interval must be greater than zero";
     else if (params.ping_interval.count() < 0)
-        msg = "pool_params::ping_interval can't be negative";
+        msg = "pool_params::ping_interval must not be negative";
     else if (params.ping_timeout.count() < 0)
-        msg = "pool_params::ping_timeout can't be negative";
+        msg = "pool_params::ping_timeout must not be negative";
 
     if (msg != nullptr)
     {
