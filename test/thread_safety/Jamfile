@@ -22,6 +22,6 @@ run
     : requirements
         <testing.arg>$(hostname)
         <thread-sanitizer>norecover
-        <toolset>clang:<cxxflags>-fsanitize-blacklist=$(tsan_suppressions)
+        <toolset>clang-darwin:<cxxflags>-fsanitize-blacklist=$(tsan_suppressions)
     : target-name boost_mysql_thread_safety
 ;

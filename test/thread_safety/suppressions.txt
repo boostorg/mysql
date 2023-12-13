@@ -1,4 +1,4 @@
 
 # Boost.Asio with kqueue reports this (hopefully false) positive
 # https://github.com/chriskohlhoff/asio/issues/641 
-race:boost::asio::detail::conditionally_enabled_mutex::conditionally_enabled_mutex
+fun:_ZN5boost4asio6detail27conditionally_enabled_mutex11scoped_lockC1ERS2_
