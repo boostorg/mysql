@@ -16,12 +16,24 @@ if $(hostname) = ""
     hostname = "localhost" ;
 }
 
+# TSAN can't be enabled in our ARM CIs, since they fail
+# the personality() syscall to disable address space layout randomization
+rule tsan_if_not_arm ( properties * )
+{
+    local result ;
+    if ! <architecture>arm in $(properties)
+    {
+        result += <thread-sanitizer>norecover ;
+    }
+    return $(result) ;
+}
+
 run
         /boost/mysql/test//boost_mysql_compiled
         connection_pool.cpp
     : requirements
         <testing.arg>$(hostname)
-        <thread-sanitizer>norecover
+        <conditional>@tsan_if_not_arm
         <toolset>clang-darwin:<cxxflags>-fsanitize-blacklist=$(tsan_suppressions)
     : target-name boost_mysql_thread_safety
 ;
