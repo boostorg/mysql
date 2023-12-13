@@ -286,6 +286,25 @@ BOOST_AUTO_TEST_CASE(cancel_get_connection)
     });
 }
 
+// Spotcheck: async_get_connection timeouts work
+BOOST_AUTO_TEST_CASE(get_connection_timeout)
+{
+    run_stackful_coro([](boost::asio::yield_context yield) {
+        diagnostics diag;
+        error_code ec;
+        auto params = default_pool_params();
+        params.password = "bad_password";  // Guarantee that no connection will ever become available
+        connection_pool pool(yield.get_executor(), std::move(params));
+
+        pool.async_run([](error_code ec) { throw_on_error(ec); });
+
+        // Getting a connection will timeout. The error may be a generic
+        // timeout or a "bad password" error, depending on timing
+        auto conn = pool.async_get_connection(std::chrono::milliseconds(1), diag, yield[ec]);
+        BOOST_TEST(ec != error_code());
+    });
+}
+
 // Spotcheck: pool works with unix sockets, too
 BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
 BOOST_AUTO_TEST_CASE(unix_sockets)
@@ -386,8 +405,8 @@ BOOST_AUTO_TEST_CASE(zero_timeuts)
         // Return the connection
         conn = pooled_connection();
 
-        // Get the same connection again
-        conn = pool.async_get_connection(diag, yield[ec]);
+        // Get the same connection again. A zero timeout for async_get_connection works, too
+        conn = pool.async_get_connection(std::chrono::seconds(0), diag, yield[ec]);
         throw_on_error(ec, diag);
         conn->ping(ec, diag);
         throw_on_error(ec, diag);
