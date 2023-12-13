@@ -42,10 +42,21 @@ public:
             finished_.cancel();  // If this happens to fail, terminate() is the best option
     }
 
+    // Note: this operation always completes with a cancelled error code
+    // (for simplicity).
     template <class CompletionToken>
-    void join_tasks(CompletionToken&& token)
+    void async_wait(CompletionToken&& token)
     {
         return finished_.async_wait(std::forward<CompletionToken>(token));
+    }
+
+    // Runs op calling the adequate group member functions when op is started and finished.
+    // The operation is run within this->get_executor()
+    template <class Op>
+    void run_task(Op&& op)
+    {
+        on_task_start();
+        std::forward<Op>(op)(asio::bind_executor(get_executor(), [this](error_code) { on_task_finish(); }));
     }
 };
 

@@ -158,7 +158,7 @@ BOOST_FIXTURE_TEST_CASE(notify_one_timer_expired, fixture)
     BOOST_TEST(l.size() == 3u);
 
     // Dispatch handlers, so t1 gets its completion
-    ctx.run_one();
+    ctx.poll();
 
     // Notify finds the first timer expired and notifies the second one
     l.notify_one();

@@ -18,7 +18,6 @@
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 #include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
-#include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/bind_executor.hpp>
@@ -250,14 +249,6 @@ public:
         -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
     {
         return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token);
-    }
-
-    // Invokes async_run calling the adquate group functions on start/exit
-    // and using the group's executor
-    void async_run_with_group(wait_group& gp)
-    {
-        gp.on_task_start();
-        async_run(asio::bind_executor(gp.get_executor(), [&gp](error_code) { gp.on_task_finish(); }));
     }
 
     connection_type& connection() noexcept { return conn_; }

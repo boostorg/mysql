@@ -47,6 +47,7 @@ add_executable(
     test/execution_processor/static_results_impl.cpp
 
     test/connection_pool/timer_list.cpp
+    test/connection_pool/wait_group.cpp
     test/connection_pool/sansio_connection_node.cpp
     test/connection_pool/connection_pool_impl.cpp
     test/connection_pool/internal_pool_params.cpp

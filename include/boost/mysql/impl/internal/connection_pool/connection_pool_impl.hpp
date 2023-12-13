@@ -77,7 +77,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     void create_connection()
     {
         all_conns_.emplace_back(params_, ex_, conn_ex_, shared_st_);
-        all_conns_.back().async_run_with_group(wait_gp_);
+        wait_gp_.run_task(all_conns_.back().async_run(asio::deferred));
     }
 
     error_code get_diagnostics(diagnostics* diag) const
@@ -141,7 +141,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
 
                 // Wait for all connection tasks to exit
                 BOOST_ASIO_CORO_YIELD
-                obj_->wait_gp_.join_tasks(std::move(self));
+                obj_->wait_gp_.async_wait(std::move(self));
 
                 // Done
                 obj_.reset();
