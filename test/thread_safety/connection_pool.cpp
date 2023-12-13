@@ -144,7 +144,10 @@ void run(const char* hostname)
         mysql::pool_executor_params::thread_safe(ctx.get_executor()),
         std::move(params)
     );
-    pool.async_run(asio::detached);
+
+    // The pool should be thread-safe even if we pass a token with a custom
+    // executor to async_run
+    pool.async_run(asio::bind_executor(ctx.get_executor(), asio::detached));
 
     std::vector<task> conns;
     coordinator coord(pool);
