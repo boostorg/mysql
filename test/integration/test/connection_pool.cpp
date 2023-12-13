@@ -23,6 +23,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
@@ -37,6 +38,7 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+namespace asio = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_connection_pool)
 
@@ -54,7 +56,7 @@ pool_params default_pool_params()
 // Tests for pool constructors, assignments, and the valid() function
 struct ctors_assignments_fixture
 {
-    boost::asio::io_context ctx;
+    asio::io_context ctx;
     connection_pool pool{ctx, default_pool_params()};
 };
 
@@ -72,7 +74,7 @@ BOOST_FIXTURE_TEST_CASE(move_ctor_valid, ctors_assignments_fixture)
     BOOST_TEST(pool2.valid());
 
     // The new pool works
-    pool2.async_run(boost::asio::detached);
+    pool2.async_run(asio::detached);
 }
 
 BOOST_FIXTURE_TEST_CASE(move_ctor_invalid, ctors_assignments_fixture)
@@ -93,7 +95,7 @@ BOOST_FIXTURE_TEST_CASE(move_assign_valid_valid, ctors_assignments_fixture)
     BOOST_TEST(pool2.valid());
 
     // The assigned pool works
-    pool2.async_run(boost::asio::detached);
+    pool2.async_run(asio::detached);
 }
 
 BOOST_FIXTURE_TEST_CASE(move_assign_valid_invalid, ctors_assignments_fixture)
@@ -114,7 +116,7 @@ BOOST_FIXTURE_TEST_CASE(move_assign_invalid_valid, ctors_assignments_fixture)
     BOOST_TEST(!pool2.valid());
 
     // The assigned pool works
-    pool.async_run(boost::asio::detached);
+    pool.async_run(asio::detached);
 }
 
 BOOST_FIXTURE_TEST_CASE(move_assign_invalid_invalid, ctors_assignments_fixture)
@@ -127,9 +129,35 @@ BOOST_FIXTURE_TEST_CASE(move_assign_invalid_invalid, ctors_assignments_fixture)
     BOOST_TEST(!pool2.valid());
 }
 
+// The pool and individual connections use the correct executors
+BOOST_AUTO_TEST_CASE(pool_executors)
+{
+    run_stackful_coro([](asio::yield_context yield) {
+        diagnostics diag;
+        error_code ec;
+
+        // Create two different executors
+        auto pool_ex = asio::make_strand(yield.get_executor());
+        auto conn_ex = yield.get_executor();
+        BOOST_TEST((pool_ex != conn_ex));
+
+        // Create and run the pool
+        connection_pool pool(pool_executor_params(pool_ex, conn_ex), default_pool_params());
+        pool.async_run([](error_code ec) { throw_on_error(ec); });
+
+        // Get a connection
+        auto conn = pool.async_get_connection(diag, yield[ec]);
+        throw_on_error(ec, diag);
+
+        // Check executors
+        BOOST_TEST((pool.get_executor() == pool_ex));
+        BOOST_TEST((conn->get_executor() == conn_ex));
+    });
+}
+
 BOOST_AUTO_TEST_CASE(return_connection_with_reset)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
@@ -164,7 +192,7 @@ BOOST_AUTO_TEST_CASE(return_connection_with_reset)
 
 BOOST_AUTO_TEST_CASE(return_connection_without_reset)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
@@ -200,7 +228,7 @@ BOOST_AUTO_TEST_CASE(return_connection_without_reset)
 // pooled_connection destructor is equivalent to return_connection with reset
 BOOST_AUTO_TEST_CASE(pooled_connection_destructor)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
@@ -234,7 +262,7 @@ BOOST_AUTO_TEST_CASE(pooled_connection_destructor)
 
 BOOST_AUTO_TEST_CASE(connections_created_if_required)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
@@ -272,7 +300,7 @@ BOOST_AUTO_TEST_CASE(connections_created_if_required)
 
 BOOST_AUTO_TEST_CASE(connection_upper_limit)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
@@ -297,11 +325,11 @@ BOOST_AUTO_TEST_CASE(connection_upper_limit)
 
 BOOST_AUTO_TEST_CASE(cancel_run)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
-        boost::asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
+        asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
 
         // Construct a pool and run it
         connection_pool pool(yield.get_executor(), default_pool_params());
@@ -323,14 +351,14 @@ BOOST_AUTO_TEST_CASE(cancel_run)
 
 BOOST_AUTO_TEST_CASE(cancel_get_connection)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
         auto params = default_pool_params();
         params.max_size = 1;
-        boost::asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
-        boost::asio::experimental::channel<void(error_code)> getconn_chan(yield.get_executor(), 1);
+        asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
+        asio::experimental::channel<void(error_code)> getconn_chan(yield.get_executor(), 1);
 
         // Construct a pool and run it
         connection_pool pool(yield.get_executor(), std::move(params));
@@ -365,7 +393,7 @@ BOOST_AUTO_TEST_CASE(cancel_get_connection)
 // Spotcheck: async_get_connection timeouts work
 BOOST_AUTO_TEST_CASE(get_connection_timeout)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         auto params = default_pool_params();
@@ -385,7 +413,7 @@ BOOST_AUTO_TEST_CASE(get_connection_timeout)
 BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
 BOOST_AUTO_TEST_CASE(unix_sockets)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
@@ -409,7 +437,7 @@ BOOST_AUTO_TEST_CASE(unix_sockets)
 // Spotcheck: pool works with TLS
 BOOST_AUTO_TEST_CASE(ssl)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
@@ -433,13 +461,13 @@ BOOST_AUTO_TEST_CASE(ssl)
 // Spotcheck: custom ctor params (SSL context and buffer size) can be passed to the connection pool
 BOOST_AUTO_TEST_CASE(custom_ctor_params)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
         auto params = default_pool_params();
         params.ssl = ssl_mode::require;
-        params.ssl_ctx.emplace(boost::asio::ssl::context::sslv23_client);
+        params.ssl_ctx.emplace(asio::ssl::context::sslv23_client);
         params.initial_read_buffer_size = 16u;
 
         connection_pool pool(yield.get_executor(), std::move(params));
@@ -459,7 +487,7 @@ BOOST_AUTO_TEST_CASE(custom_ctor_params)
 // Spotcheck: the pool can work with zero timeouts
 BOOST_AUTO_TEST_CASE(zero_timeuts)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
+    run_stackful_coro([](asio::yield_context yield) {
         diagnostics diag;
         error_code ec;
         results r;
@@ -492,7 +520,7 @@ BOOST_AUTO_TEST_CASE(zero_timeuts)
 // Spotcheck: constructing a connection_pool with invalid params throws
 BOOST_AUTO_TEST_CASE(invalid_params)
 {
-    boost::asio::io_context ctx;
+    asio::io_context ctx;
     pool_params params;
     params.connect_timeout = std::chrono::seconds(-1);
 

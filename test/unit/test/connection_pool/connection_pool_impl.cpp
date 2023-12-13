@@ -1083,11 +1083,8 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
 /**
  * get_connection
  *   not running
- *   timer already expired/notified => to unit
- *   the correct executor is used (token with executor)
- *   the correct executor is used (token without executor)
- *   the correct executor is used (immediate completion)
- *   connections and pool created with the adequate executor (maybe integ?)
+ *   ctors from execution contexts
+ *   pool_executor_params
  */
 
 BOOST_AUTO_TEST_SUITE_END()
