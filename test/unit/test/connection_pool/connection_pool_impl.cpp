@@ -192,6 +192,8 @@ public:
     {
     }
 
+    asio::any_io_executor get_executor() { return ex_; }
+
     void expires_at(steady_clock::time_point new_expiry)
     {
         svc_->cancel(timer_id_);

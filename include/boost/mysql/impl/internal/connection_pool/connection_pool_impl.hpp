@@ -18,7 +18,6 @@
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
-#include <boost/mysql/impl/internal/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
 #include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 

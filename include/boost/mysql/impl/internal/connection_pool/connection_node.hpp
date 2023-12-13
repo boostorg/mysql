@@ -9,13 +9,13 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
-#include <boost/mysql/impl/internal/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 #include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
 #include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
@@ -52,6 +52,23 @@ struct io_traits
     using connection_type = any_connection;
     using timer_type = asio::steady_timer;
 };
+
+// Used when launching an op and a timer in parallel using make_parallel_group.
+// Translates the completion handler arguments into a single error code.
+// Timer must always be the 2nd argument.
+inline error_code to_error_code(
+    std::array<std::size_t, 2> completion_order,
+    error_code io_ec,
+    error_code timer_ec
+) noexcept
+{
+    if (completion_order[0] == 0u)  // I/O finished first
+        return io_ec;
+    else if (completion_order[1] == 0u && !timer_ec)  // Timer fired. Operation timed out
+        return client_errc::timeout;
+    else  // Timer was cancelled
+        return client_errc::cancelled;
+}
 
 // The templated type is never exposed to the user. We template
 // so tests can inject mocks.
@@ -99,6 +116,40 @@ class basic_connection_node : public intrusive::list_base_hook<>,
 
         connection_task_op(this_type& node) noexcept : node_(node) {}
 
+        // Runs Op with the given timeout, using the connection node timer.
+        // If timeout is zero, the op is launched without a timeout.
+        // Executor binding is the caller's resposibility.
+        template <class Op, class Self>
+        void run_with_timeout(Self& self, std::chrono::steady_clock::duration timeout, Op&& op)
+        {
+            if (timeout.count() > 0)
+            {
+                node_.timer_.expires_after(timeout);
+                asio::experimental::make_parallel_group(
+                    std::forward<Op>(op),
+                    node_.timer_.async_wait(asio::deferred)
+                )
+                    .async_wait(asio::experimental::wait_for_one(), std::move(self));
+            }
+            else
+            {
+                std::forward<Op>(op)(std::move(self));
+            }
+        }
+
+        // Handler for parallel group operations. Converts the args into a single error
+        // code and call the main handler.
+        template <class Self>
+        void operator()(
+            Self& self,
+            std::array<std::size_t, 2> completion_order,
+            error_code io_ec,
+            error_code timer_ec
+        )
+        {
+            self(to_error_code(completion_order, io_ec, timer_ec));
+        }
+
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
@@ -115,16 +166,26 @@ class basic_connection_node : public intrusive::list_base_hook<>,
             // Invoke the sans-io algorithm
             last_act_ = node_.resume(ec, col_st);
 
-            // Apply the next action
+            // Apply the next action.
+            // Recall that the connection's executor may be different from the pool's.
+            // When passing a token with an executor to parallel_group::async_wait,
+            // only the final handler uses that executor, and not individual operation handlers.
+            // Thus, all connection operations must be bound to the pool's executor before being
+            // passed to run_with_timeout.
             switch (last_act_)
             {
             case next_connection_action::connect:
                 run_with_timeout(
-                    node_.timer_,
+                    self,
                     node_.params_->connect_timeout,
-                    node_.conn_
-                        .async_connect(&node_.params_->connect_config, node_.connect_diag_, asio::deferred),
-                    std::move(self)
+                    asio::bind_executor(
+                        node_.timer_.get_executor(),
+                        node_.conn_.async_connect(
+                            &node_.params_->connect_config,
+                            node_.connect_diag_,
+                            asio::deferred
+                        )
+                    )
                 );
                 break;
             case next_connection_action::sleep_connect_failed:
@@ -133,26 +194,26 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 break;
             case next_connection_action::ping:
                 run_with_timeout(
-                    node_.timer_,
+                    self,
                     node_.params_->ping_timeout,
-                    node_.conn_.async_ping(asio::deferred),
-                    std::move(self)
+                    asio::bind_executor(node_.timer_.get_executor(), node_.conn_.async_ping(asio::deferred))
                 );
                 break;
             case next_connection_action::reset:
                 run_with_timeout(
-                    node_.timer_,
+                    self,
                     node_.params_->ping_timeout,
-                    node_.conn_.async_reset_connection(asio::deferred),
-                    std::move(self)
+                    asio::bind_executor(
+                        node_.timer_.get_executor(),
+                        node_.conn_.async_reset_connection(asio::deferred)
+                    )
                 );
                 break;
             case next_connection_action::idle_wait:
                 run_with_timeout(
-                    node_.timer_,
+                    self,
                     node_.params_->ping_interval,
-                    node_.collection_channel_.async_receive(asio::deferred),
-                    std::move(self)
+                    node_.collection_channel_.async_receive(asio::deferred)
                 );
                 break;
             case next_connection_action::none: self.complete(error_code()); break;
