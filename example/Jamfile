@@ -69,7 +69,7 @@ for local example in $(coro_examples)
     run
             "$(example).cpp"
             /boost/mysql/test//boost_mysql_compiled
-            /boost/context//boost_context
+            /boost/mysql/test//boost_context_lib
         :
             <testing.arg>"example_user example_password $(hostname)"
         ;
@@ -99,9 +99,9 @@ run
         connection_pool/repository.cpp
         connection_pool/server.cpp
         /boost/mysql/test//boost_mysql_compiled
+        /boost/mysql/test//boost_context_lib
         /boost/json//boost_json
         /boost/url//boost_url
-        /boost/context//boost_context
     : requirements
             <testing.launcher>"python $(this_dir)/private/run_connection_pool.py"
             <testing.arg>$(hostname)
