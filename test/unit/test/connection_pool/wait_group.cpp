@@ -22,112 +22,117 @@ using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_wait_group)
 
-BOOST_AUTO_TEST_CASE(wait_add_remove)
+struct fixture
 {
     asio::io_context ctx;
-    wait_group gp(ctx.get_executor());
-    bool called = false;
-    gp.async_wait([&](error_code) { called = true; });
+    wait_group gp{ctx.get_executor()};
+    bool called{false};
 
-    ctx.poll();
+    fixture()
+    {
+        // If there is no work present and we call ctx.poll(),
+        // the context is stopped and won't process further handlers
+        ctx.get_executor().on_work_started();
+    }
+
+    // We call ctx.poll() after every action so any pending handler is dispatched
+    void launch_wait()
+    {
+        gp.async_wait([&](error_code) { called = true; });
+        ctx.poll();
+    }
+
+    void call_task_start()
+    {
+        gp.on_task_start();
+        ctx.poll();
+    }
+
+    void call_task_finish()
+    {
+        gp.on_task_finish();
+        ctx.poll();
+    }
+};
+
+BOOST_FIXTURE_TEST_CASE(wait_add_remove, fixture)
+{
+    // Launching the wait won't call the handler even if no task has started yet
+    launch_wait();
     BOOST_TEST(!called);
 
-    gp.on_task_start();
-    ctx.poll();
+    // Launch two tasks
+    call_task_start();
+    BOOST_TEST(!called);
+    call_task_start();
     BOOST_TEST(!called);
 
-    gp.on_task_start();
-    ctx.poll();
+    // Finish them
+    call_task_finish();
     BOOST_TEST(!called);
-
-    gp.on_task_finish();
-    ctx.poll();
-    BOOST_TEST(!called);
-
-    gp.on_task_finish();
-    ctx.poll();
+    call_task_finish();
     BOOST_TEST(called);
 }
 
-BOOST_AUTO_TEST_CASE(wait_add_remove_add_remove)
+BOOST_FIXTURE_TEST_CASE(wait_add_remove_add_remove, fixture)
 {
-    asio::io_context ctx;
-    wait_group gp(ctx.get_executor());
-    bool called = false;
-    gp.async_wait([&](error_code) { called = true; });
-
-    ctx.poll();
+    // Launching the wait won't call the handler even if no task has started yet
+    launch_wait();
     BOOST_TEST(!called);
 
-    gp.on_task_start();
-    ctx.poll();
+    // Launch two tasks
+    call_task_start();
+    BOOST_TEST(!called);
+    call_task_start();
     BOOST_TEST(!called);
 
-    gp.on_task_start();
-    ctx.poll();
+    // Finish one
+    call_task_finish();
     BOOST_TEST(!called);
 
-    gp.on_task_finish();
-    ctx.poll();
+    // Start another
+    call_task_start();
     BOOST_TEST(!called);
 
-    gp.on_task_start();
-    ctx.poll();
+    // Finish remaining tasks
+    call_task_finish();
     BOOST_TEST(!called);
-
-    gp.on_task_finish();
-    ctx.poll();
-    BOOST_TEST(!called);
-
-    gp.on_task_finish();
-    ctx.poll();
+    call_task_finish();
     BOOST_TEST(called);
 }
 
-BOOST_AUTO_TEST_CASE(add_wait_remove)
+BOOST_FIXTURE_TEST_CASE(add_wait_remove, fixture)
 {
-    asio::io_context ctx;
-    ctx.get_executor().on_work_started();
-    wait_group gp(ctx.get_executor());
-    bool called = false;
-
-    gp.on_task_start();
-    ctx.poll();
+    // Start two tasks
+    call_task_start();
+    BOOST_TEST(!called);
+    call_task_start();
     BOOST_TEST(!called);
 
-    gp.on_task_start();
-    ctx.poll();
+    // Start the wait
+    launch_wait();
     BOOST_TEST(!called);
 
-    gp.async_wait([&](error_code) { called = true; });
-    ctx.poll();
+    // Finish the two tasks
+    call_task_finish();
     BOOST_TEST(!called);
-
-    gp.on_task_finish();
-    ctx.poll();
-    BOOST_TEST(!called);
-
-    gp.on_task_finish();
-    ctx.poll();
+    call_task_finish();
     BOOST_TEST(called);
 }
 
-BOOST_AUTO_TEST_CASE(run_task)
+BOOST_FIXTURE_TEST_CASE(run_task, fixture)
 {
-    asio::io_context ctx;
-    ctx.get_executor().on_work_started();
+    // Create two timers to simulate async operations
     asio::steady_timer timer1(ctx);
     asio::steady_timer timer2(ctx);
     timer1.expires_at(std::chrono::steady_clock::time_point::max());
     timer2.expires_at(std::chrono::steady_clock::time_point::max());
-    wait_group gp(ctx.get_executor());
 
-    bool called = false;
-
-    gp.async_wait([&](error_code) { called = true; });
-    ctx.poll();
+    // Start the wait
+    launch_wait();
     BOOST_TEST(!called);
 
+    // Launch the two async ops
     gp.run_task(timer1.async_wait(asio::deferred));
     ctx.poll();
     BOOST_TEST(!called);
@@ -136,10 +141,12 @@ BOOST_AUTO_TEST_CASE(run_task)
     ctx.poll();
     BOOST_TEST(!called);
 
+    // Finish one task
     timer2.cancel();
     ctx.poll();
     BOOST_TEST(!called);
 
+    // Finish the other task
     timer1.cancel();
     ctx.poll();
     BOOST_TEST(called);
