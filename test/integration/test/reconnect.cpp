@@ -221,10 +221,10 @@ struct change_stream_type_fixture : network_fixture_base
         netmaker_ping::async_errinfo(&any_connection::async_ping, false),
     };
 
-    connect_params tcp_params{base_connect_params()};
-    connect_params tcp_ssl_params{base_connect_params()};
+    connect_params tcp_params;
+    connect_params tcp_ssl_params;
 
-    change_stream_type_fixture()
+    change_stream_type_fixture() : tcp_params(base_connect_params()), tcp_ssl_params(base_connect_params())
     {
         tcp_params.ssl = ssl_mode::disable;
         tcp_ssl_params.ssl = ssl_mode::require;
