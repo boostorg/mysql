@@ -74,6 +74,12 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     wait_group wait_gp_;
     asio::experimental::concurrent_channel<void(error_code)> cancel_chan_;
 
+    std::shared_ptr<this_type> shared_from_this_wrapper()
+    {
+        // Some compilers get confused without this explicit cast
+        return static_cast<std::enable_shared_from_this<this_type>*>(this)->shared_from_this();
+    }
+
     void create_connection()
     {
         all_conns_.emplace_back(params_, ex_, conn_ex_, shared_st_);
@@ -272,7 +278,7 @@ public:
     async_run(CompletionToken&& token)
     {
         return asio::async_compose<CompletionToken, void(error_code)>(
-            run_op(this->shared_from_this()),
+            run_op(shared_from_this_wrapper()),
             token,
             ex_
         );
@@ -293,7 +299,7 @@ public:
     )
     {
         return asio::async_compose<CompletionToken, void(error_code, ConnectionWrapper)>(
-            get_connection_op(this->shared_from_this(), timeout, diag),
+            get_connection_op(shared_from_this_wrapper(), timeout, diag),
             token,
             ex_
         );
