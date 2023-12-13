@@ -51,6 +51,82 @@ pool_params default_pool_params()
     return res;
 }
 
+// Tests for pool constructors, assignments, and the valid() function
+struct ctors_assignments_fixture
+{
+    boost::asio::io_context ctx;
+    connection_pool pool{ctx, default_pool_params()};
+};
+
+BOOST_FIXTURE_TEST_CASE(init_ctor, ctors_assignments_fixture)
+{
+    // Freshly constructed pools are valid
+    BOOST_TEST(pool.valid());
+}
+
+BOOST_FIXTURE_TEST_CASE(move_ctor_valid, ctors_assignments_fixture)
+{
+    // Move-constructing a pool leaves the original object invalid
+    connection_pool pool2(std::move(pool));
+    BOOST_TEST(!pool.valid());
+    BOOST_TEST(pool2.valid());
+
+    // The new pool works
+    pool2.async_run(boost::asio::detached);
+}
+
+BOOST_FIXTURE_TEST_CASE(move_ctor_invalid, ctors_assignments_fixture)
+{
+    // Move-constructing a pool from an invalid object yields an invalid object
+    connection_pool pool2(std::move(pool));
+    connection_pool pool3(std::move(pool));
+    BOOST_TEST(!pool.valid());
+    BOOST_TEST(!pool3.valid());
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assign_valid_valid, ctors_assignments_fixture)
+{
+    // Move-assigning a pool leaves the source invalid
+    connection_pool pool2(ctx, default_pool_params());
+    pool2 = std::move(pool);
+    BOOST_TEST(!pool.valid());
+    BOOST_TEST(pool2.valid());
+
+    // The assigned pool works
+    pool2.async_run(boost::asio::detached);
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assign_valid_invalid, ctors_assignments_fixture)
+{
+    // Move-assigning from an invalid pool yields an invalid pool
+    connection_pool pool2(std::move(pool));
+    pool2 = std::move(pool);
+    BOOST_TEST(!pool.valid());
+    BOOST_TEST(!pool2.valid());
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assign_invalid_valid, ctors_assignments_fixture)
+{
+    // Move-assigning to an invalid pool works
+    connection_pool pool2(std::move(pool));
+    pool = std::move(pool2);
+    BOOST_TEST(pool.valid());
+    BOOST_TEST(!pool2.valid());
+
+    // The assigned pool works
+    pool.async_run(boost::asio::detached);
+}
+
+BOOST_FIXTURE_TEST_CASE(move_assign_invalid_invalid, ctors_assignments_fixture)
+{
+    // Move-assigning between invalid pools works
+    connection_pool pool2(std::move(pool));
+    connection_pool pool3(std::move(pool2));
+    pool = std::move(pool2);
+    BOOST_TEST(!pool.valid());
+    BOOST_TEST(!pool2.valid());
+}
+
 BOOST_AUTO_TEST_CASE(return_connection_with_reset)
 {
     run_stackful_coro([](boost::asio::yield_context yield) {
