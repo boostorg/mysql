@@ -206,7 +206,11 @@ public:
 
     template <class CompletionToken>
     auto async_wait(CompletionToken&& token)
-        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(initiate_wait(), token, this))
+        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
+            initiate_wait(),
+            token,
+            std::declval<mock_timer*>()
+        ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(initiate_wait(), token, this);
     }

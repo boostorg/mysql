@@ -23,21 +23,15 @@ local test_filter = [ sequence.join $(test_exclusions) : ":" ] ;
 
 local test_command = "-t $(test_filter)" ;
 
-# Boost.Context causes failures with warnings-as-errors
-# under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
-local context_lib = /boost/context//boost_context/<warnings-as-errors>off ;
-
 cpp-pch pch
     :
         pch.hpp
-        $(context_lib)
         /boost/mysql/test//boost_mysql_test
     ;
 
 
 run 
         pch
-        $(context_lib)
         /boost/mysql/test//common_test_sources
         /boost/mysql/test//boost_mysql_test
  

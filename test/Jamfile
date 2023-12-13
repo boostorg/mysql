@@ -82,6 +82,7 @@ local requirements =
         <define>BOOST_ASIO_DISABLE_BOOST_BIND=1
         <define>BOOST_ASIO_DISABLE_BOOST_DATE_TIME=1
         <define>BOOST_ASIO_DISABLE_BOOST_REGEX=1
+        <define>BOOST_ASIO_DISABLE_BOOST_COROUTINE=1
         <define>BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
         <define>BOOST_ALLOW_DEPRECATED_HEADERS=1
         <toolset>msvc:<cxxflags>"/bigobj"
@@ -141,11 +142,15 @@ alias common_test_sources
         common/src/tracker_executor.cpp
     ;
 
+
 alias boost_mysql_test
     :
         boost_mysql_compiled
         # Unit test library generates some internal warnings we're not interested in
         /boost/test//boost_unit_test_framework/<warnings-as-errors>off
+        # Boost.Context causes failures with warnings-as-errors
+        # under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
+        /boost/context//boost_context/<warnings-as-errors>off
     : requirements
         <link>static
         <include>common/include
