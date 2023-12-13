@@ -123,9 +123,13 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 for (std::size_t i = 0; i < obj_->params_.initial_size; ++i)
                     obj_->create_connection();
 
-                // Wait for the cancel notification to arrive
+                // Wait for the cancel notification to arrive.
                 BOOST_ASIO_CORO_YIELD
                 obj_->cancel_chan_.async_receive(std::move(self));
+
+                // If the token passed to async_run had a bound executor,
+                // the handler will be invoked within that executor.
+                // Dispatch so we run within the pool's executor.
                 BOOST_ASIO_CORO_YIELD
                 asio::dispatch(obj_->ex_, std::move(self));
 
@@ -232,6 +236,10 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                     timer_->timer.expires_at(timeout_);
                     BOOST_ASIO_CORO_YIELD timer_->timer.async_wait(std::move(self));
                     stored_ec_ = ec;
+
+                    // If the token passed to async_run had a bound executor,
+                    // the handler will be invoked within that executor.
+                    // Dispatch so we run within the pool's executor.
                     BOOST_ASIO_CORO_YIELD asio::dispatch(obj_->ex_, std::move(self));
 
                     if (!stored_ec_)
