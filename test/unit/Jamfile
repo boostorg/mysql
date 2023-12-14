@@ -104,6 +104,7 @@ run
         test/diagnostics.cpp
         test/statement.cpp
         test/throw_on_error.cpp
+        test/any_address.cpp
         test/connection_pool.cpp
         
     : requirements

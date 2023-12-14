@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_PRINTING_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_PRINTING_HPP
 
+#include <boost/mysql/any_address.hpp>
+
 #include <boost/mysql/detail/results_iterator.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/rows_iterator.hpp>
@@ -22,6 +24,17 @@
 
 namespace boost {
 namespace mysql {
+
+inline std::ostream& operator<<(std::ostream& os, address_type value)
+{
+    switch (value)
+    {
+    case address_type::host_and_port: return os << "address_type::host_and_port";
+    case address_type::unix_path: return os << "address_type::unix_path";
+    default: return os << "<unknown address_type>";
+    }
+}
+
 namespace detail {
 
 inline std::ostream& operator<<(std::ostream& os, capabilities caps)

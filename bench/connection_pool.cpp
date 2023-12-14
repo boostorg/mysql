@@ -293,19 +293,36 @@ int main(int argc, char** argv)
 
     mysql::string_view opt = argv[1];
     mysql::string_view addr = argv[2];
+    boost::mysql::host_and_port tcp_addr;
 
     if (opt == "nopool-tcp")
-        run_nopool(mysql::host_and_port(addr), false);
+    {
+        tcp_addr.host = addr;
+        run_nopool(std::move(tcp_addr), false);
+    }
     else if (opt == "nopool-tcpssl")
-        run_nopool(mysql::host_and_port(addr), true);
+    {
+        tcp_addr.host = addr;
+        run_nopool(std::move(tcp_addr), true);
+    }
     else if (opt == "nopool-unix")
+    {
         run_nopool(mysql::unix_path{default_unix_path}, false);
+    }
     else if (opt == "pool-tcp")
-        run_pool(mysql::host_and_port(addr), false);
+    {
+        tcp_addr.host = addr;
+        run_pool(std::move(tcp_addr), false);
+    }
     else if (opt == "pool-tcpssl")
-        run_pool(mysql::host_and_port(addr), true);
+    {
+        tcp_addr.host = addr;
+        run_pool(std::move(tcp_addr), true);
+    }
     else if (opt == "pool-unix")
+    {
         run_pool(mysql::unix_path{default_unix_path}, false);
+    }
     else
         usage(argv[0]);
 }

@@ -38,91 +38,18 @@ enum class address_type
  * This part of the API is experimental, and may change in successive
  * releases without previous notice.
  */
-class host_and_port
+struct host_and_port
 {
-    std::string host_;
-    unsigned short port_{default_port};
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend class any_address;
-#endif
-
-public:
     /**
-     * \brief Constructs an empty host and port.
-     * \details The constructed object has `this->hostname() == ""` and
-     * `this->port() == default_port`. This identifies a server listening on
-     * localhost, using the default port.
-     * \par Exception safety
-     * No-throw guarantee.
+     * \brief The hostname where the MySQL server is expected to be listening.
+     * \details
+     * An empty string is equivalent to `localhost`. This is the default.
+     * This is an owning field
      */
-    host_and_port() = default;
+    std::string host;
 
-    /**
-     * \brief Copy constructor.
-     * \par Exception safety
-     * Strong guarantee. Exceptions may be thrown by memory allocations.
-     * \par Object lifetimes
-     * `*this` and `other` will have independent lifetimes (regular value semantics).
-     */
-    host_and_port(const host_and_port& other) = default;
-
-    /**
-     * \brief Move constructor.
-     * \details Leaves `other` in a valid but unspecified state.
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    host_and_port(host_and_port&& other) = default;
-
-    /**
-     * \brief Copy assignment.
-     * \par Exception safety
-     * Basic guarantee. Exceptions may be thrown by memory allocations.
-     * \par Object lifetimes
-     * `*this` and `other` will have independent lifetimes (regular value semantics).
-     */
-    host_and_port& operator=(const host_and_port& other) = default;
-
-    /**
-     * \brief Move assignment.
-     * \details Leaves `other` in a valid but unspecified state.
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    host_and_port& operator=(host_and_port&& other) = default;
-
-    /// Destructor.
-    ~host_and_port() = default;
-
-    /**
-     * \brief Constructs a new host and port from its individual components.
-     * \details The new object will have `this->hostname() == host`, `this->port() == port`.
-     * `host` will be moved.
-     * \par Exception safety
-     * No-throw guarantee (note that constructing the `host` argument may throw, though).
-     */
-    host_and_port(std::string host, unsigned short port = default_port) noexcept
-        : host_(std::move(host)), port_(port)
-    {
-    }
-
-    /**
-     * \brief Retrieves the hostname.
-     * \details An empty value is equivalent to `localhost`.
-     * \par Exception safety
-     * No-throw guarantee.
-     * \par Object lifetimes
-     * The returned reference is valid as long as `*this` is alive.
-     */
-    const std::string& hostname() const noexcept { return host_; }
-
-    /**
-     * \brief Retrieves the port.
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    unsigned short port() const noexcept { return port_; }
+    /// The port where the MySQL server is expected to be listening.
+    unsigned short port{default_port};
 };
 
 /**
@@ -133,80 +60,13 @@ public:
  * This is an owning type with value semantics.
  * \see any_address
  */
-class unix_path
+struct unix_path
 {
     /**
      * \brief The UNIX domain socket path where the MySQL server is listening.
      * \details Defaults to the empty string. This is an owning field.
      */
-    std::string path_;
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend class any_address;
-#endif
-
-public:
-    /**
-     * \brief Constructs an empty UNIX socket path.
-     * \details The constructed object has `this->path() == ""`.
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    unix_path() = default;
-
-    /**
-     * \brief Copy constructor.
-     * \par Exception safety
-     * Strong guarantee. Exceptions may be thrown by memory allocations.
-     * \par Object lifetimes
-     * `*this` and `other` will have independent lifetimes (regular value semantics).
-     */
-    unix_path(const unix_path& other) = default;
-
-    /**
-     * \brief Move constructor.
-     * \details Leaves `other` in a valid but unspecified state.
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    unix_path(unix_path&& other) = default;
-
-    /**
-     * \brief Copy assignment.
-     * \par Exception safety
-     * Basic guarantee. Exceptions may be thrown by memory allocations.
-     * \par Object lifetimes
-     * `*this` and `other` will have independent lifetimes (regular value semantics).
-     */
-    unix_path& operator=(const unix_path& other) = default;
-
-    /**
-     * \brief Move assignment.
-     * \details Leaves `other` in a valid but unspecified state.
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    unix_path& operator=(unix_path&& other) = default;
-
-    /// Destructor.
-    ~unix_path() = default;
-
-    /**
-     * \brief Constructs a new UNIX socket path from a string.
-     * \details The new object will have `this->path() == path`. `path` will be moved.
-     * \par Exception safety
-     * No-throw guarantee (note that constructing the `path` argument may throw, though).
-     */
-    unix_path(std::string path) noexcept : path_(std::move(path)) {}
-
-    /**
-     * \brief Retrieves the contained path.
-     * \par Exception safety
-     * No-throw guarantee.
-     * \par Object lifetimes
-     * The returned reference is valid as long as `*this` is alive.
-     */
-    const std::string& path() const noexcept { return path_; }
+    std::string path;
 };
 
 /**
@@ -297,7 +157,7 @@ public:
      * No-throw guarantee.
      */
     any_address(host_and_port value) noexcept
-        : impl_{address_type::host_and_port, std::move(value.host_), value.port_}
+        : impl_{address_type::host_and_port, std::move(value.host), value.port}
     {
     }
 
@@ -312,7 +172,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    any_address(unix_path value) noexcept : impl_{address_type::unix_path, std::move(value.path_), 0} {}
+    any_address(unix_path value) noexcept : impl_{address_type::unix_path, std::move(value.path), 0} {}
 
     /**
      * \brief Retrieves the type of address that this object contains.
@@ -414,6 +274,7 @@ public:
     {
         impl_.type = address_type::unix_path;
         impl_.address = std::move(path);
+        impl_.port = 0;
     }
 
     /**
@@ -425,7 +286,7 @@ public:
     bool operator==(const any_address& rhs) const noexcept
     {
         return impl_.type == rhs.impl_.type && impl_.address == rhs.impl_.address &&
-               (impl_.type == address_type::unix_path || (impl_.port == rhs.impl_.port));
+               impl_.port == rhs.impl_.port;
     }
 
     /**
