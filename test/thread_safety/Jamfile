@@ -7,8 +7,6 @@
 
 import os ;
 
-path-constant tsan_suppressions : suppressions.txt ;
-
 # The hostname to use for tests
 local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
 if $(hostname) = ""
@@ -17,11 +15,12 @@ if $(hostname) = ""
 }
 
 # TSAN can't be enabled in our ARM CIs, since they fail
-# the personality() syscall to disable address space layout randomization
+# the personality() syscall to disable address space layout randomization.
+# In OSX, tsan reports a race condition in Asio's kqueue reactor. Ignore this for now.
 rule tsan_if_not_arm ( properties * )
 {
     local result ;
-    if ! <architecture>arm in $(properties)
+    if ! <architecture>arm in $(properties) && ! <toolset>clang-darwin in $(properties)
     {
         result += <thread-sanitizer>norecover ;
     }
@@ -34,6 +33,5 @@ run
     : requirements
         <testing.arg>$(hostname)
         <conditional>@tsan_if_not_arm
-        <toolset>clang-darwin:<cxxflags>-fsanitize-blacklist=$(tsan_suppressions)
     : target-name boost_mysql_thread_safety
 ;
