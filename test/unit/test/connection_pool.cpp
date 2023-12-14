@@ -38,9 +38,14 @@ struct pooled_connection_fixture
     asio::io_context ctx;
     std::shared_ptr<detail::pool_impl> pool{std::make_shared<detail::pool_impl>(ctx, pool_params())};
 
-    detail::connection_node create_node()
+    std::unique_ptr<detail::connection_node> create_node()
     {
-        return {pool->params(), ctx.get_executor(), ctx.get_executor(), pool->shared_state()};
+        return std::unique_ptr<detail::connection_node>{new detail::connection_node(
+            pool->params(),
+            ctx.get_executor(),
+            ctx.get_executor(),
+            pool->shared_state()
+        )};
     }
 
     pooled_connection create_valid_connection(detail::connection_node& node)
@@ -60,14 +65,14 @@ BOOST_FIXTURE_TEST_CASE(move_ctor_valid, pooled_connection_fixture)
 {
     // Setup
     auto node = create_node();
-    auto conn = create_valid_connection(node);
+    auto conn = create_valid_connection(*node);
     BOOST_TEST(conn.valid());
 
     // The moved-from connection is invalid. The node isn't marked as collectable
     pooled_connection conn2(std::move(conn));
     BOOST_TEST(conn2.valid());
     BOOST_TEST(!conn.valid());
-    BOOST_TEST(node.get_collection_state() == collection_state::none);
+    BOOST_TEST(node->get_collection_state() == collection_state::none);
 }
 
 BOOST_AUTO_TEST_CASE(move_ctor_invalid)
@@ -84,30 +89,30 @@ BOOST_FIXTURE_TEST_CASE(move_assign_valid_valid, pooled_connection_fixture)
     // Setup
     auto node = create_node();
     auto node2 = create_node();
-    auto conn = create_valid_connection(node);
-    auto conn2 = create_valid_connection(node2);
+    auto conn = create_valid_connection(*node);
+    auto conn2 = create_valid_connection(*node2);
 
     // The source is left invalid. The source node is owned by the target,
     // and the original target node is marked for collection
     conn = std::move(conn2);
     BOOST_TEST(conn.valid());
     BOOST_TEST(!conn2.valid());
-    BOOST_TEST(node.get_collection_state() == collection_state::needs_collect_with_reset);
-    BOOST_TEST(node2.get_collection_state() == collection_state::none);
+    BOOST_TEST(node->get_collection_state() == collection_state::needs_collect_with_reset);
+    BOOST_TEST(node2->get_collection_state() == collection_state::none);
 }
 
 BOOST_FIXTURE_TEST_CASE(move_assign_valid_invalid, pooled_connection_fixture)
 {
     // Setup
     auto node = create_node();
-    auto conn = create_valid_connection(node);
+    auto conn = create_valid_connection(*node);
     pooled_connection conn2;
 
     // Assigning an invalid node will mark the target for collection
     conn = std::move(conn2);
     BOOST_TEST(!conn.valid());
     BOOST_TEST(!conn2.valid());
-    BOOST_TEST(node.get_collection_state() == collection_state::needs_collect_with_reset);
+    BOOST_TEST(node->get_collection_state() == collection_state::needs_collect_with_reset);
 }
 
 BOOST_FIXTURE_TEST_CASE(move_assign_invalid_valid, pooled_connection_fixture)
@@ -115,13 +120,13 @@ BOOST_FIXTURE_TEST_CASE(move_assign_invalid_valid, pooled_connection_fixture)
     // Setup
     auto node = create_node();
     pooled_connection conn;
-    auto conn2 = create_valid_connection(node);
+    auto conn2 = create_valid_connection(*node);
 
     // Assigning a valid connection will just transfer ownership
     conn = std::move(conn2);
     BOOST_TEST(conn.valid());
     BOOST_TEST(!conn2.valid());
-    BOOST_TEST(node.get_collection_state() == collection_state::none);
+    BOOST_TEST(node->get_collection_state() == collection_state::none);
 }
 
 BOOST_AUTO_TEST_CASE(move_ctor_invalid_invalid)
@@ -140,30 +145,30 @@ BOOST_FIXTURE_TEST_CASE(return_without_reset, pooled_connection_fixture)
 {
     // Setup
     auto node = create_node();
-    auto conn = create_valid_connection(node);
+    auto conn = create_valid_connection(*node);
 
     // Returning without reset makes the connection invalid and sets
     // collection state
     conn.return_without_reset();
     BOOST_TEST(!conn.valid());
-    BOOST_TEST(node.get_collection_state() == collection_state::needs_collect);
+    BOOST_TEST(node->get_collection_state() == collection_state::needs_collect);
 
     // Regression check: the reference to the pool is released
     BOOST_TEST(pool.use_count() == 1);
 
     // Assigning to the returned node works
     auto node2 = create_node();
-    auto conn2 = create_valid_connection(node2);
+    auto conn2 = create_valid_connection(*node2);
     conn = std::move(conn2);
     BOOST_TEST(conn.valid());
-    BOOST_TEST(node.get_collection_state() == collection_state::needs_collect);
+    BOOST_TEST(node->get_collection_state() == collection_state::needs_collect);
 }
 
 BOOST_FIXTURE_TEST_CASE(const_accessors, pooled_connection_fixture)
 {
     // Const get() and operator-> work
     auto node = create_node();
-    const auto conn = create_valid_connection(node);
+    const auto conn = create_valid_connection(*node);
     BOOST_CHECK_NO_THROW(conn.get());
     BOOST_CHECK_NO_THROW(conn->uses_ssl());
 }
@@ -172,7 +177,7 @@ BOOST_FIXTURE_TEST_CASE(nonconst_accessors, pooled_connection_fixture)
 {
     // Non-const get() and operator-> work
     auto node = create_node();
-    auto conn = create_valid_connection(node);
+    auto conn = create_valid_connection(*node);
     BOOST_CHECK_NO_THROW(conn.get());
     BOOST_CHECK_NO_THROW(conn->get_executor());
 }
