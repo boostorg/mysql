@@ -381,7 +381,7 @@ BOOST_AUTO_TEST_CASE(async_get_connection_initation_extends_pool_lifetime)
 
         // We can run the operation without crashing, since it extends lifetime
         auto conn = op(yield[ec]);
-        BOOST_TEST(ec == client_errc::cancelled);
+        BOOST_TEST(ec == client_errc::pool_not_running);
     });
 }
 
