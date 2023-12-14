@@ -75,7 +75,7 @@ int main(int argc, char* argv[])
     // Configuration for the connection pool
     boost::mysql::pool_params pool_prms{
         // Connect using TCP, to the given hostname and using the default port
-        boost::mysql::host_and_port(mysql_hostname),
+        boost::mysql::host_and_port{mysql_hostname},
 
         // Authenticate using the given username
         mysql_username,
