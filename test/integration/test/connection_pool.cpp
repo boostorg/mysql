@@ -377,6 +377,31 @@ BOOST_FIXTURE_TEST_CASE(async_get_connection_initation_extends_pool_lifetime, fi
     });
 }
 
+// Spotcheck: the different async_get_connection overloads work
+BOOST_FIXTURE_TEST_CASE(get_connection_overloads, fixture)
+{
+    run_stackful_coro([&](asio::yield_context yield) {
+        connection_pool pool(yield.get_executor(), create_pool_params());
+        pool.async_run(check_err);
+
+        // With all params
+        auto conn = pool.async_get_connection(std::chrono::hours(1), diag, yield);
+        conn->async_ping(yield);
+
+        // With timeout, without diag
+        conn = pool.async_get_connection(std::chrono::hours(1), yield);
+        conn->async_ping(yield);
+
+        // With diag, without timeout
+        conn = pool.async_get_connection(diag, yield);
+        conn->async_ping(yield);
+
+        // Without diag, without timeout
+        conn = pool.async_get_connection(yield);
+        conn->async_ping(yield);
+    });
+}
+
 // Spotcheck: async_get_connection timeouts work
 BOOST_FIXTURE_TEST_CASE(get_connection_timeout, fixture)
 {
@@ -507,7 +532,6 @@ BOOST_AUTO_TEST_CASE(invalid_params)
 
 /**
  * TODO
- *   spotchecks for async_get_connection overloads
  *   deferred works even in C++11
  */
 
