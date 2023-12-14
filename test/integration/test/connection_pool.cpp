@@ -530,9 +530,19 @@ BOOST_AUTO_TEST_CASE(invalid_params)
     );
 }
 
-/**
- * TODO
- *   deferred works even in C++11
- */
+// Regression check: deferred works even in C++11
+void deferred_check()
+{
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
+    diagnostics diag;
+    std::chrono::seconds timeout(5);
+
+    (void)pool.async_run(asio::deferred);
+    (void)pool.async_get_connection(timeout, diag, asio::deferred);
+    (void)pool.async_get_connection(timeout, asio::deferred);
+    (void)pool.async_get_connection(diag, asio::deferred);
+    (void)pool.async_get_connection(asio::deferred);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
