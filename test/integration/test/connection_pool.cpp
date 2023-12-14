@@ -17,6 +17,7 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
+#include <boost/asio/deferred.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/experimental/channel.hpp>
@@ -29,6 +30,7 @@
 #include <boost/test/unit_test_suite.hpp>
 
 #include <chrono>
+#include <memory>
 #include <stdexcept>
 
 #include "test_common/printing.hpp"
@@ -315,6 +317,59 @@ BOOST_AUTO_TEST_CASE(cancel_get_connection)
     });
 }
 
+// Having a valid pooled_connection alive extends the pool's lifetime
+BOOST_AUTO_TEST_CASE(pooled_connection_extends_pool_lifetime)
+{
+    run_stackful_coro([](asio::yield_context yield) {
+        diagnostics diag;
+        error_code ec;
+        std::unique_ptr<connection_pool> pool(new connection_pool(yield.get_executor(), default_pool_params())
+        );
+
+        // Run the pool in a way we can synchronize with
+        asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
+        pool->async_run([&run_chan](error_code ec) {
+            BOOST_TEST(ec == error_code());
+            run_chan.try_send(error_code());
+        });
+
+        // Get a connection
+        auto conn = pool->async_get_connection(diag, yield[ec]);
+        throw_on_error(ec, diag);
+
+        // Destroy
+        pool.reset();
+
+        // Wait for run to exit, since run extends lifetime, too
+        run_chan.async_receive(yield);
+
+        // The connection we got can still be used and returned
+        conn->async_ping(yield);
+        conn.return_without_reset();
+    });
+}
+
+// Having a packaged async_get_connection op extends lifetime
+BOOST_AUTO_TEST_CASE(async_get_connection_initation_extends_pool_lifetime)
+{
+    run_stackful_coro([](asio::yield_context yield) {
+        diagnostics diag;
+        error_code ec;
+        std::unique_ptr<connection_pool> pool(new connection_pool(yield.get_executor(), default_pool_params())
+        );
+
+        // Create a packaged op
+        auto op = pool->async_get_connection(diag, boost::asio::deferred);
+
+        // Destroy the pool
+        pool.reset();
+
+        // We can run the operation without crashing, since it extends lifetime
+        auto conn = op(yield[ec]);
+        BOOST_TEST(ec == client_errc::cancelled);
+    });
+}
+
 // Spotcheck: async_get_connection timeouts work
 BOOST_AUTO_TEST_CASE(get_connection_timeout)
 {
@@ -457,10 +512,5 @@ BOOST_AUTO_TEST_CASE(invalid_params)
         }
     );
 }
-
-// pooled_connection
-/**
- * pool lifetime is extended while pooled_connection is alive
- */
 
 BOOST_AUTO_TEST_SUITE_END()
