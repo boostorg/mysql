@@ -73,6 +73,10 @@ enum class client_errc : int
 
     /// (EXPERIMENTAL) An operation controlled by Boost.MySQL was cancelled.
     cancelled,
+
+    /// (EXPERIMENTAL) Getting a connection from a connection_pool failed because the
+    /// pool is not running. Ensure that you're calling connection_pool::async_run.
+    pool_not_running,
 };
 
 BOOST_MYSQL_DECL

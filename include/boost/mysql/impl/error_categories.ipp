@@ -42,23 +42,26 @@ const char* error_to_string(client_errc error) noexcept
     case client_errc::wrong_num_params:
         return "The number of parameters passed to the prepared statement does not match the "
                "number of actual parameters";
-    case boost::mysql::client_errc::server_doesnt_support_ssl:
+    case client_errc::server_doesnt_support_ssl:
         return "The connection is configured to require SSL, but the server doesn't allow SSL connections. "
                "Configure SSL on your server or change your connection to not require SSL";
-    case boost::mysql::client_errc::metadata_check_failed:
+    case client_errc::metadata_check_failed:
         return "The static interface detected a type mismatch between your declared row type and what the "
                "server returned. Verify your type definitions.";
-    case boost::mysql::client_errc::num_resultsets_mismatch:
+    case client_errc::num_resultsets_mismatch:
         return "The static interface detected a mismatch between the number of resultsets passed as template "
                "arguments to static_results<T1, T2...>/static_execution_state<T1, T2...> and the number of "
                "results returned by server";
-    case boost::mysql::client_errc::static_row_parsing_error:
+    case client_errc::static_row_parsing_error:
         return "The static interface encountered an error when parsing a field into a C++ data structure.";
-    case boost::mysql::client_errc::row_type_mismatch:
+    case client_errc::row_type_mismatch:
         return "The StaticRow type passed to read_some_rows does not correspond to the resultset type being "
                "read";
-    case boost::mysql::client_errc::timeout: return "An operation controlled by Boost.MySQL timed out";
-    case boost::mysql::client_errc::cancelled: return "An operation controlled by Boost.MySQL was cancelled";
+    case client_errc::timeout: return "An operation controlled by Boost.MySQL timed out";
+    case client_errc::cancelled: return "An operation controlled by Boost.MySQL was cancelled";
+    case client_errc::pool_not_running:
+        return "Getting a connection from a connection_pool failed because the pool is not running. Ensure "
+               "that you're calling connection_pool::async_run.";
 
     default: return "<unknown MySQL client error>";
     }

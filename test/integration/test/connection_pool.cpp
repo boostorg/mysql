@@ -317,6 +317,21 @@ BOOST_AUTO_TEST_CASE(cancel_get_connection)
     });
 }
 
+BOOST_AUTO_TEST_CASE(get_connection_pool_not_running)
+{
+    run_stackful_coro([](asio::yield_context yield) {
+        diagnostics diag;
+        error_code ec;
+
+        // Create a pool but don't run it
+        connection_pool pool(yield.get_executor(), default_pool_params());
+
+        // Getting a connection fails immediately with a descriptive error code
+        auto conn = pool.async_get_connection(diag, yield[ec]);
+        BOOST_TEST(ec == error_code(client_errc::pool_not_running));
+    });
+}
+
 // Having a valid pooled_connection alive extends the pool's lifetime
 BOOST_AUTO_TEST_CASE(pooled_connection_extends_pool_lifetime)
 {
@@ -512,5 +527,12 @@ BOOST_AUTO_TEST_CASE(invalid_params)
         }
     );
 }
+
+/**
+ * TODO
+ *   spotchecks for async_get_connection overloads
+ *   deferred works even in C++11
+ *   diagnostics cleared
+ */
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -122,7 +122,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 BOOST_ASIO_CORO_YIELD
                 asio::dispatch(obj_->ex_, std::move(self));
 
-                // TODO: we could support running twice
+                // Check that we're not running and set the state adequately
                 BOOST_ASSERT(obj_->state_ == state_t::initial);
                 obj_->state_ = state_t::running;
 
@@ -210,7 +210,12 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                     // If we're not running yet, or were cancelled, just return
                     if (obj_->state_ != state_t::running)
                     {
-                        do_complete(self, client_errc::cancelled, ConnectionWrapper());
+                        do_complete(
+                            self,
+                            obj_->state_ == state_t::initial ? client_errc::pool_not_running
+                                                             : client_errc::cancelled,
+                            ConnectionWrapper()
+                        );
                         return;
                     }
 
