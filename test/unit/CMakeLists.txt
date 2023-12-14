@@ -50,7 +50,6 @@ add_executable(
     test/connection_pool/wait_group.cpp
     test/connection_pool/sansio_connection_node.cpp
     test/connection_pool/connection_pool_impl.cpp
-    test/connection_pool/internal_pool_params.cpp
 
     test/detail/datetime.cpp
     test/detail/row_impl.cpp
@@ -97,6 +96,7 @@ add_executable(
     test/statement.cpp
     test/throw_on_error.cpp
     test/any_address.cpp
+    test/pool_params.cpp
     test/connection_pool.cpp
 )
 target_include_directories(

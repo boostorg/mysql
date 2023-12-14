@@ -1083,8 +1083,6 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
 /**
  * get_connection
  *   not running
- *   ctors from execution contexts
- *   pool_executor_params
  */
 
 BOOST_AUTO_TEST_SUITE_END()
