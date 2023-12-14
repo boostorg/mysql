@@ -18,6 +18,7 @@
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
+#include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
 #include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 
@@ -325,6 +326,7 @@ public:
     std::list<node_type>& nodes() noexcept { return all_conns_; }
     std::size_t num_pending_requests() noexcept { return shared_st_.pending_requests.size(); }
     shared_state_type& shared_state() noexcept { return shared_st_; }
+    internal_pool_params& params() noexcept { return params_; }
 };
 
 }  // namespace detail

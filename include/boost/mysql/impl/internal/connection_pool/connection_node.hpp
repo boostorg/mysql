@@ -271,6 +271,9 @@ public:
         {
         }
     }
+
+    // Exposed for testing
+    collection_state get_collection_state() const noexcept { return collection_state_; }
 };
 
 }  // namespace detail

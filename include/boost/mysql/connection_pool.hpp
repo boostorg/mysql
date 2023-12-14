@@ -196,6 +196,7 @@ public:
     {
         BOOST_ASSERT(valid());
         detail::mark_as_collectable(*impl_.release(), false);
+        pool_impl_.reset();
     }
 };
 
