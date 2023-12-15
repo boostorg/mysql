@@ -496,56 +496,21 @@ public:
     }
 };
 
-template <class TestOp>
-static void pool_test(boost::mysql::pool_params params)
+class pool_test_op_base : public asio::coroutine
 {
-    // I/O context
-    asio::io_context ctx;
+public:
+    pool_test_op_base(mock_pool& pool, bool& finished) : pool_(&pool), finished_(&finished) {}
 
-    // Pool (must be created using dynamic memory)
-    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
-
-    // This flag is only set to true after the test finishes.
-    // If the test timeouts, it will be false
-    bool finished = false;
-
-    // Run the pool
-    pool->async_run([](error_code ec) { BOOST_TEST(ec == error_code()); });
-
-    // Run the test
-    post_until(
-        // Wait until a connection is created (common to all tests)
-        [&] { return !pool->nodes().empty(); },
-        // Use the context executor
-        ctx.get_executor(),
-        // Invoke the test
-        TestOp(*pool, finished)
-    );
-
-    // If the test doesn't complete in this time, there was an error
-    ctx.run_for(std::chrono::seconds(100));
-
-    // Check that we didn't timeout
-    BOOST_TEST(finished == true);
-}
-
-template <class D>
-struct pool_test_op : asio::coroutine
-{
-    mock_pool& pool;
-    bool& finished;
-
-    pool_test_op(mock_pool& p, bool& f) : pool(p), finished(f) {}
+    virtual ~pool_test_op_base() {}
+    virtual void launch() = 0;
 
     using executor_type = asio::any_io_executor;
-    asio::any_io_executor get_executor() const { return pool.get_executor(); }
+    asio::any_io_executor get_executor() const { return pool_->get_executor(); }
 
-    mock_timer_service& get_timer_service()
-    {
-        return asio::use_service<mock_timer_service>(pool.get_executor().context());
-    }
-
-    D& derived_this() { return static_cast<D&>(*this); }
+protected:
+    mock_pool* pool_{};
+    bool* finished_{};
+    bool initial_{true};
 
     void check_shared_st(
         error_code expected_ec,
@@ -554,12 +519,28 @@ struct pool_test_op : asio::coroutine
         std::size_t expected_num_idle
     )
     {
-        const auto& st = pool.shared_state();
+        const auto& st = pool_->shared_state();
         BOOST_TEST(st.last_ec == expected_ec);
         BOOST_TEST(st.last_diag == expected_diag);
         BOOST_TEST(st.num_pending_connections == expected_num_pending);
         BOOST_TEST(st.idle_list.size() == expected_num_idle);
     }
+
+    mock_timer_service& get_timer_service()
+    {
+        return asio::use_service<mock_timer_service>(pool_->get_executor().context());
+    }
+
+    mock_pool& get_pool() noexcept { return *pool_; }
+};
+
+template <class D>
+class pool_test_op : public pool_test_op_base
+{
+public:
+    using pool_test_op_base::pool_test_op_base;
+
+    D& derived_this() { return static_cast<D&>(*this); }
 
     void step(mock_node& node, next_connection_action next_act, error_code ec = {}, diagnostics diag = {})
     {
@@ -570,7 +551,7 @@ struct pool_test_op : asio::coroutine
     {
         post_until(
             [&node, status] { return node.status() == status; },
-            pool.get_executor(),
+            get_pool().get_executor(),
             std::move(derived_this())
         );
     }
@@ -587,24 +568,79 @@ struct pool_test_op : asio::coroutine
 
     void wait_for_num_requests(std::size_t num_requests)
     {
-        auto* pool_ptr = &pool;
+        auto* pool_ptr = pool_;
         post_until(
             [pool_ptr, num_requests] { return pool_ptr->num_pending_requests() == num_requests; },
-            pool.get_executor(),
+            pool_ptr->get_executor(),
             std::move(derived_this())
         );
     }
 
+    void wait_for_num_nodes(std::size_t num_nodes)
+    {
+        auto* pool_ptr = pool_;
+        post_until(
+            [pool_ptr, num_nodes] { return pool_ptr->nodes().size() >= num_nodes; },
+            pool_ptr->get_executor(),
+            std::move(derived_this())
+        );
+    }
+
+    void launch() final { (*this)(); }
+
     void operator()()
     {
+        if (initial_)
+        {
+            initial_ = false;
+            wait_for_num_nodes(1);
+            return;
+        }
         derived_this().invoke();
         if (derived_this().is_complete())
         {
-            pool.cancel();
-            finished = true;
+            pool_->cancel();
+            *finished_ = true;
         }
     }
 };
+
+static void pool_test_impl(
+    boost::mysql::pool_params params,
+    std::function<std::unique_ptr<pool_test_op_base>(mock_pool&, bool&)> test_fun
+)
+{
+    // I/O context
+    asio::io_context ctx;
+
+    // Pool (must be created using dynamic memory)
+    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+
+    // This flag is only set to true after the test finishes.
+    // If the test timeouts, it will be false
+    bool finished = false;
+
+    // Run the pool
+    pool->async_run([](error_code ec) { BOOST_TEST(ec == error_code()); });
+
+    // Launch the test
+    auto test = test_fun(*pool, finished);
+    test->launch();
+
+    // If the test doesn't complete in this time, there was an error
+    ctx.run_for(std::chrono::seconds(100));
+
+    // Check that we didn't timeout
+    BOOST_TEST(finished == true);
+}
+
+template <class TestOp, class... Args>
+static void pool_test(boost::mysql::pool_params params, Args&&... args)
+{
+    pool_test_impl(std::move(params), [&](mock_pool& pool, bool& finished) mutable {
+        return std::unique_ptr<pool_test_op_base>{new TestOp(pool, finished, std::forward<Args>(args)...)};
+    });
+}
 
 // connection lifecycle
 BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
@@ -617,7 +653,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -666,7 +702,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -708,7 +744,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -742,7 +778,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -777,7 +813,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -813,7 +849,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -851,7 +887,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -890,7 +926,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -925,7 +961,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -964,7 +1000,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -1003,7 +1039,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -1043,7 +1079,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -1076,7 +1112,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -1088,9 +1124,9 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
                 // A request for a connection is issued. The request doesn't find
                 // any available connection, and the current one is pending, so no new connections are created
-                task = detached_get_connection(pool, std::chrono::seconds(5), nullptr);
+                task = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
                 BOOST_ASIO_CORO_YIELD wait_for_num_requests(1);
-                BOOST_TEST(pool.nodes().size() == 1u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
 
                 // Retry interval ellapses and connection retries and succeeds
                 get_timer_service().advance_time_by(std::chrono::seconds(2));
@@ -1099,8 +1135,8 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
                 // Request is fulfilled
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, node);
                 BOOST_TEST(node.status() == connection_status::in_use);
-                BOOST_TEST(pool.nodes().size() == 1u);
-                BOOST_TEST(pool.num_pending_requests() == 0u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
+                BOOST_TEST(pool_->num_pending_requests() == 0u);
             }
         }
     };
@@ -1125,16 +1161,16 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
             {
                 // A request for a connection is issued. The request doesn't find
                 // any available connection, and the current one is pending, so no new connections are created
-                task = detached_get_connection(pool, std::chrono::seconds(1), diag.get());
+                task = detached_get_connection(*pool_, std::chrono::seconds(1), diag.get());
                 BOOST_ASIO_CORO_YIELD wait_for_num_requests(1);
-                BOOST_TEST(pool.nodes().size() == 1u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
 
                 // The request timeout ellapses, so the request fails
                 get_timer_service().advance_time_by(std::chrono::seconds(1));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, client_errc::timeout);
                 BOOST_TEST(*diag == diagnostics());
-                BOOST_TEST(pool.nodes().size() == 1u);
-                BOOST_TEST(pool.num_pending_requests() == 0u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
+                BOOST_TEST(pool_->num_pending_requests() == 0u);
             }
         }
     };
@@ -1156,14 +1192,14 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
             {
                 // A request for a connection is issued. The request doesn't find
                 // any available connection, and the current one is pending, so no new connections are created
-                task = detached_get_connection(pool, std::chrono::seconds(1), diag.get());
+                task = detached_get_connection(*pool_, std::chrono::seconds(1), diag.get());
                 BOOST_ASIO_CORO_YIELD wait_for_num_requests(1);
-                BOOST_TEST(pool.nodes().size() == 1u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
 
                 // The connection fails to connect
                 BOOST_ASIO_CORO_YIELD
                 step(
-                    *pool.nodes().begin(),
+                    *pool_->nodes().begin(),
                     next_connection_action::connect,
                     common_server_errc::er_bad_db_error,
                     create_server_diag("Bad db")
@@ -1173,8 +1209,8 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
                 get_timer_service().advance_time_by(std::chrono::seconds(1));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error);
                 BOOST_TEST(*diag == create_server_diag("Bad db"));
-                BOOST_TEST(pool.nodes().size() == 1u);
-                BOOST_TEST(pool.num_pending_requests() == 0u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
+                BOOST_TEST(pool_->num_pending_requests() == 0u);
             }
         }
     };
@@ -1197,14 +1233,14 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
             {
                 // A request for a connection is issued. The request doesn't find
                 // any available connection, and the current one is pending, so no new connections are created
-                task = detached_get_connection(pool, std::chrono::seconds(1), nullptr);
+                task = detached_get_connection(*pool_, std::chrono::seconds(1), nullptr);
                 BOOST_ASIO_CORO_YIELD wait_for_num_requests(1);
-                BOOST_TEST(pool.nodes().size() == 1u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
 
                 // The connection fails to connect
                 BOOST_ASIO_CORO_YIELD
                 step(
-                    *pool.nodes().begin(),
+                    *pool_->nodes().begin(),
                     next_connection_action::connect,
                     common_server_errc::er_bad_db_error,
                     create_server_diag("Bad db")
@@ -1213,8 +1249,8 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
                 // The request timeout ellapses, so the request fails
                 get_timer_service().advance_time_by(std::chrono::seconds(1));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error);
-                BOOST_TEST(pool.nodes().size() == 1u);
-                BOOST_TEST(pool.num_pending_requests() == 0u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
+                BOOST_TEST(pool_->num_pending_requests() == 0u);
             }
         }
     };
@@ -1230,7 +1266,7 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 
         void invoke()
         {
-            auto& node = pool.nodes().front();
+            auto& node = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -1240,10 +1276,10 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 
                 // A request for a connection is issued. The request completes immediately
                 BOOST_ASIO_CORO_YIELD
-                wait_for_task(detached_get_connection(pool, std::chrono::seconds(5), nullptr), node);
+                wait_for_task(detached_get_connection(*pool_, std::chrono::seconds(5), nullptr), node);
                 BOOST_TEST(node.status() == connection_status::in_use);
-                BOOST_TEST(pool.nodes().size() == 1u);
-                BOOST_TEST(pool.num_pending_requests() == 0u);
+                BOOST_TEST(pool_->nodes().size() == 1u);
+                BOOST_TEST(pool_->num_pending_requests() == 0u);
             }
         }
     };
@@ -1261,7 +1297,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 
         void invoke()
         {
-            auto& node1 = pool.nodes().front();
+            auto& node1 = pool_->nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
@@ -1269,32 +1305,32 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
                 BOOST_ASIO_CORO_YIELD step(node1, next_connection_action::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node1, connection_status::idle);
                 BOOST_ASIO_CORO_YIELD
-                wait_for_task(detached_get_connection(pool, std::chrono::seconds(5), nullptr), node1);
+                wait_for_task(detached_get_connection(*pool_, std::chrono::seconds(5), nullptr), node1);
 
                 // Another request is issued. The connection we have is in use, so another one is created.
                 // Since this is not immediate, the task will need to wait
-                task2 = detached_get_connection(pool, std::chrono::seconds(5), nullptr);
+                task2 = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
                 BOOST_ASIO_CORO_YIELD wait_for_num_requests(1);
-                node2 = &*std::next(pool.nodes().begin());
+                node2 = &*std::next(pool_->nodes().begin());
 
                 // Connection connects successfully and is handed to us
                 BOOST_ASIO_CORO_YIELD step(*node2, next_connection_action::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2);
                 BOOST_TEST(node2->status() == connection_status::in_use);
-                BOOST_TEST(pool.nodes().size() == 2u);
-                BOOST_TEST(pool.num_pending_requests() == 0u);
+                BOOST_TEST(pool_->nodes().size() == 2u);
+                BOOST_TEST(pool_->num_pending_requests() == 0u);
 
                 // Another request is issued. All connections are in use but max size is already
                 // reached, so no new connection is created
-                task3 = detached_get_connection(pool, std::chrono::seconds(5), nullptr);
+                task3 = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
                 BOOST_ASIO_CORO_YIELD wait_for_num_requests(1);
-                BOOST_TEST(pool.nodes().size() == 2u);
+                BOOST_TEST(pool_->nodes().size() == 2u);
 
                 // When one of the connections is returned, the request is fulfilled
                 node2->mark_as_collectable(false);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node2);
-                BOOST_TEST(pool.num_pending_requests() == 0u);
-                BOOST_TEST(pool.nodes().size() == 2u);
+                BOOST_TEST(pool_->num_pending_requests() == 0u);
+                BOOST_TEST(pool_->nodes().size() == 2u);
             }
         }
     };
@@ -1306,142 +1342,210 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     pool_test<op>(std::move(params));
 }
 
-// BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
-// {
-//     pool_params params;
-//     params.initial_size = 2;
-//     params.max_size = 2;
+BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
+{
+    struct op : pool_test_op<op>
+    {
+        using pool_test_op<op>::pool_test_op;
+        mock_node *node1{}, *node2{};
+        detached_get_connection task1, task2, task3, task4, task5;
 
-//     pool_test(std::move(params), [&](asio::yield_context yield, mock_pool& pool) {
-//         // Issue some parallel requests
-//         detached_get_connection task1(pool, std::chrono::seconds(5), nullptr);
-//         detached_get_connection task2(pool, std::chrono::seconds(5), nullptr);
-//         detached_get_connection task3(pool, std::chrono::seconds(5), nullptr);
-//         detached_get_connection task4(pool, std::chrono::seconds(2), nullptr);
-//         detached_get_connection task5(pool, std::chrono::seconds(5), nullptr);
+        void invoke()
+        {
+            BOOST_ASIO_CORO_REENTER(*this)
+            {
+                // Issue some parallel requests
+                task1 = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
+                task2 = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
+                task3 = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
+                task4 = detached_get_connection(*pool_, std::chrono::seconds(2), nullptr);
+                task5 = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
 
-//         // Two connections can be created. These fulfill two requests
-//         post_until([&] { return pool.nodes().size() == 2u; }, yield);
-//         auto& node1 = pool.nodes().front();
-//         auto& node2 = *std::next(pool.nodes().begin());
-//         node1.connection().step(next_connection_action::connect, yield);
-//         node2.connection().step(next_connection_action::connect, yield);
-//         task1.wait(node1, yield);
-//         task2.wait(node2, yield);
+                // Two connections can be created. These fulfill two requests
+                BOOST_ASIO_CORO_YIELD wait_for_num_nodes(2);
+                node1 = &pool_->nodes().front();
+                node2 = &*std::next(pool_->nodes().begin());
+                BOOST_ASIO_CORO_YIELD step(*node1, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(*node2, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD wait_for_task(task1, *node1);
+                BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2);
 
-//         // Time ellapses and task4 times out
-//         get_timer_service(pool).advance_time_by(std::chrono::seconds(2));
-//         task4.wait(client_errc::timeout, yield);
+                // Time ellapses and task4 times out
+                get_timer_service().advance_time_by(std::chrono::seconds(2));
+                BOOST_ASIO_CORO_YIELD wait_for_task(task4, client_errc::timeout);
 
-//         // A connection is returned. The first task to enter is served
-//         node1.mark_as_collectable(true);
-//         node1.connection().step(next_connection_action::reset, yield);
-//         task3.wait(node1, yield);
+                // A connection is returned. The first task to enter is served
+                node1->mark_as_collectable(true);
+                BOOST_ASIO_CORO_YIELD step(*node1, next_connection_action::reset);
+                BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node1);
 
-//         // The next connection to be returned is for task5
-//         node2.mark_as_collectable(false);
-//         task5.wait(node2, yield);
+                // The next connection to be returned is for task5
+                node2->mark_as_collectable(false);
+                BOOST_ASIO_CORO_YIELD wait_for_task(task5, *node2);
 
-//         // Done
-//         BOOST_TEST(pool.num_pending_requests() == 0u);
-//         BOOST_TEST(pool.nodes().size() == 2u);
-//     });
-// }
+                // Done
+                BOOST_TEST(pool_->num_pending_requests() == 0u);
+                BOOST_TEST(pool_->nodes().size() == 2u);
+            }
+        }
+    };
 
-// BOOST_AUTO_TEST_CASE(get_connection_cancel)
-// {
-//     pool_test(pool_params{}, [&](asio::yield_context yield, mock_pool& pool) {
-//         // Issue some requests
-//         detached_get_connection task1(pool, std::chrono::seconds(5), nullptr);
-//         detached_get_connection task2(pool, std::chrono::seconds(5), nullptr);
-//         post_until([&] { return pool.num_pending_requests() == 2u; }, yield);
+    pool_params params;
+    params.initial_size = 2;
+    params.max_size = 2;
 
-//         // While in flight, cancel the pool
-//         pool.cancel();
+    pool_test<op>(std::move(params));
+}
 
-//         // All tasks fail with a cancelled code
-//         task1.wait(client_errc::cancelled, yield);
-//         task2.wait(client_errc::cancelled, yield);
+BOOST_AUTO_TEST_CASE(get_connection_cancel)
+{
+    struct op : pool_test_op<op>
+    {
+        using pool_test_op<op>::pool_test_op;
+        mock_node *node1{}, *node2{};
+        detached_get_connection task1, task2;
 
-//         // Further tasks fail immediately
-//         detached_get_connection(pool, std::chrono::seconds(5), nullptr).wait(client_errc::cancelled,
-//         yield);
-//     });
-// }
+        void invoke()
+        {
+            BOOST_ASIO_CORO_REENTER(*this)
+            {
+                // Issue some requests
+                task1 = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
+                task2 = detached_get_connection(*pool_, std::chrono::seconds(5), nullptr);
+                BOOST_ASIO_CORO_YIELD wait_for_num_requests(2);
 
-// // pool_params have the intended effect
-// BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
-// {
-//     // Pass a custom ssl context and buffer size
-//     pool_params params;
-//     params.ssl_ctx.emplace(boost::asio::ssl::context::tlsv12_client);
-//     params.initial_read_buffer_size = 16u;
+                // While in flight, cancel the pool
+                pool_->cancel();
 
-//     // SSL context matching is performed using the underlying handle
-//     // because ssl::context provides no way to query the options previously set
-//     auto handle = params.ssl_ctx->native_handle();
+                // All tasks fail with a cancelled code
+                BOOST_ASIO_CORO_YIELD wait_for_task(task1, client_errc::cancelled);
+                BOOST_ASIO_CORO_YIELD wait_for_task(task2, client_errc::cancelled);
 
-//     pool_test(std::move(params), [&](asio::yield_context, mock_pool& pool) {
-//         auto ctor_params = pool.nodes().front().connection().ctor_params;
-//         BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
-//         BOOST_TEST(ctor_params.ssl_context->native_handle() == handle);
-//         BOOST_TEST(ctor_params.initial_read_buffer_size == 16u);
-//     });
-// }
+                // Further tasks fail immediately
+                BOOST_ASIO_CORO_YIELD wait_for_task(
+                    detached_get_connection(*pool_, std::chrono::seconds(5), nullptr),
+                    client_errc::cancelled
+                );
+            }
+        }
+    };
 
-// BOOST_AUTO_TEST_CASE(params_connect_1)
-// {
-//     pool_params params;
-//     params.server_address.emplace_host_and_port("myhost", 1234);
-//     params.username = "myuser";
-//     params.password = "mypasswd";
-//     params.database = "mydb";
-//     params.ssl = boost::mysql::ssl_mode::disable;
-//     params.multi_queries = true;
+    pool_test<op>(pool_params{});
+}
 
-//     pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
-//         // Connect
-//         auto& node = pool.nodes().front();
-//         node.connection().step(next_connection_action::connect, yield);
+// pool_params have the intended effect
+BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
+{
+    struct op : pool_test_op<op>
+    {
+        asio::ssl::context::native_handle_type expected_handle;
 
-//         // Check params
-//         const auto& cparams = node.connection().last_connect_params;
-//         BOOST_TEST(cparams.connection_collation == std::uint16_t(0));
-//         BOOST_TEST(cparams.server_address.hostname() == "myhost");
-//         BOOST_TEST(cparams.server_address.port() == std::uint16_t(1234));
-//         BOOST_TEST(cparams.username == "myuser");
-//         BOOST_TEST(cparams.password == "mypasswd");
-//         BOOST_TEST(cparams.database == "mydb");
-//         BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::disable);
-//         BOOST_TEST(cparams.multi_queries == true);
-//     });
-// }
+        op(mock_pool& pool, bool& finished, asio::ssl::context::native_handle_type ssl_handle)
+            : pool_test_op<op>(pool, finished), expected_handle(ssl_handle)
+        {
+        }
 
-// BOOST_AUTO_TEST_CASE(params_connect_2)
-// {
-//     pool_params params;
-//     params.server_address.emplace_unix_path("/mysock");
-//     params.username = "myuser2";
-//     params.password = "mypasswd2";
-//     params.database = "mydb2";
-//     params.ssl = boost::mysql::ssl_mode::require;
-//     params.multi_queries = false;
+        void invoke()
+        {
+            BOOST_ASIO_CORO_REENTER(*this)
+            {
+                auto ctor_params = pool_->nodes().front().connection().ctor_params;
+                BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
+                BOOST_TEST(ctor_params.ssl_context->native_handle() == expected_handle);
+                BOOST_TEST(ctor_params.initial_read_buffer_size == 16u);
+            }
+        }
+    };
 
-//     pool_test(std::move(params), [](asio::yield_context yield, mock_pool& pool) {
-//         // Connect
-//         auto& node = pool.nodes().front();
-//         node.connection().step(next_connection_action::connect, yield);
+    // Pass a custom ssl context and buffer size
+    pool_params params;
+    params.ssl_ctx.emplace(boost::asio::ssl::context::tlsv12_client);
+    params.initial_read_buffer_size = 16u;
 
-//         // Check params
-//         const auto& cparams = node.connection().last_connect_params;
-//         BOOST_TEST(cparams.connection_collation == std::uint16_t(0));
-//         BOOST_TEST(cparams.server_address.unix_socket_path() == "/mysock");
-//         BOOST_TEST(cparams.username == "myuser2");
-//         BOOST_TEST(cparams.password == "mypasswd2");
-//         BOOST_TEST(cparams.database == "mydb2");
-//         BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
-//         BOOST_TEST(cparams.multi_queries == false);
-//     });
-// }
+    // SSL context matching is performed using the underlying handle
+    // because ssl::context provides no way to query the options previously set
+    auto handle = params.ssl_ctx->native_handle();
+
+    pool_test<op>(std::move(params), handle);
+}
+
+BOOST_AUTO_TEST_CASE(params_connect_1)
+{
+    struct op : pool_test_op<op>
+    {
+        using pool_test_op<op>::pool_test_op;
+
+        void invoke()
+        {
+            auto& node = pool_->nodes().front();
+
+            BOOST_ASIO_CORO_REENTER(*this)
+            {
+                // Connect
+                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+
+                // Check params
+                const auto& cparams = node.connection().last_connect_params;
+                BOOST_TEST(cparams.connection_collation == std::uint16_t(0));
+                BOOST_TEST(cparams.server_address.hostname() == "myhost");
+                BOOST_TEST(cparams.server_address.port() == std::uint16_t(1234));
+                BOOST_TEST(cparams.username == "myuser");
+                BOOST_TEST(cparams.password == "mypasswd");
+                BOOST_TEST(cparams.database == "mydb");
+                BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::disable);
+                BOOST_TEST(cparams.multi_queries == true);
+            }
+        }
+    };
+
+    pool_params params;
+    params.server_address.emplace_host_and_port("myhost", 1234);
+    params.username = "myuser";
+    params.password = "mypasswd";
+    params.database = "mydb";
+    params.ssl = boost::mysql::ssl_mode::disable;
+    params.multi_queries = true;
+
+    pool_test<op>(std::move(params));
+}
+
+BOOST_AUTO_TEST_CASE(params_connect_2)
+{
+    struct op : pool_test_op<op>
+    {
+        using pool_test_op<op>::pool_test_op;
+
+        void invoke()
+        {
+            auto& node = pool_->nodes().front();
+
+            BOOST_ASIO_CORO_REENTER(*this)
+            {
+                // Connect
+                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+
+                // Check params
+                const auto& cparams = node.connection().last_connect_params;
+                BOOST_TEST(cparams.connection_collation == std::uint16_t(0));
+                BOOST_TEST(cparams.server_address.unix_socket_path() == "/mysock");
+                BOOST_TEST(cparams.username == "myuser2");
+                BOOST_TEST(cparams.password == "mypasswd2");
+                BOOST_TEST(cparams.database == "mydb2");
+                BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
+                BOOST_TEST(cparams.multi_queries == false);
+            }
+        }
+    };
+
+    pool_params params;
+    params.server_address.emplace_unix_path("/mysock");
+    params.username = "myuser2";
+    params.password = "mypasswd2";
+    params.database = "mydb2";
+    params.ssl = boost::mysql::ssl_mode::require;
+    params.multi_queries = false;
+
+    pool_test<op>(std::move(params));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
