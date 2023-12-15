@@ -565,6 +565,16 @@ struct pool_test_op : asio::coroutine
         );
     }
 
+    void wait_for_task(detached_get_connection task, mock_node& expected_node)
+    {
+        task.wait(expected_node, std::move(derived_this()));
+    }
+
+    void wait_for_task(detached_get_connection task, error_code expected_ec)
+    {
+        task.wait(expected_ec, std::move(derived_this()));
+    }
+
     void operator()()
     {
         derived_this().invoke();
@@ -1071,11 +1081,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
 
                 // Request is fulfilled
-                BOOST_ASIO_CORO_YIELD
-                {
-                    auto t = task;
-                    t.wait(node, std::move(*this));
-                }
+                BOOST_ASIO_CORO_YIELD wait_for_task(task, node);
                 BOOST_TEST(node.status() == connection_status::in_use);
                 BOOST_TEST(pool.nodes().size() == 1u);
                 BOOST_TEST(pool.num_pending_requests() == 0u);
@@ -1113,11 +1119,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 
                 // The request timeout ellapses, so the request fails
                 get_timer_service().advance_time_by(std::chrono::seconds(1));
-                BOOST_ASIO_CORO_YIELD
-                {
-                    auto t = task;
-                    t.wait(client_errc::timeout, std::move(*this));
-                }
+                BOOST_ASIO_CORO_YIELD wait_for_task(task, client_errc::timeout);
                 BOOST_TEST(*diag == diagnostics());
                 BOOST_TEST(pool.nodes().size() == 1u);
                 BOOST_TEST(pool.num_pending_requests() == 0u);
@@ -1128,32 +1130,50 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
     pool_test<op>(pool_params{});
 }
 
-// BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
-// {
-//     pool_test(pool_params{}, [](asio::yield_context yield, mock_pool& pool) {
-//         // A request for a connection is issued. The request doesn't find
-//         // any available connection, and the current one is pending, so no new connections are created
-//         diagnostics diag;
-//         detached_get_connection task(pool, std::chrono::seconds(1), &diag);
-//         post_until([&] { return pool.num_pending_requests() > 0u; }, yield);
-//         BOOST_TEST(pool.nodes().size() == 1u);
+BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
+{
+    struct op : pool_test_op<op>
+    {
+        using pool_test_op<op>::pool_test_op;
+        detached_get_connection task;
+        std::unique_ptr<diagnostics> diag{new diagnostics()};
 
-//         // The connection fails to connect
-//         pool.nodes().begin()->connection().step(
-//             next_connection_action::connect,
-//             yield,
-//             common_server_errc::er_bad_db_error,
-//             create_server_diag("Bad db")
-//         );
+        void invoke()
+        {
+            BOOST_ASIO_CORO_REENTER(*this)
+            {
+                // A request for a connection is issued. The request doesn't find
+                // any available connection, and the current one is pending, so no new connections are created
+                task = detached_get_connection(pool, std::chrono::seconds(1), diag.get());
+                BOOST_ASIO_CORO_YIELD
+                post_until(
+                    [&] { return pool.num_pending_requests() > 0u; },
+                    pool.get_executor(),
+                    std::move(*this)
+                );
+                BOOST_TEST(pool.nodes().size() == 1u);
 
-//         // The request timeout ellapses, so the request fails
-//         get_timer_service(pool).advance_time_by(std::chrono::seconds(1));
-//         task.wait(common_server_errc::er_bad_db_error, yield);
-//         BOOST_TEST(diag == create_server_diag("Bad db"));
-//         BOOST_TEST(pool.nodes().size() == 1u);
-//         BOOST_TEST(pool.num_pending_requests() == 0u);
-//     });
-// }
+                // The connection fails to connect
+                BOOST_ASIO_CORO_YIELD
+                step(
+                    *pool.nodes().begin(),
+                    next_connection_action::connect,
+                    common_server_errc::er_bad_db_error,
+                    create_server_diag("Bad db")
+                );
+
+                // The request timeout ellapses, so the request fails
+                get_timer_service().advance_time_by(std::chrono::seconds(1));
+                BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error);
+                BOOST_TEST(*diag == create_server_diag("Bad db"));
+                BOOST_TEST(pool.nodes().size() == 1u);
+                BOOST_TEST(pool.num_pending_requests() == 0u);
+            }
+        }
+    };
+
+    pool_test<op>(pool_params{});
+}
 
 // BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 // {
