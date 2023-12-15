@@ -145,6 +145,7 @@ BOOST_FIXTURE_TEST_CASE(return_without_reset, pooled_connection_fixture)
 {
     // Setup
     auto node = create_node();
+    auto node2 = create_node();
     auto conn = create_valid_connection(*node);
 
     // Returning without reset makes the connection invalid and sets
@@ -157,7 +158,6 @@ BOOST_FIXTURE_TEST_CASE(return_without_reset, pooled_connection_fixture)
     BOOST_TEST(pool.use_count() == 1);
 
     // Assigning to the returned node works
-    auto node2 = create_node();
     auto conn2 = create_valid_connection(*node2);
     conn = std::move(conn2);
     BOOST_TEST(conn.valid());
