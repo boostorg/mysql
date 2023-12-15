@@ -485,14 +485,46 @@ class detached_get_connection
 {
     struct impl_t
     {
-        asio::experimental::channel<void(error_code, mock_pooled_connection)> chan;
+        asio::steady_timer tim;
         mock_pool& pool;
         executor_info exec_info;
+        mock_node* actual_node{};
+        mock_pool* actual_pool{};
+        error_code actual_ec;
 
-        impl_t(mock_pool& p) : chan(p.get_executor()), pool(p), exec_info{} {}
+        impl_t(mock_pool& p) : tim(p.get_executor(), steady_clock::time_point::max()), pool(p), exec_info{} {}
     };
 
     std::shared_ptr<impl_t> impl_;
+
+    void wait_impl(
+        mock_node* expected_node,
+        error_code expected_ec,
+        asio::any_completion_handler<void()> handler
+    )
+    {
+        struct intermediate_handler
+        {
+            std::shared_ptr<impl_t> impl;
+            mock_node* expected_node;
+            error_code expected_ec;
+            asio::any_completion_handler<void()> final_handler;
+
+            using executor_type = asio::any_io_executor;
+            executor_type get_executor() const { return impl->pool.get_executor(); }
+
+            void operator()(error_code)
+            {
+                auto* expected_pool = expected_ec ? nullptr : &impl->pool;
+                BOOST_TEST(impl->actual_ec == expected_ec);
+                BOOST_TEST(impl->actual_pool == expected_pool);
+                BOOST_TEST(impl->actual_node == expected_node);
+                std::move(final_handler)();
+            }
+        };
+
+        impl_->tim.async_wait(intermediate_handler{impl_, expected_node, expected_ec, std::move(handler)});
+    }
 
 public:
     detached_get_connection() = default;
@@ -513,7 +545,10 @@ public:
                 ex,
                 [ex, impl](error_code ec, mock_pooled_connection c) {
                     BOOST_TEST(impl->exec_info.total() > 0u);
-                    impl->chan.async_send(ec, std::move(c), asio::bind_executor(ex, asio::detached));
+                    impl->actual_node = c.node;
+                    impl->actual_pool = c.pool.get();
+                    impl->actual_ec = ec;
+                    impl->tim.expires_at(steady_clock::time_point::min());
                 }
             )
         );
@@ -521,48 +556,12 @@ public:
 
     void wait(mock_node& expected_node, asio::any_completion_handler<void()> handler)
     {
-        struct intermediate_handler
-        {
-            mock_pool& pool;
-            mock_node& expected_node;
-            asio::any_completion_handler<void()> final_handler;
-
-            using executor_type = asio::any_io_executor;
-            executor_type get_executor() const { return pool.get_executor(); }
-
-            void operator()(error_code ec, mock_pooled_connection conn)
-            {
-                BOOST_TEST(ec == error_code());
-                BOOST_TEST(conn.node == &expected_node);
-                BOOST_TEST(conn.pool.get() == &pool);
-                std::move(final_handler)();
-            }
-        };
-
-        impl_->chan.async_receive(intermediate_handler{impl_->pool, expected_node, std::move(handler)});
+        wait_impl(&expected_node, error_code(), std::move(handler));
     }
 
     void wait(error_code expected_ec, asio::any_completion_handler<void()> handler)
     {
-        struct intermediate_handler
-        {
-            mock_pool& pool;
-            error_code expected_ec;
-            asio::any_completion_handler<void()> final_handler;
-
-            using executor_type = asio::any_io_executor;
-            executor_type get_executor() const { return pool.get_executor(); }
-
-            void operator()(error_code ec, mock_pooled_connection conn)
-            {
-                BOOST_TEST(ec == expected_ec);
-                BOOST_TEST(conn.node == nullptr);
-                BOOST_TEST(conn.pool.get() == nullptr);
-                std::move(final_handler)();
-            }
-        };
-
-        impl_->chan.async_receive(intermediate_handler{impl_->pool, expected_ec, std::move(handler)});
+        wait_impl(nullptr, expected_ec, std::move(handler));
     }
 };
 
