@@ -368,43 +368,37 @@ struct mock_pooled_connection
 using mock_shared_state = conn_shared_state<mock_io_traits>;
 
 // Issue posts until a certain condition becomes true (with a sane limit)
-static void post_until(std::function<bool()> cond, std::function<void()> handler)
+struct post_until_op
 {
-    struct op
+    std::function<bool()> cond;
+    int i{0};
+
+    post_until_op(std::function<bool()> cond) : cond(std::move(cond)) {}
+
+    template <class Self>
+    void operator()(Self& self)
     {
-        std::function<bool()> cond;
-        std::function<void()> handler;
-        int i{0};
-
-        op(std::function<bool()> cond, std::function<void()> handler)
-            : cond(std::move(cond)), handler(std::move(handler))
+        ++i;
+        if (cond())
         {
+            self.complete();
         }
-
-        void operator()()
+        else if (i >= 10)
         {
-            if (cond())
-            {
-                handler();
-            }
-            else if (i++ >= 10)
-            {
-                BOOST_TEST_REQUIRE(false);
-                handler();
-            }
-            else
-            {
-                asio::post(std::move(*this));
-            }
+            BOOST_TEST_REQUIRE(false);
+            self.complete();
         }
-    };
+        else
+        {
+            asio::post(std::move(self));
+        }
+    }
+};
 
-    op(std::move(cond), std::move(handler))();
-}
-
-static void wait_for_status(const mock_node& node, connection_status status, std::function<void()> handler)
+template <class CompletionToken>
+static void post_until(std::function<bool()> cond, asio::any_io_executor ex, CompletionToken&& token)
 {
-    post_until([&node, status] { return node.status() == status; }, std::move(handler));
+    asio::async_compose<CompletionToken, void()>(post_until_op(std::move(cond)), token, std::move(ex));
 }
 
 class detached_get_connection
@@ -454,10 +448,8 @@ public:
     }
 };
 
-static void pool_test(
-    boost::mysql::pool_params params,
-    std::function<void(mock_pool&, std::function<void()>)> test_fun
-)
+template <class TestOp>
+static void pool_test(boost::mysql::pool_params params)
 {
     // I/O context
     asio::io_context ctx;
@@ -469,22 +461,25 @@ static void pool_test(
     // If the test timeouts, it will be false
     bool finished = false;
 
+    // Run the pool
+    pool->async_run([](error_code ec) { BOOST_TEST(ec == error_code()); });
+
     // Run the test
     post_until(
         // Wait until a connection is created (common to all tests)
         [&] { return !pool->nodes().empty(); },
-        [&] {
-            // Invoke the test
-            test_fun(*pool, [&] {
+        // Use the context executor
+        ctx.get_executor(),
+        // Invoke the test
+        TestOp(
+            *pool,
+            [&] {
                 // Finish
                 pool->cancel();
                 finished = true;
-            });
-        }
+            }
+        )
     );
-
-    // Run the pool
-    pool->async_run([](error_code ec) { BOOST_TEST(ec == error_code()); });
 
     // If the test doesn't complete in this time, there was an error
     ctx.run_for(std::chrono::seconds(10));
@@ -493,55 +488,65 @@ static void pool_test(
     BOOST_TEST(finished == true);
 }
 
-static mock_timer_service& get_timer_service(mock_pool& pool)
+template <class D>
+struct pool_test_op : asio::coroutine
 {
-    return asio::use_service<mock_timer_service>(pool.get_executor().context());
-}
+    mock_pool& pool;
+    asio::any_completion_handler<void()> handler;
 
-static void check_shared_st(
-    mock_pool& pool,
-    error_code expected_ec,
-    const diagnostics& expected_diag,
-    std::size_t expected_num_pending,
-    std::size_t expected_num_idle
-)
-{
-    const auto& st = pool.shared_state();
-    BOOST_TEST(st.last_ec == expected_ec);
-    BOOST_TEST(st.last_diag == expected_diag);
-    BOOST_TEST(st.num_pending_connections == expected_num_pending);
-    BOOST_TEST(st.idle_list.size() == expected_num_idle);
-}
+    asio::any_io_executor get_executor() { return pool.get_executor(); }
+
+    pool_test_op(mock_pool& p, asio::any_completion_handler<void()> h) : pool(p), handler(std::move(h)) {}
+
+    mock_timer_service& get_timer_service()
+    {
+        return asio::use_service<mock_timer_service>(pool.get_executor().context());
+    }
+
+    D& derived_this() { return static_cast<D&>(*this); }
+
+    void check_shared_st(
+        error_code expected_ec,
+        const diagnostics& expected_diag,
+        std::size_t expected_num_pending,
+        std::size_t expected_num_idle
+    )
+    {
+        const auto& st = pool.shared_state();
+        BOOST_TEST(st.last_ec == expected_ec);
+        BOOST_TEST(st.last_diag == expected_diag);
+        BOOST_TEST(st.num_pending_connections == expected_num_pending);
+        BOOST_TEST(st.idle_list.size() == expected_num_idle);
+    }
+
+    void wait_for_status(mock_node& node, connection_status status)
+    {
+        post_until(
+            [&node, status] { return node.status() == status; },
+            pool.get_executor(),
+            std::move(derived_this())
+        );
+    }
+};
 
 // connection lifecycle
 BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 {
-    pool_params params;
-    params.retry_interval = std::chrono::seconds(2);
-
-    struct op : asio::coroutine
+    struct op : pool_test_op<op>
     {
-        mock_pool* pool;
-        std::function<void()> handler;
-
-        void operator()(mock_pool& p, std::function<void()> h)
-        {
-            pool = &p;
-            handler = std::move(h);
-            (*this)();
-        }
+        using pool_test_op<op>::pool_test_op;
 
         void operator()(error_code ec = {})
         {
             BOOST_TEST(ec == error_code());
-            auto& node = pool->nodes().front();
+            auto& node = pool.nodes().front();
 
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Connection trying to connect
                 BOOST_ASIO_CORO_YIELD
-                wait_for_status(node, connection_status::connect_in_progress, std::move(*this));
-                check_shared_st(*pool, error_code(), diagnostics(), 1, 0);
+                wait_for_status(node, connection_status::connect_in_progress);
+                check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // Connect fails, so the connection goes to sleep. Diagnostics are stored in shared state.
                 BOOST_ASIO_CORO_YIELD
@@ -552,9 +557,8 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
                     create_server_diag("Connection error!")
                 );
                 BOOST_ASIO_CORO_YIELD
-                wait_for_status(node, connection_status::sleep_connect_failed_in_progress, std::move(*this));
+                wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
                 check_shared_st(
-                    *pool,
                     common_server_errc::er_aborting_connection,
                     create_server_diag("Connection error!"),
                     1,
@@ -562,11 +566,10 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
                 );
 
                 // Advance until it's time to retry again
-                get_timer_service(*pool).advance_time_by(std::chrono::seconds(2));
+                get_timer_service().advance_time_by(std::chrono::seconds(2));
                 BOOST_ASIO_CORO_YIELD
-                wait_for_status(node, connection_status::sleep_connect_failed_in_progress, std::move(*this));
+                wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
                 check_shared_st(
-                    *pool,
                     common_server_errc::er_aborting_connection,
                     create_server_diag("Connection error!"),
                     1,
@@ -578,8 +581,8 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
                 BOOST_ASIO_CORO_YIELD
                 node.connection().step(next_connection_action::connect, std::move(*this), error_code());
                 BOOST_ASIO_CORO_YIELD
-                wait_for_status(node, connection_status::idle, std::move(*this));
-                check_shared_st(*pool, error_code(), diagnostics(), 0, 1);
+                wait_for_status(node, connection_status::idle);
+                check_shared_st(error_code(), diagnostics(), 0, 1);
 
                 // Done
                 handler();
@@ -587,7 +590,10 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
         }
     };
 
-    pool_test(std::move(params), op());
+    pool_params params;
+    params.retry_interval = std::chrono::seconds(2);
+
+    pool_test<op>(std::move(params));
 }
 
 // BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
