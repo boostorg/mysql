@@ -533,6 +533,15 @@ struct pool_test_op : asio::coroutine
             std::move(derived_this())
         );
     }
+
+    void operator()()
+    {
+        derived_this().invoke();
+        if (derived_this().is_complete())
+        {
+            handler();
+        }
+    }
 };
 
 // connection lifecycle
@@ -544,7 +553,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 
         static diagnostics expected_diag() { return create_server_diag("Connection error!"); }
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -577,9 +586,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
@@ -596,7 +602,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
     {
         using pool_test_op<op>::pool_test_op;
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -621,9 +627,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
@@ -641,7 +644,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
     {
         using pool_test_op<op>::pool_test_op;
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -662,9 +665,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
                 // The connection goes back to idle without invoking resets
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
@@ -678,7 +678,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
     {
         using pool_test_op<op>::pool_test_op;
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -700,9 +700,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::reset);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
@@ -716,7 +713,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
     {
         using pool_test_op<op>::pool_test_op;
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -739,9 +736,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
@@ -755,7 +749,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
     {
         using pool_test_op<op>::pool_test_op;
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -777,9 +771,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
@@ -796,7 +787,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
     {
         using pool_test_op<op>::pool_test_op;
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -819,9 +810,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::reset);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
@@ -838,7 +826,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
     {
         using pool_test_op<op>::pool_test_op;
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -857,9 +845,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::ping);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
@@ -876,7 +861,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
     {
         using pool_test_op<op>::pool_test_op;
 
-        void operator()()
+        void invoke()
         {
             auto& node = pool.nodes().front();
 
@@ -899,9 +884,6 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
                 BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
-
-                // Done
-                handler();
             }
         }
     };
