@@ -50,6 +50,8 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Templating on ConnectionWrapper is useful for mocking in tests.
+// Production code always uses ConnectionWrapper = pooled_connection.
 template <class IoTraits, class ConnectionWrapper>
 class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTraits, ConnectionWrapper>>
 {

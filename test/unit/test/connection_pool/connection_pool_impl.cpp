@@ -23,6 +23,7 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/append.hpp>
 #include <boost/asio/associated_cancellation_slot.hpp>
+#include <boost/asio/associated_executor.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/cancellation_type.hpp>
@@ -62,41 +63,61 @@ using boost::mysql::pool_params;
 using boost::mysql::pooled_connection;
 using std::chrono::steady_clock;
 
+/**
+ * These tests verify step-by-step that all interactions between
+ * elements in connection_pool work as intended. They use the templating
+ * on IoTraits to mock out I/O objects. This allows for fast and reliable tests.
+ * Boost.Asio lacks testing infrastructure, so we've coded some here.
+ * These are complex tests.
+ */
+
 BOOST_AUTO_TEST_SUITE(test_connection_pool_impl)
 
+/**
+ * Used by mock timers. Like asio::detail::deadline_timer_service, but for mock timers.
+ * Mock timers don't rely on the actual clock, but on a time_point hold by this class.
+ * Call mock_timer_service::advance_time_xx to adjust the current time. This will
+ * call timer handlers as if time had advanced. Note that we don't have a way to mock
+ * steady_clock::now(). Our code under test must make sure not to call it.
+ */
 class mock_timer_service : public asio::execution_context::service
 {
 public:
+    // Required by all Boost.Asio services
     void shutdown() final {}
     static const asio::execution_context::id id;
-
     mock_timer_service(asio::execution_context& owner) : asio::execution_context::service(owner) {}
 
+    // A pending timer
     struct pending_timer
     {
+        // When does the timer expire?
         steady_clock::time_point expiry;
+
+        // The executor to use
+        asio::any_io_executor ex;
+
+        // What handler should we call?
         asio::any_completion_handler<void(error_code)> handler;
-        asio::any_io_executor timer_ex;
+
+        // Uniquely identifies the timer, so we can implement cancellation
         int timer_id;
     };
 
-    struct cancel_handler
-    {
-        mock_timer_service* svc;
-        std::list<pending_timer>::iterator it;
-
-        void operator()(asio::cancellation_type_t) { svc->fire_timer(it, asio::error::operation_aborted); }
-    };
-
+    // Used by timer's wait initiation
     void add_timer(pending_timer&& t)
     {
         if (t.expiry <= current_time_)
         {
-            call_handler(std::move(t), error_code());
+            // If the timer's expiry is in the past, directly call the handler
+            post_handler(std::move(t), error_code());
         }
         else
         {
+            // Add the timer op into the queue
             pending_.push_front(std::move(t));
+
+            // Enable cancellation
             auto slot = asio::get_associated_cancellation_slot(pending_.front().handler);
             if (slot.is_connected())
             {
@@ -105,6 +126,7 @@ public:
         }
     }
 
+    // Cancel all ops for the given timer_id
     std::size_t cancel(int timer_id)
     {
         std::size_t num_cancels = 0;
@@ -113,7 +135,7 @@ public:
             if (it->timer_id == timer_id)
             {
                 ++num_cancels;
-                it = fire_timer(it, asio::error::operation_aborted);
+                it = erase_and_post_handler(it, asio::error::operation_aborted);
             }
             else
             {
@@ -123,20 +145,23 @@ public:
         return num_cancels;
     }
 
+    // Set the new current time, calling handlers in the process
     void advance_time_to(steady_clock::time_point new_time)
     {
         for (auto it = pending_.begin(); it != pending_.end();)
         {
             if (it->expiry <= new_time)
-                it = fire_timer(it, error_code());
+                it = erase_and_post_handler(it, error_code());
             else
                 ++it;
         }
         current_time_ = new_time;
     }
 
+    // Same, but with a duration
     void advance_time_by(steady_clock::duration by) { advance_time_to(current_time_ + by); }
 
+    // Used by timers, to retrieve their timer id
     int allocate_timer_id() { return ++current_timer_id_; }
 
     steady_clock::time_point current_time() const noexcept { return current_time_; }
@@ -146,22 +171,40 @@ private:
     steady_clock::time_point current_time_;
     int current_timer_id_{0};
 
-    void call_handler(pending_timer&& t, error_code ec)
+    struct cancel_handler
     {
-        asio::post(std::move(t.timer_ex), asio::append(std::move(t.handler), ec));
+        mock_timer_service* svc;
+        std::list<pending_timer>::iterator it;
+
+        void operator()(asio::cancellation_type_t)
+        {
+            svc->erase_and_post_handler(it, asio::error::operation_aborted);
+        }
+    };
+
+    // Schedule the handler to be called
+    void post_handler(pending_timer&& t, error_code ec)
+    {
+        asio::get_associated_cancellation_slot(t.handler).clear();
+        asio::post(std::move(t.ex), asio::append(std::move(t.handler), ec));
     }
 
-    std::list<pending_timer>::iterator fire_timer(std::list<pending_timer>::iterator it, error_code ec)
+    // Same, but also removes the op from the list
+    std::list<pending_timer>::iterator erase_and_post_handler(
+        std::list<pending_timer>::iterator it,
+        error_code ec
+    )
     {
         auto t = std::move(*it);
         auto res = pending_.erase(it);
-        call_handler(std::move(t), ec);
+        post_handler(std::move(t), ec);
         return res;
     }
 };
 
 const asio::execution_context::id mock_timer_service::id;
 
+// A mock for asio::steady_timer
 class mock_timer
 {
     mock_timer_service* svc_;
@@ -174,7 +217,9 @@ class mock_timer
         template <class Handler>
         void operator()(Handler&& h, mock_timer* self)
         {
-            self->svc_->add_timer({self->expiry_, std::forward<Handler>(h), self->ex_, self->timer_id_});
+            // If the handler had an executor, use this. Otherwise, use the timer's
+            auto ex = asio::get_associated_executor(h, self->ex_);
+            self->svc_->add_timer({self->expiry_, ex, std::forward<Handler>(h), self->timer_id_});
         }
     };
 
@@ -182,19 +227,22 @@ public:
     mock_timer(asio::any_io_executor ex)
         : svc_(&asio::use_service<mock_timer_service>(ex.context())),
           timer_id_(svc_->allocate_timer_id()),
-          ex_(std::move(ex))
+          ex_(std::move(ex)),
+          expiry_(svc_->current_time())
     {
     }
 
     asio::any_io_executor get_executor() { return ex_; }
 
-    void expires_at(steady_clock::time_point new_expiry)
+    std::size_t expires_at(steady_clock::time_point new_expiry)
     {
-        svc_->cancel(timer_id_);
+        // cancel anything in flight, then set expiry
+        std::size_t res = svc_->cancel(timer_id_);
         expiry_ = new_expiry;
+        return res;
     }
 
-    void expires_after(steady_clock::duration dur) { expires_at(svc_->current_time() + dur); }
+    std::size_t expires_after(steady_clock::duration dur) { return expires_at(svc_->current_time() + dur); }
 
     std::size_t cancel() { return svc_->cancel(timer_id_); }
 
@@ -210,21 +258,37 @@ public:
     }
 };
 
+enum fn_type
+{
+    connect,
+    reset,
+    ping,
+};
+
+// A mock for mysql::any_connection. This allows us to control
+// when and how operations like async_connect or async_ping complete,
+// make assertions on the passed parameters, and force error conditions.
+// By default, mocked operations stay outstanding until they're acknowledged
+// by the test by calling mock_connection::step. step will wait until the appropriate
+// mocked function is called and will make the outstanding operation complete with
+// the passed error_code/diagnostics. All this synchronization uses channels.
 class mock_connection
 {
-    asio::experimental::channel<void(error_code, next_connection_action)> recv_chan_;
-    asio::experimental::channel<void(error_code, diagnostics)> send_chan_;
+    asio::experimental::channel<void(error_code, fn_type)> to_test_chan_;
+    asio::experimental::channel<void(error_code, diagnostics)> from_test_chan_;
 
-    struct run_op
+    // Code shared between all mocked ops
+    struct mocked_op
     {
         mock_connection& obj;
-        next_connection_action act;
+        fn_type op_type;
         diagnostics* diag;
 
         template <class Self>
         void operator()(Self& self)
         {
-            obj.recv_chan_.async_send(error_code(), act, std::move(self));
+            // Notify the test that we're about to do op_type
+            obj.to_test_chan_.async_send(error_code(), op_type, std::move(self));
         }
 
         template <class Self>
@@ -232,17 +296,20 @@ class mock_connection
         {
             if (ec)
             {
+                // We were cancelled
                 self.complete(ec);
             }
             else
             {
-                obj.send_chan_.async_receive(std::move(self));
+                // Read from the test what we should return
+                obj.from_test_chan_.async_receive(std::move(self));
             }
         }
 
         template <class Self>
         void operator()(Self& self, error_code ec, diagnostics recv_diag)
         {
+            // Done
             if (diag)
                 *diag = std::move(recv_diag);
             self.complete(ec);
@@ -252,44 +319,49 @@ class mock_connection
     struct step_op
     {
         mock_connection& obj;
-        next_connection_action expected_act;
+        fn_type expected_op_type;
         error_code op_ec;
         diagnostics op_diag;
 
         template <class Self>
         void operator()(Self& self)
         {
-            obj.recv_chan_.async_receive(std::move(self));
+            // Wait until the code under test performs the operation we want
+            obj.to_test_chan_.async_receive(std::move(self));
         }
 
         template <class Self>
-        void operator()(Self& self, error_code ec, next_connection_action actual_act)
+        void operator()(Self& self, error_code ec, fn_type actual_op_type)
         {
+            // Verify it was actually what we wanted
             BOOST_TEST(ec == error_code());
-            BOOST_TEST(actual_act == expected_act);
-            obj.send_chan_.async_send(op_ec, std::move(op_diag), std::move(self));
+            BOOST_TEST(actual_op_type == expected_op_type);
+
+            // Tell the operation what its result should be
+            obj.from_test_chan_.async_send(op_ec, std::move(op_diag), std::move(self));
         }
 
         template <class Self>
         void operator()(Self& self, error_code ec)
         {
+            // Done
             BOOST_TEST(ec == error_code());
             self.complete();
         }
     };
 
     template <class CompletionToken>
-    auto op_impl(next_connection_action act, diagnostics* diag, CompletionToken&& token)
+    auto op_impl(fn_type op_type, diagnostics* diag, CompletionToken&& token)
         -> decltype(asio::async_compose<CompletionToken, void(error_code)>(
-            std::declval<run_op>(),
+            std::declval<mocked_op>(),
             token,
             asio::any_io_executor()
         ))
     {
         return asio::async_compose<CompletionToken, void(error_code)>(
-            run_op{*this, act, diag},
+            mocked_op{*this, op_type, diag},
             token,
-            recv_chan_.get_executor()
+            to_test_chan_.get_executor()
         );
     }
 
@@ -298,60 +370,60 @@ public:
     boost::mysql::connect_params last_connect_params;
 
     mock_connection(asio::any_io_executor ex, boost::mysql::any_connection_params ctor_params)
-        : recv_chan_(ex), send_chan_(std::move(ex)), ctor_params(ctor_params)
+        : to_test_chan_(ex), from_test_chan_(std::move(ex)), ctor_params(ctor_params)
     {
     }
 
     template <class CompletionToken>
     auto async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
-        -> decltype(op_impl(next_connection_action{}, &diag, std::forward<CompletionToken>(token)))
+        -> decltype(op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token)))
     {
         BOOST_TEST(params != nullptr);
         last_connect_params = *params;
-        return op_impl(next_connection_action::connect, &diag, std::forward<CompletionToken>(token));
+        return op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token));
     }
 
     template <class CompletionToken>
     auto async_ping(CompletionToken&& token)
-        -> decltype(op_impl(next_connection_action{}, nullptr, std::forward<CompletionToken>(token)))
+        -> decltype(op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
     {
-        return op_impl(next_connection_action::ping, nullptr, std::forward<CompletionToken>(token));
+        return op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token));
     }
 
     template <class CompletionToken>
     auto async_reset_connection(CompletionToken&& token)
-        -> decltype(op_impl(next_connection_action{}, nullptr, std::forward<CompletionToken>(token)))
+        -> decltype(op_impl(fn_type::reset, nullptr, std::forward<CompletionToken>(token)))
     {
-        return op_impl(next_connection_action::reset, nullptr, std::forward<CompletionToken>(token));
+        return op_impl(fn_type::reset, nullptr, std::forward<CompletionToken>(token));
     }
 
     void step(
-        next_connection_action act,
+        fn_type expected_op_type,
         asio::any_completion_handler<void()> handler,
         error_code ec = {},
         diagnostics diag = {}
     )
     {
         return asio::async_compose<asio::any_completion_handler<void()>, void()>(
-            step_op{*this, act, ec, std::move(diag)},
+            step_op{*this, expected_op_type, ec, std::move(diag)},
             handler,
-            send_chan_
+            from_test_chan_
         );
     }
 };
 
+// Mock for io_traits
 struct mock_io_traits
 {
     using connection_type = mock_connection;
     using timer_type = mock_timer;
 };
 
-using mock_node = basic_connection_node<mock_io_traits>;
-
 struct mock_pooled_connection;
-
+using mock_node = basic_connection_node<mock_io_traits>;
 using mock_pool = basic_pool_impl<mock_io_traits, mock_pooled_connection>;
 
+// Mock for pooled_connection
 struct mock_pooled_connection
 {
     std::shared_ptr<mock_pool> pool;
@@ -363,8 +435,6 @@ struct mock_pooled_connection
     {
     }
 };
-
-using mock_shared_state = conn_shared_state<mock_io_traits>;
 
 // Issue posts until a certain condition becomes true (with a sane limit)
 struct post_until_op
@@ -542,7 +612,7 @@ public:
 
     D& derived_this() { return static_cast<D&>(*this); }
 
-    void step(mock_node& node, next_connection_action next_act, error_code ec = {}, diagnostics diag = {})
+    void step(mock_node& node, fn_type next_act, error_code ec = {}, diagnostics diag = {})
     {
         node.connection().step(next_act, std::move(derived_this()), ec, diag);
     }
@@ -663,12 +733,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 
                 // Connect fails, so the connection goes to sleep. Diagnostics are stored in shared state.
                 BOOST_ASIO_CORO_YIELD
-                step(
-                    node,
-                    next_connection_action::connect,
-                    common_server_errc::er_aborting_connection,
-                    expected_diag()
-                );
+                step(node, fn_type::connect, common_server_errc::er_aborting_connection, expected_diag());
                 BOOST_ASIO_CORO_YIELD
                 wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
                 check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
@@ -681,7 +746,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 
                 // Connection connects successfully this time. Diagnostics have
                 // been cleared and the connection is marked as idle
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -722,7 +787,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
                 check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
 
                 // Connection connects successfully this time
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -749,7 +814,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
 
@@ -783,7 +848,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait until a connection is successfully connected, then pick it up
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 node.mark_as_in_use();
 
@@ -795,7 +860,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // Successful reset makes the connection idle again
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::reset);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::reset);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -818,7 +883,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Connect, pick up and return a connection
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 node.mark_as_in_use();
                 node.mark_as_collectable(true);
@@ -826,12 +891,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
 
                 // Reset fails. This triggers a reconnection. Diagnostics are not saved
                 BOOST_ASIO_CORO_YIELD
-                step(node, next_connection_action::reset, common_server_errc::er_aborting_connection);
+                step(node, fn_type::reset, common_server_errc::er_aborting_connection);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::connect_in_progress);
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // Reconnect succeeds. We're idle again
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -854,7 +919,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Connect, pick up and return a connection
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 node.mark_as_in_use();
                 node.mark_as_collectable(true);
@@ -866,7 +931,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // Reconnect succeeds. We're idle again
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -892,7 +957,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Connect, pick up and return a connection
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 node.mark_as_in_use();
                 node.mark_as_collectable(true);
@@ -905,7 +970,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // Reset succeeds
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::reset);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::reset);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -931,7 +996,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
 
                 // Wait until ping interval ellapses. This triggers a ping
@@ -940,7 +1005,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // After ping succeeds, connection goes back to idle
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::ping);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::ping);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -966,7 +1031,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
 
                 // Wait until ping interval ellapses
@@ -974,12 +1039,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
 
                 // Ping fails. This triggers a reconnection. Diagnostics are not saved
                 BOOST_ASIO_CORO_YIELD
-                step(node, next_connection_action::ping, common_server_errc::er_aborting_connection);
+                step(node, fn_type::ping, common_server_errc::er_aborting_connection);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::connect_in_progress);
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // Reconnection succeeds
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -1005,7 +1070,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
 
                 // Wait until ping interval ellapses
@@ -1017,7 +1082,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::connect_in_progress);
 
                 // Reconnection succeeds
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -1044,7 +1109,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
 
                 // Wait until ping interval ellapses
@@ -1057,7 +1122,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
                 BOOST_TEST(node.status() == connection_status::ping_in_progress);
 
                 // Ping succeeds
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::ping);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::ping);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -1084,7 +1149,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
 
                 // Connection won't ping, regardless of how much time we wait
@@ -1118,7 +1183,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
             {
                 // Connection tries to connect and fails
                 BOOST_ASIO_CORO_YIELD
-                step(node, next_connection_action::connect, common_server_errc::er_aborting_connection);
+                step(node, fn_type::connect, common_server_errc::er_aborting_connection);
                 BOOST_ASIO_CORO_YIELD
                 wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
 
@@ -1130,7 +1195,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
                 // Retry interval ellapses and connection retries and succeeds
                 get_timer_service().advance_time_by(std::chrono::seconds(2));
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
 
                 // Request is fulfilled
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, node);
@@ -1200,7 +1265,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
                 BOOST_ASIO_CORO_YIELD
                 step(
                     *pool_->nodes().begin(),
-                    next_connection_action::connect,
+                    fn_type::connect,
                     common_server_errc::er_bad_db_error,
                     create_server_diag("Bad db")
                 );
@@ -1241,7 +1306,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
                 BOOST_ASIO_CORO_YIELD
                 step(
                     *pool_->nodes().begin(),
-                    next_connection_action::connect,
+                    fn_type::connect,
                     common_server_errc::er_bad_db_error,
                     create_server_diag("Bad db")
                 );
@@ -1271,7 +1336,7 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait for a connection to be ready
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node, connection_status::idle);
 
                 // A request for a connection is issued. The request completes immediately
@@ -1302,7 +1367,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Wait for a connection to be ready, then get it from the pool
-                BOOST_ASIO_CORO_YIELD step(node1, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node1, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_status(node1, connection_status::idle);
                 BOOST_ASIO_CORO_YIELD
                 wait_for_task(detached_get_connection(*pool_, std::chrono::seconds(5), nullptr), node1);
@@ -1314,7 +1379,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
                 node2 = &*std::next(pool_->nodes().begin());
 
                 // Connection connects successfully and is handed to us
-                BOOST_ASIO_CORO_YIELD step(*node2, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(*node2, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2);
                 BOOST_TEST(node2->status() == connection_status::in_use);
                 BOOST_TEST(pool_->nodes().size() == 2u);
@@ -1365,8 +1430,8 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
                 BOOST_ASIO_CORO_YIELD wait_for_num_nodes(2);
                 node1 = &pool_->nodes().front();
                 node2 = &*std::next(pool_->nodes().begin());
-                BOOST_ASIO_CORO_YIELD step(*node1, next_connection_action::connect);
-                BOOST_ASIO_CORO_YIELD step(*node2, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(*node1, fn_type::connect);
+                BOOST_ASIO_CORO_YIELD step(*node2, fn_type::connect);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task1, *node1);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2);
 
@@ -1376,7 +1441,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 
                 // A connection is returned. The first task to enter is served
                 node1->mark_as_collectable(true);
-                BOOST_ASIO_CORO_YIELD step(*node1, next_connection_action::reset);
+                BOOST_ASIO_CORO_YIELD step(*node1, fn_type::reset);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node1);
 
                 // The next connection to be returned is for task5
@@ -1482,7 +1547,7 @@ BOOST_AUTO_TEST_CASE(params_connect_1)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Connect
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
 
                 // Check params
                 const auto& cparams = node.connection().last_connect_params;
@@ -1522,7 +1587,7 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Connect
-                BOOST_ASIO_CORO_YIELD step(node, next_connection_action::connect);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
 
                 // Check params
                 const auto& cparams = node.connection().last_connect_params;

@@ -34,6 +34,17 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Traits to use by default for nodes. Templating on traits provides
+// a way to mock dependencies in tests. Production code only uses
+// instantiations that use io_traits.
+// Having this as a traits type (as opposed to individual template params)
+// allows us to forward-declare io_traits without having to include steady_timer
+struct io_traits
+{
+    using connection_type = any_connection;
+    using timer_type = asio::steady_timer;
+};
+
 // State shared between connection tasks
 template <class IoTraits>
 struct conn_shared_state
@@ -43,13 +54,6 @@ struct conn_shared_state
     std::size_t num_pending_connections{0};
     error_code last_ec;
     diagnostics last_diag;
-};
-
-// Traits to use by default for nodes
-struct io_traits
-{
-    using connection_type = any_connection;
-    using timer_type = asio::steady_timer;
 };
 
 // Used when launching an op and a timer in parallel using make_parallel_group.
