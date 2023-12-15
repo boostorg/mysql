@@ -10,7 +10,7 @@ set -e
 
 BK=b2
 IMAGE=build-gcc13
-SHA=c94b77a716a0cc2cf5f489d9a97e9a0aefa7c0de
+SHA=d34a92a9b9702a0a5e2b9ab4a635f7b077229626
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
 DB=mysql8
