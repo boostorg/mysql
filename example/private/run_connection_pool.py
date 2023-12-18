@@ -12,6 +12,11 @@ import argparse
 from subprocess import PIPE, Popen
 from contextlib import contextmanager
 import re
+import signal
+import os
+import time
+
+_is_win = os.name == 'nt'
 
 
 def _check_response(res: requests.Response):
@@ -36,9 +41,8 @@ def _parse_server_start_line(line: str) -> int:
 def _launch_server(exe: str, host: str):
     # Launch server and let it choose a free port for us.
     # This prevents port clashes during b2 parallel test runs
-    server = Popen([exe, 'example_user', 'example_password', host, '0'], stdout=PIPE, stderr=PIPE)
+    server = Popen([exe, 'example_user', 'example_password', host, '0'], stdout=PIPE)
     assert server.stdout is not None
-    assert server.stderr is not None 
     with server:
         try:
             # Wait until the server is ready
@@ -48,12 +52,26 @@ def _launch_server(exe: str, host: str):
                 exit(0)
             yield _parse_server_start_line(ready_line)
         finally:
-            # Send SIGTERM
-            server.terminate()
+            if _is_win:
+                # Send SIGINT
+                server.send_signal(signal.CTRL_C_EVENT)
 
-            # Print any output the process generated
-            print(server.stdout.read().decode(), end='')
-            print(server.stderr.read().decode(), end='')
+                # In Windows, Ctrl+C affects all processes attached to the console.
+                # This means that we will receive a KeyboardInterrupt, too.
+                # Call a blocking function to get rid of this Ctrl+C
+                try:
+                    time.sleep(0.1)
+                except KeyboardInterrupt:
+                    pass
+
+                # Print any output the process generated
+                print('Server stdout:\n', server.stdout.readlines().decode())
+            else:
+                # Send SIGTERM
+                server.terminate()
+
+                # Print any output the process generated
+                print('Server stdout: \n', server.stdout.readline().decode())
     
     # Verify that it exited gracefully
     if server.returncode:
@@ -64,6 +82,7 @@ def _call_endpoints(port: int):
     base_url = 'http://localhost:{}'.format(port)
 
     # Create a note
+    print('Creating note...')
     note_unique = _random_string()
     title = 'My note {}'.format(note_unique)
     content = 'This is a note about {}'.format(note_unique)
@@ -78,12 +97,14 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Retrieve all notes
+    print('Retrieving note...')
     res = requests.get('{}/notes'.format(base_url))
     _check_response(res)
     all_notes = res.json()
     assert len([n for n in all_notes['notes'] if n['id'] == note_id]) == 1
 
     # Edit the note
+    print('Editing note...')
     note_unique = _random_string()
     title = 'Edited {}'.format(note_unique)
     content = 'This is a note an edit on {}'.format(note_unique)
@@ -98,6 +119,7 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Retrieve the note
+    print('Retrieving note...')
     res = requests.get('{}/notes/{}'.format(base_url, note_id))
     _check_response(res)
     note = res.json()
@@ -106,13 +128,16 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Delete the note
+    print('Deleting note...')
     res = requests.delete('{}/notes/{}'.format(base_url, note_id))
     _check_response(res)
     assert res.json()['deleted'] == True
 
     # The note is not there
+    print('Checking note deletion...')
     res = requests.get('{}/notes/{}'.format(base_url, note_id))
     assert res.status_code == 404
+    print('Done')
 
 
 def main():
@@ -124,7 +149,7 @@ def main():
 
     # Launch the server
     with _launch_server(args.executable, args.host) as listening_port:
-        # Run the tests
+    # Run the tests
         _call_endpoints(listening_port)
 
 
