@@ -9,7 +9,9 @@
 
 #include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/execution/outstanding_work.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/test/unit_test.hpp>
@@ -27,13 +29,11 @@ struct fixture
     asio::io_context ctx;
     wait_group gp{ctx.get_executor()};
     bool called{false};
+    asio::any_io_executor work_guard;
 
-    fixture()
-    {
-        // If there is no work present and we call ctx.poll(),
-        // the context is stopped and won't process further handlers
-        ctx.get_executor().on_work_started();
-    }
+    // If there is no work present and we call ctx.poll(),
+    // the context is stopped and won't process further handlers
+    fixture() : work_guard(asio::require(ctx.get_executor(), asio::execution::outstanding_work.tracked)) {}
 
     // We call ctx.poll() after every action so any pending handler is dispatched
     void launch_wait()
