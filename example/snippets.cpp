@@ -44,6 +44,7 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/error.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/asio/this_coro.hpp>
@@ -1314,7 +1315,7 @@ void section_any_connection(string_view server_hostname, string_view username, s
         }
         //]
         ASSERT(ec != error_code());
-        ASSERT(ec.message().find("certificate verify failed") != string_view::npos);
+        ASSERT(ec.category() == boost::asio::error::get_ssl_category());
     }
 }
 
