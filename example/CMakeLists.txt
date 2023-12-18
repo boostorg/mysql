@@ -130,6 +130,7 @@ add_example(
 add_executable(
     boost_mysql_example_connection_pool
     connection_pool/repository.cpp
+    connection_pool/handle_request.cpp
     connection_pool/server.cpp
     connection_pool/main.cpp
 )

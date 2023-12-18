@@ -97,6 +97,7 @@ run
 run
         connection_pool/main.cpp
         connection_pool/repository.cpp
+        connection_pool/handle_request.cpp
         connection_pool/server.cpp
         /boost/mysql/test//boost_mysql_compiled
         /boost/mysql/test//boost_context_lib

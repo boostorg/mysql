@@ -353,6 +353,12 @@ File `repository.hpp`:
 File `repository.cpp`:
 [example_connection_pool_repository_cpp]
 
+File `handle_request.hpp`:
+[example_connection_pool_handle_request_hpp]
+
+File `handle_request.cpp`:
+[example_connection_pool_handle_request_cpp]
+
 File `server.hpp`:
 [example_connection_pool_server_hpp]
 
