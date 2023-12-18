@@ -115,6 +115,9 @@ int main(int argc, char* argv[])
 
     // Capture SIGINT and SIGTERM to perform a clean shutdown
     signals.async_wait([shared_st, &th_pool](boost::system::error_code, int) {
+        // Cancel the pool. This will cause async_run to complete.
+        shared_st->pool.cancel();
+
         // Stop the execution context. This will cause main to exit
         th_pool.stop();
     });
@@ -125,6 +128,8 @@ int main(int argc, char* argv[])
 
     // Wait until all threads have exited
     th_pool.join();
+
+    std::cout << "Server exiting" << std::endl;
 
     // (If we get here, it means we got a SIGINT or SIGTERM)
     return EXIT_SUCCESS;
