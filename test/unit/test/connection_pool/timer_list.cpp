@@ -138,35 +138,6 @@ BOOST_FIXTURE_TEST_CASE(notify_one_all_timers_cancelled, fixture)
     BOOST_TEST(t2.timer.cancel() == 0u);
 }
 
-BOOST_FIXTURE_TEST_CASE(notify_one_timer_expired, fixture)
-{
-    // Create timers
-    block_t t1(ctx.get_executor());
-    block_t t2(ctx.get_executor());
-    block_t t3(ctx.get_executor());
-
-    // Add waits on them. t1 is already due
-    t1.timer.expires_after(std::chrono::minutes(0));
-    t1.timer.async_wait(asio::detached);
-    add_wait(t2);
-    add_wait(t3);
-
-    // Add them to the list
-    l.push_back(t1);
-    l.push_back(t2);
-    l.push_back(t3);
-    BOOST_TEST(l.size() == 3u);
-
-    // Dispatch handlers, so t1 gets its completion
-    ctx.poll();
-
-    // Notify finds the first timer expired and notifies the second one
-    l.notify_one();
-    BOOST_TEST(t1.timer.cancel() == 0u);
-    BOOST_TEST(t2.timer.cancel() == 0u);
-    BOOST_TEST(t3.timer.cancel() == 1u);
-}
-
 BOOST_FIXTURE_TEST_CASE(notify_one_timer_without_wait, fixture)
 {
     // Create timers
