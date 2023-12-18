@@ -93,7 +93,7 @@ local requirements =
         <toolset>msvc:<define>_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
         # GCC13 doesn't understand view types and issues array bound warnings that don't make sense.
-        <toolset>gcc-13:<cxxflags>-Wno-dangling-reference,-Wno-array-bounds
+        <toolset>gcc-13:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds"
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
