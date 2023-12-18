@@ -11,7 +11,7 @@ import os ;
 local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
 if $(hostname) = ""
 {
-    hostname = "localhost" ;
+    hostname = "127.0.0.1" ;
 }
 
 # TSAN can't be enabled in our ARM CIs, since they fail

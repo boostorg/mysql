@@ -48,7 +48,7 @@ def _cmake_bool(value: bool) -> str:
 
 def _common_settings(
     boost_root: Path,
-    server_host: str = 'localhost',
+    server_host: str = '127.0.0.1',
     db: str = 'mysql8'
 ) -> None:
     _add_to_path(boost_root)
@@ -512,7 +512,7 @@ def main():
     parser.add_argument('--separate-compilation', type=_str2bool, default=True)
     parser.add_argument('--address-sanitizer', type=_str2bool, default=False)
     parser.add_argument('--undefined-sanitizer', type=_str2bool, default=False)
-    parser.add_argument('--server-host', default='localhost')
+    parser.add_argument('--server-host', default='127.0.0.1')
 
     args = parser.parse_args()
 

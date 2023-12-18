@@ -65,13 +65,13 @@ def _launch_server(exe: str, host: str):
                     pass
 
                 # Print any output the process generated
-                print('Server stdout:\n', server.stdout.readlines().decode())
+                print('Server stdout:\n', server.stdout.read().decode())
             else:
                 # Send SIGTERM
                 server.terminate()
 
                 # Print any output the process generated
-                print('Server stdout: \n', server.stdout.readline().decode())
+                print('Server stdout: \n', server.stdout.read().decode())
     
     # Verify that it exited gracefully
     if server.returncode:
@@ -79,10 +79,9 @@ def _launch_server(exe: str, host: str):
 
 
 def _call_endpoints(port: int):
-    base_url = 'http://localhost:{}'.format(port)
+    base_url = 'http://127.0.0.1:{}'.format(port)
 
     # Create a note
-    print('Creating note...')
     note_unique = _random_string()
     title = 'My note {}'.format(note_unique)
     content = 'This is a note about {}'.format(note_unique)
@@ -97,14 +96,12 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Retrieve all notes
-    print('Retrieving note...')
     res = requests.get('{}/notes'.format(base_url))
     _check_response(res)
     all_notes = res.json()
     assert len([n for n in all_notes['notes'] if n['id'] == note_id]) == 1
 
     # Edit the note
-    print('Editing note...')
     note_unique = _random_string()
     title = 'Edited {}'.format(note_unique)
     content = 'This is a note an edit on {}'.format(note_unique)
@@ -119,7 +116,6 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Retrieve the note
-    print('Retrieving note...')
     res = requests.get('{}/notes/{}'.format(base_url, note_id))
     _check_response(res)
     note = res.json()
@@ -128,16 +124,13 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Delete the note
-    print('Deleting note...')
     res = requests.delete('{}/notes/{}'.format(base_url, note_id))
     _check_response(res)
     assert res.json()['deleted'] == True
 
     # The note is not there
-    print('Checking note deletion...')
     res = requests.get('{}/notes/{}'.format(base_url, note_id))
     assert res.status_code == 404
-    print('Done')
 
 
 def main():

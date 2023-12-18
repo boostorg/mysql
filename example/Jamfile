@@ -13,7 +13,7 @@ path-constant this_dir : . ;
 local hostname = [ os.environ BOOST_MYSQL_SERVER_HOST ] ;
 if $(hostname) = ""
 {
-    hostname = "localhost" ;
+    hostname = "127.0.0.1" ;
 }
 
 # "Regular" examples

@@ -36,7 +36,7 @@ boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
 
 boost::mysql::string_view boost::mysql::test::get_hostname()
 {
-    static auto res = safe_getenv("BOOST_MYSQL_SERVER_HOST", "localhost");
+    static auto res = safe_getenv("BOOST_MYSQL_SERVER_HOST", "127.0.0.1");
     return res;
 }
 
