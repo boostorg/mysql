@@ -15,6 +15,7 @@ import re
 import signal
 import os
 import time
+import sys
 
 _is_win = os.name == 'nt'
 
@@ -55,17 +56,18 @@ def _launch_server(exe: str, host: str):
             if _is_win:
                 # Send SIGINT
                 server.send_signal(signal.CTRL_C_EVENT)
+                sys.stdout.flush()
 
                 # In Windows, Ctrl+C affects all processes attached to the console.
                 # This means that we will receive a KeyboardInterrupt, too.
-                # Call a blocking function to get rid of this Ctrl+C
-                try:
-                    time.sleep(0.1)
-                except KeyboardInterrupt:
-                    pass
-
-                # Print any output the process generated
-                print('Server stdout:\n', server.stdout.read().decode())
+                # Reading all the process output gets rid of this and improves diagnostics
+                print('Server stdout:')
+                for l in server.stdout:
+                    try:
+                        print(l.decode(), end='')
+                    except KeyboardInterrupt:
+                        pass
+                    
             else:
                 # Send SIGTERM
                 server.terminate()

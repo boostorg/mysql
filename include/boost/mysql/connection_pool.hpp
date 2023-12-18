@@ -383,16 +383,8 @@ public:
      */
     connection_pool& operator=(connection_pool&& other) = default;
 
-    /**
-     * \brief Destructor.
-     * \details
-     * If `this->valid() == true`, the pool will be cancelled as per \ref cancel.
-     */
-    ~connection_pool() noexcept
-    {
-        if (valid())
-            cancel();
-    }
+    /// Destructor.
+    ~connection_pool() = default;
 
     /**
      * \brief Returns whether the object is in a moved-from state.

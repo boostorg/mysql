@@ -115,9 +115,6 @@ int main(int argc, char* argv[])
 
     // Capture SIGINT and SIGTERM to perform a clean shutdown
     signals.async_wait([shared_st, &th_pool](boost::system::error_code, int) {
-        // Stop the connection pool. This will cause
-        shared_st->pool.cancel();
-
         // Stop the execution context. This will cause main to exit
         th_pool.stop();
     });
