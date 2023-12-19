@@ -97,6 +97,7 @@ add_executable(
     test/statement.cpp
     test/throw_on_error.cpp
     test/any_address.cpp
+    test/any_connection.cpp
     test/pool_params.cpp
     test/connection_pool.cpp
 )
