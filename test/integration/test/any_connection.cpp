@@ -84,12 +84,64 @@ BOOST_AUTO_TEST_CASE(custom_ssl_context)
     BOOST_TEST(result.err.message().find("certificate verify failed") != std::string::npos);
 }
 
+// Disabling SSL works with TCP connections
+BOOST_AUTO_TEST_CASE(tcp_ssl_mode_disable)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection conn(ctx);
+
+    // Disable SSL
+    auto params = create_params();
+    params.ssl = ssl_mode::disable;
+
+    // Call the function
+    connect_fn(conn, params).validate_no_error();
+
+    // uses_ssl reports the right value
+    BOOST_TEST(!conn.uses_ssl());
+}
+
+// SSL mode enable woks with TCP connections
+BOOST_AUTO_TEST_CASE(tcp_ssl_mode_enable)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection conn(ctx);
+
+    // Disable SSL
+    auto params = create_params();
+    params.ssl = ssl_mode::enable;
+
+    // Call the function
+    connect_fn(conn, params).validate_no_error();
+
+    // All our CIs support SSL
+    BOOST_TEST(conn.uses_ssl());
+}
+
+// UNIX connections never use SSL
+BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
+BOOST_AUTO_TEST_CASE(unix_ssl)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection conn(ctx);
+
+    // Connect params
+    auto params = create_params();
+    params.server_address.emplace_unix_path(default_unix_path);
+    params.ssl = ssl_mode::require;
+
+    // Call the function
+    connect_fn(conn, params).validate_no_error();
+
+    // SSL is not enabled even if we specified require, since there's
+    // no point in using SSL with UNIX sockets
+    BOOST_TEST(!conn.uses_ssl());
+}
+
 /**
- * Passing a default SSL context works
- * Passing a custom SSL context works (certificate validation)
- * Disabling SSL works
- * ssl::enable works
- * UNIX connections don't use SSL
  * UNIX connections can use caching_sha2_password
  */
 
