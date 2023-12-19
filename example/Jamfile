@@ -107,6 +107,6 @@ run
             <testing.launcher>"python $(this_dir)/private/run_connection_pool.py"
             <testing.arg>$(hostname)
             # MSVC 14.1 fails with an internal compiler error while building server.cpp for this config
-            <toolset>msvc-14.1 <address-model>32 <cxxstd>17 <variant>release:<build>no
+            <toolset>msvc-14.1,<address-model>32,<cxxstd>17,<variant>release:<build>no
     : target-name boost_mysql_example_connection_pool
     ;
