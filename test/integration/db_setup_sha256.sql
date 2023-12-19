@@ -12,4 +12,11 @@ CREATE USER 'sha2p_user'@'%' IDENTIFIED WITH 'sha256_password';
 ALTER USER 'sha2p_user'@'%' IDENTIFIED BY 'sha2p_password';
 GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'sha2p_user'@'%';
 
+-- User that uses caching_sha2_password plugin
+DROP USER IF EXISTS 'csha2p_user'@'%';
+CREATE USER 'csha2p_user'@'%' IDENTIFIED WITH 'caching_sha2_password';
+ALTER USER 'csha2p_user'@'%' IDENTIFIED BY 'csha2p_password';
+GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'csha2p_user'@'%';
+
+
 FLUSH PRIVILEGES;
