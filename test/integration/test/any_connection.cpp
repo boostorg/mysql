@@ -6,14 +6,22 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
+#include <boost/asio/deferred.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 
+#include <memory>
+
+#include "test_common/create_diagnostics.hpp"
+#include "test_common/netfun_helpers.hpp"
 #include "test_common/netfun_maker.hpp"
+#include "test_common/network_result.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/get_endpoint.hpp"
 #include "test_integration/server_ca.hpp"
@@ -109,7 +117,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_mode_enable)
     boost::asio::io_context ctx;
     any_connection conn(ctx);
 
-    // Disable SSL
+    // Set SSL mode
     auto params = create_params();
     params.ssl = ssl_mode::enable;
 
@@ -164,5 +172,63 @@ BOOST_AUTO_TEST_CASE(unix_ssl)
 //     connect_fn(conn, params).validate_no_error();
 //     BOOST_TEST(!conn.uses_ssl());
 // }
+
+network_result<void> create_net_result()
+{
+    return network_result<void>(
+        common_server_errc::er_aborting_connection,
+        create_server_diag("diagnostics not cleared")
+    );
+}
+
+// TODO: move this to unit once we implement unit tests for handshake/connect
+BOOST_AUTO_TEST_CASE(async_connect_lifetimes)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection conn(ctx);
+
+    // Disable SSL
+    std::unique_ptr<connect_params> params(new connect_params(create_params()));
+    params->ssl = ssl_mode::disable;
+
+    // Launch the function
+    auto res = create_net_result();
+    conn.async_connect(*params, *res.diag, [&](error_code ec) { res.err = ec; });
+
+    // Make the passed-in params invalid
+    params.reset();
+
+    // Run the function until completion
+    ctx.run();
+
+    // No error
+    res.validate_no_error();
+}
+
+BOOST_AUTO_TEST_CASE(async_connect_deferred_lifetimes)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection conn(ctx);
+
+    // Disable SSL
+    std::unique_ptr<connect_params> params(new connect_params(create_params()));
+    params->ssl = ssl_mode::disable;
+
+    // Create a deferred object
+    auto res = create_net_result();
+    auto op = conn.async_connect(*params, *res.diag, asio::deferred);
+
+    // Make the params invalid
+    params.reset();
+
+    // Run the operation
+    std::move(op)([&](error_code ec) { res.err = ec; });
+    ctx.run();
+
+    // No error
+    res.validate_no_error();
+}
 
 BOOST_AUTO_TEST_SUITE_END()
