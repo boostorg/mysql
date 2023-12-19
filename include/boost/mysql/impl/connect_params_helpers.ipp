@@ -40,12 +40,12 @@ boost::mysql::detail::stable_connect_params boost::mysql::detail::make_stable(co
 {
     const auto& addr_impl = access::get_impl(input.server_address);
 
-    // Calculate required space. TODO: handle the case where required_size == 0
+    // Calculate required space
     std::size_t required_size = addr_impl.address.size() + input.username.size() + input.password.size() +
                                 input.database.size();
 
     // Allocate space for strings
-    std::unique_ptr<char[]> ptr{new char[required_size]};
+    std::unique_ptr<char[]> ptr{required_size ? new char[required_size] : nullptr};
 
     // Copy them to the new buffer
     char* it = ptr.get();
