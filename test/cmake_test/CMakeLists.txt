@@ -23,48 +23,48 @@ else()
         core
         describe
         endian
+        intrusive
         lexical_cast
         mp11
+        optional
         system
         throw_exception
         variant2
 
         # Secondary dependencies
         align
-        bind
         context
         coroutine
         date_time
-        regex
         static_assert
+        container_hash
+        move
         container
         integer
         numeric/conversion
         type_traits
-        winapi
-        intrusive
-        move
-        pool
+        detail
         predef
+        utility
+        winapi
+        pool
         smart_ptr
         exception
-        utility
         algorithm
         io
         range
         tokenizer
+        preprocessor
         conversion
         mpl
-        preprocessor
-        concept_check
-        container_hash
         array
+        bind
+        concept_check
         "function"
         iterator
+        regex
         tuple
         unordered
-        detail
-        optional
         function_types
         fusion
         functional

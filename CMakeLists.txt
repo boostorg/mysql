@@ -63,12 +63,14 @@ else()
         Boost::config
         Boost::core
         Boost::describe
+        Boost::endian
+        Boost::intrusive
+        Boost::lexical_cast
         Boost::mp11
+        Boost::optional
         Boost::system
         Boost::throw_exception
         Boost::variant2
-        Boost::endian
-        Boost::lexical_cast
         Threads::Threads
         OpenSSL::Crypto
         OpenSSL::SSL
