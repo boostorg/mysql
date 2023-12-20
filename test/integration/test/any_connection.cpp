@@ -134,6 +134,8 @@ BOOST_AUTO_TEST_CASE(unix_ssl)
 }
 
 // Spotcheck: users can log-in using the caching_sha2_password auth plugin
+BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
+BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
 BOOST_AUTO_TEST_CASE(tcp_caching_sha2_password)
 {
     // Create the connection
