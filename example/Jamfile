@@ -108,5 +108,8 @@ run
             <testing.arg>$(hostname)
             # MSVC 14.1 fails with an internal compiler error while building server.cpp for this config
             <toolset>msvc-14.1,<address-model>32,<cxxstd>17,<variant>release:<build>no
+            # Uses heavily Boost.Context coroutines, which aren't fully supported by asan
+            <address-sanitizer>norecover:<build>no
+            <address-sanitizer>enable:<build>no
     : target-name boost_mysql_example_connection_pool
     ;
