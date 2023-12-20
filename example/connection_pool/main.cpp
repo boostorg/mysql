@@ -7,6 +7,8 @@
 
 #include <boost/mysql/static_results.hpp>
 
+#include "log_error.hpp"
+
 #ifdef BOOST_MYSQL_CXX14
 
 //[example_connection_pool_main_cpp
@@ -109,7 +111,7 @@ int main(int argc, char* argv[])
     auto ec = launch_server(th_pool.get_executor(), shared_st, port);
     if (ec)
     {
-        std::cerr << "Error launching server: " << ec << std::endl;
+        log_error("Error launching server: ", ec);
         exit(EXIT_FAILURE);
     }
 

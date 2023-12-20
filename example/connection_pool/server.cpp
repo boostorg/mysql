@@ -7,6 +7,8 @@
 
 #include <boost/mysql/static_results.hpp>
 
+#include "log_error.hpp"
+
 #ifdef BOOST_MYSQL_CXX14
 
 //[example_connection_pool_server_cpp
@@ -49,12 +51,6 @@ using namespace notes;
 
 namespace {
 
-// Log an error to stderr
-static void log_error(error_code ec, const char* msg)
-{
-    std::cerr << "Error in " << msg << ": " << ec << std::endl;
-}
-
 static void run_http_session(
     boost::asio::ip::tcp::socket sock,
     std::shared_ptr<shared_state> st,
@@ -88,7 +84,7 @@ static void run_http_session(
             else
             {
                 // An unknown error happened
-                log_error(ec, "read");
+                log_error("Error reading HTTP request: ", ec);
             }
             return;
         }
@@ -103,7 +99,7 @@ static void run_http_session(
         // Send the response
         http::async_write(sock, response, yield[ec]);
         if (ec)
-            return log_error(ec, "write");
+            return log_error("Error writing HTTP response: ", ec);
 
         // This means we should close the connection, usually because
         // the response indicated the "Connection: close" semantic.
@@ -126,7 +122,7 @@ static void do_accept(
     acceptor->async_accept([executor, st, acceptor](error_code ec, asio::ip::tcp::socket sock) {
         // If there was an error accepting the connection, exit our loop
         if (ec)
-            return log_error(ec, "accept");
+            return log_error("Error while accepting connection", ec);
 
         // Launch a new session for this connection. Each session gets its
         // own stackful coroutine, so we can get back to listening for new connections.

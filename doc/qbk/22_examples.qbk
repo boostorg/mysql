@@ -365,6 +365,10 @@ File `server.hpp`:
 File `server.cpp`:
 [example_connection_pool_server_cpp]
 
+File `log_error.hpp`:
+[example_connection_pool_log_error_hpp]
+
+
 [endsect]
 
 

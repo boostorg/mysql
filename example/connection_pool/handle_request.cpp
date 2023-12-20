@@ -7,6 +7,8 @@
 
 #include <boost/mysql/static_results.hpp>
 
+#include "log_error.hpp"
+
 #ifdef BOOST_MYSQL_CXX14
 
 //[example_connection_pool_handle_request_cpp
@@ -328,15 +330,19 @@ public:
             // A Boost.MySQL error. This will happen if you don't have connectivity
             // to your database, your schema is incorrect or your credentials are invalid.
             // Log the error, including diagnostics, and return a generic 500
-            std::cerr << "Uncaught exception: " << err.what()
-                      << "\nServer diagnostics: " << err.get_diagnostics().server_message() << '\n';
+            log_error(
+                "Uncaught exception: ",
+                err.what(),
+                "\nServer diagnostics: ",
+                err.get_diagnostics().server_message()
+            );
             return error_response(http::status::internal_server_error, "Internal error");
         }
         catch (const std::exception& err)
         {
             // Another kind of error. This indicates a programming error or a severe
             // server condition (e.g. out of memory). Same procedure as above.
-            std::cerr << "Uncaught exception: " << err.what() << '\n';
+            log_error("Uncaught exception: ", err.what());
             return error_response(http::status::internal_server_error, "Internal error");
         }
     }
