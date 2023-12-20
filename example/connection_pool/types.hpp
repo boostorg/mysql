@@ -9,6 +9,9 @@
 #define BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_TYPES_HPP
 
 //[example_connection_pool_types_hpp
+//
+// File: types.hpp
+//
 
 #include <boost/core/span.hpp>
 #include <boost/describe/class.hpp>

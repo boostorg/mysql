@@ -9,6 +9,9 @@
 #define BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_HANDLE_REQUEST_HPP
 
 //[example_connection_pool_handle_request_hpp
+//
+// File: handle_request.hpp
+//
 
 #include <boost/asio/error.hpp>
 #include <boost/asio/spawn.hpp>

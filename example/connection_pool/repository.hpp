@@ -9,6 +9,9 @@
 #define BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_REPOSITORY_HPP
 
 //[example_connection_pool_repository_hpp
+//
+// File: repository.hpp
+//
 
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/string_view.hpp>

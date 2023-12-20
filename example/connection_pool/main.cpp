@@ -12,6 +12,9 @@
 #ifdef BOOST_MYSQL_CXX14
 
 //[example_connection_pool_main_cpp
+//
+// File: main.cpp
+//
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connection_pool.hpp>

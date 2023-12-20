@@ -9,6 +9,9 @@
 #define BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_SERVER_HPP
 
 //[example_connection_pool_server_hpp
+//
+// File: server.hpp
+//
 
 #include <boost/mysql/connection_pool.hpp>
 
@@ -17,8 +20,6 @@
 #include <boost/system/error_code.hpp>
 
 #include <memory>
-
-#include "repository.hpp"
 
 namespace notes {
 

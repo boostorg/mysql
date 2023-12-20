@@ -9,6 +9,9 @@
 #define BOOST_MYSQL_EXAMPLE_CONNECTION_POOL_LOG_ERROR_HPP
 
 //[example_connection_pool_log_error_hpp
+//
+// File: log_error.hpp
+//
 
 #include <iostream>
 #include <mutex>
