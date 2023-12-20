@@ -105,10 +105,12 @@ public:
         {
             return tcp_sock->sock.read_some(buff, ec);
         }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
         {
             return unix_sock->read_some(buff, ec);
         }
+#endif
         else
         {
             BOOST_ASSERT(false);
@@ -131,10 +133,12 @@ public:
         {
             tcp_sock->sock.async_read_some(buff, std::move(handler));
         }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
         {
             unix_sock->async_read_some(buff, std::move(handler));
         }
+#endif
         else
         {
             BOOST_ASSERT(false);
@@ -153,10 +157,12 @@ public:
         {
             return tcp_sock->sock.write_some(buff, ec);
         }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
         {
             return unix_sock->write_some(buff, ec);
         }
+#endif
         else
         {
             BOOST_ASSERT(false);
@@ -179,10 +185,12 @@ public:
         {
             return tcp_sock->sock.async_write_some(buff, std::move(handler));
         }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
         {
             return unix_sock->async_write_some(buff, std::move(handler));
         }
+#endif
         else
         {
             BOOST_ASSERT(false);
@@ -211,6 +219,7 @@ public:
             // Connect stream
             asio::connect(tcp_sock.sock, std::move(endpoints), ec);
         }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else
         {
             BOOST_ASSERT(address_.type == address_type::unix_path);
@@ -219,6 +228,7 @@ public:
             auto& unix_sock = variant2::unsafe_get<2>(sock_);
             unix_sock.connect(cast_asio_sv_param(address_.address), ec);
         }
+#endif
     }
 
     void async_connect(asio::any_completion_handler<void(error_code)> handler) override final
@@ -236,10 +246,12 @@ public:
         {
             tcp_sock->sock.close(ec);
         }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
         {
             unix_sock->close(ec);
         }
+#endif
     }
 
 private:
@@ -251,10 +263,20 @@ private:
         socket_and_resolver(asio::any_io_executor ex) : sock(ex), resolv(std::move(ex)) {}
     };
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
     using unix_socket = asio::local::stream_protocol::socket;
+#endif
 
     asio::any_io_executor ex_;
-    variant2::variant<variant2::monostate, socket_and_resolver, unix_socket> sock_;
+    variant2::variant<
+        variant2::monostate,
+        socket_and_resolver
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+        ,
+        unix_socket
+#endif
+        >
+        sock_;
     ssl_context_with_default ssl_ctx_;
     boost::optional<asio::ssl::stream<asio::ip::tcp::socket&>> ssl_;
 
@@ -337,6 +359,7 @@ private:
                     // The final handler requires a void(error_code, tcp::endpoint signature),
                     // which this function can't implement. See operator() overload below.
                 }
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
                 else
                 {
                     BOOST_ASSERT(this_obj_.address_.type == address_type::unix_path);
@@ -348,6 +371,7 @@ private:
 
                     self.complete(error_code());
                 }
+#endif
             }
         }
 
