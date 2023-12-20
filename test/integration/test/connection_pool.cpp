@@ -290,6 +290,21 @@ BOOST_FIXTURE_TEST_CASE(cancel_run, fixture)
     });
 }
 
+// If the pool is cancelled before calling run, cancel still has effect
+BOOST_FIXTURE_TEST_CASE(cancel_before_run, fixture)
+{
+    run_stackful_coro([&](asio::yield_context yield) {
+        // Create a pool
+        connection_pool pool(yield.get_executor(), create_pool_params());
+
+        // Cancel
+        pool.cancel();
+
+        // Run returns immediately
+        pool.async_run(check_err);
+    });
+}
+
 BOOST_FIXTURE_TEST_CASE(cancel_get_connection, fixture)
 {
     run_stackful_coro([&](asio::yield_context yield) {
