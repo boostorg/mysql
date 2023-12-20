@@ -28,7 +28,7 @@ class wait_group
 
 public:
     wait_group(asio::any_io_executor ex)
-        : finished_(std::move(ex), std::chrono::steady_clock::time_point::max())
+        : finished_(std::move(ex), (std::chrono::steady_clock::time_point::max)())
     {
     }
 

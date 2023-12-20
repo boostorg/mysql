@@ -323,7 +323,7 @@ public:
     {
         return async_get_connection(
             timeout.count() > 0 ? std::chrono::steady_clock::now() + timeout
-                                : std::chrono::steady_clock::time_point::max(),
+                                : (std::chrono::steady_clock::time_point::max)(),
             diag,
             std::forward<CompletionToken>(token)
         );

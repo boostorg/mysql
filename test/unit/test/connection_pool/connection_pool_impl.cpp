@@ -448,7 +448,9 @@ class get_connection_task
         mock_pool* actual_pool{};
         error_code actual_ec;
 
-        impl_t(mock_pool& p) : tim(p.get_executor(), steady_clock::time_point::max()), pool(p), exec_info{} {}
+        impl_t(mock_pool& p) : tim(p.get_executor(), (steady_clock::time_point::max)()), pool(p), exec_info{}
+        {
+        }
     };
 
     std::shared_ptr<impl_t> impl_;
@@ -500,7 +502,7 @@ public:
                     impl->actual_node = c.node;
                     impl->actual_pool = c.pool.get();
                     impl->actual_ec = ec;
-                    impl->tim.expires_at(steady_clock::time_point::min());
+                    impl->tim.expires_at((steady_clock::time_point::min)());
                 }
             )
         );

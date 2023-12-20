@@ -125,8 +125,8 @@ BOOST_FIXTURE_TEST_CASE(run_task, fixture)
     // Create two timers to simulate async operations
     asio::steady_timer timer1(ctx);
     asio::steady_timer timer2(ctx);
-    timer1.expires_at(std::chrono::steady_clock::time_point::max());
-    timer2.expires_at(std::chrono::steady_clock::time_point::max());
+    timer1.expires_at((std::chrono::steady_clock::time_point::max)());
+    timer2.expires_at((std::chrono::steady_clock::time_point::max)());
 
     // Start the wait
     launch_wait();

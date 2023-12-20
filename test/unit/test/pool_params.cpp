@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(invalid_params)
         },
         {
             "connect_timeout < 0 min",
-            [](pool_params& p) { p.connect_timeout = std::chrono::steady_clock::duration::min(); },
+            [](pool_params& p) { p.connect_timeout = (std::chrono::steady_clock::duration::min)(); },
             "pool_params::connect_timeout must not be negative"
         },
         {
@@ -101,7 +101,7 @@ BOOST_AUTO_TEST_CASE(invalid_params)
         },
         {
             "retry_interval < 0 min",
-            [](pool_params& p) { p.retry_interval = std::chrono::steady_clock::duration::min(); },
+            [](pool_params& p) { p.retry_interval = (std::chrono::steady_clock::duration::min)(); },
             "pool_params::retry_interval must be greater than zero"
         },
         {
@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(invalid_params)
         },
         {
             "ping_interval < 0 min",
-            [](pool_params& p) { p.ping_interval = std::chrono::steady_clock::duration::min(); },
+            [](pool_params& p) { p.ping_interval = (std::chrono::steady_clock::duration::min)(); },
             "pool_params::ping_interval must not be negative"
         },
         {
@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(invalid_params)
         },
         {
             "ping_timeout < 0 min",
-            [](pool_params& p) { p.ping_timeout = std::chrono::steady_clock::duration::min(); },
+            [](pool_params& p) { p.ping_timeout = (std::chrono::steady_clock::duration::min)(); },
             "pool_params::ping_timeout must not be negative"
         },
   // clang-format on
@@ -161,11 +161,11 @@ BOOST_AUTO_TEST_CASE(valid_params)
         },
         {
             "connect_timeout == max",
-            [](pool_params& p) { p.connect_timeout = std::chrono::steady_clock::duration::max(); },
+            [](pool_params& p) { p.connect_timeout = (std::chrono::steady_clock::duration::max)(); },
         },
         {
             "retry_interval == max",
-            [](pool_params& p) { p.retry_interval = std::chrono::steady_clock::duration::max(); },
+            [](pool_params& p) { p.retry_interval = (std::chrono::steady_clock::duration::max)(); },
         },
         {
             "ping_interval == 0",
@@ -173,7 +173,7 @@ BOOST_AUTO_TEST_CASE(valid_params)
         },
         {
             "ping_interval == max",
-            [](pool_params& p) { p.ping_interval = std::chrono::steady_clock::duration::max(); },
+            [](pool_params& p) { p.ping_interval = (std::chrono::steady_clock::duration::max)(); },
         },
         {
             "ping_timeout == 0",
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(valid_params)
         },
         {
             "ping_timeout == max",
-            [](pool_params& p) { p.ping_timeout = std::chrono::steady_clock::duration::max(); },
+            [](pool_params& p) { p.ping_timeout = (std::chrono::steady_clock::duration::max)(); },
         },
   // clang-format on
     };
