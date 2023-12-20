@@ -6,8 +6,8 @@
 #
 
 _triggers = { "branch": [ "master", "develop", "drone*", "feature/*", "bugfix/*", "fix/*", "pr/*" ] }
-_container_tag = '454e58d36a2e801a1a6b4e9fd2f995c3087740b1'
-_win_container_tag = '454e58d36a2e801a1a6b4e9fd2f995c3087740b1'
+_container_tag = 'd34a92a9b9702a0a5e2b9ab4a635f7b077229626'
+_win_container_tag = 'd34a92a9b9702a0a5e2b9ab4a635f7b077229626'
 
 
 def _image(name):
@@ -24,7 +24,7 @@ def _b2_command(
     variant,
     stdlib='native',
     address_model='64',
-    server_host='localhost',
+    server_host='127.0.0.1',
     separate_compilation=1,
     address_sanitizer=0,
     undefined_sanitizer=0
@@ -56,7 +56,7 @@ def _cmake_command(
     install_tests=1,
     generator='Ninja',
     db='mysql8',
-    server_host='localhost'
+    server_host='127.0.0.1'
 ):
     return 'python tools/ci.py ' + \
                 '--build-kind=cmake ' + \
@@ -175,7 +175,7 @@ def windows_b2(
         cxxstd=cxxstd,
         variant=variant,
         address_model=address_model,
-        server_host='localhost'
+        server_host='127.0.0.1'
     )
     return _pipeline(name=name, image=image, os='windows', command=command, db=None)
 
@@ -218,7 +218,7 @@ def windows_cmake(
         build_shared_libs=build_shared_libs,
         generator='Visual Studio 17 2022',
         db='mysql8',
-        server_host='localhost'
+        server_host='127.0.0.1'
     )
     return _pipeline(
         name=name,

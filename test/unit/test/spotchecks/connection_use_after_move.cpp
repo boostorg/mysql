@@ -10,10 +10,10 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/netfun_maker.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
-#include "test_unit/netfun_maker.hpp"
 #include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql;

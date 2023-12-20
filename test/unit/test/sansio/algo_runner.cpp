@@ -430,7 +430,6 @@ BOOST_AUTO_TEST_CASE(connect)
 {
     struct mock_algo : sansio_algorithm
     {
-        int connect_arg{};
         boost::asio::coroutine coro;
 
         mock_algo(connection_state_data& st) : sansio_algorithm(st) {}
@@ -440,7 +439,7 @@ BOOST_AUTO_TEST_CASE(connect)
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return next_action::connect(&connect_arg);
+                BOOST_ASIO_CORO_YIELD return next_action::connect();
                 BOOST_TEST(ec == error_code(client_errc::wrong_num_params));
             }
             return next_action();
@@ -454,7 +453,6 @@ BOOST_AUTO_TEST_CASE(connect)
     // Initial run yields a connect request. These are always returned
     auto act = runner.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::connect);
-    BOOST_TEST(act.connect_arg() == &algo.connect_arg);
 
     // Fail the op
     act = runner.resume(client_errc::wrong_num_params, 0);

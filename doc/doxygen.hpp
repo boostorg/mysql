@@ -39,6 +39,10 @@
  * \par Thread safety
  * Distinct objects: safe. \n
  * Shared objects: unsafe. \n
+ *
+ * Specify this for new async operations. Include the error codes that we may return.
+ * \par Errors
+ * \li \ref client_errc::X when condition Y
  */
 
 #endif

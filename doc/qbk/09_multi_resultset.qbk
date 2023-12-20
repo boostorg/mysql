@@ -34,7 +34,7 @@ You can execute a `CALL` statement as any other SQL statement:
 [multi_resultset_call_dynamic]
 
 In this context, `results` can be seen as a random-access collection of resultsets. You can access
-resultsets by index using [refmem results at] and [reflink2 results.operator_lb__rb_ results::operator[]].
+resultsets by index using [refmem results at] and [reflink2 results.operator__lb__rb_ results::operator[]].
 These operations yield a [reflink resultset_view], which is a lightweight object pointing into memory owned by the `results`
 object. You can take ownserhip of a `resultset_view` using the [reflink resultset] class. For example:
 

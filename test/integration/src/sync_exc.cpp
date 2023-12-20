@@ -5,21 +5,30 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_address.hpp>
+
 #include "er_impl_common.hpp"
 #include "test_common/netfun_helpers.hpp"
 #include "test_integration/streams.hpp"
 
 using namespace boost::mysql::test;
 
+// MSVC complains about passing empty tokens, which is valid C++
+#ifdef BOOST_MSVC
+#pragma warning(push)
+#pragma warning(disable : 4003)
+#endif
+
 namespace boost {
 namespace mysql {
 namespace test {
 
-template <class Stream>
-class sync_exc_connection : public connection_base<Stream>
+template <class Base>
+class sync_exc_base : public Base
 {
-    using conn_type = connection<Stream>;
-    using base_type = connection_base<Stream>;
+protected:
+    using conn_type = typename Base::conn_type;
+    using base_type = Base;
 
     template <class R, class... Args>
     using pmem_t = R (conn_type::*)(Args...);
@@ -45,16 +54,25 @@ class sync_exc_connection : public connection_base<Stream>
     }
 
 public:
-// MSVC complains about passing empty tokens, which is valid C++
-#ifdef BOOST_MSVC
-#pragma warning(push)
-#pragma warning(disable : 4003)
-#endif
-    BOOST_MYSQL_TEST_IMPLEMENT_SYNC()
-#ifdef BOOST_MSVC
-#pragma warning(pop)
-#endif
+    using Base::Base;
     static constexpr const char* name() noexcept { return "sync_exc"; }
+};
+
+template <class Stream>
+class sync_exc_connection : public sync_exc_base<connection_base<Stream>>
+{
+    using base_type = sync_exc_base<connection_base<Stream>>;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_SYNC()
+};
+
+class any_sync_exc_connection final : public sync_exc_base<any_connection_base>
+{
+    using base_type = sync_exc_base<any_connection_base>;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_SYNC_ANY()
 };
 
 }  // namespace test
@@ -65,4 +83,9 @@ void boost::mysql::test::add_sync_exc(std::vector<er_network_variant*>& output)
 {
     // Spotcheck
     add_variant<sync_exc_connection<tcp_socket>>(output);
+    add_variant_any<address_type::host_and_port, any_sync_exc_connection>(output);
 }
+
+#ifdef BOOST_MSVC
+#pragma warning(pop)
+#endif

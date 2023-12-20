@@ -19,6 +19,7 @@ RUN \
         libstdc++-13-dev:i386 \
         libssl-dev:i386 \
         python3 \
+        python3-requests \
         python-is-python3 \
         git \
         mysql-client && \

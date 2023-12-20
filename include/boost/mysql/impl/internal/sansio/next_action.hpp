@@ -58,11 +58,6 @@ public:
         BOOST_ASSERT(is_done());
         return data_.ec;
     }
-    const void* connect_arg() const noexcept
-    {
-        BOOST_ASSERT(type_ == type_t::connect);
-        return data_.connect_arg;
-    }
     read_args_t read_args() const noexcept
     {
         BOOST_ASSERT(type_ == type_t::read);
@@ -74,24 +69,23 @@ public:
         return data_.write_args;
     }
 
-    static next_action connect(const void* arg) noexcept { return next_action(type_t::connect, data_t(arg)); }
+    static next_action connect() noexcept { return next_action(type_t::connect, data_t()); }
     static next_action read(read_args_t args) noexcept { return next_action(type_t::read, args); }
     static next_action write(write_args_t args) noexcept { return next_action(type_t::write, args); }
-    static next_action ssl_handshake() noexcept { return next_action(type_t::ssl_handshake, {nullptr}); }
-    static next_action ssl_shutdown() noexcept { return next_action(type_t::ssl_shutdown, {nullptr}); }
-    static next_action close() noexcept { return next_action(type_t::close, {nullptr}); }
+    static next_action ssl_handshake() noexcept { return next_action(type_t::ssl_handshake, data_t()); }
+    static next_action ssl_shutdown() noexcept { return next_action(type_t::ssl_shutdown, data_t()); }
+    static next_action close() noexcept { return next_action(type_t::close, data_t()); }
 
 private:
     type_t type_{type_t::none};
     union data_t
     {
         error_code ec;
-        const void* connect_arg;
         read_args_t read_args;
         write_args_t write_args;
 
+        data_t() noexcept : ec(error_code()) {}
         data_t(error_code ec) noexcept : ec(ec) {}
-        data_t(const void* connect_arg) noexcept : connect_arg(connect_arg) {}
         data_t(read_args_t args) noexcept : read_args(args) {}
         data_t(write_args_t args) noexcept : write_args(args) {}
     } data_;

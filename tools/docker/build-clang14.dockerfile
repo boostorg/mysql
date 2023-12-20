@@ -20,6 +20,7 @@ RUN \
         ninja-build \
         cmake \
         python3 \
+        python3-requests \
         python-is-python3 \
         mysql-client && \
     ln -s /usr/bin/clang++-14 /usr/bin/clang++ && \

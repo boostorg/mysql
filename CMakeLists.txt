@@ -28,14 +28,13 @@ add_library(Boost::mysql ALIAS boost_mysql)
 # Dependencies
 if (BOOST_MYSQL_IS_ROOT)
     # If we're the root project, error if a dependency is not found
-    find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS headers system)
+    find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS headers)
     find_package(Threads REQUIRED)
     find_package(OpenSSL REQUIRED)
     target_link_libraries(
         boost_mysql
         INTERFACE
         Boost::headers
-        Boost::system
         Threads::Threads
         OpenSSL::Crypto
         OpenSSL::SSL
@@ -64,12 +63,14 @@ else()
         Boost::config
         Boost::core
         Boost::describe
+        Boost::endian
+        Boost::intrusive
+        Boost::lexical_cast
         Boost::mp11
+        Boost::optional
         Boost::system
         Boost::throw_exception
         Boost::variant2
-        Boost::endian
-        Boost::lexical_cast
         Threads::Threads
         OpenSSL::Crypto
         OpenSSL::SSL
@@ -117,4 +118,8 @@ if(BUILD_TESTING)
         add_subdirectory(example)
     endif()
 
+    # We don't run benchmarks, but we build them to prevent code rotting
+    if (BOOST_MYSQL_IS_ROOT)
+        add_subdirectory(bench)
+    endif()
 endif()

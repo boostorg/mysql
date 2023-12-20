@@ -30,9 +30,13 @@ namespace boost {
 namespace mysql {
 namespace test {
 
+constexpr const char* default_user = "integ_user";
+constexpr const char* default_passwd = "integ_password";
+constexpr const char* default_db = "boost_mysql_integtests";
+
 struct network_fixture_base
 {
-    handshake_params params{"integ_user", "integ_password", "boost_mysql_integtests"};
+    handshake_params params{default_user, default_passwd, default_db};
     boost::asio::io_context ctx;
     boost::asio::ssl::context ssl_ctx{boost::asio::ssl::context::tls_client};
 };
@@ -154,6 +158,14 @@ inline std::vector<network_sample> create_all_network_samples()
 inline const std::vector<network_sample>& all_network_samples()
 {
     static std::vector<network_sample> res = create_all_network_samples();
+    return res;
+}
+
+inline std::vector<network_sample> all_network_samples_with_handshake()
+{
+    std::vector<network_sample> res;
+    for (auto* var : all_variants_with_handshake())
+        res.emplace_back(var);
     return res;
 }
 

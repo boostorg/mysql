@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_CONNECTION_HPP
 
 #include <boost/mysql/buffer_params.hpp>
+#include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
@@ -65,10 +66,6 @@ template <class Stream>
 class connection
 {
     detail::connection_impl impl_;
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
 
 public:
     /**
@@ -221,7 +218,7 @@ public:
             detail::is_socket_stream<Stream>::value,
             "connect can only be used if Stream satisfies the SocketStream concept"
         );
-        impl_.connect<Stream>(endpoint, params, ec, diag);
+        impl_.connect<typename Stream::lowest_layer_type::endpoint_type>(endpoint, params, ec, diag);
     }
 
     /// \copydoc connect
@@ -283,7 +280,12 @@ public:
             detail::is_socket_stream<Stream>::value,
             "async_connect can only be used if Stream satisfies the SocketStream concept"
         );
-        return impl_.async_connect<Stream>(endpoint, params, diag, std::forward<CompletionToken>(token));
+        return impl_.async_connect<typename Stream::lowest_layer_type::endpoint_type>(
+            endpoint,
+            params,
+            diag,
+            std::forward<CompletionToken>(token)
+        );
     }
 
     /**
@@ -1052,6 +1054,10 @@ public:
      * \brief Closes a statement, deallocating it from the server.
      * \details
      * After this operation succeeds, `stmt` must not be used again for execution.
+     * \par Performance warning
+     * This function is currently affected by a peformance issue described
+     * in https://github.com/boostorg/mysql/issues/181. Consider using
+     * \ref reset_connection or \ref async_reset_connection instead.
      * \n
      * \par Preconditions
      *    `stmt.valid() == true`
@@ -1114,8 +1120,8 @@ public:
      * `st.should_read_rows() == false`, returns an empty `rows_view`.
      * \n
      * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
-     * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
-     * constructor, using \ref buffer_params::initial_read_size. The buffer may be
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in the
+     * constructor. The buffer may be
      * grown bigger by other read operations, if required.
      * \n
      * The returned view points into memory owned by `*this`. It will be valid until
@@ -1477,7 +1483,8 @@ public:
      *   \li Releases all table locks.
      *   \li Drops all temporary tables.
      *   \li Resets all session system variables to their default values (including the ones set by `SET
-     * NAMES`) and clears all user-defined variables. \li Closes all prepared statements.
+     *       NAMES`) and clears all user-defined variables.
+     *   \li Closes all prepared statements.
      * \n
      * A full reference on the affected session state can be found
      * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html">here</a>.
@@ -1487,6 +1494,18 @@ public:
      * \n
      * The connection must be connected and authenticated before calling this function.
      * This function involves communication with the server, and thus may fail.
+     *
+     * \par Warning on character sets
+     * This function will restore the connection's character set and collation **to the server's default**,
+     * and not to the one specified during connection establishment. Some servers have `latin1` as their
+     * default character set, which is not usually what you want. Use a `SET NAMES` statement after using
+     * this function to be sure.
+     * \n
+     * You can find the character set that your server will use after reset by running:
+     * \code
+     * SELECT @@global.character_set_client, @@global.character_set_connection,
+     * @@global.character_set_results;
+     * \endcode
      */
     void reset_connection(error_code& err, diagnostics& diag)
     {
@@ -1651,12 +1670,6 @@ public:
         using other = connection<typename detail::rebind_executor<Stream, Executor1>::type>;
     };
 };
-
-/// The default TCP port for the MySQL protocol.
-constexpr unsigned short default_port = 3306;
-
-/// The default TCP port for the MySQL protocol, as a string. Useful for hostname resolution.
-constexpr const char* default_port_string = "3306";
 
 }  // namespace mysql
 }  // namespace boost

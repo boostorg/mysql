@@ -15,6 +15,7 @@ RUN \
         g++-13 \
         libssl-dev \
         python3 \
+        python3-requests \
         python-is-python3 \
         ninja-build \
         git \

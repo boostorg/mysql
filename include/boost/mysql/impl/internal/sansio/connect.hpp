@@ -28,15 +28,12 @@ namespace detail {
 
 class connect_algo : public sansio_algorithm, asio::coroutine
 {
-    const void* connect_arg_;
     handshake_algo handshake_;
     error_code stored_ec_;
 
 public:
     connect_algo(connection_state_data& st, connect_algo_params params) noexcept
-        : sansio_algorithm(st),
-          connect_arg_(params.connect_arg),
-          handshake_(st, {params.diag, params.hparams})
+        : sansio_algorithm(st), handshake_(st, {params.diag, params.hparams})
     {
     }
 
@@ -50,7 +47,7 @@ public:
             handshake_.diag().clear();
 
             // Physical connect
-            BOOST_ASIO_CORO_YIELD return next_action::connect(connect_arg_);
+            BOOST_ASIO_CORO_YIELD return next_action::connect();
             if (ec)
                 return ec;
 
@@ -78,4 +75,4 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_HPP_ */
+#endif

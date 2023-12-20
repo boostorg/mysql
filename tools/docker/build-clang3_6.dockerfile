@@ -15,6 +15,7 @@ RUN \
         libssl-dev \
         git \
         python3 \
+        python3-requests \
         mysql-client && \
     add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get --no-install-recommends -y install clang-3.6 && \

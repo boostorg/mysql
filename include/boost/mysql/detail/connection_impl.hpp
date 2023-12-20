@@ -16,7 +16,9 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
+#include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
@@ -31,8 +33,11 @@
 #include <boost/mp11/integer_sequence.hpp>
 
 #include <array>
+#include <cstddef>
+#include <cstring>
 #include <memory>
 #include <tuple>
+#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -131,25 +136,27 @@ class connection_impl
         }
     };
 
-    template <class Stream>
-    struct connect_initiation
+    // Connect
+    static connect_algo_params make_params_connect(diagnostics& diag, const handshake_params& params) noexcept
+    {
+        return connect_algo_params{&diag, params};
+    }
+
+    template <class EndpointType>
+    struct initiate_connect
     {
         template <class Handler>
         void operator()(
             Handler&& handler,
             any_stream* stream,
             connection_state* st,
-            const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+            const EndpointType& endpoint,
             handshake_params params,
             diagnostics* diag
         )
         {
-            async_run_algo(
-                *stream,
-                *st,
-                connect_algo_params{&endpoint, diag, params},
-                std::forward<Handler>(handler)
-            );
+            stream->set_endpoint(&endpoint);
+            async_run_algo(*stream, *st, make_params_connect(*diag, params), std::forward<Handler>(handler));
         }
     };
 
@@ -226,8 +233,14 @@ public:
 
     // Generic algorithm
     template <class AlgoParams, class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, completion_signature_t<AlgoParams>)
-    async_run(AlgoParams params, CompletionToken&& token)
+    auto async_run(AlgoParams params, CompletionToken&& token)
+        -> decltype(asio::async_initiate<CompletionToken, completion_signature_t<AlgoParams>>(
+            run_algo_initiation(),
+            token,
+            stream_.get(),
+            st_.get(),
+            params
+        ))
     {
         return asio::async_initiate<CompletionToken, completion_signature_t<AlgoParams>>(
             run_algo_initiation(),
@@ -244,29 +257,38 @@ public:
         return run_algo(*stream_, *st_, params, ec);
     }
 
-    // Connect. This handles casting to the corresponding endpoint_type, if required
-    template <class Stream>
+    // Connect
+    template <class EndpointType>
     void connect(
-        const typename Stream::lowest_layer_type::endpoint_type& ep,
+        const EndpointType& endpoint,
         const handshake_params& params,
         error_code& err,
         diagnostics& diag
     )
     {
-        run_algo(*stream_, *st_, connect_algo_params{&ep, &diag, params}, err);
+        stream_->set_endpoint(&endpoint);
+        run_algo(*stream_, *st_, make_params_connect(diag, params), err);
     }
 
-    template <class Stream, class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_connect(
-        const typename Stream::lowest_layer_type::endpoint_type& endpoint,
+    template <class EndpointType, class CompletionToken>
+    auto async_connect(
+        const EndpointType& endpoint,
         const handshake_params& params,
         diagnostics& diag,
         CompletionToken&& token
     )
+        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
+            initiate_connect<EndpointType>(),
+            token,
+            stream_.get(),
+            st_.get(),
+            endpoint,
+            params,
+            &diag
+        ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            connect_initiation<Stream>(),
+            initiate_connect<EndpointType>(),
             token,
             stream_.get(),
             st_.get(),
@@ -297,8 +319,21 @@ public:
     }
 
     template <class ExecutionRequest, class ResultsType, class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_execute(ExecutionRequest&& req, ResultsType& result, diagnostics& diag, CompletionToken&& token)
+    auto async_execute(
+        ExecutionRequest&& req,
+        ResultsType& result,
+        diagnostics& diag,
+        CompletionToken&& token
+    )
+        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
+            initiate_execute(),
+            token,
+            stream_.get(),
+            st_.get(),
+            std::forward<ExecutionRequest>(req),
+            &access::get_impl(result).get_interface(),
+            &diag
+        ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
             initiate_execute(),
@@ -330,13 +365,21 @@ public:
     }
 
     template <class ExecutionRequest, class ExecutionStateType, class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_start_execution(
+    auto async_start_execution(
         ExecutionRequest&& req,
         ExecutionStateType& exec_st,
         diagnostics& diag,
         CompletionToken&& token
     )
+        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
+            initiate_start_execution(),
+            token,
+            stream_.get(),
+            st_.get(),
+            std::forward<ExecutionRequest>(req),
+            &access::get_impl(exec_st).get_interface(),
+            &diag
+        ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
             initiate_start_execution(),
@@ -402,6 +445,61 @@ public:
     BOOST_MYSQL_DECL
     diagnostics& shared_diag() noexcept;
 };
+
+// To use some completion tokens, like deferred, in C++11, the old macros
+// BOOST_ASIO_INITFN_AUTO_RESULT_TYPE are no longer enough.
+// Helper typedefs to reduce duplication
+template <class AlgoParams, class CompletionToken>
+using async_run_t = decltype(std::declval<connection_impl&>()
+                                 .async_run(std::declval<AlgoParams>(), std::declval<CompletionToken>()));
+
+template <class EndpointType, class CompletionToken>
+using async_connect_t = decltype(std::declval<connection_impl&>().async_connect(
+    std::declval<const EndpointType&>(),
+    std::declval<const handshake_params&>(),
+    std::declval<diagnostics&>(),
+    std::declval<CompletionToken>()
+));
+
+template <class ExecutionRequest, class ResultsType, class CompletionToken>
+using async_execute_t = decltype(std::declval<connection_impl&>().async_execute(
+    std::declval<ExecutionRequest>(),
+    std::declval<ResultsType&>(),
+    std::declval<diagnostics&>(),
+    std::declval<CompletionToken>()
+));
+
+template <class ExecutionRequest, class ExecutionStateType, class CompletionToken>
+using async_start_execution_t = decltype(std::declval<connection_impl&>().async_start_execution(
+    std::declval<ExecutionRequest>(),
+    std::declval<ExecutionStateType&>(),
+    std::declval<diagnostics&>(),
+    std::declval<CompletionToken>()
+));
+
+template <class CompletionToken>
+using async_read_resultset_head_t = async_run_t<read_resultset_head_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_read_some_rows_dynamic_t = async_run_t<read_some_rows_dynamic_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_prepare_statement_t = async_run_t<prepare_statement_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_close_statement_t = async_run_t<close_statement_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_ping_t = async_run_t<ping_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_reset_connection_t = async_run_t<reset_connection_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_quit_connection_t = async_run_t<quit_connection_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_close_connection_t = async_run_t<close_connection_algo_params, CompletionToken>;
 
 }  // namespace detail
 }  // namespace mysql

@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
@@ -25,11 +26,12 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-template <class Stream>
-class async_callback_connection : public connection_base<Stream>
+template <class Base>
+class async_callback_base : public Base
 {
-    using conn_type = connection<Stream>;
-    using base_type = connection_base<Stream>;
+protected:
+    using conn_type = typename Base::conn_type;
+    using base_type = Base;
 
     template <class R, class... Args>
     using pmem_t = void (conn_type::*)(Args..., diagnostics&, as_network_result<R>&&);
@@ -52,8 +54,25 @@ class async_callback_connection : public connection_base<Stream>
     }
 
 public:
-    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC()
+    using Base::Base;
     static constexpr const char* name() noexcept { return "async_callback"; }
+};
+
+template <class Stream>
+class async_callback_connection : public async_callback_base<connection_base<Stream>>
+{
+    using base_type = async_callback_base<connection_base<Stream>>;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC()
+};
+
+class any_async_callback_connection : public async_callback_base<any_connection_base>
+{
+    using base_type = async_callback_base<any_connection_base>;
+
+public:
+    BOOST_MYSQL_TEST_IMPLEMENT_ASYNC_ANY()
 };
 
 template <class Stream>
@@ -71,7 +90,9 @@ void boost::mysql::test::add_async_callback(std::vector<er_network_variant*>& ou
     // Spotcheck for both streams
     add_async_callback_variant<tcp_socket>(output);
     add_async_callback_variant<tcp_ssl_socket>(output);
+    add_variant_any<address_type::host_and_port, any_async_callback_connection>(output);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
     add_async_callback_variant<unix_socket>(output);
+    add_variant_any<address_type::unix_path, any_async_callback_connection>(output);
 #endif
 }

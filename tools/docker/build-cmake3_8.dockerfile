@@ -14,6 +14,7 @@ RUN \
         ca-certificates \
         git \
         python3 \
+        python3-requests \
         g++ \
         gnupg-curl \
         libssl-dev \

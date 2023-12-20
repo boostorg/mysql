@@ -15,7 +15,6 @@
 #include <cstddef>
 #include <cstdint>
 
-
 namespace boost {
 namespace mysql {
 namespace detail {

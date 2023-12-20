@@ -50,8 +50,9 @@ public:
     virtual void async_write_some(asio::const_buffer, bool use_ssl, asio::any_completion_handler<void(error_code, std::size_t)>) = 0;
 
     // Connect and close
-    virtual void connect(const void* endpoint, error_code& ec) = 0;
-    virtual void async_connect(const void* endpoint, asio::any_completion_handler<void(error_code)>) = 0;
+    virtual void set_endpoint(const void*) = 0;
+    virtual void connect(error_code& ec) = 0;
+    virtual void async_connect(asio::any_completion_handler<void(error_code)>) = 0;
     virtual void close(error_code& ec) = 0;
 };
 

@@ -46,17 +46,26 @@ add_executable(
     test/execution_processor/results_impl.cpp
     test/execution_processor/static_results_impl.cpp
 
+    test/connection_pool/timer_list.cpp
+    test/connection_pool/wait_group.cpp
+    test/connection_pool/sansio_connection_node.cpp
+    test/connection_pool/connection_pool_impl.cpp
+
     test/detail/datetime.cpp
     test/detail/row_impl.cpp
     test/detail/rows_iterator.cpp
     test/detail/execution_concepts.cpp
     test/detail/writable_field_traits.cpp
     test/detail/socket_stream.cpp
+    test/detail/connect_params_helpers.cpp
+
     test/detail/typing/meta_check_context.cpp
     test/detail/typing/pos_map.cpp
     test/detail/typing/readable_field_traits.cpp
     test/detail/typing/row_traits.cpp
     test/detail/typing/get_type_index.cpp
+
+    test/impl/ssl_context_with_default.cpp
 
     test/spotchecks/connection_use_after_move.cpp
     test/spotchecks/default_completion_tokens.cpp
@@ -87,6 +96,10 @@ add_executable(
     test/diagnostics.cpp
     test/statement.cpp
     test/throw_on_error.cpp
+    test/any_address.cpp
+    test/any_connection.cpp
+    test/pool_params.cpp
+    test/connection_pool.cpp
 )
 target_include_directories(
     boost_mysql_unittests

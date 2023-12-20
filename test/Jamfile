@@ -82,6 +82,7 @@ local requirements =
         <define>BOOST_ASIO_DISABLE_BOOST_BIND=1
         <define>BOOST_ASIO_DISABLE_BOOST_DATE_TIME=1
         <define>BOOST_ASIO_DISABLE_BOOST_REGEX=1
+        <define>BOOST_ASIO_DISABLE_BOOST_COROUTINE=1
         <define>BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
         <define>BOOST_ALLOW_DEPRECATED_HEADERS=1
         <toolset>msvc:<cxxflags>"/bigobj"
@@ -91,7 +92,8 @@ local requirements =
         <toolset>msvc:<define>_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
-        <toolset>gcc-13:<cxxflags>-Wno-dangling-reference # GCC13 doesn't understand view types
+        # GCC13 doesn't understand view types and issues array bound warnings that don't make sense.
+        <toolset>gcc-13:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds"
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
@@ -140,6 +142,10 @@ alias common_test_sources
         common/src/entry_point.cpp
         common/src/tracker_executor.cpp
     ;
+
+# Boost.Context causes failures with warnings-as-errors
+# under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
+alias boost_context_lib : /boost/context//boost_context/<warnings-as-errors>off ;
 
 alias boost_mysql_test
     :

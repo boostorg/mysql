@@ -17,13 +17,13 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/check_meta.hpp"
+#include "test_common/netfun_maker.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
-#include "test_unit/netfun_maker.hpp"
 #include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql;

@@ -41,6 +41,12 @@ public:
     {
     }
 
+    void reset() noexcept
+    {
+        buffer_.reset();
+        state_ = parse_state();
+    }
+
     // Prepares a read operation. sequence_number should be kept alive until
     // the next read is prepared or no more calls to resume() are expected.
     // If keep_state=true, and the op is not complete, parsing state is preserved

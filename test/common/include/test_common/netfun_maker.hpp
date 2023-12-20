@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_NETFUN_MAKER_HPP
-#define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_NETFUN_MAKER_HPP
+#ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_NETFUN_MAKER_HPP
+#define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_NETFUN_MAKER_HPP
 
 #include <boost/mysql/error_with_diagnostics.hpp>
 
@@ -20,9 +20,6 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-// Note: the async implementations are only valid for unit tests.
-// These rely on the stream dispatching completion handlers directly
-// via post(), which only happens with test_stream.
 template <class R, class IOObject, class... Args>
 struct netfun_maker_impl
 {
@@ -60,7 +57,6 @@ struct netfun_maker_impl
         };
     }
 
-    // Used by channel functions
     template <class Pfn>
     static signature sync_errc_noerrinfo(Pfn fn)
     {
@@ -72,9 +68,9 @@ struct netfun_maker_impl
     }
 
     template <class Pfn>
-    static signature async_errinfo(Pfn fn)
+    static signature async_errinfo(Pfn fn, bool validate_exec_info = true)
     {
-        return [fn](IOObject& obj, Args... args) {
+        return [fn, validate_exec_info](IOObject& obj, Args... args) {
             auto io_obj_executor = obj.get_executor();
             executor_info exec_info{};
             auto res = create_initial_netresult<R>();
@@ -86,16 +82,19 @@ struct netfun_maker_impl
                 as_network_result<R>(res, create_tracker_executor(obj.get_executor(), &exec_info))
             );
             run_until_completion(io_obj_executor);
-            BOOST_TEST(get_executor_info(io_obj_executor).num_posts > 0u);
-            BOOST_TEST(exec_info.num_dispatches > 0u);
+            if (validate_exec_info)
+            {
+                BOOST_TEST(get_executor_info(io_obj_executor).num_posts > 0u);
+                BOOST_TEST(exec_info.num_dispatches > 0u);
+            }
             return res;
         };
     }
 
     template <class Pfn>
-    static signature async_noerrinfo(Pfn fn)
+    static signature async_noerrinfo(Pfn fn, bool validate_exec_info = true)
     {
-        return [fn](IOObject& obj, Args... args) {
+        return [fn, validate_exec_info](IOObject& obj, Args... args) {
             auto io_obj_executor = obj.get_executor();
             executor_info exec_info{};
             auto res = create_initial_netresult<R>(false);
@@ -106,8 +105,11 @@ struct netfun_maker_impl
                 as_network_result<R>(res, create_tracker_executor(obj.get_executor(), &exec_info))
             );
             run_until_completion(io_obj_executor);
-            BOOST_TEST(get_executor_info(io_obj_executor).num_posts > 0u);
-            BOOST_TEST(exec_info.num_dispatches > 0u);
+            if (validate_exec_info)
+            {
+                BOOST_TEST(get_executor_info(io_obj_executor).num_posts > 0u);
+                BOOST_TEST(exec_info.num_dispatches > 0u);
+            }
             return res;
         };
     }
@@ -132,8 +134,14 @@ public:
         return impl::sync_errc_noerrinfo(pfn);
     }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
-    static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
-    static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
+    static signature async_errinfo(sig_async_errinfo pfn, bool validate_exec_info = true)
+    {
+        return impl::async_errinfo(pfn, validate_exec_info);
+    }
+    static signature async_noerrinfo(sig_async_noerrinfo pfn, bool validate_exec_info = true)
+    {
+        return impl::async_noerrinfo(pfn, validate_exec_info);
+    }
 };
 
 template <class R, class... Args>
@@ -155,8 +163,14 @@ public:
         return impl::sync_errc_noerrinfo(pfn);
     }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
-    static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
-    static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
+    static signature async_errinfo(sig_async_errinfo pfn, bool validate_exec_info = true)
+    {
+        return impl::async_errinfo(pfn, validate_exec_info);
+    }
+    static signature async_noerrinfo(sig_async_noerrinfo pfn, bool validate_exec_info = true)
+    {
+        return impl::async_noerrinfo(pfn, validate_exec_info);
+    }
 };
 
 }  // namespace test

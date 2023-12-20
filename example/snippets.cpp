@@ -8,7 +8,10 @@
 // This file contains all the snippets that are used in the docs.
 // They're here so they are built and run, to ensure correctness
 
+#include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -18,6 +21,7 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset.hpp>
 #include <boost/mysql/resultset_view.hpp>
@@ -25,6 +29,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/static_results.hpp>
@@ -32,12 +37,19 @@
 #include <boost/mysql/tcp_ssl.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
+#include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/error.hpp>
+#include <boost/asio/ssl/host_name_verification.hpp>
+#include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/asio/this_coro.hpp>
+#include <boost/asio/thread_pool.hpp>
+#include <boost/asio/use_future.hpp>
 #include <boost/config.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/describe/class.hpp>
@@ -45,8 +57,12 @@
 #include <boost/system/system_error.hpp>
 
 #include <array>
+#include <chrono>
+#include <cstddef>
+#include <functional>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <tuple>
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
@@ -84,6 +100,19 @@ using boost::mysql::static_results;
         std::cerr << "Assertion failed: " #expr << std::endl; \
         exit(1);                                              \
     }
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+void run_coro(boost::asio::any_io_executor ex, std::function<boost::asio::awaitable<void>(void)> fn)
+{
+    boost::asio::co_spawn(ex, fn, [](std::exception_ptr ptr) {
+        if (ptr)
+        {
+            std::rethrow_exception(ptr);
+        }
+    });
+    static_cast<boost::asio::io_context&>(ex.context()).run();
+}
+#endif
 
 const char* get_value_from_user() { return ""; }
 int get_int_value_from_user() { return 42; }
@@ -218,21 +247,6 @@ boost::asio::awaitable<void> overview_coro(tcp_ssl_connection& conn)
     // This will throw an error_with_diagnostics in case of failure
     boost::mysql::throw_on_error(ec, diag);
     //]
-}
-
-void run_overview_coro(tcp_ssl_connection& conn)
-{
-    boost::asio::co_spawn(
-        conn.get_executor(),
-        [&conn] { return overview_coro(conn); },
-        [](std::exception_ptr ptr) {
-            if (ptr)
-            {
-                std::rethrow_exception(ptr);
-            }
-        }
-    );
-    static_cast<boost::asio::io_context&>(conn.get_executor().context()).run();
 }
 
 boost::asio::awaitable<void> dont_run()
@@ -398,7 +412,9 @@ void section_overview(tcp_ssl_connection& conn)
         //]
     }
     {
-        run_overview_coro(conn);
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+        run_coro(conn.get_executor(), [&conn] { return overview_coro(conn); });
+#endif
     }
     {
         results r;
@@ -1147,6 +1163,373 @@ void section_time_types(tcp_ssl_connection& conn)
     }
 }
 
+//[any_connection_tcp
+void create_and_connect(
+    string_view server_hostname,
+    string_view username,
+    string_view password,
+    string_view database
+)
+{
+    // connect_params contains all the info required to establish a session
+    boost::mysql::connect_params params;
+    params.server_address.emplace_host_and_port(server_hostname);  // server host
+    params.username = username;                                    // username to log in as
+    params.password = password;                                    // password to use
+    params.database = database;                                    // database to use
+
+    // The execution context, required to run I/O operations.
+    boost::asio::io_context ctx;
+
+    // A connection to the server. Note how the type doesn't depend
+    // on the transport being used.
+    boost::mysql::any_connection conn(ctx);
+
+    // Connect to the server. This will perform hostname resolution,
+    // TCP-level connect, and the MySQL handshake. After this function
+    // succeeds, your connection is ready to run queries
+    conn.connect(params);
+}
+//]
+
+// Intentionally not run, since it creates problems in Windows CIs
+//[any_connection_unix
+void create_and_connect_unix(string_view username, string_view password, string_view database)
+{
+    // server_address may contain a UNIX socket path, too
+    boost::mysql::connect_params params;
+    params.server_address.emplace_unix_path("/var/run/mysqld/mysqld.sock");
+    params.username = username;  // username to log in as
+    params.password = password;  // password to use
+    params.database = database;  // database to use
+
+    // The execution context, required to run I/O operations.
+    boost::asio::io_context ctx;
+
+    // A connection to the server. Note how the type doesn't depend
+    // on the transport being used.
+    boost::mysql::any_connection conn(ctx);
+
+    // Connect to the server. This will perform the
+    // UNIX socket connect and the MySQL handshake. After this function
+    // succeeds, your connection is ready to run queries
+    conn.connect(params);
+}
+//]
+
+//[any_connection_reconnect
+error_code connect_with_retries(
+    boost::mysql::any_connection& conn,
+    const boost::mysql::connect_params& params
+)
+{
+    // We will be using the non-throwing overloads
+    error_code ec;
+    diagnostics diag;
+
+    // Try to connect at most 10 times
+    for (int i = 0; i < 10; ++i)
+    {
+        // Try to connect
+        conn.connect(params, ec, diag);
+
+        // If we succeeded, we're done
+        if (!ec)
+            return error_code();
+
+        // Whoops, connect failed. We can sleep and try again
+        std::cerr << "Failed connecting to MySQL: " << ec << ": " << diag.server_message() << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+
+    // No luck, retries expired
+    return ec;
+}
+//]
+
+void section_any_connection(string_view server_hostname, string_view username, string_view password)
+{
+    create_and_connect(server_hostname, username, password, "boost_mysql_examples");
+
+    {
+        boost::mysql::connect_params params;
+        params.server_address.emplace_host_and_port(server_hostname);  // server host
+        params.username = username;                                    // username to log in as
+        params.password = password;                                    // password to use
+
+        boost::asio::io_context ctx;
+        boost::mysql::any_connection conn(ctx);
+        auto ec = connect_with_retries(conn, params);
+        ASSERT(ec == error_code());
+    }
+
+    {
+        boost::mysql::connect_params params;
+
+        //[any_connection_ssl_mode
+        // Don't ever use TLS, even if the server supports it
+        params.ssl = boost::mysql::ssl_mode::disable;
+
+        // ...
+
+        // Force using TLS. If the server doesn't support it, reject the connection
+        params.ssl = boost::mysql::ssl_mode::require;
+        //]
+    }
+
+    {
+        //[any_connection_ssl_ctx
+        // The I/O context requied to run network operations
+        boost::asio::io_context ctx;
+
+        // Create a SSL context
+        boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tlsv12_client);
+
+        // Set options on the SSL context. Load the default certificate authorities
+        // and enable certificate verification. connect will fail if the server certificate
+        // isn't signed by a trusted entity or its hostname isn't "mysql"
+        ssl_ctx.set_default_verify_paths();
+        ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
+        ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("mysql"));
+
+        // Construct an any_connection object passing the SSL context.
+        // You must keep ssl_ctx alive while using the connection.
+        boost::mysql::any_connection_params ctor_params;
+        ctor_params.ssl_context = &ssl_ctx;
+        boost::mysql::any_connection conn(ctx, ctor_params);
+
+        // Connect params
+        boost::mysql::connect_params params;
+        params.server_address.emplace_host_and_port(server_hostname);  // server host
+        params.username = username;                                    // username to log in as
+        params.password = password;                                    // password to use
+        params.ssl = boost::mysql::ssl_mode::require;                  // fail if TLS is not available
+
+        // Connect
+        error_code ec;
+        diagnostics diag;
+        conn.connect(params, ec, diag);
+        if (ec)
+        {
+            // Handle error
+        }
+        //]
+        ASSERT(ec != error_code());
+        ASSERT(ec.category() == boost::asio::error::get_ssl_category());
+    }
+}
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+//[connection_pool_get_connection
+// Use connection pools for functions that will be called
+// repeatedly during the application lifetime.
+// An HTTP server handler function is a good candidate.
+boost::asio::awaitable<std::int64_t> get_num_employees(boost::mysql::connection_pool& pool)
+{
+    // Get a fresh connection from the pool.
+    // pooled_connection is a proxy to an any_connection object.
+    boost::mysql::pooled_connection conn = co_await pool.async_get_connection(boost::asio::use_awaitable);
+
+    // Use pooled_connection::operator-> to access the underlying any_connection.
+    // Let's use the connection
+    results result;
+    co_await conn->async_execute("SELECT COUNT(*) FROM employee", result, boost::asio::use_awaitable);
+    co_return result.rows().at(0).at(0).as_int64();
+
+    // When conn is destroyed, the connection is returned to the pool
+}
+//]
+
+boost::asio::awaitable<void> return_without_reset(boost::mysql::connection_pool& pool)
+{
+    //[connection_pool_return_without_reset
+    // Get a connection from the pool
+    boost::mysql::pooled_connection conn = co_await pool.async_get_connection(boost::asio::use_awaitable);
+
+    // Use the connection in a way that doesn't mutate session state.
+    // We're not setting variables, preparing statements or starting transactions,
+    // so it's safe to skip reset
+    boost::mysql::results result;
+    co_await conn->async_execute("SELECT COUNT(*) FROM employee", result, boost::asio::use_awaitable);
+
+    // Explicitly return the connection to the pool, skipping reset
+    conn.return_without_reset();
+    //]
+}
+#endif
+
+//[connection_pool_sync
+// Wraps a connection_pool and offers a sync interface.
+// sync_pool is thread-safe
+class sync_pool
+{
+    // A thread pool with a single thread. This is used to
+    // run the connection pool. The thread is automatically
+    // joined when sync_pool is destroyed.
+    boost::asio::thread_pool thread_pool_{1};
+
+    // The async connection pool
+    boost::mysql::connection_pool conn_pool_;
+
+public:
+    // Constructor: constructs the connection_pool object from
+    // the single-thread pool and calls async_run.
+    // The pool has a single thread, which creates an implicit strand.
+    // There is no need to use pool_executor_params::thread_safe
+    sync_pool(boost::mysql::pool_params params) : conn_pool_(thread_pool_, std::move(params))
+    {
+        // Run the pool in the background (this is performed by the thread_pool thread).
+        // When sync_pool is destroyed, this task will be stopped and joined automatically.
+        conn_pool_.async_run(boost::asio::detached);
+    }
+
+    // Retrieves a connection from the pool (error code version)
+    boost::mysql::pooled_connection get_connection(
+        boost::mysql::error_code& ec,
+        boost::mysql::diagnostics& diag,
+        std::chrono::steady_clock::duration timeout = std::chrono::seconds(30)
+    )
+    {
+        // The completion token to use for the async initiation function.
+        // use_future will make the async function return a std::future object, which will
+        // become ready when the operation completes.
+        // as_tuple prevents the future from throwing on error, and packages the result as a tuple.
+        // The returned future will be std::future<std::tuple<error_code, pooled_connection>>.
+        constexpr auto completion_token = boost::asio::as_tuple(boost::asio::use_future);
+
+        // We will use std::tie to decompose the tuple into its components.
+        // We need to declare the connection before using std::tie
+        boost::mysql::pooled_connection res;
+
+        // async_get_connection returns a future. Calling std::future::get will
+        // wait for the future to become ready
+        std::tie(ec, res) = conn_pool_.async_get_connection(timeout, diag, completion_token).get();
+
+        // Done!
+        return res;
+    }
+
+    // Retrieves a connection from the pool (exception version)
+    boost::mysql::pooled_connection get_connection(
+        std::chrono::steady_clock::duration timeout = std::chrono::seconds(30)
+    )
+    {
+        // Call the error code version
+        boost::mysql::error_code ec;
+        boost::mysql::diagnostics diag;
+        auto res = get_connection(ec, diag, timeout);
+
+        // This will throw boost::mysql::error_with_diagnostics on error
+        boost::mysql::throw_on_error(ec, diag);
+
+        // Done
+        return res;
+    }
+};
+//]
+
+void section_connection_pool(string_view server_hostname, string_view username, string_view password)
+{
+    {
+        //[connection_pool_create
+        // pool_params contains configuration for the pool.
+        // You must specify enough information to establish a connection,
+        // including the server address and credentials.
+        // You can configure a lot of other things, like pool limits
+        boost::mysql::pool_params params;
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = username;
+        params.password = password;
+        params.database = "boost_mysql_examples";
+
+        // The I/O context, required by all I/O operations
+        boost::asio::io_context ctx;
+
+        // Construct a pool of connections. The context will be used internally
+        // to create the connections and other I/O objects
+        boost::mysql::connection_pool pool(ctx, std::move(params));
+
+        // You need to call async_run on the pool before doing anything useful with it.
+        // async_run creates connections and keeps them healthy. It must be called
+        // only once per pool.
+        // The detached completion token means that we don't want to be notified when
+        // the operation ends. It's similar to a no-op callback.
+        pool.async_run(boost::asio::detached);
+        //]
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+        run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
+            co_await get_num_employees(pool);
+            pool.cancel();
+        });
+#endif
+    }
+    {
+        boost::asio::io_context ctx;
+
+        //[connection_pool_configure_size
+        boost::mysql::pool_params params;
+
+        // Set the usual params
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = username;
+        params.password = password;
+        params.database = "boost_mysql_examples";
+
+        // Create 10 connections at startup, and allow up to 1000 connections
+        params.initial_size = 10;
+        params.max_size = 1000;
+
+        boost::mysql::connection_pool pool(ctx, std::move(params));
+        //]
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+        pool.async_run(boost::asio::detached);
+        run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
+            co_await return_without_reset(pool);
+            pool.cancel();
+        });
+#endif
+    }
+    {
+        //[connection_pool_thread_safe
+        // The I/O context, required by all I/O operations
+        boost::asio::io_context ctx;
+
+        // The usual pool configuration params
+        boost::mysql::pool_params params;
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = username;
+        params.password = password;
+        params.database = "boost_mysql_examples";
+
+        // By passing pool_executor_params::thread_safe to connection_pool,
+        // we make all its member functions thread-safe.
+        // This works by creating a strand.
+        boost::mysql::connection_pool pool(
+            boost::mysql::pool_executor_params::thread_safe(ctx.get_executor()),
+            std::move(params)
+        );
+
+        // We can now pass a reference to pool to other threads,
+        // and call async_get_connection concurrently without problem.
+        // Inidivudal connections are still not thread-safe.
+        //]
+    }
+    {
+        boost::mysql::pool_params params;
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = username;
+        params.password = password;
+        params.database = "boost_mysql_examples";
+
+        sync_pool spool(std::move(params));
+
+        auto conn1 = spool.get_connection();
+        ASSERT(conn1.valid());
+    }
+}
+
 void main_impl(int argc, char** argv)
 {
     if (argc != 4)
@@ -1197,6 +1580,8 @@ void main_impl(int argc, char** argv)
     section_metadata(conn);
     section_charsets(conn);
     section_time_types(conn);
+    section_any_connection(argv[3], argv[1], argv[2]);
+    section_connection_pool(argv[3], argv[1], argv[2]);
 
     conn.close();
 }

@@ -92,7 +92,7 @@ struct run_algo_op : boost::asio::coroutine
                 }
                 else if (act.type() == next_action::type_t::connect)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.async_connect(act.connect_arg(), std::move(self));
+                    BOOST_ASIO_CORO_YIELD stream_.async_connect(std::move(self));
                     has_done_io_ = true;
                 }
                 else
@@ -150,7 +150,7 @@ inline void run_algo_impl(any_stream& stream, any_algo_ref algo, error_code& ec)
         }
         else if (act.type() == next_action::type_t::connect)
         {
-            stream.connect(act.connect_arg(), ec);
+            stream.connect(io_ec);
         }
         else
         {

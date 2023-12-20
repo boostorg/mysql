@@ -48,7 +48,7 @@ def _cmake_bool(value: bool) -> str:
 
 def _common_settings(
     boost_root: Path,
-    server_host: str = 'localhost',
+    server_host: str = '127.0.0.1',
     db: str = 'mysql8'
 ) -> None:
     _add_to_path(boost_root)
@@ -219,6 +219,7 @@ def _b2_build(
         '-j4',
         'libs/mysql/test',
         'libs/mysql/test/integration//boost_mysql_integrationtests',
+        'libs/mysql/test/thread_safety',
         'libs/mysql/example'
     ])
 
@@ -271,10 +272,10 @@ def _cmake_build(
         _run([
             'b2',
             '--prefix={}'.format(b2_distro),
-            '--with-system',
             '--with-context',
-            '--with-date_time',
             '--with-test',
+            '--with-json',
+            '--with-url',
             '-d0',
         ] + (['cxxstd={}'.format(cxxstd)] if cxxstd else []) + [
             'install'
@@ -511,7 +512,7 @@ def main():
     parser.add_argument('--separate-compilation', type=_str2bool, default=True)
     parser.add_argument('--address-sanitizer', type=_str2bool, default=False)
     parser.add_argument('--undefined-sanitizer', type=_str2bool, default=False)
-    parser.add_argument('--server-host', default='localhost')
+    parser.add_argument('--server-host', default='127.0.0.1')
 
     args = parser.parse_args()
 

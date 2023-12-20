@@ -20,8 +20,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
-          unlink /usr/local/bin/python
+          unlink /usr/local/bin/python || echo "/usr/local/bin/python not found"
           ln -s /usr/local/bin/python3 /usr/local/bin/python
+          python -m pip install requests
           source tools/setup_db_osx.sh
           python tools/ci.py \
             --build-kind=b2 \

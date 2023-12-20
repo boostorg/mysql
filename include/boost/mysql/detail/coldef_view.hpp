@@ -11,6 +11,8 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <cstdint>
+
 namespace boost {
 namespace mysql {
 namespace detail {
