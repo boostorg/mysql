@@ -1453,60 +1453,38 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
     pool_test<op>(pool_params{});
 }
 
-// TODO: pool size 0 works
-// BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
-// {
-//     struct op : pool_test_op<op>
-//     {
-//         using pool_test_op<op>::pool_test_op;
-//         get_connection_task task;
+// pool size 0 works
+BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
+{
+    struct op : pool_test_op<op>
+    {
+        using pool_test_op<op>::pool_test_op;
+        get_connection_task task;
 
-//         void invoke()
-//         {
-//             auto& node1 = pool_->nodes().front();
+        std::size_t initial_num_nodes() const final { return 0u; }
 
-//             BOOST_ASIO_CORO_REENTER(*this)
-//             {
-//                 // Wait for a connection to be ready, then get it from the pool
-//                 BOOST_ASIO_CORO_YIELD step(node1, fn_type::connect);
-//                 wait_for_status(node1, connection_status::idle);
-//                 BOOST_ASIO_CORO_YIELD
-//                 wait_for_task(get_connection_task(*pool_, std::chrono::seconds(5), nullptr), node1);
+        void invoke()
+        {
+            BOOST_ASIO_CORO_REENTER(*this)
+            {
+                // No connections created at this point. A connection request arrives
+                BOOST_TEST(pool_->nodes().size() == 0u);
+                task = get_connection_task(*pool_, std::chrono::seconds(5), nullptr);
 
-//                 // Another request is issued. The connection we have is in use, so another one is created.
-//                 // Since this is not immediate, the task will need to wait
-//                 task2 = get_connection_task(*pool_, std::chrono::seconds(5), nullptr);
-//                 BOOST_ASIO_CORO_YIELD wait_for_num_requests(1);
-//                 node2 = &*std::next(pool_->nodes().begin());
+                // This creates a new connection, which fulfills the request
+                wait_for_num_requests(1);
+                BOOST_TEST(pool_->nodes().size() == 1u);
+                BOOST_ASIO_CORO_YIELD step(pool_->nodes().front(), fn_type::connect);
+                BOOST_ASIO_CORO_YIELD wait_for_task(task, pool_->nodes().front());
+            }
+        }
+    };
 
-//                 // Connection connects successfully and is handed to us
-//                 BOOST_ASIO_CORO_YIELD step(*node2, fn_type::connect);
-//                 BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2);
-//                 BOOST_TEST(node2->status() == connection_status::in_use);
-//                 BOOST_TEST(pool_->nodes().size() == 2u);
-//                 BOOST_TEST(pool_->num_pending_requests() == 0u);
+    pool_params params;
+    params.initial_size = 0;
 
-//                 // Another request is issued. All connections are in use but max size is already
-//                 // reached, so no new connection is created
-//                 task3 = get_connection_task(*pool_, std::chrono::seconds(5), nullptr);
-//                 BOOST_ASIO_CORO_YIELD wait_for_num_requests(1);
-//                 BOOST_TEST(pool_->nodes().size() == 2u);
-
-//                 // When one of the connections is returned, the request is fulfilled
-//                 node2->mark_as_collectable(false);
-//                 BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node2);
-//                 BOOST_TEST(pool_->num_pending_requests() == 0u);
-//                 BOOST_TEST(pool_->nodes().size() == 2u);
-//             }
-//         }
-//     };
-
-//     pool_params params;
-//     params.initial_size = 1;
-//     params.max_size = 2;
-
-//     pool_test<op>(std::move(params));
-// }
+    pool_test<op>(std::move(params));
+}
 
 // pool_params have the intended effect
 BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
