@@ -39,8 +39,7 @@ We will use C++20 coroutines to make async code simpler:
 
 By default, [refmem connection_pool async_run] will run forever. When
 your application exits, you will want to stop it using [refmem connection_pool cancel].
-This is typical in signal handlers, to guarantee a clean shutdown. Destroying
-the connection pool will also cancel `async_run`.
+This is typical in signal handlers, to guarantee a clean shutdown.
 
 Note that pooling works only with [reflink any_connection].
 
