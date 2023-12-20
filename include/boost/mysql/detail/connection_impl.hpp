@@ -143,7 +143,7 @@ class connection_impl
     }
 
     template <class EndpointType>
-    struct connect_initiation
+    struct initiate_connect
     {
         template <class Handler>
         void operator()(
@@ -278,7 +278,7 @@ public:
         CompletionToken&& token
     )
         -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-            connect_initiation<EndpointType>(),
+            initiate_connect<EndpointType>(),
             token,
             stream_.get(),
             st_.get(),
@@ -288,7 +288,7 @@ public:
         ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            connect_initiation<EndpointType>(),
+            initiate_connect<EndpointType>(),
             token,
             stream_.get(),
             st_.get(),
@@ -450,37 +450,33 @@ public:
 // BOOST_ASIO_INITFN_AUTO_RESULT_TYPE are no longer enough.
 // Helper typedefs to reduce duplication
 template <class AlgoParams, class CompletionToken>
-using async_run_t = decltype(std::declval<connection_impl&>().async_run(
-    std::declval<AlgoParams>(),
-    std::forward<CompletionToken>(std::declval<CompletionToken&&>())
-));
+using async_run_t = decltype(std::declval<connection_impl&>()
+                                 .async_run(std::declval<AlgoParams>(), std::declval<CompletionToken>()));
 
 template <class EndpointType, class CompletionToken>
 using async_connect_t = decltype(std::declval<connection_impl&>().async_connect(
     std::declval<const EndpointType&>(),
     std::declval<const handshake_params&>(),
     std::declval<diagnostics&>(),
-    std::forward<CompletionToken>(std::declval<CompletionToken&&>())
+    std::declval<CompletionToken>()
 ));
-
-template <class CompletionToken>
-using async_handshake_t = async_run_t<handshake_algo_params, CompletionToken>;
 
 template <class ExecutionRequest, class ResultsType, class CompletionToken>
 using async_execute_t = decltype(std::declval<connection_impl&>().async_execute(
-    std::declval<ExecutionRequest&&>(),
+    std::declval<ExecutionRequest>(),
     std::declval<ResultsType&>(),
     std::declval<diagnostics&>(),
-    std::forward<CompletionToken>(std::declval<CompletionToken&&>())
+    std::declval<CompletionToken>()
 ));
 
 template <class ExecutionRequest, class ExecutionStateType, class CompletionToken>
 using async_start_execution_t = decltype(std::declval<connection_impl&>().async_start_execution(
-    std::declval<ExecutionRequest&&>(),
+    std::declval<ExecutionRequest>(),
     std::declval<ExecutionStateType&>(),
     std::declval<diagnostics&>(),
-    std::forward<CompletionToken>(std::declval<CompletionToken&&>())
+    std::declval<CompletionToken>()
 ));
+
 template <class CompletionToken>
 using async_read_resultset_head_t = async_run_t<read_resultset_head_algo_params, CompletionToken>;
 

@@ -6,14 +6,22 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/connect_params.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
+#include <boost/asio/deferred.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
+
+#include <string>
 
 #include "test_common/printing.hpp"
 
 using namespace boost::mysql;
 namespace asio = boost::asio;
+using asio::deferred;
 
 BOOST_AUTO_TEST_SUITE(test_any_connection)
 
@@ -80,6 +88,59 @@ BOOST_AUTO_TEST_CASE(set_meta_mode)
     // Setting it causes effect
     conn.set_meta_mode(metadata_mode::full);
     BOOST_TEST(conn.meta_mode() == metadata_mode::full);
+}
+
+// spotcheck: deferred compiles even in C++11
+void deferred_spotcheck()
+{
+    asio::io_context ctx;
+    any_connection conn(ctx);
+    connect_params params;
+    diagnostics diag;
+    results result;
+    execution_state st;
+    statement stmt;
+    std::string str;
+    const std::string const_str;
+
+    (void)conn.async_connect(params, deferred);
+    (void)conn.async_connect(params, diag, deferred);
+    (void)conn.async_connect(&params, diag, deferred);
+
+    (void)conn.async_execute("SELECT 1", result, deferred);
+    (void)conn.async_execute(str, result, deferred);
+    (void)conn.async_execute(const_str, result, deferred);
+    (void)conn.async_execute("SELECT 1", result, diag, deferred);
+    (void)conn.async_execute(str, result, diag, deferred);
+    (void)conn.async_execute(const_str, result, diag, deferred);
+
+    (void)conn.async_start_execution("SELECT 1", st, deferred);
+    (void)conn.async_start_execution(str, st, deferred);
+    (void)conn.async_start_execution(const_str, st, deferred);
+    (void)conn.async_start_execution("SELECT 1", st, diag, deferred);
+    (void)conn.async_start_execution(str, st, diag, deferred);
+    (void)conn.async_start_execution(const_str, st, diag, deferred);
+
+    (void)conn.async_read_some_rows(st, deferred);
+    (void)conn.async_read_some_rows(st, diag, deferred);
+
+    (void)conn.async_read_resultset_head(st, deferred);
+    (void)conn.async_read_resultset_head(st, diag, deferred);
+
+    (void)conn.async_prepare_statement("SELECT 1", deferred);
+    (void)conn.async_prepare_statement("SELECT 1", diag, deferred);
+
+    (void)conn.async_close_statement(stmt, deferred);
+    (void)conn.async_close_statement(stmt, diag, deferred);
+
+    (void)conn.async_reset_connection(deferred);
+    (void)conn.async_reset_connection(diag, deferred);
+
+    (void)conn.async_ping(deferred);
+    (void)conn.async_ping(diag, deferred);
+
+    (void)conn.async_close(deferred);
+    (void)conn.async_close(diag, deferred);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
