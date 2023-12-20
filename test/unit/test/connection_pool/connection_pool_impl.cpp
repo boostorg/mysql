@@ -41,7 +41,6 @@
 
 #include <chrono>
 #include <cstddef>
-#include <functional>
 #include <list>
 #include <memory>
 #include <utility>
@@ -530,9 +529,6 @@ class pool_test_op_base : public asio::coroutine
 public:
     pool_test_op_base(mock_pool& pool, bool& finished) : pool_(pool), finished_(finished) {}
 
-    virtual ~pool_test_op_base() {}
-    virtual void launch() = 0;
-
     using executor_type = asio::any_io_executor;
     asio::any_io_executor get_executor() const { return pool_.get_executor(); }
 
@@ -584,7 +580,7 @@ protected:
     }
 };
 
-template <class D>
+template <class D, std::size_t initial_num_nodes = 1u>
 class pool_test_op : public pool_test_op_base
 {
     D& derived_this() { return static_cast<D&>(*this); }
@@ -610,16 +606,12 @@ public:
         task.wait(expected_ec, std::move(derived_this()));
     }
 
-    void launch() final { (*this)(); }
-
-    virtual std::size_t initial_num_nodes() const { return 1u; }
-
     void operator()()
     {
         if (initial_)
         {
             initial_ = false;
-            wait_for_num_nodes(initial_num_nodes());
+            wait_for_num_nodes(initial_num_nodes);
         }
         derived_this().invoke();
         if (derived_this().is_complete())
@@ -630,11 +622,11 @@ public:
     }
 };
 
+static void check_err(error_code ec) { BOOST_TEST(ec == error_code()); }
+
 // The test body
-static void pool_test_impl(
-    boost::mysql::pool_params params,
-    std::function<std::unique_ptr<pool_test_op_base>(mock_pool&, bool&)> test_fun
-)
+template <class TestOp, class... Args>
+static void pool_test(boost::mysql::pool_params params, Args&&... args)
 {
     // I/O context
     asio::io_context ctx;
@@ -646,26 +638,20 @@ static void pool_test_impl(
     // If the test timeouts, it will be false
     bool finished = false;
 
+    // Create the test
+    TestOp test(*pool, finished, std::forward<Args>(args)...);
+
     // Run the pool
-    pool->async_run([](error_code ec) { BOOST_TEST(ec == error_code()); });
+    pool->async_run(check_err);
 
     // Launch the test
-    auto test = test_fun(*pool, finished);
-    test->launch();
+    test();
 
     // If the test doesn't complete in this time, there was an error
     ctx.run_for(std::chrono::seconds(100));
 
     // Check that we didn't timeout
     BOOST_TEST(finished == true);
-}
-
-template <class TestOp, class... Args>
-static void pool_test(boost::mysql::pool_params params, Args&&... args)
-{
-    pool_test_impl(std::move(params), [&](mock_pool& pool, bool& finished) mutable {
-        return std::unique_ptr<pool_test_op_base>{new TestOp(pool, finished, std::forward<Args>(args)...)};
-    });
 }
 
 // connection lifecycle
@@ -1360,14 +1346,12 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 
 BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 {
-    struct op : pool_test_op<op>
+    // 2 connection nodes are created from the beginning
+    struct op : pool_test_op<op, 2>
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op<op, 2>::pool_test_op;
         mock_node *node1{}, *node2{};
         get_connection_task task1, task2, task3, task4, task5;
-
-        // 2 connections are created from the beginning
-        std::size_t initial_num_nodes() const final { return 2u; }
 
         void invoke()
         {
@@ -1454,12 +1438,10 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
 // pool size 0 works
 BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op<op, 0>
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op<op, 0>::pool_test_op;
         get_connection_task task;
-
-        std::size_t initial_num_nodes() const final { return 0u; }
 
         void invoke()
         {
