@@ -5,11 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_connection_pool_server_cpp
-
 #include <boost/mysql/static_results.hpp>
 
 #ifdef BOOST_MYSQL_CXX14
+
+//[example_connection_pool_server_cpp
 
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -202,6 +202,6 @@ error_code notes::launch_server(
     return error_code();
 }
 
-#endif
-
 //]
+
+#endif
