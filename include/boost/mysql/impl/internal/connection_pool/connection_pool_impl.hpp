@@ -331,7 +331,6 @@ public:
 
     // Exposed for testing
     std::list<node_type>& nodes() noexcept { return all_conns_; }
-    std::size_t num_pending_requests() noexcept { return shared_st_.pending_requests.size(); }
     shared_state_type& shared_state() noexcept { return shared_st_; }
     internal_pool_params& params() noexcept { return params_; }
 };

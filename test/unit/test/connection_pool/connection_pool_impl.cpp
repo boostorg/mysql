@@ -485,11 +485,7 @@ class get_connection_task
 public:
     get_connection_task() = default;
 
-    get_connection_task(
-        mock_pool& pool,
-        std::chrono::steady_clock::duration timeout,
-        diagnostics* diag = nullptr
-    )
+    get_connection_task(mock_pool& pool, diagnostics* diag, std::chrono::steady_clock::duration timeout)
         : impl_(std::make_shared<impl_t>(pool))
     {
         auto ex = create_tracker_executor(pool.get_executor(), &impl_->exec_info);
@@ -539,6 +535,15 @@ protected:
 
     void poll() { static_cast<asio::io_context&>(pool_.get_executor().context()).poll(); }
 
+    std::size_t num_pending_requests() const noexcept { return pool_.shared_state().pending_requests.size(); }
+    get_connection_task create_task(
+        diagnostics* diag = nullptr,
+        steady_clock::duration timeout = std::chrono::seconds(5)
+    )
+    {
+        return get_connection_task(pool_, diag, timeout);
+    }
+
     void check_shared_st(
         error_code expected_ec,
         const diagnostics& expected_diag,
@@ -569,7 +574,7 @@ protected:
     void wait_for_num_requests(std::size_t num_requests)
     {
         poll();
-        BOOST_TEST(pool_.num_pending_requests() == num_requests);
+        BOOST_TEST(num_pending_requests() == num_requests);
     }
 
     // Waits until there is at least num_nodes connections in the list
@@ -1126,7 +1131,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
                 // A request for a connection is issued. The request doesn't find
                 // any available connection, and the current one is pending, so no new connections are created
-                task = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
+                task = create_task();
                 wait_for_num_requests(1);
                 BOOST_TEST(pool_.nodes().size() == 1u);
 
@@ -1138,7 +1143,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, node);
                 BOOST_TEST(node.status() == connection_status::in_use);
                 BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(pool_.num_pending_requests() == 0u);
+                BOOST_TEST(num_pending_requests() == 0u);
             }
         }
     };
@@ -1163,7 +1168,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
             {
                 // A request for a connection is issued. The request doesn't find
                 // any available connection, and the current one is pending, so no new connections are created
-                task = get_connection_task(pool_, std::chrono::seconds(1), diag.get());
+                task = create_task(diag.get(), std::chrono::seconds(1));
                 wait_for_num_requests(1);
                 BOOST_TEST(pool_.nodes().size() == 1u);
 
@@ -1172,7 +1177,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, client_errc::timeout);
                 BOOST_TEST(*diag == diagnostics());
                 BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(pool_.num_pending_requests() == 0u);
+                BOOST_TEST(num_pending_requests() == 0u);
             }
         }
     };
@@ -1194,7 +1199,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
             {
                 // A request for a connection is issued. The request doesn't find
                 // any available connection, and the current one is pending, so no new connections are created
-                task = get_connection_task(pool_, std::chrono::seconds(1), diag.get());
+                task = create_task(diag.get(), std::chrono::seconds(1));
                 wait_for_num_requests(1);
                 BOOST_TEST(pool_.nodes().size() == 1u);
 
@@ -1212,7 +1217,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error);
                 BOOST_TEST(*diag == create_server_diag("Bad db"));
                 BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(pool_.num_pending_requests() == 0u);
+                BOOST_TEST(num_pending_requests() == 0u);
             }
         }
     };
@@ -1235,7 +1240,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
             {
                 // A request for a connection is issued. The request doesn't find
                 // any available connection, and the current one is pending, so no new connections are created
-                task = get_connection_task(pool_, std::chrono::seconds(1), nullptr);
+                task = create_task(nullptr, std::chrono::seconds(1));
                 wait_for_num_requests(1);
                 BOOST_TEST(pool_.nodes().size() == 1u);
 
@@ -1252,7 +1257,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
                 get_timer_service().advance_time_by(std::chrono::seconds(1));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error);
                 BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(pool_.num_pending_requests() == 0u);
+                BOOST_TEST(num_pending_requests() == 0u);
             }
         }
     };
@@ -1277,11 +1282,10 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
                 wait_for_status(node, connection_status::idle);
 
                 // A request for a connection is issued. The request completes immediately
-                BOOST_ASIO_CORO_YIELD
-                wait_for_task(get_connection_task(pool_, std::chrono::seconds(5), nullptr), node);
+                BOOST_ASIO_CORO_YIELD wait_for_task(create_task(), node);
                 BOOST_TEST(node.status() == connection_status::in_use);
                 BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(pool_.num_pending_requests() == 0u);
+                BOOST_TEST(num_pending_requests() == 0u);
             }
         }
     };
@@ -1306,12 +1310,11 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
                 // Wait for a connection to be ready, then get it from the pool
                 BOOST_ASIO_CORO_YIELD step(node1, fn_type::connect);
                 wait_for_status(node1, connection_status::idle);
-                BOOST_ASIO_CORO_YIELD
-                wait_for_task(get_connection_task(pool_, std::chrono::seconds(5), nullptr), node1);
+                BOOST_ASIO_CORO_YIELD wait_for_task(create_task(), node1);
 
                 // Another request is issued. The connection we have is in use, so another one is created.
                 // Since this is not immediate, the task will need to wait
-                task2 = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
+                task2 = create_task();
                 wait_for_num_requests(1);
                 node2 = &*std::next(pool_.nodes().begin());
 
@@ -1320,18 +1323,18 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
                 BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2);
                 BOOST_TEST(node2->status() == connection_status::in_use);
                 BOOST_TEST(pool_.nodes().size() == 2u);
-                BOOST_TEST(pool_.num_pending_requests() == 0u);
+                BOOST_TEST(num_pending_requests() == 0u);
 
                 // Another request is issued. All connections are in use but max size is already
                 // reached, so no new connection is created
-                task3 = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
+                task3 = create_task();
                 wait_for_num_requests(1);
                 BOOST_TEST(pool_.nodes().size() == 2u);
 
                 // When one of the connections is returned, the request is fulfilled
                 node2->mark_as_collectable(false);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node2);
-                BOOST_TEST(pool_.num_pending_requests() == 0u);
+                BOOST_TEST(num_pending_requests() == 0u);
                 BOOST_TEST(pool_.nodes().size() == 2u);
             }
         }
@@ -1358,11 +1361,11 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Issue some parallel requests
-                task1 = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
-                task2 = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
-                task3 = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
-                task4 = get_connection_task(pool_, std::chrono::seconds(2), nullptr);
-                task5 = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
+                task1 = create_task();
+                task2 = create_task();
+                task3 = create_task();
+                task4 = create_task(nullptr, std::chrono::seconds(2));
+                task5 = create_task();
 
                 // Two connections can be created. These fulfill two requests
                 node1 = &pool_.nodes().front();
@@ -1386,7 +1389,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
                 BOOST_ASIO_CORO_YIELD wait_for_task(task5, *node2);
 
                 // Done
-                BOOST_TEST(pool_.num_pending_requests() == 0u);
+                BOOST_TEST(num_pending_requests() == 0u);
                 BOOST_TEST(pool_.nodes().size() == 2u);
             }
         }
@@ -1412,8 +1415,8 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
             BOOST_ASIO_CORO_REENTER(*this)
             {
                 // Issue some requests
-                task1 = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
-                task2 = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
+                task1 = create_task();
+                task2 = create_task();
                 wait_for_num_requests(2);
 
                 // While in flight, cancel the pool
@@ -1424,10 +1427,7 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
                 BOOST_ASIO_CORO_YIELD wait_for_task(task2, client_errc::cancelled);
 
                 // Further tasks fail immediately
-                BOOST_ASIO_CORO_YIELD wait_for_task(
-                    get_connection_task(pool_, std::chrono::seconds(5), nullptr),
-                    client_errc::cancelled
-                );
+                BOOST_ASIO_CORO_YIELD wait_for_task(create_task(), client_errc::cancelled);
             }
         }
     };
@@ -1449,7 +1449,7 @@ BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
             {
                 // No connections created at this point. A connection request arrives
                 BOOST_TEST(pool_.nodes().size() == 0u);
-                task = get_connection_task(pool_, std::chrono::seconds(5), nullptr);
+                task = create_task();
 
                 // This creates a new connection, which fulfills the request
                 wait_for_num_requests(1);
