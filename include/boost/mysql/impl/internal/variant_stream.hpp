@@ -39,13 +39,15 @@ namespace detail {
 // Asio defines a "string view parameter" to be either const std::string&,
 // std::experimental::string_view or std::string_view. Casting from the Boost
 // version doesn't work for std::experimental::string_view
-#if !defined(BOOST_ASIO_HAS_STD_STRING_VIEW) && defined(BOOST_ASIO_HAS_STD_EXPERIMENTAL_STRING_VIEW)
+#if defined(BOOST_ASIO_HAS_STD_STRING_VIEW)
+inline std::string_view cast_asio_sv_param(string_view input) noexcept { return input; }
+#elif defined(BOOST_ASIO_HAS_STD_EXPERIMENTAL_STRING_VIEW)
 inline std::experimental::string_view cast_asio_sv_param(string_view input) noexcept
 {
     return {input.data(), input.size()};
 }
 #else
-inline string_view cast_asio_sv_param(string_view input) noexcept { return input; }
+inline std::string cast_asio_sv_param(string_view input) { return input; }
 #endif
 
 class variant_stream final : public any_stream
@@ -196,7 +198,7 @@ public:
 
         if (address_.type == address_type::host_and_port)
         {
-            // Resolve endpoints. TODO: we can save the to_string allocation
+            // Resolve endpoints
             auto& tcp_sock = variant2::unsafe_get<1>(sock_);
             auto endpoints = tcp_sock.resolv.resolve(
                 cast_asio_sv_param(address_.address),
@@ -215,7 +217,7 @@ public:
 
             // Just connect the stream
             auto& unix_sock = variant2::unsafe_get<2>(sock_);
-            unix_sock.connect(std::string(address_.address), ec);
+            unix_sock.connect(cast_asio_sv_param(address_.address), ec);
         }
     }
 
@@ -251,7 +253,7 @@ private:
 
     using unix_socket = asio::local::stream_protocol::socket;
 
-    asio::any_io_executor ex_;  // TODO: we can probably get rid of this
+    asio::any_io_executor ex_;
     variant2::variant<variant2::monostate, socket_and_resolver, unix_socket> sock_;
     ssl_context_with_default ssl_ctx_;
     boost::optional<asio::ssl::stream<asio::ip::tcp::socket&>> ssl_;
@@ -340,10 +342,9 @@ private:
                     BOOST_ASSERT(this_obj_.address_.type == address_type::unix_path);
 
                     // Just connect the stream
-                    // TODO: we could save a copy here
                     BOOST_ASIO_CORO_YIELD
                     variant2::unsafe_get<2>(this_obj_.sock_)
-                        .async_connect(std::string(this_obj_.address_.address), std::move(self));
+                        .async_connect(cast_asio_sv_param(this_obj_.address_.address), std::move(self));
 
                     self.complete(error_code());
                 }
