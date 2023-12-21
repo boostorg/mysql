@@ -177,8 +177,8 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_it_success, network_fi
 
     // Execute
     execution_state st;
-    std::forward_list<field_view> params{field_view("item"), field_view(42)};
-    conn->start_statement_execution(stmt, params.begin(), params.end(), st).validate_no_error();
+    std::forward_list<field_view> stmt_params{field_view("item"), field_view(42)};
+    conn->start_statement_execution(stmt, stmt_params.begin(), stmt_params.end(), st).validate_no_error();
     validate_2fields_meta(st.meta(), "empty_table");
     BOOST_TEST(st.should_read_rows());
 }
@@ -194,8 +194,8 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_it_error, network_fixt
 
     // Execute
     execution_state st;
-    std::forward_list<field_view> params{field_view("f0"), field_view("bad_date")};
-    conn->start_statement_execution(stmt, params.begin(), params.end(), st)
+    std::forward_list<field_view> stmt_params{field_view("f0"), field_view("bad_date")};
+    conn->start_statement_execution(stmt, stmt_params.begin(), stmt_params.end(), st)
         .validate_error(
             common_server_errc::er_truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
@@ -212,8 +212,8 @@ BOOST_MYSQL_NETWORK_TEST(start_execution_stmt_it_success, network_fixture, all_n
 
     // Execute
     execution_state st;
-    std::forward_list<field_view> params{field_view("item"), field_view(42)};
-    conn->start_execution(stmt.bind(params.cbegin(), params.cend()), st).validate_no_error();
+    std::forward_list<field_view> stmt_params{field_view("item"), field_view(42)};
+    conn->start_execution(stmt.bind(stmt_params.cbegin(), stmt_params.cend()), st).validate_no_error();
     validate_2fields_meta(st.meta(), "empty_table");
     BOOST_TEST(st.should_read_rows());
 }
@@ -312,8 +312,8 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_iterator_success, network_fixture, er
 
     // Execute
     results result;
-    std::forward_list<field_view> params{field_view("item"), field_view(42)};
-    conn->execute(stmt.bind(params.cbegin(), params.cend()), result).validate_no_error();
+    std::forward_list<field_view> stmt_params{field_view("item"), field_view(42)};
+    conn->execute(stmt.bind(stmt_params.cbegin(), stmt_params.cend()), result).validate_no_error();
     BOOST_TEST(result.rows().size() == 0u);
 }
 

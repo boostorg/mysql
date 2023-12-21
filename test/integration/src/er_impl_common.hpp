@@ -479,6 +479,21 @@ public:
     }
 };
 
+template <address_type addr_type>
+constexpr const char* stream_name_from_type() noexcept;
+
+template <>
+constexpr const char* stream_name_from_type<address_type::host_and_port>() noexcept
+{
+    return "any_tcp";
+}
+
+template <>
+constexpr const char* stream_name_from_type<address_type::unix_path>() noexcept
+{
+    return "any_unix";
+}
+
 template <address_type addr_type, class ErConnection>
 class er_network_variant_any_impl : public er_network_variant
 {
@@ -486,17 +501,7 @@ public:
     bool supports_ssl() const override { return addr_type == address_type::host_and_port; }
     bool is_unix_socket() const override { return addr_type == address_type::unix_path; }
     bool supports_handshake() const override { return false; }
-    const char* stream_name() const override
-    {
-        static_assert(
-            addr_type == address_type::host_and_port || addr_type == address_type::unix_path,
-            "Bad addr_type"
-        );
-        if (addr_type == address_type::host_and_port)
-            return "any_tcp";
-        else
-            return "any_unix";
-    }
+    const char* stream_name() const override { return stream_name_from_type<addr_type>(); }
     const char* variant_name() const override { return ErConnection::name(); }
     er_connection_ptr create_connection(boost::asio::any_io_executor ex, boost::asio::ssl::context& ssl_ctx)
         override

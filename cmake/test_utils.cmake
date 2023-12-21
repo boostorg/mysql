@@ -31,7 +31,7 @@ endfunction()
 function(boost_mysql_common_target_settings TARGET_NAME)
     boost_mysql_set_windows_version(${TARGET_NAME})
 
-    if(MSVC)
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
         target_compile_definitions(
             ${TARGET_NAME}
             PUBLIC

@@ -274,7 +274,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_run, fixture)
         // Construct a pool and run it
         connection_pool pool(yield.get_executor(), create_pool_params());
         pool_guard grd(&pool);
-        pool.async_run([&run_chan](error_code ec) { run_chan.try_send(ec); });
+        pool.async_run([&run_chan](error_code run_ec) { run_chan.try_send(run_ec); });
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -315,8 +315,8 @@ BOOST_FIXTURE_TEST_CASE(cancel_get_connection, fixture)
         // Construct a pool and run it
         connection_pool pool(yield.get_executor(), create_pool_params(1));
         pool_guard grd(&pool);
-        pool.async_run([&run_chan](error_code ec2) {
-            BOOST_TEST(ec2 == error_code());
+        pool.async_run([&run_chan](error_code run_ec) {
+            BOOST_TEST(run_ec == error_code());
             run_chan.try_send(error_code());
         });
 
@@ -325,8 +325,8 @@ BOOST_FIXTURE_TEST_CASE(cancel_get_connection, fixture)
         check_success();
 
         // Try to get a new one. This will not complete, since there is no room for more connections
-        pool.async_get_connection(diag, [&](error_code ec2, pooled_connection conn2) {
-            BOOST_TEST(ec2 == client_errc::cancelled);
+        pool.async_get_connection(diag, [&](error_code getconn_ec, pooled_connection conn2) {
+            BOOST_TEST(getconn_ec == client_errc::cancelled);
             BOOST_TEST(!conn2.valid());
             getconn_chan.try_send(error_code());
         });
@@ -367,8 +367,8 @@ BOOST_FIXTURE_TEST_CASE(pooled_connection_extends_pool_lifetime, fixture)
 
         // Run the pool in a way we can synchronize with
         asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
-        pool->async_run([&run_chan](error_code ec) {
-            BOOST_TEST(ec == error_code());
+        pool->async_run([&run_chan](error_code run_ec) {
+            BOOST_TEST(run_ec == error_code());
             run_chan.try_send(error_code());
         });
 

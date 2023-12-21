@@ -187,18 +187,18 @@ struct caching_sha2_fixture : handshake_fixture
 {
     void load_sha256_cache(string_view user, string_view password)
     {
-        tcp_ssl_connection conn(ctx, ssl_ctx);
-        conn.connect(get_endpoint<tcp_socket>(), handshake_params(user, password));
-        conn.close();
+        tcp_ssl_connection root_conn(ctx, ssl_ctx);
+        root_conn.connect(get_endpoint<tcp_socket>(), handshake_params(user, password));
+        root_conn.close();
     }
 
     void clear_sha256_cache()
     {
-        tcp_ssl_connection conn(ctx, ssl_ctx);
+        tcp_ssl_connection root_conn(ctx, ssl_ctx);
         boost::mysql::results result;
-        conn.connect(get_endpoint<tcp_socket>(), handshake_params("root", ""));
-        conn.execute("FLUSH PRIVILEGES", result);
-        conn.close();
+        root_conn.connect(get_endpoint<tcp_socket>(), handshake_params("root", ""));
+        root_conn.execute("FLUSH PRIVILEGES", result);
+        root_conn.close();
     }
 };
 

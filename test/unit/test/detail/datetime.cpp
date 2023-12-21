@@ -181,12 +181,12 @@ BOOST_AUTO_TEST_CASE(ymd_to_days_days_to_ymd)
     // Starting from 1970, going up
     int num_days = 0;
 
-    for (int year = 1970; year <= 2204; ++year)
+    for (std::uint16_t year = 1970u; year <= 2204u; ++year)
     {
-        for (unsigned month = 1; month <= 12; ++month)
+        for (std::uint8_t month = 1u; month <= 12u; ++month)
         {
-            unsigned last_month_day = month == 2 && is_leap_year(year) ? 29u : last_day_of_month(month);
-            for (unsigned day = 1; day <= last_month_day; ++day)
+            std::uint8_t last_month_day = month == 2u && is_leap_year(year) ? 29u : last_day_of_month(month);
+            for (std::uint8_t day = 1u; day <= last_month_day; ++day)
             {
                 ymd_years_test(st, year, month, day, num_days++);
             }
@@ -196,12 +196,12 @@ BOOST_AUTO_TEST_CASE(ymd_to_days_days_to_ymd)
     // Starting from 1970, going down
     num_days = -1;
 
-    for (int year = 1969; year >= 1804; --year)
+    for (std::uint16_t year = 1969u; year >= 1804u; --year)
     {
-        for (unsigned month = 12; month >= 1; --month)
+        for (std::uint8_t month = 12u; month >= 1u; --month)
         {
-            unsigned last_month_day = month == 2 && is_leap_year(year) ? 29u : last_day_of_month(month);
-            for (unsigned day = last_month_day; day >= 1; --day)
+            std::uint8_t last_month_day = month == 2u && is_leap_year(year) ? 29u : last_day_of_month(month);
+            for (std::uint8_t day = last_month_day; day >= 1u; --day)
             {
                 ymd_years_test(st, year, month, day, num_days--);
             }

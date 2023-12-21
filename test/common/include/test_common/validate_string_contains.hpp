@@ -20,7 +20,9 @@ namespace test {
 
 inline void validate_string_contains(std::string value, const std::vector<std::string>& to_check)
 {
-    std::transform(value.begin(), value.end(), value.begin(), &tolower);
+    std::transform(value.begin(), value.end(), value.begin(), [](char c) {
+        return static_cast<char>(tolower(c));
+    });
     for (const auto& elm : to_check)
     {
         BOOST_TEST(

@@ -462,7 +462,7 @@ BOOST_DESCRIBE_STRUCT(
      field_48,
      field_56,
      field_64)
-);
+)
 
 table_ptr types_bit()
 {
@@ -822,7 +822,7 @@ BOOST_DESCRIBE_STRUCT(
      field_text_bincol,
      field_enum,
      field_set)
-);
+)
 
 table_ptr types_string()
 {
@@ -888,7 +888,7 @@ BOOST_DESCRIBE_STRUCT(
     binary_row,
     (),
     (id, field_binary, field_varbinary, field_tinyblob, field_blob, field_mediumblob, field_longblob)
-);
+)
 
 table_ptr types_binary()
 {
@@ -945,7 +945,7 @@ BOOST_DESCRIBE_STRUCT(
     flags_row,
     (),
     (id, field_timestamp, field_primary_key, field_not_null, field_unique, field_indexed)
-);
+)
 
 table_ptr types_flags()
 {

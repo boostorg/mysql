@@ -479,12 +479,11 @@ void boost::mysql::detail::execute_stmt_command::serialize(span<std::uint8_t> bu
     serialization_context ctx(buff.data());
     BOOST_ASSERT(buff.size() >= get_size());
 
-    std::uint32_t statement_id = this->statement_id;
     std::uint8_t flags = 0;
     std::uint32_t iteration_count = 1;
     std::uint8_t new_params_bind_flag = 1;
 
-    ::boost::mysql::detail::serialize(ctx, command_id, statement_id, flags, iteration_count);
+    ::boost::mysql::detail::serialize(ctx, command_id, this->statement_id, flags, iteration_count);
 
     // Number of parameters
     auto num_params = params.size();
@@ -1043,7 +1042,7 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
     {
         // We have received an auth switch request. Deserialize it
         auth_switch auth_sw{};
-        auto err = deserialize_auth_switch(ctx.to_span(), auth_sw);
+        err = deserialize_auth_switch(ctx.to_span(), auth_sw);
         if (err)
             return err;
         return auth_sw;
@@ -1053,9 +1052,9 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
         // We have received an auth more data request. Deserialize it.
         // Note that string_eof never fails deserialization (by definition)
         string_eof auth_more_data;
-        auto err = deserialize(ctx, auth_more_data);
-        BOOST_ASSERT(err == deserialize_errc::ok);
-        boost::ignore_unused(err);
+        auto ec = deserialize(ctx, auth_more_data);
+        BOOST_ASSERT(ec == deserialize_errc::ok);
+        boost::ignore_unused(ec);
 
         // If the special value fast_auth_complete_challenge
         // is received as auth data, it means that the auth is complete

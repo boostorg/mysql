@@ -26,15 +26,17 @@ protected:
 
     next_action read(std::uint8_t& seqnum, bool keep_parsing_state = false)
     {
+        // buffer is attached by the algo runner
         st_->reader.prepare_read(seqnum, keep_parsing_state);
-        return next_action::read({});  // buffer is attached by the algo runner
+        return next_action::read(next_action::read_args_t{{}, false});
     }
 
     template <class Serializable>
     next_action write(const Serializable& msg, std::uint8_t& seqnum)
     {
+        // buffer is attached by the algo runner
         st_->writer.prepare_write(msg, seqnum);
-        return next_action::write({});  // buffer is attached by the algo runner
+        return next_action::write(next_action::write_args_t{{}, false});
     }
 
     sansio_algorithm(connection_state_data& st) noexcept : st_(&st) {}

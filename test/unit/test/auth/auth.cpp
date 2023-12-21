@@ -126,10 +126,10 @@ BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_false, fixture)
 
 BOOST_FIXTURE_TEST_CASE(non_empty_password_cleartext_auth_ssl_true, fixture)
 {
-    constexpr std::uint8_t expected[] = {'h', 'o', 'l', 'a', '\0'};
+    constexpr std::uint8_t expected_local[] = {'h', 'o', 'l', 'a', '\0'};
     auto err = compute_auth_response("caching_sha2_password", "hola", cleartext_challenge, true, resp);
     BOOST_TEST_REQUIRE(err == error_code());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(resp.data, expected_local);
     BOOST_TEST(resp.plugin_name == "caching_sha2_password");
 }
 

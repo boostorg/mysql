@@ -30,6 +30,7 @@
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
+#include <boost/core/ignore_unused.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
 #include <array>
@@ -63,6 +64,7 @@ using any_void_handler = asio::any_completion_handler<void(error_code)>;
 template <class... T, std::size_t... I>
 std::array<field_view, sizeof...(T)> tuple_to_array_impl(const std::tuple<T...>& t, mp11::index_sequence<I...>) noexcept
 {
+    boost::ignore_unused(t);  // MSVC gets confused if sizeof...(T) == 0
     return std::array<field_view, sizeof...(T)>{{to_field(std::get<I>(t))...}};
 }
 

@@ -94,7 +94,7 @@ public:
     // with the number of bytes read
     void resume(std::size_t bytes_read)
     {
-        frame_header header;
+        frame_header header{};
         buffer_.move_to_pending(bytes_read);
 
         BOOST_ASIO_CORO_REENTER(state_.coro)
