@@ -126,11 +126,7 @@ public:
         return next_action();
     }
 
-    std::size_t result() const noexcept
-    {
-        BOOST_ASSERT(is_complete());
-        return rows_read_;
-    }
+    std::size_t result() const noexcept { return rows_read_; }
 };
 
 }  // namespace detail

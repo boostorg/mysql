@@ -81,11 +81,7 @@ public:
         return next_action();
     }
 
-    statement result() const noexcept
-    {
-        BOOST_ASSERT(is_complete());
-        return res_;
-    }
+    statement result() const noexcept { return res_; }
 };
 
 }  // namespace detail
