@@ -61,11 +61,18 @@ struct err_view
     std::uint16_t error_code;
     string_view error_message;
 };
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
-deserialize_error_packet(span<const std::uint8_t> message, err_view& pack) noexcept;
+BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code deserialize_error_packet(
+    span<const std::uint8_t> message,
+    err_view& pack,
+    bool has_sql_state = true
+) noexcept;
 
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
-process_error_packet(span<const std::uint8_t> message, db_flavor flavor, diagnostics& diag);
+BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code process_error_packet(
+    span<const std::uint8_t> message,
+    db_flavor flavor,
+    diagnostics& diag,
+    bool has_sql_state = true
+);
 
 // Column definition
 BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code

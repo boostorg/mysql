@@ -154,20 +154,30 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
 // Error packets
 boost::mysql::error_code boost::mysql::detail::deserialize_error_packet(
     span<const std::uint8_t> msg,
-    err_view& output
+    err_view& output,
+    bool has_sql_state
 ) noexcept
 {
     struct err_packet
     {
         // int<1>     header     0xFF ERR packet header
         std::uint16_t error_code;
+        // if capabilities & CLIENT_PROTOCOL_41 {  (modeled here as has_sql_state)
         string_fixed<1> sql_state_marker;
         string_fixed<5> sql_state;
+        // }
         string_eof error_message;
     } pack{};
 
     deserialization_context ctx(msg);
-    auto err = deserialize(ctx, pack.error_code, pack.sql_state_marker, pack.sql_state, pack.error_message);
+    auto err = has_sql_state ? deserialize(
+                                   ctx,
+                                   pack.error_code,
+                                   pack.sql_state_marker,
+                                   pack.sql_state,
+                                   pack.error_message
+                               )
+                             : deserialize(ctx, pack.error_code, pack.error_message);
     if (err != deserialize_errc::ok)
         return to_error_code(err);
 
@@ -182,11 +192,12 @@ boost::mysql::error_code boost::mysql::detail::deserialize_error_packet(
 boost::mysql::error_code boost::mysql::detail::process_error_packet(
     span<const std::uint8_t> msg,
     db_flavor flavor,
-    diagnostics& diag
+    diagnostics& diag,
+    bool has_sql_state
 )
 {
     err_view error_packet{};
-    auto err = deserialize_error_packet(msg, error_packet);
+    auto err = deserialize_error_packet(msg, error_packet, has_sql_state);
     if (err)
         return err;
 
@@ -855,8 +866,10 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello(
     }
     else if (msg_type == error_packet_header)
     {
-        // We don't know which DB is yet
-        return process_error_packet(ctx.to_span(), db_flavor::mysql, diag);
+        // We don't know which DB is yet. The server has no knowledge of our capabilities
+        // yet, so it will assume we don't support the 4.1 protocol and send an error
+        // packet without SQL state
+        return process_error_packet(ctx.to_span(), db_flavor::mysql, diag, false);
     }
     else if (msg_type != handshake_protocol_version_10)
     {
