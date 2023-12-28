@@ -16,6 +16,8 @@ RUN \
         git \
         python3 \
         python3-requests \
+        # Workaround for https://github.com/bfgroup/b2/issues/354
+        g++ \
         mysql-client && \
     add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
     apt-get --no-install-recommends -y install clang-3.6 && \
