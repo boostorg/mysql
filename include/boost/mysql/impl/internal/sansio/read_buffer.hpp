@@ -39,7 +39,6 @@ public:
 
     void reset() noexcept
     {
-        buffer_.clear();
         current_message_offset_ = 0;
         pending_offset_ = 0;
         free_offset_ = 0;

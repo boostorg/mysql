@@ -495,4 +495,65 @@ BOOST_AUTO_TEST_CASE(keep_state_initial)
     BOOST_TEST(fix.seqnum == 43u);
 }
 
+// Resetting
+BOOST_AUTO_TEST_CASE(reset_done)
+{
+    // Read a message until completion
+    reader_fixture fix(create_frame(42, {0x01, 0x02, 0x03}));
+    fix.reader.prepare_read(fix.seqnum);
+    fix.read_until_completion();
+
+    // Reset
+    fix.reader.reset();
+
+    // A new message can be read now
+    fix.set_contents(create_frame(20, {0x09, 0x0a}));
+    fix.seqnum = 20;
+    fix.reader.prepare_read(fix.seqnum);
+    fix.read_until_completion();
+    fix.check_message({0x09, 0x0a});
+    fix.check_buffer_stability();  // No reallocation happened
+    BOOST_TEST(fix.seqnum == 21u);
+}
+
+BOOST_AUTO_TEST_CASE(reset_message_half_read)
+{
+    // Read part of a message
+    reader_fixture fix(create_frame(42, {0x01, 0x02, 0x03}));
+    fix.reader.prepare_read(fix.seqnum);
+    fix.read_bytes(3);
+
+    // Reset
+    fix.reader.reset();
+
+    // A new message can be read now
+    fix.set_contents(create_frame(20, {0x09, 0x0a}));
+    fix.seqnum = 20;
+    fix.reader.prepare_read(fix.seqnum);
+    fix.read_until_completion();
+    fix.check_message({0x09, 0x0a});
+    fix.check_buffer_stability();  // No reallocation happened
+    BOOST_TEST(fix.seqnum == 21u);
+}
+
+BOOST_AUTO_TEST_CASE(reset_keep_state_true)
+{
+    // Read part of a message
+    reader_fixture fix(create_frame(42, {0x01, 0x02, 0x03}));
+    fix.reader.prepare_read(fix.seqnum, true);
+    fix.read_bytes(3);
+
+    // Reset
+    fix.reader.reset();
+
+    // A new message can be read now
+    fix.set_contents(create_frame(20, {0x09, 0x0a}));
+    fix.seqnum = 20;
+    fix.reader.prepare_read(fix.seqnum);
+    fix.read_until_completion();
+    fix.check_message({0x09, 0x0a});
+    fix.check_buffer_stability();  // No reallocation happened
+    BOOST_TEST(fix.seqnum == 21u);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

@@ -14,16 +14,25 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/assert_buffer_equals.hpp"
+#include <cstdint>
+
+#include "test_common/buffer_concat.hpp"
 #include "test_unit/algo_test.hpp"
+#include "test_unit/create_err.hpp"
 #include "test_unit/create_frame.hpp"
+#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 
 BOOST_AUTO_TEST_SUITE(test_close_statement)
 
-constexpr std::uint8_t expected_message[] = {0x19, 0x03, 0x00, 0x00, 0x00};
+// A close_statement request pipelined with a ping (frame headers included)
+static std::vector<std::uint8_t> expected_request()
+{
+    return concat_copy(create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}), create_frame(0, {0x0e}));
+}
 
 struct fixture : algo_fixture_base
 {
@@ -39,12 +48,34 @@ BOOST_AUTO_TEST_CASE(success)
     fixture fix;
 
     // Run the algo
-    algo_test().expect_write(create_frame(0, expected_message)).check(fix);
+    algo_test()
+        .expect_write(expected_request())                       // requests
+        .expect_read(create_ok_frame(1, ok_builder().build()))  // response to the ping request
+        .check(fix);
 }
 
 BOOST_AUTO_TEST_CASE(error_network)
 {
-    algo_test().expect_write(create_frame(0, expected_message)).check_network_errors<fixture>();
+    algo_test()
+        .expect_write(expected_request())                       // requests
+        .expect_read(create_ok_frame(1, ok_builder().build()))  // response to the ping request
+        .check_network_errors<fixture>();
+}
+
+BOOST_AUTO_TEST_CASE(error_response)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_write(expected_request())  // Ping request
+        .expect_read(err_builder()
+                         .seqnum(1)
+                         .code(common_server_errc::er_bad_db_error)
+                         .message("my_message")
+                         .build_frame())  // Error response
+        .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

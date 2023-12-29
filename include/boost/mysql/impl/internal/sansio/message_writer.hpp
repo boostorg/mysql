@@ -56,7 +56,12 @@ class message_writer
     {
         initial,
         in_progress,
-        done
+        done,
+
+        // Send a short pipeline (all messages fitting in a single frame).
+        // Woraround to pipeline pings with close statement requests
+        // until we implement proper pipelining in https://github.com/boostorg/mysql/issues/75
+        short_pipeline,
     };
 
     struct state_t
@@ -94,6 +99,25 @@ class message_writer
         return {buffer_.data() + frame_header_size, msg_size};
     }
 
+    template <class Serializable>
+    std::uint8_t* serialize_with_header(const Serializable& msg, std::uint8_t& seqnum, std::uint8_t* it)
+    {
+        // Calculate size
+        std::size_t sz = msg.get_size();
+        BOOST_ASSERT(sz < max_frame_size_);
+
+        // Serialize header
+        frame_header h{static_cast<std::uint32_t>(sz), seqnum++};
+        serialize_frame_header(h, span<std::uint8_t, frame_header_size>(it, frame_header_size));
+        it += frame_header_size;
+
+        // Serialize the message
+        msg.serialize(span<std::uint8_t>(it, sz));
+        it += sz;
+
+        return it;
+    }
+
 public:
     message_writer(std::size_t max_frame_size = MAX_PACKET_SIZE) noexcept : max_frame_size_(max_frame_size) {}
 
@@ -103,6 +127,30 @@ public:
         auto buff = prepare_write(message.get_size(), sequence_number);
         message.serialize(buff);
         resume(0);
+    }
+
+    // Serializes two messages into the write buffer. They must fit in a single frame
+    template <class Serializable1, class Serializable2>
+    void prepare_pipelined_write(
+        const Serializable1& msg1,
+        std::uint8_t& seqnum1,
+        const Serializable2& msg2,
+        std::uint8_t& seqnum2
+    )
+    {
+        // Prepare the buffer
+        std::size_t total_size = msg1.get_size() + msg2.get_size() + 2 * frame_header_size;
+        buffer_.resize(total_size);
+
+        // Serialize the messages
+        auto it = buffer_.data();
+        it = serialize_with_header(msg1, seqnum1, it);
+        it = serialize_with_header(msg2, seqnum2, it);
+
+        // Set up writer
+        state_ = state_t();
+        state_.chunk.reset(0, total_size);
+        state_.coro = coro_state::short_pipeline;
     }
 
     bool done() const noexcept { return state_.coro == coro_state::done; }
@@ -120,6 +168,10 @@ public:
         // a MSVC 14.3 codegen bug under release builds with asio::coroutine
         switch (state_.coro)
         {
+        case coro_state::short_pipeline:
+            state_.chunk.on_bytes_written(n);
+            state_.coro = state_.chunk.done() ? coro_state::done : coro_state::short_pipeline;
+            return;
         case coro_state::initial:
             for (; state_.remaining_frames != 0u; --state_.remaining_frames)
             {
@@ -128,7 +180,9 @@ public:
                 {
                     state_.coro = coro_state::in_progress;
                     return;
-                case coro_state::in_progress:  // fallthrough
+                    // clang-format off
+        case coro_state::in_progress:  // fallthrough
+                    // clang-format on
                     state_.chunk.on_bytes_written(n);
                 }
             }

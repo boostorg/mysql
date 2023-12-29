@@ -286,6 +286,7 @@ BOOST_AUTO_TEST_CASE(async_close_statement_handle_deferred_tokens)
 
     run_coroutine(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
         auto stmt = statement_builder().id(3).build();
+        conn.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
 
         // Deferred op
         auto aw = conn.async_close_statement(stmt, boost::asio::use_awaitable);
@@ -297,7 +298,10 @@ BOOST_AUTO_TEST_CASE(async_close_statement_handle_deferred_tokens)
         co_await std::move(aw);
 
         // verify that the op had the intended effects
-        const auto expected_message = create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00});
+        const auto expected_message = concat_copy(
+            create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}),
+            create_frame(0, {0x0e})
+        );
         BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected_message);
     });
 }
