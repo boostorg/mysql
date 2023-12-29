@@ -480,6 +480,9 @@ using async_start_execution_t = decltype(std::declval<connection_impl&>().async_
 ));
 
 template <class CompletionToken>
+using async_handshake_t = async_run_t<handshake_algo_params, CompletionToken>;
+
+template <class CompletionToken>
 using async_read_resultset_head_t = async_run_t<read_resultset_head_algo_params, CompletionToken>;
 
 template <class CompletionToken>
