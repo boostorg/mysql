@@ -160,10 +160,18 @@ SERVER_ERROR_TO_STRING_TEMPLATE='''
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/impl/internal/error/server_error_to_string.hpp>
 
+namespace boost {{
+namespace mysql {{
+namespace detail {{
+
 BOOST_MYSQL_STATIC_IF_COMPILED
 constexpr const char* common_error_messages[] = {{
 {common_entries}
 }};
+
+}} // namespace detail
+}} // namespace mysql
+}} // namespace boost
 
 const char* boost::mysql::detail::common_error_to_string(int v) noexcept
 {{
