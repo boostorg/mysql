@@ -59,6 +59,11 @@ void boost::mysql::detail::connection_impl::set_meta_mode(metadata_mode v) noexc
 
 bool boost::mysql::detail::connection_impl::ssl_active() const noexcept { return st_->data().ssl_active(); }
 
+bool boost::mysql::detail::connection_impl::backslash_escapes() const noexcept
+{
+    return st_->data().backslash_escapes;
+}
+
 boost::mysql::diagnostics& boost::mysql::detail::connection_impl::shared_diag() noexcept
 {
     return st_->data().shared_diag;

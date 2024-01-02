@@ -108,6 +108,8 @@ run
         test/any_connection.cpp
         test/pool_params.cpp
         test/connection_pool.cpp
+        test/character_set.cpp
+        test/escape_string.cpp
         
     : requirements
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711

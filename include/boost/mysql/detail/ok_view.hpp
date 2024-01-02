@@ -27,6 +27,7 @@ struct ok_view
     string_view info;
 
     bool more_results() const noexcept { return status_flags & status_flags::more_results; }
+    bool backslash_escapes() const noexcept { return !(status_flags & status_flags::no_backslash_escapes); }
     bool is_out_params() const noexcept { return status_flags & status_flags::out_params; }
 };
 

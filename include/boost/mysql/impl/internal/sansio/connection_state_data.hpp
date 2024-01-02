@@ -34,21 +34,40 @@ enum class ssl_state
 
 struct connection_state_data
 {
+    // Is the connection actually connected? Set by handshake
     bool is_connected{false};
+
+    // Are we talking to MySQL or MariaDB?
     db_flavor flavor{db_flavor::mysql};
+
+    // What are the connection's capabilities?
     capabilities current_capabilities;
-    diagnostics shared_diag;  // for async ops
+
+    // Used by async ops without output diagnostics params, to avoid allocations
+    diagnostics shared_diag;
+
+    // Temporary field storage, re-used by several ops
     std::vector<field_view> shared_fields;
+
+    // Do we want to retain metadata strings or not? Used to save allocations
     metadata_mode meta_mode{metadata_mode::minimal};
+
+    // Is SSL supported/enabled for the current connection?
+    ssl_state ssl;
+
+    // Do backslashes represent escape sequences? By default they do, but they can
+    // be disabled using a variable. OK packets include a flag with this info.
+    bool backslash_escapes{true};
+
+    // Reader and writer
     message_reader reader;
     message_writer writer;
-    ssl_state ssl;
 
     bool ssl_active() const noexcept { return ssl == ssl_state::active; }
     bool supports_ssl() const noexcept { return ssl != ssl_state::unsupported; }
 
     connection_state_data(std::size_t read_buffer_size, bool transport_supports_ssl = false)
-        : reader(read_buffer_size), ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported)
+        : ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported), reader(read_buffer_size)
     {
     }
 
@@ -62,6 +81,7 @@ struct connection_state_data
         // Writer does not need reset, since every write clears previous state
         if (supports_ssl())
             ssl = ssl_state::inactive;
+        backslash_escapes = true;
     }
 };
 

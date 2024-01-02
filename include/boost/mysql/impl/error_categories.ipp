@@ -62,6 +62,8 @@ const char* error_to_string(client_errc error) noexcept
     case client_errc::pool_not_running:
         return "Getting a connection from a connection_pool failed because the pool is not running. Ensure "
                "that you're calling connection_pool::async_run.";
+    case client_errc::invalid_encoding:
+        return "An invalid byte sequence was found while trying to decode a string.";
 
     default: return "<unknown MySQL client error>";
     }

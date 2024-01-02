@@ -706,16 +706,21 @@ BOOST_AUTO_TEST_CASE(deserialize_ok_response_)
         deserialization_buffer message;
         error_code expected_err;
         const char* expected_msg;
+        bool expected_backslash_escapes;
     } test_cases[] = {
-        {"success",              create_ok_body(ok_builder().build()),                        error_code(),                      ""},
-        {"empty_message",        {},                                                          client_errc::incomplete_message,   ""},
-        {"invalid_message_type", {0xab},                                                      client_errc::protocol_value_error, ""},
-        {"bad_ok_packet",        {0x00, 0x01},                                                client_errc::incomplete_message,   ""},
+        {"success",                      create_ok_body(ok_builder().build()),                error_code(),                      "", true },
+        {"success_no_backslash_escapes",
+         create_ok_body(ok_builder().no_backslash_escapes(true).build()),
+         error_code(),
+         "",                                                                                                                         false},
+        {"empty_message",                {},                                                  client_errc::incomplete_message,   "", true },
+        {"invalid_message_type",         {0xab},                                              client_errc::protocol_value_error, "", true },
+        {"bad_ok_packet",                {0x00, 0x01},                                        client_errc::incomplete_message,   "", true },
         {"err_packet",
          err_builder().code(common_server_errc::er_bad_db_error).message("abc").build_body(),
          common_server_errc::er_bad_db_error,
-         "abc"                                                                                                                     },
-        {"bad_err_packet",       {0xff, 0x01},                                                client_errc::incomplete_message,   ""},
+         "abc",                                                                                                                      true },
+        {"bad_err_packet",               {0xff, 0x01},                                        client_errc::incomplete_message,   "", true },
     };
 
     for (const auto& tc : test_cases)
@@ -723,10 +728,12 @@ BOOST_AUTO_TEST_CASE(deserialize_ok_response_)
         BOOST_TEST_CONTEXT(tc.name)
         {
             diagnostics diag;
-            auto err = deserialize_ok_response(tc.message, db_flavor::mariadb, diag);
+            bool backslash_escapes = true;
+            auto err = deserialize_ok_response(tc.message, db_flavor::mariadb, diag, backslash_escapes);
 
             BOOST_TEST(err == tc.expected_err);
             BOOST_TEST(diag.server_message() == tc.expected_msg);
+            BOOST_TEST(backslash_escapes == tc.expected_backslash_escapes);
         }
     }
 }

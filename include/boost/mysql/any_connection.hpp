@@ -216,6 +216,31 @@ public:
      */
     bool uses_ssl() const noexcept { return impl_.ssl_active(); }
 
+    /**
+     * \brief Returns whether backslashes are being treated as escape sequences.
+     * \details
+     * By default, the server treats backslashes in string values as escape characters.
+     * This behavior can be disabled by activating the <a
+     *   href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">`NO_BACKSLASH_ESCAPES`</a>
+     * SQL mode.
+     * \n
+     * Every time an operation involving server communication completes, the server reports whether
+     * this mode was activated or not as part of the response. Connections store this information
+     * and make it available through this function.
+     * \n
+     * \li If backslash are treated like escape characters, returns `true`.
+     * \li If `NO_BACKSLASH_ESCAPES` has been activated, returns `false`.
+     * \li If connection establishment hasn't happened yet, returns `true`.
+     * \li Calling this function while an async operation that changes backslash behavior
+     *     is outstanding may return `true` or `false`.
+     * \n
+     * This function does not involve server communication.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    bool backslash_escapes() const noexcept { return impl_.backslash_escapes(); }
+
     /// \copydoc connection::meta_mode
     metadata_mode meta_mode() const noexcept { return impl_.meta_mode(); }
 

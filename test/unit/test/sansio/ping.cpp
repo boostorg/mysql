@@ -44,6 +44,24 @@ BOOST_AUTO_TEST_CASE(success)
         .expect_write({0x01, 0x00, 0x00, 0x00, 0x0e})           // ping request
         .expect_read(create_ok_frame(1, ok_builder().build()))  // OK response
         .check(fix);
+
+    // The OK packet was processed correctly
+    BOOST_TEST(fix.st.backslash_escapes);
+}
+
+BOOST_AUTO_TEST_CASE(success_no_backslash_escapes)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_write({0x01, 0x00, 0x00, 0x00, 0x0e})                                      // ping request
+        .expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build()))  // OK response
+        .check(fix);
+
+    // The OK packet was processed correctly
+    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(error_network)

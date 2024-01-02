@@ -57,6 +57,7 @@ struct fixture : algo_fixture_base
             {meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build_coldef()}
         );
         proc.sequence_number() = 42;
+        st.backslash_escapes = false;
     }
 
     void validate_refs(std::size_t num_rows)
@@ -83,6 +84,22 @@ BOOST_AUTO_TEST_CASE(eof)
     BOOST_TEST(fix.proc.is_reading_head());
     BOOST_TEST(fix.proc.affected_rows() == 1u);
     BOOST_TEST(fix.proc.info() == "1st");
+    BOOST_TEST(fix.st.backslash_escapes);
+}
+
+BOOST_AUTO_TEST_CASE(eof_no_backslash_escapes)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(create_eof_frame(42, ok_builder().no_backslash_escapes(true).more_results(true).build()))
+        .check(fix);
+
+    BOOST_TEST(fix.algo.result() == 0u);  // num read rows
+    BOOST_TEST(fix.proc.is_reading_head());
+    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(batch_with_rows)

@@ -39,6 +39,7 @@ docca.reference reference.qbk
         <doxygen:param>SEARCH_INCLUDES=NO
         <doxygen:param>"PREDEFINED=\\
             BOOST_MYSQL_DOXYGEN \\
+            \"BOOST_ATTRIBUTE_NODISCARD=[[nodiscard]]\" \\
             \"BOOST_ASIO_INITFN_RESULT_TYPE(t,a)=auto\" \\
             \"BOOST_ASIO_COMPLETION_TOKEN_FOR(sig)=class\" \\
             \"BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(ct,sig)=auto\" \\

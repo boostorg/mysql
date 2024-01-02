@@ -21,8 +21,6 @@
 
 #include <boost/asio/coroutine.hpp>
 
-#include <cstddef>
-
 namespace boost {
 namespace mysql {
 namespace detail {

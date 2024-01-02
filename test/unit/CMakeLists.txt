@@ -100,6 +100,8 @@ add_executable(
     test/any_connection.cpp
     test/pool_params.cpp
     test/connection_pool.cpp
+    test/character_set.cpp
+    test/escape_string.cpp
 )
 target_include_directories(
     boost_mysql_unittests

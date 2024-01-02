@@ -14,6 +14,7 @@
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/buffer_params.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
@@ -28,6 +29,7 @@
 #include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/escape_string.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_kind.hpp>

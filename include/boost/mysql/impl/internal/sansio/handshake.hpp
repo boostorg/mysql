@@ -153,7 +153,11 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
         return auth_switch_response{auth_resp_.data};
     }
 
-    void on_success() { st_->is_connected = true; }
+    void on_success(const ok_view& ok)
+    {
+        st_->is_connected = true;
+        st_->backslash_escapes = ok.backslash_escapes();
+    }
 
     error_code process_ok()
     {
@@ -161,7 +165,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
         auto ec = deserialize_ok_packet(st_->reader.message(), res);
         if (ec)
             return ec;
-        on_success();
+        on_success(res);
         return error_code();
     }
 
@@ -229,7 +233,7 @@ public:
                 if (resp.type == handhake_server_response::type_t::ok)
                 {
                     // Auth success, quit
-                    on_success();
+                    on_success(resp.data.ok);
                     return next_action();
                 }
                 else if (resp.type == handhake_server_response::type_t::error)

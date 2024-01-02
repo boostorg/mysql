@@ -19,8 +19,6 @@
 
 #include <boost/asio/coroutine.hpp>
 
-#include <cstddef>
-
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -38,6 +36,7 @@ inline error_code process_execution_response(
     {
     case execute_response::type_t::error: err = response.data.err; break;
     case execute_response::type_t::ok_packet:
+        st.backslash_escapes = response.data.ok_pack.backslash_escapes();
         err = proc.on_head_ok_packet(response.data.ok_pack, diag);
         break;
     case execute_response::type_t::num_fields: proc.on_num_meta(response.data.num_fields); break;

@@ -61,6 +61,11 @@ public:
         flag(detail::status_flags::out_params, v);
         return *this;
     }
+    ok_builder& no_backslash_escapes(bool v) noexcept
+    {
+        flag(detail::status_flags::no_backslash_escapes, v);
+        return *this;
+    }
     ok_builder& info(string_view v) noexcept
     {
         ok_.info = v;

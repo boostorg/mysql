@@ -67,6 +67,7 @@ BOOST_AUTO_TEST_CASE(success_meta)
     BOOST_TEST(fix.proc.sequence_number() == 3u);
     BOOST_TEST(fix.proc.num_meta() == 1u);
     check_meta(fix.proc.meta(), {std::make_pair(column_type::varchar, "mycol")});
+    BOOST_TEST(fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(success_ok_packet)
@@ -85,6 +86,20 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
     BOOST_TEST(fix.proc.is_complete());
     BOOST_TEST(fix.proc.affected_rows() == 42u);
     BOOST_TEST(fix.proc.info() == "abc");
+    BOOST_TEST(fix.st.backslash_escapes);
+}
+
+BOOST_AUTO_TEST_CASE(success_ok_packet_no_backslash_escapes)
+{
+    // Setup
+    fixture fix;
+
+    // Run the algo
+    algo_test().expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build())).check(fix);
+
+    // Verify
+    fix.proc.num_calls().on_head_ok_packet(1).validate();
+    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 // Check that we don't attempt to read the rows even if they're available

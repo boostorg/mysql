@@ -67,6 +67,7 @@ class read_some_rows_algo : public sansio_algorithm, asio::coroutine
             }
             else
             {
+                st.backslash_escapes = res.data.ok_pack.backslash_escapes();
                 err = proc.on_row_ok_packet(res.data.ok_pack);
             }
 

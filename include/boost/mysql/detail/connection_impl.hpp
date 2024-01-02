@@ -232,6 +232,7 @@ public:
     BOOST_MYSQL_DECL void set_meta_mode(metadata_mode v) noexcept;
     BOOST_MYSQL_DECL std::vector<field_view>& get_shared_fields() noexcept;
     BOOST_MYSQL_DECL bool ssl_active() const noexcept;
+    BOOST_MYSQL_DECL bool backslash_escapes() const noexcept;
 
     // Generic algorithm
     template <class AlgoParams, class CompletionToken>

@@ -38,6 +38,7 @@ constexpr std::uint16_t num = 32768;              // Field is num (for clients)
 namespace status_flags {
 
 constexpr std::uint32_t more_results = 8;
+constexpr std::uint32_t no_backslash_escapes = 512;
 constexpr std::uint32_t out_params = 4096;
 
 }  // namespace status_flags

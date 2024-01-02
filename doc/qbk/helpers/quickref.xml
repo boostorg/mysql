@@ -22,6 +22,7 @@
           <member><link linkend="mysql.ref.boost__mysql__bound_statement_tuple">bound_statement_tuple</link></member>
           <member><link linkend="mysql.ref.boost__mysql__bound_statement_iterator_range">bound_statement_iterator_range</link></member>
           <member><link linkend="mysql.ref.boost__mysql__buffer_params">buffer_params</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__character_set">character_set</link></member>
           <member><link linkend="mysql.ref.boost__mysql__connect_params">connect_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__connection">connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__connection_pool">connection_pool</link></member>
@@ -60,6 +61,7 @@
           <member><link linkend="mysql.ref.boost__mysql__common_server_errc">common_server_errc</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field_kind">field_kind</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata_mode">metadata_mode</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__quoting_context">quoting_context</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ssl_mode">ssl_mode</link></member>
         </simplelist>
         <bridgehead renderas="sect3">Constants</bridgehead>
@@ -67,15 +69,18 @@
           <member><link linkend="mysql.ref.boost__mysql__default_initial_read_buffer_size">default_initial_read_buffer_size</link></member>
           <member><link linkend="mysql.ref.boost__mysql__default_port">default_port</link></member>
           <member><link linkend="mysql.ref.boost__mysql__default_port_string">default_port_string</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__latin1_charset">latin1_charset</link></member>
           <member><link linkend="mysql.ref.boost__mysql__max_date">max_date</link></member>
           <member><link linkend="mysql.ref.boost__mysql__min_date">min_date</link></member>
           <member><link linkend="mysql.ref.boost__mysql__max_datetime">max_datetime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__min_datetime">min_datetime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__max_time">max_time</link></member>
           <member><link linkend="mysql.ref.boost__mysql__min_time">min_time</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__utf8mb4_charset">utf8mb4_charset</link></member>
         </simplelist>
         <bridgehead renderas="sect3">Functions</bridgehead>
         <simplelist type="vert" columns="1">
+          <member><link linkend="mysql.ref.boost__mysql__escape_string">escape_string</link></member>
           <member><link linkend="mysql.ref.boost__mysql__get_client_category">get_client_category</link></member>
           <member><link linkend="mysql.ref.boost__mysql__get_common_server_category">get_common_server_category</link></member>
           <member><link linkend="mysql.ref.boost__mysql__get_mysql_server_category">get_mysql_server_category</link></member>

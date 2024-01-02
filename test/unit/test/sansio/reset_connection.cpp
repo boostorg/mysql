@@ -42,6 +42,24 @@ BOOST_AUTO_TEST_CASE(success)
         .expect_write(create_frame(0, {0x1f}))
         .expect_read(create_ok_frame(1, ok_builder().build()))
         .check(fix);
+
+    // The OK packet was processed correctly
+    BOOST_TEST(fix.st.backslash_escapes);
+}
+
+BOOST_AUTO_TEST_CASE(success_no_backslash_escapes)
+{
+    // Setup
+    fixture fix;
+
+    // Run the algo
+    algo_test()
+        .expect_write(create_frame(0, {0x1f}))
+        .expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build()))
+        .check(fix);
+
+    // The OK packet was processed correctly
+    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(error_network)

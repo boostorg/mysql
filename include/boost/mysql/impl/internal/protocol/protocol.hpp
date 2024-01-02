@@ -100,9 +100,15 @@ struct reset_connection_command
 };
 
 // Deserializes a response that may be an OK or an error packet.
-// Applicable for ping and reset connection
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
-deserialize_ok_response(span<const std::uint8_t> message, db_flavor flavor, diagnostics& diag);
+// Applicable for ping and reset connection.
+// If the response is an OK packet, sets backslash_escapes according to the
+// OK packet's server status flags
+BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code deserialize_ok_response(
+    span<const std::uint8_t> message,
+    db_flavor flavor,
+    diagnostics& diag,
+    bool& backslash_escapes
+);
 
 // Query
 struct query_command

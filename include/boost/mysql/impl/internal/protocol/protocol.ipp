@@ -326,7 +326,8 @@ void boost::mysql::detail::reset_connection_command::serialize(span<std::uint8_t
 boost::mysql::error_code boost::mysql::detail::deserialize_ok_response(
     span<const std::uint8_t> message,
     db_flavor flavor,
-    diagnostics& diag
+    diagnostics& diag,
+    bool& backslash_escapes
 )
 {
     // Header
@@ -340,7 +341,11 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_response(
     {
         // Verify that the ok_packet is correct
         ok_view ok{};
-        return deserialize_ok_packet(ctx.to_span(), ok);
+        err = deserialize_ok_packet(ctx.to_span(), ok);
+        if (err)
+            return err;
+        backslash_escapes = ok.backslash_escapes();
+        return error_code();
     }
     else if (header == error_packet_header)
     {

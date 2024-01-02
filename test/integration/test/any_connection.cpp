@@ -9,7 +9,9 @@
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/io_context.hpp>
@@ -35,9 +37,11 @@ namespace asio = boost::asio;
 BOOST_AUTO_TEST_SUITE(test_any_connection)
 
 using netmaker_connect = netfun_maker_mem<void, any_connection, const connect_params&>;
+using netmaker_execute = netfun_maker_mem<void, any_connection, const string_view&, results&>;
 
 // Don't validate executor info, since our I/O objects don't use tracker executors
 const auto connect_fn = netmaker_connect::async_errinfo(&any_connection::async_connect, false);
+const auto execute_fn = netmaker_execute::async_errinfo(&any_connection::async_execute, false);
 
 connect_params create_params(ssl_mode mode = ssl_mode::enable)
 {
@@ -230,6 +234,40 @@ BOOST_AUTO_TEST_CASE(async_connect_deferred_lifetimes)
 
     // No error
     res.validate_no_error();
+}
+
+// Backslash escapes
+BOOST_AUTO_TEST_CASE(backslash_escapes)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection conn(ctx);
+
+    // Backslash escapes enabled by default
+    BOOST_TEST(conn.backslash_escapes());
+
+    // Connect doesn't change the value
+    connect_fn(conn, create_params(ssl_mode::disable)).validate_no_error();
+    BOOST_TEST(conn.backslash_escapes());
+
+    // Setting the SQL mode to NO_BACKSLASH_ESCAPES updates the value
+    results r;
+    execute_fn(conn, "SET sql_mode = 'NO_BACKSLASH_ESCAPES'", r).validate_no_error();
+    BOOST_TEST(!conn.backslash_escapes());
+
+    // Executing a different statement doesn't change the value
+    execute_fn(conn, "SELECT 1", r).validate_no_error();
+    BOOST_TEST(!conn.backslash_escapes());
+
+    // Clearing the SQL mode updates the value
+    execute_fn(conn, "SET sql_mode = ''", r).validate_no_error();
+    BOOST_TEST(conn.backslash_escapes());
+
+    // Reconnecting clears the value
+    execute_fn(conn, "SET sql_mode = 'NO_BACKSLASH_ESCAPES'", r).validate_no_error();
+    BOOST_TEST(!conn.backslash_escapes());
+    connect_fn(conn, create_params(ssl_mode::disable)).validate_no_error();
+    BOOST_TEST(conn.backslash_escapes());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
