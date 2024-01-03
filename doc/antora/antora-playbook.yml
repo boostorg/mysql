@@ -1,0 +1,12 @@
+site:
+  title: Boost.MySQL Docs
+  start_page: mysql::index.adoc
+content:
+  sources:
+  - url: /home/ruben/workspace/mysql
+    branches: ['feature/mrdocs']
+    start_path: doc/antora/mysql
+ui:
+  bundle:
+    url: /home/ruben/workspace/site-docs/antora-ui/build/ui-bundle.zip
+    snapshot: true

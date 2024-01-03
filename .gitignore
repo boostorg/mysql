@@ -13,3 +13,6 @@ doc/qbk/reference.qbk
 compile_commands.json
 .cache/
 __build*__/
+node_modules/
+doc/antora/build
+doc/antora/mysql/modules/reference/pages
