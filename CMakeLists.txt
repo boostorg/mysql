@@ -21,6 +21,27 @@ else()
     set(BOOST_MYSQL_IS_ROOT OFF)
 endif()
 
+# If we are the top-level project, enable CTest and some extra options used in CI
+if(BOOST_MYSQL_IS_ROOT)
+    include(CTest)
+
+    # Don't run integration testing unless explicitly requested
+    option(BOOST_MYSQL_INTEGRATION_TESTS OFF "Whether to build and run integration tests or not")
+    mark_as_advanced(BOOST_MYSQL_INTEGRATION_TESTS)
+
+    # Valgrind tests and Valgrind-friendly code (e.g. mark SSL buffers as initialized)
+    option(BOOST_MYSQL_VALGRIND_TESTS OFF "Whether to run Valgrind tests or not (requires Valgrind)")
+    mark_as_advanced(BOOST_MYSQL_VALGRIND_TESTS)
+    
+    # Build with coverage
+    option(BOOST_MYSQL_COVERAGE OFF "Whether to build using coverage")
+    mark_as_advanced(BOOST_MYSQL_COVERAGE)
+
+    # Use SYSTEM for Boost.MySQL includes
+    option(BOOST_MYSQL_USE_SYSTEM ON "Whether to use system includes for Boost.MySQL headers")
+    mark_as_advanced(BOOST_MYSQL_USE_SYSTEM)
+endif()
+
 # Library
 add_library(boost_mysql INTERFACE)
 add_library(Boost::mysql ALIAS boost_mysql)
@@ -78,29 +99,12 @@ else()
 endif()
 
 # Includes & features
-if (BOOST_MYSQL_IS_ROOT)
+if (BOOST_MYSQL_IS_ROOT AND BOOST_MYSQL_USE_SYSTEM)
     target_include_directories(boost_mysql SYSTEM INTERFACE include)
 else()
     target_include_directories(boost_mysql INTERFACE include)
 endif()
 target_compile_features(boost_mysql INTERFACE cxx_std_11)
-
-# If we are the top-level project, enable CTest and some extra options used in CI
-if(BOOST_MYSQL_IS_ROOT)
-    include(CTest)
-
-    # Don't run integration testing unless explicitly requested
-    option(BOOST_MYSQL_INTEGRATION_TESTS OFF "Whether to build and run integration tests or not")
-    mark_as_advanced(BOOST_MYSQL_INTEGRATION_TESTS)
-
-    # Valgrind tests and Valgrind-friendly code (e.g. mark SSL buffers as initialized)
-    option(BOOST_MYSQL_VALGRIND_TESTS OFF "Whether to run Valgrind tests or not (requires Valgrind)")
-    mark_as_advanced(BOOST_MYSQL_VALGRIND_TESTS)
-    
-    # Build with coverage
-    option(BOOST_MYSQL_COVERAGE OFF "Whether to build using coverage")
-    mark_as_advanced(BOOST_MYSQL_COVERAGE)
-endif()
 
 # Examples and tests
 if(BUILD_TESTING)
@@ -122,4 +126,9 @@ if(BUILD_TESTING)
     if (BOOST_MYSQL_IS_ROOT)
         add_subdirectory(bench)
     endif()
+endif()
+
+# Docs target
+if(BOOST_MYSQL_IS_ROOT)
+    add_subdirectory(doc/mrdocs-lib)
 endif()
