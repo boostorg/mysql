@@ -242,7 +242,8 @@ def parse_err_header(fname: Path) -> pd.DataFrame:
         x.startswith('ER_ERROR_FIRST') or
         x.startswith('ER_ERROR_LAST') or
         x == 'ER_LAST_MYSQL_ERROR_MESSAGE' or
-        x.startswith('ER_UNUSED')
+        x.startswith('ER_UNUSED') or
+        x.endswith('__UNUSED')
     ))]
     return df
 

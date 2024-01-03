@@ -76,9 +76,6 @@ constexpr int er_unsupported_engine = 1726;
 /// Server error specific to mysql. Error number: 1742, symbol: ER_RPL_INFO_DATA_TOO_LONG.
 constexpr int er_rpl_info_data_too_long = 1742;
 
-/// Server error specific to mysql. Error number: 1749, symbol: ER_NO_SUCH_PARTITION__UNUSED.
-constexpr int er_no_such_partition__unused = 1749;
-
 /// Server error specific to mysql. Error number: 1768, symbol: ER_CANT_CHANGE_GTID_NEXT_IN_TRANSACTION.
 constexpr int er_cant_change_gtid_next_in_transaction = 1768;
 
@@ -87,9 +84,6 @@ constexpr int er_auto_position_requires_gtid_mode_not_off = 1777;
 
 /// Server error specific to mysql. Error number: 1779, symbol: ER_GTID_MODE_ON_REQUIRES_ENFORCE_GTID_CONSISTENCY_ON.
 constexpr int er_gtid_mode_on_requires_enforce_gtid_consistency_on = 1779;
-
-/// Server error specific to mysql. Error number: 1784, symbol: ER_FOUND_GTID_EVENT_WHEN_GTID_MODE_IS_OFF__UNUSED.
-constexpr int er_found_gtid_event_when_gtid_mode_is_off__unused = 1784;
 
 /// Server error specific to mysql. Error number: 1807, symbol: ER_DISCARD_FK_CHECKS_RUNNING.
 constexpr int er_discard_fk_checks_running = 1807;

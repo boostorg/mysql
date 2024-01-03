@@ -938,11 +938,9 @@ const char* boost::mysql::detail::mysql_error_to_string(int v) noexcept
     case 1725: return "er_table_in_fk_check";
     case 1726: return "er_unsupported_engine";
     case 1742: return "er_rpl_info_data_too_long";
-    case 1749: return "er_no_such_partition__unused";
     case 1768: return "er_cant_change_gtid_next_in_transaction";
     case 1777: return "er_auto_position_requires_gtid_mode_not_off";
     case 1779: return "er_gtid_mode_on_requires_enforce_gtid_consistency_on";
-    case 1784: return "er_found_gtid_event_when_gtid_mode_is_off__unused";
     case 1807: return "er_discard_fk_checks_running";
     case 1826: return "er_fk_dup_name";
     case 1837: return "er_gtid_next_type_undefined_gtid";
