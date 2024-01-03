@@ -48,17 +48,19 @@ class static_execution_state;
 
 /**
  * \brief A connection to a MySQL server.
- * \details
+ *
  * Represents a connection to a MySQL server.
- *\n
+ *
  * `connection` is the main I/O object that this library implements. It owns a `Stream` object that
  * is accessed by functions involving network operations, as well as session state. You can access
  * the stream using \ref connection::stream, and its executor via \ref connection::get_executor. The
  * executor used by this object is always the same as the underlying stream.
- *\n
+ *
  * \par Thread safety
- * Distinct objects: safe. \n
- * Shared objects: unsafe. \n
+ * Distinct objects: safe.
+ *
+ * Shared objects: unsafe.
+ *
  * This class is <b>not thread-safe</b>: for a single object, if you
  * call its member functions concurrently from separate threads, you will get a race condition.
  */

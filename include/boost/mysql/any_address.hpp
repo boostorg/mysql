@@ -71,13 +71,13 @@ struct unix_path
 
 /**
  * \brief (EXPERIMENTAL) A server address, identifying how to physically connect to a MySQL server.
- * \details
+ *
  * A variant-like type that can represent the network address of a MySQL server,
  * regardless of the transport type being used. It can contain either a host
  * and port (to connect using TCP) or a UNIX path (to connect using UNIX domain sockets).
- * \n
+ *
  * This class may be extended in the future to accomodate Windows named pipes.
- * \n
+ *
  * This type has value semantics: it is owning and regular.
  */
 class any_address
@@ -99,11 +99,13 @@ class any_address
 
 public:
     /**
-     * \brief Constructs an empty address.
-     * \details Results in an address with `this->type() == address_type::host_and_port`,
+     * @brief Constructs an empty address.
+     *
+     * Results in an address with `this->type() == address_type::host_and_port`,
      * `this->hostname() == ""` and `this->port() == default_port`, which identifies
      * a server running on `localhost` using the default port.
-     * \par Exception safety
+     *
+     * @par Exception safety
      * No-throw guarantee.
      */
     any_address() noexcept : any_address(address_type::host_and_port, std::string(), default_port) {}
