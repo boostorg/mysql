@@ -1,6 +1,6 @@
 site:
   title: Boost.MySQL Docs
-  start_page: mysql::index.adoc
+  start_page: mysql::01_intro.adoc
 content:
   sources:
   - url: /home/ruben/workspace/mysql

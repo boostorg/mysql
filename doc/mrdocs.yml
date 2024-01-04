@@ -13,3 +13,7 @@ filters:
   symbols:
     exclude:
       - 'boost::*::detail'
+      - 'boost::mysql::mysql_server_errc'
+      - 'boost::mysql::mariadb_server_errc'
+      - 'boost::mysql::mysql_collations'
+      - 'boost::mysql::mariadb_collations'
