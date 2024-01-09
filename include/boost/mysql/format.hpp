@@ -119,13 +119,13 @@ struct formatter<string_view>
     }
 };
 
-// inline string_view get_next_char(string_view input, const character_set& charset)
-// {
-//     int size = charset.next_char(input);
-//     if (size == 0)
-//         BOOST_THROW_EXCEPTION(boost::system::system_error(client_errc::invalid_encoding));
-//     return input.substr(static_cast<std::size_t>(size));
-// }
+inline const char* advance(const char* begin, const char* end, const character_set& charset)
+{
+    int size = charset.next_char({begin, end});
+    if (size == 0)
+        BOOST_THROW_EXCEPTION(boost::system::system_error(client_errc::invalid_encoding));
+    return begin + size;
+}
 
 class query_builder
 {
@@ -156,6 +156,7 @@ public:
         : opts_(opts), output_(output), args_(args)
     {
     }
+    const character_set& charset() const noexcept { return opts_.charset; }
 
     void sql(string_view raw_sql) { output_.append(raw_sql); }
 
@@ -204,6 +205,7 @@ inline const char* parse_field(const char* format_begin, const char* format_end,
     // {}:  auto field
     // {integer}: index
     // {identifier}: named field
+    // All characters until the closing } must be ASCII, otherwise the format string is not valid
 
     auto it = format_begin;
     if (it == format_end)
@@ -246,6 +248,8 @@ inline const char* parse_field(const char* format_begin, const char* format_end,
 
 inline void format_impl(const char* format_begin, const char* format_end, query_builder& builder)
 {
+    // We can use operator++ when we know a character is ASCII. Some charsets
+    // allow ASCII continuation bytes, so we need to skip the entire character othwerwise
     auto cur_begin = format_begin;
     auto it = format_begin;
     while (it != format_end)
@@ -254,17 +258,24 @@ inline void format_impl(const char* format_begin, const char* format_end, query_
         {
             // Found a replacement field. Dump the SQL we've been skipping and parse it
             builder.sql({cur_begin, it});
-            it = parse_field(++it, format_end, builder);
+            ++it;
+            it = parse_field(it, format_end, builder);
             cur_begin = it;
         }
-        else if (*it++ == '}')
+        else if (*it == '}')
         {
             // A lonely } is only legal as a escape curly brace (i.e. }})
             builder.sql({cur_begin, it});
-            if (it == format_end || *it++ != '}')
+            ++it;
+            if (it == format_end || *it != '}')
                 BOOST_THROW_EXCEPTION(std::runtime_error("Bad format string: unmatched '}"));
             builder.sql("}");
+            ++it;
             cur_begin = it;
+        }
+        else
+        {
+            it = advance(it, format_end, builder.charset());
         }
     }
 
