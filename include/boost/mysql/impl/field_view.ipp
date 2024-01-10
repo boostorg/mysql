@@ -11,17 +11,19 @@
 #pragma once
 
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/dt_to_string.hpp>
 
+#include <cstddef>
 #include <ostream>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_MYSQL_STATIC_OR_INLINE
-std::ostream& print_blob(std::ostream& os, blob_view value)
+inline std::ostream& print_blob(std::ostream& os, blob_view value)
 {
     if (value.empty())
         return os << "{}";
@@ -41,31 +43,11 @@ std::ostream& print_blob(std::ostream& os, blob_view value)
     return os;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-std::ostream& print_time(std::ostream& os, const boost::mysql::time& value)
+inline std::ostream& print_time(std::ostream& os, const boost::mysql::time& value)
 {
-    // Worst-case output is 26 chars, extra space just in case
     char buffer[64]{};
-
-    using namespace std::chrono;
-    const char* sign = value < microseconds(0) ? "-" : "";
-    auto num_micros = value % seconds(1);
-    auto num_secs = duration_cast<seconds>(value % minutes(1) - num_micros);
-    auto num_mins = duration_cast<minutes>(value % hours(1) - num_secs);
-    auto num_hours = duration_cast<hours>(value - num_mins);
-
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%s%02d:%02u:%02u.%06u",
-        sign,
-        static_cast<int>(std::abs(num_hours.count())),
-        static_cast<unsigned>(std::abs(num_mins.count())),
-        static_cast<unsigned>(std::abs(num_secs.count())),
-        static_cast<unsigned>(std::abs(num_micros.count()))
-    );
-
-    os << buffer;
+    std::size_t sz = detail::format_time(value, buffer);
+    os << string_view(buffer, sz);
     return os;
 }
 

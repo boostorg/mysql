@@ -27,6 +27,7 @@
 #include <boost/mysql/impl/connection_pool.ipp>
 #include <boost/mysql/impl/date.ipp>
 #include <boost/mysql/impl/datetime.ipp>
+#include <boost/mysql/impl/dt_to_string.ipp>
 #include <boost/mysql/impl/error_categories.ipp>
 #include <boost/mysql/impl/escape_string.ipp>
 #include <boost/mysql/impl/execution_state_impl.ipp>

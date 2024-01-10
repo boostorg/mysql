@@ -11,23 +11,18 @@
 #pragma once
 
 #include <boost/mysql/date.hpp>
+#include <boost/mysql/string_view.hpp>
 
-#include <cstdio>
+#include <boost/mysql/detail/dt_to_string.hpp>
+
+#include <cstddef>
 #include <ostream>
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, const date& value)
 {
-    // Worst-case output is 14 chars, extra space just in case
     char buffer[32]{};
-    snprintf(
-        buffer,
-        sizeof(buffer),
-        "%04u-%02u-%02u",
-        static_cast<unsigned>(value.year()),
-        static_cast<unsigned>(value.month()),
-        static_cast<unsigned>(value.day())
-    );
-    os << buffer;
+    std::size_t sz = detail::format_date(value.year(), value.month(), value.day(), buffer);
+    os << string_view(buffer, sz);
     return os;
 }
 
