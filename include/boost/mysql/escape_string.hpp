@@ -12,10 +12,9 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/output_string_ref.hpp>
 
 #include <boost/config.hpp>
-
-#include <string>
 
 namespace boost {
 namespace mysql {
@@ -96,16 +95,53 @@ enum class quoting_context : char
  * \ref client_errc::invalid_encoding if `input` contains a string
  * that is not valid according to `charset`.
  */
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code escape_string(
+template <BOOST_MYSQL_OUTPUT_STRING OutputString>
+BOOST_ATTRIBUTE_NODISCARD error_code escape_string(
     string_view input,
     const character_set& charset,
     bool backslash_escapes,
     quoting_context quot_ctx,
-    std::string& output
+    OutputString& output
 );
 
 }  // namespace mysql
 }  // namespace boost
+
+// Implementations
+namespace boost {
+namespace mysql {
+namespace detail {
+
+BOOST_MYSQL_DECL
+error_code escape_string(
+    string_view input,
+    const character_set& charset,
+    bool backslash_escapes,
+    quoting_context quot_ctx,
+    output_string_ref output
+);
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
+template <BOOST_MYSQL_OUTPUT_STRING OutputString>
+boost::mysql::error_code boost::mysql::escape_string(
+    string_view input,
+    const character_set& charset,
+    bool backslash_escapes,
+    quoting_context quot_ctx,
+    OutputString& output
+)
+{
+    return detail::escape_string(
+        input,
+        charset,
+        backslash_escapes,
+        quot_ctx,
+        detail::output_string_ref::create(output)
+    );
+}
 
 #ifdef BOOST_MYSQL_HEADER_ONLY
 #include <boost/mysql/impl/escape_string.ipp>

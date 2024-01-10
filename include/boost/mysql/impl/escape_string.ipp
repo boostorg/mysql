@@ -14,103 +14,117 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/escape_string.hpp>
+#include <boost/mysql/string_view.hpp>
+
+#include <boost/mysql/detail/output_string_ref.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_ATTRIBUTE_NODISCARD
-inline error_code duplicate_quotes(
-    string_view input,
-    const character_set& charset,
-    quoting_context quot_ctx,
-    std::string& output
-)
+// A (possibly null) escape sequence of two characters. Used as the return value for escapers
+class escape_sequence
 {
-    output.clear();
-    output.reserve(input.size());
-    char quote_char = static_cast<char>(quot_ctx);
-    while (!input.empty())
-    {
-        std::size_t char_size = charset.next_char(input);
-        BOOST_ASSERT(char_size <= 4u);
-        if (char_size == 0u)
-            return client_errc::invalid_encoding;
-        auto cur_char = input.substr(0, char_size);
-        if (cur_char.size() == 1u && cur_char[0] == quote_char)
-            output.push_back(quote_char);
-        output.append(cur_char.data(), cur_char.size());
-        input = input.substr(char_size);
-    }
-    return error_code();
-}
+    char data_[2]{};
 
-inline char get_escape(char input)
-{
-    switch (input)
-    {
-    case '\0': return '0';
-    case '\n': return 'n';
-    case '\r': return 'r';
-    case '\\': return '\\';
-    case '\'': return '\'';
-    case '"': return '"';
-    case '\x1a': return 'Z';  // Ctrl+Z
-    default: return '\0';     // No escape
-    }
-}
+public:
+    escape_sequence() = default;
+    escape_sequence(char ch1, char ch2) noexcept : data_{ch1, ch2} {}
 
-BOOST_ATTRIBUTE_NODISCARD
-inline error_code add_backslashes(string_view input, const character_set& charset, std::string& output)
+    bool is_escape() const noexcept { return data_[0] != '\0'; }
+    string_view data() const noexcept { return string_view(data_, 2); }
+};
+
+// Escaper is a function object that takes a char and returns a
+// escape_sequence determining whether we should escape the char or not
+template <class Escaper>
+BOOST_ATTRIBUTE_NODISCARD error_code
+escape_impl(string_view input, character_set charset, Escaper escaper, output_string_ref output)
 {
-    output.clear();
-    output.reserve(input.size());
-    while (!input.empty())
+    const char* it = input.data();
+    const char* end = it + input.size();
+
+    // The raw range is a range of contiguous characters that don't need escaping.
+    // We only append the raw range once we find a character that needs escaping
+    const char* raw_begin = it;
+    while (it != end)
     {
-        std::size_t char_size = charset.next_char(input);
-        BOOST_ASSERT(char_size <= 4u);
-        if (char_size == 0u)
-            return client_errc::invalid_encoding;
-        auto cur_char = input.substr(0, char_size);
-        if (cur_char.size() == 1u)
+        escape_sequence seq = escaper(*it);
+        if (seq.is_escape())
         {
-            char unescaped_char = cur_char[0];
-            char escape = get_escape(unescaped_char);
-            if (escape == '\0')
-            {
-                // No escape
-                output.push_back(unescaped_char);
-            }
-            else
-            {
-                output.push_back('\\');
-                output.push_back(escape);
-            }
+            // Dump what we already had
+            output.append({raw_begin, it});
+
+            // Output the escape sequence
+            output.append(seq.data());
+
+            // Advance
+            ++it;
+
+            // Update the start of the range that doesn't need escaping
+            raw_begin = it;
         }
         else
         {
-            output.append(cur_char.data(), cur_char.size());
+            // Advance with the charset function
+            std::size_t char_size = charset.next_char({it, end});
+            BOOST_ASSERT(char_size <= end - begin);
+            if (char_size == 0u)
+                return client_errc::invalid_encoding;
+            it += char_size;
         }
-        input = input.substr(char_size);
     }
+
+    // Dump the remaining of the string, if any
+    output.append({raw_begin, end});
+
+    // Done
     return error_code();
 }
+
+struct backslash_escaper
+{
+    escape_sequence operator()(char input) const noexcept
+    {
+        switch (input)
+        {
+        case '\0': return {'\\', '0'};
+        case '\n': return {'\\', 'n'};
+        case '\r': return {'\\', 'r'};
+        case '\\': return {'\\', '\\'};
+        case '\'': return {'\\', '\''};
+        case '"': return {'\\', '"'};
+        case '\x1a': return {'\\', 'Z'};    // Ctrl+Z
+        default: return escape_sequence();  // No escape
+        }
+    };
+};
+
+struct quote_escaper
+{
+    char quot;
+
+    escape_sequence operator()(char input) const noexcept
+    {
+        return input == quot ? escape_sequence(quot, quot) : escape_sequence();
+    }
+};
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-boost::mysql::error_code boost::mysql::escape_string(
+boost::mysql::error_code boost::mysql::detail::escape_string(
     string_view input,
     const character_set& charset,
     bool backslash_escapes,
     quoting_context quot_ctx,
-    std::string& output
+    output_string_ref output
 )
 {
     return (quot_ctx == quoting_context::backtick || !backslash_escapes)
-               ? detail::duplicate_quotes(input, charset, quot_ctx, output)
-               : detail::add_backslashes(input, charset, output);
+               ? detail::escape_impl(input, charset, quote_escaper(static_cast<char>(quot_ctx)), output)
+               : detail::escape_impl(input, charset, backslash_escaper(), output);
 }
 
 #endif

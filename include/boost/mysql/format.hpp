@@ -170,10 +170,14 @@ class format_context
 
     void format_string(string_view value)
     {
-        // TODO: this can be done much better
-        std::string out;
         append_raw("'");
-        auto ec = escape_string(value, charset_, backslash_escapes_, quoting_context::single_quote, out);
+        auto ec = detail::escape_string(
+            value,
+            charset_,
+            backslash_escapes_,
+            quoting_context::single_quote,
+            output_
+        );
         if (ec)
             BOOST_THROW_EXCEPTION(boost::system::system_error(ec));
         append_raw("'");
@@ -250,7 +254,7 @@ public:
     const character_set& charset() const noexcept { return charset_; }
     bool backslash_slashes() const noexcept { return backslash_escapes_; }
 
-    void append_raw(string_view raw_sql) { output_.append(raw_sql.data(), raw_sql.size()); }
+    void append_raw(string_view raw_sql) { output_.append(raw_sql); }
 
     template <class T>
     void append_value(const T& v)

@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_OUTPUT_STRING_REF_HPP
 #define BOOST_MYSQL_DETAIL_OUTPUT_STRING_REF_HPP
 
+#include <boost/mysql/string_view.hpp>
+
 #include <boost/mysql/detail/config.hpp>
 
 #include <cstddef>
@@ -27,7 +29,7 @@ template <class T>
 concept output_string = requires(T& t) {
     {
         t[0]
-    } -> std::same_as<char>;
+    } -> std::same_as<char&>;
     {
         t.size()
     } -> std::convertible_to<std::size_t>;
@@ -53,8 +55,9 @@ class output_string_ref
     static void do_append(void* container, const char* data, std::size_t size)
     {
         auto& obj = *static_cast<T*>(container);
-        obj.resize(obj.size() + size);
-        std::memcpy(&obj[0] + obj.size(), data, size);  // data() is non-const in C++ < 17
+        std::size_t prev_size = obj.size();
+        obj.resize(prev_size + size);
+        std::memcpy(&obj[0] + prev_size, data, size);  // data() is non-const in C++ < 17
     }
 
 public:
@@ -69,10 +72,10 @@ public:
         return output_string_ref(&do_append<T>, &obj);
     }
 
-    void append(const char* data, std::size_t size)
+    void append(string_view data)
     {
-        if (size > 0u)
-            append_fn_(container_, data, size);
+        if (data.size() > 0u)
+            append_fn_(container_, data.data(), data.size());
     }
 };
 
