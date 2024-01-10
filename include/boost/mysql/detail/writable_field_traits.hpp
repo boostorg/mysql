@@ -67,9 +67,8 @@ field_view to_field(const T& value) noexcept
 }
 
 template <class T>
-struct is_writable_field
+struct is_writable_field : std::integral_constant<bool, writable_field_traits<T>::is_supported>
 {
-    static constexpr bool value = writable_field_traits<T>::is_supported;
 };
 
 // field_view_forward_iterator

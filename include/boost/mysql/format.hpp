@@ -104,6 +104,7 @@ public:
         {
             ensure_capacity_for(data_size);
             std::memcpy(current(), data, data_size);
+            size_ += data_size;
         }
     }
 
@@ -197,7 +198,7 @@ arg_value create_arg_value_impl(const T& v, std::false_type) noexcept
 template <class T>
 arg_value create_arg_value(const T& v) noexcept
 {
-    return create_arg_value_impl(v, typename std::enable_if<detail::is_writable_field<T>::value>::type{});
+    return create_arg_value_impl(v, detail::is_writable_field<T>{});
 }
 
 inline arg_value create_arg_value(raw_sql v) noexcept { return {arg_kind::raw, v.get()}; }
@@ -249,6 +250,8 @@ class format_context
         default: return;
         }
     }
+
+    void finish() { output_.finish(); }
 
 public:
     format_context(
@@ -325,6 +328,7 @@ class query_builder
     int next_arg_id_{0};
 
     bool uses_auto_ids() const noexcept { return next_arg_id_ > 0; }
+    bool uses_explicit_ids() const noexcept { return next_arg_id_ == -1; }
 
     void do_field(arg_descriptor arg) { ctx_.format_arg(arg.value); }
 
@@ -409,7 +413,7 @@ class query_builder
 
     void append_auto_field()
     {
-        if (!uses_auto_ids())
+        if (uses_explicit_ids())
             BOOST_THROW_EXCEPTION(std::runtime_error("Cannot switch from explicit to automatic indexing"));
         do_indexed_field(next_arg_id_++);
     }
@@ -460,6 +464,7 @@ public:
 
         // Dump any remaining SQL
         ctx_.append_raw({cur_begin, format_end});
+        ctx_.finish();
     }
 };
 
@@ -482,18 +487,26 @@ void vformat_to(
  * PUBLIC
  */
 
+struct format_options
+{
+    character_set charset;
+    bool backslash_escapes;
+};
+
 template <class Output, class... Args>
-inline void format_to(
-    string_view format_str,
-    Output& output,
-    const character_set& charset,
-    bool backslash_escapes,
-    const Args&... args
-)
+inline void format_to(string_view format_str, Output& output, const format_options& opts, const Args&... args)
 {
     auto desc = make_arg_descriptors(args...);
     output_string_ref ref(output);
-    vformat_to(format_str, ref, charset, backslash_escapes, desc);
+    vformat_to(format_str, ref, opts.charset, opts.backslash_escapes, desc);
+}
+
+template <class... Args>
+inline std::string format(string_view format_str, const format_options& opts, const Args&... args)
+{
+    std::string output;
+    format_to(format_str, output, opts, args...);
+    return output;
 }
 
 }  // namespace mysql
