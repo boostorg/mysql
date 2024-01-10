@@ -51,6 +51,24 @@ public:
     BOOST_CXX14_CONSTEXPR string_view get() const noexcept { return impl_; }
 };
 
+class identifier
+{
+    string_view id1, id2, id3;
+
+public:
+    BOOST_CXX14_CONSTEXPR explicit identifier(
+        string_view id1,
+        string_view id2 = {},
+        string_view id3 = {}
+    ) noexcept
+        : id1(id1), id2(id2), id3(id3)
+    {
+    }
+    BOOST_CXX14_CONSTEXPR string_view first() const noexcept { return id1; }
+    BOOST_CXX14_CONSTEXPR string_view second() const noexcept { return id2; }
+    BOOST_CXX14_CONSTEXPR string_view third() const noexcept { return id3; }
+};
+
 template <class T>
 struct formatter;
 
@@ -250,6 +268,7 @@ public:
         : output_(out), charset_(charset), backslash_escapes_(backslash_escapes)
     {
     }
+    detail::output_string_ref output() noexcept { return output_; }
 
     const character_set& charset() const noexcept { return charset_; }
     bool backslash_slashes() const noexcept { return backslash_escapes_; }
@@ -260,6 +279,43 @@ public:
     void append_value(const T& v)
     {
         format_arg(create_arg_value(v));
+    }
+};
+
+template <>
+struct formatter<identifier>
+{
+    static void append_identifier(string_view name, format_context& ctx)
+    {
+        BOOST_ASSERT(!name.empty());
+        auto ec = detail::escape_string(
+            name,
+            ctx.charset(),
+            ctx.backslash_slashes(),
+            quoting_context::backtick,
+            ctx.output()
+        );
+        if (ec)
+        {
+            BOOST_THROW_EXCEPTION(boost::system::system_error(ec));
+        }
+    }
+
+    static void format(const identifier& value, format_context& ctx)
+    {
+        ctx.append_raw("`");
+        append_identifier(value.first(), ctx);
+        if (!value.second().empty())
+        {
+            ctx.append_raw("`.`");
+            append_identifier(value.second(), ctx);
+            if (!value.third().empty())
+            {
+                ctx.append_raw("`.`");
+                append_identifier(value.third(), ctx);
+            }
+        }
+        ctx.append_raw("`");
     }
 };
 
