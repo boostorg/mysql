@@ -20,6 +20,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/dt_to_string.hpp>
+#include <boost/mysql/detail/output_string_ref.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/config/detail/suffix.hpp>
@@ -48,69 +49,6 @@ public:
     BOOST_CXX14_CONSTEXPR raw_sql() = default;
     BOOST_CXX14_CONSTEXPR explicit raw_sql(string_view v) noexcept : impl_(v) {}
     BOOST_CXX14_CONSTEXPR string_view get() const noexcept { return impl_; }
-};
-
-class output_string_ref
-{
-    using grow_fn_t = std::pair<char*, std::size_t> (*)(void*, std::size_t, bool);
-
-    grow_fn_t grow_fn_;
-    void* output_;
-    char* begin_;
-    std::size_t size_;
-    std::size_t capacity_;
-
-    char* current() noexcept { return begin_ + size_; }
-
-    template <class T>
-    static std::pair<char*, std::size_t> do_grow(void* ptr, std::size_t target_size, bool fill_capacity)
-    {
-        auto& obj = *static_cast<T*>(ptr);
-        obj.resize(target_size);
-        if (fill_capacity)
-            obj.resize(obj.capacity());
-        return {obj.data(), obj.size()};
-    }
-
-    void ensure_capacity_for(std::size_t n)
-    {
-        if (size_ + n > capacity_)
-        {
-            auto range = grow_fn_(output_, size_ + n, true);
-            begin_ = range.first;
-            capacity_ = range.second;
-        }
-    }
-
-public:
-    // TODO: proper traits for this
-    template <
-        class T,
-        class = typename std::enable_if<std::is_same<typename T::value_type, char>::value>::type>
-    output_string_ref(T& obj)
-        : grow_fn_(&do_grow<T>), output_(&obj), begin_(obj.data()), size_(0u), capacity_(obj.capacity())
-    {
-        obj.resize(obj.capacity());
-    }
-
-    void push_back(char c)
-    {
-        ensure_capacity_for(1);
-        *current() = c;
-        ++size_;
-    }
-
-    void append(const char* data, std::size_t data_size)
-    {
-        if (data_size > 0u)
-        {
-            ensure_capacity_for(data_size);
-            std::memcpy(current(), data, data_size);
-            size_ += data_size;
-        }
-    }
-
-    void finish() { grow_fn_(output_, size_, false); }
 };
 
 template <class T>
@@ -215,7 +153,7 @@ inline arg_value create_arg_value(raw_sql v) noexcept { return {arg_kind::raw, v
 
 class format_context
 {
-    output_string_ref output_;
+    detail::output_string_ref output_;
     character_set charset_;
     bool backslash_escapes_;
 
@@ -299,11 +237,9 @@ class format_context
         }
     }
 
-    void finish() { output_.finish(); }
-
 public:
     format_context(
-        const output_string_ref& out,
+        detail::output_string_ref out,
         const character_set& charset,
         bool backslash_escapes
     ) noexcept
@@ -468,7 +404,7 @@ class query_builder
 
 public:
     query_builder(
-        output_string_ref output,
+        detail::output_string_ref output,
         const character_set& charset,
         bool backslash_escapes,
         span<const arg_descriptor> args
@@ -499,7 +435,7 @@ public:
                 ctx_.append_raw({cur_begin, it});
                 ++it;
                 if (it == format_end || *it != '}')
-                    BOOST_THROW_EXCEPTION(std::runtime_error("Bad format string: unmatched '}"));
+                    BOOST_THROW_EXCEPTION(std::runtime_error("Bad format string: unmatched '}'"));
                 ctx_.append_raw("}");
                 ++it;
                 cur_begin = it;
@@ -512,14 +448,13 @@ public:
 
         // Dump any remaining SQL
         ctx_.append_raw({cur_begin, format_end});
-        ctx_.finish();
     }
 };
 
 BOOST_MYSQL_DECL
 void vformat_to(
     string_view format_str,
-    output_string_ref output,
+    detail::output_string_ref output,
     const character_set& charset,
     bool backslash_escapes,
     span<const arg_descriptor> args
@@ -541,12 +476,16 @@ struct format_options
     bool backslash_escapes;
 };
 
-template <class Output, class... Args>
+template <BOOST_MYSQL_OUTPUT_STRING Output, class... Args>
 inline void format_to(string_view format_str, Output& output, const format_options& opts, const Args&... args)
 {
-    auto desc = make_arg_descriptors(args...);
-    output_string_ref ref(output);
-    vformat_to(format_str, ref, opts.charset, opts.backslash_escapes, desc);
+    vformat_to(
+        format_str,
+        detail::output_string_ref::create(output),
+        opts.charset,
+        opts.backslash_escapes,
+        make_arg_descriptors(args...)
+    );
 }
 
 template <class... Args>
