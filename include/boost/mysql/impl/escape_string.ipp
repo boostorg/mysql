@@ -118,12 +118,12 @@ boost::mysql::error_code boost::mysql::detail::escape_string(
     string_view input,
     const character_set& charset,
     bool backslash_escapes,
-    quoting_context quot_ctx,
+    char escape_char,
     output_string_ref output
 )
 {
-    return (quot_ctx == quoting_context::backtick || !backslash_escapes)
-               ? detail::escape_impl(input, charset, quote_escaper(static_cast<char>(quot_ctx)), output)
+    return (escape_char == '`' || !backslash_escapes)
+               ? detail::escape_impl(input, charset, quote_escaper(escape_char), output)
                : detail::escape_impl(input, charset, backslash_escaper(), output);
 }
 

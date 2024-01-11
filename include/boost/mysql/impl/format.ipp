@@ -10,12 +10,12 @@
 
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/escape_string.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/escape_string.hpp>
 #include <boost/mysql/detail/format.hpp>
 #include <boost/mysql/detail/output_string_ref.hpp>
 
@@ -37,13 +37,7 @@ namespace detail {
 inline void append_identifier(string_view name, format_context& ctx)
 {
     auto& impl = access::get_impl(ctx);
-    auto ec = detail::escape_string(
-        name,
-        impl.opts.charset,
-        impl.opts.backslash_escapes,
-        quoting_context::backtick,
-        impl.output
-    );
+    auto ec = detail::escape_string(name, impl.opts.charset, impl.opts.backslash_escapes, '`', impl.output);
     if (ec)
     {
         BOOST_THROW_EXCEPTION(boost::system::system_error(ec));
@@ -60,13 +54,7 @@ void append_number(output_string_ref output, T number)
 inline void append_quoted_string(output_string_ref output, string_view str, const format_options& opts)
 {
     output.append("'");
-    auto ec = detail::escape_string(
-        str,
-        opts.charset,
-        opts.backslash_escapes,
-        quoting_context::single_quote,
-        output
-    );
+    auto ec = detail::escape_string(str, opts.charset, opts.backslash_escapes, '\'', output);
     if (ec)
         BOOST_THROW_EXCEPTION(boost::system::system_error(ec));
     output.append("'");
