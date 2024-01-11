@@ -134,6 +134,7 @@ boost::mysql::error_code boost::mysql::escape_string(
     OutputString& output
 )
 {
+    output.clear();
     return detail::escape_string(
         input,
         charset,
