@@ -6,10 +6,12 @@
 //
 
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
@@ -232,7 +234,7 @@ BOOST_AUTO_TEST_CASE(operator_equals)
     }
 }
 
-BOOST_AUTO_TEST_CASE(operator_stream)
+BOOST_AUTO_TEST_CASE(to_string)
 {
     // Helper struct to define stream operations for date, datetime and time
     // We will list the possibilities for each component (hours, minutes, days...) and will
@@ -311,11 +313,14 @@ BOOST_AUTO_TEST_CASE(operator_stream)
             "micros=" << micros.name
         )
         {
-            std::string str_val = stringize(
+            // Expected value
+            std::string expected = stringize(
                 year.repr, '-', month.repr, '-', day.repr, ' ',
                 hours.repr, ':', mins.repr, ':', secs.repr,
                 '.', micros.repr
             );
+
+            // Call the function
             datetime dt(
                 static_cast<std::uint16_t>(year.v),
                 static_cast<std::uint8_t>(month.v),
@@ -325,8 +330,11 @@ BOOST_AUTO_TEST_CASE(operator_stream)
                 static_cast<std::uint8_t>(secs.v),
                 static_cast<std::uint32_t>(micros.v)
             );
+            char buff [64]{};
+            std::size_t sz = detail::access::get_impl(dt).to_string(buff);
+            string_view actual (buff, sz);
 
-            BOOST_TEST(stringize(dt) == str_val);
+            BOOST_TEST(actual == expected);
         }
     }
     }
@@ -336,6 +344,19 @@ BOOST_AUTO_TEST_CASE(operator_stream)
     }
     }
     // clang-format on
+}
+
+// operator<< is implemented in terms of to_string
+BOOST_AUTO_TEST_CASE(operator_stream)
+{
+    BOOST_TEST(stringize(datetime(2023, 1, 2, 12, 10, 1, 0)) == "2023-01-02 12:10:01.000000");
+    BOOST_TEST(stringize(datetime(2022, 12, 31)) == "2022-12-31 00:00:00.000000");
+    BOOST_TEST(stringize(datetime(2020, 3, 2, 23, 59, 59, 12345)) == "2020-03-02 23:59:59.012345");
+    BOOST_TEST(stringize(datetime()) == "0000-00-00 00:00:00.000000");
+    BOOST_TEST(
+        stringize(datetime(0xffff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xffffffff)) ==
+        "65535-255-255 255:255:255.4294967295"
+    );
 }
 
 BOOST_AUTO_TEST_CASE(now)

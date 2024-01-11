@@ -7,9 +7,13 @@
 
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/days.hpp>
+#include <boost/mysql/string_view.hpp>
+
+#include <boost/mysql/detail/access.hpp>
 
 #include <boost/test/unit_test.hpp>
 
+#include <cstddef>
 #include <stdexcept>
 
 #include "test_common/stringize.hpp"
@@ -121,7 +125,7 @@ BOOST_AUTO_TEST_CASE(operator_equals)
     }
 }
 
-BOOST_AUTO_TEST_CASE(operator_stream)
+BOOST_AUTO_TEST_CASE(to_string)
 {
     struct
     {
@@ -170,13 +174,30 @@ BOOST_AUTO_TEST_CASE(operator_stream)
             {
                 BOOST_TEST_CONTEXT("year=" << year.name << ", month=" << month.name << ", day=" << day.name)
                 {
+                    // Expected value
                     auto expected = stringize(year.repr, '-', month.repr, '-', day.repr);
-                    auto actual = stringize(date(year.value, month.value, day.value));
+
+                    // Call the function
+                    char buff[32]{};
+                    date d(year.value, month.value, day.value);
+                    std::size_t sz = detail::access::get_impl(d).to_string(buff);
+                    auto actual = string_view(buff, sz);
+
+                    // Check
                     BOOST_TEST(actual == expected);
                 }
             }
         }
     }
+}
+
+// operator stream is implemented in terms of to_string
+BOOST_AUTO_TEST_CASE(operator_stream)
+{
+    BOOST_TEST(stringize(date(2022, 1, 3)) == "2022-01-03");
+    BOOST_TEST(stringize(date(2023, 12, 31)) == "2023-12-31");
+    BOOST_TEST(stringize(date(0, 0, 0)) == "0000-00-00");
+    BOOST_TEST(stringize(date(0xffff, 0xff, 0xff)) == "65535-255-255");
 }
 
 BOOST_AUTO_TEST_CASE(now)
