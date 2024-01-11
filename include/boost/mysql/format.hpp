@@ -122,6 +122,7 @@ inline void format_to(
     std::array<detail::format_arg_descriptor, sizeof...(Args)> desc{
         {detail::make_format_arg_descriptor(args...)}
     };
+    output.clear();
     detail::vformat_to(format_str, format_context(output, opts), desc);
 }
 
