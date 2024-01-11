@@ -14,7 +14,8 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/dt_to_string.hpp>
+
+#include <boost/mysql/impl/internal/time_to_string.hpp>
 
 #include <cstddef>
 #include <ostream>
@@ -46,7 +47,7 @@ inline std::ostream& print_blob(std::ostream& os, blob_view value)
 inline std::ostream& print_time(std::ostream& os, const boost::mysql::time& value)
 {
     char buffer[64]{};
-    std::size_t sz = detail::format_time(value, buffer);
+    std::size_t sz = detail::time_to_string(value, buffer);
     os << string_view(buffer, sz);
     return os;
 }

@@ -13,17 +13,32 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/dt_to_string.hpp>
+#include <boost/mysql/detail/access.hpp>
 
 #include <cstddef>
+#include <cstdio>
 #include <ostream>
+
+std::size_t boost::mysql::date::impl_t::to_string(span<char, 32> output) const noexcept
+{
+    // Worst-case output is 14 chars, extra space just in case
+    int res = snprintf(
+        output.data(),
+        output.size(),
+        "%04u-%02u-%02u",
+        static_cast<unsigned>(year),
+        static_cast<unsigned>(month),
+        static_cast<unsigned>(day)
+    );
+    BOOST_ASSERT(res > 0);
+    return static_cast<std::size_t>(res);
+}
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, const date& value)
 {
     char buffer[32]{};
-    std::size_t sz = detail::format_date(value.year(), value.month(), value.day(), buffer);
-    os << string_view(buffer, sz);
-    return os;
+    std::size_t sz = detail::access::get_impl(value).to_string(buffer);
+    return os << string_view(buffer, sz);
 }
 
 #endif

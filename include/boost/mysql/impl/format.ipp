@@ -16,14 +16,16 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/dt_to_string.hpp>
 #include <boost/mysql/detail/format_arg.hpp>
 #include <boost/mysql/detail/output_string_ref.hpp>
+
+#include <boost/mysql/impl/internal/time_to_string.hpp>
 
 #include <boost/system/system_error.hpp>
 #include <boost/throw_exception.hpp>
 
 #include <charconv>
+#include <cstddef>
 #include <stdexcept>
 #include <string>
 
@@ -80,7 +82,7 @@ inline void append_quoted_date(output_string_ref output, date d)
 {
     char buffer[34];
     buffer[0] = '\'';
-    std::size_t sz = format_date(d.year(), d.month(), d.day(), span<char, 32>(buffer + 1, 32));
+    std::size_t sz = access::get_impl(d).to_string(span<char, 32>(buffer + 1, 32));
     buffer[sz + 1] = '\'';
     output.append(string_view(buffer, sz + 2));
 }
@@ -89,16 +91,7 @@ inline void append_quoted_datetime(output_string_ref output, datetime d)
 {
     char buffer[66];
     buffer[0] = '\'';
-    std::size_t sz = format_datetime(
-        d.year(),
-        d.month(),
-        d.day(),
-        d.hour(),
-        d.minute(),
-        d.second(),
-        d.microsecond(),
-        span<char, 64>(buffer + 1, 64)
-    );
+    std::size_t sz = access::get_impl(d).to_string(span<char, 64>(buffer + 1, 64));
     buffer[sz + 1] = '\'';
     output.append(string_view(buffer, sz + 2));
 }
@@ -107,7 +100,7 @@ inline void append_quoted_time(output_string_ref output, time t)
 {
     char buffer[66];
     buffer[0] = '\'';
-    std::size_t sz = format_time(t, span<char, 64>(buffer + 1, 64));
+    std::size_t sz = time_to_string(t, span<char, 64>(buffer + 1, 64));
     buffer[sz + 1] = '\'';
     output.append(string_view(buffer, sz + 2));
 }
