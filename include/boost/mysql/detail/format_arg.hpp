@@ -24,6 +24,8 @@ class format_context;
 
 namespace detail {
 
+class format_state;
+
 // A type-erased custom argument passed to format, invoking formatter<T>::format
 struct format_custom_arg
 {
@@ -98,7 +100,12 @@ format_arg_descriptor make_format_arg_descriptor(const T& val)
     return {make_format_value(val), {}};
 }
 
-class format_state;
+BOOST_MYSQL_DECL
+void vformat_to(
+    string_view format_str,
+    const format_context& ctx,
+    span<const detail::format_arg_descriptor> args
+);
 
 }  // namespace detail
 }  // namespace mysql

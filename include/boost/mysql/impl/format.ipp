@@ -231,12 +231,8 @@ class format_state
     }
 
 public:
-    format_state(
-        detail::output_string_ref output,
-        format_options opts,
-        span<const format_arg_descriptor> args
-    ) noexcept
-        : ctx_(output, opts), args_(args)
+    format_state(const format_context& ctx, span<const format_arg_descriptor> args) noexcept
+        : ctx_(ctx), args_(args)
     {
     }
 
@@ -327,14 +323,13 @@ void boost::mysql::format_context::format_arg(detail::format_arg_value arg)
     }
 }
 
-void boost::mysql::vformat_to(
+void boost::mysql::detail::vformat_to(
     string_view format_str,
-    detail::output_string_ref output,
-    const format_options& opts,
+    const format_context& ctx,
     span<const detail::format_arg_descriptor> args
 )
 {
-    detail::format_state(output, opts, args).format(format_str);
+    detail::format_state(ctx, args).format(format_str);
 }
 
 #endif

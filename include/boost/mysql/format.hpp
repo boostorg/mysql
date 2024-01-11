@@ -25,7 +25,6 @@
 namespace boost {
 namespace mysql {
 
-// public
 class raw_sql
 {
     string_view impl_;
@@ -63,9 +62,6 @@ struct format_options
     bool backslash_escapes;
 };
 
-// detail
-
-// a big part of this will be in ipp
 class format_context
 {
     struct
@@ -81,7 +77,11 @@ class format_context
     void format_arg(detail::format_arg_value arg);
 
 public:
-    format_context(detail::output_string_ref out, format_options opts) noexcept : impl_{out, opts} {}
+    template <BOOST_MYSQL_OUTPUT_STRING OutputString>
+    format_context(OutputString& out, format_options opts) noexcept
+        : impl_{detail::output_string_ref::create(out), opts}
+    {
+    }
 
     void append_raw(string_view raw_sql) { impl_.output.append(raw_sql); }
 
@@ -105,28 +105,24 @@ struct formatter<identifier>
     static void format(const identifier& value, format_context& ctx);
 };
 
-// TODO: hide this
-BOOST_MYSQL_DECL
-void vformat_to(
-    string_view format_str,
-    detail::output_string_ref output,
-    const format_options& opts,
-    span<const detail::format_arg_descriptor> args
-);
-
 template <class T>
 inline detail::format_arg_descriptor arg(const T& value, string_view name) noexcept
 {
     return {detail::make_format_value(value), name};
 }
 
-template <BOOST_MYSQL_OUTPUT_STRING Output, class... Args>
-inline void format_to(string_view format_str, Output& output, const format_options& opts, const Args&... args)
+template <BOOST_MYSQL_OUTPUT_STRING OutputString, class... Args>
+inline void format_to(
+    string_view format_str,
+    OutputString& output,
+    const format_options& opts,
+    const Args&... args
+)
 {
     std::array<detail::format_arg_descriptor, sizeof...(Args)> desc{
         {detail::make_format_arg_descriptor(args...)}
     };
-    vformat_to(format_str, detail::output_string_ref::create(output), opts, desc);
+    detail::vformat_to(format_str, format_context(output, opts), desc);
 }
 
 template <class... Args>
