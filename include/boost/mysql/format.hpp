@@ -13,7 +13,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/format_arg.hpp>
+#include <boost/mysql/detail/format.hpp>
 #include <boost/mysql/detail/output_string_ref.hpp>
 
 #include <boost/config.hpp>

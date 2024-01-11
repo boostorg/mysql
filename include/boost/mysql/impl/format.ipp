@@ -16,7 +16,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/format_arg.hpp>
+#include <boost/mysql/detail/format.hpp>
 #include <boost/mysql/detail/output_string_ref.hpp>
 
 #include <boost/mysql/impl/internal/time_to_string.hpp>
