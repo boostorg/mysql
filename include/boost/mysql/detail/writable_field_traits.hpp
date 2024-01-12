@@ -41,6 +41,40 @@ struct writable_field_traits<
     static field_view to_field(const T& value) noexcept { return field_view(value); }
 };
 
+// Explicitly disallow character types that cause surprising behavior
+// because they are promoted to int when converted to field_view
+template <>
+struct writable_field_traits<char>
+{
+    static constexpr bool is_supported = false;
+};
+
+template <>
+struct writable_field_traits<wchar_t>
+{
+    static constexpr bool is_supported = false;
+};
+
+#ifdef __cpp_char8_t
+template <>
+struct writable_field_traits<char8_t>
+{
+    static constexpr bool is_supported = false;
+};
+#endif
+
+template <>
+struct writable_field_traits<char16_t>
+{
+    static constexpr bool is_supported = false;
+};
+
+template <>
+struct writable_field_traits<char32_t>
+{
+    static constexpr bool is_supported = false;
+};
+
 // Optionals. To avoid dependencies, we use a "concept".
 // We consider a type an optional if has a `bool has_value() const` and
 // `const value_type& value() const`
