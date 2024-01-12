@@ -13,6 +13,8 @@
 
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
+#include <type_traits>
+
 namespace boost {
 namespace mysql {
 
@@ -25,6 +27,34 @@ class format_context;
 namespace detail {
 
 class format_state;
+
+struct formatter_is_unspecialized
+{
+};
+
+template <class T>
+struct has_unspecialized_formatter : std::is_base_of<formatter_is_unspecialized, formatter<T>>
+{
+};
+
+template <class T>
+constexpr bool is_formattable_type()
+{
+    return is_writable_field<T>::value || !has_unspecialized_formatter<T>::value;
+}
+
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+
+template <class T>
+concept formattable = is_formattable_type<T>();
+
+#define BOOST_MYSQL_FORMATTABLE ::boost::mysql::detail::formattable
+
+#else
+
+#define BOOST_MYSQL_FORMATTABLE class
+
+#endif
 
 // A type-erased custom argument passed to format, invoking formatter<T>::format
 struct format_custom_arg
@@ -66,6 +96,11 @@ struct format_arg_value
 template <class T>
 format_arg_value make_format_value_impl(const T& v, std::true_type) noexcept
 {
+    static_assert(
+        has_unspecialized_formatter<T>::value,
+        "formatter<T> specializations for basic types (satisfying the WritableField concept) are not "
+        "supported. Please remove the formatter specialization"
+    );
     return {false, to_field(v)};
 }
 
@@ -79,6 +114,11 @@ format_arg_value make_format_value_impl(const T& v, std::false_type) noexcept
 template <class T>
 format_arg_value make_format_value(const T& v) noexcept
 {
+    static_assert(
+        is_formattable_type<T>(),
+        "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
+        "formattable"
+    );
     return make_format_value_impl(v, is_writable_field<T>{});
 }
 

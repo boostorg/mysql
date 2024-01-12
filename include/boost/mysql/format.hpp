@@ -54,7 +54,9 @@ public:
 };
 
 template <class T>
-struct formatter;
+struct formatter : detail::formatter_is_unspecialized
+{
+};
 
 struct format_options
 {
@@ -85,7 +87,7 @@ public:
 
     void append_raw(string_view raw_sql) { impl_.output.append(raw_sql); }
 
-    template <class T>
+    template <BOOST_MYSQL_FORMATTABLE T>
     void append_value(const T& v)
     {
         format_arg(create_arg_value(v));
@@ -111,7 +113,7 @@ inline detail::format_arg_descriptor arg(const T& value, string_view name) noexc
     return {detail::make_format_value(value), name};
 }
 
-template <BOOST_MYSQL_OUTPUT_STRING OutputString, class... Args>
+template <BOOST_MYSQL_OUTPUT_STRING OutputString, BOOST_MYSQL_FORMATTABLE... Args>
 inline void format_to(
     string_view format_str,
     OutputString& output,
@@ -126,7 +128,7 @@ inline void format_to(
     detail::vformat_to(format_str, format_context(output, opts), desc);
 }
 
-template <class... Args>
+template <BOOST_MYSQL_FORMATTABLE... Args>
 inline std::string format(string_view format_str, const format_options& opts, const Args&... args)
 {
     std::string output;
