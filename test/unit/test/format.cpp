@@ -205,7 +205,12 @@ BOOST_AUTO_TEST_CASE(individual_double)
         {"max_neg",               -1.7976931348623157e+308, "-1.7976931348623157e+308"},
         {"zero",                  0.0,                      "0e+00"                   },
         {"zero_neg",              -0.0,                     "-0e+00"                  },
- // TODO: min & denorm
+        {"expneg",                4.2e-12,                  "4.2e-12"                 },
+        {"expneg_precision",      4.2872383293922839e-45,   "4.2872383293922836e-45"  },
+        {"min",                   2.2250738585072014e-308,  "2.2250738585072014e-308" },
+        {"min_neg",               -2.2250738585072014e-308, "-2.2250738585072014e-308"},
+        {"denorm",                -4.2872383293922839e-309, "-4.287238329392283e-309" },
+        {"min_denorm",            5e-324,                   "5e-324"                  },
     };
 
     for (const auto& tc : test_cases)
@@ -218,7 +223,6 @@ BOOST_AUTO_TEST_CASE(individual_double)
     }
 }
 
-//  *    float, double
 //  *    string, const char*, string_view
 //  *    blob, blob_view
 //  *    date, time, datetime
