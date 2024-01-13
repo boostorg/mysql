@@ -73,13 +73,7 @@ inline void append_double(output_string_ref output, double number)
 
     // We format as scientific to make MySQL understand the number as a double.
     // Otherwise, it takes it as a DECIMAL.
-    auto res = std::to_chars(
-        buff,
-        buff + buffsize,
-        number,
-        std::chars_format::scientific,
-        std::numeric_limits<double>::max_digits10
-    );
+    auto res = std::to_chars(buff, buff + buffsize, number, std::chars_format::scientific);
 
     // Can only fail becuase of buffer being too small
     BOOST_ASSERT(!res.ec);
