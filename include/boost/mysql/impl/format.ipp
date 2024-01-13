@@ -26,8 +26,8 @@
 
 #include <charconv>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
-#include <string>
 
 namespace boost {
 namespace mysql {
@@ -45,10 +45,47 @@ inline void append_identifier(string_view name, format_context& ctx)
 }
 
 template <class T>
-void append_number(output_string_ref output, T number)
+void append_int(output_string_ref output, T integer)
 {
-    // TODO: we can probably do this better
-    output.append(std::to_string(number));
+    // Make sure our buffer is big enough. 2: sign + digits10 is only 1 below max
+    constexpr std::size_t buffsize = 32;
+    static_assert(2 + std::numeric_limits<double>::digits10 < buffsize);
+
+    char buff[buffsize];
+
+    auto res = std::to_chars(buff, buff + buffsize, integer);
+
+    // Can only fail becuase of buffer being too small
+    BOOST_ASSERT(!res.ec);
+
+    // Copy
+    output.append(string_view(buff, res.ptr - buff));
+}
+
+inline void append_double(output_string_ref output, double number)
+{
+    // Make sure our buffer is big enough. 4: sign, radix point, e+
+    // 3: max exponent digits
+    constexpr std::size_t buffsize = 32;
+    static_assert(4 + std::numeric_limits<double>::max_digits10 + 3 < buffsize);
+
+    char buff[buffsize];
+
+    // We format as scientific to make MySQL understand the number as a double.
+    // Otherwise, it takes it as a DECIMAL.
+    auto res = std::to_chars(
+        buff,
+        buff + buffsize,
+        number,
+        std::chars_format::scientific,
+        std::numeric_limits<double>::max_digits10
+    );
+
+    // Can only fail becuase of buffer being too small
+    BOOST_ASSERT(!res.ec);
+
+    // Copy
+    output.append(string_view(buff, res.ptr - buff));
 }
 
 inline void append_quoted_string(output_string_ref output, string_view str, const format_options& opts)
@@ -289,10 +326,12 @@ void boost::mysql::format_context::format_arg(detail::format_arg_value arg)
         switch (fv.kind())
         {
         case field_kind::null: return append_raw("NULL");
-        case field_kind::int64: return detail::append_number(impl_.output, fv.get_int64());
-        case field_kind::uint64: return detail::append_number(impl_.output, fv.get_uint64());
-        case field_kind::float_: return detail::append_number(impl_.output, fv.get_float());
-        case field_kind::double_: return detail::append_number(impl_.output, fv.get_double());
+        case field_kind::int64: return detail::append_int(impl_.output, fv.get_int64());
+        case field_kind::uint64: return detail::append_int(impl_.output, fv.get_uint64());
+        case field_kind::float_:
+            // float is formatted as double because it's parsed
+            return detail::append_double(impl_.output, fv.get_float());
+        case field_kind::double_: return detail::append_double(impl_.output, fv.get_double());
         case field_kind::string:
             return detail::append_quoted_string(impl_.output, fv.get_string(), impl_.opts);
         case field_kind::blob: return detail::append_quoted_blob(impl_.output, fv.get_blob(), impl_.opts);
