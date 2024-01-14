@@ -6,10 +6,14 @@
 //
 
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/time.hpp>
 
 #include <boost/mysql/impl/internal/time_to_string.hpp>
 
+#include <boost/core/span.hpp>
+#include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
 #include <cstddef>
 
@@ -17,8 +21,27 @@
 #include "test_common/stringize.hpp"
 
 using namespace boost::mysql;
+using test::maket;
 
-BOOST_AUTO_TEST_CASE(test_time_to_string)
+BOOST_AUTO_TEST_SUITE(test_time_to_string)
+
+// Having the buffer in dynamic memory helps detect overruns
+static std::string invoke_to_string(::boost::mysql::time t)
+{
+    std::string res(64, '\0');
+    std::size_t sz = detail::time_to_string(t, boost::span<char, 64>(&res[0], 64));
+    res.resize(sz);
+    return res;
+}
+
+// C++ min and max should still be formattable. The actual values are not specified
+BOOST_AUTO_TEST_CASE(minmax)
+{
+    BOOST_CHECK_NO_THROW(invoke_to_string(::boost::mysql::time::min()));
+    BOOST_CHECK_NO_THROW(invoke_to_string(::boost::mysql::time::max()));
+}
+
+BOOST_AUTO_TEST_CASE(coverage)
 {
     // We will list the possibilities for each component (hours, minutes, days...) and will
     // take the Cartessian product of all them
@@ -84,9 +107,7 @@ BOOST_AUTO_TEST_CASE(test_time_to_string)
             );
 
             // Call the function
-            char buff [64]{};
-            std::size_t sz = detail::time_to_string(t, buff);
-            string_view actual (buff, sz);
+            auto actual = invoke_to_string(t);
 
             // Check
             BOOST_TEST(actual == expected);
@@ -99,3 +120,5 @@ BOOST_AUTO_TEST_CASE(test_time_to_string)
     }
     // clang-format on
 }
+
+BOOST_AUTO_TEST_SUITE_END()

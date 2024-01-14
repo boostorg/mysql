@@ -42,7 +42,7 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
         static_cast<unsigned>(std::abs(num_secs.count())),
         static_cast<unsigned>(std::abs(num_micros.count()))
     );
-    BOOST_ASSERT(res > 0);
+    BOOST_ASSERT(res > 0 && res <= 64);
     return static_cast<std::size_t>(res);
 }
 

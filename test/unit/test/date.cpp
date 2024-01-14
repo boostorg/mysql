@@ -11,9 +11,11 @@
 
 #include <boost/mysql/detail/access.hpp>
 
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 
 #include "test_common/stringize.hpp"
@@ -177,11 +179,15 @@ BOOST_AUTO_TEST_CASE(to_string)
                     // Expected value
                     auto expected = stringize(year.repr, '-', month.repr, '-', day.repr);
 
-                    // Call the function
-                    char buff[32]{};
+                    // Input value
                     date d(year.value, month.value, day.value);
-                    std::size_t sz = detail::access::get_impl(d).to_string(buff);
-                    auto actual = string_view(buff, sz);
+
+                    // Call the function. Using a heap-allocated buffer helps detect overruns
+                    std::unique_ptr<char[]> buff(new char[32]);
+                    std::size_t sz = detail::access::get_impl(d).to_string(
+                        boost::span<char, 32>(buff.get(), 32)
+                    );
+                    auto actual = string_view(buff.get(), sz);
 
                     // Check
                     BOOST_TEST(actual == expected);

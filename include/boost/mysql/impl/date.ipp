@@ -30,7 +30,7 @@ std::size_t boost::mysql::date::impl_t::to_string(span<char, 32> output) const n
         static_cast<unsigned>(month),
         static_cast<unsigned>(day)
     );
-    BOOST_ASSERT(res > 0);
+    BOOST_ASSERT(res > 0 && res <= 32);
     return static_cast<std::size_t>(res);
 }
 

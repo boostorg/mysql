@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 
 #include "test_common/stringize.hpp"
@@ -320,7 +321,7 @@ BOOST_AUTO_TEST_CASE(to_string)
                 '.', micros.repr
             );
 
-            // Call the function
+            // Input value
             datetime dt(
                 static_cast<std::uint16_t>(year.v),
                 static_cast<std::uint8_t>(month.v),
@@ -330,9 +331,11 @@ BOOST_AUTO_TEST_CASE(to_string)
                 static_cast<std::uint8_t>(secs.v),
                 static_cast<std::uint32_t>(micros.v)
             );
-            char buff [64]{};
-            std::size_t sz = detail::access::get_impl(dt).to_string(buff);
-            string_view actual (buff, sz);
+
+            // Calling the function on a heap buffer helps detecting overruns
+            std::unique_ptr<char[]> buff (new char [64]);
+            std::size_t sz = detail::access::get_impl(dt).to_string(boost::span<char, 64>(buff.get(), 64));
+            string_view actual (buff.get(), sz);
 
             BOOST_TEST(actual == expected);
         }

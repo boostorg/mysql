@@ -34,7 +34,7 @@ std::size_t boost::mysql::datetime::impl_t::to_string(span<char, 64> output) con
         static_cast<unsigned>(second),
         static_cast<unsigned>(microsecond)
     );
-    BOOST_ASSERT(res > 0);
+    BOOST_ASSERT(res > 0 && res <= 64);
     return static_cast<std::size_t>(res);
 }
 
