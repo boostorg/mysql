@@ -10,9 +10,12 @@
 #include <boost/mysql/format.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/test/tools/context.hpp>
+#include <boost/test/unit_test.hpp>
 
-#include <cstdint>
+#include <string>
+#ifdef __cpp_lib_string_view
+#include <string_view>
+#endif
 
 using namespace boost::mysql;
 
@@ -182,7 +185,43 @@ BOOST_AUTO_TEST_CASE(individual_fields)
 
     // double
     BOOST_TEST(format(single_fmt, opts, 4.2) == "SELECT 4.2e+00;");
+
+    // string literals
+    BOOST_TEST(format(single_fmt, opts, "abc") == "SELECT 'abc';");
+    BOOST_TEST(format(single_fmt, opts, "abc'\\ OR 1=1") == "SELECT 'abc\\'\\\\ OR 1=1';");
+    BOOST_TEST(format(single_fmt, opts, "hola \xc3\xb1!") == "SELECT 'hola \xc3\xb1!';");
+    BOOST_TEST(format(single_fmt, opts, "") == "SELECT '';");
+
+    // C strings
+    BOOST_TEST(format(single_fmt, opts, static_cast<const char*>("abc")) == "SELECT 'abc';");
+    BOOST_TEST(format(single_fmt, opts, static_cast<const char*>("")) == "SELECT '';");
+
+    // std::string
+    std::string lval = "I'm an lvalue";
+    const std::string clval = "I'm const";
+    BOOST_TEST(format(single_fmt, opts, lval) == "SELECT 'I\\'m an lvalue';");
+    BOOST_TEST(format(single_fmt, opts, clval) == "SELECT 'I\\'m const';");
+    BOOST_TEST(format(single_fmt, opts, std::string("abc")) == "SELECT 'abc';");
+    BOOST_TEST(format(single_fmt, opts, std::string()) == "SELECT '';");
+
+    // string_view
+    BOOST_TEST(format(single_fmt, opts, string_view("abc")) == "SELECT 'abc';");
+    BOOST_TEST(format(single_fmt, opts, string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';");
+    BOOST_TEST(format(single_fmt, opts, string_view()) == "SELECT '';");
+
+// std::string_view
+#ifdef __cpp_lib_string_view
+    BOOST_TEST(format(single_fmt, opts, std::string_view("abc")) == "SELECT 'abc';");
+    BOOST_TEST(format(single_fmt, opts, std::string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';");
+    BOOST_TEST(format(single_fmt, opts, std::string_view()) == "SELECT '';");
+#endif
 }
+
+//  *    blob, blob_view
+//  *    date, time, datetime
+//  *    field, field_view
+//  *    boost::optional, std::optional
+//  *    raw
 
 // doubles have many different cases that may cause trouble, so we
 // have a separate test case for them. floats are formatted as doubles, so don't need extra coverage
@@ -222,13 +261,6 @@ BOOST_AUTO_TEST_CASE(individual_double)
         }
     }
 }
-
-//  *    string, const char*, string_view
-//  *    blob, blob_view
-//  *    date, time, datetime
-//  *    field, field_view
-//  *    boost::optional, std::optional
-//  *    raw
 
 // BOOST_TEST(
 //     format("SELECT * FROM myt WHERE id = {}", default_opts(), 42) == "SELECT * FROM myt WHERE id = 42"
