@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/blob.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format.hpp>
@@ -13,11 +14,14 @@
 #include <boost/test/unit_test.hpp>
 
 #include <string>
+
+#include "test_common/create_basic.hpp"
 #ifdef __cpp_lib_string_view
 #include <string_view>
 #endif
 
 using namespace boost::mysql;
+using namespace boost::mysql::test;
 
 /**
  * identifier
@@ -197,12 +201,13 @@ BOOST_AUTO_TEST_CASE(individual_fields)
     BOOST_TEST(format(single_fmt, opts, static_cast<const char*>("")) == "SELECT '';");
 
     // std::string
-    std::string lval = "I'm an lvalue";
-    const std::string clval = "I'm const";
-    BOOST_TEST(format(single_fmt, opts, lval) == "SELECT 'I\\'m an lvalue';");
-    BOOST_TEST(format(single_fmt, opts, clval) == "SELECT 'I\\'m const';");
+    std::string str_lval = "I'm an lvalue";
+    const std::string str_clval = "I'm const";
+    BOOST_TEST(format(single_fmt, opts, str_lval) == "SELECT 'I\\'m an lvalue';");
+    BOOST_TEST(format(single_fmt, opts, str_clval) == "SELECT 'I\\'m const';");
     BOOST_TEST(format(single_fmt, opts, std::string("abc")) == "SELECT 'abc';");
     BOOST_TEST(format(single_fmt, opts, std::string()) == "SELECT '';");
+    // TODO: std::string with allocator
 
     // string_view
     BOOST_TEST(format(single_fmt, opts, string_view("abc")) == "SELECT 'abc';");
@@ -215,10 +220,44 @@ BOOST_AUTO_TEST_CASE(individual_fields)
     BOOST_TEST(format(single_fmt, opts, std::string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';");
     BOOST_TEST(format(single_fmt, opts, std::string_view()) == "SELECT '';");
 #endif
-}
 
-//  *    blob, blob_view
-//  *    date, time, datetime
+    // blob: same semantics as strings
+    blob b_lval{0x68, 0x65, 0x6c, 0x6c, 0x27, 0x6f};  // hell'o
+    const blob c_clval = b_lval;
+    BOOST_TEST(format(single_fmt, opts, b_lval) == "SELECT 'hell\\'o';");
+    BOOST_TEST(format(single_fmt, opts, c_clval) == "SELECT 'hell\\'o';");
+    BOOST_TEST(format(single_fmt, opts, blob{0x00, 0x01, 0x02}) == "SELECT '\\0\1\2';");
+    BOOST_TEST(format(single_fmt, opts, blob()) == "SELECT '';");
+    // TODO: blob with custom allocator
+
+    // blob_view
+    BOOST_TEST(format(single_fmt, opts, makebv("hello\\")) == "SELECT 'hello\\\\';");
+    BOOST_TEST(format(single_fmt, opts, makebv("hello \xc3\xb1!")) == "SELECT 'hello \xc3\xb1!';");
+    BOOST_TEST(format(single_fmt, opts, blob_view()) == "SELECT '';");
+
+    // date
+    BOOST_TEST(format(single_fmt, opts, date(2021, 1, 20)) == "SELECT '2021-01-20';");
+    BOOST_TEST(format(single_fmt, opts, date()) == "SELECT '0000-00-00';");
+    BOOST_TEST(format(single_fmt, opts, date(0xffff, 0xff, 0xff)) == "SELECT '65535-255-255';");
+
+    // datetime
+    BOOST_TEST(format(single_fmt, opts, datetime(2021, 1, 20)) == "SELECT '2021-01-20 00:00:00.000000';");
+    BOOST_TEST(
+        format(single_fmt, opts, datetime(1998, 1, 1, 21, 3, 5, 12)) == "SELECT '1998-01-01 21:03:05.000012';"
+    );
+    BOOST_TEST(format(single_fmt, opts, datetime()) == "SELECT '0000-00-00 00:00:00.000000';");
+    BOOST_TEST(
+        format(single_fmt, opts, datetime(0xffff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xffffffff)) ==
+        "SELECT '65535-255-255 255:255:255.4294967295';"
+    );
+
+    // time
+    BOOST_TEST(format(single_fmt, opts, maket(127, 1, 10, 123)) == "SELECT '127:01:10.000123';");
+    BOOST_TEST(format(single_fmt, opts, -maket(9, 1, 10)) == "SELECT '-09:01:10.000000';");
+    BOOST_TEST(format(single_fmt, opts, ::boost::mysql::time()) == "SELECT '00:00:00.000000';");
+    BOOST_CHECK_NO_THROW(format(single_fmt, opts, ::boost::mysql::time::min()));
+    BOOST_CHECK_NO_THROW(format(single_fmt, opts, ::boost::mysql::time::max()));
+}
 //  *    field, field_view
 //  *    boost::optional, std::optional
 //  *    raw
@@ -261,14 +300,5 @@ BOOST_AUTO_TEST_CASE(individual_double)
         }
     }
 }
-
-// BOOST_TEST(
-//     format("SELECT * FROM myt WHERE id = {}", default_opts(), 42) == "SELECT * FROM myt WHERE id = 42"
-// );
-// BOOST_TEST(format("SELECT * FROM {}", default_opts(), identifier("my`tab")) == "SELECT * FROM `my``tab`");
-// BOOST_TEST(
-//     format("SELECT * FROM {}", default_opts(), identifier("my`db", "my`tab")) ==
-//     "SELECT * FROM `my``db`.`my``tab`"
-// );
 
 BOOST_AUTO_TEST_SUITE_END()
