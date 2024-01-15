@@ -235,11 +235,9 @@ BOOST_AUTO_TEST_CASE(operator_equals)
     }
 }
 
-BOOST_AUTO_TEST_CASE(to_string)
+// Coverage for to_string. This uses a dot-product to cover all common cases
+BOOST_AUTO_TEST_CASE(to_string_coverage)
 {
-    // Helper struct to define stream operations for date, datetime and time
-    // We will list the possibilities for each component (hours, minutes, days...) and will
-    // take the Cartessian product of all them
     struct component_value
     {
         const char* name;
@@ -347,6 +345,92 @@ BOOST_AUTO_TEST_CASE(to_string)
     }
     }
     // clang-format on
+}
+
+// Double-check we correctly pad, regardless of the number
+BOOST_AUTO_TEST_CASE(to_string_padding)
+{
+    // All datetimes below 9999-xx-xx xx:xx:xx.xxxxxx should have 26 characters
+    constexpr std::size_t expected_size = 26;
+
+    // Year
+    for (std::uint16_t year = 0u; year <= 9999u; ++year)
+    {
+        BOOST_TEST_CONTEXT(year)
+        {
+            char buff[64];
+            datetime d(year, 2, 12);
+            if (detail::access::get_impl(d).to_string(buff) != expected_size)
+                BOOST_TEST(false);  // Running BOOST_TEST is slow
+        }
+    }
+
+    // Month
+    for (std::uint8_t month = 0u; month <= 31u; ++month)
+    {
+        BOOST_TEST_CONTEXT(month)
+        {
+            char buff[64];
+            datetime d(2021, month, 12);
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
+        }
+    }
+
+    // Day
+    for (std::uint8_t day = 0u; day <= 31u; ++day)
+    {
+        BOOST_TEST_CONTEXT(day)
+        {
+            char buff[64];
+            datetime d(2021, 1, day);
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
+        }
+    }
+
+    // Hour
+    for (std::uint8_t hour = 0u; hour <= 23u; ++hour)
+    {
+        BOOST_TEST_CONTEXT(hour)
+        {
+            char buff[64];
+            datetime d(2021, 1, 3, hour, 10, 15);
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
+        }
+    }
+
+    // Minute
+    for (std::uint8_t minute = 0u; minute <= 59u; ++minute)
+    {
+        BOOST_TEST_CONTEXT(minute)
+        {
+            char buff[64];
+            datetime d(2021, 1, 3, 10, minute, 15);
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
+        }
+    }
+
+    // Second
+    for (std::uint8_t second = 0u; second <= 59u; ++second)
+    {
+        BOOST_TEST_CONTEXT(second)
+        {
+            char buff[64];
+            datetime d(2021, 1, 3, 10, 43, second);
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
+        }
+    }
+
+    // Microsecond
+    for (std::uint32_t micro = 0u; micro <= 999999u; ++micro)
+    {
+        BOOST_TEST_CONTEXT(micro)
+        {
+            char buff[64];
+            datetime d(2021, 1, 3, 10, 43, 10, micro);
+            if (detail::access::get_impl(d).to_string(buff) != expected_size)
+                BOOST_TEST(false);  // Running BOOST_TEST is slow
+        }
+    }
 }
 
 // operator<< is implemented in terms of to_string

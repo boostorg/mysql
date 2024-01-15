@@ -233,7 +233,8 @@ BOOST_AUTO_TEST_CASE(to_string_padding)
         {
             char buff[32];
             date d(year, 2, 12);
-            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
+            if (detail::access::get_impl(d).to_string(buff) != expected_size)
+                BOOST_TEST(false);  // Running BOOST_TEST is slow
         }
     }
 }
