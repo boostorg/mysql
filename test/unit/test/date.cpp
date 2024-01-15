@@ -127,7 +127,8 @@ BOOST_AUTO_TEST_CASE(operator_equals)
     }
 }
 
-BOOST_AUTO_TEST_CASE(to_string)
+// Coverage cases for to_string. This does a dot-product with common cases
+BOOST_AUTO_TEST_CASE(to_string_coverage)
 {
     struct
     {
@@ -193,6 +194,46 @@ BOOST_AUTO_TEST_CASE(to_string)
                     BOOST_TEST(actual == expected);
                 }
             }
+        }
+    }
+}
+
+// Double-check we correctly pad, regardless of the number
+BOOST_AUTO_TEST_CASE(to_string_padding)
+{
+    // All dates below 9999-xx-xx should have 10 characters
+    constexpr std::size_t expected_size = 10;
+
+    // Day
+    for (std::uint8_t day = 0u; day <= 31u; ++day)
+    {
+        BOOST_TEST_CONTEXT(day)
+        {
+            char buff[32];
+            date d(2021, 1, day);
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
+        }
+    }
+
+    // Month
+    for (std::uint8_t month = 0u; month <= 31u; ++month)
+    {
+        BOOST_TEST_CONTEXT(month)
+        {
+            char buff[32];
+            date d(2021, month, 12);
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
+        }
+    }
+
+    // Year
+    for (std::uint16_t year = 0u; year <= 9999u; ++year)
+    {
+        BOOST_TEST_CONTEXT(year)
+        {
+            char buff[32];
+            date d(year, 2, 12);
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
         }
     }
 }
