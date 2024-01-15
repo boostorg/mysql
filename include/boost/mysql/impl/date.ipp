@@ -15,23 +15,14 @@
 
 #include <boost/mysql/detail/access.hpp>
 
+#include <boost/mysql/impl/internal/dt_to_string.hpp>
+
 #include <cstddef>
-#include <cstdio>
 #include <ostream>
 
 std::size_t boost::mysql::date::impl_t::to_string(span<char, 32> output) const noexcept
 {
-    // Worst-case output is 14 chars, extra space just in case
-    int res = snprintf(
-        output.data(),
-        output.size(),
-        "%04u-%02u-%02u",
-        static_cast<unsigned>(year),
-        static_cast<unsigned>(month),
-        static_cast<unsigned>(day)
-    );
-    BOOST_ASSERT(res > 0 && res <= 32);
-    return static_cast<std::size_t>(res);
+    return detail::date_to_string(year, month, day, output);
 }
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, const date& value)

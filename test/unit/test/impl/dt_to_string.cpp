@@ -8,7 +8,7 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/mysql/impl/internal/time_to_string.hpp>
+#include <boost/mysql/impl/internal/dt_to_string.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/tools/old/interface.hpp>
@@ -23,6 +23,7 @@
 using namespace boost::mysql;
 using test::maket;
 
+// date_to_string and datetime_to_string are tested in date.cpp and datetime.cpp
 BOOST_AUTO_TEST_SUITE(test_time_to_string)
 
 // Having the buffer in dynamic memory helps detect overruns

@@ -15,7 +15,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include <boost/mysql/impl/internal/time_to_string.hpp>
+#include <boost/mysql/impl/internal/dt_to_string.hpp>
 
 #include <cstddef>
 #include <ostream>

@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_TIME_TO_STRING_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_TIME_TO_STRING_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_DT_TO_STRING_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_DT_TO_STRING_HPP
 
 #include <boost/mysql/time.hpp>
 
@@ -16,6 +16,7 @@
 #include <charconv>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <system_error>
 
@@ -41,6 +42,17 @@ inline char* write_pad2(char* begin, char* end, IntType value) noexcept
 }
 
 template <class IntType>
+inline char* write_pad4(char* begin, char* end, IntType value) noexcept
+{
+    for (long l : {1000, 100, 10})
+    {
+        if (value < l)
+            *begin++ = '0';
+    }
+    return call_to_chars(begin, end, value);
+}
+
+template <class IntType>
 inline char* write_pad6(char* begin, char* end, IntType value) noexcept
 {
     for (long l : {100000, 10000, 1000, 100, 10})
@@ -49,6 +61,74 @@ inline char* write_pad6(char* begin, char* end, IntType value) noexcept
             *begin++ = '0';
     }
     return call_to_chars(begin, end, value);
+}
+
+inline std::size_t date_to_string(
+    std::uint16_t year,
+    std::uint8_t month,
+    std::uint8_t day,
+    span<char, 32> output
+) noexcept
+{
+    // Worst-case output is 14 chars, extra space just in case
+
+    // Iterators
+    char* it = output.data();
+    char* end = it + output.size();
+
+    // Year
+    it = write_pad4(it, end, static_cast<unsigned>(year));
+
+    // Month
+    *it++ = '-';
+    it = write_pad2(it, end, static_cast<unsigned>(month));
+
+    // Day
+    *it++ = '-';
+    it = write_pad2(it, end, static_cast<unsigned>(day));
+
+    // Done
+    return it - output.data();
+}
+
+inline std::size_t datetime_to_string(
+    std::uint16_t year,
+    std::uint8_t month,
+    std::uint8_t day,
+    std::uint8_t hour,
+    std::uint8_t minute,
+    std::uint8_t second,
+    std::uint32_t microsecond,
+    span<char, 64> output
+) noexcept
+{
+    // Worst-case output is 37 chars, extra space just in case
+
+    // Iterators
+    char* it = output.data();
+    char* end = it + output.size();
+
+    // Date
+    it += date_to_string(year, month, day, span<char, 32>(it, 32));
+
+    // Hour
+    *it++ = ' ';
+    it = write_pad2(it, end, static_cast<unsigned>(hour));
+
+    // Minutes
+    *it++ = ':';
+    it = write_pad2(it, end, static_cast<unsigned>(minute));
+
+    // Seconds
+    *it++ = ':';
+    it = write_pad2(it, end, static_cast<unsigned>(second));
+
+    // Microseconds
+    *it++ = '.';
+    it = write_pad6(it, end, microsecond);
+
+    // Done
+    return it - output.data();
 }
 
 inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> output) noexcept
@@ -62,9 +142,9 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
     auto mins = duration_cast<chrono::minutes>(value % chrono::hours(1) - secs);
     auto hours = duration_cast<chrono::hours>(value - mins);
 
-    auto num_micros = std::abs(micros.count());
-    auto num_secs = std::abs(secs.count());
-    auto num_mins = std::abs(mins.count());
+    auto num_micros = static_cast<unsigned>(std::abs(micros.count()));
+    auto num_secs = static_cast<unsigned>(std::abs(secs.count()));
+    auto num_mins = static_cast<unsigned>(std::abs(mins.count()));
     auto num_hours = std::abs(hours.count());
 
     // Iterators

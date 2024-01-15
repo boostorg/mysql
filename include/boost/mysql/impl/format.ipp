@@ -19,7 +19,7 @@
 #include <boost/mysql/detail/format.hpp>
 #include <boost/mysql/detail/output_string_ref.hpp>
 
-#include <boost/mysql/impl/internal/time_to_string.hpp>
+#include <boost/mysql/impl/internal/dt_to_string.hpp>
 
 #include <boost/system/system_error.hpp>
 #include <boost/throw_exception.hpp>
