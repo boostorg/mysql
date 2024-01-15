@@ -122,4 +122,57 @@ BOOST_AUTO_TEST_CASE(coverage)
     // clang-format on
 }
 
+// Double-check we correctly pad, regardless of the number
+BOOST_AUTO_TEST_CASE(to_string_padding)
+{
+    // All times below xx:xx:xx.xxxxxx should have 15 characters
+    constexpr std::size_t expected_size = 15;
+
+    // Hour
+    for (std::uint8_t hour = 0u; hour <= 99u; ++hour)
+    {
+        BOOST_TEST_CONTEXT(hour)
+        {
+            char buff[64];
+            auto t = maket(hour, 11, 20);
+            if (detail::time_to_string(t, buff) != expected_size)
+                BOOST_TEST(false);  // BOOST_TEST is slow
+        }
+    }
+
+    // Minute
+    for (std::uint8_t minute = 0u; minute <= 59u; ++minute)
+    {
+        BOOST_TEST_CONTEXT(minute)
+        {
+            char buff[64];
+            auto t = maket(12, minute, 20);
+            BOOST_TEST(detail::time_to_string(t, buff) == expected_size);
+        }
+    }
+
+    // Second
+    for (std::uint8_t second = 0u; second <= 59u; ++second)
+    {
+        BOOST_TEST_CONTEXT(second)
+        {
+            char buff[64];
+            auto t = maket(12, 10, second);
+            BOOST_TEST(detail::time_to_string(t, buff) == expected_size);
+        }
+    }
+
+    // Microsecond
+    for (std::uint32_t micro = 0u; micro <= 999999u; ++micro)
+    {
+        BOOST_TEST_CONTEXT(micro)
+        {
+            char buff[64];
+            auto t = maket(12, 10, 34, micro);
+            if (detail::time_to_string(t, buff) != expected_size)
+                BOOST_TEST(false);  // Running BOOST_TEST is slow
+        }
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

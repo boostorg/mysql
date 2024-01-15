@@ -134,18 +134,20 @@ inline std::size_t datetime_to_string(
 inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> output) noexcept
 {
     // Worst-case output is 26 chars, extra space just in case
-    namespace chrono = std::chrono;
 
     // Values
-    auto micros = value % chrono::seconds(1);
-    auto secs = duration_cast<chrono::seconds>(value % chrono::minutes(1) - micros);
-    auto mins = duration_cast<chrono::minutes>(value % chrono::hours(1) - secs);
-    auto hours = duration_cast<chrono::hours>(value - mins);
+    auto total_count = std::abs(value.count());
 
-    auto num_micros = static_cast<unsigned>(std::abs(micros.count()));
-    auto num_secs = static_cast<unsigned>(std::abs(secs.count()));
-    auto num_mins = static_cast<unsigned>(std::abs(mins.count()));
-    auto num_hours = std::abs(hours.count());
+    auto num_micros = static_cast<unsigned>(total_count % 1000000);
+    total_count /= 1000000;
+
+    auto num_secs = static_cast<unsigned>(total_count % 60);
+    total_count /= 60;
+
+    auto num_mins = static_cast<unsigned>(total_count % 60);
+    total_count /= 60;
+
+    auto num_hours = static_cast<unsigned>(total_count);
 
     // Iterators
     char* it = output.data();
