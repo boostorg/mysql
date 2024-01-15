@@ -13,37 +13,85 @@
 #include <boost/assert.hpp>
 #include <boost/core/span.hpp>
 
+#include <charconv>
 #include <chrono>
 #include <cstddef>
-#include <cstdio>
 #include <cstdlib>
+#include <system_error>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
+// Helpers
+template <class IntType>
+inline char* call_to_chars(char* begin, char* end, IntType value) noexcept
+{
+    auto r = std::to_chars(begin, end, value);
+    BOOST_ASSERT(r.ec == std::errc());
+    return r.ptr;
+}
+
+template <class IntType>
+inline char* write_pad2(char* begin, char* end, IntType value) noexcept
+{
+    if (value < 10)
+        *begin++ = '0';
+    return call_to_chars(begin, end, value);
+}
+
+template <class IntType>
+inline char* write_pad6(char* begin, char* end, IntType value) noexcept
+{
+    for (long l : {100000, 10000, 1000, 100, 10})
+    {
+        if (value < l)
+            *begin++ = '0';
+    }
+    return call_to_chars(begin, end, value);
+}
+
 inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> output) noexcept
 {
     // Worst-case output is 26 chars, extra space just in case
-    using namespace std::chrono;
-    const char* sign = value < microseconds(0) ? "-" : "";
-    auto num_micros = value % seconds(1);
-    auto num_secs = duration_cast<seconds>(value % minutes(1) - num_micros);
-    auto num_mins = duration_cast<minutes>(value % hours(1) - num_secs);
-    auto num_hours = duration_cast<hours>(value - num_mins);
+    namespace chrono = std::chrono;
 
-    int res = snprintf(
-        output.data(),
-        output.size(),
-        "%s%02d:%02u:%02u.%06u",
-        sign,
-        static_cast<int>(std::abs(num_hours.count())),
-        static_cast<unsigned>(std::abs(num_mins.count())),
-        static_cast<unsigned>(std::abs(num_secs.count())),
-        static_cast<unsigned>(std::abs(num_micros.count()))
-    );
-    BOOST_ASSERT(res > 0 && res <= 64);
-    return static_cast<std::size_t>(res);
+    // Values
+    auto micros = value % chrono::seconds(1);
+    auto secs = duration_cast<chrono::seconds>(value % chrono::minutes(1) - micros);
+    auto mins = duration_cast<chrono::minutes>(value % chrono::hours(1) - secs);
+    auto hours = duration_cast<chrono::hours>(value - mins);
+
+    auto num_micros = std::abs(micros.count());
+    auto num_secs = std::abs(secs.count());
+    auto num_mins = std::abs(mins.count());
+    auto num_hours = std::abs(hours.count());
+
+    // Iterators
+    char* it = output.data();
+    char* end = it + output.size();
+
+    // Sign
+    if (value.count() < 0)
+        *it++ = '-';
+
+    // Hours
+    it = write_pad2(it, end, num_hours);
+
+    // Minutes
+    *it++ = ':';
+    it = write_pad2(it, end, num_mins);
+
+    // Seconds
+    *it++ = ':';
+    it = write_pad2(it, end, num_secs);
+
+    // Microseconds
+    *it++ = '.';
+    it = write_pad6(it, end, num_micros);
+
+    // Done
+    return it - output.data();
 }
 
 }  // namespace detail
