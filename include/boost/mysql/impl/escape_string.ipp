@@ -104,6 +104,8 @@ struct quote_escaper
 {
     char quot;
 
+    quote_escaper(char q) noexcept : quot(q) {}
+
     escape_sequence operator()(char input) const noexcept
     {
         return input == quot ? escape_sequence(quot, quot) : escape_sequence();
