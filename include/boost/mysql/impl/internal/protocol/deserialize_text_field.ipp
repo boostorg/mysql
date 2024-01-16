@@ -25,21 +25,17 @@
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
 #include <boost/assert.hpp>
-#include <boost/lexical_cast/try_lexical_convert.hpp>
 
+#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
-#include <type_traits>
+#include <cstring>
+#include <system_error>
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-#ifdef BOOST_MSVC
-#pragma warning(push)
-#pragma warning(disable : 4996)  // MSVC doesn't like my sscanf's
-#endif
 
 // Constants
 BOOST_MYSQL_STATIC_IF_COMPILED constexpr unsigned max_decimals = 6u;
@@ -70,10 +66,19 @@ template <class T>
 BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
 deserialize_text_value_int_impl(string_view from, field_view& to) noexcept
 {
+    // Iterators
+    const char* begin = from.data();
+    const char* end = begin + from.size();
+
+    // Convert
     T v;
-    bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), v);
-    if (!ok)
+    std::from_chars_result res = std::from_chars(from.data(), from.data() + from.size(), v);
+
+    // Check
+    if (res.ec != std::errc() || res.ptr != end)
         return deserialize_errc::protocol_value_error;
+
+    // Done
     to = field_view(v);
     return deserialize_errc::ok;
 }
@@ -90,10 +95,19 @@ template <class T>
 BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
 deserialize_text_value_float(string_view from, field_view& to) noexcept
 {
+    // Iterators
+    const char* begin = from.data();
+    const char* end = begin + from.size();
+
+    // Convert
     T val;
-    bool ok = boost::conversion::try_lexical_convert(from.data(), from.size(), val);
-    if (!ok || std::isnan(val) || std::isinf(val))  // SQL std forbids these values
+    std::from_chars_result res = std::from_chars(begin, end, val);
+
+    // Check. SQL std forbids nan and inf
+    if (res.ec != std::errc() || res.ptr != end || std::isnan(val) || std::isinf(val))
         return deserialize_errc::protocol_value_error;
+
+    // Done
     to = field_view(val);
     return deserialize_errc::ok;
 }
@@ -119,13 +133,6 @@ BOOST_MYSQL_STATIC_OR_INLINE unsigned sanitize_decimals(unsigned decimals) noexc
     return (std::min)(decimals, max_decimals);
 }
 
-// Computes the meaning of the parsed microsecond number, taking into
-// account decimals (85 with 2 decimals means 850000us)
-BOOST_MYSQL_STATIC_OR_INLINE unsigned compute_micros(unsigned parsed_micros, unsigned decimals) noexcept
-{
-    return parsed_micros * static_cast<unsigned>(std::pow(10, max_decimals - decimals));
-}
-
 BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc deserialize_text_ymd(string_view from, date& to)
 {
     using namespace textc;
@@ -134,27 +141,47 @@ BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc deserialize_text_ymd(string_view f
     if (from.size() != date_sz)
         return deserialize_errc::protocol_value_error;
 
-    // Copy to a NULL-terminated buffer
-    char buffer[date_sz + 1]{};
-    std::memcpy(buffer, from.data(), from.size());
+    // Iterators
+    const char* it = from.data();
+    const char* end = it + from.size();
 
-    // Parse individual components
-    unsigned year, month, day;
-    char extra_char;
-    int parsed = sscanf(buffer, "%4u-%2u-%2u%c", &year, &month, &day, &extra_char);
-    if (parsed != 3)
+    // Year
+    std::uint16_t year = 0;
+    auto res = std::from_chars(it, end, year);
+    if (res.ec != std::errc() || res.ptr != it + year_sz)
         return deserialize_errc::protocol_value_error;
+    it += year_sz;
+
+    // Separator
+    BOOST_ASSERT(it != end);
+    if (*it++ != '-')
+        return deserialize_errc::protocol_value_error;
+
+    // Month
+    std::uint8_t month = 0;
+    res = std::from_chars(it, end, month);
+    if (res.ec != std::errc() || res.ptr != it + month_sz)
+        return deserialize_errc::protocol_value_error;
+    it += month_sz;
+
+    // Separator
+    BOOST_ASSERT(it != end);
+    if (*it++ != '-')
+        return deserialize_errc::protocol_value_error;
+
+    // Day
+    std::uint8_t day = 0;
+    res = std::from_chars(it, end, day);
+    if (res.ec != std::errc() || res.ptr != it + day_sz)
+        return deserialize_errc::protocol_value_error;
+    BOOST_ASSERT(it + day_sz == end);
 
     // Range check for individual components. MySQL doesn't allow invidiual components
     // to be out of range, although they may be zero or representing an invalid date
     if (year > max_year || month > max_month || day > max_day)
         return deserialize_errc::protocol_value_error;
 
-    to = date(
-        static_cast<std::uint16_t>(year),
-        static_cast<std::uint8_t>(month),
-        static_cast<std::uint8_t>(day)
-    );
+    to = date(year, month, day);
     return deserialize_errc::ok;
 }
 
@@ -188,46 +215,74 @@ deserialize_text_value_datetime(string_view from, field_view& to, const metadata
     if (err != deserialize_errc::ok)
         return err;
 
-    // Copy to NULL-terminated buffer
-    constexpr std::size_t datetime_time_first = date_sz + 1;  // date + space
-    char buffer[datetime_max_sz - datetime_time_first + 1]{};
-    std::memcpy(buffer, from.data() + datetime_time_first, from.size() - datetime_time_first);
+    // Iterators
+    const char* it = from.data() + date_sz;
+    const char* end = from.data() + from.size();
 
-    // Parse
-    unsigned hours, minutes, seconds;
-    unsigned micros = 0;
-    char extra_char;
+    // Separator
+    BOOST_ASSERT(it != end);
+    if (*it++ != ' ')
+        return deserialize_errc::protocol_value_error;
+
+    // Hour
+    std::uint8_t hour = 0;
+    auto res = std::from_chars(it, end, hour);
+    if (res.ec != std::errc() || res.ptr != it + 2)
+        return deserialize_errc::protocol_value_error;
+    it += 2;
+
+    // Separator
+    BOOST_ASSERT(it != end);
+    if (*it++ != ':')
+        return deserialize_errc::protocol_value_error;
+
+    // Minute
+    std::uint8_t minute = 0;
+    res = std::from_chars(it, end, minute);
+    if (res.ec != std::errc() || res.ptr != it + 2)
+        return deserialize_errc::protocol_value_error;
+    it += 2;
+
+    // Separator
+    BOOST_ASSERT(it != end);
+    if (*it++ != ':')
+        return deserialize_errc::protocol_value_error;
+
+    // Second
+    std::uint8_t second = 0;
+    res = std::from_chars(it, end, second);
+    if (res.ec != std::errc() || res.ptr != it + 2)
+        return deserialize_errc::protocol_value_error;
+    it += 2;
+
+    std::uint32_t microsecond = 0;
+
     if (decimals)
     {
-        int parsed = sscanf(buffer, "%2u:%2u:%2u.%6u%c", &hours, &minutes, &seconds, &micros, &extra_char);
-        if (parsed != 4)
+        // Microsecond separator
+        BOOST_ASSERT(it != end);
+        if (*it++ != '.')
             return deserialize_errc::protocol_value_error;
-        micros = compute_micros(micros, decimals);
-    }
-    else
-    {
-        int parsed = sscanf(buffer, "%2u:%2u:%2u%c", &hours, &minutes, &seconds, &extra_char);
-        if (parsed != 3)
+
+        // Microseconds
+        auto micros_num_chars = end - it;
+        if (micros_num_chars != decimals)
+            return deserialize_errc::protocol_value_error;
+        char micros_buff[6] = {'0', '0', '0', '0', '0', '0'};
+        std::memcpy(micros_buff, it, micros_num_chars);
+        res = std::from_chars(micros_buff, micros_buff + 6, microsecond);
+        if (res.ec != std::errc() || res.ptr != micros_buff + 6)
             return deserialize_errc::protocol_value_error;
     }
 
     // Validity check. Although MySQL allows invalid and zero datetimes, it doesn't allow
     // individual components to be out of range.
-    if (hours > max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
+    if (hour > max_hour || minute > max_min || second > max_sec || microsecond > max_micro)
     {
         return deserialize_errc::protocol_value_error;
     }
 
-    datetime dt(
-        d.year(),
-        d.month(),
-        d.day(),
-        static_cast<std::uint8_t>(hours),
-        static_cast<std::uint8_t>(minutes),
-        static_cast<std::uint8_t>(seconds),
-        static_cast<std::uint32_t>(micros)
-    );
-    to = field_view(dt);
+    to = field_view(datetime(d.year(), d.month(), d.day(), hour, minute, second, microsecond));
     return deserialize_errc::ok;
 }
 
@@ -239,55 +294,88 @@ deserialize_text_value_time(string_view from, field_view& to, const metadata& me
     // Sanitize decimals
     unsigned decimals = sanitize_decimals(meta.decimals());
 
-    // size check
-    std::size_t actual_min_size = time_min_sz + (decimals ? decimals + 1 : 0);
-    std::size_t actual_max_size = actual_min_size + 1 + 1;  // hour extra character and sign
-    BOOST_ASSERT(actual_max_size <= time_max_sz);
-    if (from.size() < actual_min_size || from.size() > actual_max_size)
-        return deserialize_errc::protocol_value_error;
-
-    // Copy to NULL-terminated buffer
-    char buffer[time_max_sz + 1]{};
-    memcpy(buffer, from.data(), from.size());
+    // Iterators
+    const char* it = from.data();
+    const char* end = it + from.size();
 
     // Sign
-    bool is_negative = from[0] == '-';
-    const char* first = is_negative ? buffer + 1 : buffer;
+    if (it == end)
+        return deserialize_errc::protocol_value_error;
+    bool is_negative = *it == '-';
+    if (is_negative)
+        ++it;
 
-    // Parse it
-    unsigned hours, minutes, seconds;
-    unsigned micros = 0;
-    char extra_char;
+    // Hours
+    std::uint16_t hours = 0;
+    auto res = std::from_chars(it, end, hours);
+    if (res.ec != std::errc())
+        return deserialize_errc::protocol_value_error;
+    auto hour_num_chars = res.ptr - it;
+    if (hour_num_chars != 2 && hour_num_chars != 3)  // may take between 2 and 3 chars
+        return deserialize_errc::protocol_value_error;
+    it = res.ptr;
+
+    // Separator
+    if (it == end || *it++ != ':')
+        return deserialize_errc::protocol_value_error;
+
+    // Minute
+    std::uint8_t minute = 0;
+    res = std::from_chars(it, end, minute);
+    if (res.ec != std::errc() || res.ptr != it + 2)
+        return deserialize_errc::protocol_value_error;
+    it += 2;
+
+    // Separator
+    if (it == end || *it++ != ':')
+        return deserialize_errc::protocol_value_error;
+
+    // Second
+    std::uint8_t second = 0;
+    res = std::from_chars(it, end, second);
+    if (res.ec != std::errc() || res.ptr != it + 2)
+        return deserialize_errc::protocol_value_error;
+    it += 2;
+
+    // Microsecond
+    std::uint32_t microsecond = 0;
+
     if (decimals)
     {
-        int parsed = sscanf(first, "%3u:%2u:%2u.%6u%c", &hours, &minutes, &seconds, &micros, &extra_char);
-        if (parsed != 4)
+        // Separator
+        if (it == end || *it++ != '.')
             return deserialize_errc::protocol_value_error;
-        micros = compute_micros(micros, decimals);
-    }
-    else
-    {
-        int parsed = sscanf(first, "%3u:%2u:%2u%c", &hours, &minutes, &seconds, &extra_char);
-        if (parsed != 3)
+
+        // Microseconds
+        auto micros_num_chars = end - it;
+        if (micros_num_chars != decimals)
+            return deserialize_errc::protocol_value_error;
+        char micros_buff[6] = {'0', '0', '0', '0', '0', '0'};
+        std::memcpy(micros_buff, it, micros_num_chars);
+        it += micros_num_chars;
+        res = std::from_chars(micros_buff, micros_buff + 6, microsecond);
+        if (res.ec != std::errc() || res.ptr != micros_buff + 6)
             return deserialize_errc::protocol_value_error;
     }
+
+    // Size check
+    if (it != end)
+        return deserialize_errc::protocol_value_error;
 
     // Range check
-    if (hours > time_max_hour || minutes > max_min || seconds > max_sec || micros > max_micro)
-    {
+    if (hours > time_max_hour || minute > max_min || second > max_sec || microsecond > max_micro)
         return deserialize_errc::protocol_value_error;
-    }
 
     // Sum it
-    auto res = std::chrono::hours(hours) + std::chrono::minutes(minutes) + std::chrono::seconds(seconds) +
-               std::chrono::microseconds(micros);
+    auto t = std::chrono::hours(hours) + std::chrono::minutes(minute) + std::chrono::seconds(second) +
+             std::chrono::microseconds(microsecond);
     if (is_negative)
     {
-        res = -res;
+        t = -t;
     }
 
     // Done
-    to = field_view(res);
+    to = field_view(t);
     return deserialize_errc::ok;
 }
 
