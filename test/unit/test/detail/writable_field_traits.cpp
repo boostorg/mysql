@@ -80,7 +80,6 @@ static_assert(is_writable_field<field&&>::value, "");
 // scalars accepted
 static_assert(is_writable_field<std::nullptr_t>::value, "");
 static_assert(is_writable_field<unsigned char>::value, "");
-static_assert(is_writable_field<char>::value, "");
 static_assert(is_writable_field<signed char>::value, "");
 static_assert(is_writable_field<short>::value, "");
 static_assert(is_writable_field<unsigned short>::value, "");
@@ -93,6 +92,15 @@ static_assert(is_writable_field<double>::value, "");
 static_assert(is_writable_field<boost::mysql::date>::value, "");
 static_assert(is_writable_field<boost::mysql::datetime>::value, "");
 static_assert(is_writable_field<boost::mysql::time>::value, "");
+
+// characters (except signed/unsigned char) not accepted
+static_assert(!is_writable_field<char>::value, "");
+static_assert(!is_writable_field<wchar_t>::value, "");
+static_assert(!is_writable_field<char16_t>::value, "");
+static_assert(!is_writable_field<char32_t>::value, "");
+#ifdef __cpp_char8_t
+static_assert(!is_writable_field<char8_t>::value, "");
+#endif
 
 // bool accepted
 static_assert(is_writable_field<bool>::value, "");
