@@ -17,7 +17,8 @@
 
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 
-#include <charconv>
+#include <boost/charconv/to_chars.hpp>
+
 #include <cstddef>
 #include <ostream>
 #include <system_error>
@@ -45,7 +46,7 @@ inline std::ostream& print_blob(std::ostream& os, blob_view value)
             os << '0';
 
         // Convert to hex
-        auto res = std::to_chars(buffer, buffer + sizeof(buffer), byte, 16);
+        auto res = charconv::to_chars(buffer, buffer + sizeof(buffer), byte, 16);
         BOOST_ASSERT(res.ec == std::errc());
         os << string_view(buffer, res.ptr - buffer);
     }

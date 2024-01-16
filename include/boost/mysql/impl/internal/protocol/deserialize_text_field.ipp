@@ -25,8 +25,8 @@
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/charconv/from_chars.hpp>
 
-#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
@@ -52,7 +52,7 @@ deserialize_text_value_int_impl(string_view from, field_view& to) noexcept
 
     // Convert
     T v;
-    std::from_chars_result res = std::from_chars(from.data(), from.data() + from.size(), v);
+    auto res = charconv::from_chars(from.data(), from.data() + from.size(), v);
 
     // Check
     if (res.ec != std::errc() || res.ptr != end)
@@ -81,7 +81,7 @@ deserialize_text_value_float(string_view from, field_view& to) noexcept
 
     // Convert
     T val;
-    std::from_chars_result res = std::from_chars(begin, end, val);
+    auto res = charconv::from_chars(begin, end, val);
 
     // Check. SQL std forbids nan and inf
     if (res.ec != std::errc() || res.ptr != end || std::isnan(val) || std::isinf(val))
@@ -112,7 +112,7 @@ template <class IntType>
 BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
 deserialize_fixed_width_number(const char*& it, const char* end, IntType& to, std::size_t size) noexcept
 {
-    std::from_chars_result res = std::from_chars(it, end, to);
+    auto res = charconv::from_chars(it, end, to);
     if (res.ec != std::errc() || res.ptr != it + size)
         return deserialize_errc::protocol_value_error;
     it = res.ptr;
@@ -311,7 +311,7 @@ deserialize_text_value_time(string_view from, field_view& to, const metadata& me
 
     // Hours
     std::uint16_t hours = 0;
-    auto res = std::from_chars(it, end, hours);
+    auto res = charconv::from_chars(it, end, hours);
     if (res.ec != std::errc())
         return deserialize_errc::protocol_value_error;
     auto hour_num_chars = res.ptr - it;
