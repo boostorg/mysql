@@ -65,6 +65,7 @@ add_executable(
     test/detail/typing/row_traits.cpp
     test/detail/typing/get_type_index.cpp
 
+    test/impl/dt_to_string.cpp
     test/impl/ssl_context_with_default.cpp
 
     test/spotchecks/connection_use_after_move.cpp
@@ -102,6 +103,7 @@ add_executable(
     test/connection_pool.cpp
     test/character_set.cpp
     test/escape_string.cpp
+    test/format.cpp
 )
 target_include_directories(
     boost_mysql_unittests
