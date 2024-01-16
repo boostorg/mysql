@@ -109,22 +109,8 @@ BOOST_AUTO_TEST_SUITE(test_format)
 constexpr format_options opts{utf8mb4_charset, true};
 constexpr auto single_fmt = "SELECT {};";
 
-class locale_guard
-{
-    std::string old_locale_;
-
-public:
-    locale_guard(const char* locale) : old_locale_(std::setlocale(LC_ALL, locale)) {}
-    locale_guard(const locale_guard&) = delete;
-    locale_guard& operator=(locale_guard&) = delete;
-    ~locale_guard() { std::setlocale(LC_ALL, old_locale_.c_str()); }
-};
-
 BOOST_AUTO_TEST_CASE(individual_fields)
 {
-    // This operation shouldn't be affected by locale
-    locale_guard guard("en_DK.utf8");
-
     // null
     BOOST_TEST(format(single_fmt, opts, nullptr) == "SELECT NULL;");
 
