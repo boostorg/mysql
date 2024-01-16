@@ -51,7 +51,7 @@ void append_int(output_string_ref output, T integer)
 {
     // Make sure our buffer is big enough. 2: sign + digits10 is only 1 below max
     constexpr std::size_t buffsize = 32;
-    static_assert(2 + std::numeric_limits<double>::digits10 < buffsize);
+    static_assert(2 + std::numeric_limits<double>::digits10 < buffsize, "");
 
     char buff[buffsize];
 
@@ -69,7 +69,7 @@ inline void append_double(output_string_ref output, double number)
     // Make sure our buffer is big enough. 4: sign, radix point, e+
     // 3: max exponent digits
     constexpr std::size_t buffsize = 32;
-    static_assert(4 + std::numeric_limits<double>::max_digits10 + 3 < buffsize);
+    static_assert(4 + std::numeric_limits<double>::max_digits10 + 3 < buffsize, "");
 
     char buff[buffsize];
 
