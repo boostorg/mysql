@@ -118,6 +118,10 @@ def _install_boost(
             _run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
         else:
             _run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
+    
+    # TODO: remove this when Charconv gets merged
+    if is_clean:
+        _run(['git', 'clone', '--depth', '1', 'https://github.com/cppalliance/charconv.git', 'libs/charconv'])
 
     # Bootstrap
     if is_clean:
@@ -277,6 +281,7 @@ def _cmake_build(
             '--with-test',
             '--with-json',
             '--with-url',
+            '--with-charconv',
             '-d0',
         ] + (['cxxstd={}'.format(cxxstd)] if cxxstd else []) + [
             'install'
