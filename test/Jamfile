@@ -105,6 +105,7 @@ alias boost_mysql
     :
         ssl
         crypto
+        /boost/charconv//boost_charconv
     : requirements
         [ requires
             cxx11_defaulted_moves
