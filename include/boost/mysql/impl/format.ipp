@@ -28,6 +28,7 @@
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
+#include <system_error>
 
 namespace boost {
 namespace mysql {
@@ -56,7 +57,7 @@ void append_int(output_string_ref output, T integer)
     auto res = std::to_chars(buff, buff + buffsize, integer);
 
     // Can only fail becuase of buffer being too small
-    BOOST_ASSERT(!res.ec);
+    BOOST_ASSERT(res.ec == std::errc());
 
     // Copy
     output.append(string_view(buff, res.ptr - buff));
@@ -76,7 +77,7 @@ inline void append_double(output_string_ref output, double number)
     auto res = std::to_chars(buff, buff + buffsize, number, std::chars_format::scientific);
 
     // Can only fail becuase of buffer being too small
-    BOOST_ASSERT(!res.ec);
+    BOOST_ASSERT(res.ec == std::errc());
 
     // Copy
     output.append(string_view(buff, res.ptr - buff));

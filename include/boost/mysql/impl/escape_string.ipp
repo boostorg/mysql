@@ -68,7 +68,7 @@ escape_impl(string_view input, character_set charset, Escaper escaper, output_st
         {
             // Advance with the charset function
             std::size_t char_size = charset.next_char({it, end});
-            BOOST_ASSERT(char_size <= end - begin);
+            BOOST_ASSERT(char_size <= static_cast<std::size_t>(end - it));
             if (char_size == 0u)
                 return client_errc::invalid_encoding;
             it += char_size;
