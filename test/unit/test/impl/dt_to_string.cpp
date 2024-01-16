@@ -19,6 +19,7 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_common/stringize.hpp"
+#include "test_unit/int_generator.hpp"
 
 using namespace boost::mysql;
 using test::maket;
@@ -162,15 +163,16 @@ BOOST_AUTO_TEST_CASE(to_string_padding)
         }
     }
 
-    // Microsecond
-    for (std::uint32_t micro = 0u; micro <= 999999u; ++micro)
+    // Microsecond. Iterating over all micros is too costly, so we test some random ones
+    test::int_generator<std::uint32_t> micro_gen(std::uint32_t(0), std::uint32_t(999999));
+    for (int i = 0; i < 50; ++i)
     {
+        std::uint32_t micro = micro_gen.generate();
         BOOST_TEST_CONTEXT(micro)
         {
             char buff[64];
             auto t = maket(12, 10, 34, micro);
-            if (detail::time_to_string(t, buff) != expected_size)
-                BOOST_TEST(false);  // Running BOOST_TEST is slow
+            BOOST_TEST(detail::time_to_string(t, buff) == expected_size);
         }
     }
 }

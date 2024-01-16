@@ -18,6 +18,7 @@
 #include <stdexcept>
 
 #include "test_common/stringize.hpp"
+#include "test_unit/int_generator.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -353,15 +354,16 @@ BOOST_AUTO_TEST_CASE(to_string_padding)
     // All datetimes below 9999-xx-xx xx:xx:xx.xxxxxx should have 26 characters
     constexpr std::size_t expected_size = 26;
 
-    // Year
-    for (std::uint16_t year = 0u; year <= 9999u; ++year)
+    // Year. Iterating all values is too costly, so we check some random ones
+    test::int_generator<std::uint16_t> year_gen(std::uint16_t(0), std::uint16_t(9999));
+    for (int i = 0; i < 30; ++i)
     {
+        std::uint16_t year = year_gen.generate();
         BOOST_TEST_CONTEXT(year)
         {
             char buff[64];
             datetime d(year, 2, 12);
-            if (detail::access::get_impl(d).to_string(buff) != expected_size)
-                BOOST_TEST(false);  // Running BOOST_TEST is slow
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
         }
     }
 
@@ -420,15 +422,16 @@ BOOST_AUTO_TEST_CASE(to_string_padding)
         }
     }
 
-    // Microsecond
-    for (std::uint32_t micro = 0u; micro <= 999999u; ++micro)
+    // Microsecond. Same as for year
+    test::int_generator<std::uint32_t> micro_gen(std::uint32_t(0), std::uint32_t(999999));
+    for (int i = 0; i < 50; ++i)
     {
+        std::uint32_t micro = micro_gen.generate();
         BOOST_TEST_CONTEXT(micro)
         {
             char buff[64];
             datetime d(2021, 1, 3, 10, 43, 10, micro);
-            if (detail::access::get_impl(d).to_string(buff) != expected_size)
-                BOOST_TEST(false);  // Running BOOST_TEST is slow
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
         }
     }
 }

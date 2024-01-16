@@ -16,9 +16,11 @@
 
 #include <cstddef>
 #include <memory>
+#include <random>
 #include <stdexcept>
 
 #include "test_common/stringize.hpp"
+#include "test_unit/int_generator.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -216,7 +218,7 @@ BOOST_AUTO_TEST_CASE(to_string_padding)
     }
 
     // Month
-    for (std::uint8_t month = 0u; month <= 31u; ++month)
+    for (std::uint8_t month = 0u; month <= 12u; ++month)
     {
         BOOST_TEST_CONTEXT(month)
         {
@@ -226,15 +228,16 @@ BOOST_AUTO_TEST_CASE(to_string_padding)
         }
     }
 
-    // Year
-    for (std::uint16_t year = 0u; year <= 9999u; ++year)
+    // Year. Iterating all values is too costly, so we check some random ones
+    test::int_generator<std::uint16_t> year_gen(std::uint16_t(0), std::uint16_t(9999));
+    for (int i = 0; i < 30; ++i)
     {
+        std::uint16_t year = year_gen.generate();
         BOOST_TEST_CONTEXT(year)
         {
             char buff[32];
             date d(year, 2, 12);
-            if (detail::access::get_impl(d).to_string(buff) != expected_size)
-                BOOST_TEST(false);  // Running BOOST_TEST is slow
+            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
         }
     }
 }
