@@ -14,7 +14,6 @@
 #include <boost/core/span.hpp>
 
 #include <charconv>
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>

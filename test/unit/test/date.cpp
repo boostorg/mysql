@@ -16,7 +16,6 @@
 
 #include <cstddef>
 #include <memory>
-#include <random>
 #include <stdexcept>
 
 #include "test_common/stringize.hpp"
