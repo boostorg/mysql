@@ -19,6 +19,12 @@
 #include <cstdlib>
 #include <system_error>
 
+// gcc-11+ issues spurious warnings about to_chars
+#if BOOST_GCC >= 110000
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
+
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -178,5 +184,9 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#if BOOST_GCC >= 110000
+#pragma GCC diagnostic pop
+#endif
 
 #endif
