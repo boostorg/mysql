@@ -17,8 +17,10 @@
 
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 
+#include <charconv>
 #include <cstddef>
 #include <ostream>
+#include <system_error>
 
 namespace boost {
 namespace mysql {
@@ -36,9 +38,16 @@ inline std::ostream& print_blob(std::ostream& os, blob_view value)
     {
         if (i != 0)
             os << ", ";
+        os << "0x";
+
         unsigned byte = value[i];
-        std::snprintf(buffer, sizeof(buffer), "0x%02x", byte);
-        os << buffer;
+        if (byte <= 0x0f)
+            os << '0';
+
+        // Convert to hex
+        auto res = std::to_chars(buffer, buffer + sizeof(buffer), byte, 16);
+        BOOST_ASSERT(res.ec == std::errc());
+        os << string_view(buffer, res.ptr - buffer);
     }
     os << " }";
     return os;
