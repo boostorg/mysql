@@ -15,7 +15,6 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <cstddef>
 #include <cstdint>
 #include <sstream>
 #include <vector>
@@ -23,7 +22,6 @@
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/stringize.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
