@@ -39,27 +39,7 @@ namespace detail {
 
 // Constants
 BOOST_MYSQL_STATIC_IF_COMPILED constexpr unsigned max_decimals = 6u;
-
-namespace textc {
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t year_sz = 4;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t month_sz = 2;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t day_sz = 2;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t hours_min_sz = 2;  // in TIME, it may be longer
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t mins_sz = 2;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t secs_sz = 2;
-
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t date_sz = year_sz + month_sz + day_sz + 2;  // delimiters
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t time_min_sz = hours_min_sz + mins_sz + secs_sz +
-                                                                   2;  // delimiters
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t time_max_sz = time_min_sz + max_decimals +
-                                                                   3;  // sign, period, hour extra character
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t datetime_min_sz = date_sz + time_min_sz +
-                                                                       1;  // delimiter
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t datetime_max_sz = datetime_min_sz + max_decimals +
-                                                                       1;  // period
-
 BOOST_MYSQL_STATIC_IF_COMPILED constexpr unsigned time_max_hour = 838;
-}  // namespace textc
 
 // Integers
 template <class T>
@@ -128,53 +108,54 @@ deserialize_text_value_blob(string_view from, field_view& to) noexcept
 }
 
 // Date/time types
-BOOST_MYSQL_STATIC_OR_INLINE unsigned sanitize_decimals(unsigned decimals) noexcept
+template <class IntType>
+BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
+deserialize_fixed_width_number(const char*& it, const char* end, IntType& to, std::size_t size) noexcept
 {
-    return (std::min)(decimals, max_decimals);
+    std::from_chars_result res = std::from_chars(it, end, to);
+    if (res.ec != std::errc() || res.ptr != it + size)
+        return deserialize_errc::protocol_value_error;
+    it = res.ptr;
+    return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc deserialize_text_ymd(string_view from, date& to)
+BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
+check_separator(const char*& it, const char* end, char sep) noexcept
 {
-    using namespace textc;
-
-    // Size check
-    if (from.size() != date_sz)
+    if (it == end || *it++ != sep)
         return deserialize_errc::protocol_value_error;
+    return deserialize_errc::ok;
+}
 
-    // Iterators
-    const char* it = from.data();
-    const char* end = it + from.size();
-
+BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc deserialize_text_ymd(const char*& it, const char* end, date& to)
+{
     // Year
     std::uint16_t year = 0;
-    auto res = std::from_chars(it, end, year);
-    if (res.ec != std::errc() || res.ptr != it + year_sz)
-        return deserialize_errc::protocol_value_error;
-    it += year_sz;
+    auto err = deserialize_fixed_width_number(it, end, year, 4);
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Separator
-    BOOST_ASSERT(it != end);
-    if (*it++ != '-')
-        return deserialize_errc::protocol_value_error;
+    err = check_separator(it, end, '-');
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Month
     std::uint8_t month = 0;
-    res = std::from_chars(it, end, month);
-    if (res.ec != std::errc() || res.ptr != it + month_sz)
-        return deserialize_errc::protocol_value_error;
-    it += month_sz;
+    err = deserialize_fixed_width_number(it, end, month, 2);
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Separator
-    BOOST_ASSERT(it != end);
-    if (*it++ != '-')
-        return deserialize_errc::protocol_value_error;
+    err = check_separator(it, end, '-');
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Day
     std::uint8_t day = 0;
-    res = std::from_chars(it, end, day);
-    if (res.ec != std::errc() || res.ptr != it + day_sz)
-        return deserialize_errc::protocol_value_error;
-    BOOST_ASSERT(it + day_sz == end);
+    err = deserialize_fixed_width_number(it, end, day, 2);
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Range check for individual components. MySQL doesn't allow invidiual components
     // to be out of range, although they may be zero or representing an invalid date
@@ -186,12 +167,63 @@ BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc deserialize_text_ymd(string_view f
 }
 
 BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
+deserialize_microsecond(const char*& it, const char* end, std::uint32_t& output, unsigned decimals) noexcept
+{
+    // Sanitize decimals
+    decimals = (std::min)(decimals, max_decimals);
+
+    if (decimals)
+    {
+        // Microsecond separator
+        auto err = check_separator(it, end, '.');
+        if (err != deserialize_errc::ok)
+            return err;
+
+        // Microseconds. Depending on decimals, this has a variable width.
+        // For instance, with decimals = 2, a value could be '.92', meaning 920000 microseconds.
+        // Max decimals is 6 (guaranteed by sanitize_decimals).
+        // Right pad the input string with zeros and convert
+
+        // Size check
+        if (it + decimals > end)
+            return deserialize_errc::protocol_value_error;
+
+        // Right pad with zeros
+        char micros_buff[6] = {'0', '0', '0', '0', '0', '0'};
+        std::memcpy(micros_buff, it, decimals);
+
+        // Parse
+        const char* buff_begin = micros_buff;
+        const char* buff_end = micros_buff + sizeof(micros_buff);
+        err = deserialize_fixed_width_number(buff_begin, buff_end, output, 6);
+        if (err != deserialize_errc::ok)
+            return err;
+
+        // Update iterator
+        it += decimals;
+    }
+
+    return deserialize_errc::ok;
+}
+
+BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
 deserialize_text_value_date(string_view from, field_view& to) noexcept
 {
+    // Iterators
+    const char* it = from.data();
+    const char* end = it + from.size();
+
+    // Deserialize
     date d;
-    auto err = deserialize_text_ymd(from, d);
+    auto err = deserialize_text_ymd(it, end, d);
     if (err != deserialize_errc::ok)
         return err;
+
+    // Size check
+    if (it != end)
+        return deserialize_errc::protocol_value_error;
+
+    // Done
     to = field_view(d);
     return deserialize_errc::ok;
 }
@@ -199,81 +231,58 @@ deserialize_text_value_date(string_view from, field_view& to) noexcept
 BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
 deserialize_text_value_datetime(string_view from, field_view& to, const metadata& meta) noexcept
 {
-    using namespace textc;
-
-    // Sanitize decimals
-    unsigned decimals = sanitize_decimals(meta.decimals());
-
-    // Length check
-    std::size_t expected_size = datetime_min_sz + (decimals ? decimals + 1 : 0);
-    if (from.size() != expected_size)
-        return deserialize_errc::protocol_value_error;
+    // Iterators
+    const char* it = from.data();
+    const char* end = it + from.size();
 
     // Deserialize date part
     date d;
-    auto err = deserialize_text_ymd(from.substr(0, date_sz), d);
+    auto err = deserialize_text_ymd(it, end, d);
     if (err != deserialize_errc::ok)
         return err;
 
-    // Iterators
-    const char* it = from.data() + date_sz;
-    const char* end = from.data() + from.size();
-
     // Separator
-    BOOST_ASSERT(it != end);
-    if (*it++ != ' ')
-        return deserialize_errc::protocol_value_error;
+    err = check_separator(it, end, ' ');
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Hour
     std::uint8_t hour = 0;
-    auto res = std::from_chars(it, end, hour);
-    if (res.ec != std::errc() || res.ptr != it + 2)
-        return deserialize_errc::protocol_value_error;
-    it += 2;
+    err = deserialize_fixed_width_number(it, end, hour, 2);
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Separator
-    BOOST_ASSERT(it != end);
-    if (*it++ != ':')
-        return deserialize_errc::protocol_value_error;
+    err = check_separator(it, end, ':');
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Minute
     std::uint8_t minute = 0;
-    res = std::from_chars(it, end, minute);
-    if (res.ec != std::errc() || res.ptr != it + 2)
-        return deserialize_errc::protocol_value_error;
-    it += 2;
+    err = deserialize_fixed_width_number(it, end, minute, 2);
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Separator
-    BOOST_ASSERT(it != end);
-    if (*it++ != ':')
-        return deserialize_errc::protocol_value_error;
+    err = check_separator(it, end, ':');
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Second
     std::uint8_t second = 0;
-    res = std::from_chars(it, end, second);
-    if (res.ec != std::errc() || res.ptr != it + 2)
-        return deserialize_errc::protocol_value_error;
-    it += 2;
+    err = deserialize_fixed_width_number(it, end, second, 2);
+    if (err != deserialize_errc::ok)
+        return err;
 
+    // Microsecond
     std::uint32_t microsecond = 0;
+    err = deserialize_microsecond(it, end, microsecond, meta.decimals());
+    if (err != deserialize_errc::ok)
+        return err;
 
-    if (decimals)
-    {
-        // Microsecond separator
-        BOOST_ASSERT(it != end);
-        if (*it++ != '.')
-            return deserialize_errc::protocol_value_error;
-
-        // Microseconds
-        auto micros_num_chars = end - it;
-        if (micros_num_chars != decimals)
-            return deserialize_errc::protocol_value_error;
-        char micros_buff[6] = {'0', '0', '0', '0', '0', '0'};
-        std::memcpy(micros_buff, it, micros_num_chars);
-        res = std::from_chars(micros_buff, micros_buff + 6, microsecond);
-        if (res.ec != std::errc() || res.ptr != micros_buff + 6)
-            return deserialize_errc::protocol_value_error;
-    }
+    // Size check
+    if (it != end)
+        return deserialize_errc::protocol_value_error;
 
     // Validity check. Although MySQL allows invalid and zero datetimes, it doesn't allow
     // individual components to be out of range.
@@ -289,11 +298,6 @@ deserialize_text_value_datetime(string_view from, field_view& to, const metadata
 BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
 deserialize_text_value_time(string_view from, field_view& to, const metadata& meta) noexcept
 {
-    using namespace textc;
-
-    // Sanitize decimals
-    unsigned decimals = sanitize_decimals(meta.decimals());
-
     // Iterators
     const char* it = from.data();
     const char* end = it + from.size();
@@ -316,47 +320,32 @@ deserialize_text_value_time(string_view from, field_view& to, const metadata& me
     it = res.ptr;
 
     // Separator
-    if (it == end || *it++ != ':')
-        return deserialize_errc::protocol_value_error;
+    auto err = check_separator(it, end, ':');
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Minute
     std::uint8_t minute = 0;
-    res = std::from_chars(it, end, minute);
-    if (res.ec != std::errc() || res.ptr != it + 2)
-        return deserialize_errc::protocol_value_error;
-    it += 2;
+    err = deserialize_fixed_width_number(it, end, minute, 2);
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Separator
-    if (it == end || *it++ != ':')
-        return deserialize_errc::protocol_value_error;
+    err = check_separator(it, end, ':');
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Second
     std::uint8_t second = 0;
-    res = std::from_chars(it, end, second);
-    if (res.ec != std::errc() || res.ptr != it + 2)
-        return deserialize_errc::protocol_value_error;
-    it += 2;
+    err = deserialize_fixed_width_number(it, end, second, 2);
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Microsecond
     std::uint32_t microsecond = 0;
-
-    if (decimals)
-    {
-        // Separator
-        if (it == end || *it++ != '.')
-            return deserialize_errc::protocol_value_error;
-
-        // Microseconds
-        auto micros_num_chars = end - it;
-        if (micros_num_chars != decimals)
-            return deserialize_errc::protocol_value_error;
-        char micros_buff[6] = {'0', '0', '0', '0', '0', '0'};
-        std::memcpy(micros_buff, it, micros_num_chars);
-        it += micros_num_chars;
-        res = std::from_chars(micros_buff, micros_buff + 6, microsecond);
-        if (res.ec != std::errc() || res.ptr != micros_buff + 6)
-            return deserialize_errc::protocol_value_error;
-    }
+    err = deserialize_microsecond(it, end, microsecond, meta.decimals());
+    if (err != deserialize_errc::ok)
+        return err;
 
     // Size check
     if (it != end)
