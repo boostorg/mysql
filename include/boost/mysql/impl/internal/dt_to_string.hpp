@@ -30,26 +30,23 @@ namespace mysql {
 namespace detail {
 
 // Helpers
-template <class IntType>
-inline char* call_to_chars(char* begin, char* end, IntType value) noexcept
+inline char* call_to_chars(char* begin, char* end, std::uint64_t value) noexcept
 {
     auto r = std::to_chars(begin, end, value);
     BOOST_ASSERT(r.ec == std::errc());
     return r.ptr;
 }
 
-template <class IntType>
-inline char* write_pad2(char* begin, char* end, IntType value) noexcept
+inline char* write_pad2(char* begin, char* end, std::uint64_t value) noexcept
 {
-    if (value < 10)
+    if (value < 10u)
         *begin++ = '0';
     return call_to_chars(begin, end, value);
 }
 
-template <class IntType>
-inline char* write_pad4(char* begin, char* end, IntType value) noexcept
+inline char* write_pad4(char* begin, char* end, std::uint64_t value) noexcept
 {
-    for (long l : {1000, 100, 10})
+    for (auto l : {1000u, 100u, 10u})
     {
         if (value < l)
             *begin++ = '0';
@@ -57,10 +54,9 @@ inline char* write_pad4(char* begin, char* end, IntType value) noexcept
     return call_to_chars(begin, end, value);
 }
 
-template <class IntType>
-inline char* write_pad6(char* begin, char* end, IntType value) noexcept
+inline char* write_pad6(char* begin, char* end, std::uint64_t value) noexcept
 {
-    for (long l : {100000, 10000, 1000, 100, 10})
+    for (auto l : {100000u, 10000u, 1000u, 100u, 10u})
     {
         if (value < l)
             *begin++ = '0';
@@ -82,15 +78,15 @@ inline std::size_t date_to_string(
     char* end = it + output.size();
 
     // Year
-    it = write_pad4(it, end, static_cast<unsigned>(year));
+    it = write_pad4(it, end, year);
 
     // Month
     *it++ = '-';
-    it = write_pad2(it, end, static_cast<unsigned>(month));
+    it = write_pad2(it, end, month);
 
     // Day
     *it++ = '-';
-    it = write_pad2(it, end, static_cast<unsigned>(day));
+    it = write_pad2(it, end, day);
 
     // Done
     return it - output.data();
@@ -118,15 +114,15 @@ inline std::size_t datetime_to_string(
 
     // Hour
     *it++ = ' ';
-    it = write_pad2(it, end, static_cast<unsigned>(hour));
+    it = write_pad2(it, end, hour);
 
     // Minutes
     *it++ = ':';
-    it = write_pad2(it, end, static_cast<unsigned>(minute));
+    it = write_pad2(it, end, minute);
 
     // Seconds
     *it++ = ':';
-    it = write_pad2(it, end, static_cast<unsigned>(second));
+    it = write_pad2(it, end, second);
 
     // Microseconds
     *it++ = '.';
@@ -138,7 +134,7 @@ inline std::size_t datetime_to_string(
 
 inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> output) noexcept
 {
-    // Worst-case output is 26 chars, extra space just in case
+    // Worst-case output is 34 chars, extra space just in case
 
     // Values
     auto total_count = std::abs(value.count());
@@ -152,7 +148,8 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
     auto num_mins = static_cast<unsigned>(total_count % 60);
     total_count /= 60;
 
-    auto num_hours = static_cast<unsigned>(total_count);
+    // num_hours may not fit in 32 bits
+    auto num_hours = static_cast<std::uint64_t>(total_count);
 
     // Iterators
     char* it = output.data();
