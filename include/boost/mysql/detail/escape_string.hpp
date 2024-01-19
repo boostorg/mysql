@@ -35,4 +35,8 @@ error_code escape_string(
 }  // namespace mysql
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/escape_string.ipp>
+#endif
+
 #endif
