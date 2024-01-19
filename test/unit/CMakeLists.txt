@@ -103,7 +103,7 @@ add_executable(
     test/connection_pool.cpp
     test/character_set.cpp
     test/escape_string.cpp
-    test/format.cpp
+    test/format_sql.cpp
 )
 target_include_directories(
     boost_mysql_unittests

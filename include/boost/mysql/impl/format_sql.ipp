@@ -5,18 +5,18 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_FORMAT_IPP
-#define BOOST_MYSQL_IMPL_FORMAT_IPP
+#ifndef BOOST_MYSQL_IMPL_FORMAT_SQL_IPP
+#define BOOST_MYSQL_IMPL_FORMAT_SQL_IPP
 
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/format.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/escape_string.hpp>
-#include <boost/mysql/detail/format.hpp>
+#include <boost/mysql/detail/format_sql.hpp>
 #include <boost/mysql/detail/output_string_ref.hpp>
 
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
