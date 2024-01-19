@@ -111,7 +111,7 @@ run
         test/connection_pool.cpp
         test/character_set.cpp
         test/escape_string.cpp
-        test/format.cpp
+        test/format_sql.cpp
         
     : requirements
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711

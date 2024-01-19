@@ -5,15 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_FORMAT_HPP
-#define BOOST_MYSQL_FORMAT_HPP
+#ifndef BOOST_MYSQL_FORMAT_SQL_HPP
+#define BOOST_MYSQL_FORMAT_SQL_HPP
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/format.hpp>
+#include <boost/mysql/detail/format_sql.hpp>
 #include <boost/mysql/detail/output_string_ref.hpp>
 
 #include <boost/config.hpp>
@@ -114,7 +114,7 @@ inline detail::format_arg_descriptor arg(const T& value, string_view name) noexc
 }
 
 template <BOOST_MYSQL_OUTPUT_STRING OutputString, BOOST_MYSQL_FORMATTABLE... Args>
-inline void format_to(
+inline void format_sql_to(
     string_view format_str,
     OutputString& output,
     const format_options& opts,
@@ -128,10 +128,10 @@ inline void format_to(
 }
 
 template <BOOST_MYSQL_FORMATTABLE... Args>
-inline std::string format(string_view format_str, const format_options& opts, const Args&... args)
+inline std::string format_sql(string_view format_str, const format_options& opts, const Args&... args)
 {
     std::string output;
-    format_to(format_str, output, opts, args...);
+    format_sql_to(format_str, output, opts, args...);
     return output;
 }
 
@@ -139,7 +139,7 @@ inline std::string format(string_view format_str, const format_options& opts, co
 }  // namespace boost
 
 #ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/format.ipp>
+#include <boost/mysql/impl/format_sql.ipp>
 #endif
 
 #endif
