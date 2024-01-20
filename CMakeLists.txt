@@ -67,7 +67,6 @@ else()
         Boost::describe
         Boost::endian
         Boost::intrusive
-        Boost::lexical_cast
         Boost::mp11
         Boost::optional
         Boost::system
