@@ -20,7 +20,7 @@
 #include <system_error>
 
 // gcc-11+ issues spurious warnings about to_chars
-#if BOOST_GCC >= 110000
+#if BOOST_GCC >= 70000
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstringop-overflow"
 #endif
