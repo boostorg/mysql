@@ -128,7 +128,7 @@ inline void append_quoted_time(output_string_ref output, time t)
 // Helpers for parsing format strings
 inline const char* advance(const char* begin, const char* end, const character_set& charset)
 {
-    int size = charset.next_char({begin, end});
+    std::size_t size = charset.next_char({begin, end});
     if (size == 0)
         BOOST_THROW_EXCEPTION(boost::system::system_error(client_errc::invalid_encoding));
     return begin + size;
