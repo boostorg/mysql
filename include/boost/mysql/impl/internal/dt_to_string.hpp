@@ -136,20 +136,22 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
 {
     // Worst-case output is 34 chars, extra space just in case
 
-    // Values
-    auto total_count = std::abs(value.count());
+    // Values. Note that std::abs(mysql_time::min()) invokes UB because of
+    // signed integer overflow
+    auto total_count = value == (::boost::mysql::time::min)()
+                           ? static_cast<std::uint64_t>((::boost::mysql::time::min)().count()) + 1u
+                           : static_cast<std::uint64_t>(std::abs(value.count()));
 
-    auto num_micros = static_cast<unsigned>(total_count % 1000000);
-    total_count /= 1000000;
+    auto num_micros = total_count % 1000000u;
+    total_count /= 1000000u;
 
-    auto num_secs = static_cast<unsigned>(total_count % 60);
-    total_count /= 60;
+    auto num_secs = total_count % 60u;
+    total_count /= 60u;
 
-    auto num_mins = static_cast<unsigned>(total_count % 60);
-    total_count /= 60;
+    auto num_mins = total_count % 60u;
+    total_count /= 60u;
 
-    // num_hours may not fit in 32 bits
-    auto num_hours = static_cast<std::uint64_t>(total_count);
+    auto num_hours = total_count;
 
     // Iterators
     char* it = output.data();
