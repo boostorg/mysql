@@ -103,7 +103,7 @@ inline void append_quoted_date(output_string_ref output, date d)
 {
     char buffer[34];
     buffer[0] = '\'';
-    std::size_t sz = access::get_impl(d).to_string(span<char, 32>(buffer + 1, 32));
+    std::size_t sz = detail::date_to_string(d.year(), d.month(), d.day(), span<char, 32>(buffer + 1, 32));
     buffer[sz + 1] = '\'';
     output.append(string_view(buffer, sz + 2));
 }
@@ -112,7 +112,16 @@ inline void append_quoted_datetime(output_string_ref output, datetime d)
 {
     char buffer[66];
     buffer[0] = '\'';
-    std::size_t sz = access::get_impl(d).to_string(span<char, 64>(buffer + 1, 64));
+    std::size_t sz = detail::datetime_to_string(
+        d.year(),
+        d.month(),
+        d.day(),
+        d.hour(),
+        d.minute(),
+        d.second(),
+        d.microsecond(),
+        span<char, 64>(buffer + 1, 64)
+    );
     buffer[sz + 1] = '\'';
     output.append(string_view(buffer, sz + 2));
 }

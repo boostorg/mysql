@@ -20,15 +20,10 @@
 #include <cstddef>
 #include <ostream>
 
-std::size_t boost::mysql::date::impl_t::to_string(span<char, 32> output) const noexcept
-{
-    return detail::date_to_string(year, month, day, output);
-}
-
 std::ostream& boost::mysql::operator<<(std::ostream& os, const date& value)
 {
     char buffer[32]{};
-    std::size_t sz = detail::access::get_impl(value).to_string(buffer);
+    std::size_t sz = detail::date_to_string(value.year(), value.month(), value.day(), buffer);
     return os << string_view(buffer, sz);
 }
 

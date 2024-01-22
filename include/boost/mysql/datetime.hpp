@@ -10,17 +10,14 @@
 
 #include <boost/mysql/days.hpp>
 
-#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/datetime.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
-#include <boost/core/span.hpp>
 #include <boost/throw_exception.hpp>
 
 #include <chrono>
-#include <cstddef>
 #include <cstdint>
 #include <iosfwd>
 #include <ratio>
@@ -70,7 +67,13 @@ public:
         std::uint8_t second = 0,
         std::uint32_t microsecond = 0
     ) noexcept
-        : impl_{year, month, day, hour, minute, second, microsecond}
+        : year_(year),
+          month_(month),
+          day_(day),
+          hour_(hour),
+          minute_(minute),
+          second_(second),
+          microsecond_(microsecond)
     {
     }
 
@@ -88,49 +91,49 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint16_t year() const noexcept { return impl_.year; }
+    constexpr std::uint16_t year() const noexcept { return year_; }
 
     /**
      * \brief Retrieves the month component.
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint8_t month() const noexcept { return impl_.month; }
+    constexpr std::uint8_t month() const noexcept { return month_; }
 
     /**
      * \brief Retrieves the day component.
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint8_t day() const noexcept { return impl_.day; }
+    constexpr std::uint8_t day() const noexcept { return day_; }
 
     /**
      * \brief Retrieves the hour component.
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint8_t hour() const noexcept { return impl_.hour; }
+    constexpr std::uint8_t hour() const noexcept { return hour_; }
 
     /**
      * \brief Retrieves the minute component.
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint8_t minute() const noexcept { return impl_.minute; }
+    constexpr std::uint8_t minute() const noexcept { return minute_; }
 
     /**
      * \brief Retrieves the second component.
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint8_t second() const noexcept { return impl_.second; }
+    constexpr std::uint8_t second() const noexcept { return second_; }
 
     /**
      * \brief Retrieves the microsecond component.
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint32_t microsecond() const noexcept { return impl_.microsecond; }
+    constexpr std::uint32_t microsecond() const noexcept { return microsecond_; }
 
     /**
      * \brief Returns `true` if `*this` represents a valid `time_point`.
@@ -144,9 +147,8 @@ public:
      */
     constexpr bool valid() const noexcept
     {
-        return detail::is_valid(impl_.year, impl_.month, impl_.day) && impl_.hour <= detail::max_hour &&
-               impl_.minute <= detail::max_min && impl_.second <= detail::max_sec &&
-               impl_.microsecond <= detail::max_micro;
+        return detail::is_valid(year_, month_, day_) && hour_ <= detail::max_hour &&
+               minute_ <= detail::max_min && second_ <= detail::max_sec && microsecond_ <= detail::max_micro;
     }
 
     /**
@@ -186,9 +188,8 @@ public:
      */
     constexpr bool operator==(const datetime& rhs) const noexcept
     {
-        return impl_.year == rhs.impl_.year && impl_.month == rhs.impl_.month && impl_.day == rhs.impl_.day &&
-               impl_.hour == rhs.impl_.hour && impl_.minute == rhs.impl_.minute &&
-               impl_.second == rhs.impl_.second && impl_.microsecond == rhs.impl_.microsecond;
+        return year_ == rhs.year_ && month_ == rhs.month_ && day_ == rhs.day_ && hour_ == rhs.hour_ &&
+               minute_ == rhs.minute_ && second_ == rhs.second_ && microsecond_ == rhs.microsecond_;
     }
 
     /**
@@ -210,28 +211,20 @@ public:
     }
 
 private:
-    struct impl_t
-    {
-        std::uint16_t year;
-        std::uint8_t month;
-        std::uint8_t day;
-        std::uint8_t hour;
-        std::uint8_t minute;
-        std::uint8_t second;
-        std::uint32_t microsecond;
-
-        BOOST_MYSQL_DECL
-        std::size_t to_string(span<char, 64> output) const noexcept;
-    } impl_{};
-
-    friend struct detail::access;
+    std::uint16_t year_{};
+    std::uint8_t month_{};
+    std::uint8_t day_{};
+    std::uint8_t hour_{};
+    std::uint8_t minute_{};
+    std::uint8_t second_{};
+    std::uint32_t microsecond_{};
 
     BOOST_CXX14_CONSTEXPR inline time_point unch_get_time_point() const noexcept
     {
         // Doing time of day independently to prevent overflow
-        days d(detail::ymd_to_days(impl_.year, impl_.month, impl_.day));
-        auto time_of_day = std::chrono::hours(impl_.hour) + std::chrono::minutes(impl_.minute) +
-                           std::chrono::seconds(impl_.second) + std::chrono::microseconds(impl_.microsecond);
+        days d(detail::ymd_to_days(year_, month_, day_));
+        auto time_of_day = std::chrono::hours(hour_) + std::chrono::minutes(minute_) +
+                           std::chrono::seconds(second_) + std::chrono::microseconds(microsecond_);
         return time_point(d) + time_of_day;
     }
 };
@@ -284,14 +277,14 @@ BOOST_CXX14_CONSTEXPR boost::mysql::datetime::datetime(time_point tp)
     BOOST_ASSERT(num_seconds.count() >= 0 && num_seconds.count() <= detail::max_sec);
     BOOST_ASSERT(num_microseconds.count() >= 0 && num_microseconds.count() <= detail::max_micro);
 
-    bool ok = detail::days_to_ymd(num_days.count(), impl_.year, impl_.month, impl_.day);
+    bool ok = detail::days_to_ymd(num_days.count(), year_, month_, day_);
     if (!ok)
         BOOST_THROW_EXCEPTION(std::out_of_range("datetime::datetime: time_point was out of range"));
 
-    impl_.microsecond = static_cast<std::uint32_t>(num_microseconds.count());
-    impl_.second = static_cast<std::uint8_t>(num_seconds.count());
-    impl_.minute = static_cast<std::uint8_t>(num_minutes.count());
-    impl_.hour = static_cast<std::uint8_t>(num_hours.count());
+    microsecond_ = static_cast<std::uint32_t>(num_microseconds.count());
+    second_ = static_cast<std::uint8_t>(num_seconds.count());
+    minute_ = static_cast<std::uint8_t>(num_minutes.count());
+    hour_ = static_cast<std::uint8_t>(num_hours.count());
 }
 
 #ifdef BOOST_MYSQL_HEADER_ONLY

@@ -10,17 +10,14 @@
 
 #include <boost/mysql/days.hpp>
 
-#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/datetime.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
-#include <boost/core/span.hpp>
 #include <boost/throw_exception.hpp>
 
 #include <chrono>
-#include <cstddef>
 #include <cstdint>
 #include <iosfwd>
 #include <stdexcept>
@@ -59,7 +56,7 @@ public:
      * No-throw guarantee.
      */
     constexpr date(std::uint16_t year, std::uint8_t month, std::uint8_t day) noexcept
-        : impl_{year, month, day}
+        : year_(year), month_(month), day_(day)
     {
     }
 
@@ -72,7 +69,7 @@ public:
      */
     BOOST_CXX14_CONSTEXPR explicit date(time_point tp)
     {
-        bool ok = detail::days_to_ymd(tp.time_since_epoch().count(), impl_.year, impl_.month, impl_.day);
+        bool ok = detail::days_to_ymd(tp.time_since_epoch().count(), year_, month_, day_);
         if (!ok)
             BOOST_THROW_EXCEPTION(std::out_of_range("date::date: time_point was out of range"));
     }
@@ -82,21 +79,21 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint16_t year() const noexcept { return impl_.year; }
+    constexpr std::uint16_t year() const noexcept { return year_; }
 
     /**
      * \brief Retrieves the month component.
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint8_t month() const noexcept { return impl_.month; }
+    constexpr std::uint8_t month() const noexcept { return month_; }
 
     /**
      * \brief Retrieves the day component.
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr std::uint8_t day() const noexcept { return impl_.day; }
+    constexpr std::uint8_t day() const noexcept { return day_; }
 
     /**
      * \brief Returns `true` if `*this` represents a valid `time_point`.
@@ -107,7 +104,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr bool valid() const noexcept { return detail::is_valid(impl_.year, impl_.month, impl_.day); }
+    constexpr bool valid() const noexcept { return detail::is_valid(year_, month_, day_); }
 
     /**
      * \brief Converts `*this` into a `time_point` (unchecked access).
@@ -146,7 +143,7 @@ public:
      */
     constexpr bool operator==(const date& rhs) const noexcept
     {
-        return impl_.year == rhs.impl_.year && impl_.month == rhs.impl_.month && impl_.day == rhs.impl_.day;
+        return year_ == rhs.year_ && month_ == rhs.month_ && day_ == rhs.day_;
     }
 
     /**
@@ -169,21 +166,13 @@ public:
     }
 
 private:
-    struct impl_t
-    {
-        std::uint16_t year;
-        std::uint8_t month;
-        std::uint8_t day;
-
-        BOOST_MYSQL_DECL
-        std::size_t to_string(span<char, 32> output) const noexcept;
-    } impl_{};
-
-    friend struct detail::access;
+    std::uint16_t year_{};
+    std::uint8_t month_{};
+    std::uint8_t day_{};
 
     BOOST_CXX14_CONSTEXPR time_point unch_get_time_point() const noexcept
     {
-        return time_point(days(detail::ymd_to_days(impl_.year, impl_.month, impl_.day)));
+        return time_point(days(detail::ymd_to_days(year_, month_, day_)));
     }
 };
 

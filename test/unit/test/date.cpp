@@ -14,12 +14,9 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <cstddef>
-#include <memory>
 #include <stdexcept>
 
 #include "test_common/stringize.hpp"
-#include "test_unit/int_generator.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -128,120 +125,7 @@ BOOST_AUTO_TEST_CASE(operator_equals)
     }
 }
 
-// Coverage cases for to_string. This does a dot-product with common cases
-BOOST_AUTO_TEST_CASE(to_string_coverage)
-{
-    struct
-    {
-        const char* name;
-        std::uint16_t value;
-        const char* repr;
-    } year_values[] = {
-        {"min",      0,      "0000" },
-        {"onedig",   1,      "0001" },
-        {"twodig",   98,     "0098" },
-        {"threedig", 789,    "0789" },
-        {"regular",  1999,   "1999" },
-        {"fourdig",  9999,   "9999" },
-        {"max",      0xffff, "65535"},
-    };
-
-    struct
-    {
-        const char* name;
-        std::uint8_t value;
-        const char* repr;
-    } month_values[] = {
-        {"zero", 0,    "00" },
-        {"1dig", 2,    "02" },
-        {"2dig", 12,   "12" },
-        {"max",  0xff, "255"},
-    };
-
-    struct
-    {
-        const char* name;
-        std::uint8_t value;
-        const char* repr;
-    } day_values[] = {
-        {"zero", 0,    "00" },
-        {"1dig", 1,    "01" },
-        {"2dig", 31,   "31" },
-        {"max",  0xff, "255"},
-    };
-
-    for (const auto& year : year_values)
-    {
-        for (const auto& month : month_values)
-        {
-            for (const auto& day : day_values)
-            {
-                BOOST_TEST_CONTEXT("year=" << year.name << ", month=" << month.name << ", day=" << day.name)
-                {
-                    // Expected value
-                    auto expected = stringize(year.repr, '-', month.repr, '-', day.repr);
-
-                    // Input value
-                    date d(year.value, month.value, day.value);
-
-                    // Call the function. Using a heap-allocated buffer helps detect overruns
-                    std::unique_ptr<char[]> buff(new char[32]);
-                    std::size_t sz = detail::access::get_impl(d).to_string(
-                        boost::span<char, 32>(buff.get(), 32)
-                    );
-                    auto actual = string_view(buff.get(), sz);
-
-                    // Check
-                    BOOST_TEST(actual == expected);
-                }
-            }
-        }
-    }
-}
-
-// Double-check we correctly pad, regardless of the number
-BOOST_AUTO_TEST_CASE(to_string_padding)
-{
-    // All dates below 9999-xx-xx should have 10 characters
-    constexpr std::size_t expected_size = 10;
-
-    // Day
-    for (std::uint8_t day = 0u; day <= 31u; ++day)
-    {
-        BOOST_TEST_CONTEXT(day)
-        {
-            char buff[32];
-            date d(2021, 1, day);
-            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
-        }
-    }
-
-    // Month
-    for (std::uint8_t month = 0u; month <= 12u; ++month)
-    {
-        BOOST_TEST_CONTEXT(month)
-        {
-            char buff[32];
-            date d(2021, month, 12);
-            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
-        }
-    }
-
-    // Year. Iterating all values is too costly, so we check some random ones
-    test::int_generator<std::uint16_t> year_gen(std::uint16_t(0), std::uint16_t(9999));
-    for (int i = 0; i < 30; ++i)
-    {
-        std::uint16_t year = year_gen.generate();
-        BOOST_TEST_CONTEXT(year)
-        {
-            char buff[32];
-            date d(year, 2, 12);
-            BOOST_TEST(detail::access::get_impl(d).to_string(buff) == expected_size);
-        }
-    }
-}
-
-// operator stream is implemented in terms of to_string
+// operator stream is implemented in terms of to_string (see dt_to_string.hpp)
 BOOST_AUTO_TEST_CASE(operator_stream)
 {
     BOOST_TEST(stringize(date(2022, 1, 3)) == "2022-01-03");
