@@ -138,9 +138,9 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
 
     // Values. Note that std::abs(mysql_time::min()) invokes UB because of
     // signed integer overflow
-    auto total_count = value == (::boost::mysql::time::min)()
-                           ? static_cast<std::uint64_t>((::boost::mysql::time::min)().count()) + 1u
-                           : static_cast<std::uint64_t>(std::abs(value.count()));
+    constexpr auto min_val = (::boost::mysql::time::min)();
+    auto total_count = value == min_val ? static_cast<std::uint64_t>(min_val.count())
+                                        : static_cast<std::uint64_t>(std::abs(value.count()));
 
     auto num_micros = total_count % 1000000u;
     total_count /= 1000000u;
