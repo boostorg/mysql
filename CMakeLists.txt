@@ -76,6 +76,10 @@ else()
         OpenSSL::Crypto
         OpenSSL::SSL
     )
+    # TODO: workaround for https://github.com/cppalliance/charconv/issues/130
+    if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_link_libraries(boost_mysql INTERFACE quadmath)
+    endif()
 endif()
 
 # Includes & features
