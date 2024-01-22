@@ -20,15 +20,19 @@
 #include <cstddef>
 #include <ostream>
 
-std::size_t boost::mysql::datetime::impl_t::to_string(span<char, 64> output) const noexcept
-{
-    return detail::datetime_to_string(year, month, day, hour, minute, second, microsecond, output);
-}
-
 std::ostream& boost::mysql::operator<<(std::ostream& os, const datetime& value)
 {
     char buffer[64]{};
-    std::size_t sz = detail::access::get_impl(value).to_string(buffer);
+    std::size_t sz = detail::datetime_to_string(
+        value.year(),
+        value.month(),
+        value.day(),
+        value.hour(),
+        value.minute(),
+        value.second(),
+        value.microsecond(),
+        buffer
+    );
     os << string_view(buffer, sz);
     return os;
 }
