@@ -17,8 +17,10 @@
 #include <boost/test/unit_test.hpp>
 
 #include <string>
+#include <vector>
 
 #include "test_common/create_basic.hpp"
+#include "test_unit/custom_allocator.hpp"
 
 #ifdef __cpp_lib_string_view
 #include <string_view>
@@ -30,6 +32,8 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 using mysql_time = boost::mysql::time;
+using custom_string = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
+using custom_blob = std::vector<unsigned char, custom_allocator<unsigned char>>;
 
 /**
  * identifier
@@ -273,7 +277,7 @@ BOOST_AUTO_TEST_CASE(individual_string)
     BOOST_TEST(format_sql(single_fmt, opts, clval) == "SELECT 'I\\'m const';");
     BOOST_TEST(format_sql(single_fmt, opts, std::string("abc")) == "SELECT 'abc';");
     BOOST_TEST(format_sql(single_fmt, opts, std::string()) == "SELECT '';");
-    // TODO: std::string with allocator
+    BOOST_TEST(format_sql(single_fmt, opts, custom_string("abc'")) == "SELECT 'abc\\'';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_string_view)
@@ -303,7 +307,7 @@ BOOST_AUTO_TEST_CASE(individual_blob)
     BOOST_TEST(format_sql(single_fmt, opts, c_clval) == "SELECT 'hell\\'o';");
     BOOST_TEST(format_sql(single_fmt, opts, blob{0x00, 0x01, 0x02}) == "SELECT '\\0\1\2';");
     BOOST_TEST(format_sql(single_fmt, opts, blob()) == "SELECT '';");
-    // TODO: blob with custom allocator
+    BOOST_TEST(format_sql(single_fmt, opts, custom_blob{0x00, 0x01, 0x02}) == "SELECT '\\0\1\2';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_blob_view)
