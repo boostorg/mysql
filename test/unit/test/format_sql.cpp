@@ -62,12 +62,8 @@ struct formatter<custom::condition>
 }  // namespace boost
 
 /**
- * adding a custom field
  * injection attempts
- *    strings are escaped correctly
  *    error thrown on invalid encoding
- *    {} in strings doesn't have any meaning
- *    {{}} in strings doesn't have any meaning
  * format strings
  *    empty string
  *    no replacement
@@ -443,6 +439,15 @@ BOOST_AUTO_TEST_CASE(custom_type)
     auto actual = format_sql("SELECT * FROM myt WHERE {}", opts, custom::condition("myfield", 42));
     string_view expected = "SELECT * FROM myt WHERE `myfield`=42";
     BOOST_TEST(actual == expected);
+}
+
+// spotcheck: {} characters in string values are not treated specially
+BOOST_AUTO_TEST_CASE(string_curly_braces)
+{
+    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{}", "a{b}c") == "CONCAT('{}', 'a{b}c')");
+    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{", "a}c") == "CONCAT('{', 'a}c')");
+    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{{}}", "{{1}}") == "CONCAT('{{}}', '{{1}}')");
+    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "'\\{", "\"}") == "CONCAT('\\'\\\\{', '\\\"}')");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
