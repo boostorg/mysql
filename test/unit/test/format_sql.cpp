@@ -36,12 +36,6 @@ using custom_string = std::basic_string<char, std::char_traits<char>, custom_all
 using custom_blob = std::vector<unsigned char, custom_allocator<unsigned char>>;
 
 /**
- * identifier
- *    all empty
- *    single field
- *    double field
- *    triple field
- *    escaped correctly
  * adding a custom field
  * injection attempts
  *    strings are escaped correctly
@@ -401,6 +395,21 @@ BOOST_AUTO_TEST_CASE(individual_raw_sql)
     BOOST_TEST(format_sql(single_fmt, opts, raw_sql("")) == "SELECT ;");
     BOOST_TEST(format_sql(single_fmt, opts, raw_sql("42")) == "SELECT 42;");
     BOOST_TEST(format_sql(single_fmt, opts, raw_sql("'abc' OR 1=1")) == "SELECT 'abc' OR 1=1;");
+}
+
+BOOST_AUTO_TEST_CASE(individual_identifier)
+{
+    string_view fmt = "SELECT {} FROM myt";
+    BOOST_TEST(format_sql(fmt, opts, identifier("myfield")) == "SELECT `myfield` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("myt", "myf")) == "SELECT `myt`.`myf` FROM myt");
+    BOOST_TEST(
+        format_sql(fmt, opts, identifier("mydb", "myt", "myf")) == "SELECT `mydb`.`myt`.`myf` FROM myt"
+    );
+    BOOST_TEST(format_sql(fmt, opts, identifier("inj`ect'ion")) == "SELECT `inj``ect'ion` FROM myt");
+    BOOST_TEST(
+        format_sql(fmt, opts, identifier("mo`e\\", "inj``ection", "att\nemmpts`")) ==
+        "SELECT `mo``e\\`.`inj````ection`.`att\nemmpts``` FROM myt"
+    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
