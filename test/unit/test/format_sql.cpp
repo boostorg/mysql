@@ -10,6 +10,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/time.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -22,6 +23,7 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using mysql_time = boost::mysql::time;
 
 /**
  * identifier
@@ -117,6 +119,7 @@ BOOST_AUTO_TEST_CASE(individual_fields)
     // signed char
     BOOST_TEST(format_sql(single_fmt, opts, (signed char)42) == "SELECT 42;");
     BOOST_TEST(format_sql(single_fmt, opts, (signed char)-1) == "SELECT -1;");
+    BOOST_TEST(format_sql(single_fmt, opts, (signed char)-128) == "SELECT -128;");
     BOOST_TEST(format_sql(single_fmt, opts, (signed char)127) == "SELECT 127;");
 
     // unsigned char
@@ -128,6 +131,7 @@ BOOST_AUTO_TEST_CASE(individual_fields)
     BOOST_TEST(format_sql(single_fmt, opts, (short)42) == "SELECT 42;");
     BOOST_TEST(format_sql(single_fmt, opts, (short)-1) == "SELECT -1;");
     BOOST_TEST(format_sql(single_fmt, opts, (short)-32768) == "SELECT -32768;");
+    BOOST_TEST(format_sql(single_fmt, opts, (short)32767) == "SELECT 32767;");
 
     // unsigned short
     BOOST_TEST(format_sql(single_fmt, opts, (unsigned short)42) == "SELECT 42;");
@@ -137,6 +141,7 @@ BOOST_AUTO_TEST_CASE(individual_fields)
     // signed int
     BOOST_TEST(format_sql(single_fmt, opts, (int)42) == "SELECT 42;");
     BOOST_TEST(format_sql(single_fmt, opts, (int)-1) == "SELECT -1;");
+    BOOST_TEST(format_sql(single_fmt, opts, (int)-2147483648) == "SELECT -2147483648;");
     BOOST_TEST(format_sql(single_fmt, opts, (int)0x7fffffff) == "SELECT 2147483647;");
 
     // unsigned int
@@ -157,6 +162,9 @@ BOOST_AUTO_TEST_CASE(individual_fields)
     // signed long long
     BOOST_TEST(format_sql(single_fmt, opts, (long long)42) == "SELECT 42;");
     BOOST_TEST(format_sql(single_fmt, opts, (long long)-1) == "SELECT -1;");
+    BOOST_TEST(
+        format_sql(single_fmt, opts, (long long)(-0x7fffffffffffffff - 1)) == "SELECT -9223372036854775808;"
+    );
     BOOST_TEST(format_sql(single_fmt, opts, (long long)0x7fffffffffffffff) == "SELECT 9223372036854775807;");
 
     // unsigned long long
@@ -243,9 +251,9 @@ BOOST_AUTO_TEST_CASE(individual_fields)
     // time
     BOOST_TEST(format_sql(single_fmt, opts, maket(127, 1, 10, 123)) == "SELECT '127:01:10.000123';");
     BOOST_TEST(format_sql(single_fmt, opts, -maket(9, 1, 10)) == "SELECT '-09:01:10.000000';");
-    BOOST_TEST(format_sql(single_fmt, opts, ::boost::mysql::time()) == "SELECT '00:00:00.000000';");
-    BOOST_CHECK_NO_THROW(format_sql(single_fmt, opts, ::boost::mysql::time::min()));
-    BOOST_CHECK_NO_THROW(format_sql(single_fmt, opts, ::boost::mysql::time::max()));
+    BOOST_TEST(format_sql(single_fmt, opts, mysql_time()) == "SELECT '00:00:00.000000';");
+    BOOST_TEST(format_sql(single_fmt, opts, (mysql_time::min)()) == "SELECT '-2562047788:00:54.775808';");
+    BOOST_TEST(format_sql(single_fmt, opts, (mysql_time::max)()) == "SELECT '2562047788:00:54.775807';");
 }
 //  *    field, field_view
 //  *    boost::optional, std::optional
