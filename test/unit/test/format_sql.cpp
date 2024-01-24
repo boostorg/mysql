@@ -450,4 +450,57 @@ BOOST_AUTO_TEST_CASE(string_curly_braces)
     BOOST_TEST(format_sql("CONCAT({}, {})", opts, "'\\{", "\"}") == "CONCAT('\\'\\\\{', '\\\"}')");
 }
 
+BOOST_AUTO_TEST_CASE(format_strings)
+{
+    // Empty string
+    BOOST_TEST(format_sql("", opts) == "");
+
+    // String without replacements
+    BOOST_TEST(format_sql("SELECT 1", opts) == "SELECT 1");
+
+    // Escaped curly braces
+    BOOST_TEST(format_sql("SELECT '{{}}'", opts, 42) == "SELECT '{}'");
+    BOOST_TEST(format_sql("SELECT '{{'", opts, 42) == "SELECT '{'");
+    BOOST_TEST(format_sql("SELECT '}}'", opts, 42) == "SELECT '}'");
+    BOOST_TEST(format_sql("SELECT '{{{{}}}}'", opts, 42) == "SELECT '{{}}'");
+    BOOST_TEST(format_sql("SELECT '}}}}{{'", opts, 42) == "SELECT '}}{'");
+    BOOST_TEST(format_sql("{{{}}}", opts, 42) == "{42}");
+    BOOST_TEST(format_sql("SELECT '{{0}}'", opts, 42) == "SELECT '{0}'");
+    BOOST_TEST(format_sql("SELECT '{{name}}'", opts, 42) == "SELECT '{name}'");
+
+    // One format arg, possibly with text around it
+    BOOST_TEST(format_sql("SELECT {}", opts, 42) == "SELECT 42");                // text{}
+    BOOST_TEST(format_sql("{} OR 1=1", opts, 42) == "42 OR 1=1");                // {} text
+    BOOST_TEST(format_sql("{}", opts, 42) == "42");                              // {}
+    BOOST_TEST(format_sql("SELECT {} OR 1=1", opts, 42) == "SELECT 42 OR 1=1");  // text{}text
+
+    // Two format args
+    BOOST_TEST(format_sql("{}{}", opts, 42, "abc") == "42'abc'");        // {}{}
+    BOOST_TEST(format_sql("{} + {}", opts, 42, "abc") == "42 + 'abc'");  // {}text{}
+    BOOST_TEST(
+        format_sql("WHERE a={} OR b={} OR 1=1", opts, 42, "abc") == "WHERE a=42 OR b='abc' OR 1=1"
+    );  // text{}text{}text
+    BOOST_TEST(format_sql("SELECT {} OR 1=1", opts, 42) == "SELECT 42 OR 1=1");
+
+    // More format args
+    BOOST_TEST(format_sql("IN({}, {}, {}, {})", opts, 1, 5, 2, "'abc'") == "IN(1, 5, 2, '\\'abc\\'')");
+
+    // Explicit positional args
+    BOOST_TEST(format_sql("SELECT {0}", opts, 42) == "SELECT 42");
+    BOOST_TEST(format_sql("SELECT {1}, {0}", opts, 42, "abc") == "SELECT 'abc', 42");
+    BOOST_TEST(format_sql("SELECT {0}, {0}", opts, 42) == "SELECT 42, 42");  // repeated
+
+    // Unused arguments are ignored
+    BOOST_TEST(format_sql("SELECT {}", opts, 42, "abc", nullptr) == "SELECT 42");
+    BOOST_TEST(format_sql("SELECT {2}, {1}", opts, 42, "abc", nullptr, 4.2) == "SELECT NULL, 'abc'");
+}
+
+//  * format strings
+//  *    {named}{named2}
+//  *    {named} // unused name
+//  *    {Stran_es0t_name}
+//  *    {071} // interpreted as 71, not octal
+//  *    {named}{1}{named2}{2} // mix
+//  *    {named}{} // is this allowed???
+
 BOOST_AUTO_TEST_SUITE_END()
