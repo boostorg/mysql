@@ -12,6 +12,7 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
+#include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <string>
@@ -254,8 +255,34 @@ BOOST_AUTO_TEST_CASE(individual_fields)
     BOOST_TEST(format_sql(single_fmt, opts, mysql_time()) == "SELECT '00:00:00.000000';");
     BOOST_TEST(format_sql(single_fmt, opts, (mysql_time::min)()) == "SELECT '-2562047788:00:54.775808';");
     BOOST_TEST(format_sql(single_fmt, opts, (mysql_time::max)()) == "SELECT '2562047788:00:54.775807';");
+
+    // field_view
+    field referenced("def\\");
+    BOOST_TEST(format_sql(single_fmt, opts, field_view()) == "SELECT NULL;");
+    BOOST_TEST(format_sql(single_fmt, opts, field_view(42)) == "SELECT 42;");
+    BOOST_TEST(format_sql(single_fmt, opts, field_view("'abc'")) == "SELECT '\\'abc\\'';");
+    BOOST_TEST(format_sql(single_fmt, opts, field_view(referenced)) == "SELECT 'def\\\\';");
+
+    // field
+    field f_lval("hol\"a");
+    const field f_clval(42);
+    BOOST_TEST(format_sql(single_fmt, opts, field()) == "SELECT NULL;");
+    BOOST_TEST(format_sql(single_fmt, opts, field(4.2)) == "SELECT 4.2e+00;");
+    BOOST_TEST(format_sql(single_fmt, opts, f_lval) == "SELECT 'hol\\\"a';");
+    BOOST_TEST(format_sql(single_fmt, opts, f_clval) == "SELECT 42;");
+
+    // boost::optional
+    boost::optional<std::string> o_lval("abc");
+    boost::optional<const std::string> co_lval("ab'c");
+    const boost::optional<std::string> o_clval("\\");
+    const boost::optional<const std::string> co_clval("abdef");
+    BOOST_TEST(format_sql(single_fmt, opts, boost::optional<int>()) == "SELECT NULL;");
+    BOOST_TEST(format_sql(single_fmt, opts, boost::optional<int>(42)) == "SELECT 42;");
+    BOOST_TEST(format_sql(single_fmt, opts, o_lval) == "SELECT 'abc';");
+    BOOST_TEST(format_sql(single_fmt, opts, co_lval) == "SELECT 'ab\\'c';");
+    BOOST_TEST(format_sql(single_fmt, opts, o_clval) == "SELECT '\\\\';");
+    BOOST_TEST(format_sql(single_fmt, opts, co_clval) == "SELECT 'abdef';");
 }
-//  *    field, field_view
 //  *    boost::optional, std::optional
 //  *    raw
 
