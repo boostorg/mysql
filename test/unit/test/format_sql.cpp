@@ -64,30 +64,6 @@ struct formatter<custom::condition>
 /**
  * injection attempts
  *    error thrown on invalid encoding
- * format strings
- *    empty string
- *    no replacement
- *    escaped {{}}
- *    unbalanced escaped {{}}
- *    text {}
- *    {} text
- *    {}
- *    {}{}
- *    text {} text
- *    {} text {}
- *    text {} text {} text
- *    {}{}{}
- *    {named}{named2}
- *    {named} // unused name
- *    {Stran_es0t_name}
- *    {1}{0}
- *    {0}{0} // repeated
- *    {1}{2} // unused arg
- *    {}{}   // unused arg
- *    {071} // interpreted as 71, not octal
- *    {named}{1}{named2}{2} // mix
- *    {named}{} // is this allowed???
- *    {{{}}} // this is OK
  * invalid format strings
  *    unbalanced { text
  *    unbalanced { // end of string
@@ -497,17 +473,24 @@ BOOST_AUTO_TEST_CASE(format_strings)
     );
     BOOST_TEST(format_sql("SELECT {Str1_geName}", opts, arg("Str1_geName", 42)) == "SELECT 42");
 
+    // Named arguments can be referenced by position and automatically, too
+    BOOST_TEST(format_sql("SELECT {}, {}", opts, arg("val", 42), arg("other", 50)) == "SELECT 42, 50");
+    BOOST_TEST(format_sql("SELECT {1}, {0}", opts, arg("val", 42), arg("other", 50)) == "SELECT 50, 42");
+
+    // Named arguments can be mixed with positional and automatic
+    BOOST_TEST(format_sql("SELECT {}, {val}", opts, arg("val", 42)) == "SELECT 42, 42");
+    BOOST_TEST(format_sql("SELECT {}, {val}", opts, 50, arg("val", 42)) == "SELECT 50, 42");
+    BOOST_TEST(format_sql("SELECT {0}, {val}", opts, arg("val", 42)) == "SELECT 42, 42");
+
     // Unused arguments are ignored
     BOOST_TEST(format_sql("SELECT {}", opts, 42, "abc", nullptr) == "SELECT 42");
     BOOST_TEST(format_sql("SELECT {2}, {1}", opts, 42, "abc", nullptr, 4.2) == "SELECT NULL, 'abc'");
     BOOST_TEST(
         format_sql("SELECT {value}", opts, arg("a", 10), arg("value", 42), arg("a", "ac")) == "SELECT 42"
     );
-}
 
-//  * format strings
-//  *    {071} // interpreted as 71, not octal
-//  *    {named}{1}{named2}{2} // mix
-//  *    {named}{} // is this allowed???
+    // Indices with leading zeroes are parsed correctly and not interpreted as octal
+    BOOST_TEST(format_sql("SELECT {010}", opts, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12) == "SELECT 10");
+}
 
 BOOST_AUTO_TEST_SUITE_END()
