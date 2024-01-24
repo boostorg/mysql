@@ -85,12 +85,17 @@ public:
     {
     }
 
-    void append_raw(string_view raw_sql) { impl_.output.append(raw_sql); }
+    format_context& append_raw(string_view raw_sql)
+    {
+        impl_.output.append(raw_sql);
+        return *this;
+    }
 
     template <BOOST_MYSQL_FORMATTABLE T>
-    void append_value(const T& v)
+    format_context& append_value(const T& v)
     {
-        format_arg(create_arg_value(v));
+        format_arg(detail::make_format_value(v));
+        return *this;
     }
 };
 

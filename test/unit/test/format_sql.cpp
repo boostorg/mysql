@@ -35,6 +35,32 @@ using mysql_time = boost::mysql::time;
 using custom_string = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
 using custom_blob = std::vector<unsigned char, custom_allocator<unsigned char>>;
 
+// Field with a custom formatter
+namespace custom {
+
+struct condition
+{
+    string_view name;
+    int value;
+};
+
+}  // namespace custom
+
+namespace boost {
+namespace mysql {
+
+template <>
+struct formatter<custom::condition>
+{
+    static void format(const custom::condition& v, format_context& ctx)
+    {
+        ctx.append_value(identifier(v.name)).append_raw("=").append_value(v.value);
+    }
+};
+
+}  // namespace mysql
+}  // namespace boost
+
 /**
  * adding a custom field
  * injection attempts
@@ -410,6 +436,13 @@ BOOST_AUTO_TEST_CASE(individual_identifier)
         format_sql(fmt, opts, identifier("mo`e\\", "inj``ection", "att\nemmpts`")) ==
         "SELECT `mo``e\\`.`inj````ection`.`att\nemmpts``` FROM myt"
     );
+}
+
+BOOST_AUTO_TEST_CASE(custom_type)
+{
+    auto actual = format_sql("SELECT * FROM myt WHERE {}", opts, custom::condition("myfield", 42));
+    string_view expected = "SELECT * FROM myt WHERE `myfield`=42";
+    BOOST_TEST(actual == expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
