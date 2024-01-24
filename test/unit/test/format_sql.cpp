@@ -490,15 +490,22 @@ BOOST_AUTO_TEST_CASE(format_strings)
     BOOST_TEST(format_sql("SELECT {1}, {0}", opts, 42, "abc") == "SELECT 'abc', 42");
     BOOST_TEST(format_sql("SELECT {0}, {0}", opts, 42) == "SELECT 42, 42");  // repeated
 
+    // Named arguments
+    BOOST_TEST(format_sql("SELECT {val}", opts, arg("val", 42)) == "SELECT 42");
+    BOOST_TEST(
+        format_sql("SELECT {val2}, {val}", opts, arg("val", 42), arg("val2", "abc")) == "SELECT 'abc', 42"
+    );
+    BOOST_TEST(format_sql("SELECT {Str1_geName}", opts, arg("Str1_geName", 42)) == "SELECT 42");
+
     // Unused arguments are ignored
     BOOST_TEST(format_sql("SELECT {}", opts, 42, "abc", nullptr) == "SELECT 42");
     BOOST_TEST(format_sql("SELECT {2}, {1}", opts, 42, "abc", nullptr, 4.2) == "SELECT NULL, 'abc'");
+    BOOST_TEST(
+        format_sql("SELECT {value}", opts, arg("a", 10), arg("value", 42), arg("a", "ac")) == "SELECT 42"
+    );
 }
 
 //  * format strings
-//  *    {named}{named2}
-//  *    {named} // unused name
-//  *    {Stran_es0t_name}
 //  *    {071} // interpreted as 71, not octal
 //  *    {named}{1}{named2}{2} // mix
 //  *    {named}{} // is this allowed???

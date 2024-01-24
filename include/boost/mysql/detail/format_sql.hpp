@@ -27,6 +27,7 @@ class format_context;
 namespace detail {
 
 class format_state;
+struct format_arg_descriptor;
 
 struct formatter_is_unspecialized
 {
@@ -40,7 +41,8 @@ struct has_unspecialized_formatter : std::is_base_of<formatter_is_unspecialized,
 template <class T>
 constexpr bool is_formattable_type()
 {
-    return is_writable_field<T>::value || !has_unspecialized_formatter<T>::value;
+    return is_writable_field<T>::value || !has_unspecialized_formatter<T>::value ||
+           std::is_same<T, format_arg_descriptor>::value;
 }
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -141,7 +143,7 @@ format_arg_descriptor make_format_arg_descriptor(const T& val)
 }
 
 BOOST_MYSQL_DECL
-void vformat_to(
+void vformat_sql_to(
     string_view format_str,
     const format_context& ctx,
     span<const detail::format_arg_descriptor> args

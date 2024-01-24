@@ -113,7 +113,7 @@ struct formatter<identifier>
 };
 
 template <class T>
-inline detail::format_arg_descriptor arg(const T& value, string_view name) noexcept
+inline detail::format_arg_descriptor arg(string_view name, const T& value) noexcept
 {
     return {detail::make_format_value(value), name};
 }
@@ -129,7 +129,7 @@ inline void format_sql_to(
     std::array<detail::format_arg_descriptor, sizeof...(Args)> desc{{detail::make_format_arg_descriptor(args
     )...}};
     output.clear();
-    detail::vformat_to(format_str, format_context(output, opts), desc);
+    detail::vformat_sql_to(format_str, format_context(output, opts), desc);
 }
 
 template <BOOST_MYSQL_FORMATTABLE... Args>

@@ -347,7 +347,7 @@ void boost::mysql::format_context::format_arg(detail::format_arg_value arg)
     }
 }
 
-void boost::mysql::detail::vformat_to(
+void boost::mysql::detail::vformat_sql_to(
     string_view format_str,
     const format_context& ctx,
     span<const detail::format_arg_descriptor> args
