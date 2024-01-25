@@ -19,10 +19,12 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <limits>
 #include <string>
 #include <vector>
 
 #include "test_common/create_basic.hpp"
+#include "test_common/printing.hpp"
 #include "test_unit/custom_allocator.hpp"
 
 #ifdef __cpp_lib_string_view
@@ -400,6 +402,48 @@ BOOST_AUTO_TEST_CASE(individual_custom_type)
 }
 
 //
+// Errors when formatting individual fields
+//
+template <class Arg>
+error_code format_single_error(const Arg& arg)
+{
+    basic_format_context<std::string> ctx(opts);
+    ctx.append_value(arg);
+    return ctx.get().error();
+}
+
+BOOST_AUTO_TEST_CASE(individual_error)
+{
+    using float_limits = std::numeric_limits<float>;
+    using double_limits = std::numeric_limits<double>;
+
+    // float inf and nan
+    BOOST_TEST(format_single_error(float_limits::infinity()) == client_errc::floating_point_nan_inf);
+    BOOST_TEST(format_single_error(-float_limits::infinity()) == client_errc::floating_point_nan_inf);
+    BOOST_TEST(format_single_error(float_limits::quiet_NaN()) == client_errc::floating_point_nan_inf);
+
+    // double inf and nan
+    BOOST_TEST(format_single_error(double_limits::infinity()) == client_errc::floating_point_nan_inf);
+    BOOST_TEST(format_single_error(-double_limits::infinity()) == client_errc::floating_point_nan_inf);
+    BOOST_TEST(format_single_error(double_limits::quiet_NaN()) == client_errc::floating_point_nan_inf);
+
+    // strings and blobs with invalid characters
+    BOOST_TEST(format_single_error("a\xc3'") == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(makebv("a\xff\xff")) == client_errc::invalid_encoding);
+
+    // identifiers with invalid characters
+    BOOST_TEST(format_single_error(identifier("a\xd8")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(identifier("a\xd8", "abc")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(identifier("a\xd8", "abc", "def")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(identifier("abc", "a\xc3 ")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(identifier("abc", "a\xc3 ", "def")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(identifier("abc", "def", "a\xd9")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(identifier("a\xc3", "\xff", "abc")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(identifier("a\xc3", "abc", "a\xdf")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error(identifier("a\xc3", "\xff", "a\xd9")) == client_errc::invalid_encoding);
+}
+
+//
 // Format strings: covers expanding a format string into an actual query
 // using format_sql. This is specific to format_sql. Assumes that formatting
 // individual arguments works
@@ -454,6 +498,7 @@ BOOST_AUTO_TEST_CASE(format_strings)
     BOOST_TEST(format_sql("SELECT {_name}", opts, arg("_name", 42)) == "SELECT 42");
     BOOST_TEST(format_sql("SELECT {name123}", opts, arg("name123", 42)) == "SELECT 42");
     BOOST_TEST(format_sql("SELECT {NAME}", opts, arg("NAME", 42)) == "SELECT 42");
+    BOOST_TEST(format_sql("SELECT {a}", opts, arg("a", 42)) == "SELECT 42");
 
     // Named arguments can be referenced by position and automatically, too
     BOOST_TEST(format_sql("SELECT {}, {}", opts, arg("val", 42), arg("other", 50)) == "SELECT 42, 50");
@@ -541,7 +586,7 @@ BOOST_AUTO_TEST_CASE(format_strings_invalid)
                 [&](const error_with_diagnostics& err) {
                     std::string expected_diag = "Formatting SQL: ";
                     expected_diag += tc.expected_diag;
-                    BOOST_TEST(err.code() == error_code(client_errc::invalid_format_string));
+                    BOOST_TEST(err.code() == client_errc::invalid_format_string);
                     BOOST_TEST(err.get_diagnostics().client_message() == expected_diag);
                     return true;
                 }
