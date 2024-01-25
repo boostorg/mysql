@@ -32,16 +32,6 @@
 namespace boost {
 namespace mysql {
 
-class raw_sql
-{
-    string_view impl_;
-
-public:
-    BOOST_CXX14_CONSTEXPR raw_sql() = default;
-    BOOST_CXX14_CONSTEXPR explicit raw_sql(string_view v) noexcept : impl_(v) {}
-    BOOST_CXX14_CONSTEXPR string_view get() const noexcept { return impl_; }
-};
-
 class identifier
 {
     string_view id1, id2, id3;
@@ -173,12 +163,6 @@ public:
             return ec;
         return std::move(output_);
     }
-};
-
-template <>
-struct formatter<raw_sql>
-{
-    static void format(const raw_sql& value, format_context_base& ctx) { ctx.append_raw(value.get()); }
 };
 
 template <>

@@ -372,13 +372,6 @@ BOOST_AUTO_TEST_CASE(individual_std_optional)
 }
 #endif
 
-BOOST_AUTO_TEST_CASE(individual_raw_sql)
-{
-    BOOST_TEST(format_sql(single_fmt, opts, raw_sql("")) == "SELECT ;");
-    BOOST_TEST(format_sql(single_fmt, opts, raw_sql("42")) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, raw_sql("'abc' OR 1=1")) == "SELECT 'abc' OR 1=1;");
-}
-
 BOOST_AUTO_TEST_CASE(individual_identifier)
 {
     string_view fmt = "SELECT {} FROM myt";
