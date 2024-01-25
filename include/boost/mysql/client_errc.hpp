@@ -80,6 +80,12 @@ enum class client_errc : int
 
     /// (EXPERIMENTAL) An invalid byte sequence was found while trying to decode a string.
     invalid_encoding,
+
+    // TODO: document
+    invalid_format_string,
+
+    // TODO: document
+    floating_point_nan_inf,
 };
 
 BOOST_MYSQL_DECL

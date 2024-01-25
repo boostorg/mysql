@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_FORMAT_SQL_HPP
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -75,8 +76,8 @@ class format_context
     friend struct detail::access;
     friend class detail::format_state;
 
-    BOOST_MYSQL_DECL
-    void format_arg(detail::format_arg_value arg);
+    BOOST_MYSQL_DECL [[noreturn]] static void on_format_arg_error(error_code ec);
+    BOOST_MYSQL_DECL BOOST_ATTRIBUTE_NODISCARD error_code format_arg(detail::format_arg_value arg);
 
 public:
     template <BOOST_MYSQL_OUTPUT_STRING OutputString>
@@ -85,31 +86,39 @@ public:
     {
     }
 
-    format_context& append_raw(string_view raw_sql)
+    void append_raw(string_view raw_sql) { impl_.output.append(raw_sql); }
+
+    template <BOOST_MYSQL_FORMATTABLE T>
+    void append_value(const T& v)
     {
-        impl_.output.append(raw_sql);
-        return *this;
+        error_code ec;
+        append_value(v, ec);
+        if (ec)
+            on_format_arg_error(ec);
     }
 
     template <BOOST_MYSQL_FORMATTABLE T>
-    format_context& append_value(const T& v)
+    void append_value(const T& v, error_code& ec)
     {
-        format_arg(detail::make_format_value(v));
-        return *this;
+        ec = format_arg(detail::make_format_value(v));
     }
 };
 
 template <>
 struct formatter<raw_sql>
 {
-    static void format(const raw_sql& value, format_context& ctx) { ctx.append_raw(value.get()); }
+    static error_code format(const raw_sql& value, format_context& ctx)
+    {
+        ctx.append_raw(value.get());
+        return error_code();
+    }
 };
 
 template <>
 struct formatter<identifier>
 {
     BOOST_MYSQL_DECL
-    static void format(const identifier& value, format_context& ctx);
+    static error_code format(const identifier& value, format_context& ctx);
 };
 
 template <class T>

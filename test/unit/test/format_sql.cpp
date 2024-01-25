@@ -7,6 +7,7 @@
 
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -52,9 +53,15 @@ namespace mysql {
 template <>
 struct formatter<custom::condition>
 {
-    static void format(const custom::condition& v, format_context& ctx)
+    static error_code format(const custom::condition& v, format_context& ctx)
     {
-        ctx.append_value(identifier(v.name)).append_raw("=").append_value(v.value);
+        error_code ec;
+        ctx.append_value(identifier(v.name), ec);
+        if (ec)
+            return ec;
+        ctx.append_raw("=");
+        ctx.append_value(v.value, ec);
+        return ec;
     }
 };
 

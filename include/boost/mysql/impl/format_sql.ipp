@@ -10,6 +10,9 @@
 
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -25,24 +28,23 @@
 #include <boost/throw_exception.hpp>
 
 #include <charconv>
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <system_error>
+#include <utility>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 // Helpers to format fundamental types
-inline void append_identifier(string_view name, format_context& ctx)
+inline error_code append_identifier(string_view name, format_context& ctx)
 {
     auto& impl = access::get_impl(ctx);
-    auto ec = detail::escape_string(name, impl.opts.charset, impl.opts.backslash_escapes, '`', impl.output);
-    if (ec)
-    {
-        BOOST_THROW_EXCEPTION(boost::system::system_error(ec));
-    }
+    return detail::escape_string(name, impl.opts.charset, impl.opts.backslash_escapes, '`', impl.output);
 }
 
 template <class T>
@@ -63,12 +65,16 @@ void append_int(output_string_ref output, T integer)
     output.append(string_view(buff, res.ptr - buff));
 }
 
-inline void append_double(output_string_ref output, double number)
+inline error_code append_double(output_string_ref output, double number)
 {
     // Make sure our buffer is big enough. 4: sign, radix point, e+
     // 3: max exponent digits
     constexpr std::size_t buffsize = 32;
     static_assert(4 + std::numeric_limits<double>::max_digits10 + 3 < buffsize, "");
+
+    // inf and nan are not supported by MySQL
+    if (std::isinf(number) || std::isnan(number))
+        return client_errc::floating_point_nan_inf;
 
     char buff[buffsize];
 
@@ -81,21 +87,24 @@ inline void append_double(output_string_ref output, double number)
 
     // Copy
     output.append(string_view(buff, res.ptr - buff));
+
+    return error_code();
 }
 
-inline void append_quoted_string(output_string_ref output, string_view str, const format_options& opts)
+inline error_code append_quoted_string(output_string_ref output, string_view str, const format_options& opts)
 {
     output.append("'");
     auto ec = detail::escape_string(str, opts.charset, opts.backslash_escapes, '\'', output);
     if (ec)
-        BOOST_THROW_EXCEPTION(boost::system::system_error(ec));
+        return ec;
     output.append("'");
+    return error_code();
 }
 
-inline void append_quoted_blob(output_string_ref output, blob_view b, const format_options& opts)
+inline error_code append_quoted_blob(output_string_ref output, blob_view b, const format_options& opts)
 {
     // Blobs have the same rules as strings
-    append_quoted_string(output, string_view(reinterpret_cast<const char*>(b.data()), b.size()), opts);
+    return append_quoted_string(output, string_view(reinterpret_cast<const char*>(b.data()), b.size()), opts);
 }
 
 inline void append_quoted_date(output_string_ref output, date d)
@@ -135,19 +144,21 @@ inline void append_quoted_time(output_string_ref output, time t)
 }
 
 // Helpers for parsing format strings
-inline const char* advance(const char* begin, const char* end, const character_set& charset)
-{
-    std::size_t size = charset.next_char({begin, end});
-    if (size == 0)
-        BOOST_THROW_EXCEPTION(boost::system::system_error(client_errc::invalid_encoding));
-    return begin + size;
-}
-
 inline bool is_number(char c) noexcept { return c >= '0' && c <= '9'; }
 
 inline bool is_name_start(char c) noexcept
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+}
+
+[[noreturn]] inline void throw_format_error(error_code ec, std::string diag)
+{
+    BOOST_THROW_EXCEPTION(error_with_diagnostics(ec, access::construct<diagnostics>(false, std::move(diag))));
+}
+
+[[noreturn]] inline void throw_format_error_invalid_arg(error_code ec)
+{
+    throw_format_error(ec, "Formatting SQL: an argument contains an invalid value");
 }
 
 class format_state
@@ -161,16 +172,35 @@ class format_state
     // >0: we're doing auto indexing
     int next_arg_id_{0};
 
+    const char* advance(const char* begin, const char* end)
+    {
+        std::size_t size = ctx_.impl_.opts.charset.next_char({begin, end});
+        if (size == 0)
+        {
+            throw_format_error(
+                client_errc::invalid_encoding,
+                "Formatting SQL: the format string contains characters that are invalid in the given "
+                "character set"
+            );
+        }
+        return begin + size;
+    }
+
     bool uses_auto_ids() const noexcept { return next_arg_id_ > 0; }
     bool uses_explicit_ids() const noexcept { return next_arg_id_ == -1; }
 
-    void do_field(format_arg_descriptor arg) { ctx_.format_arg(arg.value); }
+    void do_field(format_arg_descriptor arg)
+    {
+        auto ec = ctx_.format_arg(arg.value);
+        if (ec)
+            throw_format_error_invalid_arg(ec);
+    }
 
     void do_indexed_field(int arg_id)
     {
         BOOST_ASSERT(arg_id >= 0);
         if (static_cast<std::size_t>(arg_id) >= args_.size())
-            BOOST_THROW_EXCEPTION(std::runtime_error("Format argument not found"));
+            throw_format_error(client_errc::invalid_format_string, "Formatting SQL: argument not found");
         do_field(args_[arg_id]);
     }
 
@@ -184,7 +214,12 @@ class format_state
 
         auto it = format_begin;
         if (it == format_end)
-            BOOST_THROW_EXCEPTION(std::runtime_error("Bad format string: unmatched '{'"));
+        {
+            throw_format_error(
+                client_errc::invalid_format_string,
+                "Formatting SQL: unmatched '{' in format string"
+            );
+        }
         else if (*it == '{')
         {
             ctx_.append_raw("{");
@@ -201,7 +236,10 @@ class format_state
             auto res = std::from_chars(it, format_end, field_index);
             if (res.ec != std::errc{})
             {
-                BOOST_THROW_EXCEPTION(std::runtime_error("Bad format string: bad index"));
+                throw_format_error(
+                    client_errc::invalid_format_string,
+                    "Formatting SQL: invalid argument index"
+                );
             }
             it = res.ptr;
             append_indexed_field(static_cast<int>(field_index));
@@ -210,14 +248,21 @@ class format_state
         {
             const char* name_begin = it;
             if (!is_name_start(*it++))
-                BOOST_THROW_EXCEPTION(std::runtime_error("Bad format string: invalid argument name"));
+            {
+                throw_format_error(
+                    client_errc::invalid_format_string,
+                    "Formatting SQL: invalid argument name"
+                );
+            }
             while (it != format_end && (is_name_start(*it) || is_number(*it)))
                 ++it;
             append_named_field(string_view{name_begin, it});
         }
 
         if (it == format_end || *it++ != '}')
-            BOOST_THROW_EXCEPTION(std::runtime_error("Bad format string: unmatched '}"));
+        {
+            throw_format_error(client_errc::invalid_format_string, "Formatting SQL: invalid format string");
+        }
         return it;
     }
 
@@ -233,14 +278,19 @@ class format_state
             }
         }
 
-        // Not found. TODO: better diagnostics
-        BOOST_THROW_EXCEPTION(std::runtime_error("Format argument not found"));
+        // Not found
+        throw_format_error(client_errc::invalid_format_string, "Formatting SQL: named argument not found");
     }
 
     void append_indexed_field(int index)
     {
         if (uses_auto_ids())
-            BOOST_THROW_EXCEPTION(std::runtime_error("Cannot switch from automatic to explicit indexing"));
+        {
+            throw_format_error(
+                client_errc::invalid_format_string,
+                "Cannot switch from automatic to explicit indexing"
+            );
+        }
         next_arg_id_ = -1;
         do_indexed_field(index);
     }
@@ -248,7 +298,12 @@ class format_state
     void append_auto_field()
     {
         if (uses_explicit_ids())
-            BOOST_THROW_EXCEPTION(std::runtime_error("Cannot switch from explicit to automatic indexing"));
+        {
+            throw_format_error(
+                client_errc::invalid_format_string,
+                "Cannot switch from explicit to automatic indexing"
+            );
+        }
         do_indexed_field(next_arg_id_++);
     }
 
@@ -288,7 +343,7 @@ public:
             }
             else
             {
-                it = advance(it, end, ctx_.impl_.opts.charset);
+                it = advance(it, end);
             }
         }
 
@@ -301,50 +356,67 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::formatter<boost::mysql::identifier>::format(const identifier& value, format_context& ctx)
+boost::mysql::error_code boost::mysql::formatter<boost::mysql::identifier>::format(
+    const identifier& value,
+    format_context& ctx
+)
 {
     ctx.append_raw("`");
-    detail::append_identifier(value.first(), ctx);
+    auto ec = detail::append_identifier(value.first(), ctx);
+    if (ec)
+        return ec;
     if (!value.second().empty())
     {
         ctx.append_raw("`.`");
-        detail::append_identifier(value.second(), ctx);
+        ec = detail::append_identifier(value.second(), ctx);
+        if (ec)
+            return ec;
         if (!value.third().empty())
         {
             ctx.append_raw("`.`");
-            detail::append_identifier(value.third(), ctx);
+            ec = detail::append_identifier(value.third(), ctx);
+            if (ec)
+                return ec;
         }
     }
     ctx.append_raw("`");
+    return error_code();
 }
 
-void boost::mysql::format_context::format_arg(detail::format_arg_value arg)
+boost::mysql::error_code boost::mysql::format_context::format_arg(detail::format_arg_value arg)
 {
     if (arg.is_custom)
     {
-        arg.data.custom.format_fn(arg.data.custom.obj, *this);
+        return arg.data.custom.format_fn(arg.data.custom.obj, *this);
     }
     else
     {
         field_view fv = arg.data.fv;
         switch (fv.kind())
         {
-        case field_kind::null: return append_raw("NULL");
-        case field_kind::int64: return detail::append_int(impl_.output, fv.get_int64());
-        case field_kind::uint64: return detail::append_int(impl_.output, fv.get_uint64());
+        case field_kind::null: append_raw("NULL"); return error_code();
+        case field_kind::int64: detail::append_int(impl_.output, fv.get_int64()); return error_code();
+        case field_kind::uint64: detail::append_int(impl_.output, fv.get_uint64()); return error_code();
         case field_kind::float_:
-            // float is formatted as double because it's parsed
+            // float is formatted as double because it's parsed as such
             return detail::append_double(impl_.output, fv.get_float());
         case field_kind::double_: return detail::append_double(impl_.output, fv.get_double());
         case field_kind::string:
             return detail::append_quoted_string(impl_.output, fv.get_string(), impl_.opts);
         case field_kind::blob: return detail::append_quoted_blob(impl_.output, fv.get_blob(), impl_.opts);
-        case field_kind::date: return detail::append_quoted_date(impl_.output, fv.get_date());
-        case field_kind::datetime: return detail::append_quoted_datetime(impl_.output, fv.get_datetime());
-        case field_kind::time: return detail::append_quoted_time(impl_.output, fv.get_time());
-        default: BOOST_ASSERT(false);
+        case field_kind::date: detail::append_quoted_date(impl_.output, fv.get_date()); return error_code();
+        case field_kind::datetime:
+            detail::append_quoted_datetime(impl_.output, fv.get_datetime());
+            return error_code();
+        case field_kind::time: detail::append_quoted_time(impl_.output, fv.get_time()); return error_code();
+        default: BOOST_ASSERT(false); return error_code();
         }
     }
+}
+
+void boost::mysql::format_context::on_format_arg_error(error_code ec)
+{
+    detail::throw_format_error_invalid_arg(ec);
 }
 
 void boost::mysql::detail::vformat_sql_to(

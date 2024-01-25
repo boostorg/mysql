@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_FORMAT_SQL_HPP
 #define BOOST_MYSQL_DETAIL_FORMAT_SQL_HPP
 
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -62,7 +63,7 @@ concept formattable = is_formattable_type<T>();
 struct format_custom_arg
 {
     const void* obj;
-    void (*format_fn)(const void*, format_context&);
+    error_code (*format_fn)(const void*, format_context&);
 
     template <class T>
     static format_custom_arg create(const T& obj) noexcept
@@ -71,9 +72,9 @@ struct format_custom_arg
     }
 
     template <class T>
-    static void do_format(const void* obj, format_context& ctx)
+    static error_code do_format(const void* obj, format_context& ctx)
     {
-        formatter<T>::format(*static_cast<const T*>(obj), ctx);
+        return formatter<T>::format(*static_cast<const T*>(obj), ctx);
     }
 };
 
