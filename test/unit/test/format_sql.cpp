@@ -451,6 +451,9 @@ BOOST_AUTO_TEST_CASE(format_strings)
         format_sql("SELECT {val2}, {val}", opts, arg("val", 42), arg("val2", "abc")) == "SELECT 'abc', 42"
     );
     BOOST_TEST(format_sql("SELECT {Str1_geName}", opts, arg("Str1_geName", 42)) == "SELECT 42");
+    BOOST_TEST(format_sql("SELECT {_name}", opts, arg("_name", 42)) == "SELECT 42");
+    BOOST_TEST(format_sql("SELECT {name123}", opts, arg("name123", 42)) == "SELECT 42");
+    BOOST_TEST(format_sql("SELECT {NAME}", opts, arg("NAME", 42)) == "SELECT 42");
 
     // Named arguments can be referenced by position and automatically, too
     BOOST_TEST(format_sql("SELECT {}, {}", opts, arg("val", 42), arg("other", 50)) == "SELECT 42, 50");
@@ -484,10 +487,40 @@ BOOST_AUTO_TEST_CASE(format_strings_invalid)
     {
         string_view name;
         string_view format_str;
-        std::string expected_diag;  // Workarounds a Boost.Test problem with string_view
+        string_view expected_diag;
     } test_cases[] = {
-        {"unbalanced {", "SELECT { bad", "Formatting SQL: invalid format string"},
+        {"unbalanced_{",            "SELECT { bad",        "invalid format string"          },
+        {"unbalanced_{_eof",        "SELECT {",            "invalid format string"          },
+        {"unbalanced_}",            "SELECT } bad",        "unbalanced '}' in format string"},
+        {"unbalanced_}_eof",        "SELECT }",            "unbalanced '}' in format string"},
+        {"name_starts_number",      "SELECT {0name}",      "invalid format string"          },
+        {"name_starts_invalid",     "SELECT {!name}",      "invalid format string"          },
+        {"name_ends_invalid",       "SELECT {name!}",      "invalid format string"          },
+        {"name_contains_invalid",   "SELECT {na'me}",      "invalid format string"          },
+        {"name_spaces",             "SELECT { name }",     "invalid format string"          },
+        {"name_non_ascii",          "SELECT {e\xc3\xb1p}", "invalid format string"          },
+        {"name_format_spec",        "SELECT {name:abc}",   "invalid format string"          },
+        {"name_format_spec_empty",  "SELECT {name:}",      "invalid format string"          },
+        {"name_eof",                "SELECT {name",        "invalid format string"          },
+        {"index_hex",               "SELECT {0x10}",       "invalid format string"          },
+        {"index_hex_noprefix",      "SELECT {1a}",         "invalid format string"          },
+        {"index_spaces",            "SELECT { 1 }",        "invalid format string"          },
+        {"index_format_spec",       "SELECT {0:abc}",      "invalid format string"          },
+        {"index_format_spec_empty", "SELECT {0:}",         "invalid format string"          },
+        {"index_eof",               "SELECT {0",           "invalid format string"          },
+        {"auto_format_spec",        "SELECT {:abc}",       "invalid format string"          },
+        {"auto_format_spec_empty",  "SELECT {:}",          "invalid format string"          },
+        {"auto_replacement_inside", "SELECT { {} }",       "invalid format string"          },
     };
+
+    // {78238742934923} // out of range
+    //  *    {}} // unbalanced }
+    //  *    {}{0} // cannot switch from auto to manual
+    //  *    {0}{} // cannot swith from manual to auto
+    //  * arg/strings invalid combinations
+    //  *    auto indexing out of range
+    //  *    manual indexing out of range
+    //  *    name not found
 
     for (const auto& tc : test_cases)
     {
@@ -497,40 +530,15 @@ BOOST_AUTO_TEST_CASE(format_strings_invalid)
                 format_sql(tc.format_str, opts, 42, arg("name", "abc")),
                 error_with_diagnostics,
                 [&](const error_with_diagnostics& err) {
+                    std::string expected_diag = "Formatting SQL: ";
+                    expected_diag += tc.expected_diag;
                     BOOST_TEST(err.code() == error_code(client_errc::invalid_format_string));
-                    BOOST_TEST(err.get_diagnostics().client_message() == tc.expected_diag);
+                    BOOST_TEST(err.get_diagnostics().client_message() == expected_diag);
                     return true;
                 }
             );
         }
     }
 }
-
-//  * invalid format strings
-//  *    unbalanced { text
-//  *    unbalanced { // end of string
-//  *    unbalanced } text
-//  *    unbalanced } // end of string
-//  *    {0name} // name starting with a number
-//  *    {!name"} // name containing invalid ascii
-//  *    { name } // spaces not allowed
-//  *    {ñ} // name containing non-ascii
-//  *    {valid_name!} // extra chars not allowed
-//  *    {valid_name:} // formatting options not allowed
-//  *    {:} // formatting options not allowed
-//  *    {0xab} // hex not allowed
-//  *    { 1 } // spaces not allowed
-//  *    {45abc} // extra trailing chars not allowed
-//  *    {}} // unbalanced }
-//  *    {0:} // formatting options not allowed
-//  *    {}{0} // cannot switch from auto to manual
-//  *    {0}{} // cannot swith from manual to auto
-//  *    {name // end of string while scanning name
-//  *    {21 // end of string while scanning number
-//  *    { {} } // replacement field inside replacement field
-//  * arg/strings invalid combinations
-//  *    auto indexing out of range
-//  *    manual indexing out of range
-//  *    name not found
 
 BOOST_AUTO_TEST_SUITE_END()

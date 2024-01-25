@@ -251,6 +251,10 @@ class format_state
                 throw_format_error("Formatting SQL: invalid argument index");
             }
             it = res.ptr;
+            if (it == format_end || *it++ != '}')
+            {
+                throw_invalid_format_string();
+            }
             append_indexed_field(static_cast<int>(field_index));
         }
         else
@@ -262,13 +266,14 @@ class format_state
             }
             while (it != format_end && (is_name_start(*it) || is_number(*it)))
                 ++it;
-            append_named_field(string_view{name_begin, it});
+            string_view field_name(name_begin, it);
+            if (it == format_end || *it++ != '}')
+            {
+                throw_invalid_format_string();
+            }
+            append_named_field(field_name);
         }
 
-        if (it == format_end || *it++ != '}')
-        {
-            throw_invalid_format_string();
-        }
         return it;
     }
 
@@ -292,7 +297,7 @@ class format_state
     {
         if (uses_auto_ids())
         {
-            throw_format_error("Cannot switch from automatic to explicit indexing");
+            throw_format_error("Formatting SQL: cannot switch from automatic to explicit indexing");
         }
         next_arg_id_ = -1;
         do_indexed_field(index);
@@ -302,7 +307,7 @@ class format_state
     {
         if (uses_explicit_ids())
         {
-            throw_format_error("Cannot switch from explicit to automatic indexing");
+            throw_format_error("Formatting SQL: cannot switch from explicit to automatic indexing");
         }
         do_indexed_field(next_arg_id_++);
     }
@@ -336,7 +341,7 @@ public:
                 ctx_.append_raw({cur_begin, it});
                 ++it;
                 if (it == end || *it != '}')
-                    throw_format_error("Bad format string: unmatched '}'");
+                    throw_format_error("Formatting SQL: unbalanced '}' in format string");
                 ctx_.append_raw("}");
                 ++it;
                 cur_begin = it;
