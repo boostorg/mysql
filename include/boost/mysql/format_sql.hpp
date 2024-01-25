@@ -23,6 +23,11 @@
 
 #include <array>
 #include <string>
+#include <type_traits>
+
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+#include <concepts>
+#endif
 
 namespace boost {
 namespace mysql {
@@ -71,7 +76,7 @@ class format_context_base
     struct
     {
         detail::output_string_ref output;
-        const format_options opts;
+        format_options opts;
         error_code ec;
 
         void set_error(error_code new_ec) noexcept
@@ -87,9 +92,21 @@ class format_context_base
     BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg);
 
 protected:
-    format_context_base(detail::output_string_ref out, format_options opts) noexcept
-        : impl_{out, opts, error_code()}
+    format_context_base(detail::output_string_ref out, format_options opts, error_code ec = {}) noexcept
+        : impl_{out, opts, ec}
     {
+    }
+
+    format_context_base(detail::output_string_ref out, const format_context_base& rhs) noexcept
+        : impl_{out, rhs.impl_.opts, rhs.impl_.ec}
+    {
+    }
+
+    void assign(const format_context_base& rhs) noexcept
+    {
+        // output never changes, it always points to the derived object's storage
+        impl_.opts = rhs.impl_.opts;
+        impl_.ec = rhs.impl_.ec;
     }
 
     error_code get_error() const noexcept { return impl_.ec; }
@@ -109,30 +126,46 @@ public:
     }
 };
 
-template <BOOST_MYSQL_OUTPUT_STRING OutputString>
+template <class OutputString>
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+    requires detail::output_string<OutputString> && std::move_constructible<OutputString>
+#endif
 class basic_format_context : public format_context_base
 {
     OutputString output_{};
 
+    detail::output_string_ref ref() noexcept { return detail::output_string_ref::create(output_); }
+
 public:
-    // TODO: noexcept specifier
-    // TODO: this requires OutputString to also be MoveConstructible, and possibly DefaultConstructible
-    basic_format_context(format_options opts)
-        : format_context_base(detail::output_string_ref::create(output_), opts)
+    basic_format_context(format_options opts
+    ) noexcept(std::is_nothrow_default_constructible<OutputString>::value)
+        : format_context_base(ref(), opts)
     {
     }
 
-    basic_format_context(format_options opts, OutputString&& output)
-        : basic_format_context(opts), output_(std::move(output))
+    basic_format_context(format_options opts, OutputString&& output) noexcept(
+        std::is_nothrow_move_constructible<OutputString>::value
+    )
+        : format_context_base(ref(), opts), output_(std::move(output))
     {
     }
 
-    // TODO: this can be implemented
     basic_format_context(const basic_format_context&) = delete;
-    basic_format_context(basic_format_context&&) = delete;
     basic_format_context& operator=(const basic_format_context&) = delete;
-    basic_format_context& operator=(basic_format_context&&) = delete;
 
+    basic_format_context(basic_format_context&& rhs
+    ) noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+        : format_context_base(ref(), rhs), output_(std::move(rhs.output_))
+    {
+    }
+
+    basic_format_context& operator=(basic_format_context&& rhs)
+    {
+        output_ = std::move(rhs.output_);
+        assign(rhs);
+    }
+
+    // TODO: do we make this move-only?
     system::result<OutputString> get()
     {
         auto ec = get_error();
