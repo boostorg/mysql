@@ -489,38 +489,47 @@ BOOST_AUTO_TEST_CASE(format_strings_invalid)
         string_view format_str;
         string_view expected_diag;
     } test_cases[] = {
-        {"unbalanced_{",            "SELECT { bad",        "invalid format string"          },
-        {"unbalanced_{_eof",        "SELECT {",            "invalid format string"          },
-        {"unbalanced_}",            "SELECT } bad",        "unbalanced '}' in format string"},
-        {"unbalanced_}_eof",        "SELECT }",            "unbalanced '}' in format string"},
-        {"name_starts_number",      "SELECT {0name}",      "invalid format string"          },
-        {"name_starts_invalid",     "SELECT {!name}",      "invalid format string"          },
-        {"name_ends_invalid",       "SELECT {name!}",      "invalid format string"          },
-        {"name_contains_invalid",   "SELECT {na'me}",      "invalid format string"          },
-        {"name_spaces",             "SELECT { name }",     "invalid format string"          },
-        {"name_non_ascii",          "SELECT {e\xc3\xb1p}", "invalid format string"          },
-        {"name_format_spec",        "SELECT {name:abc}",   "invalid format string"          },
-        {"name_format_spec_empty",  "SELECT {name:}",      "invalid format string"          },
-        {"name_eof",                "SELECT {name",        "invalid format string"          },
-        {"index_hex",               "SELECT {0x10}",       "invalid format string"          },
-        {"index_hex_noprefix",      "SELECT {1a}",         "invalid format string"          },
-        {"index_spaces",            "SELECT { 1 }",        "invalid format string"          },
-        {"index_format_spec",       "SELECT {0:abc}",      "invalid format string"          },
-        {"index_format_spec_empty", "SELECT {0:}",         "invalid format string"          },
-        {"index_eof",               "SELECT {0",           "invalid format string"          },
-        {"auto_format_spec",        "SELECT {:abc}",       "invalid format string"          },
-        {"auto_format_spec_empty",  "SELECT {:}",          "invalid format string"          },
-        {"auto_replacement_inside", "SELECT { {} }",       "invalid format string"          },
-    };
+  // Simply invalid
+        {"unbalanced_{",             "SELECT { bad",        "invalid format string"                                                            },
+        {"unbalanced_{_eof",         "SELECT {",            "invalid format string"                                                            },
+        {"unbalanced_}",             "SELECT } bad",        "unbalanced '}' in format string"                                                  },
+        {"unbalanced_}_after_field", "SELECT {}} bad",      "unbalanced '}' in format string"                                                  },
+        {"unbalanced_}_eof",         "SELECT }",            "unbalanced '}' in format string"                                                  },
+        {"invalid_character",
+         "SELECT \xc3 bad",                                 "the format string contains characters that are invalid in the given character set"},
 
-    // {78238742934923} // out of range
-    //  *    {}} // unbalanced }
-    //  *    {}{0} // cannot switch from auto to manual
-    //  *    {0}{} // cannot swith from manual to auto
-    //  * arg/strings invalid combinations
-    //  *    auto indexing out of range
-    //  *    manual indexing out of range
-    //  *    name not found
+ // Named argument problems
+        {"name_starts_number",       "SELECT {0name}",      "invalid format string"                                                            },
+        {"name_starts_invalid",      "SELECT {!name}",      "invalid format string"                                                            },
+        {"name_ends_invalid",        "SELECT {name!}",      "invalid format string"                                                            },
+        {"name_contains_invalid",    "SELECT {na'me}",      "invalid format string"                                                            },
+        {"name_spaces",              "SELECT { name }",     "invalid format string"                                                            },
+        {"name_non_ascii",           "SELECT {e\xc3\xb1p}", "invalid format string"                                                            },
+        {"name_format_spec",         "SELECT {name:abc}",   "invalid format string"                                                            },
+        {"name_format_spec_empty",   "SELECT {name:}",      "invalid format string"                                                            },
+        {"name_eof",                 "SELECT {name",        "invalid format string"                                                            },
+        {"name_not_found",           "SELECT {name} {bad}", "named argument not found"                                                         },
+
+ // Explicit indexing problems
+        {"index_hex",                "SELECT {0x10}",       "invalid format string"                                                            },
+        {"index_hex_noprefix",       "SELECT {1a}",         "invalid format string"                                                            },
+        {"index_spaces",             "SELECT { 1 }",        "invalid format string"                                                            },
+        {"index_format_spec",        "SELECT {0:abc}",      "invalid format string"                                                            },
+        {"index_format_spec_empty",  "SELECT {0:}",         "invalid format string"                                                            },
+        {"index_eof",                "SELECT {0",           "invalid format string"                                                            },
+        {"index_gt_max",             "SELECT {65536}",      "invalid format string"                                                            },
+        {"index_negative",           "SELECT {-1}",         "invalid format string"                                                            },
+        {"index_float",              "SELECT {4.2}",        "invalid format string"                                                            },
+        {"index_not_found",          "SELECT {2}",          "argument index out of range"                                                      },
+        {"index_to_manual",          "SELECT {0}, {}",      "cannot switch from explicit to automatic indexing"                                },
+
+ // Auto indexing problems
+        {"auto_format_spec",         "SELECT {:abc}",       "invalid format string"                                                            },
+        {"auto_format_spec_empty",   "SELECT {:}",          "invalid format string"                                                            },
+        {"auto_replacement_inside",  "SELECT { {} }",       "invalid format string"                                                            },
+        {"auto_too_many_args",       "SELECT {}, {}, {}",   "argument index out of range"                                                      },
+        {"auto_to_manual",           "SELECT {}, {0}",      "cannot switch from automatic to explicit indexing"                                },
+    };
 
     for (const auto& tc : test_cases)
     {

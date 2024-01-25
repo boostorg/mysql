@@ -215,7 +215,7 @@ class format_state
     {
         BOOST_ASSERT(arg_id >= 0);
         if (static_cast<std::size_t>(arg_id) >= args_.size())
-            throw_format_error("Formatting SQL: argument not found");
+            throw_format_error("Formatting SQL: argument index out of range");
         do_field(args_[arg_id]);
     }
 
@@ -248,7 +248,7 @@ class format_state
             auto res = std::from_chars(it, format_end, field_index);
             if (res.ec != std::errc{})
             {
-                throw_format_error("Formatting SQL: invalid argument index");
+                throw_invalid_format_string();
             }
             it = res.ptr;
             if (it == format_end || *it++ != '}')
