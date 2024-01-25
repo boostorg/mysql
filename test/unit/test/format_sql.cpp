@@ -53,15 +53,9 @@ namespace mysql {
 template <>
 struct formatter<custom::condition>
 {
-    static error_code format(const custom::condition& v, format_context& ctx)
+    static void format(const custom::condition& v, format_context_base& ctx)
     {
-        error_code ec;
-        ctx.append_value(identifier(v.name), ec);
-        if (ec)
-            return ec;
-        ctx.append_raw("=");
-        ctx.append_value(v.value, ec);
-        return ec;
+        ctx.append_value(identifier(v.name)).append_raw("=").append_value(v.value);
     }
 };
 

@@ -23,7 +23,7 @@ namespace mysql {
 template <class T>
 struct formatter;
 
-class format_context;
+class format_context_base;
 
 namespace detail {
 
@@ -63,7 +63,7 @@ concept formattable = is_formattable_type<T>();
 struct format_custom_arg
 {
     const void* obj;
-    error_code (*format_fn)(const void*, format_context&);
+    void (*format_fn)(const void*, format_context_base&);
 
     template <class T>
     static format_custom_arg create(const T& obj) noexcept
@@ -72,7 +72,7 @@ struct format_custom_arg
     }
 
     template <class T>
-    static error_code do_format(const void* obj, format_context& ctx)
+    static void do_format(const void* obj, format_context_base& ctx)
     {
         return formatter<T>::format(*static_cast<const T*>(obj), ctx);
     }
@@ -146,7 +146,7 @@ format_arg_descriptor make_format_arg_descriptor(const T& val)
 BOOST_MYSQL_DECL
 void vformat_sql_to(
     string_view format_str,
-    const format_context& ctx,
+    format_context_base& ctx,
     span<const detail::format_arg_descriptor> args
 );
 

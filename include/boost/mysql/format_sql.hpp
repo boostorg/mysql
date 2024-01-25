@@ -19,6 +19,7 @@
 
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
+#include <boost/system/result.hpp>
 
 #include <array>
 #include <string>
@@ -65,60 +66,93 @@ struct format_options
     bool backslash_escapes;
 };
 
-class format_context
+class format_context_base
 {
     struct
     {
         detail::output_string_ref output;
         const format_options opts;
+        error_code ec;
+
+        void set_error(error_code new_ec) noexcept
+        {
+            if (!ec)
+                ec = new_ec;
+        }
     } impl_;
 
     friend struct detail::access;
     friend class detail::format_state;
 
-    BOOST_MYSQL_DECL [[noreturn]] static void on_format_arg_error(error_code ec);
-    BOOST_MYSQL_DECL BOOST_ATTRIBUTE_NODISCARD error_code format_arg(detail::format_arg_value arg);
+    BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg);
+
+protected:
+    format_context_base(detail::output_string_ref out, format_options opts) noexcept
+        : impl_{out, opts, error_code()}
+    {
+    }
+
+    error_code get_error() const noexcept { return impl_.ec; }
 
 public:
-    template <BOOST_MYSQL_OUTPUT_STRING OutputString>
-    format_context(OutputString& out, format_options opts) noexcept
-        : impl_{detail::output_string_ref::create(out), opts}
+    format_context_base& append_raw(string_view raw_sql)
+    {
+        impl_.output.append(raw_sql);
+        return *this;
+    }
+
+    template <BOOST_MYSQL_FORMATTABLE T>
+    format_context_base& append_value(const T& v)
+    {
+        format_arg(detail::make_format_value(v));
+        return *this;
+    }
+};
+
+template <BOOST_MYSQL_OUTPUT_STRING OutputString>
+class basic_format_context : public format_context_base
+{
+    OutputString output_{};
+
+public:
+    // TODO: noexcept specifier
+    // TODO: this requires OutputString to also be MoveConstructible, and possibly DefaultConstructible
+    basic_format_context(format_options opts)
+        : format_context_base(detail::output_string_ref::create(output_), opts)
     {
     }
 
-    void append_raw(string_view raw_sql) { impl_.output.append(raw_sql); }
-
-    template <BOOST_MYSQL_FORMATTABLE T>
-    void append_value(const T& v)
+    basic_format_context(format_options opts, OutputString&& output)
+        : basic_format_context(opts), output_(std::move(output))
     {
-        error_code ec;
-        append_value(v, ec);
+    }
+
+    // TODO: this can be implemented
+    basic_format_context(const basic_format_context&) = delete;
+    basic_format_context(basic_format_context&&) = delete;
+    basic_format_context& operator=(const basic_format_context&) = delete;
+    basic_format_context& operator=(basic_format_context&&) = delete;
+
+    system::result<OutputString> get()
+    {
+        auto ec = get_error();
         if (ec)
-            on_format_arg_error(ec);
-    }
-
-    template <BOOST_MYSQL_FORMATTABLE T>
-    void append_value(const T& v, error_code& ec)
-    {
-        ec = format_arg(detail::make_format_value(v));
+            return ec;
+        return std::move(output_);
     }
 };
 
 template <>
 struct formatter<raw_sql>
 {
-    static error_code format(const raw_sql& value, format_context& ctx)
-    {
-        ctx.append_raw(value.get());
-        return error_code();
-    }
+    static void format(const raw_sql& value, format_context_base& ctx) { ctx.append_raw(value.get()); }
 };
 
 template <>
 struct formatter<identifier>
 {
     BOOST_MYSQL_DECL
-    static error_code format(const identifier& value, format_context& ctx);
+    static void format(const identifier& value, format_context_base& ctx);
 };
 
 template <class T>
@@ -127,26 +161,14 @@ inline detail::format_arg_descriptor arg(string_view name, const T& value) noexc
     return {detail::make_format_value(value), name};
 }
 
-template <BOOST_MYSQL_OUTPUT_STRING OutputString, BOOST_MYSQL_FORMATTABLE... Args>
-inline void format_sql_to(
-    string_view format_str,
-    OutputString& output,
-    const format_options& opts,
-    const Args&... args
-)
-{
-    std::array<detail::format_arg_descriptor, sizeof...(Args)> desc{{detail::make_format_arg_descriptor(args
-    )...}};
-    output.clear();
-    detail::vformat_sql_to(format_str, format_context(output, opts), desc);
-}
-
 template <BOOST_MYSQL_FORMATTABLE... Args>
 inline std::string format_sql(string_view format_str, const format_options& opts, const Args&... args)
 {
-    std::string output;
-    format_sql_to(format_str, output, opts, args...);
-    return output;
+    std::array<detail::format_arg_descriptor, sizeof...(Args)> desc{{detail::make_format_arg_descriptor(args
+    )...}};
+    basic_format_context<std::string> ctx(opts);
+    detail::vformat_sql_to(format_str, ctx, desc);
+    return ctx.get().value();
 }
 
 }  // namespace mysql

@@ -41,10 +41,11 @@ namespace mysql {
 namespace detail {
 
 // Helpers to format fundamental types
-inline error_code append_identifier(string_view name, format_context& ctx)
+inline void append_identifier(string_view name, format_context_base& ctx)
 {
     auto& impl = access::get_impl(ctx);
-    return detail::escape_string(name, impl.opts.charset, impl.opts.backslash_escapes, '`', impl.output);
+    auto ec = detail::escape_string(name, impl.opts.charset, impl.opts.backslash_escapes, '`', impl.output);
+    impl.set_error(ec);
 }
 
 template <class T>
@@ -95,10 +96,8 @@ inline error_code append_quoted_string(output_string_ref output, string_view str
 {
     output.append("'");
     auto ec = detail::escape_string(str, opts.charset, opts.backslash_escapes, '\'', output);
-    if (ec)
-        return ec;
     output.append("'");
-    return error_code();
+    return ec;
 }
 
 inline error_code append_quoted_blob(output_string_ref output, blob_view b, const format_options& opts)
@@ -143,6 +142,26 @@ inline void append_quoted_time(output_string_ref output, time t)
     output.append(string_view(buffer, sz + 2));
 }
 
+inline error_code append_field_view(output_string_ref output, field_view fv, const format_options& opts)
+{
+    switch (fv.kind())
+    {
+    case field_kind::null: output.append("NULL"); return error_code();
+    case field_kind::int64: append_int(output, fv.get_int64()); return error_code();
+    case field_kind::uint64: append_int(output, fv.get_uint64()); return error_code();
+    case field_kind::float_:
+        // float is formatted as double because it's parsed as such
+        return append_double(output, fv.get_float());
+    case field_kind::double_: return append_double(output, fv.get_double());
+    case field_kind::string: return append_quoted_string(output, fv.get_string(), opts);
+    case field_kind::blob: return append_quoted_blob(output, fv.get_blob(), opts);
+    case field_kind::date: append_quoted_date(output, fv.get_date()); return error_code();
+    case field_kind::datetime: append_quoted_datetime(output, fv.get_datetime()); return error_code();
+    case field_kind::time: append_quoted_time(output, fv.get_time()); return error_code();
+    default: BOOST_ASSERT(false); return error_code();
+    }
+}
+
 // Helpers for parsing format strings
 inline bool is_number(char c) noexcept { return c >= '0' && c <= '9'; }
 
@@ -163,7 +182,7 @@ inline bool is_name_start(char c) noexcept
 
 class format_state
 {
-    format_context ctx_;
+    format_context_base& ctx_;
     span<const format_arg_descriptor> args_;
 
     // Borrowed from fmt
@@ -189,12 +208,7 @@ class format_state
     bool uses_auto_ids() const noexcept { return next_arg_id_ > 0; }
     bool uses_explicit_ids() const noexcept { return next_arg_id_ == -1; }
 
-    void do_field(format_arg_descriptor arg)
-    {
-        auto ec = ctx_.format_arg(arg.value);
-        if (ec)
-            throw_format_error_invalid_arg(ec);
-    }
+    void do_field(format_arg_descriptor arg) { ctx_.format_arg(arg.value); }
 
     void do_indexed_field(int arg_id)
     {
@@ -308,7 +322,7 @@ class format_state
     }
 
 public:
-    format_state(const format_context& ctx, span<const format_arg_descriptor> args) noexcept
+    format_state(format_context_base& ctx, span<const format_arg_descriptor> args) noexcept
         : ctx_(ctx), args_(args)
     {
     }
@@ -356,72 +370,42 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-boost::mysql::error_code boost::mysql::formatter<boost::mysql::identifier>::format(
+void boost::mysql::formatter<boost::mysql::identifier>::format(
     const identifier& value,
-    format_context& ctx
+    format_context_base& ctx
 )
 {
     ctx.append_raw("`");
-    auto ec = detail::append_identifier(value.first(), ctx);
-    if (ec)
-        return ec;
+    detail::append_identifier(value.first(), ctx);
     if (!value.second().empty())
     {
         ctx.append_raw("`.`");
-        ec = detail::append_identifier(value.second(), ctx);
-        if (ec)
-            return ec;
+        detail::append_identifier(value.second(), ctx);
         if (!value.third().empty())
         {
             ctx.append_raw("`.`");
-            ec = detail::append_identifier(value.third(), ctx);
-            if (ec)
-                return ec;
+            detail::append_identifier(value.third(), ctx);
         }
     }
     ctx.append_raw("`");
-    return error_code();
 }
 
-boost::mysql::error_code boost::mysql::format_context::format_arg(detail::format_arg_value arg)
+void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
 {
     if (arg.is_custom)
     {
-        return arg.data.custom.format_fn(arg.data.custom.obj, *this);
+        arg.data.custom.format_fn(arg.data.custom.obj, *this);
     }
     else
     {
-        field_view fv = arg.data.fv;
-        switch (fv.kind())
-        {
-        case field_kind::null: append_raw("NULL"); return error_code();
-        case field_kind::int64: detail::append_int(impl_.output, fv.get_int64()); return error_code();
-        case field_kind::uint64: detail::append_int(impl_.output, fv.get_uint64()); return error_code();
-        case field_kind::float_:
-            // float is formatted as double because it's parsed as such
-            return detail::append_double(impl_.output, fv.get_float());
-        case field_kind::double_: return detail::append_double(impl_.output, fv.get_double());
-        case field_kind::string:
-            return detail::append_quoted_string(impl_.output, fv.get_string(), impl_.opts);
-        case field_kind::blob: return detail::append_quoted_blob(impl_.output, fv.get_blob(), impl_.opts);
-        case field_kind::date: detail::append_quoted_date(impl_.output, fv.get_date()); return error_code();
-        case field_kind::datetime:
-            detail::append_quoted_datetime(impl_.output, fv.get_datetime());
-            return error_code();
-        case field_kind::time: detail::append_quoted_time(impl_.output, fv.get_time()); return error_code();
-        default: BOOST_ASSERT(false); return error_code();
-        }
+        error_code ec = detail::append_field_view(impl_.output, arg.data.fv, impl_.opts);
+        impl_.set_error(ec);
     }
-}
-
-void boost::mysql::format_context::on_format_arg_error(error_code ec)
-{
-    detail::throw_format_error_invalid_arg(ec);
 }
 
 void boost::mysql::detail::vformat_sql_to(
     string_view format_str,
-    const format_context& ctx,
+    format_context_base& ctx,
     span<const detail::format_arg_descriptor> args
 )
 {

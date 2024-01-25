@@ -33,7 +33,6 @@ concept output_string = requires(T& t) {
     {
         t.size()
     } -> std::convertible_to<std::size_t>;
-    t.clear();
     t.resize(std::size_t{});
 };
 

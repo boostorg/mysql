@@ -14,6 +14,8 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/output_string_ref.hpp>
 
+#include <boost/config.hpp>
+
 namespace boost {
 namespace mysql {
 
@@ -22,8 +24,7 @@ struct character_set;
 
 namespace detail {
 
-BOOST_MYSQL_DECL
-error_code escape_string(
+BOOST_MYSQL_DECL BOOST_ATTRIBUTE_NODISCARD error_code escape_string(
     string_view input,
     const character_set& charset,
     bool backslash_escapes,
