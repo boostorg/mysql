@@ -31,7 +31,6 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
-#include <stdexcept>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -170,16 +169,6 @@ inline bool is_name_start(char c) noexcept
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
 }
 
-[[noreturn]] inline void throw_format_error(error_code ec, std::string diag)
-{
-    BOOST_THROW_EXCEPTION(error_with_diagnostics(ec, access::construct<diagnostics>(false, std::move(diag))));
-}
-
-[[noreturn]] inline void throw_format_error_invalid_arg(error_code ec)
-{
-    throw_format_error(ec, "Formatting SQL: an argument contains an invalid value");
-}
-
 class format_state
 {
     format_context_base& ctx_;
@@ -191,13 +180,25 @@ class format_state
     // >0: we're doing auto indexing
     int next_arg_id_{0};
 
+    [[noreturn]] static void throw_format_error(std::string diag)
+    {
+        BOOST_THROW_EXCEPTION(error_with_diagnostics(
+            client_errc::invalid_format_string,
+            access::construct<diagnostics>(false, std::move(diag))
+        ));
+    }
+
+    [[noreturn]] static void throw_invalid_format_string()
+    {
+        throw_format_error("Formatting SQL: invalid format string");
+    }
+
     const char* advance(const char* begin, const char* end)
     {
         std::size_t size = ctx_.impl_.opts.charset.next_char({begin, end});
         if (size == 0)
         {
             throw_format_error(
-                client_errc::invalid_encoding,
                 "Formatting SQL: the format string contains characters that are invalid in the given "
                 "character set"
             );
@@ -214,7 +215,7 @@ class format_state
     {
         BOOST_ASSERT(arg_id >= 0);
         if (static_cast<std::size_t>(arg_id) >= args_.size())
-            throw_format_error(client_errc::invalid_format_string, "Formatting SQL: argument not found");
+            throw_format_error("Formatting SQL: argument not found");
         do_field(args_[arg_id]);
     }
 
@@ -229,10 +230,7 @@ class format_state
         auto it = format_begin;
         if (it == format_end)
         {
-            throw_format_error(
-                client_errc::invalid_format_string,
-                "Formatting SQL: unmatched '{' in format string"
-            );
+            throw_invalid_format_string();
         }
         else if (*it == '{')
         {
@@ -250,10 +248,7 @@ class format_state
             auto res = std::from_chars(it, format_end, field_index);
             if (res.ec != std::errc{})
             {
-                throw_format_error(
-                    client_errc::invalid_format_string,
-                    "Formatting SQL: invalid argument index"
-                );
+                throw_format_error("Formatting SQL: invalid argument index");
             }
             it = res.ptr;
             append_indexed_field(static_cast<int>(field_index));
@@ -263,10 +258,7 @@ class format_state
             const char* name_begin = it;
             if (!is_name_start(*it++))
             {
-                throw_format_error(
-                    client_errc::invalid_format_string,
-                    "Formatting SQL: invalid argument name"
-                );
+                throw_invalid_format_string();
             }
             while (it != format_end && (is_name_start(*it) || is_number(*it)))
                 ++it;
@@ -275,7 +267,7 @@ class format_state
 
         if (it == format_end || *it++ != '}')
         {
-            throw_format_error(client_errc::invalid_format_string, "Formatting SQL: invalid format string");
+            throw_invalid_format_string();
         }
         return it;
     }
@@ -293,17 +285,14 @@ class format_state
         }
 
         // Not found
-        throw_format_error(client_errc::invalid_format_string, "Formatting SQL: named argument not found");
+        throw_format_error("Formatting SQL: named argument not found");
     }
 
     void append_indexed_field(int index)
     {
         if (uses_auto_ids())
         {
-            throw_format_error(
-                client_errc::invalid_format_string,
-                "Cannot switch from automatic to explicit indexing"
-            );
+            throw_format_error("Cannot switch from automatic to explicit indexing");
         }
         next_arg_id_ = -1;
         do_indexed_field(index);
@@ -313,10 +302,7 @@ class format_state
     {
         if (uses_explicit_ids())
         {
-            throw_format_error(
-                client_errc::invalid_format_string,
-                "Cannot switch from explicit to automatic indexing"
-            );
+            throw_format_error("Cannot switch from explicit to automatic indexing");
         }
         do_indexed_field(next_arg_id_++);
     }
@@ -350,7 +336,7 @@ public:
                 ctx_.append_raw({cur_begin, it});
                 ++it;
                 if (it == end || *it != '}')
-                    BOOST_THROW_EXCEPTION(std::runtime_error("Bad format string: unmatched '}'"));
+                    throw_format_error("Bad format string: unmatched '}'");
                 ctx_.append_raw("}");
                 ++it;
                 cur_begin = it;

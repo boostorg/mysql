@@ -7,7 +7,9 @@
 
 #include <boost/mysql/blob.hpp>
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -65,32 +67,6 @@ struct formatter<custom::condition>
 /**
  * injection attempts
  *    error thrown on invalid encoding
- * invalid format strings
- *    unbalanced { text
- *    unbalanced { // end of string
- *    unbalanced } text
- *    unbalanced } // end of string
- *    {0name} // name starting with a number
- *    {!name"} // name containing invalid ascii
- *    { name } // spaces not allowed
- *    {ñ} // name containing non-ascii
- *    {valid_name!} // extra chars not allowed
- *    {valid_name:} // formatting options not allowed
- *    {:} // formatting options not allowed
- *    {0xab} // hex not allowed
- *    { 1 } // spaces not allowed
- *    {45abc} // extra trailing chars not allowed
- *    {}} // unbalanced }
- *    {0:} // formatting options not allowed
- *    {}{0} // cannot switch from auto to manual
- *    {0}{} // cannot swith from manual to auto
- *    {name // end of string while scanning name
- *    {21 // end of string while scanning number
- *    { {} } // replacement field inside replacement field
- * arg/strings invalid combinations
- *    auto indexing out of range
- *    manual indexing out of range
- *    name not found
  * charset
  *    multi-byte characters allowed in format strings
  *    invalid multi-byte characters in format strings throw
@@ -113,6 +89,11 @@ BOOST_AUTO_TEST_SUITE(test_format_sql)
 
 constexpr format_options opts{utf8mb4_charset, true};
 constexpr auto single_fmt = "SELECT {};";
+
+//
+// Verify that formatting individual values work. This is tested using format_sql
+// because it's convenient, but also covers basic_format_context
+//
 
 BOOST_AUTO_TEST_CASE(individual_null)
 {
@@ -411,21 +392,18 @@ BOOST_AUTO_TEST_CASE(individual_identifier)
     );
 }
 
-BOOST_AUTO_TEST_CASE(custom_type)
+BOOST_AUTO_TEST_CASE(individual_custom_type)
 {
     auto actual = format_sql("SELECT * FROM myt WHERE {}", opts, custom::condition("myfield", 42));
     string_view expected = "SELECT * FROM myt WHERE `myfield`=42";
     BOOST_TEST(actual == expected);
 }
 
-// spotcheck: {} characters in string values are not treated specially
-BOOST_AUTO_TEST_CASE(string_curly_braces)
-{
-    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{}", "a{b}c") == "CONCAT('{}', 'a{b}c')");
-    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{", "a}c") == "CONCAT('{', 'a}c')");
-    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{{}}", "{{1}}") == "CONCAT('{{}}', '{{1}}')");
-    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "'\\{", "\"}") == "CONCAT('\\'\\\\{', '\\\"}')");
-}
+//
+// Format strings: covers expanding a format string into an actual query
+// using format_sql. This is specific to format_sql. Assumes that formatting
+// individual arguments works
+//
 
 BOOST_AUTO_TEST_CASE(format_strings)
 {
@@ -492,6 +470,67 @@ BOOST_AUTO_TEST_CASE(format_strings)
 
     // Indices with leading zeroes are parsed correctly and not interpreted as octal
     BOOST_TEST(format_sql("SELECT {010}", opts, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12) == "SELECT 10");
+
+    // spotcheck: {} characters in string values are not treated specially
+    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{}", "a{b}c") == "CONCAT('{}', 'a{b}c')");
+    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{", "a}c") == "CONCAT('{', 'a}c')");
+    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{{}}", "{{1}}") == "CONCAT('{{}}', '{{1}}')");
+    BOOST_TEST(format_sql("CONCAT({}, {})", opts, "'\\{", "\"}") == "CONCAT('\\'\\\\{', '\\\"}')");
 }
+
+BOOST_AUTO_TEST_CASE(format_strings_invalid)
+{
+    struct
+    {
+        string_view name;
+        string_view format_str;
+        std::string expected_diag;  // Workarounds a Boost.Test problem with string_view
+    } test_cases[] = {
+        {"unbalanced {", "SELECT { bad", "Formatting SQL: invalid format string"},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_CHECK_EXCEPTION(
+                format_sql(tc.format_str, opts, 42, arg("name", "abc")),
+                error_with_diagnostics,
+                [&](const error_with_diagnostics& err) {
+                    BOOST_TEST(err.code() == error_code(client_errc::invalid_format_string));
+                    BOOST_TEST(err.get_diagnostics().client_message() == tc.expected_diag);
+                    return true;
+                }
+            );
+        }
+    }
+}
+
+//  * invalid format strings
+//  *    unbalanced { text
+//  *    unbalanced { // end of string
+//  *    unbalanced } text
+//  *    unbalanced } // end of string
+//  *    {0name} // name starting with a number
+//  *    {!name"} // name containing invalid ascii
+//  *    { name } // spaces not allowed
+//  *    {ñ} // name containing non-ascii
+//  *    {valid_name!} // extra chars not allowed
+//  *    {valid_name:} // formatting options not allowed
+//  *    {:} // formatting options not allowed
+//  *    {0xab} // hex not allowed
+//  *    { 1 } // spaces not allowed
+//  *    {45abc} // extra trailing chars not allowed
+//  *    {}} // unbalanced }
+//  *    {0:} // formatting options not allowed
+//  *    {}{0} // cannot switch from auto to manual
+//  *    {0}{} // cannot swith from manual to auto
+//  *    {name // end of string while scanning name
+//  *    {21 // end of string while scanning number
+//  *    { {} } // replacement field inside replacement field
+//  * arg/strings invalid combinations
+//  *    auto indexing out of range
+//  *    manual indexing out of range
+//  *    name not found
 
 BOOST_AUTO_TEST_SUITE_END()
