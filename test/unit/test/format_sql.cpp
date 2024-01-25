@@ -400,7 +400,7 @@ BOOST_AUTO_TEST_CASE(individual_custom_type)
 template <class Arg>
 error_code format_single_error(const Arg& arg)
 {
-    basic_format_context<std::string> ctx(opts);
+    format_context ctx(opts);
     ctx.append_value(arg);
     return ctx.get().error();
 }

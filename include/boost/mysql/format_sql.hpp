@@ -165,6 +165,8 @@ public:
     }
 };
 
+using format_context = basic_format_context<std::string>;
+
 template <>
 struct formatter<identifier>
 {
@@ -183,7 +185,7 @@ inline std::string format_sql(string_view format_str, const format_options& opts
 {
     std::array<detail::format_arg_descriptor, sizeof...(Args)> desc{{detail::make_format_arg_descriptor(args
     )...}};
-    basic_format_context<std::string> ctx(opts);
+    format_context ctx(opts);
     detail::vformat_sql_to(format_str, ctx, desc);
     return ctx.get().value();
 }
