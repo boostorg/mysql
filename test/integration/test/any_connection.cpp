@@ -43,17 +43,6 @@ using netmaker_execute = netfun_maker_mem<void, any_connection, const string_vie
 const auto connect_fn = netmaker_connect::async_errinfo(&any_connection::async_connect, false);
 const auto execute_fn = netmaker_execute::async_errinfo(&any_connection::async_execute, false);
 
-connect_params create_params(ssl_mode mode = ssl_mode::enable)
-{
-    connect_params res;
-    res.server_address.emplace_host_and_port(get_hostname());
-    res.username = default_user;
-    res.password = default_passwd;
-    res.database = default_db;
-    res.ssl = mode;
-    return res;
-}
-
 // Passing no SSL context to the constructor and using SSL works.
 // ssl_mode::require works
 BOOST_AUTO_TEST_CASE(default_ssl_context)
@@ -63,7 +52,7 @@ BOOST_AUTO_TEST_CASE(default_ssl_context)
     any_connection conn(ctx);
 
     // Call the function
-    connect_fn(conn, create_params(ssl_mode::require)).validate_no_error();
+    connect_fn(conn, default_connect_params(ssl_mode::require)).validate_no_error();
 
     // uses_ssl reports the right value
     BOOST_TEST(conn.uses_ssl());
@@ -85,7 +74,7 @@ BOOST_AUTO_TEST_CASE(custom_ssl_context)
     any_connection conn(ctx, ctor_params);
 
     // Certificate validation fails
-    auto result = connect_fn(conn, create_params(ssl_mode::require));
+    auto result = connect_fn(conn, default_connect_params(ssl_mode::require));
     BOOST_TEST(result.err.message().find("certificate verify failed") != std::string::npos);
 }
 
@@ -97,7 +86,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_mode_disable)
     any_connection conn(ctx);
 
     // Call the function
-    connect_fn(conn, create_params(ssl_mode::disable)).validate_no_error();
+    connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
 
     // uses_ssl reports the right value
     BOOST_TEST(!conn.uses_ssl());
@@ -111,7 +100,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_mode_enable)
     any_connection conn(ctx);
 
     // Call the function
-    connect_fn(conn, create_params(ssl_mode::enable)).validate_no_error();
+    connect_fn(conn, default_connect_params(ssl_mode::enable)).validate_no_error();
 
     // All our CIs support SSL
     BOOST_TEST(conn.uses_ssl());
@@ -126,7 +115,7 @@ BOOST_AUTO_TEST_CASE(unix_ssl)
     any_connection conn(ctx);
 
     // Connect params
-    auto params = create_params(ssl_mode::require);
+    auto params = default_connect_params(ssl_mode::require);
     params.server_address.emplace_unix_path(default_unix_path);
 
     // Call the function
@@ -147,7 +136,7 @@ BOOST_AUTO_TEST_CASE(tcp_caching_sha2_password)
     any_connection conn(ctx);
 
     // Connect params
-    auto params = create_params(ssl_mode::require);
+    auto params = default_connect_params(ssl_mode::require);
     params.username = "csha2p_user";
     params.password = "csha2p_password";
 
@@ -196,7 +185,7 @@ BOOST_AUTO_TEST_CASE(async_connect_lifetimes)
     any_connection conn(ctx);
 
     // Create params with SSL disabled to save runtime
-    std::unique_ptr<connect_params> params(new connect_params(create_params(ssl_mode::disable)));
+    std::unique_ptr<connect_params> params(new connect_params(default_connect_params(ssl_mode::disable)));
 
     // Launch the function
     auto res = create_net_result();
@@ -219,7 +208,7 @@ BOOST_AUTO_TEST_CASE(async_connect_deferred_lifetimes)
     any_connection conn(ctx);
 
     // Create params with SSL disabled to save runtime
-    std::unique_ptr<connect_params> params(new connect_params(create_params(ssl_mode::disable)));
+    std::unique_ptr<connect_params> params(new connect_params(default_connect_params(ssl_mode::disable)));
 
     // Create a deferred object
     auto res = create_net_result();
@@ -247,7 +236,7 @@ BOOST_AUTO_TEST_CASE(backslash_escapes)
     BOOST_TEST(conn.backslash_escapes());
 
     // Connect doesn't change the value
-    connect_fn(conn, create_params(ssl_mode::disable)).validate_no_error();
+    connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
     BOOST_TEST(conn.backslash_escapes());
 
     // Setting the SQL mode to NO_BACKSLASH_ESCAPES updates the value
@@ -266,7 +255,7 @@ BOOST_AUTO_TEST_CASE(backslash_escapes)
     // Reconnecting clears the value
     execute_fn(conn, "SET sql_mode = 'NO_BACKSLASH_ESCAPES'", r).validate_no_error();
     BOOST_TEST(!conn.backslash_escapes());
-    connect_fn(conn, create_params(ssl_mode::disable)).validate_no_error();
+    connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
     BOOST_TEST(conn.backslash_escapes());
 }
 

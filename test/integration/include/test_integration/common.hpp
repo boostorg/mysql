@@ -8,10 +8,12 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_COMMON_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_COMMON_HPP
 
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -19,12 +21,11 @@
 #include <boost/test/unit_test.hpp>
 
 #include <initializer_list>
-#include <thread>
 
 #include "test_integration/er_connection.hpp"
 #include "test_integration/er_network_variant.hpp"
+#include "test_integration/get_endpoint.hpp"
 #include "test_integration/metadata_validator.hpp"
-#include "test_integration/network_test.hpp"
 
 namespace boost {
 namespace mysql {
@@ -33,6 +34,17 @@ namespace test {
 constexpr const char* default_user = "integ_user";
 constexpr const char* default_passwd = "integ_password";
 constexpr const char* default_db = "boost_mysql_integtests";
+
+inline connect_params default_connect_params(ssl_mode ssl = ssl_mode::enable)
+{
+    connect_params res;
+    res.server_address.emplace_host_and_port(get_hostname());
+    res.username = default_user;
+    res.password = default_passwd;
+    res.database = default_db;
+    res.ssl = ssl;
+    return res;
+}
 
 struct network_fixture_base
 {

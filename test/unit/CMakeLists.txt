@@ -36,6 +36,7 @@ add_executable(
     test/sansio/read_some_rows_dynamic.cpp
     test/sansio/execute.cpp
     test/sansio/close_statement.cpp
+    test/sansio/set_character_set.cpp
     test/sansio/ping.cpp
     test/sansio/reset_connection.cpp
     test/network_algorithms/run_algo_impl.cpp

@@ -33,6 +33,7 @@
 #include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/get_endpoint.hpp"
+#include "test_integration/network_test.hpp"
 #include "test_integration/run_stackful_coro.hpp"
 
 using namespace boost::mysql::test;
@@ -64,16 +65,6 @@ auto samples_any = create_network_samples({
 // clang-format on
 
 BOOST_AUTO_TEST_SUITE(test_reconnect)
-
-connect_params base_connect_params()
-{
-    connect_params res;
-    res.server_address.emplace_host_and_port(get_hostname());
-    res.username = default_user;
-    res.password = default_passwd;
-    res.database = default_db;
-    return res;
-}
 
 struct reconnect_fixture : network_fixture
 {
@@ -141,7 +132,7 @@ BOOST_AUTO_TEST_CASE(reconnect_after_cancel)
 {
     run_stackful_coro([](boost::asio::yield_context yield) {
         // Setup
-        auto connect_prms = base_connect_params();
+        auto connect_prms = default_connect_params();
         any_connection conn(yield.get_executor());
         results r;
         boost::mysql::error_code ec;
@@ -224,10 +215,10 @@ struct change_stream_type_fixture : network_fixture_base
     connect_params tcp_params;
     connect_params tcp_ssl_params;
 
-    change_stream_type_fixture() : tcp_params(base_connect_params()), tcp_ssl_params(base_connect_params())
+    change_stream_type_fixture()
+        : tcp_params(default_connect_params(ssl_mode::disable)),
+          tcp_ssl_params(default_connect_params(ssl_mode::require))
     {
-        tcp_params.ssl = ssl_mode::disable;
-        tcp_ssl_params.ssl = ssl_mode::require;
     }
 };
 
@@ -247,7 +238,7 @@ BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
 BOOST_FIXTURE_TEST_CASE(change_stream_type_unix, change_stream_type_fixture)
 {
     // UNIX connect params
-    auto unix_params = base_connect_params();
+    auto unix_params = default_connect_params();
     unix_params.server_address.emplace_unix_path(default_unix_path);
 
     test_case_t test_cases[] = {

@@ -34,6 +34,7 @@ add_executable(
     test/static_interface.cpp
     test/reconnect.cpp
     test/any_connection.cpp
+    test/character_set_tracking.cpp
     test/connection_pool.cpp
     test/db_specific.cpp
     test/database_types.cpp

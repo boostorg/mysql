@@ -69,4 +69,10 @@ boost::mysql::diagnostics& boost::mysql::detail::connection_impl::shared_diag() 
     return st_->data().shared_diag;
 }
 
+const boost::mysql::character_set* boost::mysql::detail::connection_impl::current_character_set(
+) const noexcept
+{
+    return st_->data().charset_ptr();
+}
+
 #endif

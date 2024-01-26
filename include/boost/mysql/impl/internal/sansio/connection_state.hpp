@@ -29,13 +29,13 @@
 #include <boost/mysql/impl/internal/sansio/read_some_rows.hpp>
 #include <boost/mysql/impl/internal/sansio/read_some_rows_dynamic.hpp>
 #include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
+#include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
 
 #include <boost/asio/coroutine.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>
-#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -52,6 +52,7 @@ template <> struct get_algo<read_some_rows_algo_params> { using type = read_some
 template <> struct get_algo<read_some_rows_dynamic_algo_params> { using type = read_some_rows_dynamic_algo; };
 template <> struct get_algo<prepare_statement_algo_params> { using type = prepare_statement_algo; };
 template <> struct get_algo<close_statement_algo_params> { using type = close_statement_algo; };
+template <> struct get_algo<set_character_set_algo_params> { using type = set_character_set_algo; };
 template <> struct get_algo<ping_algo_params> { using type = ping_algo; };
 template <> struct get_algo<reset_connection_algo_params> { using type = reset_connection_algo; };
 template <> struct get_algo<quit_connection_algo_params> { using type = quit_connection_algo; };
@@ -71,6 +72,7 @@ class connection_state
         read_some_rows_dynamic_algo,
         prepare_statement_algo,
         close_statement_algo,
+        set_character_set_algo,
         ping_algo,
         reset_connection_algo,
         quit_connection_algo,

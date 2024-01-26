@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
@@ -13,21 +14,19 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 
 #include "test_common/create_basic.hpp"
+#include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/er_connection.hpp"
-#include "test_integration/metadata_validator.hpp"
+#include "test_integration/network_test.hpp"
 #include "test_integration/static_rows.hpp"
 
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::common_server_errc;
-using boost::mysql::execution_state;
-using boost::mysql::field_view;
-using boost::mysql::results;
-using boost::mysql::row_view;
 
 BOOST_AUTO_TEST_SUITE(test_spotchecks)
 
@@ -569,5 +568,65 @@ BOOST_MYSQL_NETWORK_TEST(read_some_rows_error, network_fixture, err_net_samples)
         .validate_error_exact_client(boost::mysql::client_errc::num_resultsets_mismatch);
 }
 #endif
+
+// set_character_set. Since this is only available in any_connection, we spotcheck this
+// with netmakers and don't cover all streams
+using set_charset_netmaker = netfun_maker_mem<void, any_connection, const character_set&>;
+
+struct
+{
+    string_view name;
+    set_charset_netmaker::signature set_character_set;
+} set_charset_all_fns[] = {
+    {"sync_errc", set_charset_netmaker::sync_errc(&any_connection::set_character_set)},
+    {"sync_exc", set_charset_netmaker::sync_exc(&any_connection::set_character_set)},
+    {"async_errinfo", set_charset_netmaker::async_errinfo(&any_connection::async_set_character_set, false)},
+    {"async_noerrinfo", set_charset_netmaker::async_noerrinfo(&any_connection::async_set_character_set, false)
+    },
+};
+
+BOOST_AUTO_TEST_CASE(spotcheck_success)
+{
+    for (const auto& fns : set_charset_all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            // Setup
+            boost::asio::io_context ctx;
+            any_connection conn(ctx);
+            conn.connect(default_connect_params());
+
+            // Issue the command
+            fns.set_character_set(conn, latin1_charset).validate_no_error();
+
+            // Success
+            BOOST_TEST(conn.current_character_set()->name == string_view("latin1"));
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(spotcheck_error)
+{
+    for (const auto& fns : set_charset_all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            // Setup
+            boost::asio::io_context ctx;
+            any_connection conn(ctx);
+            conn.connect(default_connect_params(ssl_mode::disable));
+
+            // Issue the command
+            fns.set_character_set(conn, character_set{"bad_charset", nullptr})
+                .validate_error_exact(
+                    common_server_errc::er_unknown_character_set,
+                    "Unknown character set: 'bad_charset'"
+                );
+
+            // The character set was not modified
+            BOOST_TEST(conn.current_character_set()->name == string_view("utf8mb4"));
+        }
+    }
+}
 
 BOOST_AUTO_TEST_SUITE_END()  // test_spotchecks

@@ -47,6 +47,8 @@ namespace mysql {
 template <class... StaticRow>
 class static_execution_state;
 
+struct character_set;
+
 namespace detail {
 
 // Forward decl
@@ -233,6 +235,7 @@ public:
     BOOST_MYSQL_DECL std::vector<field_view>& get_shared_fields() noexcept;
     BOOST_MYSQL_DECL bool ssl_active() const noexcept;
     BOOST_MYSQL_DECL bool backslash_escapes() const noexcept;
+    BOOST_MYSQL_DECL const character_set* current_character_set() const noexcept;
 
     // Generic algorithm
     template <class AlgoParams, class CompletionToken>
@@ -429,6 +432,15 @@ public:
         return {&diag, stmt.id()};
     }
 
+    // Set character set
+    set_character_set_algo_params make_params_set_character_set(
+        const character_set& charset,
+        diagnostics& diag
+    ) const noexcept
+    {
+        return {&diag, charset};
+    }
+
     // Ping
     ping_algo_params make_params_ping(diagnostics& diag) const noexcept { return {&diag}; }
 
@@ -494,6 +506,9 @@ using async_prepare_statement_t = async_run_t<prepare_statement_algo_params, Com
 
 template <class CompletionToken>
 using async_close_statement_t = async_run_t<close_statement_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_set_character_set_t = async_run_t<set_character_set_algo_params, CompletionToken>;
 
 template <class CompletionToken>
 using async_ping_t = async_run_t<ping_algo_params, CompletionToken>;

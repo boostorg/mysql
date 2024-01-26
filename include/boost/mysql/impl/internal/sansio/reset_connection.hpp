@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_RESET_CONNECTION_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_RESET_CONNECTION_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
@@ -50,12 +51,14 @@ public:
             BOOST_ASIO_CORO_YIELD return read(seqnum_);
 
             // Verify it's what we expected
-            return deserialize_ok_response(
-                st_->reader.message(),
-                st_->flavor,
-                *diag_,
-                st_->backslash_escapes
-            );
+            ec = deserialize_ok_response(st_->reader.message(), st_->flavor, *diag_, st_->backslash_escapes);
+            if (ec)
+                return ec;
+
+            // Reset was successful. Resetting changes the connection's character set
+            // to the server's default, which is an unknown value that doesn't have to match
+            // what was specified in handshake. As a safety measure, clear the current charset
+            st_->current_charset = character_set{};
         }
 
         return next_action();

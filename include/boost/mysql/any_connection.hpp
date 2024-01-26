@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_ANY_CONNECTION_HPP
 #define BOOST_MYSQL_ANY_CONNECTION_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -241,6 +242,44 @@ public:
      */
     bool backslash_escapes() const noexcept { return impl_.backslash_escapes(); }
 
+    /**
+     * \brief Returns the character set used by this connection.
+     * \details
+     * The MySQL protocol doesn't expose a clean way to track the character set
+     * used by this connection. This can change inadvertly by SQL queries or by calling \ref reset_connection.
+     * \n
+     * Connections attempt to keep track of the current character set
+     * used by the connection. When the character set is known, this function returns
+     * a non-null pointer to the character set currently in use. If the character set
+     * is unknown, returns `nullptr`.
+     * \n
+     * The following functions can modify the return value of this function: \n
+     *   \li Prior to connection, the character set is always unknown.
+     *   \li \ref connect and \ref async_connect may set the current character set
+     *       to a known value, depending on the requested collation.
+     *   \li \ref set_character_set always and \ref async_set_character_set always
+     *       set the current character set to the passed value.
+     *   \li \ref reset_connection and \ref async_reset_connection always resets the current character
+     *       set to an unknown value.
+     *
+     * \par Avoid changing the character set directly
+     * If you change the connection's character set directly using SQL statements,
+     * like in `conn.execute("SET NAMES utf8mb4")`, the client has no way to track this change,
+     * and this function will return incorrect results. If you're using this function, avoid: \n
+     *   \li The `SET NAMES` statement
+     *   \li The `SET CHARACTER SET` statement
+     *   \li Modifying the `character_set_client`, `character_set_connection` and `character_set_results`
+     *       session variables.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * This function returns a pointer to the connection's internal storage. It will be valid
+     * as long as `*this` is alive and valid.
+     */
+    const character_set* current_character_set() const noexcept { return impl_.current_character_set(); }
+
     /// \copydoc connection::meta_mode
     metadata_mode meta_mode() const noexcept { return impl_.meta_mode(); }
 
@@ -278,6 +317,10 @@ public:
      *     If the server doesn't support it, this function will fail with \ref
      *     client_errc::server_doesnt_support_ssl.
      * \n
+     * If `params.connection_collation` is within a set of well-known collations, this function
+     * sets the current character set, such that \ref current_character_set returns a non-null value.
+     * The default collation (`utf8mb4_general_ci`) is the only one guaranteed to be in the set of well-known
+     * collations.
      */
     void connect(const connect_params& params, error_code& ec, diagnostics& diag)
     {
@@ -798,6 +841,66 @@ public:
         );
     }
 
+    /**
+     * \brief Sets the connection's character set, as per SET NAMES.
+     * \details
+     * Sets the connection's character set by running a
+     * <a href="https://dev.mysql.com/doc/refman/8.0/en/set-names.html">`SET NAMES`</a>
+     * SQL statement, using the passed \ref character_set::name as the charset name to set.
+     * \n
+     * This function will also update the value returned by \ref current_character_set, so
+     * prefer using this function over raw SQL statements.
+     * \n
+     * If the server was unable to set the character set to the requested value (e.g. because
+     * the server does not support the requested charset), this function will fail,
+     * as opposed to how \ref connect behaves when an unsupported collation is passed.
+     * This is a limitation of MySQL servers.
+     * \n
+     * You need to perform connection establishment for this function to succeed, since it
+     * involves communicating with the server.
+     *
+     * \par Object lifetimes
+     * `charset` will be copied as required, and does not need to be kept alive.
+     */
+    void set_character_set(const character_set& charset, error_code& err, diagnostics& diag)
+    {
+        impl_.run(impl_.make_params_set_character_set(charset, diag), err);
+    }
+
+    /// \copydoc set_character_set
+    void set_character_set(const character_set& charset)
+    {
+        error_code err;
+        diagnostics diag;
+        set_character_set(charset, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
+    }
+
+    /**
+     * \copydoc set_character_set
+     * \details
+     * \n
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+    auto async_set_character_set(const character_set& charset, CompletionToken&& token)
+        BOOST_MYSQL_RETURN_TYPE(detail::async_set_character_set_t<CompletionToken&&>)
+    {
+        return async_set_character_set(charset, impl_.shared_diag(), std::forward<CompletionToken>(token));
+    }
+
+    /// \copydoc async_set_character_set
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
+    auto async_set_character_set(const character_set& charset, diagnostics& diag, CompletionToken&& token)
+        BOOST_MYSQL_RETURN_TYPE(detail::async_set_character_set_t<CompletionToken&&>)
+    {
+        return impl_.async_run(
+            impl_.make_params_set_character_set(charset, diag),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
     /// \copydoc connection::ping
     void ping(error_code& err, diagnostics& diag) { impl_.run(impl_.make_params_ping(diag), err); }
 
@@ -825,7 +928,42 @@ public:
         return impl_.async_run(impl_.make_params_ping(diag), std::forward<CompletionToken>(token));
     }
 
-    /// \copydoc connection::reset_connection
+    /**
+     * \brief Resets server-side session state, like variables and prepared statements.
+     * \details
+     * Resets all server-side state for the current session:
+     * \n
+     *   \li Rolls back any active transactions and resets autocommit mode.
+     *   \li Releases all table locks.
+     *   \li Drops all temporary tables.
+     *   \li Resets all session system variables to their default values (including the ones set by `SET
+     *       NAMES`) and clears all user-defined variables.
+     *   \li Closes all prepared statements.
+     * \n
+     * A full reference on the affected session state can be found
+     * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html">here</a>.
+     * \n
+     * \n
+     * This function will not reset the current physical connection and won't cause re-authentication.
+     * It is faster than closing and re-opening a connection.
+     * \n
+     * The connection must be connected and authenticated before calling this function.
+     * This function involves communication with the server, and thus may fail.
+     *
+     * \par Warning on character sets
+     * This function will restore the connection's character set and collation **to the server's default**,
+     * and not to the one specified during connection establishment. Some servers have `latin1` as their
+     * default character set, which is not usually what you want. Since there is no way to know this
+     * character set, \ref current_character_set will return `nullptr` after the operation succeeds.
+     * We recommend always using \ref set_character_set or \ref async_set_character_set after calling this
+     * function.
+     * \n
+     * You can find the character set that your server will use after the reset by running:
+     * \code
+     * SELECT @@global.character_set_client, @@global.character_set_connection,
+     * @@global.character_set_results;
+     * \endcode
+     */
     void reset_connection(error_code& err, diagnostics& diag)
     {
         impl_.run(impl_.make_params_reset_connection(diag), err);
@@ -840,7 +978,13 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /// \copydoc connection::async_reset_connection
+    /**
+     * \copydoc reset_connection
+     * \details
+     * \n
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
     auto async_reset_connection(CompletionToken&& token)
         BOOST_MYSQL_RETURN_TYPE(detail::async_reset_connection_t<CompletionToken&&>)

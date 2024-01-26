@@ -8,9 +8,11 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_HANDSHAKE_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_HANDSHAKE_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/ok_view.hpp>
@@ -69,6 +71,27 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
     handshake_params hparams_;
     auth_response auth_resp_;
     std::uint8_t sequence_number_{0};
+
+    // Attempts to map the collection_id to a character set. We try to be conservative
+    // here, since servers will happily accept unknown collation IDs, silently defaulting
+    // to the server's default character set (often latin1, which is not Unicode).
+    static character_set collation_id_to_charset(std::uint16_t collation_id) noexcept
+    {
+        switch (collation_id)
+        {
+        case mysql_collations::utf8mb4_bin:
+        case mysql_collations::utf8mb4_general_ci: return utf8mb4_charset;
+        case mysql_collations::latin1_german1_ci:
+        case mysql_collations::latin1_swedish_ci:
+        case mysql_collations::latin1_danish_ci:
+        case mysql_collations::latin1_german2_ci:
+        case mysql_collations::latin1_bin:
+        case mysql_collations::latin1_general_ci:
+        case mysql_collations::latin1_general_cs:
+        case mysql_collations::latin1_spanish_ci: return latin1_charset;
+        default: return character_set{};
+        }
+    }
 
     // Once the handshake is processed, the capabilities are stored in the connection state
     bool use_ssl() const noexcept { return st_->current_capabilities.has(CLIENT_SSL); }
@@ -157,6 +180,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
     {
         st_->is_connected = true;
         st_->backslash_escapes = ok.backslash_escapes();
+        st_->current_charset = collation_id_to_charset(hparams_.connection_collation());
     }
 
     error_code process_ok()

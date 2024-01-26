@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_ALGO_PARAMS_HPP
 #define BOOST_MYSQL_DETAIL_ALGO_PARAMS_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -23,6 +24,7 @@
 
 namespace boost {
 namespace mysql {
+
 namespace detail {
 
 struct connect_algo_params
@@ -110,6 +112,14 @@ struct ping_algo_params
 struct reset_connection_algo_params
 {
     diagnostics* diag;
+
+    using result_type = void;
+};
+
+struct set_character_set_algo_params
+{
+    diagnostics* diag;
+    character_set charset;
 
     using result_type = void;
 };
