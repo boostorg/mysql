@@ -522,8 +522,9 @@ BOOST_AUTO_TEST_CASE(format_strings_options_propagated)
     // Charset affects format strings
     BOOST_TEST(format_sql("SELECT \xffh + {};", opts_charset, 42) == "SELECT \xffh + 42;");
 
-    // Charset affects string values
+    // Charset affects string values and identifiers
     BOOST_TEST(format_sql("SELECT {};", opts_charset, "ab\xff''") == "SELECT 'ab\xff'\\'';");
+    BOOST_TEST(format_sql("SELECT {};", opts_charset, identifier("ab\xff``")) == "SELECT `ab\xff````;");
 
     // Backslash escapes affects how string values are escaped
     BOOST_TEST(format_sql("SELECT {};", opts_backslashes, "ab'cd") == "SELECT 'ab''cd';");
@@ -659,6 +660,31 @@ BOOST_AUTO_TEST_CASE(format_context_success)
     );
 }
 
+// charset and backslash_slashes options are honored
+BOOST_AUTO_TEST_CASE(format_context_charset)
+{
+    format_options opts_charset{ff_charset, true};
+
+    format_context ctx(opts_charset);
+    ctx.append_raw("SELECT '\xff{abc' + ")
+        .append_value("abd\xff{}")
+        .append_raw(" + ")
+        .append_value(identifier("i`d`ent\xff`ifier"));
+    BOOST_TEST(ctx.get().value() == "SELECT '\xff{abc' + 'abd\xff{}' + `i``d``ent\xff`ifier`");
+}
+
+BOOST_AUTO_TEST_CASE(format_context_backslashes)
+{
+    format_options opts_charset{ff_charset, false};
+
+    format_context ctx(opts_charset);
+    ctx.append_raw("SELECT ")
+        .append_value("ab'cd\"ef")
+        .append_raw(" + ")
+        .append_value(identifier("identif`ier"));
+    BOOST_TEST(ctx.get().value() == "SELECT 'ab''cd\"ef' + `identif``ier`");
+}
+
 BOOST_AUTO_TEST_CASE(format_context_error)
 {
     // Helper
@@ -719,15 +745,9 @@ BOOST_AUTO_TEST_CASE(format_context_error)
  *   archetype
  *   archetype + default constructible
  *   archetype + move assignable
- * charset
- *    multi-byte characters with { continuation cause no problems
- *    multi-byte characters with } continuation cause no problems
- * the string is cleared on input
- * format strings: backslash_escapes is correctly propagated to escaping
  * format_context
  *    the string is not cleared when created
  *    can be created from strings that are not std::string (TODO: we should test this in other places, too)
- *    backslash escapes and charsets
  */
 
 BOOST_AUTO_TEST_SUITE_END()
