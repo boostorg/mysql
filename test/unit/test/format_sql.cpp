@@ -496,6 +496,32 @@ BOOST_AUTO_TEST_CASE(format_strings)
     BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{", "a}c") == "CONCAT('{', 'a}c')");
     BOOST_TEST(format_sql("CONCAT({}, {})", opts, "{{}}", "{{1}}") == "CONCAT('{{}}', '{{1}}')");
     BOOST_TEST(format_sql("CONCAT({}, {})", opts, "'\\{", "\"}") == "CONCAT('\\'\\\\{', '\\\"}')");
+
+    // Format strings with non-ascii (but valid) characters
+    BOOST_TEST(format_sql("SELECT `e\xc3\xb1u` + {};", opts, 42) == "SELECT `e\xc3\xb1u` + 42;");
+    BOOST_TEST(format_sql("\xc3\xb1{}", opts, "abc") == "\xc3\xb1'abc'");
+}
+
+BOOST_AUTO_TEST_CASE(format_strings_brace_continuation)
+{
+    // In a character set with ASCII-compatible continuation characters, we correctly
+    // interpret {} characters as continuations, rather than trying to expand them
+    auto next_char = [](string_view s) noexcept -> std::size_t {
+        auto c = static_cast<unsigned char>(s[0]);
+        if (c == 0xff)  // 0xff marks a two-byte character
+            return s.size() > 1u ? 2u : 0u;
+        return 1u;
+    };
+
+    format_options custom_opts{
+        character_set{"test_charset", next_char},
+        true
+    };
+
+    BOOST_TEST(format_sql("SELECT \xffh + {};", custom_opts, 42) == "SELECT \xffh + 42;");
+    BOOST_TEST(format_sql("SELECT \xff{ + {};", custom_opts, 42) == "SELECT \xff{ + 42;");
+    BOOST_TEST(format_sql("SELECT \xff} + {};", custom_opts, 42) == "SELECT \xff} + 42;");
+    BOOST_TEST(format_sql("SELECT \xff{}} + {};", custom_opts, 42) == "SELECT \xff{} + 42;");
 }
 
 BOOST_AUTO_TEST_CASE(format_strings_invalid)
@@ -677,16 +703,14 @@ BOOST_AUTO_TEST_CASE(format_context_error)
  *   archetype + default constructible
  *   archetype + move assignable
  * charset
- *    multi-byte characters allowed in format strings
- *    invalid multi-byte characters in format strings throw
  *    multi-byte characters with { continuation cause no problems
  *    multi-byte characters with } continuation cause no problems
  * the string is cleared on input
- * backslash_escapes is correctly propagated to escaping
+ * format strings: backslash_escapes is correctly propagated to escaping
  * format_context
  *    the string is not cleared when created
  *    can be created from strings that are not std::string (TODO: we should test this in other places, too)
- * float, double: isnan, isinf
+ *    backslash escapes and charsets
  */
 
 BOOST_AUTO_TEST_SUITE_END()
