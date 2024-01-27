@@ -66,27 +66,6 @@ struct formatter<custom::condition>
 }  // namespace mysql
 }  // namespace boost
 
-/**
- * injection attempts
- *    error thrown on invalid encoding
- * charset
- *    multi-byte characters allowed in format strings
- *    invalid multi-byte characters in format strings throw
- *    multi-byte characters with { continuation cause no problems
- *    multi-byte characters with } continuation cause no problems
- * the string is cleared on input
- * backslash_escapes is correctly propagated to escaping
- * format_context
- *    the string is not cleared when created
- *    can be created from strings that are not std::string (TODO: we should test this in other places, too)
- *    add_raw just appends, even if it has special chars
- *    add_value with basic types
- *    add_value with writable fields like optionals
- *    add_value with custom formatters
- *    neither add_raw not add_value clear the string
- * float, double: isnan, isinf
- */
-
 BOOST_AUTO_TEST_SUITE(test_format_sql)
 
 constexpr format_options opts{utf8mb4_charset, true};
@@ -587,5 +566,127 @@ BOOST_AUTO_TEST_CASE(format_strings_invalid)
         }
     }
 }
+
+//
+// Formatting using format_context: verify that we can achieve similar results as using format_sql
+//
+
+BOOST_AUTO_TEST_CASE(format_context_success)
+{
+    // Helper
+    auto get = [](format_context_base& ctx) { return static_cast<format_context&>(ctx).get().value(); };
+
+    // Empty
+    BOOST_TEST(format_context(opts).get().value() == "");
+
+    // Raw
+    BOOST_TEST(get(format_context(opts).append_raw("SELECT 'abc'")) == "SELECT 'abc'");
+
+    // Value
+    BOOST_TEST(get(format_context(opts).append_value(42)) == "42");
+    BOOST_TEST(get(format_context(opts).append_value("a str'ing")) == "'a str\\'ing'");
+    BOOST_TEST(get(format_context(opts).append_value(true)) == "1");
+    BOOST_TEST(get(format_context(opts).append_value(identifier("abc`d"))) == "`abc``d`");
+
+    // Custom values work
+    BOOST_TEST(get(format_context(opts).append_value(custom::condition("id", 42))) == "`id`=42");
+
+    // Raw/value combinations
+    BOOST_TEST(get(format_context(opts).append_raw("SELECT ").append_value(42)) == "SELECT 42");
+    BOOST_TEST(get(format_context(opts).append_value(42).append_raw(" OR 1=1")) == "42 OR 1=1");
+    BOOST_TEST(
+        get(format_context(opts).append_raw("SELECT ").append_raw("* FROM ").append_value(identifier("myt"))
+        ) == "SELECT * FROM `myt`"
+    );
+    BOOST_TEST(
+        get(format_context(opts).append_raw("SELECT ").append_value(42).append_raw(" OR 1=1")) ==
+        "SELECT 42 OR 1=1"
+    );
+    BOOST_TEST(
+        get(format_context(opts).append_value(42).append_value(nullptr).append_raw(" OR 1=1")) ==
+        "42NULL OR 1=1"
+    );
+    BOOST_TEST(
+        get(format_context(opts)
+                .append_raw("SELECT ")
+                .append_value(42)
+                .append_raw(" UNION SELECT ")
+                .append_value(true)
+                .append_raw(" UNION SELECT 'abc'")) == "SELECT 42 UNION SELECT 1 UNION SELECT 'abc'"
+    );
+}
+
+BOOST_AUTO_TEST_CASE(format_context_error)
+{
+    // Helper
+    auto get = [](format_context_base& ctx) { return static_cast<format_context&>(ctx).get().error(); };
+
+    // Just an error
+    BOOST_TEST(get(format_context(opts).append_value("bad\xff")) == client_errc::invalid_encoding);
+
+    // Raw/error combinations
+    BOOST_TEST(
+        get(format_context(opts).append_raw("SELECT ").append_value("bad\xff")) ==
+        client_errc::invalid_encoding
+    );
+    BOOST_TEST(
+        get(format_context(opts).append_value("bad\xff").append_raw("SELECT 1")) ==
+        client_errc::invalid_encoding
+    );
+    BOOST_TEST(
+        get(format_context(opts).append_raw("SELECT 1").append_value("bad\xff").append_raw("SELECT 1")) ==
+        client_errc::invalid_encoding
+    );
+
+    // Error/value combinations: we keep errors even after appending correct values
+    BOOST_TEST(
+        get(format_context(opts).append_value("abc").append_value("bad\xff")) == client_errc::invalid_encoding
+    );
+    BOOST_TEST(
+        get(format_context(opts).append_value("bad\xff").append_value("abc")) == client_errc::invalid_encoding
+    );
+    BOOST_TEST(
+        get(format_context(opts)
+                .append_raw("SELECT * FROM ")
+                .append_value(identifier("db", "tab", "bad\xff"))
+                .append_raw(" WHERE id=")
+                .append_value(42)) == client_errc::invalid_encoding
+    );
+
+    // We only keep the first error
+    BOOST_TEST(
+        get(format_context(opts).append_value("bad\xff").append_raw("abc").append_value(HUGE_VAL)) ==
+        client_errc::invalid_encoding
+    );
+
+    // Spotcheck: invalid floats are diagnosed correctly
+    BOOST_TEST(get(format_context(opts).append_value(HUGE_VAL)) == client_errc::floating_point_nan_inf);
+}
+
+/**
+ * unit tests
+ *   construct from another string: uses that and doesn't clear
+ *   move construct: takes ownserhip of the other string
+ *   move construct: propagates options
+ *   move construct: propagates error state
+ *   move assign: takes ownserhip of the other string
+ *   move assign: propagates options
+ *   move assign: propagates error state
+ *   can be used with vector<char>, string with custom allocator, static_string?
+ *   archetype
+ *   archetype + default constructible
+ *   archetype + move assignable
+ * charset
+ *    multi-byte characters allowed in format strings
+ *    invalid multi-byte characters in format strings throw
+ *    multi-byte characters with { continuation cause no problems
+ *    multi-byte characters with } continuation cause no problems
+ * the string is cleared on input
+ * backslash_escapes is correctly propagated to escaping
+ * format_context
+ *    the string is not cleared when created
+ *    can be created from strings that are not std::string (TODO: we should test this in other places, too)
+ * float, double: isnan, isinf
+ */
 
 BOOST_AUTO_TEST_SUITE_END()
