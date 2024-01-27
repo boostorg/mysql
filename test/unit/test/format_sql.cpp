@@ -19,6 +19,7 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <cstddef>
 #include <limits>
 #include <string>
 #include <vector>
@@ -502,23 +503,39 @@ BOOST_AUTO_TEST_CASE(format_strings)
     BOOST_TEST(format_sql("\xc3\xb1{}", opts, "abc") == "\xc3\xb1'abc'");
 }
 
+// Custom charset function
+static std::size_t ff_charset_next_char(string_view s) noexcept
+{
+    auto c = static_cast<unsigned char>(s[0]);
+    if (c == 0xff)  // 0xff marks a two-byte character
+        return s.size() > 1u ? 2u : 0u;
+    return 1u;
+};
+constexpr character_set ff_charset{"ff_charset", ff_charset_next_char};
+
+// backslash_slashes and character set are propagated
+BOOST_AUTO_TEST_CASE(format_strings_options_propagated)
+{
+    format_options opts_charset{ff_charset, true};
+    format_options opts_backslashes{ff_charset, false};
+
+    // Charset affects format strings
+    BOOST_TEST(format_sql("SELECT \xffh + {};", opts_charset, 42) == "SELECT \xffh + 42;");
+
+    // Charset affects string values
+    BOOST_TEST(format_sql("SELECT {};", opts_charset, "ab\xff''") == "SELECT 'ab\xff'\\'';");
+
+    // Backslash escapes affects how string values are escaped
+    BOOST_TEST(format_sql("SELECT {};", opts_backslashes, "ab'cd") == "SELECT 'ab''cd';");
+    BOOST_TEST(format_sql("SELECT {};", opts_backslashes, "ab\"cd") == "SELECT 'ab\"cd';");
+}
+
+// In a character set with ASCII-compatible continuation characters, we correctly
+// interpret {} characters as continuations, rather than trying to expand them
 BOOST_AUTO_TEST_CASE(format_strings_brace_continuation)
 {
-    // In a character set with ASCII-compatible continuation characters, we correctly
-    // interpret {} characters as continuations, rather than trying to expand them
-    auto next_char = [](string_view s) noexcept -> std::size_t {
-        auto c = static_cast<unsigned char>(s[0]);
-        if (c == 0xff)  // 0xff marks a two-byte character
-            return s.size() > 1u ? 2u : 0u;
-        return 1u;
-    };
+    format_options custom_opts{ff_charset, true};
 
-    format_options custom_opts{
-        character_set{"test_charset", next_char},
-        true
-    };
-
-    BOOST_TEST(format_sql("SELECT \xffh + {};", custom_opts, 42) == "SELECT \xffh + 42;");
     BOOST_TEST(format_sql("SELECT \xff{ + {};", custom_opts, 42) == "SELECT \xff{ + 42;");
     BOOST_TEST(format_sql("SELECT \xff} + {};", custom_opts, 42) == "SELECT \xff} + 42;");
     BOOST_TEST(format_sql("SELECT \xff{}} + {};", custom_opts, 42) == "SELECT \xff{} + 42;");
