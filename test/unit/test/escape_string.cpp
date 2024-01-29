@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(backslashes_utf8mb4_valid)
         BOOST_TEST_CONTEXT(tc.name)
         {
             std::string output = "abc";
-            auto ec = escape_string(tc.input, utf8mb4_charset, true, quoting_context::double_quote, output);
+            auto ec = escape_string(tc.input, {utf8mb4_charset, true}, quoting_context::double_quote, output);
             BOOST_TEST(ec == error_code());
             BOOST_TEST(output == tc.expected);
         }
@@ -120,8 +120,7 @@ BOOST_AUTO_TEST_CASE(backslashes_utf8mb4_invalid)
     std::string output = "abc";
     auto ec = escape_string(
         "This 'has' invalid \xc0\x80 chars\\",
-        utf8mb4_charset,
-        true,
+        {utf8mb4_charset, true},
         quoting_context::double_quote,
         output
     );
@@ -135,7 +134,7 @@ BOOST_AUTO_TEST_CASE(backslashes_multibyte_ascii_compatible_chars)
     string_view s = "This is \\ a string \xff\\ with a weird \xff\" encoding \"";
     std::string output = "abc";
 
-    auto ec = escape_string(s, test_charset, true, quoting_context::double_quote, output);
+    auto ec = escape_string(s, {test_charset, true}, quoting_context::double_quote, output);
 
     BOOST_TEST(ec == error_code());
     BOOST_TEST(output == "This is \\\\ a string \xff\\ with a weird \xff\" encoding \\\"");
@@ -189,7 +188,8 @@ BOOST_AUTO_TEST_CASE(quotes_utf8mb4_valid)
         BOOST_TEST_CONTEXT(tc.name)
         {
             std::string output = "abc";
-            auto ec = escape_string(tc.input, utf8mb4_charset, false, quoting_context::double_quote, output);
+            auto
+                ec = escape_string(tc.input, {utf8mb4_charset, false}, quoting_context::double_quote, output);
             BOOST_TEST(ec == error_code());
             BOOST_TEST(output == tc.expected);
         }
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE(quotes_quoting_contexts)
         BOOST_TEST_CONTEXT(tc.name)
         {
             std::string output = "abc";
-            auto ec = escape_string(input, utf8mb4_charset, false, tc.quot_ctx, output);
+            auto ec = escape_string(input, {utf8mb4_charset, false}, tc.quot_ctx, output);
             BOOST_TEST(ec == error_code());
             BOOST_TEST(output == tc.expected);
         }
@@ -230,8 +230,7 @@ BOOST_AUTO_TEST_CASE(quotes_utf8mb4_invalid)
     std::string output = "abc";
     auto ec = escape_string(
         "This \"has\" invalid \xc3\\ chars",
-        utf8mb4_charset,
-        false,
+        {utf8mb4_charset, false},
         quoting_context::double_quote,
         output
     );
@@ -245,7 +244,7 @@ BOOST_AUTO_TEST_CASE(quotes_multibyte_ascii_compatible_chars)
     string_view s = "This is \" a string \xfe\" with a weird \xff\" encoding \"";
     std::string output = "abc";
 
-    auto ec = escape_string(s, test_charset, false, quoting_context::double_quote, output);
+    auto ec = escape_string(s, {test_charset, false}, quoting_context::double_quote, output);
 
     BOOST_TEST(ec == error_code());
     BOOST_TEST(output == "This is \"\" a string \xfe\"\" with a weird \xff\" encoding \"\"");
@@ -290,7 +289,7 @@ BOOST_AUTO_TEST_CASE(parameter_coverage)
         BOOST_TEST_CONTEXT(tc.name)
         {
             std::string output = "abc";
-            auto ec = escape_string(input, utf8mb4_charset, tc.backslash_escapes, tc.quot_ctx, output);
+            auto ec = escape_string(input, {utf8mb4_charset, tc.backslash_escapes}, tc.quot_ctx, output);
             BOOST_TEST(ec == error_code());
             BOOST_TEST(output == tc.expected);
         }
@@ -303,7 +302,7 @@ BOOST_AUTO_TEST_CASE(latin1)
     string_view input = "A test \"\\ string \xff with 'quotes'";
     std::string output = "abc";
 
-    auto ec = escape_string(input, latin1_charset, true, quoting_context::double_quote, output);
+    auto ec = escape_string(input, {latin1_charset, true}, quoting_context::double_quote, output);
 
     BOOST_TEST(ec == error_code());
     BOOST_TEST(output == "A test \\\"\\\\ string \xff with \\'quotes\\'");
