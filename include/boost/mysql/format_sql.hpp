@@ -177,10 +177,9 @@ inline detail::format_arg_descriptor arg(string_view name, const T& value) noexc
 template <BOOST_MYSQL_FORMATTABLE... Args>
 inline std::string format_sql(string_view format_str, const format_options& opts, const Args&... args)
 {
-    std::array<detail::format_arg_descriptor, sizeof...(Args)> desc{{detail::make_format_arg_descriptor(args
-    )...}};
+    detail::format_arg_store<sizeof...(Args)> store(args...);
     format_context ctx(opts);
-    detail::vformat_sql_to(format_str, ctx, desc);
+    detail::vformat_sql_to(format_str, ctx, store.get());
     return ctx.get().value();
 }
 

@@ -14,6 +14,7 @@
 
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
+#include <cstddef>
 #include <type_traits>
 
 namespace boost {
@@ -142,6 +143,28 @@ format_arg_descriptor make_format_arg_descriptor(const T& val)
 {
     return {make_format_value(val), {}};
 }
+
+// std::array<T, 0> with non-default-constructible T has bugs in MSVC prior to 14.3
+template <std::size_t N>
+struct format_arg_store
+{
+    std::array<format_arg_descriptor, N> data;
+
+    template <class... Args>
+    format_arg_store(const Args&... args) noexcept : data{{make_format_arg_descriptor(args)...}}
+    {
+    }
+
+    span<const format_arg_descriptor> get() const noexcept { return data; }
+};
+
+template <>
+struct format_arg_store<0u>
+{
+    format_arg_store() = default;
+
+    span<const format_arg_descriptor> get() const noexcept { return {}; }
+};
 
 BOOST_MYSQL_DECL
 void vformat_sql_to(
