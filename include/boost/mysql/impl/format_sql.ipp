@@ -44,7 +44,7 @@ namespace detail {
 inline void append_identifier(string_view name, format_context_base& ctx)
 {
     auto& impl = access::get_impl(ctx);
-    auto ec = detail::escape_string(name, impl.opts.charset, impl.opts.backslash_escapes, '`', impl.output);
+    auto ec = detail::escape_string(name, impl.opts, '`', impl.output);
     impl.set_error(ec);
 }
 
@@ -95,7 +95,7 @@ inline error_code append_double(output_string_ref output, double number)
 inline error_code append_quoted_string(output_string_ref output, string_view str, const format_options& opts)
 {
     output.append("'");
-    auto ec = detail::escape_string(str, opts.charset, opts.backslash_escapes, '\'', output);
+    auto ec = detail::escape_string(str, opts, '\'', output);
     output.append("'");
     return ec;
 }

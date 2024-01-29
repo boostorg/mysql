@@ -17,10 +17,12 @@
 
 #include <boost/config.hpp>
 
+#include <utility>
+
 namespace boost {
 namespace mysql {
 
-struct character_set;
+struct format_options;
 
 /**
  * \brief (EXPERIMENTAL) Identifies the context which a string is being escaped for.
@@ -95,21 +97,19 @@ enum class quoting_context : char
  * \par Errors
  * \ref client_errc::invalid_encoding if `input` contains a string
  * that is not valid according to `charset`.
+ * TODO: update this
  */
 template <BOOST_MYSQL_OUTPUT_STRING OutputString>
-BOOST_ATTRIBUTE_NODISCARD error_code escape_string(
-    string_view input,
-    const character_set& charset,
-    bool backslash_escapes,
-    quoting_context quot_ctx,
-    OutputString& output
-)
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+    requires(std::declval<OutputString&>().clear())
+#endif
+BOOST_ATTRIBUTE_NODISCARD error_code
+escape_string(string_view input, const format_options& opts, quoting_context quot_ctx, OutputString& output)
 {
     output.clear();
     return detail::escape_string(
         input,
-        charset,
-        backslash_escapes,
+        opts,
         static_cast<char>(quot_ctx),
         detail::output_string_ref::create(output)
     );

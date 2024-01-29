@@ -55,12 +55,6 @@ struct formatter : detail::formatter_is_unspecialized
 {
 };
 
-struct format_options
-{
-    character_set charset;
-    bool backslash_escapes;
-};
-
 class format_context_base
 {
     struct

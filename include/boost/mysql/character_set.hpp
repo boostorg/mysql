@@ -61,6 +61,12 @@ constexpr character_set utf8mb4_charset{"utf8mb4", detail::next_char_utf8mb4};
 /// (EXPERIMENTAL) The latin1 character set.
 constexpr character_set latin1_charset{"latin1", detail::next_char_latin1};
 
+struct format_options
+{
+    character_set charset;
+    bool backslash_escapes;
+};
+
 }  // namespace mysql
 }  // namespace boost
 

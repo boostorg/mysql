@@ -20,17 +20,12 @@ namespace boost {
 namespace mysql {
 
 // Forward decls
-struct character_set;
+struct format_options;
 
 namespace detail {
 
-BOOST_MYSQL_DECL BOOST_ATTRIBUTE_NODISCARD error_code escape_string(
-    string_view input,
-    const character_set& charset,
-    bool backslash_escapes,
-    char quote_char,
-    output_string_ref output
-);
+BOOST_MYSQL_DECL BOOST_ATTRIBUTE_NODISCARD error_code
+escape_string(string_view input, const format_options& opts, char quote_char, output_string_ref output);
 
 }  // namespace detail
 }  // namespace mysql
