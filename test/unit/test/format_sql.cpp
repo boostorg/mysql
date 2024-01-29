@@ -19,6 +19,7 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <cmath>
 #include <cstddef>
 #include <limits>
 #include <string>
@@ -117,7 +118,7 @@ BOOST_AUTO_TEST_CASE(individual_int)
 {
     BOOST_TEST(format_sql(single_fmt, opts, (int)42) == "SELECT 42;");
     BOOST_TEST(format_sql(single_fmt, opts, (int)-1) == "SELECT -1;");
-    BOOST_TEST(format_sql(single_fmt, opts, (int)-2147483648) == "SELECT -2147483648;");
+    BOOST_TEST(format_sql(single_fmt, opts, (int)-0x7fffffff - 1) == "SELECT -2147483648;");
     BOOST_TEST(format_sql(single_fmt, opts, (int)0x7fffffff) == "SELECT 2147483647;");
 }
 
@@ -369,7 +370,7 @@ BOOST_AUTO_TEST_CASE(individual_identifier)
 
 BOOST_AUTO_TEST_CASE(individual_custom_type)
 {
-    auto actual = format_sql("SELECT * FROM myt WHERE {}", opts, custom::condition("myfield", 42));
+    auto actual = format_sql("SELECT * FROM myt WHERE {}", opts, custom::condition{"myfield", 42});
     string_view expected = "SELECT * FROM myt WHERE `myfield`=42";
     BOOST_TEST(actual == expected);
 }
@@ -633,7 +634,7 @@ BOOST_AUTO_TEST_CASE(format_context_success)
     BOOST_TEST(get(format_context(opts).append_value(identifier("abc`d"))) == "`abc``d`");
 
     // Custom values work
-    BOOST_TEST(get(format_context(opts).append_value(custom::condition("id", 42))) == "`id`=42");
+    BOOST_TEST(get(format_context(opts).append_value(custom::condition{"id", 42})) == "`id`=42");
 
     // Raw/value combinations
     BOOST_TEST(get(format_context(opts).append_raw("SELECT ").append_value(42)) == "SELECT 42");
