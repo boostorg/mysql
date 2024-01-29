@@ -81,13 +81,16 @@ enum class client_errc : int
     /// (EXPERIMENTAL) An invalid byte sequence was found while trying to decode a string.
     invalid_encoding,
 
-    // TODO: document
+    /// (EXPERIMENTAL) An invalid format string was provided to a format_sql operation. Review the passed
+    /// format string and arguments.
     invalid_format_string,
 
-    // TODO: document
+    /// (EXPERIMENTAL) A floating point infinity or NaN were provided to a format operation. These values are
+    /// not supported by MySQL.
     floating_point_nan_inf,
 
-    // TODO: experimental
+    /// (EXPERIMENTAL) The character set used by the connection is not known by the client. Use
+    /// set_character_set or async_set_character_set before invoking operations that require a known charset.
     unknown_character_set,
 };
 

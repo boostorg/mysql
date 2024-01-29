@@ -64,6 +64,15 @@ const char* error_to_string(client_errc error) noexcept
                "that you're calling connection_pool::async_run.";
     case client_errc::invalid_encoding:
         return "An invalid byte sequence was found while trying to decode a string.";
+    case client_errc::invalid_format_string:
+        return "An invalid format string was provided to a format_sql operation. Review the passed format "
+               "string and arguments.";
+    case client_errc::floating_point_nan_inf:
+        return "A floating point infinity or NaN were provided to a format operation. These values are not "
+               "supported by MySQL.";
+    case client_errc::unknown_character_set:
+        return "The character set used by the connection is not known by the client. Use set_character_set "
+               "or async_set_character_set before invoking operations that require a known charset.";
 
     default: return "<unknown MySQL client error>";
     }
