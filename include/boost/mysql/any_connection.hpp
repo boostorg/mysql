@@ -35,6 +35,7 @@
 #include <boost/asio/execution_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/assert.hpp>
+#include <boost/system/result.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>
@@ -279,6 +280,10 @@ public:
      * as long as `*this` is alive and valid.
      */
     const character_set* current_character_set() const noexcept { return impl_.current_character_set(); }
+
+    // TODO: document
+    BOOST_MYSQL_DECL
+    system::result<format_options> format_opts() const noexcept;
 
     /// \copydoc connection::meta_mode
     metadata_mode meta_mode() const noexcept { return impl_.meta_mode(); }

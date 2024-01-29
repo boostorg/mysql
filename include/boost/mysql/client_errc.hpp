@@ -86,6 +86,9 @@ enum class client_errc : int
 
     // TODO: document
     floating_point_nan_inf,
+
+    // TODO: experimental
+    unknown_character_set,
 };
 
 BOOST_MYSQL_DECL
