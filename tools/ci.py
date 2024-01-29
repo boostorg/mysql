@@ -121,7 +121,7 @@ def _install_boost(
     
     # TODO: remove this when Charconv gets merged
     if is_clean:
-        _run(['git', 'clone', '--depth', '1', '-b', 'cmake', 'https://github.com/cppalliance/charconv.git', 'libs/charconv'])
+        _run(['git', 'clone', '--depth', '1', '-b', branch, 'https://github.com/cppalliance/charconv.git', 'libs/charconv'])
 
     # Bootstrap
     if is_clean:
