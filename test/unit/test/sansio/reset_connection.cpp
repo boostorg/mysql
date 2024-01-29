@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -36,6 +37,7 @@ BOOST_AUTO_TEST_CASE(success)
 {
     // Setup
     fixture fix;
+    fix.st.current_charset = utf8mb4_charset;
 
     // Run the algo
     algo_test()
@@ -43,8 +45,9 @@ BOOST_AUTO_TEST_CASE(success)
         .expect_read(create_ok_frame(1, ok_builder().build()))
         .check(fix);
 
-    // The OK packet was processed correctly
+    // The OK packet was processed correctly. The charset was reset
     BOOST_TEST(fix.st.backslash_escapes);
+    BOOST_TEST(fix.st.charset_ptr() == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(success_no_backslash_escapes)
@@ -58,8 +61,10 @@ BOOST_AUTO_TEST_CASE(success_no_backslash_escapes)
         .expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build()))
         .check(fix);
 
-    // The OK packet was processed correctly
+    // The OK packet was processed correctly.
+    // It's OK to run this algo without a known charset
     BOOST_TEST(!fix.st.backslash_escapes);
+    BOOST_TEST(fix.st.charset_ptr() == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(error_network)
@@ -75,6 +80,7 @@ BOOST_AUTO_TEST_CASE(error_response)
 {
     // Setup
     fixture fix;
+    fix.st.current_charset = utf8mb4_charset;
 
     // Run the algo
     algo_test()
@@ -85,6 +91,9 @@ BOOST_AUTO_TEST_CASE(error_response)
                          .message("my_message")
                          .build_frame())
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+
+    // The charset was not updated
+    BOOST_TEST(fix.st.charset_ptr()->name == string_view("utf8mb4"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

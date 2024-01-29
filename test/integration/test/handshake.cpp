@@ -21,6 +21,7 @@
 #include "test_integration/common.hpp"
 #include "test_integration/er_network_variant.hpp"
 #include "test_integration/get_endpoint.hpp"
+#include "test_integration/network_test.hpp"
 #include "test_integration/server_ca.hpp"
 #include "test_integration/streams.hpp"
 #include "test_integration/tcp_network_fixture.hpp"

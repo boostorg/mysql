@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CONNECTION_STATE_DATA_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CONNECTION_STATE_DATA_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
@@ -59,12 +60,20 @@ struct connection_state_data
     // be disabled using a variable. OK packets include a flag with this info.
     bool backslash_escapes{true};
 
+    // The current character set, or a default-constructed character set (will all nullptrs) if unknown
+    character_set current_charset{};
+
     // Reader and writer
     message_reader reader;
     message_writer writer;
 
     bool ssl_active() const noexcept { return ssl == ssl_state::active; }
     bool supports_ssl() const noexcept { return ssl != ssl_state::unsupported; }
+
+    const character_set* charset_ptr() const noexcept
+    {
+        return current_charset.name == nullptr ? nullptr : &current_charset;
+    }
 
     connection_state_data(std::size_t read_buffer_size, bool transport_supports_ssl = false)
         : ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported), reader(read_buffer_size)
@@ -82,6 +91,7 @@ struct connection_state_data
         if (supports_ssl())
             ssl = ssl_state::inactive;
         backslash_escapes = true;
+        current_charset = character_set{};
     }
 };
 
