@@ -101,7 +101,7 @@ enum class quoting_context : char
  */
 template <BOOST_MYSQL_OUTPUT_STRING OutputString>
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
-    requires(std::declval<OutputString&>().clear())
+    requires(requires(OutputString& s) { s.clear(); })
 #endif
 BOOST_ATTRIBUTE_NODISCARD error_code
 escape_string(string_view input, const format_options& opts, quoting_context quot_ctx, OutputString& output)
