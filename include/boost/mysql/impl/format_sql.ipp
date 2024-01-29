@@ -24,10 +24,11 @@
 
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 
+#include <boost/charconv/from_chars.hpp>
+#include <boost/charconv/to_chars.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/throw_exception.hpp>
 
-#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <limits>
@@ -56,7 +57,7 @@ void append_int(output_string_ref output, T integer)
 
     char buff[buffsize];
 
-    auto res = std::to_chars(buff, buff + buffsize, integer);
+    auto res = charconv::to_chars(buff, buff + buffsize, integer);
 
     // Can only fail becuase of buffer being too small
     BOOST_ASSERT(res.ec == std::errc());
@@ -80,7 +81,7 @@ inline error_code append_double(output_string_ref output, double number)
 
     // We format as scientific to make MySQL understand the number as a double.
     // Otherwise, it takes it as a DECIMAL.
-    auto res = std::to_chars(buff, buff + buffsize, number, std::chars_format::scientific);
+    auto res = charconv::to_chars(buff, buff + buffsize, number, charconv::chars_format::scientific);
 
     // Can only fail becuase of buffer being too small
     BOOST_ASSERT(res.ec == std::errc());
@@ -245,7 +246,7 @@ class format_state
         else if (is_number(*it))
         {
             unsigned short field_index = 0;
-            auto res = std::from_chars(it, format_end, field_index);
+            auto res = charconv::from_chars(it, format_end, field_index);
             if (res.ec != std::errc{})
             {
                 throw_invalid_format_string();

@@ -11,9 +11,9 @@
 #include <boost/mysql/time.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/charconv/to_chars.hpp>
 #include <boost/core/span.hpp>
 
-#include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -32,7 +32,7 @@ namespace detail {
 // Helpers
 inline char* call_to_chars(char* begin, char* end, std::uint64_t value) noexcept
 {
-    auto r = std::to_chars(begin, end, value);
+    auto r = charconv::to_chars(begin, end, value);
     BOOST_ASSERT(r.ec == std::errc());
     return r.ptr;
 }
