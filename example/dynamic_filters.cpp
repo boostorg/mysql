@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_dynamic_filter
+//[example_dynamic_filters
 
 // Uses client-side SQL formatting to implement a dynamic filter.
 // If you're implementing a filter with many options that can be

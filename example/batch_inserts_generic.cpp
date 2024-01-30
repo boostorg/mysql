@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_batch_inserts
+//[example_batch_inserts_generic
 
 // Uses client-side SQL formatting to implement a dynamic filter.
 // If you're implementing a filter with many options that can be
@@ -14,7 +14,6 @@
 // Client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
-#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/format_sql.hpp>
@@ -37,8 +36,7 @@ using boost::mysql::error_code;
 using boost::mysql::string_view;
 namespace describe = boost::describe;
 
-// TODO: C++14
-
+// TODO: c++14 guards
 struct employee
 {
     std::string first_name;
@@ -46,7 +44,75 @@ struct employee
     std::string company_id;
     double salary;
 };
+
 BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, company_id, salary))
+
+template <class T>
+struct insert_list
+{
+    boost::span<const T> values;
+};
+
+template <class T>
+struct field_name_list
+{
+};
+
+namespace boost {
+namespace mysql {
+
+template <class T>
+struct formatter<insert_list<T>>
+{
+    static void format_single(const T& value, format_context_base& ctx)
+    {
+        bool is_first = true;
+        boost::mp11::mp_for_each<describe::describe_members<T, describe::mod_public>>([&](auto D) {
+            if (!is_first)
+            {
+                ctx.append_raw(", ");
+            }
+            is_first = false;
+            ctx.append_value(value.*D.pointer);
+        });
+    }
+
+    static void format(const insert_list<T>& values, format_context_base& ctx)
+    {
+        bool is_first = true;
+        for (const T& val : values.values)
+        {
+            if (!is_first)
+            {
+                ctx.append_raw(", ");
+            }
+            is_first = false;
+            ctx.append_raw("(");
+            format_single(val, ctx);
+            ctx.append_raw(")");
+        }
+    }
+};
+
+template <class T>
+struct formatter<field_name_list<T>>
+{
+    static void format(const field_name_list<T>&, format_context_base& ctx)
+    {
+        bool is_first = true;
+        boost::mp11::mp_for_each<describe::describe_members<T, describe::mod_public>>([&](auto D) {
+            if (!is_first)
+            {
+                ctx.append_raw(", ");
+            }
+            is_first = false;
+            ctx.append_value(identifier(D.name));
+        });
+    }
+};
+
+}  // namespace mysql
+}  // namespace boost
 
 [[noreturn]] static void usage(const char* prog_name)
 {
@@ -55,36 +121,12 @@ BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, company_id, salary))
 }
 
 // Reads a file into memory
-static std::string read_file(const char* file_name)
+std::string read_file(const char* file_name)
 {
     std::ifstream ifs(file_name);
     if (!ifs)
         throw std::runtime_error("Cannot open file: " + std::string(file_name));
     return std::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
-}
-
-static std::string compose_batch_insert(
-    boost::mysql::format_options opts,
-    const std::vector<employee>& employees
-)
-{
-    boost::mysql::format_context ctx(opts);
-    ctx.append_raw("INSERT INTO employee (first_name, last_name, company_id, salary) VALUES ");
-    bool is_first = true;
-    for (const auto& emp : employees)
-    {
-        ctx.append_raw(is_first ? "(" : ", (")
-            .append_value(emp.first_name)
-            .append_raw(", ")
-            .append_value(emp.last_name)
-            .append_raw(", ")
-            .append_value(emp.company_id)
-            .append_raw(", ")
-            .append_value(emp.salary)
-            .append_raw(")");
-        is_first = false;
-    }
-    return ctx.get().value();
 }
 
 void main_impl(int argc, char** argv)
@@ -120,7 +162,12 @@ void main_impl(int argc, char** argv)
     conn.connect(params);
 
     // Compose the query
-    std::string query = compose_batch_insert(conn.format_opts().value(), values);
+    std::string query = boost::mysql::format_sql(
+        "INSERT INTO employee ({}) VALUES {}",
+        conn.format_opts().value(),
+        field_name_list<employee>(),
+        insert_list<employee>{values}
+    );
 
     // Execute
     boost::mysql::results result;
