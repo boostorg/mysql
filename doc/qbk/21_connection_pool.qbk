@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:connection_pool Connection pools]
+[section:connection_pool (Experimental) Connection pools]
 [nochunk]
 
 Connection pooling is a technique where several long-lived connections
