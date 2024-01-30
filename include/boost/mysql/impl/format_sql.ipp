@@ -367,16 +367,18 @@ void boost::mysql::formatter<boost::mysql::identifier>::format(
     format_context_base& ctx
 )
 {
+    const auto& impl = detail::access::get_impl(value);
+
     ctx.append_raw("`");
-    detail::append_identifier(value.first(), ctx);
-    if (!value.second().empty())
+    detail::append_identifier(impl.ids[0], ctx);
+    if (impl.qual_level >= 2u)
     {
         ctx.append_raw("`.`");
-        detail::append_identifier(value.second(), ctx);
-        if (!value.third().empty())
+        detail::append_identifier(impl.ids[1], ctx);
+        if (impl.qual_level == 3u)
         {
             ctx.append_raw("`.`");
-            detail::append_identifier(value.third(), ctx);
+            detail::append_identifier(impl.ids[2], ctx);
         }
     }
     ctx.append_raw("`");

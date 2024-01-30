@@ -22,6 +22,7 @@
 #include <boost/system/result.hpp>
 
 #include <array>
+#include <cstddef>
 #include <string>
 #include <type_traits>
 
@@ -35,20 +36,31 @@ namespace mysql {
 /// (EXPERIMENTAL) A SQL identifier to use when formatting SQL (TODO).
 class identifier
 {
-    string_view id1, id2, id3;
+    struct impl_t
+    {
+        std::size_t qual_level;
+        string_view ids[3];
+
+        BOOST_CXX14_CONSTEXPR impl_t(
+            std::size_t qual_level,
+            string_view id1,
+            string_view id2,
+            string_view id3
+        ) noexcept
+            : qual_level(qual_level), ids{id1, id2, id3}
+        {
+        }
+    } impl_;
+
+    friend struct detail::access;
 
 public:
-    BOOST_CXX14_CONSTEXPR explicit identifier(
-        string_view id1,
-        string_view id2 = {},
-        string_view id3 = {}
-    ) noexcept
-        : id1(id1), id2(id2), id3(id3)
+    BOOST_CXX14_CONSTEXPR explicit identifier(string_view id) noexcept : impl_(1u, id, {}, {}) {}
+    BOOST_CXX14_CONSTEXPR identifier(string_view id1, string_view id2) noexcept : impl_(2u, id1, id2, {}) {}
+    BOOST_CXX14_CONSTEXPR identifier(string_view id1, string_view id2, string_view id3) noexcept
+        : impl_(3u, id1, id2, id3)
     {
     }
-    BOOST_CXX14_CONSTEXPR string_view first() const noexcept { return id1; }
-    BOOST_CXX14_CONSTEXPR string_view second() const noexcept { return id2; }
-    BOOST_CXX14_CONSTEXPR string_view third() const noexcept { return id3; }
 };
 
 /// (EXPERIMENTAL) An extension point to customize SQL formatting (TODO).
