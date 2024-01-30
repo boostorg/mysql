@@ -366,6 +366,19 @@ BOOST_AUTO_TEST_CASE(individual_identifier)
         format_sql(fmt, opts, identifier("mo`e\\", "inj``ection", "att\nemmpts`")) ==
         "SELECT `mo``e\\`.`inj````ection`.`att\nemmpts``` FROM myt"
     );
+
+    // Empty identifiers are not valid in MySQL but they shouldn't case formatting problems.
+    // They are correctly rejected by MySQL (they don't cause problems)
+    BOOST_TEST(format_sql(fmt, opts, identifier("")) == "SELECT `` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("", "myf")) == "SELECT ``.`myf` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("myt", "")) == "SELECT `myt`.`` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("", "myt", "myf")) == "SELECT ``.`myt`.`myf` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("mydb", "", "myf")) == "SELECT `mydb`.``.`myf` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("mydb", "myt", "")) == "SELECT `mydb`.`myt`.`` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("", "", "myf")) == "SELECT ``.``.`myf` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("", "myt", "")) == "SELECT ``.`myt`.`` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("mydb", "", "")) == "SELECT `mydb`.``.`` FROM myt");
+    BOOST_TEST(format_sql(fmt, opts, identifier("", "", "")) == "SELECT ``.``.`` FROM myt");
 }
 
 BOOST_AUTO_TEST_CASE(individual_custom_type)
