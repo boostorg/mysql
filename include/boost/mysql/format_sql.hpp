@@ -32,6 +32,7 @@
 namespace boost {
 namespace mysql {
 
+/// (EXPERIMENTAL) A SQL identifier to use when formatting SQL (TODO).
 class identifier
 {
     string_view id1, id2, id3;
@@ -50,11 +51,17 @@ public:
     BOOST_CXX14_CONSTEXPR string_view third() const noexcept { return id3; }
 };
 
+/// (EXPERIMENTAL) An extension point to customize SQL formatting (TODO).
 template <class T>
-struct formatter : detail::formatter_is_unspecialized
+struct formatter
+#ifndef BOOST_MYSQL_DOXYGEN
+    : detail::formatter_is_unspecialized
 {
-};
+}
+#endif
+;
 
+/// (EXPERIMENTAL) Base class for concrete format contexts (TODO).
 class format_context_base
 {
     struct
@@ -110,6 +117,7 @@ public:
     }
 };
 
+/// (EXPERIMENTAL) Implements stream-like SQL formatting (TODO).
 template <class OutputString>
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
     requires detail::output_string<OutputString> && std::move_constructible<OutputString>
@@ -159,6 +167,7 @@ public:
     }
 };
 
+/// (EXPERIMENTAL) Implements stream-like SQL formatting (TODO).
 using format_context = basic_format_context<std::string>;
 
 template <>
@@ -168,12 +177,20 @@ struct formatter<identifier>
     static void format(const identifier& value, format_context_base& ctx);
 };
 
+/// (EXPERIMENTAL) Creates a named argument for SQL formatting (TODO).
 template <class T>
-inline detail::format_arg_descriptor arg(string_view name, const T& value) noexcept
+inline
+#ifdef BOOST_MYSQL_DOXYGEN
+    __see_below__
+#else
+    detail::format_arg_descriptor
+#endif
+    arg(string_view name, const T& value) noexcept
 {
     return {detail::make_format_value(value), name};
 }
 
+/// (EXPERIMENTAL) Composes a SQL query client-side (TODO).
 template <BOOST_MYSQL_FORMATTABLE... Args>
 inline std::string format_sql(string_view format_str, const format_options& opts, const Args&... args)
 {

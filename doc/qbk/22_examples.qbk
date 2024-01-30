@@ -340,7 +340,7 @@ __assume_setup__
 
 
 
-[section:batch_inserts (Experimental) Generic batch inserts with Boost.Describe: extending format_sql]
+[section:batch_inserts_generic (Experimental) Generic batch inserts with Boost.Describe: extending format_sql]
 
 This example demonstrates how to extend [reflink format_sql] using [reflink formatter]
 to implement batch inserts for any struct that contains Boost.Describe metadata.
