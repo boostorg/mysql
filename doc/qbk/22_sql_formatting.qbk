@@ -1,0 +1,310 @@
+[/
+    Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:sql_formatting (Experimental) Client-side SQL query formatting]
+[nochunk]
+
+When issuing queries that contain untrusted input, prepared statement are usually
+the way to go. However, some use cases like dynamic filters or batch inserts
+are not attainable using them.
+
+The functions described in this section can be used to compose SQL query
+strings dynamically client-side while keeping your application secure.
+
+[note
+    This feature is experimental. Its API may change in subsequent releases.
+]
+
+[heading Common use cases]
+
+* Queries involving many filters that can be enabled dynamically.
+  See [link mysql.examples.dynamic_filters this example].
+* Batch inserts. Inserting rows one by one can lead to poor efficiency.
+  You can use client-side query formatting to compose a single `INSERT` that
+  performs several insertions at once. See [link mysql.examples.batch_inserts this example]
+  for simple batch inserts and [link mysql.examples.batch_inserts_generic this other] for
+  a generic utility to implement this case.
+* PATCH-like updates. If your query must update fields dynamically, based on some input,
+  prepared statements may not be suitable. See [link mysql.examples.patch_updates this example].
+* Queries involving dynamic identifiers, like table and field names.
+* Performing sorting conditionally.
+* Any other use case that involves SQL that can change dynamically.
+
+This feature can also be used to improve efficiency, as text queries perform less
+round-trips to the server. See [link mysql.sql_formatting.efficiency this section]
+for more info.
+
+[warning
+    [*Security considerations]: misusing the tools described in this section
+    can lead to [*SQL injection vulnerabilities]. Please read the documentation
+    carefully and thoroughly test your code when using this feature.
+]
+
+[heading Formatting simple queries]
+
+You can use [reflink format_sql] to generate a string query from a format string
+and a set of parameters, using a notation similar to `std::format`:
+
+```
+std::string employee_name = get_name(); // employee_name is an untrusted string
+
+// Compose the SQL query in the client
+std::string query = boost::mysql::format_sql("SELECT id, salary FROM employee WHERE last_name = {}",
+  conn.format_opts().value(), employee_name);
+
+// If employee_name is "John", query now contains:
+// SELECT id, salary FROM employee WHERE last_name = 'John'
+// If employee_name contains quotes, they will be escaped as required
+
+// Execute the generated query as a normal query
+results result;
+conn.execute(query, result);
+```
+
+[reflink format_sql] doesn't involve communication with the server.
+In order to work, it requires a [reflink format_options] instance describing
+connection configuration, like the character set currently in use.
+[refmem any_connection format_opts] provides an easy way to retrieve these.
+
+[note
+  Getting an `unknown_character_set` error? Have a look at [link mysql.format_sql.unknown_character_set this section].
+]
+
+[note
+  `format_opts` is only available for [reflink any_connection].
+]
+
+All fundamental types can be used with query formatting. This includes integers, floating point types,
+strings, blobs, dates and times:
+
+```
+std::string query = boost::mysql::format_sql(
+  "SELECT id, first_name, last_name FROM employee WHERE salary > {}",
+  conn.format_opts().value(), 42000);
+// SELECT id, first_name, last_name FROM employee WHERE salary > 42000
+```
+
+`std::optional<T>` and `boost::optional<T>` can also be used:
+
+```
+std::optional<std::string> last_name; // get last_name from the user
+
+std::string query = boost::mysql::format_sql(
+  "INSERT INTO employee (salary, last_name) VALUES ({}, {})",
+  conn.format_opts().value(), 42000, last_name);
+
+// Depending on whether last_name has a value or not, generates:
+// INSERT INTO employee (salary, last_name) VALUES (42000, 'John')
+// INSERT INTO employee (salary, last_name) VALUES (42000, NULL)
+```
+
+See [link mysql.sql_formatting.reference this table] for a reference of types
+that have built-in support for SQL formatting.
+
+[heading Formatting identifiers]
+
+By default, strings are formatted as values. If you need to generate a dynamic
+SQL identifier (like a field or table name), you need to use the [reflink identifier] class:
+
+```
+std::string query = boost::mysql::format_sql(
+  "SELECT id, last_name FROM employee ORDER BY {} DESC",
+  conn.format_opts().value(), identifier("company_id"));
+// SELECT id, last_name FROM employee ORDER BY `company_id` DESC
+```
+
+[reflink identifier] can also generate qualified identifiers:
+
+```
+std::string query = boost::mysql::format_sql(
+  R"%SQL(
+    SELECT salary, tax_id FROM employee
+    INNER JOIN company ON employee.company_id = company.id
+    ORDER BY {} DESC
+  )SQL",
+  conn.format_opts().value(), identifier("company", "id));
+// SELECT ... ORDER BY `company`.`id` DESC
+```
+
+[heading Stream SQL formatting with format_context]
+
+Advanced use cases, like batch inserts or dynamic filters, may not be
+expressible in terms of format strings. [reflink format_context]
+provides a way to incrementally build query strings:
+
+```
+// Compose an update query that sets first_name, last_name, or both
+std::string compose_update_query(
+    format_options opts,
+    std::int64_t employee_id,
+    std::optional<std::string> new_first_name,
+    std::optional<std::string> new_last_name
+)
+{
+    // There should be at least one update
+    assert(new_first_name || new_last_name);
+
+    // format_context will accumulate the query as we compose it
+    format_context ctx (opts);
+
+    // append_raw will add raw SQL, without quoting or escaping
+    ctx.append_raw("UPDATE employee SET ");
+    
+    if (new_first_name)
+    {
+        // append_value will behave like a {} expansion field.
+        // It will add the given string as a value, performing quoting and escaping
+        ctx.append_raw("first_name = ");
+        ctx.append_value(*new_first_name);
+    }
+    if (new_last_name)
+    {
+        if (new_first_name)
+            ctx.append_raw(", ");
+        ctx.append_raw("last_name = ");
+        ctx.append_value(*new_last_name);
+    }
+
+    ctx.append_raw(") WHERE ID = ");
+
+    // append_value can be passed any type that can be used with format_sql
+    ctx.append_value(employee_id);
+
+    // Retrieve the generated query string
+    return ctx.get().value();
+}
+
+std::string query = compose_update_query(conn.format_opts().value(), 42, "John", {});
+// UPDATE employee SET first_name = 'John' WHERE id = 42
+```
+
+[warning
+    [*SQL injection warning]: be sure to trust the strings you pass to `append_raw`.
+    Otherwise, you will suffer from vulnerabilities.
+]
+
+[heading Extending format_sql and format_context]
+
+You can specialize [reflink formatter] to add formatting support for custom types.
+The notation resembles `std::format` but is much simpler, since format specs are not supported.
+
+```
+
+struct employee {
+    std::string first_name;
+    std::string last_name;
+    double salary;
+};
+
+namespace boost {
+namespace mysql {
+
+struct formatter<employee>
+{
+    static void format(const employee& emp, format_context_base& ctx)
+    {
+        // We should format the employee using append_raw and append_value.
+        // We will make this suitable for INSERT statements
+        ctx.append_value(first_name)
+            .append_raw(", ")
+            .append_value(last_name)
+            .append_raw(", ")
+            .append_value(salary);
+    }
+};
+
+}  // namespace mysql
+}  // namespace boost
+
+// We can now use employee as a built-in value
+employee emp1, emp2; // these are untrusted
+std::string query = boost::mysql::format_sql(
+    "INSERT INTO employee (first_name, last_name, salary) VALUES ({}), ({})",
+    conn.format_opts().value(),
+    emp1,
+    emp2
+);
+
+// You can also use format_context::append_value passing an employee
+```
+
+[heading:unknown_character_set Solving the `unknown_character_set` error]
+
+If you are getting a [refmem client_errc unknown_character_set] error, your connection
+is being unable to track the current character set. Try the following:
+
+* Make sure that you are performing connection establishment ([refmem any_connection connect] or
+  [refmem any_connection async_connect]) before calling this function.
+* Use [refmem any_connection set_character_set] or [refmem any_connection async_set_character_set]
+  to set your connection's character set instead of using raw SQL.
+* Some [refmem connect_params connection_collation] values are not supported by all servers
+  and often trigger behavior. If you are using a non-UTF8 character set, prefer setting it
+  explicitly using [refmem any_connection set_character_set] or [refmem any_connection async_set_character_set].
+* [refmem any_connection reset_connection] and [refmem any_connection async_reset_connection] wipe
+  character set information. Call [refmem any_connection set_character_set] or [refmem any_connection async_set_character_set]
+  after resetting your connection.
+
+[warning
+  [*Security considerations]: don't craft [reflink format_options] values manually.
+  Always use [refmem any_connection format_opts].
+]
+
+[*Background]: MySQL has many configuration options that affect its syntax. There are two options that affect how
+string values are escaped and formatted:
+
+* Whether the backslash character represents a escape sequence or not. By default they do,
+  but this can be disabled dynamically by setting the
+  [@https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes NO_BACKSLASH_ESCAPES] SQL mode.
+  This is tracked by [reflink any_connection] automatically.
+* The connection's [*current character set]. This is tracked by connections as far as possible, but deficiencies
+  in the protocol create cases where the character set may not be known to the client. This is why
+  [refmem any_connection format_opts] returns a `boost::system::result<format_options>` that will
+  contain an error in case the character set is unknown.
+
+For a reference on how character set tracking works, please read [link mysql.charsets.tracking this section].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+[heading:efficiency Efficiency considerations]
+
+* Client-composed SQL is more flexible. Some use cases can only be achieved using client-side composed queries.
+* Client-composed SQL entails less round-trips to the server than prepared statements,
+
+so it may yield
+  better efficiency in some cases. On the other hand, prepared statements use a more compact binary
+  protocol, which can be faster when transferring a lot of data.
+* 
+
+                comparison with prepared statements <= when does using queries vs statements help performance-wise?
+                unit testing suggestion
+                reference table
+                custom strings with basic_format_context
+                string escaping
+                compile-time strings
+
+
+
+[heading:reference Types with built-in support for SQL formatting]
+
+[endsect]

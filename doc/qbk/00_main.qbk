@@ -143,6 +143,7 @@ END
 [include 19_time_types.qbk]
 [include 20_any_connection.qbk]
 [include 21_connection_pool.qbk]
+[include 22_sql_formatting.qbk]
 [include 22_examples.qbk]
 [include 23_tests.qbk]
 
