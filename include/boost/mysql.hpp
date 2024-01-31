@@ -21,6 +21,7 @@
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/days.hpp>
