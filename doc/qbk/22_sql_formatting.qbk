@@ -343,7 +343,6 @@ so it may yield
 
                 comparison with prepared statements <= when does using queries vs statements help performance-wise?
                 custom strings with basic_format_context
-                string escaping
 
 
 
@@ -352,9 +351,15 @@ so it may yield
 
 
 
+[heading Raw string escaping]
 
+If you're building a SQL framework, or otherwise performing very low-level tasks, you may need
+to just escape a string, without quoting or formatting. You can use [reflink escape_string],
+which mimics [@https://dev.mysql.com/doc/c-api/8.0/en/mysql-real-escape-string.html `mysql_real_escape_string`].
 
-
+[note
+    Don't use this unless you know what you're doing.
+]
 
 [heading:reference Types with built-in support for SQL formatting]
 
