@@ -142,6 +142,15 @@ add_example_target(boost_mysql_example_dynamic_filters dynamic_filters.cpp)
 target_link_libraries(boost_mysql_example_dynamic_filters PRIVATE Boost::context)
 run_python_example(boost_mysql_example_dynamic_filters run_dynamic_filters.py)
 
+# Batch inserts
+add_example_target(boost_mysql_example_batch_inserts batch_inserts.cpp)
+target_link_libraries(boost_mysql_example_batch_inserts PRIVATE Boost::json)
+run_python_example(boost_mysql_example_batch_inserts run_batch_inserts.py)
+
+# Batch inserts, generic version
+add_example_target(boost_mysql_example_batch_inserts_generic batch_inserts_generic.cpp)
+target_link_libraries(boost_mysql_example_batch_inserts_generic PRIVATE Boost::json)
+run_python_example(boost_mysql_example_batch_inserts_generic run_batch_inserts.py)
 
 # HTTP server
 add_executable(
@@ -161,16 +170,3 @@ target_link_libraries(
 )
 boost_mysql_common_target_settings(boost_mysql_example_connection_pool)
 run_python_example(boost_mysql_example_connection_pool run_connection_pool.py)
-
-
-
-
-# Batch inserts
-add_example_target(boost_mysql_example_batch_inserts batch_inserts.cpp)
-target_link_libraries(boost_mysql_example_batch_inserts PRIVATE Boost::json)
-# TODO: run this
-
-# Batch inserts generic
-add_example_target(boost_mysql_example_batch_inserts_generic batch_inserts_generic.cpp)
-target_link_libraries(boost_mysql_example_batch_inserts_generic PRIVATE Boost::json)
-# TODO: run this
