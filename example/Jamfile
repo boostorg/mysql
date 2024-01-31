@@ -16,29 +16,51 @@ if $(hostname) = ""
     hostname = "127.0.0.1" ;
 }
 
-# "Regular" examples
-local regular_examples =
-    snippets
-    tutorial
-    async_callbacks
-    async_coroutinescpp20
-    async_futures
-    metadata
-    ssl
-    timeouts
-;
-
-for local example in $(regular_examples)
+# Builds and run a "regular" example
+rule run_regular_example (
+    example_name :
+    sources *
+)
 {
     run
-            "$(example).cpp"
-            /boost/mysql/test//boost_mysql_compiled
-        :
-            <testing.arg>"example_user example_password $(hostname)"
-        ;
+        "$(example_name).cpp"
+        /boost/mysql/test//boost_mysql_compiled
+        $(sources)
+    :
+        <testing.arg>"example_user example_password $(hostname)"
+    ;
 }
 
-# Order management examples. These must be run several times through a Python script
+# Builds and runs a example that needs a Python runner
+rule run_python_example (
+    example_name :
+    python_runner :
+    sources *
+)
+{
+    run
+            $(sources)
+            /boost/mysql/test//boost_mysql_compiled
+        : requirements
+            <testing.launcher>"python $(this_dir)/private/$(python_runner)"
+            <testing.arg>$(hostname)
+        : target-name "boost_mysql_example_$(example_name)"
+    ;
+}
+
+# "Regular" examples
+run_regular_example snippets ;
+run_regular_example tutorial ;
+run_regular_example async_callbacks ;
+run_regular_example async_coroutinescpp20 ;
+run_regular_example async_futures ;
+run_regular_example metadata ;
+run_regular_example ssl ;
+run_regular_example timeouts ;
+run_regular_example async_coroutines : /boost/mysql/test//boost_context_lib ;
+run_regular_example any_connection : /boost/mysql/test//boost_context_lib ;
+
+# Order management examples
 local order_examples =
     prepared_statements_cpp11
     prepared_statements_cpp14
@@ -48,31 +70,7 @@ local order_examples =
 
 for local example in $(order_examples)
 {
-    run
-            "order_management/$(example).cpp"
-            /boost/mysql/test//boost_mysql_compiled
-        : requirements
-            <testing.launcher>"python $(this_dir)/private/run_stored_procedures.py"
-            <testing.arg>$(hostname)
-        : target-name "boost_mysql_example_$(example)"
-    ;
-}
-
-# Coroutines and any_connection, which requires Boost.Context
-local coro_examples =
-    async_coroutines
-    any_connection
-;
-
-for local example in $(coro_examples)
-{
-    run
-            "$(example).cpp"
-            /boost/mysql/test//boost_mysql_compiled
-            /boost/mysql/test//boost_context_lib
-        :
-            <testing.arg>"example_user example_password $(hostname)"
-        ;
+    run_python_example $(example) : run_stored_procedures.py : order_management/$(example).cpp ;
 }
 
 # UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
