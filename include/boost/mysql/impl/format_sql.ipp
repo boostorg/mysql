@@ -83,7 +83,7 @@ inline error_code append_double(output_string_ref output, double number)
     // Otherwise, it takes it as a DECIMAL.
     auto res = charconv::to_chars(buff, buff + buffsize, number, charconv::chars_format::scientific);
 
-    // Can only fail becuase of buffer being too small
+    // Can only fail because of buffer being too small
     BOOST_ASSERT(res.ec == std::errc());
 
     // Copy
