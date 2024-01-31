@@ -63,6 +63,27 @@ public:
     }
 };
 
+class constant_string_view
+{
+    string_view impl_;
+
+    BOOST_CXX14_CONSTEXPR constant_string_view(string_view value, int) noexcept : impl_(value) {}
+    friend BOOST_CXX14_CONSTEXPR inline constant_string_view runtime(string_view) noexcept;
+
+public:
+    template <class T>
+    BOOST_MYSQL_CONSTEVAL constant_string_view(const T& value) noexcept : impl_(value)
+    {
+    }
+
+    BOOST_CXX14_CONSTEXPR string_view get() const noexcept { return impl_; }
+};
+
+BOOST_CXX14_CONSTEXPR inline constant_string_view runtime(string_view value) noexcept
+{
+    return constant_string_view(value, 0);
+}
+
 /// (EXPERIMENTAL) An extension point to customize SQL formatting (TODO).
 template <class T>
 struct formatter
@@ -115,9 +136,9 @@ protected:
     error_code get_error() const noexcept { return impl_.ec; }
 
 public:
-    format_context_base& append_raw(string_view raw_sql)
+    format_context_base& append_raw(constant_string_view sql)
     {
-        impl_.output.append(raw_sql);
+        impl_.output.append(sql.get());
         return *this;
     }
 
@@ -204,11 +225,15 @@ inline
 
 /// (EXPERIMENTAL) Composes a SQL query client-side (TODO).
 template <BOOST_MYSQL_FORMATTABLE... Args>
-inline std::string format_sql(string_view format_str, const format_options& opts, const Args&... args)
+inline std::string format_sql(
+    constant_string_view format_str,
+    const format_options& opts,
+    const Args&... args
+)
 {
     detail::format_arg_store<sizeof...(Args)> store(args...);
     format_context ctx(opts);
-    detail::vformat_sql_to(format_str, ctx, store.get());
+    detail::vformat_sql_to(format_str.get(), ctx, store.get());
     return ctx.get().value();
 }
 

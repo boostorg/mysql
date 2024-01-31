@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE(individual_std_optional)
 
 BOOST_AUTO_TEST_CASE(individual_identifier)
 {
-    string_view fmt = "SELECT {} FROM myt";
+    BOOST_CXX14_CONSTEXPR string_view fmt = "SELECT {} FROM myt";
     BOOST_TEST(format_sql(fmt, opts, identifier("myfield")) == "SELECT `myfield` FROM myt");
     BOOST_TEST(format_sql(fmt, opts, identifier("myt", "myf")) == "SELECT `myt`.`myf` FROM myt");
     BOOST_TEST(
@@ -611,7 +611,7 @@ BOOST_AUTO_TEST_CASE(format_strings_invalid)
         BOOST_TEST_CONTEXT(tc.name)
         {
             BOOST_CHECK_EXCEPTION(
-                format_sql(tc.format_str, opts, 42, arg("name", "abc")),
+                format_sql(runtime(tc.format_str), opts, 42, arg("name", "abc")),
                 error_with_diagnostics,
                 [&](const error_with_diagnostics& err) {
                     std::string expected_diag = "Formatting SQL: ";

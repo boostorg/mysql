@@ -331,7 +331,7 @@ public:
             if (*it == '{')
             {
                 // Found a replacement field. Dump the SQL we've been skipping and parse it
-                ctx_.append_raw({cur_begin, it});
+                ctx_.impl_.output.append({cur_begin, it});
                 ++it;
                 it = parse_field(it, end);
                 cur_begin = it;
@@ -339,11 +339,11 @@ public:
             else if (*it == '}')
             {
                 // A lonely } is only legal as a escape curly brace (i.e. }})
-                ctx_.append_raw({cur_begin, it});
+                ctx_.impl_.output.append({cur_begin, it});
                 ++it;
                 if (it == end || *it != '}')
                     throw_format_error("Formatting SQL: unbalanced '}' in format string");
-                ctx_.append_raw("}");
+                ctx_.impl_.output.append("}");
                 ++it;
                 cur_begin = it;
             }
@@ -354,7 +354,7 @@ public:
         }
 
         // Dump any remaining SQL
-        ctx_.append_raw({cur_begin, end});
+        ctx_.impl_.output.append({cur_begin, end});
     }
 };
 
