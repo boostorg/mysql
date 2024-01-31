@@ -307,15 +307,20 @@ string values are escaped and formatted:
 
 For a reference on how character set tracking works, please read [link mysql.charsets.tracking this section].
 
+[heading Solving the `invalid_encoding` error]
 
+SQL formatting can fail if you provide values that can't be securely formatted.
+The most common cause is passing string values that are not valid according to the
+passed character set. This triggers a [reflink client_errc invalid_encoding] error:
 
+```
+// If the connection is using UTF8 (the default), this will throw an error,
+// because the string to be formatted contains invalid UTF8.
+format_sql("SELECT {}", conn.format_opts().value(), "bad\xff UTF8");
+```
 
-
-
-
-
-
-
+You can validate your strings beforehand or handle the error once
+it happened and reject the input.
 
 
 
@@ -339,6 +344,15 @@ so it may yield
                 comparison with prepared statements <= when does using queries vs statements help performance-wise?
                 custom strings with basic_format_context
                 string escaping
+
+
+
+
+
+
+
+
+
 
 
 
