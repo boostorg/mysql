@@ -125,4 +125,35 @@ The table below summarizes the encoding used by each piece of functionality in t
     ]
 ]
 
+[heading:tracking (Experimental) Character set tracking]
+
+* any_connection has support for tracking the connection's current character set.
+* This is relevant when using formatting and escaping functions, like [reflink format_sql] and [reflink format_context].
+* Protocol has limited support, so it requires some aid from the user.
+* Current charset given by [refmem any_connection current_character_set]. It may be unknown, nullptr is returned.
+* When calling [refmem any_connection format_opts], this is accessed. If nullptr, an error is generated.
+* Charsets are represented using [reflink character_set]. This library supports [reflink utf8mb4_charset]
+  (use this unless really required) and [reflink latin1].
+* Before connection, charset is always unknown.
+* After successful connection (connect or async_connect), charset may or may not be known.
+  Since server doesn't report whether it liked [refmem connect_params connection_collation],
+  heuristics are used. When using the default, [reflink utf8mb4_charset] is always selected.
+* At any point, call set_character_set to set this to a known value. This issues a SET NAMES
+  and updates what is stored in the client.
+* Do not run any SQL statement that modifies the character set using execute, this will cause
+  incorrect values to be returned.
+* Note that reset_connection resets the character set to the server's default, which may be anything
+  (and sometimes not utf8). Charset will be left unknown. Issue set_character_set.
+
+[heading:custom (Experimental) Adding support for a character set]
+
+If you need to use character set tracking and your character set isn't implemented in the library,
+you can add support for it by creating a [reflink character_set] object.
+
+* [refmem character_set name] must match the name you would use in `SET NAMES`.
+* [refmem character_set next_char] is used to iterate the string. It must return
+  the length in bytes of the first code point in the string, or 0 if the code point is invalid.
+
+TODO: example
+
 [endsect]
