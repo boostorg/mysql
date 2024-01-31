@@ -137,6 +137,12 @@ add_example(
 add_example_target(boost_mysql_example_patch_updates patch_updates.cpp)
 run_python_example(boost_mysql_example_patch_updates run_patch_updates.py)
 
+# Dynamic filters
+add_example_target(boost_mysql_example_dynamic_filters dynamic_filters.cpp)
+target_link_libraries(boost_mysql_example_dynamic_filters PRIVATE Boost::context)
+run_python_example(boost_mysql_example_dynamic_filters run_dynamic_filters.py)
+
+
 # HTTP server
 add_executable(
     boost_mysql_example_connection_pool
@@ -156,10 +162,6 @@ target_link_libraries(
 boost_mysql_common_target_settings(boost_mysql_example_connection_pool)
 run_python_example(boost_mysql_example_connection_pool run_connection_pool.py)
 
-# # Dynamic filters
-add_example_target(boost_mysql_example_dynamic_filters dynamic_filters.cpp)
-target_link_libraries(boost_mysql_example_dynamic_filters PRIVATE Boost::context)
-# TODO: run this
 
 
 
