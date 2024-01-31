@@ -105,6 +105,11 @@ std::string query = boost::mysql::format_sql(
 See [link mysql.sql_formatting.reference this table] for a reference of types
 that have built-in support for SQL formatting.
 
+[note
+  Like with `std::format`, the string passed to `format_sql` must be known at
+  compile-time. You can skip this check using the [reflink runtime] function.
+]
+
 [heading Formatting identifiers]
 
 By default, strings are formatted as values. If you need to generate a dynamic
@@ -182,9 +187,15 @@ std::string query = compose_update_query(conn.format_opts().value(), 42, "John",
 // UPDATE employee SET first_name = 'John' WHERE id = 42
 ```
 
+[note
+    Strings passed to [refmem format_context append_raw] must be known at compile-time.
+    You can bypass this check using the [reflink runtime] function.
+]
+
 [warning
-    [*SQL injection warning]: be sure to trust the strings you pass to `append_raw`.
-    Otherwise, you will suffer from vulnerabilities.
+    [*SQL injection warning]: misusing `format_context` may lead to vulnerabilities.
+    If you are composing complex queries, be sure to [link mysql.sql_formatting.unit_test unit test]
+    your code thoroughly.
 ]
 
 [heading Extending format_sql and format_context]
@@ -231,6 +242,35 @@ std::string query = boost::mysql::format_sql(
 
 // You can also use format_context::append_value passing an employee
 ```
+
+[heading:unit_test Unit testing]
+
+If you are composing very complex queries, it's very advisable to unit test them.
+For instance, to test the `compose_update_query` above:
+
+```
+// For reference, the function under test
+std::string compose_update_query(
+    format_options opts,
+    std::int64_t employee_id,
+    std::optional<std::string> new_first_name,
+    std::optional<std::string> new_last_name
+);
+
+// Your test body.
+
+// You can safely use these format_options for testing,
+// since they are the most common ones.
+format_options opts { utf8mb4_charset, true };
+
+// Test for the different cases
+ASSERT_EQ(compose_update_query(opts, 42, "Bob", {}) == "UPDATE employee SET first_name = 'Bob' WHERE id = 42");
+ASSERT_EQ(compose_update_query(opts, 42, {}, "Alice") == "UPDATE employee SET last_name = 'Alice' WHERE id = 42");
+ASSERT_EQ(compose_update_query(opts, 0, "Bob", "Alice") == "UPDATE employee SET first_name = 'Bob', last_name = 'Alice' WHERE id = 42");
+```
+
+In tests, it's safe to manually create a [reflink format_options] value like the one above.
+But don't do it in production code!
 
 [heading:unknown_character_set Solving the `unknown_character_set` error]
 
@@ -297,11 +337,9 @@ so it may yield
 * 
 
                 comparison with prepared statements <= when does using queries vs statements help performance-wise?
-                unit testing suggestion
                 reference table
                 custom strings with basic_format_context
                 string escaping
-                compile-time strings
 
 
 
