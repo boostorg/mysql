@@ -73,7 +73,7 @@ static std::string compose_batch_insert(
     bool is_first = true;
     for (const auto& emp : employees)
     {
-        if (is_first)
+        if (!is_first)
             ctx.append_raw(", ");
         ctx.append_raw("(")
             .append_value(emp.first_name)
