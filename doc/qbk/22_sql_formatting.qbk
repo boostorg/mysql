@@ -322,34 +322,46 @@ format_sql("SELECT {}", conn.format_opts().value(), "bad\xff UTF8");
 You can validate your strings beforehand or handle the error once
 it happened and reject the input.
 
-
-
-
-
-
-
-
-
-
 [heading:efficiency Efficiency considerations]
 
-* Client-composed SQL is more flexible. Some use cases can only be achieved using client-side composed queries.
-* Client-composed SQL entails less round-trips to the server than prepared statements,
+Both client-side SQL formatting and prepared statements have pros and cons efficiency-wise:
 
-so it may yield
-  better efficiency in some cases. On the other hand, prepared statements use a more compact binary
-  protocol, which can be faster when transferring a lot of data.
-* 
+* Client-formatted SQL entails less round-trips to the server. For prepared statements, you usually need
+  a call to prepare the statement, another one to execute it, and possibly a final one to close it.
+  Client-formatted SQL only requires the execution round-trip. This performance gain increases with network
+  latency and if you are using TLS.
+* Prepared statements always entail a mutation of session state, while client-formatted SQL may not.
+  If you're using a [reflink connection_pool] with prepared statements, you can't use
+  [reflink pooled_connection return_without_reset], as this will leak the statement.
+  You may be able to do it with client-formatted queries, if your SQL doesn't mutate session state.
+* Client-formatted SQL queries use a usually less efficient text-based protocol, while prepared statements
+  use a more compact binary protocol. This is relevant if you're retrieving lots of data that is
+  slow to convert to and from text (like doubles).
+* Prepared statements can be re-used. If you need to execute a query several times,
+  prepared statements will only be parsed once.
+* Client-formatted SQL allows patterns that may be more efficient than prepared statements,
+  like batch inserts.
+* You can use client-formatted SQL to generate several semicolon-separated queries
+  to be run in batch.
 
-                comparison with prepared statements <= when does using queries vs statements help performance-wise?
-                custom strings with basic_format_context
+[heading Other string types with basic_format_context]
 
+You can use any string-like type when using stream-like formatting,
+by using [reflink basic_format_context]:
 
+```
+basic_format_context<std::pmr::string> ctx (conn.format_opts().value());
+// Compose your query as usual
+std::pmr::string query = ctx.get().value();
+```
 
+You can also provide a string value, to re-use memory:
 
-
-
-
+```
+std::string storage; // we want to re-use memory held by storage
+format_context ctx (conn.format_opts().value(), std::move(storage));
+// Use ctx as you normally would
+```
 
 [heading Raw string escaping]
 
