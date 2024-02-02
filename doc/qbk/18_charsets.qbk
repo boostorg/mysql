@@ -39,7 +39,7 @@ character set and collation. You can specify this in two ways:
 
   The problem with this approach is that if you specify a collation ID that is unknown to the server
   (e.g. `utf8mb4_0900_ai_ci` for an old MySQL 5.7 server), the handshake operation
-  will succeed but the connection [*will sillently fall back to the server's default character set],
+  will succeed but the connection [*will silently fall back to the server's default character set],
   (usually `latin1`, which is not Unicode).
 * At any time, issuing a __SET_NAMES__ SQL statement. For example, `"SET NAMES utf8mb4"` will set the current
   connection's character set to `utf8mb4` and the connection's collation to utf8mb4's default collation.
@@ -127,25 +127,55 @@ The table below summarizes the encoding used by each piece of functionality in t
 
 [heading:tracking (Experimental) Character set tracking]
 
-* any_connection has support for tracking the connection's current character set.
-* This is relevant when using formatting and escaping functions, like [reflink format_sql] and [reflink format_context].
-* Protocol has limited support, so it requires some aid from the user.
-* Current charset given by [refmem any_connection current_character_set]. It may be unknown, nullptr is returned.
-* When calling [refmem any_connection format_opts], this is accessed. If nullptr, an error is generated.
-* Charsets are represented using [reflink character_set]. This library supports [reflink utf8mb4_charset]
-  (use this unless really required) and [reflink latin1].
-* Before connection, charset is always unknown.
-* After successful connection (connect or async_connect), charset may or may not be known.
-  Since server doesn't report whether it liked [refmem connect_params connection_collation],
-  heuristics are used. When using the default, [reflink utf8mb4_charset] is always selected.
-* At any point, call set_character_set to set this to a known value. This issues a SET NAMES
-  and updates what is stored in the client.
-* Do not run any SQL statement that modifies the character set using execute, this will cause
-  incorrect values to be returned.
-* Note that reset_connection resets the character set to the server's default, which may be anything
-  (and sometimes not utf8). Charset will be left unknown. Issue set_character_set.
+[reflink any_connection] attempts to track the connection's current character set,
+as given by `character_set_client`. You can access this information using
+[refmem any_connection current_character_set] and [refmem any_connection format_opts].
+
+[note
+    This functionality is only relevant when using SQL formatting and escaping functions,
+    like [reflink format_sql], [reflink format_context] or [reflink escape_string].
+]
+
+The MySQL protocol has limited support for character set tracking, so this task
+requires some help from the user. Some situations can make the current character set
+to be unknown. If this happens, [refmem any_connection current_character_set] returns `nullptr`
+and [refmem any_connection format_opts] fails.
+
+This is how tracking works:
+
+* Before connection establishment, the current character set is always unknown.
+* After [refmem any_connection connect] or [refmemunq any_connection async_connect] succeed,
+  heuristics are used to determine the current character set. This is required because the
+  server may reject the collation requested by [refmem connect_params connection_collation]
+  and silently fall back to an unknown character set. If Boost.MySQL is not sure that
+  the collation will be accepted, the current character set will be left unknown.
+  Note that leaving [refmem connect_params connection_collation] to its default value
+  always sets the current character set to [reflink utf8mb4_charset].
+* After connection, you can call [refmem any_connection set_character_set] or
+  [refmemunq any_connection async_set_character_set] to set the current character set to a known value.
+  This will issue a `SET NAMES` statement and also update the value stored in the client.
+* Calling [refmem any_connection reset_connection] or [refmemunq any_connection async_reset_connection]
+  resets the character set to the server's default, which is unknown (usually `latin1`). The current
+  character set will be unknown until you call [refmemunq any_connection set_character_set] or 
+  [refmemunq any_connection async_set_character_set].
+
+[warning
+    [*Do not execute `SET NAMES`], `SET CHARACTER SET` or any other SQL statement
+    that modifies `character_set_client` using `execute`. This will make character set
+    information stored in the client invalid.
+]
+
+
+
+
+
+
+
 
 [heading:custom (Experimental) Adding support for a character set]
+
+Charsets are represented using [reflink character_set]. This library supports [reflink utf8mb4_charset]
+(use this unless really required) and [reflink latin1].
 
 If you need to use character set tracking and your character set isn't implemented in the library,
 you can add support for it by creating a [reflink character_set] object.
