@@ -162,7 +162,7 @@ void main_impl(int argc, char** argv)
     // use set_character_set if this happens.
     std::string query = compose_batch_insert(conn.format_opts().value(), values);
 
-    // Execute the query as normal. Note that, unlike with prepared statements,
+    // Execute the query as usual. Note that, unlike with prepared statements,
     // formatting happened in the client, and not in the server.
     boost::mysql::results result;
     conn.execute(query, result);
