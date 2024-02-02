@@ -209,6 +209,8 @@ int main(int argc, char** argv)
 
 #else
 
+#include <iostream>
+
 int main()
 {
     std::cout << "Sorry, your compiler doesn't have the required capabilities to run this example"
