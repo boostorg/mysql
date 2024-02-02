@@ -5,6 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/describe/class.hpp>
+
+#ifdef BOOST_DESCRIBE_CXX14
+
 //[example_batch_inserts
 
 // Uses client-side SQL formatting to implement a dynamic filter.
@@ -158,3 +162,13 @@ int main(int argc, char** argv)
 }
 
 //]
+
+#else
+
+int main()
+{
+    std::cout << "Sorry, your compiler doesn't have the required capabilities to run this example"
+              << std::endl;
+}
+
+#endif
