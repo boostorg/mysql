@@ -166,19 +166,16 @@ This is how tracking works:
 ]
 
 
-
-
-
-
-
-
 [heading:custom (Experimental) Adding support for a character set]
 
-Charsets are represented using [reflink character_set]. This library supports [reflink utf8mb4_charset]
-(use this unless really required) and [reflink latin1].
+Built-in support is provided for `utf8mb4` ([reflink utf8mb4_charset])
+and `latin1` ([reflink latin1]). We strongly encourage you to always use `utf8mb4`.
 
-If you need to use character set tracking and your character set isn't implemented in the library,
-you can add support for it by creating a [reflink character_set] object.
+If you really need to use a different character set, you can implement them by
+creating [reflink character_set] objects. You can then pass them to functions
+like [refmemunq any_connection set_character_set] like the built-in ones.
+
+The structure has the following members:
 
 * [refmem character_set name] must match the name you would use in `SET NAMES`.
 * [refmem character_set next_char] is used to iterate the string. It must return
@@ -186,7 +183,7 @@ you can add support for it by creating a [reflink character_set] object.
 
 For example, this is how you could implement the `utf8mb4` character set. For brevity, only
 a small part of the implementation is shown - have a look at the definition of [reflink utf8mb4_charset]
-for a full reference implementation.
+for a full implementation.
 
 ```
 // next_char must return the length of input's first character,
@@ -225,7 +222,7 @@ std::size_t utf8mb4_next_char(string_view input) noexcept
         // Valid, 2 byte character
         return 2;
     }
-    // Omitted 3 and 4 byte long characters
+    // Omitted: 3 and 4 byte long characters
     else
     {
         return 0;
