@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE(individual_std_optional)
 
 BOOST_AUTO_TEST_CASE(individual_identifier)
 {
-    BOOST_CXX14_CONSTEXPR string_view fmt = "SELECT {} FROM myt";
+    constexpr const char* fmt = "SELECT {} FROM myt";
     BOOST_TEST(format_sql(fmt, opts, identifier("myfield")) == "SELECT `myfield` FROM myt");
     BOOST_TEST(format_sql(fmt, opts, identifier("myt", "myf")) == "SELECT `myt`.`myf` FROM myt");
     BOOST_TEST(
