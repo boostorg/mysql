@@ -154,6 +154,54 @@ you can add support for it by creating a [reflink character_set] object.
 * [refmem character_set next_char] is used to iterate the string. It must return
   the length in bytes of the first code point in the string, or 0 if the code point is invalid.
 
-TODO: example
+For example, this is how you could implement the `utf8mb4` character set. For brevity, only
+a small part of the implementation is shown - have a look at the definition of [reflink utf8mb4_charset]
+for a full reference implementation.
+
+```
+// next_char must return the length of input's first character,
+// or 0 if the character is invalid. It must not throw exceptions.
+std::size_t utf8mb4_next_char(string_view input) noexcept
+{
+    // Input strings are never empty - they always have 1 byte, at least.
+    assert(!input.empty());
+
+    // In UTF8, we need to look at the first byte to know the character's length
+    auto first_char = static_cast<unsigned char>(input.front());
+
+    if (first_char < 0x80)
+    {
+        // 0x00 to 0x7F: ASCII range. The character is 1 byte long
+        return 1;
+    }
+    else if (first_char <= 0xc1)
+    {
+        // 0x80 to 0xc1: invalid. No UTF8 character starts with such a byte
+        return 0;
+    }
+    else if (first_char <= 0xdf)
+    {
+        // 0xc2 to 0xdf: two byte characters.
+        // It's vital that we check that the characters are valid. Otherwise, vulnerabilities can arise.
+        
+        // Check that the string has enough bytes
+        if (input.size() < 2u) return 0;
+
+        // The second byte must be between 0x80 and 0xbf. Otherwise, the character is invalid
+        // Do not skip this check - otherwise escaping will yield invalid results
+        auto second_byte = static_cast<unsigned char>(input[1]);
+        if (second_byte < 0x80 || second_byte > 0xbf) return 0;
+
+        // Valid, 2 byte character
+        return 2;
+    }
+    // Omitted 3 and 4 byte long characters
+    else
+    {
+        return 0;
+    }
+}
+```
+
 
 [endsect]
