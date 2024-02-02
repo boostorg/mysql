@@ -33,34 +33,23 @@ using boost::mysql::error_code;
 using boost::mysql::field_view;
 using boost::mysql::string_view;
 
-[[noreturn]] static void usage(const char* prog_name)
-{
-    std::cerr << "Usage: " << prog_name << " <username> <password> <server-hostname> employee_id [updates]\n";
-    exit(1);
-}
-
 struct update_field
 {
     string_view field_name;
     boost::mysql::field_view field_value;
 };
 
-struct update_field_list
-{
-    std::vector<update_field> updates;
-};
-
 namespace boost {
 namespace mysql {
 
 template <>
-struct formatter<update_field_list>
+struct formatter<std::vector<update_field>>
 {
-    static void format(const update_field_list& value, format_context_base& ctx)
+    static void format(const std::vector<update_field>& value, format_context_base& ctx)
     {
-        assert(!value.updates.empty());
+        assert(!value.empty());
         bool is_first = true;
-        for (const auto& update : value.updates)
+        for (const auto& update : value)
         {
             if (!is_first)
             {
@@ -77,7 +66,16 @@ struct formatter<update_field_list>
 }  // namespace mysql
 }  // namespace boost
 
-static update_field_list parse_update_fields(const char* prog_name, boost::span<char* const> argv)
+struct cmdline_args
+{
+    string_view username;
+    string_view password;
+    string_view server_hostname;
+    std::int64_t employee_id{};
+    std::vector<update_field> updates;
+};
+
+static cmdline_args parse_cmdline_args(int argc, char** argv)
 {
     // Available options
     const string_view company_id_prefix = "--company-id=";
@@ -85,10 +83,31 @@ static update_field_list parse_update_fields(const char* prog_name, boost::span<
     const string_view last_name_prefix = "--last-name=";
     const string_view salary_prefix = "--salary=";
 
-    // Parse the command line
-    update_field_list res;
-    for (string_view arg : argv)
+    // Helper function to print the usage message and exit
+    auto print_usage_and_exit = [argv]() {
+        std::cerr << "Usage: " << argv[0]
+                  << " <username> <password> <server-hostname> employee_id [updates]\n";
+        exit(1);
+    };
+
+    // Check number of arguments
+    if (argc <= 5)
+        print_usage_and_exit();
+
+    // Parse the required arguments
+    cmdline_args res;
+    res.username = argv[1];
+    res.password = argv[2];
+    res.server_hostname = argv[3];
+    res.employee_id = std::stoll(argv[4]);
+
+    // Parse the requested updates
+    for (int i = 5; i < argc; ++i)
     {
+        // Get the argument
+        string_view arg = argv[i];
+
+        // Attempt to match it with the options we have
         if (arg.starts_with(company_id_prefix))
         {
             string_view new_value = arg.substr(company_id_prefix.size());
@@ -112,15 +131,8 @@ static update_field_list parse_update_fields(const char* prog_name, boost::span<
         else
         {
             std::cerr << "Unrecognized option: " << arg << std::endl;
-            usage(prog_name);
+            print_usage_and_exit();
         }
-    }
-
-    // We should have at least one update
-    if (res.updates.empty())
-    {
-        std::cerr << "At least one update field should be specified" << std::endl;
-        usage(prog_name);
     }
 
     return res;
@@ -128,18 +140,8 @@ static update_field_list parse_update_fields(const char* prog_name, boost::span<
 
 void main_impl(int argc, char** argv)
 {
-    if (argc <= 5)
-    {
-        std::cerr << "Usage: " << argv[0]
-                  << " <username> <password> <server-hostname> <employee_id> [filters]\n";
-        exit(1);
-    }
-
-    // Parse the employee ID to be updated
-    std::int64_t employee_id = std::stoll(argv[4]);
-
-    // Parse fields to be updated
-    auto updates = parse_update_fields(argv[0], {argv + 5, argv + argc});
+    // Parse the command line
+    cmdline_args args = parse_cmdline_args(argc, argv);
 
     // I/O context
     boost::asio::io_context ctx;
@@ -149,11 +151,10 @@ void main_impl(int argc, char** argv)
 
     // Connection configuration
     boost::mysql::connect_params params;
-    params.server_address.emplace_host_and_port(argv[3]);
-    params.username = argv[1];
-    params.password = argv[2];
+    params.server_address.emplace_host_and_port(args.server_hostname);
+    params.username = args.username;
+    params.password = args.password;
     params.database = "boost_mysql_examples";
-    params.ssl = boost::mysql::ssl_mode::disable;
 
     // Connect to the server. This will take care of resolving the provided
     // hostname to an IP address, connect to that address, and establish
@@ -164,8 +165,8 @@ void main_impl(int argc, char** argv)
     std::string query = boost::mysql::format_sql(
         "UPDATE employee SET {} WHERE id = {}",
         conn.format_opts().value(),
-        updates,
-        employee_id
+        args.updates,
+        args.employee_id
     );
 
     // Execute
@@ -176,19 +177,19 @@ void main_impl(int argc, char** argv)
     query = boost::mysql::format_sql(
         "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {}",
         conn.format_opts().value(),
-        employee_id
+        args.employee_id
     );
     conn.execute(query, result);
 
     if (result.rows().empty())
     {
-        std::cerr << "employee_id=" << employee_id << " not found" << std::endl;
+        std::cerr << "employee_id=" << args.employee_id << " not found" << std::endl;
         exit(1);
     }
 
     // Print it
     const auto employee = result.rows().at(0);
-    std::cout << "Updated employee with id=" << employee_id << ":\n"
+    std::cout << "Updated employee with id=" << args.employee_id << ":\n"
               << "  first_name: " << employee.at(0) << "\n  last_name: " << employee.at(1)
               << "\n  salary: " << employee.at(2) << "\n  company_id: " << employee.at(3) << std::endl;
 
