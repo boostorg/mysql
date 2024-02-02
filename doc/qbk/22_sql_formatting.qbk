@@ -126,12 +126,13 @@ std::string query = boost::mysql::format_sql(
 
 ```
 std::string query = boost::mysql::format_sql(
-  R"%SQL(
+  R"SQL(
     SELECT salary, tax_id FROM employee
     INNER JOIN company ON employee.company_id = company.id
     ORDER BY {} DESC
   )SQL",
-  conn.format_opts().value(), identifier("company", "id));
+  conn.format_opts().value(), identifier("company", "id)
+);
 // SELECT ... ORDER BY `company`.`id` DESC
 ```
 
@@ -311,7 +312,7 @@ For a reference on how character set tracking works, please read [link mysql.cha
 
 SQL formatting can fail if you provide values that can't be securely formatted.
 The most common cause is passing string values that are not valid according to the
-passed character set. This triggers a [reflink client_errc invalid_encoding] error:
+passed character set. This triggers a [refmem client_errc invalid_encoding] error:
 
 ```
 // If the connection is using UTF8 (the default), this will throw an error,
@@ -332,7 +333,7 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
   latency and if you are using TLS.
 * Prepared statements always entail a mutation of session state, while client-formatted SQL may not.
   If you're using a [reflink connection_pool] with prepared statements, you can't use
-  [reflink pooled_connection return_without_reset], as this will leak the statement.
+  [refmem pooled_connection return_without_reset], as this will leak the statement.
   You may be able to do it with client-formatted queries, if your SQL doesn't mutate session state.
 * Client-formatted SQL queries use a usually less efficient text-based protocol, while prepared statements
   use a more compact binary protocol. This is relevant if you're retrieving lots of data that is
