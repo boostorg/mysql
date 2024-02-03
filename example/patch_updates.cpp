@@ -14,7 +14,8 @@
 // fields unmodified.
 //
 // This example specializes formatter to make custom types
-// compatible with format_sql.
+// compatible with format_sql. It also uses multi-queries
+// to execute several queries at once.
 //
 // Note: client-side SQL formatting is an experimental feature.
 
@@ -199,22 +200,30 @@ void main_impl(int argc, char** argv)
 
     // Connection configuration. By default, connections use the utf8mb4 character set
     // (MySQL's name for regular UTF-8).
+    // We will use multi-queries to make transaction handling simpler and more efficient.
     boost::mysql::connect_params params;
     params.server_address.emplace_host_and_port(args.server_hostname);
     params.username = args.username;
     params.password = args.password;
     params.database = "boost_mysql_examples";
+    params.multi_queries = true;  // TODO
 
     // Connect to the server
     conn.connect(params);
 
     // Compose the query. We've managed to make all out types formattable,
     // so we can use format_sql.
-    // Recall that format_opts() returns a system::result<format_options>,
-    // which can contain an error if the connection doesn't know which character set is using.
-    // Use set_character_set if this happens.
+    // We want to update the employee and then retrieve it. MySQL doesn't support
+    // the UPDATE ... RETURNING statement to update and retrieve data atomically,
+    // so we will use a transaction to guarantee consistency.
+    // Instead of running every statement separately, we activated params.multi_queries,
+    // which allows semicolon-separated statements.
+    // As in std::format, we can use explicit indices like {0} and {1} to reference arguments.
     std::string query = boost::mysql::format_sql(
-        "UPDATE employee SET {} WHERE id = {}",
+        "START TRANSACTION; "
+        "UPDATE employee SET {0} WHERE id = {1}; "
+        "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
+        "COMMIT",
         conn.format_opts().value(),
         args.updates,
         args.employee_id
@@ -224,22 +233,19 @@ void main_impl(int argc, char** argv)
     boost::mysql::results result;
     conn.execute(query, result);
 
-    // Get the updated employee
-    query = boost::mysql::format_sql(
-        "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {}",
-        conn.format_opts().value(),
-        args.employee_id
-    );
-    conn.execute(query, result);
+    // We ran 4 queries, so the results object will hold 4 resultsets.
+    // Get the rows retrieved by the SELECT (the 3rd one).
+    auto rws = result.at(2).rows();
 
-    if (result.rows().empty())
+    // If there are no rows, the given employee does not exist.
+    if (rws.empty())
     {
         std::cerr << "employee_id=" << args.employee_id << " not found" << std::endl;
         exit(1);
     }
 
-    // Print it
-    const auto employee = result.rows().at(0);
+    // Print the updated employee.
+    const auto employee = rws.at(0);
     std::cout << "Updated employee with id=" << args.employee_id << ":\n"
               << "  first_name: " << employee.at(0) << "\n  last_name: " << employee.at(1)
               << "\n  salary: " << employee.at(2) << "\n  company_id: " << employee.at(3) << std::endl;
