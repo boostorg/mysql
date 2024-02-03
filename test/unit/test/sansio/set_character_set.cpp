@@ -30,10 +30,9 @@ BOOST_AUTO_TEST_SUITE(test_set_character_set)
 
 struct fixture : algo_fixture_base
 {
-    detail::set_character_set_algo algo{
-        st,
-        {&diag, utf8mb4_charset}
-    };
+    detail::set_character_set_algo algo;
+
+    fixture(const character_set& charset = utf8mb4_charset) : algo(st, {&diag, charset}) {}
 };
 
 // GCC raises a spurious warning here
@@ -106,6 +105,31 @@ BOOST_AUTO_TEST_CASE(error_response)
                          .message("Unknown charset")
                          .build_frame())
         .check(fix, common_server_errc::er_unknown_character_set, create_server_diag("Unknown charset"));
+
+    // The current character set was not updated
+    BOOST_TEST(fix.st.charset_ptr() == nullptr);
+}
+
+// Ensure we don't create vulnerabilities when composing SET NAMES
+BOOST_AUTO_TEST_CASE(charset_name_needs_escaping)
+{
+    // Setup
+    fixture fix({"lat'in\\", detail::next_char_latin1});
+
+    // Run the algo
+    algo_test()
+        .expect_write(create_frame(0, create_query_body("SET NAMES 'lat\\'in\\\\'")))
+        .expect_read(create_ok_frame(1, ok_builder().build()))
+        .check(fix);
+}
+
+BOOST_AUTO_TEST_CASE(error_nonascii_charset_name)
+{
+    // Setup
+    fixture fix({"lat\xc3\xadn", detail::next_char_latin1});
+
+    // Run the algo
+    algo_test().check(fix, client_errc::invalid_encoding);
 
     // The current character set was not updated
     BOOST_TEST(fix.st.charset_ptr() == nullptr);

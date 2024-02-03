@@ -40,7 +40,7 @@ class set_character_set_algo : public sansio_algorithm, asio::coroutine
         BOOST_ASSERT(charset.name != nullptr);
 
         // For security, if the character set has non-ascii characters in it name, reject it.
-        format_context ctx(format_options{latin1_charset, true});
+        format_context ctx(format_options{ascii_charset, true});
         ctx.append_raw("SET NAMES ").append_value(charset.name);
         return ctx.get();
     }
