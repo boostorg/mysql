@@ -461,4 +461,29 @@ BOOST_AUTO_TEST_CASE(latin1)
     }
 }
 
+BOOST_AUTO_TEST_CASE(ascii)
+{
+    // valid
+    for (std::size_t i = 0; i <= 0x7f; ++i)
+    {
+        BOOST_TEST_CONTEXT(i)
+        {
+            char str[2]{static_cast<char>(i), '\0'};
+            auto size = ascii_charset.next_char(string_view(str, 2));
+            BOOST_TEST(size == 1u);
+        }
+    }
+
+    // invalid
+    for (std::size_t i = 0x80; i <= 0xff; ++i)
+    {
+        BOOST_TEST_CONTEXT(i)
+        {
+            char str[2]{static_cast<char>(i), '\0'};
+            auto size = ascii_charset.next_char(string_view(str, 2));
+            BOOST_TEST(size == 0u);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
