@@ -10,6 +10,7 @@
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
@@ -19,6 +20,7 @@
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <boost/asio/coroutine.hpp>
+#include <boost/system/result.hpp>
 
 #include <string>
 
@@ -32,20 +34,15 @@ class set_character_set_algo : public sansio_algorithm, asio::coroutine
     character_set charset_;
     std::uint8_t seqnum_{0};
 
-    static std::string compose_query(const character_set& charset)
+    static system::result<std::string> compose_query(const character_set& charset)
     {
+        // The character set should have a name
         BOOST_ASSERT(charset.name != nullptr);
 
-        // Charset names must not have special characters.
-        // TODO: this can be improved to use query formatting when we implement it.
-        // See https://github.com/boostorg/mysql/issues/69
-        string_view charset_name = charset.name;
-        BOOST_ASSERT(charset_name.find('\'') == string_view::npos);
-
-        std::string res("SET NAMES '");
-        res.append(charset_name.data(), charset_name.size());
-        res.push_back('\'');
-        return res;
+        // For security, if the character set has non-ascii characters in it name, reject it.
+        format_context ctx(format_options{latin1_charset, true});
+        ctx.append_raw("SET NAMES ").append_value(charset.name);
+        return ctx.get();
     }
 
 public:
@@ -59,15 +56,20 @@ public:
         if (ec)
             return ec;
 
+        system::result<std::string> query;
+
         // SET NAMES never returns rows. Using execute requires us to allocate
         // a results object, which we can avoid by simply sending the query and reading the OK response.
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Setup
             diag_->clear();
+            query = compose_query(charset_);
+            if (query.has_error())
+                return query.error();
 
             // Send the execution request
-            BOOST_ASIO_CORO_YIELD return write(query_command{compose_query(charset_)}, seqnum_);
+            BOOST_ASIO_CORO_YIELD return write(query_command{*query}, seqnum_);
 
             // Read the response
             BOOST_ASIO_CORO_YIELD return read(seqnum_);
