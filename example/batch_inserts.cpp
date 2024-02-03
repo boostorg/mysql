@@ -11,7 +11,7 @@
 
 //[example_batch_inserts
 
-// Uses client-side SQL formatting to implement a batch inserts
+// Uses client-side SQL formatting to implement batch inserts
 // for a specific type. It makes use of format_context.
 // The program reads a JSON file containing a list of employees
 // and inserts it into the employee table.

@@ -11,7 +11,7 @@
 
 //[example_batch_inserts_generic
 
-// Uses client-side SQL formatting to implement a batch inserts
+// Uses client-side SQL formatting to implement batch inserts
 // for any type T with Boost.Describe metadata. It shows how to
 // extend format_sql by specializing formatter.
 //
@@ -239,7 +239,7 @@ void main_impl(int argc, char** argv)
         insert_list<employee>{values}
     );
 
-    // Execute the query as usual
+    // Execute the query as usual.
     boost::mysql::results result;
     conn.execute(query, result);
     std::cout << "Done\n";
