@@ -9,6 +9,7 @@
 // They're here so they are built and run, to ensure correctness
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
@@ -20,6 +21,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
@@ -70,6 +72,9 @@
 #endif
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 #include <boost/asio/experimental/awaitable_operators.hpp>
+#endif
+#ifdef __cpp_lib_polymorphic_allocator
+#include <memory_resource>
 #endif
 
 using boost::mysql::date;
@@ -1528,6 +1533,455 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         auto conn1 = spool.get_connection();
         ASSERT(conn1.valid());
     }
+}
+
+static std::string get_name() { return "John"; }
+
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+//[sql_formatting_format_context_fn
+// Compose an update query that sets first_name, last_name, or both
+std::string compose_update_query(
+    boost::mysql::format_options opts,
+    std::int64_t employee_id,
+    std::optional<std::string> new_first_name,
+    std::optional<std::string> new_last_name
+)
+{
+    // There should be at least one update
+    assert(new_first_name || new_last_name);
+
+    // format_context will accumulate the query as we compose it
+    boost::mysql::format_context ctx(opts);
+
+    // append_raw adds raw SQL, without quoting or escaping.
+    // You can only pass strings known at compile-time to append_raw,
+    // unless you use the runtime function.
+    ctx.append_raw("UPDATE employee SET ");
+
+    if (new_first_name)
+    {
+        // append_value behaves like a {} expansion field.
+        // It will add the given string as a literal value, performing quoting and escaping
+        ctx.append_raw("first_name = ");
+        ctx.append_value(*new_first_name);
+    }
+    if (new_last_name)
+    {
+        if (new_first_name)
+            ctx.append_raw(", ");
+        ctx.append_raw("last_name = ");
+        ctx.append_value(*new_last_name);
+    }
+
+    ctx.append_raw(") WHERE ID = ");
+
+    // append_value can be passed any type that can be used with format_sql
+    ctx.append_value(employee_id);
+
+    // Retrieve the generated query string
+    return ctx.get().value();
+}
+//]
+#endif
+
+//[sql_formatting_formatter_specialization
+// We want to add formatting support for employee_t
+struct employee_t
+{
+    std::string first_name;
+    std::string last_name;
+    double salary;
+};
+
+namespace boost {
+namespace mysql {
+
+template <>
+struct formatter<employee_t>
+{
+    // formatter should define this function, at least. format must use
+    // append_raw and append_value on the context to format the passed value.
+    // We will make this suitable for INSERT statements
+    static void format(const employee_t& emp, format_context_base& ctx)
+    {
+        ctx.append_value(emp.first_name)
+            .append_raw(", ")
+            .append_value(emp.last_name)
+            .append_raw(", ")
+            .append_value(emp.salary);
+    }
+};
+
+}  // namespace mysql
+}  // namespace boost
+//]
+
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+//[sql_formatting_unit_test
+// For reference, the function under test
+std::string compose_update_query(
+    boost::mysql::format_options opts,
+    std::int64_t employee_id,
+    std::optional<std::string> new_first_name,
+    std::optional<std::string> new_last_name
+);
+
+// Your test body
+void test_compose_update_query()
+{
+    // You can safely use these format_options for testing,
+    // since they are the most common ones.
+    boost::mysql::format_options opts{boost::mysql::utf8mb4_charset, true};
+
+    // Test for the different cases
+    ASSERT(
+        compose_update_query(opts, 42, "Bob", {}) == "UPDATE employee SET first_name = 'Bob' WHERE id = 42"
+    );
+    ASSERT(
+        compose_update_query(opts, 42, {}, "Alice") == "UPDATE employee SET last_name = 'Alice' WHERE id = 42"
+    );
+    ASSERT(
+        compose_update_query(opts, 0, "Bob", "Alice") ==
+        "UPDATE employee SET first_name = 'Bob', last_name = 'Alice' WHERE id = 42"
+    );
+}
+//]
+#endif
+
+void section_sql_formatting(string_view server_hostname, string_view username, string_view password)
+{
+    boost::mysql::connect_params params;
+    params.server_address.emplace_host_and_port(server_hostname);
+    params.username = username;
+    params.password = password;
+    params.ssl = boost::mysql::ssl_mode::disable;
+
+    boost::asio::io_context ctx;
+    boost::mysql::any_connection conn(ctx);
+    boost::mysql::results r;
+
+    {
+        //[sql_formatting_simple
+        std::string employee_name = get_name();  // employee_name is an untrusted string
+
+        // Compose the SQL query in the client
+        std::string query = boost::mysql::format_sql(
+            "SELECT id, salary FROM employee WHERE last_name = {}",
+            conn.format_opts().value(),
+            employee_name
+        );
+
+        // If employee_name is "John", query now contains:
+        // "SELECT id, salary FROM employee WHERE last_name = 'John'"
+        // If employee_name contains quotes, they will be escaped as required
+
+        // Execute the generated query as usual
+        results result;
+        conn.execute(query, result);
+        //]
+
+        ASSERT(query == "SELECT id, salary FROM employee WHERE last_name = 'John'");
+    }
+    {
+        //[sql_formatting_other_scalars
+        std::string query = boost::mysql::format_sql(
+            "SELECT id FROM employee WHERE salary > {}",
+            conn.format_opts().value(),
+            42000
+        );
+
+        ASSERT(query == "SELECT id FROM employee WHERE salary > 42000");
+        //]
+
+        conn.execute(query, r);
+    }
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+    {
+        //[sql_formatting_optionals
+        std::optional<std::string> last_name;  // get last_name from the user
+
+        std::string query = boost::mysql::format_sql(
+            "INSERT INTO employee (salary, last_name) VALUES ({}, {})",
+            conn.format_opts().value(),
+            42000,
+            last_name
+        );
+
+        // Depending on whether last_name has a value or not, generates:
+        // INSERT INTO employee (salary, last_name) VALUES (42000, 'John')
+        // INSERT INTO employee (salary, last_name) VALUES (42000, NULL)
+        //]
+
+        ASSERT(query == "INSERT INTO employee (salary, last_name) VALUES (42000, NULL)");
+        conn.execute(query, r);
+    }
+#endif
+    {
+        //[sql_formatting_manual_indices
+        std::string query = boost::mysql::format_sql(
+            "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
+            conn.format_opts().value(),
+            42,
+            "John"
+        );
+
+        ASSERT(
+            query ==
+            "UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42"
+        );
+        //]
+
+        conn.execute(query, r);
+    }
+    {
+        //[sql_formatting_named_args
+        std::string query = boost::mysql::format_sql(
+            "UPDATE employee SET first_name = {name} WHERE id = {id}; SELECT * FROM employee WHERE id = {id}",
+            conn.format_opts().value(),
+            boost::mysql::arg("id", 42),
+            boost::mysql::arg("name", "John")
+        );
+
+        ASSERT(
+            query ==
+            "UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42"
+        );
+        //]
+
+        conn.execute(query, r);
+    }
+    {
+        //[sql_formatting_identifiers
+        std::string query = boost::mysql::format_sql(
+            "SELECT id, last_name FROM employee ORDER BY {} DESC",
+            conn.format_opts().value(),
+            boost::mysql::identifier("company_id")
+        );
+
+        ASSERT(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
+        //]
+
+        conn.execute(query, r);
+    }
+    {
+        //[sql_formatting_qualified_identifiers
+        std::string query = boost::mysql::format_sql(
+            "SELECT salary, tax_id FROM employee "
+            "INNER JOIN company ON employee.company_id = company.id "
+            "ORDER BY {} DESC",
+            conn.format_opts().value(),
+            boost::mysql::identifier("company", "id")
+        );
+        // SELECT ... ORDER BY `company`.`id` DESC
+        //]
+
+        ASSERT(
+            query ==
+            "SELECT salary, tax_id FROM employee "
+            "INNER JOIN company ON employee.company_id = company.id "
+            "ORDER BY `company`.`id` DESC"
+        );
+        conn.execute(query, r);
+    }
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+    {
+        //[sql_formatting_format_context_use
+        std::string query = compose_update_query(conn.format_opts().value(), 42, "John", {});
+
+        ASSERT(query == "UPDATE employee SET first_name = 'John' WHERE id = 42");
+        //]
+
+        conn.execute(query, r);
+    }
+#endif
+    {
+        //[sql_formatting_formatter_use
+        // We can now use employee as a built-in value
+        std::string query = boost::mysql::format_sql(
+            "INSERT INTO employee (first_name, last_name, salary) VALUES ({}), ({})",
+            conn.format_opts().value(),
+            employee_t{"John", "Doe", 20000},
+            employee_t{"Rick", "Johnson", 45000}
+        );
+
+        ASSERT(
+            query ==
+            "INSERT INTO employee (first_name, last_name, salary) VALUES "
+            "('John', 'Doe', 20000), ('Rick', 'Johnson', 45000)"
+        );
+
+        // You can also use format_context::append_value passing an employee
+        //]
+
+        conn.execute(query, r);
+    }
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+    {
+        test_compose_update_query();
+    }
+#endif
+    {
+        try
+        {
+            //[sql_formatting_invalid_encoding
+            // If the connection is using UTF8 (the default), this will throw an error,
+            // because the string to be formatted contains invalid UTF8.
+            format_sql("SELECT {}", conn.format_opts().value(), "bad\xff UTF8");
+            //]
+
+            ASSERT(false);
+        }
+        catch (const boost::system::system_error& err)
+        {
+            ASSERT(err.code() == boost::mysql::client_errc::invalid_encoding);
+        }
+    }
+#ifdef __cpp_lib_polymorphic_allocator
+    {
+        //[sql_formatting_custom_string
+        boost::mysql::basic_format_context<std::pmr::string> ctx(conn.format_opts().value());
+
+        // Compose your query as usual
+        std::pmr::string query = ctx.get().value();
+        //]
+    }
+#endif
+    {
+        //[sql_formatting_memory_reuse
+        std::string storage;  // we want to re-use memory held by storage
+        boost::mysql::format_context ctx(conn.format_opts().value(), std::move(storage));
+
+        // Use ctx as you normally would
+        //]
+    }
+    {
+        using boost::mysql::format_sql;
+        const auto opts = conn.format_opts().value();
+
+        //[sql_formatting_reference_signed
+        ASSERT(format_sql("SELECT {}", opts, 42) == "SELECT 42");
+        ASSERT(format_sql("SELECT {}", opts, -1) == "SELECT -1");
+        //]
+    }
+
+    //     [
+    //         [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
+    //         [Integral literal]
+    //         [
+    //             `format_sql("SELECT {}", 42u) == "SELECT 42"`
+    //         ]
+    //     ]
+    //     [
+    //         [`bool`]
+    //         [Integral literal `1` if `true`, `0` if `false`]
+    //         [
+    //             `format_sql("SELECT {}", false) == "SELECT 0"`
+    //             `format_sql("SELECT {}", true) == "SELECT 1"`
+    //         ]
+    //     ]
+    //     [
+    //         [`std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`),
+    //         [reflink string_view], `std::string_view`, `const char*`] [Single-quoted escaped string
+    //         literal]
+    //         [
+    //             `format_sql("SELECT {}", "Hello world") == "SELECT 'Hello world'"`
+    //             `format_sql("SELECT {}", "Hello 'world'") == R"(SELECT 'Hello \'world\'')"`
+    //         ]
+    //     ]
+    //     [
+    //         [`std::basic_vector<unsigned char, Allocator>` (including [reflink blob]), [reflink blob_view]]
+    //         [Single-quoted, escaped string literal]
+    //         [
+    //             `format_sql("SELECT {}", blob{0x00, 'a'}) == R"(SELECT '\0a')"`
+    //         ]
+    //     ]
+    //     [
+    //         [`float`]
+    //         [Floating-point literal, after casting to `double`]
+    //         [
+    //             // Equivalent to format_sql("SELECT {}", double(4.2f))
+    //             // Note that MySQL uses doubles for all floating point literals
+    //             `format_sql("SELECT {}", 4.2f) == "SELECT 4.199999809265137e+00"`
+    //         ]
+    //     ]
+    //     [
+    //         [`double`]
+    //         [Floating-point literal]
+    //         [
+    //             `format_sql("SELECT {}", 4.2) == "SELECT 4.2e+00"`
+    //         ]
+    //     ]
+    //     [
+    //         [[reflink date]]
+    //         [Single quoted, `DATE`-compatible string literal]
+    //         [
+    //             `format_sql("SELECT {}", date(2021, 1, 2)) == "SELECT '2021-01-02'"`
+    //         ]
+    //     ]
+    //     [
+    //         [[reflink datetime]]
+    //         [Single quoted `DATETIME`-compatible string literal]
+    //         [
+    //             `format_sql("SELECT {}", datetime(2021, 1, 2, 23, 51, 14)) == "SELECT '2021-01-02
+    //             23:51:14.000000'"`
+    //         ]
+    //     ]
+    //     [
+    //         [[reflink time] and `std::chrono::duration` types convertible to [reflink time]]
+    //         [Single quoted `TIME`-compatible string literal]
+    //         [
+    //             `format_sql("SELECT {}", std::chrono::seconds(121)) == "SELECT '00:02:01.000000'"`
+    //         ]
+    //     ]
+    //     [
+    //         [`std::nullptr_t`]
+    //         [`NULL`]
+    //         [
+    //             `format_sql("SELECT {}", nullptr) == "SELECT NULL"`
+    //         ]
+    //     ]
+    //     [
+    //         [`boost::optional<T>` and `std::optional<T>`, `T` being one of the fundamental types above]
+    //         [
+    //             Formats the underlying value if there is any.[br]
+    //             `NULL` otherwise.[br]
+    //             Not applicable to custom types or [reflink identifier].
+    //         ]
+    //         [
+    //             `format_sql("SELECT {}", optional<int>(42)) == "SELECT 42"`
+    //             `format_sql("SELECT {}", optional<int>()) == "SELECT NULL"`
+    //         ]
+    //     ]
+    //     [
+    //         [[reflink field] and [reflink field_view]]
+    //         [
+    //             Formats the underlying value.
+    //         ]
+    //         [
+    //             `format_sql("SELECT {}", field(42)) == "SELECT 42"`
+    //             `format_sql("SELECT {}", field("abc")) == "SELECT 'abc'"`
+    //             `format_sql("SELECT {}", field()) == "SELECT NULL"`
+    //         ]
+    //     ]
+    //     [
+    //         [[reflink identifier]]
+    //         [Backtick-quoted, escaped SQL identifier]
+    //         [
+    //             ```
+    //             format_sql("SELECT {} FROM t", identifier("salary")) == "SELECT `salary` FROM t"
+    //             format_sql("SELECT {} FROM t", identifier("sal`ary")) == "SELECT `sal``ary` FROM t"
+    //             format_sql("SELECT {} FROM t", identifier("mytable", "myfield")) == "SELECT
+    //             `mytable`.`myfield` FROM t" format_sql("SELECT {} FROM t", identifier("mydb", "mytable",
+    //             "myfield")) == "SELECT `mydb`.`mytable`.`myfield` FROM t"
+    //             ```
+    //         ]
+    //     ]
+    //     [
+    //         [Custom type that specializes [reflink formatter]]
+    //         [Calls `formatter::format`]
+    //         []
+    //     ]
+    // ]
 }
 
 void main_impl(int argc, char** argv)

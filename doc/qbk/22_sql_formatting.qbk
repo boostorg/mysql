@@ -49,21 +49,7 @@ for more info.
 You can use [reflink format_sql] to generate a SQL query from a format string
 and a set of parameters, using a notation similar to `std::format`:
 
-```
-std::string employee_name = get_name(); // employee_name is an untrusted string
-
-// Compose the SQL query in the client
-std::string query = boost::mysql::format_sql("SELECT id, salary FROM employee WHERE last_name = {}",
-  conn.format_opts().value(), employee_name);
-
-// If employee_name is "John", query now contains:
-// SELECT id, salary FROM employee WHERE last_name = 'John'
-// If employee_name contains quotes, they will be escaped as required
-
-// Execute the generated query as usual
-results result;
-conn.execute(query, result);
-```
+[sql_formatting_simple]
 
 [reflink format_sql] doesn't involve communication with the server.
 In order to work, it requires a [reflink format_options] instance describing
@@ -77,26 +63,11 @@ connection configuration, like the character set currently in use.
 All fundamental types can be used with query formatting. This includes integers, floating point types,
 strings, blobs, dates and times:
 
-```
-std::string query = boost::mysql::format_sql(
-  "SELECT id FROM employee WHERE salary > {}",
-  conn.format_opts().value(), 42000);
-// SELECT id FROM employee WHERE salary > 42000
-```
+[sql_formatting_other_scalars]
 
 `std::optional<T>` and `boost::optional<T>` can also be used:
 
-```
-std::optional<std::string> last_name; // get last_name from the user
-
-std::string query = boost::mysql::format_sql(
-  "INSERT INTO employee (salary, last_name) VALUES ({}, {})",
-  conn.format_opts().value(), 42000, last_name);
-
-// Depending on whether last_name has a value or not, generates:
-// INSERT INTO employee (salary, last_name) VALUES (42000, 'John')
-// INSERT INTO employee (salary, last_name) VALUES (42000, NULL)
-```
+[sql_formatting_optionals]
 
 See [link mysql.sql_formatting.reference this table] for a reference of types
 that have built-in support for SQL formatting.
@@ -108,25 +79,11 @@ that have built-in support for SQL formatting.
 
 Like `std::format`, you can use arguments with explicit indices:
 
-```
-std::string query = boost::mysql::format_sql(
-  "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
-  conn.format_opts().value(),
-  42, "John");
-// UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42
-```
+[sql_formatting_manual_indices]
 
-As well as named arguments, using syntax similar to `fmt`:
+As well as named arguments, using [reflink arg]:
 
-```
-std::string query = boost::mysql::format_sql(
-  "UPDATE employee SET first_name = {name} WHERE id = {id}; SELECT * FROM employee WHERE id = {id}",
-  conn.format_opts().value(),
-  arg("id", 42),
-  arg("name", "John")
-);
-// UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42
-```
+[sql_formatting_named_args]
 
 
 [heading Formatting identifiers]
@@ -134,27 +91,11 @@ std::string query = boost::mysql::format_sql(
 By default, strings are formatted as values. If you need to generate a dynamic
 SQL identifier (like a field or table name), you need to use the [reflink identifier] class:
 
-```
-std::string query = boost::mysql::format_sql(
-  "SELECT id, last_name FROM employee ORDER BY {} DESC",
-  conn.format_opts().value(), identifier("company_id"));
-// SELECT id, last_name FROM employee ORDER BY `company_id` DESC
-```
+[sql_formatting_identifiers]
 
 [reflink identifier] can also generate qualified identifiers:
 
-```
-std::string query = boost::mysql::format_sql(
-  R"SQL(
-    SELECT salary, tax_id FROM employee
-    INNER JOIN company ON employee.company_id = company.id
-    ORDER BY {} DESC
-  )SQL",
-  conn.format_opts().value(),
-  identifier("company", "id")
-);
-// SELECT ... ORDER BY `company`.`id` DESC
-```
+[sql_formatting_qualified_identifiers]
 
 [heading Stream SQL formatting with format_context]
 
@@ -162,56 +103,8 @@ Advanced use cases, like batch inserts or dynamic filters, may not be
 expressible in terms of format strings. [reflink format_context]
 provides a way to incrementally build query strings:
 
-```
-// Compose an update query that sets first_name, last_name, or both
-std::string compose_update_query(
-    format_options opts,
-    std::int64_t employee_id,
-    std::optional<std::string> new_first_name,
-    std::optional<std::string> new_last_name
-)
-{
-    // There should be at least one update
-    assert(new_first_name || new_last_name);
-
-    // format_context will accumulate the query as we compose it
-    format_context ctx (opts);
-
-    // append_raw will add raw SQL, without quoting or escaping
-    ctx.append_raw("UPDATE employee SET ");
-    
-    if (new_first_name)
-    {
-        // append_value will behave like a {} expansion field.
-        // It will add the given string as a value, performing quoting and escaping
-        ctx.append_raw("first_name = ");
-        ctx.append_value(*new_first_name);
-    }
-    if (new_last_name)
-    {
-        if (new_first_name)
-            ctx.append_raw(", ");
-        ctx.append_raw("last_name = ");
-        ctx.append_value(*new_last_name);
-    }
-
-    ctx.append_raw(") WHERE ID = ");
-
-    // append_value can be passed any type that can be used with format_sql
-    ctx.append_value(employee_id);
-
-    // Retrieve the generated query string
-    return ctx.get().value();
-}
-
-std::string query = compose_update_query(conn.format_opts().value(), 42, "John", {});
-// UPDATE employee SET first_name = 'John' WHERE id = 42
-```
-
-[note
-    Strings passed to [refmem format_context append_raw] must be known at compile-time.
-    You can bypass this check using the [reflink runtime] function.
-]
+[sql_formatting_format_context_fn]
+[sql_formatting_format_context_use]
 
 [warning
     [*SQL injection warning]: misusing `format_context` may lead to vulnerabilities.
@@ -224,89 +117,35 @@ std::string query = compose_update_query(conn.format_opts().value(), 42, "John",
 You can specialize [reflink formatter] to add formatting support for custom types.
 The notation resembles `std::format` but is much simpler, since format specs are not supported.
 
-```
-
-struct employee {
-    std::string first_name;
-    std::string last_name;
-    double salary;
-};
-
-namespace boost {
-namespace mysql {
-
-struct formatter<employee>
-{
-    static void format(const employee& emp, format_context_base& ctx)
-    {
-        // We should format the employee using append_raw and append_value.
-        // We will make this suitable for INSERT statements
-        ctx.append_value(first_name)
-            .append_raw(", ")
-            .append_value(last_name)
-            .append_raw(", ")
-            .append_value(salary);
-    }
-};
-
-}  // namespace mysql
-}  // namespace boost
-
-// We can now use employee as a built-in value
-employee emp1, emp2; // these are untrusted
-std::string query = boost::mysql::format_sql(
-    "INSERT INTO employee (first_name, last_name, salary) VALUES ({}), ({})",
-    conn.format_opts().value(),
-    emp1,
-    emp2
-);
-
-// You can also use format_context::append_value passing an employee
-```
+[sql_formatting_formatter_specialization]
+[sql_formatting_formatter_use]
 
 [heading:unit_test Unit testing]
 
 If you are composing very complex queries, it's very advisable to unit test them.
-For instance, to test the `compose_update_query` above:
+For instance:
 
-```
-// For reference, the function under test
-std::string compose_update_query(
-    format_options opts,
-    std::int64_t employee_id,
-    std::optional<std::string> new_first_name,
-    std::optional<std::string> new_last_name
-);
-
-// Your test body.
-
-// You can safely use these format_options for testing,
-// since they are the most common ones.
-format_options opts { utf8mb4_charset, true };
-
-// Test for the different cases
-ASSERT_EQ(compose_update_query(opts, 42, "Bob", {}) == "UPDATE employee SET first_name = 'Bob' WHERE id = 42");
-ASSERT_EQ(compose_update_query(opts, 42, {}, "Alice") == "UPDATE employee SET last_name = 'Alice' WHERE id = 42");
-ASSERT_EQ(compose_update_query(opts, 0, "Bob", "Alice") == "UPDATE employee SET first_name = 'Bob', last_name = 'Alice' WHERE id = 42");
-```
+[sql_formatting_unit_test]
 
 In tests, it's safe to manually create a [reflink format_options] value like the one above.
 But don't do it in production code!
 
-[heading:unknown_character_set Solving the `unknown_character_set` error]
+[heading:unknown_character_set Solving the unknown_character_set error]
 
 If you are getting a `client_errc::unknown_character_set` error, your connection
-is being unable to track the current character set. Try the following:
+is currently unaware of the character set it's using, which is required by format operations.
+Try the following:
 
 * Make sure that you are performing connection establishment ([refmem any_connection connect] or
-  [refmem any_connection async_connect]) before calling this function.
-* Use [refmem any_connection set_character_set] or [refmem any_connection async_set_character_set]
+  [refmemunq any_connection async_connect]) before calling [refmemunq any_connection format_opts].
+* Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
   to set your connection's character set instead of using raw SQL.
 * Some [refmem connect_params connection_collation] values are not supported by all servers
-  and often trigger behavior. If you are using a non-UTF8 character set, prefer setting it
-  explicitly using [refmem any_connection set_character_set] or [refmem any_connection async_set_character_set].
-* [refmem any_connection reset_connection] and [refmem any_connection async_reset_connection] wipe
-  character set information. Call [refmem any_connection set_character_set] or [refmem any_connection async_set_character_set]
+  and often trigger fallback behavior. If you are using a non-UTF8 character set, prefer setting it
+  explicitly using [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set].
+  Don't rely on [refmem connect_params connection_collation].
+* [refmem any_connection reset_connection] and [refmemunq any_connection async_reset_connection] wipe
+  character set information. Call [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
   after resetting your connection.
 
 [warning
@@ -328,17 +167,13 @@ string values are escaped and formatted:
 
 For a reference on how character set tracking works, please read [link mysql.charsets.tracking this section].
 
-[heading Solving the `invalid_encoding` error]
+[heading Solving the invalid_encoding error]
 
 SQL formatting can fail if you provide values that can't be securely formatted.
 The most common cause is passing string values that are not valid according to the
 passed character set. This triggers a `client_errc::invalid_encoding` error:
 
-```
-// If the connection is using UTF8 (the default), this will throw an error,
-// because the string to be formatted contains invalid UTF8.
-format_sql("SELECT {}", conn.format_opts().value(), "bad\xff UTF8");
-```
+[sql_formatting_invalid_encoding]
 
 You can validate your strings beforehand or handle the error once
 it happened and reject the input.
@@ -347,22 +182,22 @@ it happened and reject the input.
 
 Both client-side SQL formatting and prepared statements have pros and cons efficiency-wise:
 
-* Client-formatted SQL entails less round-trips to the server. For prepared statements, you usually need
+* Client-formatted SQL entails [*less round-trips to the server]. For prepared statements, you usually need
   a call to prepare the statement, another one to execute it, and possibly a final one to close it.
   Client-formatted SQL only requires the execution round-trip. This performance gain increases with network
   latency and if you are using TLS.
-* Prepared statements always entail a mutation of session state, while client-formatted SQL may not.
+* Prepared statements always entail a [*mutation of session state], while client-formatted SQL may not.
   If you're using a [reflink connection_pool] with prepared statements, you can't use
   [refmem pooled_connection return_without_reset], as this will leak the statement.
   You may be able to do it with client-formatted queries, if your SQL doesn't mutate session state.
-* Client-formatted SQL queries use a usually less efficient text-based protocol, while prepared statements
+* Client-formatted SQL queries use a usually [*less efficient text-based protocol], while prepared statements
   use a more compact binary protocol. This is relevant if you're retrieving lots of data that is
   slow to convert to and from text (like doubles).
-* Prepared statements can be re-used. If you need to execute a query several times,
+* [*Prepared statements can be re-used]. If you need to execute a query several times,
   prepared statements will only be parsed once.
-* Client-formatted SQL allows patterns that may be more efficient than prepared statements,
+* Client-formatted SQL allows [*more efficient patterns] than prepared statements,
   like batch inserts.
-* You can use client-formatted SQL to generate several semicolon-separated queries
+* You can use client-formatted SQL to generate several [*semicolon-separated queries]
   to be run in batch.
 
 [heading Other string types with basic_format_context]
@@ -370,19 +205,11 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
 You can use any string-like type when using stream-like formatting,
 by using [reflink basic_format_context]:
 
-```
-basic_format_context<std::pmr::string> ctx (conn.format_opts().value());
-// Compose your query as usual
-std::pmr::string query = ctx.get().value();
-```
+[sql_formatting_custom_string]
 
 You can also provide a string value, to re-use memory:
 
-```
-std::string storage; // we want to re-use memory held by storage
-format_context ctx (conn.format_opts().value(), std::move(storage));
-// Use ctx as you normally would
-```
+[sql_formatting_memory_reuse]
 
 [heading Raw string escaping]
 
@@ -406,8 +233,7 @@ which mimics [@https://dev.mysql.com/doc/c-api/8.0/en/mysql-real-escape-string.h
         [`signed char`, `short`, `int`, `long`, `long long`]
         [Integral literal]
         [
-            `format_sql("SELECT {}", 42) == "SELECT 42"`
-            `format_sql("SELECT {}", -1) == "SELECT -1"`
+            [sql_formatting_reference_signed]
         ]
     ]
     [
