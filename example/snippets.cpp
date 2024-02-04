@@ -1855,133 +1855,221 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //]
     }
     {
-        using boost::mysql::format_sql;
+        using namespace boost::mysql;
+        using boost::optional;
         const auto opts = conn.format_opts().value();
 
         //[sql_formatting_reference_signed
-        ASSERT(format_sql("SELECT {}", opts, 42) == "SELECT 42");
-        ASSERT(format_sql("SELECT {}", opts, -1) == "SELECT -1");
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, 42) == "SELECT 42"
+            //<-
+        );
+        //->
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, -1) == "SELECT -1"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_unsigned
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, 42u) == "SELECT 42"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_bool
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, false) == "SELECT 0"
+            //<-
+        );
+        //->
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, true) == "SELECT 1"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_string
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, "Hello world") == "SELECT 'Hello world'"
+            //<-
+        );
+        //->
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, "Hello 'world'") == R"(SELECT 'Hello \'world\'')"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_blob
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, blob{0x00, 'z'}) == R"(SELECT '\0z')"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_float
+        //<-
+        ASSERT(
+            //->
+            // Equivalent to format_sql("SELECT {}", opts, static_cast<double>(4.2f))
+            // Note that MySQL uses doubles for all floating point literals
+            format_sql("SELECT {}", opts, 4.2f) == "SELECT 4.199999809265137e+00"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_double
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, 4.2f) == "SELECT 4.199999809265137e+00"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_date
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, date(2021, 1, 2)) == "SELECT '2021-01-02'"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_datetime
+        //<-
+        ASSERT(
+            // clang-format off
+            //->
+            format_sql("SELECT {}", opts, datetime(2021, 1, 2, 23, 51, 14)) == "SELECT '2021-01-02 23:51:14.000000'"
+            //<-
+            // clang-format on
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_time
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, std::chrono::seconds(121)) == "SELECT '00:02:01.000000'"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_nullptr
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, nullptr) == "SELECT NULL"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_optional
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, optional<int>(42)) == "SELECT 42"
+            //<-
+        );
+        //->
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, optional<int>()) == "SELECT NULL"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_field
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, field(42)) == "SELECT 42"
+            //<-
+        );
+        //->
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, field("abc")) == "SELECT 'abc'"
+            //<-
+        );
+        //->
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {}", opts, field()) == "SELECT NULL"
+            //<-
+        );
+        //->
+        //]
+
+        //[sql_formatting_reference_identifier
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {} FROM t", opts, identifier("salary")) == "SELECT `salary` FROM t"
+            //<-
+        );
+        //->
+        //<-
+        ASSERT(
+            //->
+            format_sql("SELECT {} FROM t", opts, identifier("sal`ary")) == "SELECT `sal``ary` FROM t"
+            //<-
+        );
+        //->
+        //<-
+        ASSERT(
+            // clang-format off
+            //->
+            format_sql("SELECT {} FROM t", opts, identifier("mytable", "myfield")) == "SELECT `mytable`.`myfield` FROM t"
+            //<-
+            // clang-format on
+        );
+        //->
+        //<-
+        ASSERT(
+            // clang-format off
+            //->
+            format_sql("SELECT {} FROM t", opts, identifier("mydb", "mytable", "myfield")) == "SELECT `mydb`.`mytable`.`myfield` FROM t"
+            //<-
+            // clang-format on
+        );
+        //->
         //]
     }
-
-    //     [
-    //         [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
-    //         [Integral literal]
-    //         [
-    //             `format_sql("SELECT {}", 42u) == "SELECT 42"`
-    //         ]
-    //     ]
-    //     [
-    //         [`bool`]
-    //         [Integral literal `1` if `true`, `0` if `false`]
-    //         [
-    //             `format_sql("SELECT {}", false) == "SELECT 0"`
-    //             `format_sql("SELECT {}", true) == "SELECT 1"`
-    //         ]
-    //     ]
-    //     [
-    //         [`std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`),
-    //         [reflink string_view], `std::string_view`, `const char*`] [Single-quoted escaped string
-    //         literal]
-    //         [
-    //             `format_sql("SELECT {}", "Hello world") == "SELECT 'Hello world'"`
-    //             `format_sql("SELECT {}", "Hello 'world'") == R"(SELECT 'Hello \'world\'')"`
-    //         ]
-    //     ]
-    //     [
-    //         [`std::basic_vector<unsigned char, Allocator>` (including [reflink blob]), [reflink blob_view]]
-    //         [Single-quoted, escaped string literal]
-    //         [
-    //             `format_sql("SELECT {}", blob{0x00, 'a'}) == R"(SELECT '\0a')"`
-    //         ]
-    //     ]
-    //     [
-    //         [`float`]
-    //         [Floating-point literal, after casting to `double`]
-    //         [
-    //             // Equivalent to format_sql("SELECT {}", double(4.2f))
-    //             // Note that MySQL uses doubles for all floating point literals
-    //             `format_sql("SELECT {}", 4.2f) == "SELECT 4.199999809265137e+00"`
-    //         ]
-    //     ]
-    //     [
-    //         [`double`]
-    //         [Floating-point literal]
-    //         [
-    //             `format_sql("SELECT {}", 4.2) == "SELECT 4.2e+00"`
-    //         ]
-    //     ]
-    //     [
-    //         [[reflink date]]
-    //         [Single quoted, `DATE`-compatible string literal]
-    //         [
-    //             `format_sql("SELECT {}", date(2021, 1, 2)) == "SELECT '2021-01-02'"`
-    //         ]
-    //     ]
-    //     [
-    //         [[reflink datetime]]
-    //         [Single quoted `DATETIME`-compatible string literal]
-    //         [
-    //             `format_sql("SELECT {}", datetime(2021, 1, 2, 23, 51, 14)) == "SELECT '2021-01-02
-    //             23:51:14.000000'"`
-    //         ]
-    //     ]
-    //     [
-    //         [[reflink time] and `std::chrono::duration` types convertible to [reflink time]]
-    //         [Single quoted `TIME`-compatible string literal]
-    //         [
-    //             `format_sql("SELECT {}", std::chrono::seconds(121)) == "SELECT '00:02:01.000000'"`
-    //         ]
-    //     ]
-    //     [
-    //         [`std::nullptr_t`]
-    //         [`NULL`]
-    //         [
-    //             `format_sql("SELECT {}", nullptr) == "SELECT NULL"`
-    //         ]
-    //     ]
-    //     [
-    //         [`boost::optional<T>` and `std::optional<T>`, `T` being one of the fundamental types above]
-    //         [
-    //             Formats the underlying value if there is any.[br]
-    //             `NULL` otherwise.[br]
-    //             Not applicable to custom types or [reflink identifier].
-    //         ]
-    //         [
-    //             `format_sql("SELECT {}", optional<int>(42)) == "SELECT 42"`
-    //             `format_sql("SELECT {}", optional<int>()) == "SELECT NULL"`
-    //         ]
-    //     ]
-    //     [
-    //         [[reflink field] and [reflink field_view]]
-    //         [
-    //             Formats the underlying value.
-    //         ]
-    //         [
-    //             `format_sql("SELECT {}", field(42)) == "SELECT 42"`
-    //             `format_sql("SELECT {}", field("abc")) == "SELECT 'abc'"`
-    //             `format_sql("SELECT {}", field()) == "SELECT NULL"`
-    //         ]
-    //     ]
-    //     [
-    //         [[reflink identifier]]
-    //         [Backtick-quoted, escaped SQL identifier]
-    //         [
-    //             ```
-    //             format_sql("SELECT {} FROM t", identifier("salary")) == "SELECT `salary` FROM t"
-    //             format_sql("SELECT {} FROM t", identifier("sal`ary")) == "SELECT `sal``ary` FROM t"
-    //             format_sql("SELECT {} FROM t", identifier("mytable", "myfield")) == "SELECT
-    //             `mytable`.`myfield` FROM t" format_sql("SELECT {} FROM t", identifier("mydb", "mytable",
-    //             "myfield")) == "SELECT `mydb`.`mytable`.`myfield` FROM t"
-    //             ```
-    //         ]
-    //     ]
-    //     [
-    //         [Custom type that specializes [reflink formatter]]
-    //         [Calls `formatter::format`]
-    //         []
-    //     ]
-    // ]
 }
 
 void main_impl(int argc, char** argv)
