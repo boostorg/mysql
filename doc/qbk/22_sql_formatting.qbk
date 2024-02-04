@@ -21,17 +21,17 @@ strings dynamically client-side while keeping your application secure.
 
 [heading Common use cases]
 
-* Queries involving many filters that can be enabled dynamically.
+* Queries involving several [*dynamic filters].
   See [link mysql.examples.dynamic_filters this example].
-* Batch inserts. Inserting rows one by one can lead to poor efficiency.
+* [*Batch inserts]. Inserting rows one by one can lead to poor efficiency.
   You can use client-side query formatting to compose a single `INSERT` that
   performs several insertions at once. See [link mysql.examples.batch_inserts this example]
   for simple batch inserts and [link mysql.examples.batch_inserts_generic this other] for
   a generic utility to implement this case.
-* PATCH-like updates. If your query must update fields dynamically, based on some input,
+* [*PATCH-like updates]. If your query must update fields dynamically, based on some input,
   prepared statements may not be suitable. See [link mysql.examples.patch_updates this example].
-* Queries involving dynamic identifiers, like table and field names.
-* Performing sorting conditionally.
+* Queries involving [*dynamic identifiers], like table and field names.
+* Performing [*conditional sorting].
 * Any other use case that involves SQL that can change dynamically.
 
 This feature can also be used to improve efficiency, as text queries perform less
@@ -46,7 +46,7 @@ for more info.
 
 [heading Formatting simple queries]
 
-You can use [reflink format_sql] to generate a string query from a format string
+You can use [reflink format_sql] to generate a SQL query from a format string
 and a set of parameters, using a notation similar to `std::format`:
 
 ```
@@ -60,7 +60,7 @@ std::string query = boost::mysql::format_sql("SELECT id, salary FROM employee WH
 // SELECT id, salary FROM employee WHERE last_name = 'John'
 // If employee_name contains quotes, they will be escaped as required
 
-// Execute the generated query as a normal query
+// Execute the generated query as usual
 results result;
 conn.execute(query, result);
 ```
@@ -71,11 +71,7 @@ connection configuration, like the character set currently in use.
 [refmem any_connection format_opts] provides an easy way to retrieve these.
 
 [note
-  Getting an `unknown_character_set` error? Have a look at [link mysql.format_sql.unknown_character_set this section].
-]
-
-[note
-  `format_opts` is only available for [reflink any_connection].
+  Getting an `unknown_character_set` error? Have a look at [link mysql.sql_formatting.unknown_character_set this section].
 ]
 
 All fundamental types can be used with query formatting. This includes integers, floating point types,
@@ -83,9 +79,9 @@ strings, blobs, dates and times:
 
 ```
 std::string query = boost::mysql::format_sql(
-  "SELECT id, first_name, last_name FROM employee WHERE salary > {}",
+  "SELECT id FROM employee WHERE salary > {}",
   conn.format_opts().value(), 42000);
-// SELECT id, first_name, last_name FROM employee WHERE salary > 42000
+// SELECT id FROM employee WHERE salary > 42000
 ```
 
 `std::optional<T>` and `boost::optional<T>` can also be used:
@@ -106,9 +102,32 @@ See [link mysql.sql_formatting.reference this table] for a reference of types
 that have built-in support for SQL formatting.
 
 [note
-  Like with `std::format`, the string passed to `format_sql` must be known at
+  Like with `std::format`, the format string passed to `format_sql` must be known at
   compile-time. You can skip this check using the [reflink runtime] function.
 ]
+
+Like `std::format`, you can use arguments with explicit indices:
+
+```
+std::string query = boost::mysql::format_sql(
+  "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
+  conn.format_opts().value(),
+  42, "John");
+// UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42
+```
+
+As well as named arguments, using syntax similar to `fmt`:
+
+```
+std::string query = boost::mysql::format_sql(
+  "UPDATE employee SET first_name = {name} WHERE id = {id}; SELECT * FROM employee WHERE id = {id}",
+  conn.format_opts().value(),
+  arg("id", 42),
+  arg("name", "John")
+);
+// UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42
+```
+
 
 [heading Formatting identifiers]
 
@@ -276,7 +295,7 @@ But don't do it in production code!
 
 [heading:unknown_character_set Solving the `unknown_character_set` error]
 
-If you are getting a [refmem client_errc unknown_character_set] error, your connection
+If you are getting a `client_errc::unknown_character_set` error, your connection
 is being unable to track the current character set. Try the following:
 
 * Make sure that you are performing connection establishment ([refmem any_connection connect] or
@@ -313,7 +332,7 @@ For a reference on how character set tracking works, please read [link mysql.cha
 
 SQL formatting can fail if you provide values that can't be securely formatted.
 The most common cause is passing string values that are not valid according to the
-passed character set. This triggers a [refmem client_errc invalid_encoding] error:
+passed character set. This triggers a `client_errc::invalid_encoding` error:
 
 ```
 // If the connection is using UTF8 (the default), this will throw an error,
