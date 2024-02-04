@@ -398,15 +398,17 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
     }
 }
 
-std::string boost::mysql::detail::vformat_sql(
+void boost::mysql::detail::vformat_sql_to(
     string_view format_str,
-    const format_options& opts,
+    format_context_base& ctx,
     span<const detail::format_arg_descriptor> args
 )
 {
-    format_context ctx(opts);
     detail::format_state(ctx, args).format(format_str);
-    auto res = ctx.get();
+}
+
+std::string boost::mysql::detail::check_format_result(system::result<std::string>&& res)
+{
     if (res.has_error())
     {
         BOOST_THROW_EXCEPTION(system::system_error(res.error(), "Formatting SQL"));

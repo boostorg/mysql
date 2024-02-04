@@ -205,16 +205,20 @@ inline
     return {detail::make_format_value(value), name};
 }
 
-/// (EXPERIMENTAL) Composes a SQL query client-side (TODO).
 template <BOOST_MYSQL_FORMATTABLE... Args>
-inline std::string format_sql(
-    constant_string_view format_str,
-    const format_options& opts,
-    const Args&... args
-)
+void format_sql_to(constant_string_view format_str, format_context_base& ctx, const Args&... args)
 {
     detail::format_arg_store<sizeof...(Args)> store(args...);
-    return detail::vformat_sql(format_str.get(), opts, store.get());
+    detail::vformat_sql_to(format_str.get(), ctx, store.get());
+}
+
+/// (EXPERIMENTAL) Composes a SQL query client-side (TODO).
+template <BOOST_MYSQL_FORMATTABLE... Args>
+std::string format_sql(constant_string_view format_str, const format_options& opts, const Args&... args)
+{
+    format_context ctx(opts);
+    format_sql_to(format_str, ctx, args...);
+    return detail::check_format_result(ctx.get());
 }
 
 }  // namespace mysql
