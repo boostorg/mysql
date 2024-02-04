@@ -57,13 +57,13 @@ enum class quoting_context : char
  * a query. Possible values are: \n
  * \li \ref quoting_context::double_quote : the string is surrounded by
  *     double quotes. For example:
- *     \code SELECT * FROM employee WHERE company = "<runtime_value>" \endcode
+ *     \code R"(SELECT * FROM employee WHERE company = "<runtime_value>")" \endcode
  * \li \ref quoting_context::single_quote : the string is surrounded by
  *     single quotes. For example:
- *     \code SELECT * FROM employee WHERE company = '<runtime_value>' \endcode
+ *     \code "SELECT * FROM employee WHERE company = '<runtime_value>'" \endcode
  * \li \ref quoting_context::backtick : the string is surrounded by
  *     backticks. This may happen when escaping identifiers. For example:
- *     \code SELECT `<runtime_column>` FROM employee \endcode
+ *     \code "SELECT `<runtime_column>` FROM employee" \endcode
  * \n
  * By default, MySQL treats backslash characters as escapes in string values
  * (for instance, the string `"\n"` is treated as a newline). This behavior is

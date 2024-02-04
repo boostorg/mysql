@@ -131,7 +131,8 @@ std::string query = boost::mysql::format_sql(
     INNER JOIN company ON employee.company_id = company.id
     ORDER BY {} DESC
   )SQL",
-  conn.format_opts().value(), identifier("company", "id)
+  conn.format_opts().value(),
+  identifier("company", "id")
 );
 // SELECT ... ORDER BY `company`.`id` DESC
 ```

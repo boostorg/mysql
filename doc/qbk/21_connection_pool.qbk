@@ -124,7 +124,7 @@ You can obtain this character set by running:
 
 [!teletype]
 ```
-SELECT @@global.character_set_client, @@global.character_set_connection, @@global.character_set_results;
+"SELECT @@global.character_set_client, @@global.character_set_results;"
 ```
 
 MySQL v8.0+ defaults to `utf8mb4`, but older MySQL and MariaDB servers default to
