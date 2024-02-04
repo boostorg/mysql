@@ -116,12 +116,14 @@ protected:
     error_code get_error() const noexcept { return impl_.ec; }
 
 public:
+    /// TODO: document
     format_context_base& append_raw(constant_string_view sql)
     {
         impl_.output.append(sql.get());
         return *this;
     }
 
+    /// TODO: document
     template <BOOST_MYSQL_FORMATTABLE T>
     format_context_base& append_value(const T& v)
     {
@@ -212,9 +214,7 @@ inline std::string format_sql(
 )
 {
     detail::format_arg_store<sizeof...(Args)> store(args...);
-    format_context ctx(opts);
-    detail::vformat_sql_to(format_str.get(), ctx, store.get());
-    return ctx.get().value();
+    return detail::vformat_sql(format_str.get(), opts, store.get());
 }
 
 }  // namespace mysql

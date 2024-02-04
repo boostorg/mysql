@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_IMPL_FORMAT_SQL_IPP
 
 #include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -397,13 +398,20 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
     }
 }
 
-void boost::mysql::detail::vformat_sql_to(
+std::string boost::mysql::detail::vformat_sql(
     string_view format_str,
-    format_context_base& ctx,
+    const format_options& opts,
     span<const detail::format_arg_descriptor> args
 )
 {
+    format_context ctx(opts);
     detail::format_state(ctx, args).format(format_str);
+    auto res = ctx.get();
+    if (res.has_error())
+    {
+        BOOST_THROW_EXCEPTION(system::system_error(res.error(), "Formatting SQL"));
+    }
+    return std::move(res).value();
 }
 
 #endif

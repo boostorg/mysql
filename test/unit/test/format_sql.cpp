@@ -17,6 +17,7 @@
 
 #include <boost/config.hpp>
 #include <boost/optional/optional.hpp>
+#include <boost/system/system_error.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cmath>
@@ -623,6 +624,23 @@ BOOST_AUTO_TEST_CASE(format_strings_invalid)
             );
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(format_strings_invalid_arguments)
+{
+    // When passed invalid arguments (like strings with invalid UTF-8 or NaNs) we throw
+    BOOST_CHECK_EXCEPTION(
+        format_sql("SELECT {}", opts, "Invalid\xffUTF8"),
+        boost::system::system_error,
+        [&](const boost::system::system_error& err) {
+            std::string expected_diag =
+                "Formatting SQL: An invalid byte sequence was found while trying to decode a string. "
+                "[mysql.client:17]";
+            BOOST_TEST(err.code() == client_errc::invalid_encoding);
+            BOOST_TEST(err.what() == expected_diag);
+            return true;
+        }
+    );
 }
 
 //

@@ -15,6 +15,7 @@
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <cstddef>
+#include <string>
 #include <type_traits>
 
 namespace boost {
@@ -25,6 +26,7 @@ template <class T>
 struct formatter;
 
 class format_context_base;
+struct format_options;
 
 namespace detail {
 
@@ -167,9 +169,9 @@ struct format_arg_store<0u>
 };
 
 BOOST_MYSQL_DECL
-void vformat_sql_to(
+std::string vformat_sql(
     string_view format_str,
-    format_context_base& ctx,
+    const format_options& opts,
     span<const detail::format_arg_descriptor> args
 );
 
