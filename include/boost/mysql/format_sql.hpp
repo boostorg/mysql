@@ -34,7 +34,15 @@
 namespace boost {
 namespace mysql {
 
-/// (EXPERIMENTAL) A SQL identifier to use when formatting SQL (TODO).
+/**
+ * \brief (EXPERIMENTAL) A SQL identifier to use for client-side SQL formatting.
+ * \details
+ * Represents a possibly-qualified SQL identifier.
+ *
+ * \par Object lifetimes
+ * This type is non-owning, and should only be used as an argument to SQL formatting
+ * functions.
+ */
 class identifier
 {
     struct impl_t
@@ -56,10 +64,43 @@ class identifier
     friend struct detail::access;
 
 public:
+    /**
+     * \brief Constructs an unqualified identifier.
+     * \details
+     * Unqualified identifiers are usually field, table or database names,
+     * and get formatted as `"`column_name`"`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     BOOST_CXX14_CONSTEXPR explicit identifier(string_view id) noexcept : impl_(1u, id, {}, {}) {}
-    BOOST_CXX14_CONSTEXPR identifier(string_view id1, string_view id2) noexcept : impl_(2u, id1, id2, {}) {}
-    BOOST_CXX14_CONSTEXPR identifier(string_view id1, string_view id2, string_view id3) noexcept
-        : impl_(3u, id1, id2, id3)
+
+    /**
+     * \brief Constructs an identifier with a single qualifier.
+     * \details
+     * Identifiers with one qualifier are used for field, table and view names.
+     * The qualifier identifies the parent object. For instance,
+     * `qualifier("table_name", "field_name")` maps to `"`table_name`.`field_name`"`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    BOOST_CXX14_CONSTEXPR identifier(string_view qualifier, string_view id) noexcept
+        : impl_(2u, qualifier, id, {})
+    {
+    }
+
+    /**
+     * \brief Constructs an identifier with two qualifiers.
+     * \details
+     * Identifiers with two qualifier are used for field names.
+     * The first qualifier identifies the database, the second, the table name.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    BOOST_CXX14_CONSTEXPR identifier(string_view qual1, string_view qual2, string_view id) noexcept
+        : impl_(3u, qual1, qual2, id)
     {
     }
 };
