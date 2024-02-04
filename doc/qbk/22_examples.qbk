@@ -399,7 +399,7 @@ __assume_setup__
 
 
 
-[section:connection_pool Connection pools]
+[section:connection_pool (Experimental) Connection pools]
 
 This example demonstrates how to use [reflink connection_pool].
 It implements an HTTP REST API server for a text notes
