@@ -24,7 +24,7 @@ struct format_options;
 
 namespace detail {
 
-BOOST_MYSQL_DECL BOOST_ATTRIBUTE_NODISCARD error_code
+BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
 escape_string(string_view input, const format_options& opts, char quote_char, output_string_ref output);
 
 }  // namespace detail
