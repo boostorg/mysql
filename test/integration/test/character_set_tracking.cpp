@@ -14,6 +14,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
 
 using namespace boost::mysql;
@@ -39,7 +40,7 @@ BOOST_AUTO_TEST_CASE(charset_lifecycle)
     any_connection conn(ctx);
 
     // Non-connected connections have an unknown charset
-    BOOST_TEST(conn.current_character_set() == nullptr);
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
 
     // Connect with the default character set uses utf8mb4, both in the client
     // and in the server. This double-checks that all supported servers support the
@@ -56,7 +57,7 @@ BOOST_AUTO_TEST_CASE(charset_lifecycle)
 
     // Using reset_connection wipes out client-side character set information
     conn.reset_connection();
-    BOOST_TEST(conn.current_character_set() == nullptr);
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
 
     // We can use set_character_set to recover from this
     conn.set_character_set(greek_charset);
@@ -75,7 +76,7 @@ BOOST_AUTO_TEST_CASE(connect_with_unknown_collation)
     params.connection_collation = mysql_collations::utf8mb4_0900_ai_ci;  // not supported by MariaDB, triggers
                                                                          // fallback
     conn.connect(params);
-    BOOST_TEST(conn.current_character_set() == nullptr);
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
 
     // Explicitly setting the character set solves the issue
     conn.set_character_set(ascii_charset);

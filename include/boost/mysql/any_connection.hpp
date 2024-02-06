@@ -247,12 +247,12 @@ public:
      * \brief Returns the character set used by this connection.
      * \details
      * The MySQL protocol doesn't expose a clean way to track the character set
-     * used by this connection. This can change inadvertly by SQL queries or by calling \ref reset_connection.
+     * used by this connection. This can change inadvertently by SQL queries or by calling \ref
+     * reset_connection.
      * \n
      * Connections attempt to keep track of the current character set
      * used by the connection. When the character set is known, this function returns
-     * a non-null pointer to the character set currently in use. If the character set
-     * is unknown, returns `nullptr`.
+     * the character set currently in use. Otherwise, returns \ref client_errc::unknown_character_set.
      * \n
      * The following functions can modify the return value of this function: \n
      *   \li Prior to connection, the character set is always unknown.
@@ -260,8 +260,8 @@ public:
      *       to a known value, depending on the requested collation.
      *   \li \ref set_character_set always and \ref async_set_character_set always
      *       set the current character set to the passed value.
-     *   \li \ref reset_connection and \ref async_reset_connection always resets the current character
-     *       set to an unknown value.
+     *   \li \ref reset_connection and \ref async_reset_connection always makes the current character
+     *       unknown.
      *
      * \par Avoid changing the character set directly
      * If you change the connection's character set directly using SQL statements,
@@ -274,16 +274,20 @@ public:
      *
      * \par Exception safety
      * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * This function returns a pointer to the connection's internal storage. It will be valid
-     * as long as `*this` is alive and valid.
      */
-    const character_set* current_character_set() const noexcept { return impl_.current_character_set(); }
+    system::result<character_set> current_character_set() const noexcept
+    {
+        return impl_.current_character_set();
+    }
 
     // TODO: document
-    BOOST_MYSQL_DECL
-    system::result<format_options> format_opts() const noexcept;
+    system::result<format_options> format_opts() const noexcept
+    {
+        auto res = current_character_set();
+        if (res.has_error())
+            return res.error();
+        return format_options{res.value(), backslash_escapes()};
+    }
 
     /// \copydoc connection::meta_mode
     metadata_mode meta_mode() const noexcept { return impl_.meta_mode(); }

@@ -61,13 +61,16 @@ constexpr character_set utf8mb4_charset{"utf8mb4", detail::next_char_utf8mb4};
 /// (EXPERIMENTAL) The ascii character set.
 constexpr character_set ascii_charset{"ascii", detail::next_char_ascii};
 
-/// (EXPERIMENTAL) Settings required to format SQL queries client-side (TODO).
+/**
+ * \brief (EXPERIMENTAL) Settings required to format SQL queries client-side.
+ * \see any_connection::format_opts
+ */
 struct format_options
 {
-    /// The connection's character set (TODO).
+    /// The connection's current character set.
     character_set charset;
 
-    /// Whether backslashes represent escape sequences (TODO).
+    /// Whether backslashes represent escape sequences.
     bool backslash_escapes;
 };
 

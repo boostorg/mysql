@@ -138,8 +138,8 @@ as given by `character_set_client`. You can access this information using
 
 The MySQL protocol has limited support for character set tracking, so this task
 requires some help from the user. Some situations can make the current character set
-to be unknown. If this happens, [refmem any_connection current_character_set] returns `nullptr`
-and [refmem any_connection format_opts] fails.
+to be unknown. If this happens, [refmem any_connection current_character_set]
+and [refmem any_connection format_opts] return an `unknown_character_set` error.
 
 This is how tracking works:
 
@@ -169,7 +169,7 @@ This is how tracking works:
 [heading:custom (Experimental) Adding support for a character set]
 
 Built-in support is provided for `utf8mb4` ([reflink utf8mb4_charset])
-and `latin1` ([reflink latin1]). We strongly encourage you to always use `utf8mb4`.
+and `ascii` ([reflink ascii_charset]). We strongly encourage you to always use `utf8mb4`.
 
 If you really need to use a different character set, you can implement them by
 creating [reflink character_set] objects. You can then pass them to functions

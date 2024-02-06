@@ -11,13 +11,8 @@
 #pragma once
 
 #include <boost/mysql/any_connection.hpp>
-#include <boost/mysql/character_set.hpp>
-#include <boost/mysql/client_errc.hpp>
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
-
-#include <boost/system/system_error.hpp>
-#include <boost/throw_exception.hpp>
 
 std::unique_ptr<boost::mysql::detail::any_stream> boost::mysql::any_connection::create_stream(
     asio::any_io_executor ex,
@@ -25,14 +20,6 @@ std::unique_ptr<boost::mysql::detail::any_stream> boost::mysql::any_connection::
 )
 {
     return std::unique_ptr<boost::mysql::detail::any_stream>(new detail::variant_stream(std::move(ex), ctx));
-}
-
-boost::system::result<boost::mysql::format_options> boost::mysql::any_connection::format_opts() const noexcept
-{
-    const auto* charset = current_character_set();
-    if (charset == nullptr)
-        return client_errc::unknown_character_set;
-    return format_options{*charset, backslash_escapes()};
 }
 
 #endif
