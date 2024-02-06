@@ -104,6 +104,7 @@ add_executable(
     test/connection_pool.cpp
     test/character_set.cpp
     test/escape_string.cpp
+    test/constant_string_view.cpp
     test/format_sql.cpp
 )
 target_include_directories(

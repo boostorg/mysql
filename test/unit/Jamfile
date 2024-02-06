@@ -112,6 +112,7 @@ run
         test/connection_pool.cpp
         test/character_set.cpp
         test/escape_string.cpp
+        test/constant_string_view.cpp
         test/format_sql.cpp
         
     : requirements
