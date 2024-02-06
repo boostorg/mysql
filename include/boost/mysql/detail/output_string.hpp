@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_OUTPUT_STRING_REF_HPP
-#define BOOST_MYSQL_DETAIL_OUTPUT_STRING_REF_HPP
+#ifndef BOOST_MYSQL_DETAIL_OUTPUT_STRING_HPP
+#define BOOST_MYSQL_DETAIL_OUTPUT_STRING_HPP
 
 #include <boost/mysql/string_view.hpp>
 

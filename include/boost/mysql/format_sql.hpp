@@ -16,7 +16,7 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/format_sql.hpp>
-#include <boost/mysql/detail/output_string_ref.hpp>
+#include <boost/mysql/detail/output_string.hpp>
 
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
@@ -115,7 +115,17 @@ struct formatter
 #endif
 ;
 
-/// (EXPERIMENTAL) Base class for concrete format contexts (TODO).
+/**
+ * \brief (EXPERIMENTAL) Base class for stream-oriented SQL formatting.
+ * \details
+ * A base class for stream-oriented SQL formatting. This class can't be
+ * instantiated directly - use \ref basic_format_context, instead.
+ * Do not subclass it, either.
+ * \n
+ * References to this class are useful when you need to manipulate
+ * a format context without knowing the type of the actual context that will be used,
+ * like when specializing \ref formatter.
+ */
 class format_context_base
 {
     struct
@@ -196,6 +206,7 @@ public:
     )
         : format_context_base(ref(), opts), output_(std::move(output))
     {
+        output_.clear();
     }
 
     basic_format_context(const basic_format_context&) = delete;

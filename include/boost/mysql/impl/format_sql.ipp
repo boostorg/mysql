@@ -21,7 +21,7 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/escape_string.hpp>
 #include <boost/mysql/detail/format_sql.hpp>
-#include <boost/mysql/detail/output_string_ref.hpp>
+#include <boost/mysql/detail/output_string.hpp>
 
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 

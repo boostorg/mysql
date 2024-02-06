@@ -16,7 +16,7 @@
 #include <boost/mysql/escape_string.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/output_string_ref.hpp>
+#include <boost/mysql/detail/output_string.hpp>
 
 namespace boost {
 namespace mysql {
