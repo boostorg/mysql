@@ -1656,8 +1656,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     params.password = password;
     params.ssl = boost::mysql::ssl_mode::disable;
 
-    boost::asio::io_context ctx;
-    boost::mysql::any_connection conn(ctx);
+    boost::asio::io_context ioc;
+    boost::mysql::any_connection conn(ioc);
     boost::mysql::results r;
 
     {
