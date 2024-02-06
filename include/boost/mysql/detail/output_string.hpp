@@ -25,7 +25,7 @@ namespace detail {
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
 template <class T>
-concept output_string = std::move_constructible<T> && requires(T& t, const char* data, std::size_t sz) {
+concept output_string = std::movable<T> && requires(T& t, const char* data, std::size_t sz) {
     t.append(data, sz);
     t.clear();
 };

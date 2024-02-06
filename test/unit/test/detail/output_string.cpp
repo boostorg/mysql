@@ -42,9 +42,9 @@ struct output_string_archetype
     output_string_archetype(const output_string_archetype&) = delete;
     output_string_archetype& operator=(const output_string_archetype&) = delete;
 
-    // Only move constructor allowed
+    // Move operations allowed
     output_string_archetype(output_string_archetype&&) {}
-    output_string_archetype& operator=(output_string_archetype&&) = delete;
+    output_string_archetype& operator=(output_string_archetype&&) { return *this; };
 
     // Adequate member functions
     void append(const char*, std::size_t) { ++num_appends; }
@@ -75,6 +75,12 @@ static_assert(!output_string<std::vector<char>>);
 // Strings with other character types disallowed
 static_assert(!output_string<std::wstring>);
 static_assert(!output_string<boost::static_wstring<16>>);
+
+// References not allowed
+static_assert(!output_string<std::string&>);
+static_assert(!output_string<const std::string&>);
+static_assert(!output_string<std::string&&>);
+static_assert(!output_string<const std::string&&>);
 
 #endif
 
