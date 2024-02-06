@@ -448,19 +448,6 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
     }
 }
 
-BOOST_AUTO_TEST_CASE(latin1)
-{
-    for (std::size_t i = 0; i <= 0xff; ++i)
-    {
-        BOOST_TEST_CONTEXT(i)
-        {
-            char str[2]{static_cast<char>(i), '\0'};
-            auto size = latin1_charset.next_char(string_view(str, 2));
-            BOOST_TEST(size == 1u);
-        }
-    }
-}
-
 BOOST_AUTO_TEST_CASE(ascii)
 {
     // valid

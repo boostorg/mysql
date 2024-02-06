@@ -81,14 +81,8 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
         {
         case mysql_collations::utf8mb4_bin:
         case mysql_collations::utf8mb4_general_ci: return utf8mb4_charset;
-        case mysql_collations::latin1_german1_ci:
-        case mysql_collations::latin1_swedish_ci:
-        case mysql_collations::latin1_danish_ci:
-        case mysql_collations::latin1_german2_ci:
-        case mysql_collations::latin1_bin:
-        case mysql_collations::latin1_general_ci:
-        case mysql_collations::latin1_general_cs:
-        case mysql_collations::latin1_spanish_ci: return latin1_charset;
+        case mysql_collations::ascii_general_ci:
+        case mysql_collations::ascii_bin: return ascii_charset;
         default: return character_set{};
         }
     }

@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(success_previous_charset)
 {
     // Setup
     fixture fix;
-    fix.st.current_charset = latin1_charset;
+    fix.st.current_charset = ascii_charset;
 
     // Run the algo
     algo_test()

@@ -17,8 +17,6 @@
 
 #include <boost/config.hpp>
 
-#include <utility>
-
 namespace boost {
 namespace mysql {
 

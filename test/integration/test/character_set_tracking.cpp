@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(charset_lifecycle)
     validate_db_charset(conn, "utf8mb4");
 
     // Using set_character_set updates the character set everywhere
-    character_set greek_charset{"greek", latin1_charset.next_char};
+    character_set greek_charset{"greek", ascii_charset.next_char};
     conn.set_character_set(greek_charset);
     BOOST_TEST(conn.current_character_set()->name == string_view("greek"));
     validate_db_charset(conn, "greek");
@@ -78,9 +78,9 @@ BOOST_AUTO_TEST_CASE(connect_with_unknown_collation)
     BOOST_TEST(conn.current_character_set() == nullptr);
 
     // Explicitly setting the character set solves the issue
-    conn.set_character_set(latin1_charset);
-    BOOST_TEST(conn.current_character_set()->name == string_view("latin1"));
-    validate_db_charset(conn, "latin1");
+    conn.set_character_set(ascii_charset);
+    BOOST_TEST(conn.current_character_set()->name == string_view("ascii"));
+    validate_db_charset(conn, "ascii");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

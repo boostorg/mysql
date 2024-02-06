@@ -296,16 +296,4 @@ BOOST_AUTO_TEST_CASE(parameter_coverage)
     }
 }
 
-BOOST_AUTO_TEST_CASE(latin1)
-{
-    // Spotcheck: latin1 works as expected (even in the presence of UTF-8 invalid sequences)
-    string_view input = "A test \"\\ string \xff with 'quotes'";
-    std::string output = "abc";
-
-    auto ec = escape_string(input, {latin1_charset, true}, quoting_context::double_quote, output);
-
-    BOOST_TEST(ec == error_code());
-    BOOST_TEST(output == "A test \\\"\\\\ string \xff with \\'quotes\\'");
-}
-
 BOOST_AUTO_TEST_SUITE_END()

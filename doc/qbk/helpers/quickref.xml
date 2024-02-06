@@ -66,10 +66,10 @@
         </simplelist>
         <bridgehead renderas="sect3">Constants</bridgehead>
         <simplelist type="vert" columns="1">
+          <member><link linkend="mysql.ref.boost__mysql__ascii_charset">ascii_charset</link></member>
           <member><link linkend="mysql.ref.boost__mysql__default_initial_read_buffer_size">default_initial_read_buffer_size</link></member>
           <member><link linkend="mysql.ref.boost__mysql__default_port">default_port</link></member>
           <member><link linkend="mysql.ref.boost__mysql__default_port_string">default_port_string</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__latin1_charset">latin1_charset</link></member>
           <member><link linkend="mysql.ref.boost__mysql__max_date">max_date</link></member>
           <member><link linkend="mysql.ref.boost__mysql__min_date">min_date</link></member>
           <member><link linkend="mysql.ref.boost__mysql__max_datetime">max_datetime</link></member>
