@@ -13,7 +13,6 @@
 #include <boost/mysql/detail/config.hpp>
 
 #include <cstddef>
-#include <cstring>
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 #include <concepts>
@@ -26,14 +25,9 @@ namespace detail {
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
 template <class T>
-concept output_string = requires(T& t) {
-    {
-        t[0]
-    } -> std::same_as<char&>;
-    {
-        t.size()
-    } -> std::convertible_to<std::size_t>;
-    t.resize(std::size_t{});
+concept output_string = std::move_constructible<T> && requires(T& t, const char* data, std::size_t sz) {
+    t.append(data, sz);
+    t.clear();
 };
 
 #define BOOST_MYSQL_OUTPUT_STRING ::boost::mysql::detail::output_string
@@ -54,10 +48,7 @@ class output_string_ref
     template <class T>
     static void do_append(void* container, const char* data, std::size_t size)
     {
-        auto& obj = *static_cast<T*>(container);
-        std::size_t prev_size = obj.size();
-        obj.resize(prev_size + size);
-        std::memcpy(&obj[0] + prev_size, data, size);  // data() is non-const in C++ < 17
+        static_cast<T*>(container)->append(data, size);
     }
 
 public:
