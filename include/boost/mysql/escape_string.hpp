@@ -11,7 +11,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/escape_string.hpp>
 #include <boost/mysql/detail/output_string.hpp>
 
@@ -69,10 +68,8 @@ enum class quoting_context : char
  * <a
  *    href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">`NO_BACKSLASH_ESCAPES`</a>
  * SQL mode. When enabled, backslashes no longer have a special meaning, which changes
- * the escaping rules. `backslash_escapes` should be set to `true` if backslashes represent
+ * the escaping rules. `opts.backslash_escapes` should be set to `true` if backslashes represent
  * escapes (i.e. `NO_BACKSLASH_ESCAPES` is not enabled), and `false` otherwise.
- * Servers report whether this mode is enabled to clients. \ref any_connection::backslash_escapes
- * can be used to retrieve the value to be used for this parameter.
  * \n
  * MySQL can be configured to treat double-quoted strings as identifiers instead of values.
  * This is enabled by activating the
@@ -81,10 +78,12 @@ enum class quoting_context : char
  * Servers don't report whether this mode is enabled to clients.
  * This SQL mode is not directly supported by this function.
  * \n
- * `charset` should identify the connection's character set (as given by the
+ * `opts.charset` should identify the connection's character set (as given by the
  * `character_set_client` session variable). The character set is used to iterate
  * over the input string. It must be an ASCII-compatible character set (like \ref utf8mb4_charset).
  * All character sets allowed by `character_set_client` satisfy this requirement.
+ * \n
+ * You can use \ref any_connection::format_opts to retrieve an `opts` value suitable for your connection.
  * \n
  * \par Exception safety
  * Basic guarantee. Memory allocations may throw.
@@ -94,13 +93,9 @@ enum class quoting_context : char
  *
  * \par Errors
  * \ref client_errc::invalid_encoding if `input` contains a string
- * that is not valid according to `charset`.
- * TODO: update this
+ *      that is not valid according to `charset`.
  */
 template <BOOST_MYSQL_OUTPUT_STRING OutputString>
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-    requires(requires(OutputString& s) { s.clear(); })
-#endif
 BOOST_ATTRIBUTE_NODISCARD error_code
 escape_string(string_view input, const format_options& opts, quoting_context quot_ctx, OutputString& output)
 {

@@ -11,6 +11,7 @@
 #include <boost/mysql/escape_string.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/static_string/static_string.hpp>
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
@@ -294,6 +295,15 @@ BOOST_AUTO_TEST_CASE(parameter_coverage)
             BOOST_TEST(output == tc.expected);
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(other_string_types)
+{
+    // Spotcheck: escape_string can be used with string types != std::string
+    boost::static_string<64> output = "abc";
+    auto ec = escape_string("some 'value'", {utf8mb4_charset, true}, quoting_context::single_quote, output);
+    BOOST_TEST(ec == error_code());
+    BOOST_TEST(output == R"(some \'value\')");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
