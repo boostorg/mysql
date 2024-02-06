@@ -272,6 +272,9 @@ public:
      *   \li Modifying the `character_set_client`, `character_set_connection` and `character_set_results`
      *       session variables.
      *
+     * \par Errors
+     * \li \ref client_errc::unknown_character_set if the current character set is unknown.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -280,7 +283,18 @@ public:
         return impl_.current_character_set();
     }
 
-    // TODO: document
+    /**
+     * \brief Returns format options suitable to format SQL according to the current connection configuation.
+     * \details
+     * If the current character set is known (as given by \ref current_character_set), returns
+     * a value suitable to be passed to SQL formatting functions. Otherwise, returns an error.
+     *
+     * \par Errors
+     * \li \ref client_errc::unknown_character_set if the current character set is unknown.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     system::result<format_options> format_opts() const noexcept
     {
         auto res = current_character_set();
