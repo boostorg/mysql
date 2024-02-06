@@ -155,6 +155,7 @@ END
 [include helpers/ExecutionRequest.qbk]
 [include helpers/ExecutionStateType.qbk]
 [include helpers/FieldViewFwdIterator.qbk]
+[include helpers/OutputString.qbk]
 [include helpers/ResultsType.qbk]
 [include helpers/SocketStream.qbk]
 [include helpers/StaticRow.qbk]

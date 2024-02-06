@@ -109,6 +109,7 @@
           <member><link linkend="mysql.ref.boost__mysql__ExecutionRequest">ExecutionRequest</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ExecutionStateType">ExecutionStateType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__FieldViewFwdIterator">FieldViewFwdIterator</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__OutputString">OutputString</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ResultsType">ResultsType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>
           <member><link linkend="mysql.ref.boost__mysql__StaticRow">StaticRow</link></member>

@@ -40,6 +40,7 @@
     'StaticRow',
     'ResultsType',
     'ExecutionStateType'
+    'OutputString'
   "/>
 
 </xsl:stylesheet>
