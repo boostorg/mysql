@@ -94,28 +94,28 @@ BOOST_AUTO_TEST_CASE(ref_string)
     ref.append(" hello");
     BOOST_TEST(s == "abcd hello");
     ref.append(" world");
-    BOOST_TEST(s == "abcd world world");
+    BOOST_TEST(s == "abcd hello world");
 
     // Append with zero length is okay
     ref.append(string_view());
-    BOOST_TEST(s == "abcd world world");
+    BOOST_TEST(s == "abcd hello world");
 }
 
 BOOST_AUTO_TEST_CASE(ref_static_string)
 {
     // A reference can be created from a static_string
-    boost::static_string<32> s("abc");
+    boost::static_string<32> s("abcd");
     auto ref = detail::output_string_ref::create(s);
 
     // Appending works
     ref.append(" hello");
     BOOST_TEST(s == "abcd hello");
     ref.append(" world");
-    BOOST_TEST(s == "abcd world world");
+    BOOST_TEST(s == "abcd hello world");
 
     // Append with zero length is okay
     ref.append(string_view());
-    BOOST_TEST(s == "abcd world world");
+    BOOST_TEST(s == "abcd hello world");
 }
 
 BOOST_AUTO_TEST_CASE(ref_archetype)
