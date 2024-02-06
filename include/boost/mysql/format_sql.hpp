@@ -122,6 +122,13 @@ struct formatter
  * instantiated directly - use \ref basic_format_context, instead.
  * Do not subclass it, either.
  * \n
+ * Conceptually, a format context contains: \n
+ *   \li The result string. Output operations append characters to this output string.
+ *       This type is agnostic to the output string type.
+ *   \li Format options describing how to perform format operations.
+ *   \li An error state that is set by output operations when they fail.
+ *       If the error state is set, it will be propagated to \ref basic_format_context::get.
+ * \n
  * References to this class are useful when you need to manipulate
  * a format context without knowing the type of the actual context that will be used,
  * like when specializing \ref formatter.
@@ -133,12 +140,6 @@ class format_context_base
         detail::output_string_ref output;
         format_options opts;
         error_code ec;
-
-        void set_error(error_code new_ec) noexcept
-        {
-            if (!ec)
-                ec = new_ec;
-        }
     } impl_;
 
     friend struct detail::access;
@@ -167,27 +168,49 @@ protected:
     error_code get_error() const noexcept { return impl_.ec; }
 
 public:
-    /// TODO: document
+    /**
+     * \brief Adds raw SQL to the output string.
+     * \details
+     * Adds raw, unescaped SQL to the output string. By default, the passed SQL
+     * should be available at compile-time. Use \ref runtime if you need to use
+     * runtime values.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations may throw.
+     *
+     * \par Object lifetimes
+     * The passed string is copied as required and doesn't need to be kept alive.
+     */
     format_context_base& append_raw(constant_string_view sql)
     {
         impl_.output.append(sql.get());
         return *this;
     }
 
-    /// TODO: document
+    /**
+     * \brief Formats a value and adds it to the output string.
+     * \details
+     *
+     * @tparam T
+     * @param v
+     * @return format_context_base&
+     */
     template <BOOST_MYSQL_FORMATTABLE T>
     format_context_base& append_value(const T& v)
     {
         format_arg(detail::make_format_value(v));
         return *this;
     }
+
+    void add_error(error_code ec) noexcept
+    {
+        if (!impl_.ec)
+            impl_.ec = ec;
+    }
 };
 
 /// (EXPERIMENTAL) Implements stream-like SQL formatting (TODO).
-template <class OutputString>
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-    requires detail::output_string<OutputString> && std::move_constructible<OutputString>
-#endif
+template <BOOST_MYSQL_OUTPUT_STRING OutputString>
 class basic_format_context : public format_context_base
 {
     OutputString output_{};

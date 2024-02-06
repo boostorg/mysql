@@ -46,7 +46,8 @@ inline void append_identifier(string_view name, format_context_base& ctx)
 {
     auto& impl = access::get_impl(ctx);
     auto ec = detail::escape_string(name, impl.opts, '`', impl.output);
-    impl.set_error(ec);
+    if (ec)
+        ctx.add_error(ec);
 }
 
 template <class T>
@@ -394,7 +395,8 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
     else
     {
         error_code ec = detail::append_field_view(impl_.output, arg.data.fv, impl_.opts);
-        impl_.set_error(ec);
+        if (ec)
+            add_error(ec);
     }
 }
 
