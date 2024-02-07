@@ -213,6 +213,12 @@ public:
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
+     *
+     * \par Errors
+     * The error state may be updated with the following errors:
+     * \li \ref client_errc::invalid_encoding if a string with an invalid encoding is passed.
+     * \li \ref client_errc::unformattable_value if a NaN or infinity `float` or `double` is passed.
+     * \li Any other error code that user-supplied formatter specializations may add using \ref add_error.
      */
     template <BOOST_MYSQL_FORMATTABLE T>
     format_context_base& append_value(const T& v)
@@ -252,12 +258,14 @@ public:
 
 /**
  * \brief (EXPERIMENTAL) Implements stream-like SQL formatting.
- * - Concrete classes for SQL stream formatting
- * - Owns an OutputString, to which characters will be appended when formatting.
- *   Should satisfy the OutputString concept.
- * - See format_context for the most common type alias.
- * - Move only
- * - Create, append, then call get.
+ * \details
+ * The primary interface for stream-like SQL formatting. Contrary to \ref format_context_base,
+ * this type is aware of the output string's actual type. `basic_format_context` owns
+ * an instance of `OutputString`. Format operations will append characters to such string.
+ * \n
+ * `basic_format_context` are single-use: once the result has been retrieved using \ref get,
+ * they cannot be re-used. This is a move-only type.
+ * \see format_context
  */
 template <BOOST_MYSQL_OUTPUT_STRING OutputString>
 class basic_format_context : public format_context_base
@@ -267,16 +275,37 @@ class basic_format_context : public format_context_base
     detail::output_string_ref ref() noexcept { return detail::output_string_ref::create(output_); }
 
 public:
+    /**
+     * \brief Constructor.
+     * \details
+     * Uses a default-constructed `OutputString` as output string, and an empty
+     * error code as error state.
+     *
+     * \par Exception safety
+     * Strong guarantee: exceptions thrown by default-constructing `OutputString` are propagated.
+     */
     basic_format_context(format_options opts
     ) noexcept(std::is_nothrow_default_constructible<OutputString>::value)
         : format_context_base(ref(), opts)
     {
     }
 
-    basic_format_context(format_options opts, OutputString&& output) noexcept(
+    /**
+     * \brief Constructor.
+     * \details
+     * Move constructs an `OutputString` using `storage`. After construction,
+     * the output string is cleared. Uses an empty
+     * error code as error state. This constructor allows re-using existing
+     * memory for the output string.
+     * \n
+     *
+     * \par Exception safety
+     * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
+     */
+    basic_format_context(format_options opts, OutputString&& storage) noexcept(
         std::is_nothrow_move_constructible<OutputString>::value
     )
-        : format_context_base(ref(), opts), output_(std::move(output))
+        : format_context_base(ref(), opts), output_(std::move(storage))
     {
         output_.clear();
     }
@@ -284,19 +313,55 @@ public:
     basic_format_context(const basic_format_context&) = delete;
     basic_format_context& operator=(const basic_format_context&) = delete;
 
+    /**
+     * \brief Move constructor.
+     * \details
+     * Move constructs an `OutputString` using `rhs`'s output string.
+     * `*this` will have the same format options and error state than `rhs`.
+     * `rhs` is left in a valid but unspecified state.
+     *
+     * \par Exception safety
+     * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
+     */
     basic_format_context(basic_format_context&& rhs
     ) noexcept(std::is_nothrow_move_constructible<OutputString>::value)
         : format_context_base(ref(), rhs), output_(std::move(rhs.output_))
     {
     }
 
-    basic_format_context& operator=(basic_format_context&& rhs)
+    /**
+     * \brief Move assignment.
+     * \details
+     * Move assigns `rhs`'s output string to `*this` output string.
+     * `*this` will have the same format options and error state than `rhs`.
+     * `rhs` is left in a valid but unspecified state.
+     *
+     * \par Exception safety
+     * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
+     */
+    basic_format_context& operator=(basic_format_context&& rhs
+    ) noexcept(std::is_nothrow_move_assignable<OutputString>::value)
     {
         output_ = std::move(rhs.output_);
         assign(rhs);
     }
 
-    system::result<OutputString> get() &&
+    /**
+     * \brief Retrieves the result of the formatting operation.
+     * \details
+     * After running the relevant formatting operations (using \ref append_raw,
+     * \ref append_value or \ref format_sql_to), call this function to retrieve the
+     * overall result of the operation.
+     * \n
+     * If \ref error_state is a non-empty error code, returns it as an error.
+     * Otherwise, returns the output string, move-constructing it into the `system::result` object.
+     * \n
+     * This function is move-only: once called, `*this` is left in a valid but unspecified state.
+     *
+     * \par Exception safety
+     * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
+     */
+    system::result<OutputString> get() && noexcept(std::is_nothrow_move_constructible<OutputString>::value)
     {
         auto ec = error_state();
         if (ec)
@@ -305,7 +370,11 @@ public:
     }
 };
 
-/// (EXPERIMENTAL) Implements stream-like SQL formatting (TODO).
+/**
+ * \brief (EXPERIMENTAL) Implements stream-like SQL formatting.
+ * \details
+ * Convenience type alias for `basic_format_context`'s most common case.
+ */
 using format_context = basic_format_context<std::string>;
 
 template <>
