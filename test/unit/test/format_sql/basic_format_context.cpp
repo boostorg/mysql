@@ -154,4 +154,28 @@ BOOST_AUTO_TEST_CASE(move_assign_error)
     BOOST_TEST(std::move(ctx).get().error() == client_errc::extra_bytes);
 }
 
+// Spotcheck: format_context move operations work
+BOOST_AUTO_TEST_CASE(string_format_context)
+{
+    // Constructor from storage
+    std::string storage = "abcde";
+    format_context ctx(opts, std::move(storage));
+
+    // Check
+    BOOST_TEST(ctx.error_state() == error_code());
+    BOOST_TEST(ctx.format_opts().charset.name == string_view("utf8mb4"));
+
+    // Move construction
+    ctx.append_raw("SELECT ");
+    format_context ctx2(std::move(ctx));
+    ctx2.append_value(42);
+    BOOST_TEST(std::move(ctx2).get().value() == "SELECT 42");
+
+    // Move assignment
+    format_context ctx3(ascii_opts);
+    ctx3.append_raw("def");
+    ctx = std::move(ctx3);
+    BOOST_TEST(std::move(ctx).get().value() == "def");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
