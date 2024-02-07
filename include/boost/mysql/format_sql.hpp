@@ -220,8 +220,8 @@ public:
      * \li \ref client_errc::unformattable_value if a NaN or infinity `float` or `double` is passed.
      * \li Any other error code that user-supplied formatter specializations may add using \ref add_error.
      */
-    template <BOOST_MYSQL_FORMATTABLE T>
-    format_context_base& append_value(const T& v)
+    template <BOOST_MYSQL_FORMATTABLE Formattable>
+    format_context_base& append_value(const Formattable& v)
     {
         format_arg(detail::make_format_value(v));
         return *this;
@@ -398,16 +398,20 @@ inline
     return {detail::make_format_value(value), name};
 }
 
-template <BOOST_MYSQL_FORMATTABLE... Args>
-void format_sql_to(constant_string_view format_str, format_context_base& ctx, const Args&... args)
+template <BOOST_MYSQL_FORMATTABLE... Formattable>
+void format_sql_to(constant_string_view format_str, format_context_base& ctx, const Formattable&... args)
 {
-    detail::format_arg_store<sizeof...(Args)> store(args...);
+    detail::format_arg_store<sizeof...(Formattable)> store(args...);
     detail::vformat_sql_to(format_str.get(), ctx, store.get());
 }
 
 /// (EXPERIMENTAL) Composes a SQL query client-side (TODO).
-template <BOOST_MYSQL_FORMATTABLE... Args>
-std::string format_sql(constant_string_view format_str, const format_options& opts, const Args&... args)
+template <BOOST_MYSQL_FORMATTABLE... Formattable>
+std::string format_sql(
+    constant_string_view format_str,
+    const format_options& opts,
+    const Formattable&... args
+)
 {
     format_context ctx(opts);
     format_sql_to(format_str, ctx, args...);
