@@ -142,6 +142,7 @@ struct formatter
  * Conceptually, a format context contains: \n
  *   \li The result string. Output operations append characters to this output string.
  *       `format_context_base` is agnostic to the output string type.
+ *   \li \ref format_options required to format values.
  *   \li An error state (\ref error_state) that is set by output operations when they fail.
  *       The error state is propagated to \ref basic_format_context::get.
  * \n
@@ -249,11 +250,19 @@ public:
 
     /**
      * \brief Retrieves the current error state.
-     * \n
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
     error_code error_state() const noexcept { return impl_.ec; }
+
+    /**
+     * \brief Retrieves the format options.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    format_options format_opts() const noexcept { return impl_.opts; }
 };
 
 /**
@@ -345,6 +354,7 @@ public:
     {
         output_ = std::move(rhs.output_);
         assign(rhs);
+        return *this;
     }
 
     /**
