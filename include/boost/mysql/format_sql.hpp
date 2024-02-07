@@ -279,12 +279,13 @@ public:
      * \brief Constructor.
      * \details
      * Uses a default-constructed `OutputString` as output string, and an empty
-     * error code as error state.
+     * error code as error state. This constructor can only be called if `OutputString`
+     * is default-constructible.
      *
      * \par Exception safety
      * Strong guarantee: exceptions thrown by default-constructing `OutputString` are propagated.
      */
-    basic_format_context(format_options opts
+    explicit basic_format_context(format_options opts
     ) noexcept(std::is_nothrow_default_constructible<OutputString>::value)
         : format_context_base(ref(), opts)
     {
