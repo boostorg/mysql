@@ -499,7 +499,7 @@ error_code format_single_error(const Arg& arg)
 {
     format_context ctx(opts);
     ctx.append_value(arg);
-    return ctx.get().error();
+    return std::move(ctx).get().error();
 }
 
 BOOST_AUTO_TEST_CASE(individual_error)
@@ -752,7 +752,7 @@ BOOST_AUTO_TEST_CASE(format_strings_invalid_arguments)
 BOOST_AUTO_TEST_CASE(format_context_success)
 {
     // Helper
-    auto get = [](format_context_base& ctx) { return static_cast<format_context&>(ctx).get().value(); };
+    auto get = [](format_context_base& ctx) { return static_cast<format_context&&>(ctx).get().value(); };
 
     // Empty
     BOOST_TEST(format_context(opts).get().value() == "");
@@ -804,7 +804,7 @@ BOOST_AUTO_TEST_CASE(format_context_charset)
         .append_value("abd\xff{}")
         .append_raw(" + ")
         .append_value(identifier("i`d`ent\xff`ifier"));
-    BOOST_TEST(ctx.get().value() == "SELECT '\xff{abc' + 'abd\xff{}' + `i``d``ent\xff`ifier`");
+    BOOST_TEST(std::move(ctx).get().value() == "SELECT '\xff{abc' + 'abd\xff{}' + `i``d``ent\xff`ifier`");
 }
 
 BOOST_AUTO_TEST_CASE(format_context_backslashes)
@@ -816,13 +816,13 @@ BOOST_AUTO_TEST_CASE(format_context_backslashes)
         .append_value("ab'cd\"ef")
         .append_raw(" + ")
         .append_value(identifier("identif`ier"));
-    BOOST_TEST(ctx.get().value() == "SELECT 'ab''cd\"ef' + `identif``ier`");
+    BOOST_TEST(std::move(ctx).get().value() == "SELECT 'ab''cd\"ef' + `identif``ier`");
 }
 
 BOOST_AUTO_TEST_CASE(format_context_error)
 {
     // Helper
-    auto get = [](format_context_base& ctx) { return static_cast<format_context&>(ctx).get().error(); };
+    auto get = [](format_context_base& ctx) { return static_cast<format_context&&>(ctx).get().error(); };
 
     // Just an error
     BOOST_TEST(get(format_context(opts).append_value("bad\xff")) == client_errc::invalid_encoding);

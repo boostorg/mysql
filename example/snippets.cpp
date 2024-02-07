@@ -1579,7 +1579,7 @@ std::string compose_update_query(
     ctx.append_value(employee_id);
 
     // Retrieve the generated query string
-    return ctx.get().value();
+    return std::move(ctx).get().value();
 }
 //]
 #endif
@@ -1842,7 +1842,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         boost::mysql::basic_format_context<std::pmr::string> ctx(conn.format_opts().value());
 
         // Compose your query as usual
-        std::pmr::string query = ctx.get().value();
+        std::pmr::string query = std::move(ctx).get().value();
         //]
     }
 #endif

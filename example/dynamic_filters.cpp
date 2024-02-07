@@ -163,7 +163,7 @@ std::string compose_get_employees_query(const boost::mysql::any_connection& conn
         ctx.append_value(boost::mysql::identifier(*filts.order_by));
     }
 
-    return ctx.get().value();
+    return std::move(ctx).get().value();
 }
 
 void main_impl(int argc, char** argv)

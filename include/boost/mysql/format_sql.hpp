@@ -250,7 +250,15 @@ public:
     error_code error_state() const noexcept { return impl_.ec; }
 };
 
-/// (EXPERIMENTAL) Implements stream-like SQL formatting (TODO).
+/**
+ * \brief (EXPERIMENTAL) Implements stream-like SQL formatting.
+ * - Concrete classes for SQL stream formatting
+ * - Owns an OutputString, to which characters will be appended when formatting.
+ *   Should satisfy the OutputString concept.
+ * - See format_context for the most common type alias.
+ * - Move only
+ * - Create, append, then call get.
+ */
 template <BOOST_MYSQL_OUTPUT_STRING OutputString>
 class basic_format_context : public format_context_base
 {
@@ -288,8 +296,7 @@ public:
         assign(rhs);
     }
 
-    // TODO: do we make this move-only?
-    system::result<OutputString> get()
+    system::result<OutputString> get() &&
     {
         auto ec = error_state();
         if (ec)
@@ -334,7 +341,7 @@ std::string format_sql(constant_string_view format_str, const format_options& op
 {
     format_context ctx(opts);
     format_sql_to(format_str, ctx, args...);
-    return detail::check_format_result(ctx.get());
+    return detail::check_format_result(std::move(ctx).get());
 }
 
 }  // namespace mysql

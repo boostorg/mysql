@@ -123,7 +123,7 @@ static std::string compose_batch_insert(
     // Formatting can fail (e.g. if you supply strings with invalid UTF-8),
     // so get() returns a boost::system::result<std::string>.
     // Calling value() will retrieve the string or throw an exception on failure.
-    return ctx.get().value();
+    return std::move(ctx).get().value();
 }
 
 void main_impl(int argc, char** argv)
