@@ -19,10 +19,6 @@ using namespace boost::mysql;
 
 BOOST_AUTO_TEST_SUITE(test_output_string)
 
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-
-using boost::mysql::detail::output_string;
-
 struct other_traits : std::char_traits<char>
 {
 };
@@ -52,39 +48,9 @@ struct output_string_archetype
     void clear() {}
 };
 
-// std::basic_string can be used as long as it's using char
-static_assert(output_string<std::string>);
-static_assert(output_string<string_with_alloc>);
-static_assert(output_string<string_no_defctor>);
-static_assert(output_string<string_with_traits>);
-
-// same with boost::static_string
-static_assert(output_string<boost::static_string<10>>);
-static_assert(output_string<boost::static_string<45>>);
-static_assert(output_string<boost::static_strings::basic_static_string<10, char, other_traits>>);
-
-// Archetype allowed
-static_assert(output_string<output_string_archetype>);
-
-// Other types disallowed
-static_assert(!output_string<int>);
-static_assert(!output_string<float>);
-static_assert(!output_string<const char*>);
-static_assert(!output_string<char[20]>);
-static_assert(!output_string<std::vector<char>>);
-
-// Strings with other character types disallowed
-static_assert(!output_string<std::wstring>);
-static_assert(!output_string<boost::static_wstring<16>>);
-
-// References not allowed
-static_assert(!output_string<std::string&>);
-static_assert(!output_string<const std::string&>);
-static_assert(!output_string<std::string&&>);
-static_assert(!output_string<const std::string&&>);
-
-#endif
-
+//
+// output_string_ref
+//
 BOOST_AUTO_TEST_CASE(ref_string)
 {
     // A reference can be created from a std::string
@@ -135,5 +101,46 @@ BOOST_AUTO_TEST_CASE(ref_archetype)
     ref.append(string_view());
     BOOST_TEST(s.num_appends == 2u);
 }
+
+//
+// output_string
+//
+
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+
+using boost::mysql::detail::output_string;
+
+// std::basic_string can be used as long as it's using char
+static_assert(output_string<std::string>);
+static_assert(output_string<string_with_alloc>);
+static_assert(output_string<string_no_defctor>);
+static_assert(output_string<string_with_traits>);
+
+// same with boost::static_string
+static_assert(output_string<boost::static_string<10>>);
+static_assert(output_string<boost::static_string<45>>);
+static_assert(output_string<boost::static_strings::basic_static_string<10, char, other_traits>>);
+
+// Archetype allowed
+static_assert(output_string<output_string_archetype>);
+
+// Other types disallowed
+static_assert(!output_string<int>);
+static_assert(!output_string<float>);
+static_assert(!output_string<const char*>);
+static_assert(!output_string<char[20]>);
+static_assert(!output_string<std::vector<char>>);
+
+// Strings with other character types disallowed
+static_assert(!output_string<std::wstring>);
+static_assert(!output_string<boost::static_wstring<16>>);
+
+// References not allowed
+static_assert(!output_string<std::string&>);
+static_assert(!output_string<const std::string&>);
+static_assert(!output_string<std::string&&>);
+static_assert(!output_string<const std::string&&>);
+
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
