@@ -72,33 +72,6 @@ public:
     {
     }
 
-#ifdef __cpp_lib_string_view
-    /**
-     * \brief Consteval constructor from `std::sting_view`.
-     * \details
-     * Constructs a \ref string_view from the passed argument.
-     * \n
-     * This function is `consteval`: it results in a compile-time error
-     * if the passed value is not known at compile-time. You can bypass
-     * this check using the \ref runtime function. This check works only
-     * for C++20 and above. No check is performed for lower C++ standard versions.
-     * \n
-     * \ref string_view's constructor from `std::string_view` is not `constexpr`.
-     * This constructor workaround this limitation.
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * Ownership is not transferred to the constructed object. As with `string_view`,
-     * the user is responsible for keeping the original character buffer alive.
-     */
-    BOOST_MYSQL_CONSTEVAL constant_string_view(std::string_view value) noexcept
-        : impl_(value.data(), value.size())
-    {
-    }
-#endif
-
     /**
      * \brief Retrieves the underlying string view.
      *
