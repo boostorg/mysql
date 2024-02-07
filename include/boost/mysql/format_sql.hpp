@@ -105,7 +105,24 @@ public:
     }
 };
 
-/// (EXPERIMENTAL) An extension point to customize SQL formatting (TODO).
+/**
+ * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
+ * \details
+ * This type can be specialized for custom types to make them formattable.
+ * This makes them satisfy the `Formattable` concept, and usable in
+ * \ref format_sql and \ref format_context_base::append_value.
+ * \n
+ * A `formatter` specialization for a type `T` should have the following form:
+ * ```
+ * template <> struct formatter<MyType> {
+ *     static void format(const MyType&, format_context_base&);
+ * }
+ * ```
+ * \n
+ * Don't specialize `formatter` for built-in types, like `int`, `std::string` or
+ * optionals (formally, any type satisfying `WritableField`). This is not supported
+ * and will result in a compile-time error.
+ */
 template <class T>
 struct formatter
 #ifndef BOOST_MYSQL_DOXYGEN
