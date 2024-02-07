@@ -42,10 +42,6 @@ using namespace boost::mysql::test;
 using mysql_time = boost::mysql::time;
 using string_with_alloc = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
 using blob_with_alloc = std::vector<unsigned char, custom_allocator<unsigned char>>;
-using detail::is_formattable_type;
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-using detail::formattable;
-#endif
 
 // Field with a custom formatter
 namespace custom {
@@ -76,105 +72,114 @@ struct formatter<custom::condition>
 BOOST_AUTO_TEST_SUITE(test_format_sql)
 
 //
-// formattable concept
+// formattable concept. We have a type trait (is_formattable_type) for C++ < 20,
+// and a concept, for C++ >= 20. This macro checks both without repetition
 //
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+#define BOOST_MYSQL_CHECK_FORMATTABLE(type, expected)         \
+    static_assert(detail::formattable<type> == expected, ""); \
+    static_assert(detail::is_formattable_type<type>() == expected, "");
+#else
+#define BOOST_MYSQL_CHECK_FORMATTABLE(type, expected) \
+    static_assert(detail::is_formattable_type<type>() == expected, "");
+#endif
 
 // field and field_view accepted (writable fields)
-static_assert(formattable<field_view>, "");
-static_assert(formattable<field>, "");
-static_assert(!formattable<field&>, "");
-static_assert(!formattable<const field&>, "");
-static_assert(!formattable<field&&>, "");
-static_assert(!formattable<const field&&>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(field_view, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(field, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(field&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(const field&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(field&&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(const field&&, false)
 
 // Scalars accepted (writable fields)
-static_assert(formattable<std::nullptr_t>, "");
-static_assert(formattable<unsigned char>, "");
-static_assert(formattable<signed char>, "");
-static_assert(formattable<short>, "");
-static_assert(formattable<unsigned short>, "");
-static_assert(formattable<int>, "");
-static_assert(formattable<unsigned int>, "");
-static_assert(formattable<long>, "");
-static_assert(formattable<unsigned long>, "");
-static_assert(formattable<float>, "");
-static_assert(formattable<double>, "");
-static_assert(formattable<date>, "");
-static_assert(formattable<datetime>, "");
-static_assert(formattable<mysql_time>, "");
-static_assert(formattable<bool>, "");
-static_assert(!formattable<int&>, "");
-static_assert(!formattable<bool&>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(std::nullptr_t, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(unsigned char, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(signed char, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(short, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(unsigned short, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(int, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(unsigned int, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(long, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(unsigned long, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(float, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(double, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(date, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(datetime, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(mysql_time, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(bool, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(int&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(bool&, false)
 
 // characters (except signed/unsigned char) not accepted
-static_assert(!formattable<char>, "");
-static_assert(!formattable<wchar_t>, "");
-static_assert(!formattable<char16_t>, "");
-static_assert(!formattable<char32_t>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(char, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(wchar_t, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(char16_t, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(char32_t, false)
 #ifdef __cpp_char8_t
-static_assert(!formattable<char8_t>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(char8_t, false)
 #endif
-static_assert(!formattable<char&>, "");
-static_assert(!formattable<const char>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(char&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(const char, false)
 
 // Strings (writable fields)
-static_assert(formattable<std::string>, "");
-static_assert(formattable<string_with_alloc>, "");
-static_assert(formattable<string_view>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(std::string, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(string_with_alloc, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(string_view, true)
 #ifdef __cpp_lib_string_view
-static_assert(formattable<std::string_view>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(std::string_view, true)
 #endif
-static_assert(formattable<const char*>, "");
-static_assert(formattable<char[16]>, "");
-static_assert(!formattable<std::string&>, "");
-static_assert(!formattable<std::wstring>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(const char*, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(char[16], true)
+BOOST_MYSQL_CHECK_FORMATTABLE(std::string&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(std::wstring, false)
 
 // Blobs
-static_assert(formattable<blob>, "");
-static_assert(formattable<blob_view>, "");
-static_assert(formattable<blob_with_alloc>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(blob, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(blob_view, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(blob_with_alloc, true)
 
 // optional types accepted (writable fields)
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-static_assert(formattable<std::optional<int>>, "");
-static_assert(formattable<std::optional<std::string>>, "");
-static_assert(!formattable<std::optional<int>&>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(std::optional<int>, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(std::optional<std::string>, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(std::optional<int>&, false)
 #endif
-static_assert(formattable<boost::optional<string_view>>, "");
-static_assert(formattable<boost::optional<blob>>, "");
-static_assert(!formattable<boost::optional<void*>>, "");
-static_assert(!formattable<boost::optional<format_options>>, "");
-static_assert(!formattable<boost::optional<int&>>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<string_view>, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<blob>, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<void*>, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<format_options>, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<int&>, false)
 
 // identifier accepted
-static_assert(formattable<identifier>, "");
-static_assert(!formattable<identifier&>, "");
-static_assert(!formattable<boost::optional<identifier>>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(identifier, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(identifier&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<identifier>, false)
 
 // Types with custom formatters accepted, but not references or optionals to them
-static_assert(formattable<custom::condition>, "");
-static_assert(!formattable<custom::condition&>, "");
-static_assert(!formattable<const custom::condition&>, "");
-static_assert(!formattable<custom::condition&&>, "");
-static_assert(!formattable<const custom::condition&&>, "");
-static_assert(!formattable<custom::condition*>, "");
-static_assert(!formattable<boost::optional<custom::condition>>, "");
+BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(const custom::condition&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition&&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(const custom::condition&&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition*, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<custom::condition>, false)
 
 // other stuff not accepted
-static_assert(!formattable<void*>, "");
-static_assert(!formattable<field*>, "");
-static_assert(!formattable<field_view*>, "");
-static_assert(!formattable<format_options>, "");
-static_assert(!formattable<const format_options>, "");
-static_assert(!formattable<format_options&>, "");
-
-constexpr format_options opts{utf8mb4_charset, true};
-constexpr auto single_fmt = "SELECT {};";
+BOOST_MYSQL_CHECK_FORMATTABLE(void*, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(field*, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(field_view*, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(format_options, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(const format_options, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(format_options&, false)
 
 //
 // Verify that formatting individual values work. This is tested using format_sql
 // because it's convenient, but also covers basic_format_context
 //
+
+constexpr format_options opts{utf8mb4_charset, true};
+constexpr auto single_fmt = "SELECT {};";
 
 BOOST_AUTO_TEST_CASE(individual_null)
 {
