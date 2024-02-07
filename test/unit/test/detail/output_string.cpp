@@ -16,11 +16,12 @@
 #include "test_unit/custom_allocator.hpp"
 
 using namespace boost::mysql;
-using boost::mysql::detail::output_string;
 
 BOOST_AUTO_TEST_SUITE(test_output_string)
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
+
+using boost::mysql::detail::output_string;
 
 struct other_traits : std::char_traits<char>
 {
