@@ -109,6 +109,7 @@
           <member><link linkend="mysql.ref.boost__mysql__ExecutionRequest">ExecutionRequest</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ExecutionStateType">ExecutionStateType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__FieldViewFwdIterator">FieldViewFwdIterator</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__Formattable">Formattable</link></member>
           <member><link linkend="mysql.ref.boost__mysql__OutputString">OutputString</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ResultsType">ResultsType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>
@@ -121,6 +122,7 @@
           <member><link linkend="mysql.dynamic_interface.dynamic_field_mappings">Dynamic interface type mappings</link></member>
           <member><link linkend="mysql.static_interface.readable_field_reference">ReadableField types</link></member>
           <member><link linkend="mysql.prepared_statements.writable_field_reference">WritableField types</link></member>
+          <member><link linkend="mysql.sql_formatting.reference">Formattable types</link></member>
           <member><link linkend="mysql.charsets.string_encoding">String encoding</link></member>
         </simplelist>
       </entry>

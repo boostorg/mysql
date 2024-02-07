@@ -171,9 +171,10 @@ public:
     /**
      * \brief Adds raw SQL to the output string.
      * \details
-     * Adds raw, unescaped SQL to the output string. By default, the passed SQL
-     * should be available at compile-time. Use \ref runtime if you need to use
-     * runtime values.
+     * Adds raw, unescaped SQL to the output string. Doesn't alter the error state.
+     * \n
+     * By default, the passed SQL should be available at compile-time.
+     * Use \ref runtime if you need to use runtime values.
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
@@ -190,10 +191,14 @@ public:
     /**
      * \brief Formats a value and adds it to the output string.
      * \details
+     * `value` is formatted according to its type. If formatting
+     * generates an error (for instance, a string with invalid encoding is passed),
+     * the error state may be set.
+     * \n
+     * The supplied type must satisfy the `Formattable` concept.
      *
-     * @tparam T
-     * @param v
-     * @return format_context_base&
+     * \par Exception safety
+     * Basic guarantee. Memory allocations may throw.
      */
     template <BOOST_MYSQL_FORMATTABLE T>
     format_context_base& append_value(const T& v)
