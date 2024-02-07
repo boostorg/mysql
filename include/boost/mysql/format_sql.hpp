@@ -439,7 +439,8 @@ std::string format_sql(
 )
 {
     format_context ctx(opts);
-    format_sql_to(format_str, ctx, args...);
+    detail::format_arg_store<sizeof...(Formattable)> store(args...);
+    detail::vformat_sql_to(format_str.get(), ctx, store.get());
     return detail::check_format_result(std::move(ctx).get());
 }
 

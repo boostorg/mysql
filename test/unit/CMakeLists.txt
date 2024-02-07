@@ -76,7 +76,11 @@ add_executable(
     test/spotchecks/multifn.cpp
     test/spotchecks/misc.cpp
 
+    test/format_sql/formattable.cpp
     test/format_sql/basic_format_context.cpp
+    test/format_sql/individual_value.cpp
+    test/format_sql/format_strings.cpp
+    test/format_sql/alternate_apis.cpp
 
     test/execution_state.cpp
     test/static_execution_state.cpp
@@ -108,7 +112,6 @@ add_executable(
     test/character_set.cpp
     test/escape_string.cpp
     test/constant_string_view.cpp
-    test/format_sql.cpp
 )
 target_include_directories(
     boost_mysql_unittests
