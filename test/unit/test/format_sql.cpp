@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE(individual_string)
     BOOST_TEST(format_sql(single_fmt, opts, clval) == "SELECT 'I\\'m const';");
     BOOST_TEST(format_sql(single_fmt, opts, std::string("abc")) == "SELECT 'abc';");
     BOOST_TEST(format_sql(single_fmt, opts, std::string()) == "SELECT '';");
-    BOOST_TEST(format_sql(single_fmt, opts, custom_string("abc'")) == "SELECT 'abc\\'';");
+    BOOST_TEST(format_sql(single_fmt, opts, string_with_alloc("abc'")) == "SELECT 'abc\\'';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_string_view)
@@ -362,7 +362,7 @@ BOOST_AUTO_TEST_CASE(individual_blob)
     BOOST_TEST(format_sql(single_fmt, opts, c_clval) == "SELECT 'hell\\'o';");
     BOOST_TEST(format_sql(single_fmt, opts, blob{0x00, 0x01, 0x02}) == "SELECT '\\0\1\2';");
     BOOST_TEST(format_sql(single_fmt, opts, blob()) == "SELECT '';");
-    BOOST_TEST(format_sql(single_fmt, opts, custom_blob{0x00, 0x01, 0x02}) == "SELECT '\\0\1\2';");
+    BOOST_TEST(format_sql(single_fmt, opts, blob_with_alloc{0x00, 0x01, 0x02}) == "SELECT '\\0\1\2';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_blob_view)
