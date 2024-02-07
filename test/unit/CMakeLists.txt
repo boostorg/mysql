@@ -76,6 +76,8 @@ add_executable(
     test/spotchecks/multifn.cpp
     test/spotchecks/misc.cpp
 
+    test/format_sql/basic_format_context.cpp
+
     test/execution_state.cpp
     test/static_execution_state.cpp
     test/results.cpp

@@ -395,16 +395,31 @@ struct formatter<identifier>
     static void format(const identifier& value, format_context_base& ctx);
 };
 
-/// (EXPERIMENTAL) Creates a named argument for SQL formatting (TODO).
-template <class T>
+/**
+ * \brief (EXPERIMENTAL) Creates a named argument for SQL formatting.
+ * \details
+ * The return type of this function is not specified, but is guaranteed to satisfy
+ * `Formattable` (so it can be passed to \ref format_sql and \ref format_sql_to).
+ * Nesting `arg` calls (as in `arg("name1", arg("name2", value))`) is not allowed.
+ *
+ * \par Object lifetimes
+ * The return type doesn't have ownership of the `name` string or the passed `value`.
+ * This function should only be used in calls to \ref format_sql and \ref format_sql_to,
+ * to avoid lifetime issues.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ */
+template <BOOST_MYSQL_FORMATTABLE Formattable>
 inline
 #ifdef BOOST_MYSQL_DOXYGEN
     __see_below__
 #else
     detail::format_arg
 #endif
-    arg(string_view name, const T& value) noexcept
+    arg(string_view name, const Formattable& value) noexcept
 {
+    static_assert(!std::is_same<Formattable, detail::format_arg>::value, "Nested arg calls are not allowed");
     return {detail::make_format_value(value), name};
 }
 

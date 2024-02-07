@@ -151,10 +151,10 @@ struct format_arg
 
 // Pass-through anything that is already a format_arg_descriptor.
 // Used by named arguments
-inline format_arg make_format_arg_descriptor(const format_arg& v) noexcept { return v; }
+inline format_arg make_format_arg(const format_arg& v) noexcept { return v; }
 
 template <class T>
-format_arg make_format_arg_descriptor(const T& val)
+format_arg make_format_arg(const T& val)
 {
     return {make_format_value(val), {}};
 }
@@ -166,7 +166,7 @@ struct format_arg_store
     std::array<format_arg, N> data;
 
     template <class... Args>
-    format_arg_store(const Args&... args) noexcept : data{{make_format_arg_descriptor(args)...}}
+    format_arg_store(const Args&... args) noexcept : data{{make_format_arg(args)...}}
     {
     }
 

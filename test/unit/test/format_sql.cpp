@@ -866,22 +866,4 @@ BOOST_AUTO_TEST_CASE(format_context_error)
     BOOST_TEST(get(format_context(opts).append_value(HUGE_VAL)) == client_errc::unformattable_value);
 }
 
-/**
- * unit tests
- *   construct from another string: uses that and doesn't clear
- *   move construct: takes ownserhip of the other string
- *   move construct: propagates options
- *   move construct: propagates error state
- *   move assign: takes ownserhip of the other string
- *   move assign: propagates options
- *   move assign: propagates error state
- *   can be used with vector<char>, string with custom allocator, static_string?
- *   archetype
- *   archetype + default constructible
- *   archetype + move assignable
- * format_context
- *    the string is not cleared when created
- *    can be created from strings that are not std::string (TODO: we should test this in other places, too)
- */
-
 BOOST_AUTO_TEST_SUITE_END()
