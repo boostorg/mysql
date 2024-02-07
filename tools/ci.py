@@ -119,10 +119,6 @@ def _install_boost(
         else:
             _run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
     
-    # TODO: remove this when Charconv gets merged
-    if is_clean:
-        _run(['git', 'clone', '--depth', '1', '-b', branch, 'https://github.com/cppalliance/charconv.git', 'libs/charconv'])
-
     # Bootstrap
     if is_clean:
         if _is_windows:
