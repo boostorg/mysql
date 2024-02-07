@@ -10,9 +10,11 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/format_sql.hpp>
 
+#include <boost/static_string/static_string.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cmath>
+#include <cstddef>
 
 #include "format_common.hpp"
 #include "test_common/printing.hpp"
@@ -144,5 +146,32 @@ BOOST_AUTO_TEST_CASE(format_context_error)
     // Spotcheck: invalid floats are diagnosed correctly
     BOOST_TEST(get(format_context(opts).append_value(HUGE_VAL)) == client_errc::unformattable_value);
 }
+
+// Spotcheck: we can use string types that are not std::string with format context
+BOOST_AUTO_TEST_CASE(format_context_custom_string)
+{
+    constexpr std::size_t string_size = 128;
+    using context_t = basic_format_context<boost::static_string<string_size>>;
+
+    context_t ctx(opts);
+    ctx.append_raw("SELECT * FROM ")
+        .append_value(identifier("myt`able"))
+        .append_raw(" WHERE id = ")
+        .append_value(42)
+        .append_raw(" OR first_name = ")
+        .append_value("Joh'n");
+    BOOST_TEST(std::move(ctx).get().value() == R"(SELECT * FROM `myt``able` WHERE id = 'Joh\'n')");
+}
+
+//
+// Formatting using format_sql_to
+//
+
+/**
+ * success
+ * error
+ * the given context already has data
+ * context that is not format_context
+ */
 
 BOOST_AUTO_TEST_SUITE_END()
