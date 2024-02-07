@@ -40,8 +40,12 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 using mysql_time = boost::mysql::time;
-using custom_string = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
-using custom_blob = std::vector<unsigned char, custom_allocator<unsigned char>>;
+using string_with_alloc = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
+using blob_with_alloc = std::vector<unsigned char, custom_allocator<unsigned char>>;
+using detail::is_formattable_type;
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+using detail::formattable;
+#endif
 
 // Field with a custom formatter
 namespace custom {
@@ -70,6 +74,99 @@ struct formatter<custom::condition>
 }  // namespace boost
 
 BOOST_AUTO_TEST_SUITE(test_format_sql)
+
+//
+// formattable concept
+//
+
+// field and field_view accepted (writable fields)
+static_assert(formattable<field_view>, "");
+static_assert(formattable<field>, "");
+static_assert(!formattable<field&>, "");
+static_assert(!formattable<const field&>, "");
+static_assert(!formattable<field&&>, "");
+static_assert(!formattable<const field&&>, "");
+
+// Scalars accepted (writable fields)
+static_assert(formattable<std::nullptr_t>, "");
+static_assert(formattable<unsigned char>, "");
+static_assert(formattable<signed char>, "");
+static_assert(formattable<short>, "");
+static_assert(formattable<unsigned short>, "");
+static_assert(formattable<int>, "");
+static_assert(formattable<unsigned int>, "");
+static_assert(formattable<long>, "");
+static_assert(formattable<unsigned long>, "");
+static_assert(formattable<float>, "");
+static_assert(formattable<double>, "");
+static_assert(formattable<date>, "");
+static_assert(formattable<datetime>, "");
+static_assert(formattable<mysql_time>, "");
+static_assert(formattable<bool>, "");
+static_assert(!formattable<int&>, "");
+static_assert(!formattable<bool&>, "");
+
+// characters (except signed/unsigned char) not accepted
+static_assert(!formattable<char>, "");
+static_assert(!formattable<wchar_t>, "");
+static_assert(!formattable<char16_t>, "");
+static_assert(!formattable<char32_t>, "");
+#ifdef __cpp_char8_t
+static_assert(!formattable<char8_t>, "");
+#endif
+static_assert(!formattable<char&>, "");
+static_assert(!formattable<const char>, "");
+
+// Strings (writable fields)
+static_assert(formattable<std::string>, "");
+static_assert(formattable<string_with_alloc>, "");
+static_assert(formattable<string_view>, "");
+#ifdef __cpp_lib_string_view
+static_assert(formattable<std::string_view>, "");
+#endif
+static_assert(formattable<const char*>, "");
+static_assert(formattable<char[16]>, "");
+static_assert(!formattable<std::string&>, "");
+static_assert(!formattable<std::wstring>, "");
+
+// Blobs
+static_assert(formattable<blob>, "");
+static_assert(formattable<blob_view>, "");
+static_assert(formattable<blob_with_alloc>, "");
+
+// optional types accepted (writable fields)
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+static_assert(formattable<std::optional<int>>, "");
+static_assert(formattable<std::optional<std::string>>, "");
+static_assert(!formattable<std::optional<int>&>, "");
+#endif
+static_assert(formattable<boost::optional<string_view>>, "");
+static_assert(formattable<boost::optional<blob>>, "");
+static_assert(!formattable<boost::optional<void*>>, "");
+static_assert(!formattable<boost::optional<format_options>>, "");
+static_assert(!formattable<boost::optional<int&>>, "");
+
+// identifier accepted
+static_assert(formattable<identifier>, "");
+static_assert(!formattable<identifier&>, "");
+static_assert(!formattable<boost::optional<identifier>>, "");
+
+// Types with custom formatters accepted, but not references or optionals to them
+static_assert(formattable<custom::condition>, "");
+static_assert(!formattable<custom::condition&>, "");
+static_assert(!formattable<const custom::condition&>, "");
+static_assert(!formattable<custom::condition&&>, "");
+static_assert(!formattable<const custom::condition&&>, "");
+static_assert(!formattable<custom::condition*>, "");
+static_assert(!formattable<boost::optional<custom::condition>>, "");
+
+// other stuff not accepted
+static_assert(!formattable<void*>, "");
+static_assert(!formattable<field*>, "");
+static_assert(!formattable<field_view*>, "");
+static_assert(!formattable<format_options>, "");
+static_assert(!formattable<const format_options>, "");
+static_assert(!formattable<format_options&>, "");
 
 constexpr format_options opts{utf8mb4_charset, true};
 constexpr auto single_fmt = "SELECT {};";

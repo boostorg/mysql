@@ -19,6 +19,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <forward_list>
@@ -99,6 +100,8 @@ static_assert(!is_writable_field<const boost::mysql::date&>::value, "");
 
 // characters (except signed/unsigned char) not accepted
 static_assert(!is_writable_field<char>::value, "");
+static_assert(!is_writable_field<const char>::value, "");
+static_assert(!is_writable_field<std::atomic_char>::value, "");
 static_assert(!is_writable_field<wchar_t>::value, "");
 static_assert(!is_writable_field<char16_t>::value, "");
 static_assert(!is_writable_field<char32_t>::value, "");
@@ -115,10 +118,14 @@ static_assert(!is_writable_field<bool&>::value, "");
 static_assert(!is_writable_field<const bool&>::value, "");
 
 // string types
+static_assert(is_writable_field<const char*>::value, "");
 static_assert(is_writable_field<std::string>::value, "");
 static_assert(is_writable_field<string_with_alloc>::value, "");
 static_assert(is_writable_field<string_no_defctor>::value, "");
 static_assert(is_writable_field<string_view>::value, "");
+#ifdef __cpp_lib_string_view
+static_assert(is_writable_field<std::string_view>::value, "");
+#endif
 static_assert(!is_writable_field<string_with_traits>::value, "");
 static_assert(!is_writable_field<std::wstring>::value, "");
 static_assert(!is_writable_field<std::string&>::value, "");
