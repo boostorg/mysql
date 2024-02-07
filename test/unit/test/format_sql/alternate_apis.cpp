@@ -158,9 +158,11 @@ BOOST_AUTO_TEST_CASE(format_context_custom_string)
         .append_value(identifier("myt`able"))
         .append_raw(" WHERE id = ")
         .append_value(42)
-        .append_raw(" OR first_name = ")
+        .append_raw(" OR name = ")
         .append_value("Joh'n");
-    BOOST_TEST(std::move(ctx).get().value() == R"(SELECT * FROM `myt``able` WHERE id = 'Joh\'n')");
+    BOOST_TEST(
+        std::move(ctx).get().value() == R"(SELECT * FROM `myt``able` WHERE id = 42 OR name = 'Joh\'n')"
+    );
 }
 
 //
