@@ -25,7 +25,7 @@ struct writable_field_traits
 };
 
 template <>
-struct writable_field_traits<bool, void, void>
+struct writable_field_traits<bool>
 {
     static constexpr bool is_supported = true;
     static field_view to_field(bool value) noexcept { return field_view(value ? 1 : 0); }
@@ -34,7 +34,8 @@ struct writable_field_traits<bool, void, void>
 template <class T>
 struct writable_field_traits<
     T,
-    typename std::enable_if<std::is_constructible<field_view, const T&>::value>::type,
+    typename std::enable_if<
+        std::is_constructible<field_view, const T&>::value && std::is_object<T>::value>::type,
     void>
 {
     static constexpr bool is_supported = true;
@@ -150,7 +151,7 @@ struct is_writable_field_tuple_impl : std::false_type
 
 template <class... T>
 struct is_writable_field_tuple_impl<std::tuple<T...>>
-    : mp11::mp_all_of<mp11::mp_list<T...>, is_writable_field>
+    : mp11::mp_all_of<mp11::mp_list<typename std::remove_reference<T>::type...>, is_writable_field>
 {
 };
 

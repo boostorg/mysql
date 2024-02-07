@@ -63,19 +63,18 @@ struct unrelated
 //
 // writable_field
 //
-// field_view accepted
+// field_view accepted. References not accepted
 static_assert(is_writable_field<field_view>::value, "");
 static_assert(is_writable_field<const field_view>::value, "");
-static_assert(is_writable_field<field_view&>::value, "");
-static_assert(is_writable_field<const field_view&>::value, "");
-static_assert(is_writable_field<field_view&&>::value, "");
+static_assert(!is_writable_field<field_view&>::value, "");
+static_assert(!is_writable_field<const field_view&>::value, "");
+static_assert(!is_writable_field<field_view&&>::value, "");
 
-// field accepted
 static_assert(is_writable_field<field>::value, "");
 static_assert(is_writable_field<const field>::value, "");
-static_assert(is_writable_field<field&>::value, "");
-static_assert(is_writable_field<const field&>::value, "");
-static_assert(is_writable_field<field&&>::value, "");
+static_assert(!is_writable_field<field&>::value, "");
+static_assert(!is_writable_field<const field&>::value, "");
+static_assert(!is_writable_field<field&&>::value, "");
 
 // scalars accepted
 static_assert(is_writable_field<std::nullptr_t>::value, "");
@@ -92,6 +91,11 @@ static_assert(is_writable_field<double>::value, "");
 static_assert(is_writable_field<boost::mysql::date>::value, "");
 static_assert(is_writable_field<boost::mysql::datetime>::value, "");
 static_assert(is_writable_field<boost::mysql::time>::value, "");
+static_assert(!is_writable_field<int&>::value, "");
+static_assert(!is_writable_field<const int&>::value, "");
+static_assert(!is_writable_field<int&&>::value, "");
+static_assert(!is_writable_field<const double&>::value, "");
+static_assert(!is_writable_field<const boost::mysql::date&>::value, "");
 
 // characters (except signed/unsigned char) not accepted
 static_assert(!is_writable_field<char>::value, "");
@@ -101,38 +105,41 @@ static_assert(!is_writable_field<char32_t>::value, "");
 #ifdef __cpp_char8_t
 static_assert(!is_writable_field<char8_t>::value, "");
 #endif
+static_assert(!is_writable_field<char&>::value, "");
+static_assert(!is_writable_field<const char&>::value, "");
+static_assert(!is_writable_field<char&&>::value, "");
 
 // bool accepted
 static_assert(is_writable_field<bool>::value, "");
-
-// references to scalars accepted
-static_assert(is_writable_field<int&>::value, "");
-static_assert(is_writable_field<const int&>::value, "");
-static_assert(is_writable_field<int&&>::value, "");
+static_assert(!is_writable_field<bool&>::value, "");
+static_assert(!is_writable_field<const bool&>::value, "");
 
 // string types
 static_assert(is_writable_field<std::string>::value, "");
-static_assert(is_writable_field<std::string&>::value, "");
-static_assert(is_writable_field<const std::string&>::value, "");
 static_assert(is_writable_field<string_with_alloc>::value, "");
 static_assert(is_writable_field<string_no_defctor>::value, "");
-static_assert(is_writable_field<std::string&&>::value, "");
 static_assert(is_writable_field<string_view>::value, "");
 static_assert(!is_writable_field<string_with_traits>::value, "");
 static_assert(!is_writable_field<std::wstring>::value, "");
+static_assert(!is_writable_field<std::string&>::value, "");
+static_assert(!is_writable_field<const std::string&>::value, "");
+static_assert(!is_writable_field<std::string&&>::value, "");
 
-// blob types accepted
+// blob types
 static_assert(is_writable_field<blob>::value, "");
-static_assert(is_writable_field<blob&>::value, "");
-static_assert(is_writable_field<const blob&>::value, "");
 static_assert(is_writable_field<blob_view>::value, "");
 static_assert(is_writable_field<blob_with_alloc>::value, "");
+static_assert(!is_writable_field<blob&>::value, "");
+static_assert(!is_writable_field<const blob&>::value, "");
 
 // optional types accepted
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 static_assert(is_writable_field<std::optional<int>>::value, "");
 static_assert(is_writable_field<std::optional<std::string>>::value, "");
 static_assert(is_writable_field<std::optional<string_no_defctor>>::value, "");
+static_assert(!is_writable_field<std::optional<int>&>::value, "");
+static_assert(!is_writable_field<const std::optional<int>&>::value, "");
+static_assert(!is_writable_field<std::optional<int>&&>::value, "");
 #endif
 static_assert(is_writable_field<boost::optional<string_view>>::value, "");
 static_assert(is_writable_field<boost::optional<blob_view>>::value, "");
@@ -141,6 +148,7 @@ static_assert(is_writable_field<boost::optional<string_no_defctor>>::value, "");
 // optional of other stuff not accepted
 static_assert(!is_writable_field<boost::optional<void*>>::value, "");
 static_assert(!is_writable_field<boost::optional<unrelated>>::value, "");
+static_assert(!is_writable_field<boost::optional<int&>>::value, "");
 
 // other stuff not accepted
 static_assert(!is_writable_field<void*>::value, "");
@@ -256,6 +264,8 @@ static_assert(!is_field_view_forward_iterator<const row::iterator&>::value, "");
 
 BOOST_AUTO_TEST_CASE(to_field_)
 {
+    using detail::to_field;
+
     std::int64_t int64max = (std::numeric_limits<std::int64_t>::max)();
     std::uint64_t uint64max = (std::numeric_limits<std::uint64_t>::max)();
     datetime dt{2020, 1, 2, 23};
@@ -265,52 +275,47 @@ BOOST_AUTO_TEST_CASE(to_field_)
     field f("tgh");
 
     // Scalars
-    BOOST_TEST(writable_field_traits<std::int8_t>::to_field(90) == field_view(90));
-    BOOST_TEST(writable_field_traits<std::uint8_t>::to_field(90u) == field_view(90u));
-    BOOST_TEST(writable_field_traits<std::int16_t>::to_field(0xabc) == field_view(0xabc));
-    BOOST_TEST(writable_field_traits<std::uint16_t>::to_field(0xaabbu) == field_view(0xaabbu));
-    BOOST_TEST(writable_field_traits<std::int32_t>::to_field(90) == field_view(90));
-    BOOST_TEST(writable_field_traits<std::uint32_t>::to_field(90u) == field_view(90u));
-    BOOST_TEST(writable_field_traits<std::int64_t>::to_field(int64max) == field_view(int64max));
-    BOOST_TEST(writable_field_traits<std::uint64_t>::to_field(uint64max) == field_view(uint64max));
-    BOOST_TEST(writable_field_traits<bool>::to_field(false) == field_view(0));
-    BOOST_TEST(writable_field_traits<bool>::to_field(true) == field_view(1));
-    BOOST_TEST(writable_field_traits<float>::to_field(4.2f) == field_view(4.2f));
-    BOOST_TEST(writable_field_traits<double>::to_field(4.2) == field_view(4.2));
-    BOOST_TEST(writable_field_traits<date>::to_field(date(2020, 1, 2)) == field_view(date(2020, 1, 2)));
-    BOOST_TEST(writable_field_traits<datetime>::to_field(dt) == field_view(dt));
-    BOOST_TEST(writable_field_traits<boost::mysql::time>::to_field(t) == field_view(t));
+    BOOST_TEST(to_field(std::int8_t(90)) == field_view(90));
+    BOOST_TEST(to_field(std::uint8_t(90u)) == field_view(90u));
+    BOOST_TEST(to_field(std::int16_t(0xabc)) == field_view(0xabc));
+    BOOST_TEST(to_field(std::uint16_t(0xaabbu)) == field_view(0xaabbu));
+    BOOST_TEST(to_field(std::int32_t(90)) == field_view(90));
+    BOOST_TEST(to_field(std::uint32_t(90u)) == field_view(90u));
+    BOOST_TEST(to_field(int64max) == field_view(int64max));
+    BOOST_TEST(to_field(uint64max) == field_view(uint64max));
+    BOOST_TEST(to_field(false) == field_view(0));
+    BOOST_TEST(to_field(true) == field_view(1));
+    BOOST_TEST(to_field(4.2f) == field_view(4.2f));
+    BOOST_TEST(to_field(4.2) == field_view(4.2));
+    BOOST_TEST(to_field(date(2020, 1, 2)) == field_view(date(2020, 1, 2)));
+    BOOST_TEST(to_field(dt) == field_view(dt));
+    BOOST_TEST(to_field(t) == field_view(t));
 
     // Strings
-    BOOST_TEST(writable_field_traits<std::string>::to_field(s) == field_view("ljk"));
-    BOOST_TEST(writable_field_traits<const std::string&>::to_field(s) == field_view("ljk"));
-    BOOST_TEST(writable_field_traits<string_view>::to_field("abc") == field_view("abc"));
+    BOOST_TEST(to_field(s) == field_view("ljk"));
+    BOOST_TEST(to_field(static_cast<const std::string&>(s)) == field_view("ljk"));
+    BOOST_TEST(to_field(string_view("abc")) == field_view("abc"));
 #if defined(__cpp_lib_string_view)
-    BOOST_TEST(writable_field_traits<std::string_view>::to_field("abc") == field_view("abc"));
+    BOOST_TEST(to_field(std::string_view("abc")) == field_view("abc"));
 #endif
-    BOOST_TEST(writable_field_traits<const char*>::to_field("abc") == field_view("abc"));
+    BOOST_TEST(to_field(static_cast<const char*>("abc")) == field_view("abc"));
 
     // Blobs
-    BOOST_TEST(writable_field_traits<blob>::to_field(b) == field_view(makebv("\3\4\5")));
-    BOOST_TEST(writable_field_traits<const blob&>::to_field(b) == field_view(makebv("\3\4\5")));
-    BOOST_TEST(writable_field_traits<blob_view>::to_field(makebv("\1\2\3")) == field_view(makebv("\1\2\3")));
+    BOOST_TEST(to_field(b) == field_view(makebv("\3\4\5")));
+    BOOST_TEST(to_field(static_cast<const blob&>(b)) == field_view(makebv("\3\4\5")));
+    BOOST_TEST(to_field(makebv("\1\2\3")) == field_view(makebv("\1\2\3")));
 
     // Optionals
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-    BOOST_TEST(writable_field_traits<std::optional<int>>::to_field(std::optional<int>()) == field_view());
-    BOOST_TEST(writable_field_traits<std::optional<int>>::to_field(std::optional<int>(42)) == field_view(42));
+    BOOST_TEST(to_field(std::optional<int>()) == field_view());
+    BOOST_TEST(to_field(std::optional<int>(42)) == field_view(42));
 #endif
-    BOOST_TEST(
-        writable_field_traits<boost::optional<float>>::to_field(boost::optional<float>()) == field_view()
-    );
-    BOOST_TEST(
-        writable_field_traits<boost::optional<float>>::to_field(boost::optional<float>(4.2f)) ==
-        field_view(4.2f)
-    );
+    BOOST_TEST(to_field(boost::optional<float>()) == field_view());
+    BOOST_TEST(to_field(boost::optional<float>(4.2f)) == field_view(4.2f));
 
     // Field types
-    BOOST_TEST(writable_field_traits<field>::to_field(f) == field_view("tgh"));
-    BOOST_TEST(writable_field_traits<field_view>::to_field(field_view(50)) == field_view(50));
+    BOOST_TEST(to_field(f) == field_view("tgh"));
+    BOOST_TEST(to_field(field_view(50)) == field_view(50));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
