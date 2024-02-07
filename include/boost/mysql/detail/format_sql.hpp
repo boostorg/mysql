@@ -19,6 +19,9 @@
 #include <cstddef>
 #include <string>
 #include <type_traits>
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+#include <concepts>
+#endif
 
 namespace boost {
 namespace mysql {
@@ -32,28 +35,38 @@ class format_context_base;
 namespace detail {
 
 class format_state;
-struct format_arg_descriptor;
+struct format_arg;
 
 struct formatter_is_unspecialized
 {
 };
 
 template <class T>
-struct has_unspecialized_formatter : std::is_base_of<formatter_is_unspecialized, formatter<T>>
+constexpr bool has_specialized_formatter() noexcept
 {
-};
+    return !std::is_base_of<formatter_is_unspecialized, formatter<T>>::value;
+}
 
+// Note: having the concept use separate atomic clauses improves diagnostics
 template <class T>
 constexpr bool is_formattable_type()
 {
-    return is_writable_field<T>::value || !has_unspecialized_formatter<T>::value ||
-           std::is_same<T, format_arg_descriptor>::value;
+    return is_writable_field<T>::value || has_specialized_formatter<T>() ||
+           std::is_same<T, format_arg>::value;
 }
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
+// If you're getting an error referencing this concept,
+// it means that you are attempting to format a type that doesn't support it.
 template <class T>
-concept formattable = is_formattable_type<T>();
+concept formattable =
+    // This covers basic types and optionals
+    is_writable_field<T>::value ||
+    // This covers custom types that specialized boost::mysql::formatter
+    has_specialized_formatter<T>() ||
+    // The return type of boost::mysql::arg
+    std::same_as<T, format_arg>;
 
 #define BOOST_MYSQL_FORMATTABLE ::boost::mysql::detail::formattable
 
@@ -104,7 +117,7 @@ template <class T>
 format_arg_value make_format_value_impl(const T& v, std::true_type) noexcept
 {
     static_assert(
-        has_unspecialized_formatter<T>::value,
+        !has_specialized_formatter<T>(),
         "formatter<T> specializations for basic types (satisfying the WritableField concept) are not "
         "supported. Please remove the formatter specialization"
     );
@@ -130,8 +143,7 @@ format_arg_value make_format_value(const T& v) noexcept
 }
 
 // A (name, value) pair
-// TODO: can we split names and values? should hit cache less
-struct format_arg_descriptor
+struct format_arg
 {
     format_arg_value value;
     string_view name;
@@ -139,10 +151,10 @@ struct format_arg_descriptor
 
 // Pass-through anything that is already a format_arg_descriptor.
 // Used by named arguments
-inline format_arg_descriptor make_format_arg_descriptor(const format_arg_descriptor& v) noexcept { return v; }
+inline format_arg make_format_arg_descriptor(const format_arg& v) noexcept { return v; }
 
 template <class T>
-format_arg_descriptor make_format_arg_descriptor(const T& val)
+format_arg make_format_arg_descriptor(const T& val)
 {
     return {make_format_value(val), {}};
 }
@@ -151,14 +163,14 @@ format_arg_descriptor make_format_arg_descriptor(const T& val)
 template <std::size_t N>
 struct format_arg_store
 {
-    std::array<format_arg_descriptor, N> data;
+    std::array<format_arg, N> data;
 
     template <class... Args>
     format_arg_store(const Args&... args) noexcept : data{{make_format_arg_descriptor(args)...}}
     {
     }
 
-    span<const format_arg_descriptor> get() const noexcept { return data; }
+    span<const format_arg> get() const noexcept { return data; }
 };
 
 template <>
@@ -166,15 +178,11 @@ struct format_arg_store<0u>
 {
     format_arg_store() = default;
 
-    span<const format_arg_descriptor> get() const noexcept { return {}; }
+    span<const format_arg> get() const noexcept { return {}; }
 };
 
 BOOST_MYSQL_DECL
-void vformat_sql_to(
-    string_view format_str,
-    format_context_base& ctx,
-    span<const detail::format_arg_descriptor> args
-);
+void vformat_sql_to(string_view format_str, format_context_base& ctx, span<const format_arg> args);
 
 BOOST_MYSQL_DECL
 std::string check_format_result(system::result<std::string>&& r);

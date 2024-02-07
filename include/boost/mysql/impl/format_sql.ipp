@@ -175,7 +175,7 @@ inline bool is_name_start(char c) noexcept
 class format_state
 {
     format_context_base& ctx_;
-    span<const format_arg_descriptor> args_;
+    span<const format_arg> args_;
 
     // Borrowed from fmt
     // 0: we haven't used any args yet
@@ -212,7 +212,7 @@ class format_state
     bool uses_auto_ids() const noexcept { return next_arg_id_ > 0; }
     bool uses_explicit_ids() const noexcept { return next_arg_id_ == -1; }
 
-    void do_field(format_arg_descriptor arg) { ctx_.format_arg(arg.value); }
+    void do_field(format_arg arg) { ctx_.format_arg(arg.value); }
 
     void do_indexed_field(int arg_id)
     {
@@ -316,10 +316,7 @@ class format_state
     }
 
 public:
-    format_state(format_context_base& ctx, span<const format_arg_descriptor> args) noexcept
-        : ctx_(ctx), args_(args)
-    {
-    }
+    format_state(format_context_base& ctx, span<const format_arg> args) noexcept : ctx_(ctx), args_(args) {}
 
     void format(string_view format_str)
     {
@@ -403,7 +400,7 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
 void boost::mysql::detail::vformat_sql_to(
     string_view format_str,
     format_context_base& ctx,
-    span<const detail::format_arg_descriptor> args
+    span<const detail::format_arg> args
 )
 {
     detail::format_state(ctx, args).format(format_str);

@@ -273,7 +273,7 @@ inline
 #ifdef BOOST_MYSQL_DOXYGEN
     __see_below__
 #else
-    detail::format_arg_descriptor
+    detail::format_arg
 #endif
     arg(string_view name, const T& value) noexcept
 {
