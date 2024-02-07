@@ -88,6 +88,9 @@ static std::string compose_batch_insert(
     const std::vector<employee>& employees
 )
 {
+    // We need at least one employee to insert
+    assert(!employees.empty());
+
     // A format_context accumulates our query as we build it
     boost::mysql::format_context ctx(opts);
 
@@ -137,6 +140,13 @@ void main_impl(int argc, char** argv)
     // Parse the JSON. json::parse parses the string into a DOM,
     // and json::value_to validates the JSON schema, parsing values into employee structures
     auto values = boost::json::value_to<std::vector<employee>>(boost::json::parse(contents));
+
+    // We need one employee, at least
+    if (values.empty())
+    {
+        std::cerr << "Input file should contain one employee, at least\n";
+        exit(1);
+    }
 
     // Create an I/O context, required by all I/O objects
     boost::asio::io_context ctx;

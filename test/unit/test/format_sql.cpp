@@ -508,14 +508,14 @@ BOOST_AUTO_TEST_CASE(individual_error)
     using double_limits = std::numeric_limits<double>;
 
     // float inf and nan
-    BOOST_TEST(format_single_error(float_limits::infinity()) == client_errc::floating_point_nan_inf);
-    BOOST_TEST(format_single_error(-float_limits::infinity()) == client_errc::floating_point_nan_inf);
-    BOOST_TEST(format_single_error(float_limits::quiet_NaN()) == client_errc::floating_point_nan_inf);
+    BOOST_TEST(format_single_error(float_limits::infinity()) == client_errc::unformattable_value);
+    BOOST_TEST(format_single_error(-float_limits::infinity()) == client_errc::unformattable_value);
+    BOOST_TEST(format_single_error(float_limits::quiet_NaN()) == client_errc::unformattable_value);
 
     // double inf and nan
-    BOOST_TEST(format_single_error(double_limits::infinity()) == client_errc::floating_point_nan_inf);
-    BOOST_TEST(format_single_error(-double_limits::infinity()) == client_errc::floating_point_nan_inf);
-    BOOST_TEST(format_single_error(double_limits::quiet_NaN()) == client_errc::floating_point_nan_inf);
+    BOOST_TEST(format_single_error(double_limits::infinity()) == client_errc::unformattable_value);
+    BOOST_TEST(format_single_error(-double_limits::infinity()) == client_errc::unformattable_value);
+    BOOST_TEST(format_single_error(double_limits::quiet_NaN()) == client_errc::unformattable_value);
 
     // strings and blobs with invalid characters
     BOOST_TEST(format_single_error("a\xc3'") == client_errc::invalid_encoding);
@@ -863,7 +863,7 @@ BOOST_AUTO_TEST_CASE(format_context_error)
     );
 
     // Spotcheck: invalid floats are diagnosed correctly
-    BOOST_TEST(get(format_context(opts).append_value(HUGE_VAL)) == client_errc::floating_point_nan_inf);
+    BOOST_TEST(get(format_context(opts).append_value(HUGE_VAL)) == client_errc::unformattable_value);
 }
 
 /**

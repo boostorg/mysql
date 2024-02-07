@@ -141,10 +141,9 @@ struct formatter
  * \n
  * Conceptually, a format context contains: \n
  *   \li The result string. Output operations append characters to this output string.
- *       This type is agnostic to the output string type.
- *   \li Format options describing how to perform format operations.
- *   \li An error state that is set by output operations when they fail.
- *       If the error state is set, it will be propagated to \ref basic_format_context::get.
+ *       `format_context_base` is agnostic to the output string type.
+ *   \li An error state (\ref error_state) that is set by output operations when they fail.
+ *       The error state is propagated to \ref basic_format_context::get.
  * \n
  * References to this class are useful when you need to manipulate
  * a format context without knowing the type of the actual context that will be used,
@@ -181,8 +180,6 @@ protected:
         impl_.opts = rhs.impl_.opts;
         impl_.ec = rhs.impl_.ec;
     }
-
-    error_code get_error() const noexcept { return impl_.ec; }
 
 public:
     /**
@@ -224,11 +221,33 @@ public:
         return *this;
     }
 
+    /**
+     * \brief Adds an error to the current error state.
+     * \details
+     * This function can be used by custom formatters to report that they
+     * received a value that can't be formatted. For instance, it's used by
+     * the built-in string formatter when a string with an invalid encoding is supplied.
+     * \n
+     * If the error state is not set before calling this function, the error
+     * state is updated to `ec`. Otherwise, the error is ignored.
+     * This implies that once the error state is set, it can't be reset.
+     * \n
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     void add_error(error_code ec) noexcept
     {
         if (!impl_.ec)
             impl_.ec = ec;
     }
+
+    /**
+     * \brief Retrieves the current error state.
+     * \n
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    error_code error_state() const noexcept { return impl_.ec; }
 };
 
 /// (EXPERIMENTAL) Implements stream-like SQL formatting (TODO).
@@ -272,7 +291,7 @@ public:
     // TODO: do we make this move-only?
     system::result<OutputString> get()
     {
-        auto ec = get_error();
+        auto ec = error_state();
         if (ec)
             return ec;
         return std::move(output_);

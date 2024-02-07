@@ -77,7 +77,7 @@ inline error_code append_double(output_string_ref output, double number)
 
     // inf and nan are not supported by MySQL
     if (std::isinf(number) || std::isnan(number))
-        return client_errc::floating_point_nan_inf;
+        return client_errc::unformattable_value;
 
     char buff[buffsize];
 

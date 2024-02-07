@@ -85,9 +85,8 @@ enum class client_errc : int
     /// format string and arguments.
     invalid_format_string,
 
-    /// (EXPERIMENTAL) A floating point infinity or NaN were provided to a format operation. These values are
-    /// not supported by MySQL.
-    floating_point_nan_inf,
+    /// (EXPERIMENTAL) A formatting operation could not format one of its arguments.
+    unformattable_value,
 
     /// (EXPERIMENTAL) The character set used by the connection is not known by the client. Use
     /// set_character_set or async_set_character_set before invoking operations that require a known charset.

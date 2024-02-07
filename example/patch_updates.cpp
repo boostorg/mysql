@@ -20,6 +20,7 @@
 // Note: client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -76,8 +77,13 @@ struct formatter<std::vector<update_field>>
     // format_context_base has append_raw and append_value, like format_context.
     static void format(const std::vector<update_field>& value, format_context_base& ctx)
     {
-        // Precondition: we must never pass empty update lists
-        assert(!value.empty());
+        // We need one update field, at least. If this is not the case, we can use
+        // add_error to report the error and exit. This will cause format_sql to throw.
+        if (value.empty())
+        {
+            ctx.add_error(client_errc::unformattable_value);
+            return;
+        }
 
         // Build a comma-separated list
         bool is_first = true;

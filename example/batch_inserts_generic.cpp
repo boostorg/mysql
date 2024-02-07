@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
+
 #include <boost/describe/class.hpp>
 
 #ifdef BOOST_DESCRIBE_CXX14
@@ -136,6 +138,14 @@ struct formatter<insert_list<T>>
     // format_context_base has append_raw and append_value, like format_context.
     static void format(const insert_list<T>& values, format_context_base& ctx)
     {
+        // We need one record, at least. If this is not the case, we can use
+        // add_error to report the error and exit. This will cause format_sql to throw.
+        if (values.values.empty())
+        {
+            ctx.add_error(client_errc::unformattable_value);
+            return;
+        }
+
         // Build a comma-separated list
         bool is_first = true;
         for (const T& val : values.values)
