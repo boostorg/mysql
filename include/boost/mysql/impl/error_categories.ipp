@@ -63,7 +63,8 @@ const char* error_to_string(client_errc error) noexcept
         return "Getting a connection from a connection_pool failed because the pool is not running. Ensure "
                "that you're calling connection_pool::async_run.";
     case client_errc::invalid_encoding:
-        return "An invalid byte sequence was found while trying to decode a string.";
+        return "A string passed to a formatting function contains a byte sequence that can't be decoded with "
+               "the current character set.";
     case client_errc::unformattable_value:
         return "A formatting operation could not format one of its arguments.";
     case client_errc::format_string_invalid_syntax:
