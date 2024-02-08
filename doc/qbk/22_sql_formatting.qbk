@@ -19,6 +19,8 @@ strings dynamically client-side while keeping your application secure.
     This feature is experimental. Its API may change in subsequent releases.
 ]
 
+
+
 [heading Common use cases]
 
 * Queries involving several [*dynamic filters].
@@ -43,6 +45,8 @@ for more info.
     can lead to [*SQL injection vulnerabilities]. Please read the documentation
     carefully and thoroughly test your code when using this feature.
 ]
+
+
 
 [heading Formatting simple queries]
 
@@ -85,6 +89,10 @@ As well as named arguments, using [reflink arg]:
 
 [sql_formatting_named_args]
 
+See [link mysql.sql_formatting_advanced.format_string_syntax this section] for an in-depth
+explanation on format strings.
+
+
 
 [heading Formatting identifiers]
 
@@ -97,28 +105,22 @@ SQL identifier (like a field or table name), you need to use the [reflink identi
 
 [sql_formatting_qualified_identifiers]
 
-[heading Stream SQL formatting with format_context]
 
-Advanced use cases, like batch inserts or dynamic filters, may not be
-expressible in terms of format strings. [reflink format_context]
-provides a way to incrementally build query strings:
 
-[sql_formatting_format_context_fn]
-[sql_formatting_format_context_use]
+[heading Building SQL strings incrementally using format_sql_to]
 
-[warning
-    [*SQL injection warning]: misusing `format_context` may lead to vulnerabilities.
-    If you are composing complex queries, be sure to [link mysql.sql_formatting.unit_test unit test]
-    your code thoroughly.
-]
+Many use cases, including batch inserts or dynamic filters, may not be
+expressible in terms of a single format string. In such cases, you can
+use [reflink format_context] and [reflink format_sql_to] to
+build query strings incrementally:
 
-[heading Extending format_sql and format_context]
+[sql_formatting_incremental_fn]
+[sql_formatting_incremental_use]
 
-You can specialize [reflink formatter] to add formatting support for custom types.
-The notation resembles `std::format` but is much simpler, since format specs are not supported.
+You can also use [refmem format_context append_raw] and [refmem format_context append_value]
+to add raw SQL and formatted values, respectively, without a format string.
 
-[sql_formatting_formatter_specialization]
-[sql_formatting_formatter_use]
+
 
 [heading:unit_test Unit testing]
 
@@ -129,6 +131,9 @@ For instance:
 
 In tests, it's safe to manually create a [reflink format_options] value like the one above.
 But don't do it in production code!
+
+
+
 
 [heading:unknown_character_set Solving the unknown_character_set error]
 
@@ -153,19 +158,11 @@ Try the following:
   Always use [refmem any_connection format_opts].
 ]
 
-[*Background]: MySQL has many configuration options that affect its syntax. There are two options that affect how
-string values are escaped and formatted:
+For an explanation on why [reflink format_options] is necessary and how
+character set tracking works, please read [link mysql.sql_formatting_advanced.format_options this section].
 
-* Whether the backslash character represents a escape sequence or not. By default they do,
-  but this can be disabled dynamically by setting the
-  [@https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes NO_BACKSLASH_ESCAPES] SQL mode.
-  This is tracked by [reflink any_connection] automatically.
-* The connection's [*current character set]. This is tracked by connections as far as possible, but deficiencies
-  in the protocol create cases where the character set may not be known to the client. This is why
-  [refmem any_connection format_opts] returns a `boost::system::result<format_options>` that will
-  contain an error in case the character set is unknown.
 
-For a reference on how character set tracking works, please read [link mysql.charsets.tracking this section].
+
 
 [heading Solving the invalid_encoding error]
 
@@ -177,6 +174,13 @@ passed character set. This triggers a `client_errc::invalid_encoding` error:
 
 You can validate your strings beforehand or handle the error once
 it happened and reject the input.
+
+Other types may also produce format errors. Please read
+[link mysql.sql_formatting_advanced.error_handling this section] for an in-depth
+explanation on SQL formatting error handling.
+
+
+
 
 [heading:efficiency Efficiency considerations]
 
@@ -200,26 +204,7 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
 * You can use client-formatted SQL to generate several [*semicolon-separated queries]
   to be run in batch.
 
-[heading Other string types with basic_format_context]
 
-You can use any string-like type when using stream-like formatting,
-by using [reflink basic_format_context]:
-
-[sql_formatting_custom_string]
-
-You can also provide a string value, to re-use memory:
-
-[sql_formatting_memory_reuse]
-
-[heading Raw string escaping]
-
-If you're building a SQL framework, or otherwise performing very low-level tasks, you may need
-to just escape a string, without quoting or formatting. You can use [reflink escape_string],
-which mimics [@https://dev.mysql.com/doc/c-api/8.0/en/mysql-real-escape-string.html `mysql_real_escape_string`].
-
-[note
-    Don't use this unless you know what you're doing.
-]
 
 [heading:reference Types with built-in support for SQL formatting]
 

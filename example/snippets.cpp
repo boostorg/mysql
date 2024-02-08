@@ -1599,8 +1599,10 @@ namespace mysql {
 template <>
 struct formatter<employee_t>
 {
-    // formatter should define this function, at least. format must use
-    // append_raw and append_value on the context to format the passed value.
+    // formatter<T> should define, at least, a function with signature:
+    //    static void format(const T&, format_context:base&)
+    // This function must use format_sql_to, format_context_base::append_raw
+    // or format_context_base::append_value to format the passed value.
     // We will make this suitable for INSERT statements
     static void format(const employee_t& emp, format_context_base& ctx)
     {
@@ -1800,27 +1802,6 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     }
 #endif
     {
-        //[sql_formatting_formatter_use
-        // We can now use employee as a built-in value
-        std::string query = boost::mysql::format_sql(
-            "INSERT INTO employee (first_name, last_name, company_id) VALUES ({}), ({})",
-            conn.format_opts().value(),
-            employee_t{"John", "Doe", "HGS"},
-            employee_t{"Rick", "Johnson", "AWC"}
-        );
-
-        ASSERT(
-            query ==
-            "INSERT INTO employee (first_name, last_name, company_id) VALUES "
-            "('John', 'Doe', 'HGS'), ('Rick', 'Johnson', 'AWC')"
-        );
-
-        // You can also use format_context::append_value passing an employee
-        //]
-
-        conn.execute(query, r);
-    }
-    {
         try
         {
             //[sql_formatting_invalid_encoding
@@ -1835,31 +1816,6 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         {
             ASSERT(err.code() == boost::mysql::client_errc::invalid_encoding);
         }
-    }
-#ifdef __cpp_lib_polymorphic_allocator
-    {
-        //[sql_formatting_custom_string
-        // Create a format context that uses std::pmr::string
-        boost::mysql::basic_format_context<std::pmr::string> ctx(conn.format_opts().value());
-
-        // Compose your query as usual
-        boost::mysql::format_sql_to("SELECT * FROM employee WHERE id = {}", ctx, 42);
-
-        // Retrieve the query as usual
-        std::pmr::string query = std::move(ctx).get().value();
-        //]
-
-        ASSERT(query == "SELECT * FROM employee WHERE id = 42");
-        conn.execute(query, r);
-    }
-#endif
-    {
-        //[sql_formatting_memory_reuse
-        std::string storage;  // we want to re-use memory held by storage
-        boost::mysql::format_context ctx(conn.format_opts().value(), std::move(storage));
-
-        // Use ctx as you normally would
-        //]
     }
     {
         using namespace boost::mysql;
@@ -2075,6 +2031,54 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
             // clang-format on
         );
         //->
+        //]
+    }
+
+    // Advanced section
+    {
+        //[sql_formatting_formatter_use
+        // We can now use employee as a built-in value
+        std::string query = boost::mysql::format_sql(
+            "INSERT INTO employee (first_name, last_name, company_id) VALUES ({}), ({})",
+            conn.format_opts().value(),
+            employee_t{"John", "Doe", "HGS"},
+            employee_t{"Rick", "Johnson", "AWC"}
+        );
+
+        ASSERT(
+            query ==
+            "INSERT INTO employee (first_name, last_name, company_id) VALUES "
+            "('John', 'Doe', 'HGS'), ('Rick', 'Johnson', 'AWC')"
+        );
+
+        // You can also use format_context::append_value passing an employee
+        //]
+
+        conn.execute(query, r);
+    }
+#ifdef __cpp_lib_polymorphic_allocator
+    {
+        //[sql_formatting_custom_string
+        // Create a format context that uses std::pmr::string
+        boost::mysql::basic_format_context<std::pmr::string> ctx(conn.format_opts().value());
+
+        // Compose your query as usual
+        boost::mysql::format_sql_to("SELECT * FROM employee WHERE id = {}", ctx, 42);
+
+        // Retrieve the query as usual
+        std::pmr::string query = std::move(ctx).get().value();
+        //]
+
+        ASSERT(query == "SELECT * FROM employee WHERE id = 42");
+        conn.execute(query, r);
+    }
+#endif
+    {
+        //[sql_formatting_memory_reuse
+        std::string storage;  // we want to re-use memory held by storage
+        boost::mysql::format_context ctx(conn.format_opts().value(), std::move(storage));
+
+        // Use ctx as you normally would
         //]
     }
 }

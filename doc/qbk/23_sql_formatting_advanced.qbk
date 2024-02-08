@@ -1,0 +1,174 @@
+[/
+    Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:sql_formatting_advanced (Experimental) Advanced client-side SQL query formatting]
+[nochunk]
+
+
+[heading Extending format_sql and format_context]
+
+You can specialize [reflink formatter] to add formatting support to your types.
+The notation resembles `std::format` but is much simpler, since format specs are not supported.
+
+[sql_formatting_formatter_specialization]
+
+The type can now be used in [reflink format_sql], [reflink format_sql_to]
+and [refmem format_context append_value]:
+
+[sql_formatting_formatter_use]
+
+
+
+
+[heading:format_string_syntax Format string syntax]
+
+This section extends on the supported syntax for format strings.
+The syntax is similar to the one in `fmtlib`.
+
+A format string is composed of regular text and replacement fields.
+Regular text is output verbatim, while replacement fields are substituted
+by formatted arguments. For instance, in `"SELECT {} FROM employee"`,
+`"SELECT "` and `" FROM EMPLOYEE"` is regular text, and `"{}"` is a replacement field.
+
+A `{}` is called an [*automatic indexing] replacement field. Arguments are replaced
+in the order they were provided to the format function. For instance:
+
+```
+format_sql("SELECT {}, {}, {}", opts, 42, "abc", nullptr) == "SELECT 42, 'abc', NULL";
+```
+
+A field index can be included within the braces. This is called [*manual indexing].
+Indices can appear in any order, and can be repeated:
+
+[sql_formatting_manual_indices]
+
+Finally, you can assign your arguments a name by calling [reflink arg], and reference
+them using that name:
+
+[sql_formatting_named_args]
+
+Argument names can only contain ASCII letters (lowercase or uppercase),
+digits and the underscore character (`_`). Names can't start with a digit.
+
+Format strings can use either manual or automatic indexing, but can't mix them:
+
+```
+// client_errc::format_string_manual_auto_mix
+format_sql("SELECT {0}, {}", opts, 42);
+```
+
+Named arguments can be mixed with either manual or automatic indexing.
+
+Unreferenced format arguments are ignored. It's not an error to supply more
+format arguments than required:
+
+```
+// This is OK
+format_sql("SELECT {}", opts, 42, "abc");
+```
+
+You can output a brace literal by doubling it:
+
+```
+format_sql("SELECT {}, 'Brace literals: {{ and }}'", opts, 42) == "SELECT 42, 'Brace literals: { and }'"
+```
+
+Format specifiers (e.g. `{:g}`), common in `fmtlib`, are not allowed.
+There is usually a single, canonical representation for each type in
+MySQL, so there is no need to format types with different formats.
+This makes the implementation simpler and more secure.
+
+Format strings must be encoded according to [refmem format_options charset].
+Otherwise, an error will be generated. 
+
+
+
+
+
+[heading:error_handling Error handling model]
+
+* There are unformattable values. floats a doubles can be inf and NaN, and
+  that's something MySL doesn't have a representation for. Strings can only
+  be escaped securely if they are encoded according to the current character set.
+  Attempting to escape an invalid string can lead to vulnerabilities.
+* In general, SQL formatting accepts values even if they are invalid
+  (e.g. out-of-range dates) as long as we're sure MySQL will handle them securely.
+  Otherwise, we reject.
+* Format contexts contain an "error state". This is an error code that can be
+  set by formatting operations. Once set, further formatting operations can be issued,
+  but the overall operation fails (monad-like). Rationale: avoid checking codes at every
+  individual op.
+* Set by built-in formatters as described, or by custom formatters by
+  set_error.
+* [refmem basic_format_context get] returns a
+  [link mysql.sql_formatting_advanced.system_result `boost::system::result`].
+  If the error state was set at any point, this contains an error. Otherwise, a
+  value.
+* [reflink format_sql_to] may also encounter errors
+  while processing the format string - e.g. if you provide less arguments than required.
+  This also sets the error state.
+* [reflink format_sql] reports errors via `boost::system::system_error` exceptions.
+  Creates the context, formats, the checks - as if `.value()` was called.
+
+
+
+
+[heading:format_options Format options and character set tracking]
+
+
+[*Background]: MySQL has many configuration options that affect its syntax. There are two options that affect how
+string values are escaped and formatted:
+
+* Whether the backslash character represents a escape sequence or not. By default they do,
+  but this can be disabled dynamically by setting the
+  [@https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes NO_BACKSLASH_ESCAPES] SQL mode.
+  This is tracked by [reflink any_connection] automatically.
+* The connection's [*current character set]. This is tracked by connections as far as possible, but deficiencies
+  in the protocol create cases where the character set may not be known to the client. This is why
+  [refmem any_connection format_opts] returns a `boost::system::result<format_options>` that will
+  contain an error in case the character set is unknown.
+
+For a reference on how character set tracking works, please read [link mysql.charsets.tracking this section].
+
+
+
+
+[heading:custom_strings Custom string types]
+
+[reflink format_sql_to] can be used with string types that are not `std::string`.
+Anything satisfying the [reflink OutputString] concept works. This includes
+strings with custom allocators (like `std::pmr::string`) or `boost::static_string`.
+
+
+You need to create a [reflink basic_format_context], specifying the string type:
+
+[sql_formatting_custom_string]
+
+You can also provide a string value, to re-use memory:
+
+[sql_formatting_memory_reuse]
+
+
+
+
+
+
+[heading Raw string escaping]
+
+If you're building a SQL framework, or otherwise performing very low-level tasks, you may need
+to just escape a string, without quoting or formatting. You can use [reflink escape_string],
+which mimics [@https://dev.mysql.com/doc/c-api/8.0/en/mysql-real-escape-string.html `mysql_real_escape_string`].
+
+[note
+    Don't use this unless you know what you're doing.
+]
+
+
+
+
+
+[endsect]
