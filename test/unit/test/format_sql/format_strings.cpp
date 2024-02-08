@@ -15,8 +15,6 @@
 #include <boost/system/system_error.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <string>
-
 #include "format_common.hpp"
 #include "test_common/printing.hpp"
 

@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(format_sql_invalid_args)
         [&](const boost::system::system_error& err) {
             std::string expected_diag =
                 "A string passed to a formatting function contains a byte sequence that can't be decoded "
-                "with the current character set.";
+                "with the current character set. [mysql.client:17]";
             BOOST_TEST(err.code() == client_errc::invalid_encoding);
             BOOST_TEST(err.what() == expected_diag);
             return true;
