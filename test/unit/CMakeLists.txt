@@ -80,7 +80,7 @@ add_executable(
     test/format_sql/basic_format_context.cpp
     test/format_sql/individual_value.cpp
     test/format_sql/format_strings.cpp
-    test/format_sql/alternate_apis.cpp
+    test/format_sql/api.cpp
 
     test/execution_state.cpp
     test/static_execution_state.cpp

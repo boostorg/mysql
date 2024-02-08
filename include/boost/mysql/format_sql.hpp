@@ -22,14 +22,9 @@
 #include <boost/core/span.hpp>
 #include <boost/system/result.hpp>
 
-#include <array>
 #include <cstddef>
 #include <string>
 #include <type_traits>
-
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-#include <concepts>
-#endif
 
 namespace boost {
 namespace mysql {
@@ -441,7 +436,7 @@ std::string format_sql(
     format_context ctx(opts);
     detail::format_arg_store<sizeof...(Formattable)> store(args...);
     detail::vformat_sql_to(format_str.get(), ctx, store.get());
-    return detail::check_format_result(std::move(ctx).get());
+    return detail::check_format_sql_result(std::move(ctx).get());
 }
 
 }  // namespace mysql

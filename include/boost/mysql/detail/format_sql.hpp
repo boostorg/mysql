@@ -185,7 +185,7 @@ BOOST_MYSQL_DECL
 void vformat_sql_to(string_view format_str, format_context_base& ctx, span<const format_arg> args);
 
 BOOST_MYSQL_DECL
-std::string check_format_result(system::result<std::string>&& r);
+std::string check_format_sql_result(system::result<std::string>&& r);
 
 }  // namespace detail
 }  // namespace mysql

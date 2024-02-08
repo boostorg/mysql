@@ -10,6 +10,7 @@
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -34,7 +35,7 @@ class set_character_set_algo : public sansio_algorithm, asio::coroutine
     character_set charset_;
     std::uint8_t seqnum_{0};
 
-    static system::result<std::string> compose_query(const character_set& charset)
+    static error_code compose_query(const character_set& charset, std::string& output)
     {
         // The character set should have a name
         BOOST_ASSERT(charset.name != nullptr);
@@ -42,7 +43,11 @@ class set_character_set_algo : public sansio_algorithm, asio::coroutine
         // For security, if the character set has non-ascii characters in it name, reject it.
         format_context ctx(format_options{ascii_charset, true});
         ctx.append_raw("SET NAMES ").append_value(charset.name);
-        return std::move(ctx).get();
+        auto res = std::move(ctx).get();
+        if (res.has_error())
+            return res.error();
+        output = std::move(res).value();
+        return error_code();
     }
 
 public:
@@ -56,7 +61,7 @@ public:
         if (ec)
             return ec;
 
-        system::result<std::string> query;
+        std::string query;
 
         // SET NAMES never returns rows. Using execute requires us to allocate
         // a results object, which we can avoid by simply sending the query and reading the OK response.
@@ -64,12 +69,12 @@ public:
         {
             // Setup
             diag_->clear();
-            query = compose_query(charset_);
-            if (query.has_error())
-                return query.error();
+            ec = compose_query(charset_, query);
+            if (ec)
+                return ec;
 
             // Send the execution request
-            BOOST_ASIO_CORO_YIELD return write(query_command{*query}, seqnum_);
+            BOOST_ASIO_CORO_YIELD return write(query_command{query}, seqnum_);
 
             // Read the response
             BOOST_ASIO_CORO_YIELD return read(seqnum_);

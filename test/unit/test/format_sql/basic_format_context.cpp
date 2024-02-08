@@ -149,7 +149,7 @@ BOOST_AUTO_TEST_CASE(move_assign_error)
     ctx = std::move(*source);
     source.reset();
 
-    // Check error state and options
+    // Error state is propagated
     BOOST_TEST(ctx.error_state() == client_errc::extra_bytes);
     BOOST_TEST(std::move(ctx).get().error() == client_errc::extra_bytes);
 }

@@ -147,84 +147,58 @@ BOOST_AUTO_TEST_CASE(error)
     {
         string_view name;
         string_view format_str;
-        string_view expected_diag;
+        error_code expected_ec;
     } test_cases[] = {
   // Simply invalid
-        {"unbalanced_{",             "SELECT { bad",        "invalid format string"                                                            },
-        {"unbalanced_{_eof",         "SELECT {",            "invalid format string"                                                            },
-        {"unbalanced_}",             "SELECT } bad",        "unbalanced '}' in format string"                                                  },
-        {"unbalanced_}_after_field", "SELECT {}} bad",      "unbalanced '}' in format string"                                                  },
-        {"unbalanced_}_eof",         "SELECT }",            "unbalanced '}' in format string"                                                  },
-        {"invalid_character",
-         "SELECT \xc3 bad",                                 "the format string contains characters that are invalid in the given character set"},
+        {"unbalanced_{",             "SELECT { bad",        client_errc::format_string_invalid_syntax  },
+        {"unbalanced_{_eof",         "SELECT {",            client_errc::format_string_invalid_syntax  },
+        {"unbalanced_}",             "SELECT } bad",        client_errc::format_string_invalid_syntax  },
+        {"unbalanced_}_after_field", "SELECT {}} bad",      client_errc::format_string_invalid_syntax  },
+        {"unbalanced_}_eof",         "SELECT }",            client_errc::format_string_invalid_syntax  },
+        {"invalid_character",        "SELECT \xc3 bad",     client_errc::format_string_invalid_encoding},
 
  // Named argument problems
-        {"name_starts_number",       "SELECT {0name}",      "invalid format string"                                                            },
-        {"name_starts_invalid",      "SELECT {!name}",      "invalid format string"                                                            },
-        {"name_ends_invalid",        "SELECT {name!}",      "invalid format string"                                                            },
-        {"name_contains_invalid",    "SELECT {na'me}",      "invalid format string"                                                            },
-        {"name_spaces",              "SELECT { name }",     "invalid format string"                                                            },
-        {"name_non_ascii",           "SELECT {e\xc3\xb1p}", "invalid format string"                                                            },
-        {"name_format_spec",         "SELECT {name:abc}",   "invalid format string"                                                            },
-        {"name_format_spec_empty",   "SELECT {name:}",      "invalid format string"                                                            },
-        {"name_eof",                 "SELECT {name",        "invalid format string"                                                            },
-        {"name_not_found",           "SELECT {name} {bad}", "named argument not found"                                                         },
+        {"name_starts_number",       "SELECT {0name}",      client_errc::format_string_invalid_syntax  },
+        {"name_starts_invalid",      "SELECT {!name}",      client_errc::format_string_invalid_syntax  },
+        {"name_ends_invalid",        "SELECT {name!}",      client_errc::format_string_invalid_syntax  },
+        {"name_contains_invalid",    "SELECT {na'me}",      client_errc::format_string_invalid_syntax  },
+        {"name_spaces",              "SELECT { name }",     client_errc::format_string_invalid_syntax  },
+        {"name_non_ascii",           "SELECT {e\xc3\xb1p}", client_errc::format_string_invalid_syntax  },
+        {"name_format_spec",         "SELECT {name:abc}",   client_errc::format_string_invalid_syntax  },
+        {"name_format_spec_empty",   "SELECT {name:}",      client_errc::format_string_invalid_syntax  },
+        {"name_eof",                 "SELECT {name",        client_errc::format_string_invalid_syntax  },
+        {"name_not_found",           "SELECT {name} {bad}", client_errc::format_arg_not_found          },
 
  // Explicit indexing problems
-        {"index_hex",                "SELECT {0x10}",       "invalid format string"                                                            },
-        {"index_hex_noprefix",       "SELECT {1a}",         "invalid format string"                                                            },
-        {"index_spaces",             "SELECT { 1 }",        "invalid format string"                                                            },
-        {"index_format_spec",        "SELECT {0:abc}",      "invalid format string"                                                            },
-        {"index_format_spec_empty",  "SELECT {0:}",         "invalid format string"                                                            },
-        {"index_eof",                "SELECT {0",           "invalid format string"                                                            },
-        {"index_gt_max",             "SELECT {65536}",      "invalid format string"                                                            },
-        {"index_negative",           "SELECT {-1}",         "invalid format string"                                                            },
-        {"index_float",              "SELECT {4.2}",        "invalid format string"                                                            },
-        {"index_not_found",          "SELECT {2}",          "argument index out of range"                                                      },
-        {"index_to_manual",          "SELECT {0}, {}",      "cannot switch from explicit to automatic indexing"                                },
+        {"index_hex",                "SELECT {0x10}",       client_errc::format_string_invalid_syntax  },
+        {"index_hex_noprefix",       "SELECT {1a}",         client_errc::format_string_invalid_syntax  },
+        {"index_spaces",             "SELECT { 1 }",        client_errc::format_string_invalid_syntax  },
+        {"index_format_spec",        "SELECT {0:abc}",      client_errc::format_string_invalid_syntax  },
+        {"index_format_spec_empty",  "SELECT {0:}",         client_errc::format_string_invalid_syntax  },
+        {"index_eof",                "SELECT {0",           client_errc::format_string_invalid_syntax  },
+        {"index_gt_max",             "SELECT {65536}",      client_errc::format_string_invalid_syntax  },
+        {"index_negative",           "SELECT {-1}",         client_errc::format_string_invalid_syntax  },
+        {"index_float",              "SELECT {4.2}",        client_errc::format_string_invalid_syntax  },
+        {"index_not_found",          "SELECT {2}",          client_errc::format_arg_not_found          },
+        {"index_to_manual",          "SELECT {0}, {}",      client_errc::format_string_manual_auto_mix },
 
  // Auto indexing problems
-        {"auto_format_spec",         "SELECT {:abc}",       "invalid format string"                                                            },
-        {"auto_format_spec_empty",   "SELECT {:}",          "invalid format string"                                                            },
-        {"auto_replacement_inside",  "SELECT { {} }",       "invalid format string"                                                            },
-        {"auto_too_many_args",       "SELECT {}, {}, {}",   "argument index out of range"                                                      },
-        {"auto_to_manual",           "SELECT {}, {0}",      "cannot switch from automatic to explicit indexing"                                },
+        {"auto_format_spec",         "SELECT {:abc}",       client_errc::format_string_invalid_syntax  },
+        {"auto_format_spec_empty",   "SELECT {:}",          client_errc::format_string_invalid_syntax  },
+        {"auto_replacement_inside",  "SELECT { {} }",       client_errc::format_string_invalid_syntax  },
+        {"auto_too_many_args",       "SELECT {}, {}, {}",   client_errc::format_arg_not_found          },
+        {"auto_to_manual",           "SELECT {}, {0}",      client_errc::format_string_manual_auto_mix },
     };
 
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            BOOST_CHECK_EXCEPTION(
-                format_sql(runtime(tc.format_str), opts, 42, arg("name", "abc")),
-                error_with_diagnostics,
-                [&](const error_with_diagnostics& err) {
-                    std::string expected_diag = "Formatting SQL: ";
-                    expected_diag += tc.expected_diag;
-                    BOOST_TEST(err.code() == client_errc::invalid_format_string);
-                    BOOST_TEST(err.get_diagnostics().client_message() == expected_diag);
-                    return true;
-                }
-            );
+            format_context ctx(opts);
+            format_sql_to(runtime(tc.format_str), ctx, 42, arg("name", "abc"));
+            BOOST_TEST(std::move(ctx).get().error() == tc.expected_ec);
         }
     }
-}
-
-BOOST_AUTO_TEST_CASE(invalid_arguments)
-{
-    // When passed invalid arguments (like strings with invalid UTF-8 or NaNs) we throw
-    BOOST_CHECK_EXCEPTION(
-        format_sql("SELECT {}", opts, "Invalid\xffUTF8"),
-        boost::system::system_error,
-        [&](const boost::system::system_error& err) {
-            std::string expected_diag =
-                "Formatting SQL: An invalid byte sequence was found while trying to decode a string. "
-                "[mysql.client:17]";
-            BOOST_TEST(err.code() == client_errc::invalid_encoding);
-            BOOST_TEST(err.what() == expected_diag);
-            return true;
-        }
-    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

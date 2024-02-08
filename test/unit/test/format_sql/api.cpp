@@ -19,12 +19,61 @@
 #include "format_common.hpp"
 #include "test_common/printing.hpp"
 
+//
+// Contains spotchecks verifying that the main success and error cases
+// work using each of the APIs.
+//
+
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 
-BOOST_AUTO_TEST_SUITE(test_format_sql_alternate_apis)
+BOOST_AUTO_TEST_SUITE(test_format_sql_api)
 
 constexpr format_options opts{utf8mb4_charset, true};
+
+//
+// format_sql
+//
+BOOST_AUTO_TEST_CASE(format_sql_success)
+{
+    constexpr const char* format_str = "SELECT * FROM {} WHERE id = {} OR name = {}";
+    auto str = format_sql(format_str, opts, identifier("my`table"), 42, "Joh'n");
+    BOOST_TEST(str == R"(SELECT * FROM `my``table` WHERE id = 42 OR name = 'Joh\'n')");
+}
+
+BOOST_AUTO_TEST_CASE(format_sql_invalid_args)
+{
+    // When passed invalid arguments (like strings with invalid UTF-8 or NaNs) we throw
+    BOOST_CHECK_EXCEPTION(
+        format_sql("SELECT {}", opts, "Invalid\xffUTF8"),
+        boost::system::system_error,
+        [&](const boost::system::system_error& err) {
+            std::string expected_diag =
+                "Formatting SQL: An invalid byte sequence was found while trying to decode a string. "
+                "[mysql.client:17]";
+            BOOST_TEST(err.code() == client_errc::invalid_encoding);
+            BOOST_TEST(err.what() == expected_diag);
+            return true;
+        }
+    );
+}
+
+BOOST_AUTO_TEST_CASE(format_sql_invalid_format_string)
+{
+    // When passed an invalid format string, we throw
+    BOOST_CHECK_EXCEPTION(
+        format_sql("SELECT {not_found}", opts, 42),
+        boost::system::system_error,
+        [&](const boost::system::system_error& err) {
+            std::string expected_diag =
+                "A format argument referenced by a format string was not found. Check the number of format "
+                "arguments passed and their names. [mysql.client:22]";
+            BOOST_TEST(err.code() == client_errc::format_arg_not_found);
+            BOOST_TEST(err.what() == expected_diag);
+            return true;
+        }
+    );
+}
 
 //
 // Formatting using format_context: verify that we can achieve similar results as using format_sql
@@ -186,6 +235,13 @@ BOOST_AUTO_TEST_CASE(format_sql_to_append)
     BOOST_TEST(std::move(ctx).get().value() == R"(SELECT 42, '\'John\'', '\"Doe\"')");
 }
 
+BOOST_AUTO_TEST_CASE(format_sql_to_custom_type)
+{
+    format_context ctx(opts);
+    format_sql_to("SELECT {}", ctx, custom::condition{"number", 42});
+    BOOST_TEST(std::move(ctx).get().value() == "SELECT `number`=42");
+}
+
 BOOST_AUTO_TEST_CASE(format_sql_to_custom_charset)
 {
     // The character set is honored by the format string and by format args
@@ -202,13 +258,6 @@ BOOST_AUTO_TEST_CASE(format_sql_to_backslash_escapes)
     BOOST_TEST(std::move(ctx).get().value() == "SELECT 'Joh''n'");
 }
 
-BOOST_AUTO_TEST_CASE(format_sql_to_arg_error)
-{
-    format_context ctx(opts);
-    format_sql_to("SELECT {}, {}", ctx, "Bad\xc5", 42);
-    BOOST_TEST(std::move(ctx).get().error() == client_errc::invalid_encoding);
-}
-
 BOOST_AUTO_TEST_CASE(format_sql_to_custom_string)
 {
     // We can use format_sql_to with contexts that are not format_context
@@ -222,8 +271,18 @@ BOOST_AUTO_TEST_CASE(format_sql_to_custom_string)
     );
 }
 
-/**
- * invalid format string
- */
+BOOST_AUTO_TEST_CASE(format_sql_to_invalid_arg)
+{
+    format_context ctx(opts);
+    format_sql_to("SELECT {}, {}", ctx, "Bad\xc5", 42);
+    BOOST_TEST(std::move(ctx).get().error() == client_errc::invalid_encoding);
+}
+
+BOOST_AUTO_TEST_CASE(format_sql_to_invalid_format_string)
+{
+    format_context ctx(opts);
+    format_sql_to("SELECT {broken", ctx, 42);
+    BOOST_TEST(std::move(ctx).get().error() == client_errc::format_string_invalid_syntax);
+}
 
 BOOST_AUTO_TEST_SUITE_END()

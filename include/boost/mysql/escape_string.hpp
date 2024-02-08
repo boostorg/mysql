@@ -93,7 +93,7 @@ enum class quoting_context : char
  *
  * \par Errors
  * \ref client_errc::invalid_encoding if `input` contains a string
- *      that is not valid according to `charset`.
+ *      that is not valid according to `opts.charset`.
  */
 template <BOOST_MYSQL_OUTPUT_STRING OutputString>
 BOOST_ATTRIBUTE_NODISCARD error_code

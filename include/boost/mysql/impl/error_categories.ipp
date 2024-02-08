@@ -64,11 +64,17 @@ const char* error_to_string(client_errc error) noexcept
                "that you're calling connection_pool::async_run.";
     case client_errc::invalid_encoding:
         return "An invalid byte sequence was found while trying to decode a string.";
-    case client_errc::invalid_format_string:
-        return "An invalid format string was provided to a format_sql operation. Review the passed format "
-               "string and arguments.";
     case client_errc::unformattable_value:
         return "A formatting operation could not format one of its arguments.";
+    case client_errc::format_string_invalid_syntax:
+        return "A format string with an invalid byte sequence was provided to a SQL formatting function.";
+    case client_errc::format_string_invalid_encoding:
+        return "A format string with an invalid byte sequence was provided to a SQL formatting function.";
+    case client_errc::format_string_manual_auto_mix:
+        return "A format string mixes manual (e.g. {0}) and automatic (e.g. {}) indexing.";
+    case client_errc::format_arg_not_found:
+        return "A format argument referenced by a format string was not found. Check the number of format "
+               "arguments passed and their names.";
     case client_errc::unknown_character_set:
         return "The character set used by the connection is not known by the client. Use set_character_set "
                "or async_set_character_set before invoking operations that require a known charset.";
