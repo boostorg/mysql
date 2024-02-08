@@ -178,7 +178,7 @@ struct employee
 {
     std::string first_name;
     std::string last_name;
-    boost::optional<double> salary;
+    boost::optional<std::uint64_t> salary;
 };
 BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, salary))
 
@@ -629,10 +629,11 @@ void section_static(tcp_ssl_connection& conn)
     }
     {
         //[static_field_order
+        // Summing 0e0 is MySQL way to cast a DECIMAL field to DOUBLE
         const char* sql = R"%(
             SELECT
-                IFNULL(AVG(salary), 0.0) AS average,
-                IFNULL(MAX(salary), 0.0) AS max_value,
+                IFNULL(AVG(salary), 0.0) + 0e0 AS average,
+                IFNULL(MAX(salary), 0.0) + 0e0 AS max_value,
                 company_id AS company
             FROM employee
             GROUP BY company_id
@@ -1538,7 +1539,7 @@ void section_connection_pool(string_view server_hostname, string_view username, 
 static std::string get_name() { return "John"; }
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-//[sql_formatting_format_context_fn
+//[sql_formatting_incremental_fn
 // Compose an update query that sets first_name, last_name, or both
 std::string compose_update_query(
     boost::mysql::format_options opts,
@@ -1560,23 +1561,22 @@ std::string compose_update_query(
 
     if (new_first_name)
     {
-        // append_value behaves like a {} expansion field.
-        // It will add the given string as a literal value, performing quoting and escaping
-        ctx.append_raw("first_name = ");
-        ctx.append_value(*new_first_name);
+        // format_sql_to expands a format string and appends the result
+        // to a format context. This way, we can build our query in small pieces
+        // Add the first_name update clause
+        boost::mysql::format_sql_to("first_name = {}", ctx, *new_first_name);
     }
     if (new_last_name)
     {
         if (new_first_name)
             ctx.append_raw(", ");
-        ctx.append_raw("last_name = ");
-        ctx.append_value(*new_last_name);
+
+        // Add the last_name update clause
+        boost::mysql::format_sql_to("last_name = {}", ctx, *new_last_name);
     }
 
-    ctx.append_raw(") WHERE ID = ");
-
-    // append_value can be passed any type that can be used with format_sql
-    ctx.append_value(employee_id);
+    // Add the where clause
+    boost::mysql::format_sql_to(" WHERE id = {}", ctx, employee_id);
 
     // Retrieve the generated query string
     return std::move(ctx).get().value();
@@ -1590,7 +1590,7 @@ struct employee_t
 {
     std::string first_name;
     std::string last_name;
-    double salary;
+    std::string company_id;
 };
 
 namespace boost {
@@ -1604,11 +1604,7 @@ struct formatter<employee_t>
     // We will make this suitable for INSERT statements
     static void format(const employee_t& emp, format_context_base& ctx)
     {
-        ctx.append_value(emp.first_name)
-            .append_raw(", ")
-            .append_value(emp.last_name)
-            .append_raw(", ")
-            .append_value(emp.salary);
+        format_sql_to("{}, {}, {}", ctx, emp.first_name, emp.last_name, emp.company_id);
     }
 };
 
@@ -1642,7 +1638,7 @@ void test_compose_update_query()
     );
     ASSERT(
         compose_update_query(opts, 0, "Bob", "Alice") ==
-        "UPDATE employee SET first_name = 'Bob', last_name = 'Alice' WHERE id = 42"
+        "UPDATE employee SET first_name = 'Bob', last_name = 'Alice' WHERE id = 0"
     );
 }
 //]
@@ -1654,11 +1650,15 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     params.server_address.emplace_host_and_port(server_hostname);
     params.username = username;
     params.password = password;
+    params.database = "boost_mysql_examples";
+    params.multi_queries = true;
     params.ssl = boost::mysql::ssl_mode::disable;
 
     boost::asio::io_context ioc;
     boost::mysql::any_connection conn(ioc);
     boost::mysql::results r;
+
+    conn.connect(params);
 
     {
         //[sql_formatting_simple
@@ -1698,26 +1698,28 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
     {
         //[sql_formatting_optionals
-        std::optional<std::string> last_name;  // get last_name from the user
+        std::optional<std::int64_t> salary;  // get salary from a possibly untrusted source
 
         std::string query = boost::mysql::format_sql(
-            "INSERT INTO employee (salary, last_name) VALUES ({}, {})",
+            "UPDATE employee SET salary = {} WHERE id = {}",
             conn.format_opts().value(),
-            42000,
-            last_name
+            salary,
+            1
         );
 
-        // Depending on whether last_name has a value or not, generates:
-        // INSERT INTO employee (salary, last_name) VALUES (42000, 'John')
-        // INSERT INTO employee (salary, last_name) VALUES (42000, NULL)
+        // Depending on whether salary has a value or not, generates:
+        // UPDATE employee SET salary = 42000 WHERE id = 1
+        // UPDATE employee SET salary = NULL WHERE id = 1
         //]
 
-        ASSERT(query == "INSERT INTO employee (salary, last_name) VALUES (42000, NULL)");
+        ASSERT(query == "UPDATE employee SET salary = NULL WHERE id = 1");
         conn.execute(query, r);
     }
 #endif
     {
         //[sql_formatting_manual_indices
+        // Recall that you need to set connect_params.multi_queries when connecting
+        // before running semicolon-separated queries.
         std::string query = boost::mysql::format_sql(
             "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
             conn.format_opts().value(),
@@ -1785,7 +1787,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     }
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
     {
-        //[sql_formatting_format_context_use
+        //[sql_formatting_incremental_use
         std::string query = compose_update_query(conn.format_opts().value(), 42, "John", {});
 
         ASSERT(query == "UPDATE employee SET first_name = 'John' WHERE id = 42");
@@ -1793,21 +1795,24 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 
         conn.execute(query, r);
     }
+    {
+        test_compose_update_query();
+    }
 #endif
     {
         //[sql_formatting_formatter_use
         // We can now use employee as a built-in value
         std::string query = boost::mysql::format_sql(
-            "INSERT INTO employee (first_name, last_name, salary) VALUES ({}), ({})",
+            "INSERT INTO employee (first_name, last_name, company_id) VALUES ({}), ({})",
             conn.format_opts().value(),
-            employee_t{"John", "Doe", 20000},
-            employee_t{"Rick", "Johnson", 45000}
+            employee_t{"John", "Doe", "HGS"},
+            employee_t{"Rick", "Johnson", "AWC"}
         );
 
         ASSERT(
             query ==
-            "INSERT INTO employee (first_name, last_name, salary) VALUES "
-            "('John', 'Doe', 20000), ('Rick', 'Johnson', 45000)"
+            "INSERT INTO employee (first_name, last_name, company_id) VALUES "
+            "('John', 'Doe', 'HGS'), ('Rick', 'Johnson', 'AWC')"
         );
 
         // You can also use format_context::append_value passing an employee
@@ -1815,11 +1820,6 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 
         conn.execute(query, r);
     }
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-    {
-        test_compose_update_query();
-    }
-#endif
     {
         try
         {
@@ -1839,11 +1839,18 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 #ifdef __cpp_lib_polymorphic_allocator
     {
         //[sql_formatting_custom_string
+        // Create a format context that uses std::pmr::string
         boost::mysql::basic_format_context<std::pmr::string> ctx(conn.format_opts().value());
 
         // Compose your query as usual
+        boost::mysql::format_sql_to("SELECT * FROM employee WHERE id = {}", ctx, 42);
+
+        // Retrieve the query as usual
         std::pmr::string query = std::move(ctx).get().value();
         //]
+
+        ASSERT(query == "SELECT * FROM employee WHERE id = 42");
+        conn.execute(query, r);
     }
 #endif
     {
@@ -2124,6 +2131,7 @@ void main_impl(int argc, char** argv)
     section_time_types(conn);
     section_any_connection(argv[3], argv[1], argv[2]);
     section_connection_pool(argv[3], argv[1], argv[2]);
+    section_sql_formatting(argv[3], argv[1], argv[2]);
 
     conn.close();
 }

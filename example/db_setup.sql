@@ -23,7 +23,7 @@ CREATE TABLE employee(
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
-    salary DOUBLE,
+    salary INT UNSIGNED,
     company_id CHAR(10) NOT NULL,
     FOREIGN KEY (company_id) REFERENCES company(id)
 );
