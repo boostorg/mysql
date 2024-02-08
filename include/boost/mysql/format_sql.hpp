@@ -128,12 +128,8 @@ struct formatter
 ;
 
 /**
- * \brief (EXPERIMENTAL) Base class for stream-oriented SQL formatting.
+ * \brief (EXPERIMENTAL) Base class for concrete format contexts.
  * \details
- * A base class for stream-oriented SQL formatting. This class can't be
- * instantiated directly - use \ref basic_format_context, instead.
- * Do not subclass it, either.
- * \n
  * Conceptually, a format context contains: \n
  *   \li The result string. Output operations append characters to this output string.
  *       `format_context_base` is agnostic to the output string type.
@@ -144,6 +140,10 @@ struct formatter
  * References to this class are useful when you need to manipulate
  * a format context without knowing the type of the actual context that will be used,
  * like when specializing \ref formatter.
+ * \n
+ * This class can't be
+ * instantiated directly - use \ref basic_format_context, instead.
+ * Do not subclass it, either.
  */
 class format_context_base
 {
@@ -262,9 +262,9 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Implements stream-like SQL formatting.
+ * \brief (EXPERIMENTAL) Format context for incremental SQL formatting.
  * \details
- * The primary interface for stream-like SQL formatting. Contrary to \ref format_context_base,
+ * The primary interface for incremental SQL formatting. Contrary to \ref format_context_base,
  * this type is aware of the output string's actual type. `basic_format_context` owns
  * an instance of `OutputString`. Format operations will append characters to such string.
  * \n
@@ -378,7 +378,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Implements stream-like SQL formatting.
+ * \brief (EXPERIMENTAL) Format context for incremental SQL formatting.
  * \details
  * Convenience type alias for `basic_format_context`'s most common case.
  */
@@ -420,7 +420,7 @@ inline
 }
 
 /**
- * \brief (EXPERIMENTAL) Composes a SQL query client-side using an existing format context.
+ * \brief (EXPERIMENTAL) Composes a SQL query client-side appending it to a format context.
  * \details
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
  * by formatted arguments, extracted from `args`.

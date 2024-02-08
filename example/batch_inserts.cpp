@@ -12,7 +12,7 @@
 //[example_batch_inserts
 
 // Uses client-side SQL formatting to implement batch inserts
-// for a specific type. It makes use of format_context.
+// for a specific type. It makes use of format_context and format_sql_to.
 // The program reads a JSON file containing a list of employees
 // and inserts it into the employee table.
 //
@@ -60,7 +60,7 @@ struct employee
     std::string first_name;
     std::string last_name;
     std::string company_id;
-    double salary;
+    std::int64_t salary;  // in dollars per year
 };
 
 // Adds reflection capabilities to employee. Required by the JSON parser.
@@ -104,18 +104,18 @@ static std::string compose_batch_insert(
         if (!is_first)
             ctx.append_raw(", ");
 
-        // append_value adds a SQL literal with the right format.
-        // For strings, adds an escaped, quoted string literal.
-        // For doubles, it adds a number literal.
-        ctx.append_raw("(")
-            .append_value(emp.first_name)
-            .append_raw(", ")
-            .append_value(emp.last_name)
-            .append_raw(", ")
-            .append_value(emp.company_id)
-            .append_raw(", ")
-            .append_value(emp.salary)
-            .append_raw(")");
+        // format_sql_to expands a format string, replacing {} fields,
+        // and appends the result to our context.
+        // When formatted, strings are quoted and escaped as string literals.
+        // Doubles are formatted as number literals.
+        boost::mysql::format_sql_to(
+            "({}, {}, {}, {})",
+            ctx,
+            emp.first_name,
+            emp.last_name,
+            emp.company_id,
+            emp.salary
+        );
         is_first = false;
     }
 

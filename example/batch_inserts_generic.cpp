@@ -58,7 +58,7 @@ struct employee
     std::string first_name;
     std::string last_name;
     std::string company_id;
-    double salary;
+    std::int64_t salary;  // in dollars per year
 };
 BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, company_id, salary))
 
@@ -124,7 +124,10 @@ struct formatter<insert_list<T>>
             is_first = false;
 
             // Insert the actual member. value.*D.pointer will get
-            // each of the data members of our struct
+            // each of the data members of our struct.
+            // append_value will format the supplied value according to its type,
+            // as if it was a {} replacement field: strings are escaped and quoted,
+            // doubles are formatted as number literals, and so on.
             ctx.append_value(value.*D.pointer);
         });
 
