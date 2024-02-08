@@ -17,7 +17,7 @@ The notation resembles `std::format` but is much simpler, since format specs are
 [sql_formatting_formatter_specialization]
 
 The type can now be used in [reflink format_sql], [reflink format_sql_to]
-and [refmem format_context append_value]:
+and [refmem basic_format_context append_value]:
 
 [sql_formatting_formatter_use]
 
@@ -105,7 +105,7 @@ Otherwise, an error will be generated.
 * Set by built-in formatters as described, or by custom formatters by
   set_error.
 * [refmem basic_format_context get] returns a
-  [link mysql.sql_formatting_advanced.system_result `boost::system::result`].
+  [link mysql.error_handling.system_result `boost::system::result`].
   If the error state was set at any point, this contains an error. Otherwise, a
   value.
 * [reflink format_sql_to] may also encounter errors

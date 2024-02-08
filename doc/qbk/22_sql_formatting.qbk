@@ -117,8 +117,8 @@ build query strings incrementally:
 [sql_formatting_incremental_fn]
 [sql_formatting_incremental_use]
 
-You can also use [refmem format_context append_raw] and [refmem format_context append_value]
-to add raw SQL and formatted values, respectively, without a format string.
+You can also use [refmemunq basic_format_context append_raw] and [refmemunq basic_format_context append_value]
+on format contexts to add raw SQL and formatted values without a format string.
 
 
 

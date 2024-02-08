@@ -85,7 +85,6 @@ public:
 };
 
 /**
- * \relates constant_string_view
  * \brief (EXPERIMENTAL) Creates a \ref constant_string_view from a runtime value.
  * \details
  * You can use this function to bypass the `consteval` check performed by \ref constant_string_view

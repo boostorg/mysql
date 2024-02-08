@@ -12,7 +12,7 @@ functions, like [reflink format_sql] or [refmem format_context_base append_value
 
 Formally, a type `T` satisfies `Formattable` if any of the following are true:
 
-* It satisfies [reflink WritableField]. This includes scalar types and optionals.
+* It satisfies [reflink2 WritableFieldTuple WritableField]. This includes scalar types and optionals.
 * It is [reflink identifier].
 * It is the return type of the [reflink arg] function.
 * The class [reflink formatter] has been specialized for `T`.
