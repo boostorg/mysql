@@ -103,10 +103,54 @@ inline void append_quoted_string(string_view str, format_context_base& ctx)
     impl.output.append("'");
 }
 
-inline void append_quoted_blob(blob_view b, format_context_base& ctx)
+inline void append_blob(blob_view b, format_context_base& ctx)
 {
-    // Blobs have the same rules as strings
-    append_quoted_string(string_view(reinterpret_cast<const char*>(b.data()), b.size()), ctx);
+    // Blobs have a binary character set, which may include characters
+    // that are not valid in the current character set. However, escaping
+    // is always performed using the character_set_connection.
+    // mysql_real_escape_string escapes multibyte characters with a backslash,
+    // but this behavior is not documented, so we don't want to rely on it.
+    // The most reliable way to encode blobs is using hex strings.
+
+    // Output string
+    auto output = access::get_impl(ctx).output;
+
+    // We output characters to a temporary buffer, batching append calls
+    constexpr std::size_t buffer_size = 64;
+    char buffer[buffer_size]{};
+    char* it = buffer;
+    char* const end = buffer + buffer_size;
+
+    // We implement the translation to hex ourselves, since it's easy enough.
+    // We use a table to look up characters
+    constexpr char character_table[16] =
+        {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+    // Binary string introducer
+    output.append("x'");
+
+    // Serialize contents
+    for (unsigned char byte : b)
+    {
+        // Serialize the byte
+        char char_upper = character_table[(byte & ~15) >> 4];
+        char char_lower = character_table[byte & 15];
+        *it++ = char_upper;
+        *it++ = char_lower;
+
+        // If we filled the buffer, dump it
+        if (it == end)
+        {
+            output.append({buffer, buffer_size});
+            it = buffer;
+        }
+    }
+
+    // Dump anything that didn't fill the buffer
+    output.append({buffer, static_cast<std::size_t>(it - buffer)});
+
+    // Closing quote
+    ctx.append_raw("'");
 }
 
 inline void append_quoted_date(date d, format_context_base& ctx)
@@ -157,7 +201,7 @@ inline void append_field_view(field_view fv, format_context_base& ctx)
         return append_double(fv.get_float(), ctx);
     case field_kind::double_: return append_double(fv.get_double(), ctx);
     case field_kind::string: return append_quoted_string(fv.get_string(), ctx);
-    case field_kind::blob: return append_quoted_blob(fv.get_blob(), ctx);
+    case field_kind::blob: return append_blob(fv.get_blob(), ctx);
     case field_kind::date: return append_quoted_date(fv.get_date(), ctx);
     case field_kind::datetime: return append_quoted_datetime(fv.get_datetime(), ctx);
     case field_kind::time: return append_quoted_time(fv.get_time(), ctx);
