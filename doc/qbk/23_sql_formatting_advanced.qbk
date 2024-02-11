@@ -112,7 +112,7 @@ instead.
 
 [reflink basic_format_context] contains an error code that is set when formatting
 a value fails. This is called the ['error state], and can be queried using [refmem basic_format_context error_state].
-When [reflink basic_format_context get] is called (after all individual values have been formatted),
+When [refmem basic_format_context get] is called (after all individual values have been formatted),
 the error state is checked. The `system::result` returned by `get` will contain the error
 state if it was set, or the generated query if it was not:
 

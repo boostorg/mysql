@@ -37,8 +37,10 @@ class constant_string_view
 {
     string_view impl_;
 
+#ifndef BOOST_MYSQL_DOXYGEN
     BOOST_CXX14_CONSTEXPR constant_string_view(string_view value, int) noexcept : impl_(value) {}
     friend BOOST_CXX14_CONSTEXPR inline constant_string_view runtime(string_view) noexcept;
+#endif
 
 public:
     /**
