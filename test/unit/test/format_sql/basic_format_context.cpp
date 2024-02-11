@@ -178,4 +178,19 @@ BOOST_AUTO_TEST_CASE(string_format_context)
     BOOST_TEST(std::move(ctx).get().value() == "def");
 }
 
+// Spotcheck: append_raw works with empty strings
+BOOST_AUTO_TEST_CASE(append_raw_empty_string)
+{
+    // Context
+    format_context ctx(opts);
+
+    // With the empty context
+    ctx.append_raw("");
+
+    // With contents already present
+    ctx.append_raw("SELECT ").append_value(42).append_raw("");
+
+    BOOST_TEST(std::move(ctx).get().value() == "SELECT 42");
+}
+
 BOOST_AUTO_TEST_SUITE_END()
