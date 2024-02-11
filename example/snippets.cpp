@@ -1887,7 +1887,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, blob{0x00, 'z'}) == R"(SELECT '\0z')"
+            format_sql("SELECT {}", opts, blob{0x00, 0x48, 0xff}) == R"(SELECT x'0048ff')"
             //<-
         );
         //->
