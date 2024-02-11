@@ -122,6 +122,8 @@ on format contexts to add raw SQL and formatted values without a format string.
 
 
 
+
+
 [heading:unit_test Unit testing]
 
 If you are composing very complex queries, it's very advisable to unit test them.
@@ -173,11 +175,14 @@ passed character set. This triggers a `client_errc::invalid_encoding` error:
 [sql_formatting_invalid_encoding]
 
 You can validate your strings beforehand or handle the error once
-it happened and reject the input.
+it happened and reject the input. Other types may also produce format errors.
 
-Other types may also produce format errors. Please read
-[link mysql.sql_formatting_advanced.error_handling this section] for an in-depth
-explanation on SQL formatting error handling.
+[tip
+    If you prefer handling errors with error codes, instead of exceptions,
+    use [reflink format_sql_to]. Please read
+    [link mysql.sql_formatting_advanced.error_handling this section] for details.
+]
+
 
 
 
@@ -244,7 +249,7 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     ]
     [
         [`std::basic_vector<unsigned char, Allocator>` (including [reflink blob]), [reflink blob_view]]
-        [Single-quoted, escaped string literal]
+        [Hex string literal]
         [
             [sql_formatting_reference_blob]
         ]
