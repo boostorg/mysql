@@ -34,7 +34,6 @@ if (BOOST_MYSQL_IS_ROOT)
     target_link_libraries(
         boost_mysql
         INTERFACE
-        Boost::headers
         Boost::charconv
         Threads::Threads
         OpenSSL::Crypto

@@ -8,6 +8,12 @@ Branch | Windows/Linux Build | OSX build | Coverage | Documentation
 Boost.MySQL is a C++11 client for MySQL and MariaDB database servers, based on Boost.Asio.
 Boost.MySQL is part of Boost.
 
+## Breaking changes in Boost 1.85
+
+Boost.MySQL now requires linking with Boost.Charconv, which is a compiled library.
+If you're getting link errors, link your executable to the `Boost::charconv` CMake target.
+No C++ code changes are required.
+
 ## Feedback
 
 Do you have any suggestion? Would you like to share a bad or good experience while using the library?
@@ -37,22 +43,24 @@ a `CMakeLists.txt` like this (replace `main` by your executable name and `main.c
 ```cmake
 project(boost_mysql_example LANGUAGES CXX)
 
-find_package(Boost REQUIRED COMPONENTS headers)
+find_package(Boost REQUIRED COMPONENTS charconv)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 add_executable(main main.cpp)
-target_link_libraries(main PRIVATE Boost::headers Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
+target_link_libraries(main PRIVATE Boost::charconv Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
 ```
 
 ## Tested with
 
 Boost.MySQL has been tested with the following compilers:
+
 - gcc 5 to 13.
 - clang 3.6 to 16.
 - msvc 14.1, 14.2 and 14.3.
 
 And with the following databases:
+
 - MySQL v5.7.41.
 - MySQL v8.0.33.
 - MariaDB v11.0.
@@ -69,7 +77,6 @@ And with the following databases:
   caching_sha2_password. These are the default methods in MySQL 5 and MySQL 8,
   respectively.
 - Encrypted connections (TLS).
-- TCP and UNIX socket connections. The implementation is based on Boost.Asio
-  SyncStream and AsyncStream concepts, so it is generic and can be used with
-  any stream that fulfills these concept's requirements. There are user-friendly
-  typedefs and regression tests for TCP and UNIX socket streams.
+- TCP and UNIX socket transports.
+- (Experimental) connection pools.
+- (Experimental) friendly client-side generated SQL.

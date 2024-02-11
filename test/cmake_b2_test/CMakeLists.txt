@@ -16,7 +16,7 @@ find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 add_executable(main main.cpp)
-target_link_libraries(main PRIVATE Boost::headers Boost::charconv Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
+target_link_libraries(main PRIVATE Boost::charconv Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
 
 include(CTest)
 add_test(NAME main COMMAND main)
