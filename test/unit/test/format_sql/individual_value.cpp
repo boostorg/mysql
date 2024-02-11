@@ -137,12 +137,6 @@ BOOST_AUTO_TEST_CASE(individual_bool)
     BOOST_TEST(format_sql(single_fmt, opts, false) == "SELECT 0;");
 }
 
-BOOST_AUTO_TEST_CASE(individual_float)
-{
-    // float
-    BOOST_TEST(format_sql(single_fmt, opts, 4.2f) == "SELECT 4.199999809265137e+00;");
-}
-
 BOOST_AUTO_TEST_CASE(individual_double)
 {
     // doubles have many different cases that may cause trouble
@@ -169,6 +163,45 @@ BOOST_AUTO_TEST_CASE(individual_double)
         {"min_neg",               -2.2250738585072014e-308, "-2.2250738585072014e-308"},
         {"denorm",                -4.2872383293922839e-309, "-4.287238329392283e-309" },
         {"min_denorm",            5e-324,                   "5e-324"                  },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            auto str = format_sql("{}", opts, tc.value);
+            BOOST_TEST(str == tc.expected);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(individual_float)
+{
+    // floats are converted to double before formatting, since MySQL
+    // interprets all floating point literals as doubles
+    struct
+    {
+        string_view name;
+        float value;
+        string_view expected;
+    } test_cases[] = {
+        {"regular",               4.2f,                      "4.199999809265137e+00"  },
+        {"regular_precision",     4.298238239237823287327f,  "4.298238277435303e+00"  },
+        {"exp",                   5.1e+23f,                  "5.100000157096095e+23"  },
+        {"exp_precision",         4.2982382392378232e+35f,   "4.298238339685548e+35"  },
+        {"max",                   3.4028234663852886e+38f,   "3.4028234663852886e+38" },
+        {"regular_neg",           -4.2f,                     "-4.199999809265137e+00" },
+        {"regular_precision_neg", -4.298238239237823287327f, "-4.298238277435303e+00" },
+        {"exp_neg",               -5.1e+23f,                 "-5.100000157096095e+23" },
+        {"max_neg",               -3.4028234663852886e+38f,  "-3.4028234663852886e+38"},
+        {"zero",                  0.0f,                      "0e+00"                  },
+        {"zero_neg",              -0.0f,                     "-0e+00"                 },
+        {"expneg",                4.2e-12f,                  "4.200000156689976e-12"  },
+        {"expneg_precision",      4.2872383293922839e-23f,   "4.2872384543670994e-23" },
+        {"min",                   1.1754944e-38f,            "1.1754943508222875e-38" },
+        {"min_neg",               -1.1754944e-38f,           "-1.1754943508222875e-38"},
+        {"denorm",                -4.2872383293922839e-39f,  "-4.287239020438634e-39" },
+        {"min_denorm",            1.401298464324817e-45f,    "1.401298464324817e-45"  },
     };
 
     for (const auto& tc : test_cases)
