@@ -60,6 +60,7 @@
 
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstddef>
 #include <functional>
 #include <iostream>
