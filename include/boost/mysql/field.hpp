@@ -167,7 +167,7 @@ public:
     /// \copydoc field(const std::string&)
     explicit field(string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 
-#if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
+#if defined(__cpp_lib_string_view)
     /// \copydoc field(const std::string&)
     explicit field(std::string_view v) noexcept : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 #endif
@@ -372,7 +372,7 @@ public:
         return *this;
     }
 
-#if defined(__cpp_lib_string_view) || defined(BOOST_MYSQL_DOXYGEN)
+#if defined(__cpp_lib_string_view)
     /// \copydoc operator=(const std::string&)
     field& operator=(std::string_view v)
     {

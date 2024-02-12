@@ -39,12 +39,15 @@ enum class quoting_context : char
 /**
  * \brief (EXPERIMENTAL) Escapes a string, making it safe for query composition.
  * \details
+ * This is a low-level function, to be used by frameworks and other abstractions.
+ * If you can, prefer higher-level functions like \ref format_sql.
+ * \n
  * Given a string `input`, computes a string with special characters
  * escaped, and places it in `output`. This function is a low-level building
  * block for composing client-side queries with runtime string values without
  * incurring in SQL injection vulnerabilities.
  * \n
- * For instance, to compose a valid query from `SELECT * FROM employee WHERE company = "<runtime_value>"`,
+ * For instance, to compose a valid query from `SELECT * FROM employee WHERE company = '<runtime_value>'`,
  * where `runtime_value` is an untrusted runtime string, `runtime_value` should be escaped
  * using this function before concatenating strings. Otherwise, a malicious `runtime_value`
  * will be able to run arbitrary SQL statements in your server.
@@ -54,7 +57,7 @@ enum class quoting_context : char
  * a query. Possible values are: \n
  * \li \ref quoting_context::double_quote : the string is surrounded by
  *     double quotes. For example:
- *     \code R"(SELECT * FROM employee WHERE company = "<runtime_value>")" \endcode
+ *     \code "SELECT * FROM employee WHERE company = \"<runtime_value>\"" \endcode
  * \li \ref quoting_context::single_quote : the string is surrounded by
  *     single quotes. For example:
  *     \code "SELECT * FROM employee WHERE company = '<runtime_value>'" \endcode

@@ -16,10 +16,6 @@
 
 #include <type_traits>
 
-#ifdef __cpp_lib_string_view
-#include <string_view>
-#endif
-
 namespace boost {
 namespace mysql {
 
