@@ -1122,11 +1122,11 @@ void section_charsets(tcp_ssl_connection& conn)
 
         // It works for valid input
         unsigned char buff_valid[] = {0xc3, 0xb1, 0x50};
-        ASSERT(charset.next_char(buff_valid) == 2u);
+        ASSERT(charset.next_char({buff_valid, sizeof(buff_valid)}) == 2u);
 
         // It works for invalid input
         unsigned char buff_invalid[] = {0xc3, 0xff, 0x50};
-        ASSERT(charset.next_char(buff_invalid) == 0u);
+        ASSERT(charset.next_char({buff_invalid, sizeof(buff_invalid)}) == 0u);
     }
 }
 
