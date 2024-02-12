@@ -37,8 +37,8 @@ class set_character_set_algo : public sansio_algorithm, asio::coroutine
 
     static error_code compose_query(const character_set& charset, std::string& output)
     {
-        // The character set should have a name
-        BOOST_ASSERT(charset.name != nullptr);
+        // The character set should have a non-empty name
+        BOOST_ASSERT(!charset.name.empty());
 
         // For security, if the character set has non-ascii characters in it name, reject it.
         format_context ctx(format_options{ascii_charset, true});

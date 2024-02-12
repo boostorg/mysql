@@ -72,7 +72,7 @@ struct connection_state_data
 
     const character_set* charset_ptr() const noexcept
     {
-        return current_charset.name == nullptr ? nullptr : &current_charset;
+        return current_charset.name.empty() ? nullptr : &current_charset;
     }
 
     connection_state_data(std::size_t read_buffer_size, bool transport_supports_ssl = false)

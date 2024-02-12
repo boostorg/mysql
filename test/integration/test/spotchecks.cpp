@@ -601,7 +601,7 @@ BOOST_AUTO_TEST_CASE(spotcheck_success)
             fns.set_character_set(conn, ascii_charset).validate_no_error();
 
             // Success
-            BOOST_TEST(conn.current_character_set()->name == string_view("ascii"));
+            BOOST_TEST(conn.current_character_set()->name == "ascii");
         }
     }
 }
@@ -625,7 +625,7 @@ BOOST_AUTO_TEST_CASE(spotcheck_error)
                 );
 
             // The character set was not modified
-            BOOST_TEST(conn.current_character_set()->name == string_view("utf8mb4"));
+            BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
         }
     }
 }

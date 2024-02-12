@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE(error_response)
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 
     // The charset was not updated
-    BOOST_TEST(fix.st.charset_ptr()->name == string_view("utf8mb4"));
+    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

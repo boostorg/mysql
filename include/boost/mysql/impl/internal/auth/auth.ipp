@@ -8,14 +8,15 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_AUTH_AUTH_IPP
 #define BOOST_MYSQL_IMPL_INTERNAL_AUTH_AUTH_IPP
 
-#include "boost/mysql/detail/config.hpp"
 #pragma once
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/make_string_view.hpp>
+
 #include <boost/mysql/impl/internal/auth/auth.hpp>
-#include <boost/mysql/impl/internal/make_string_view.hpp>
 
 #include <algorithm>
 #include <cstring>

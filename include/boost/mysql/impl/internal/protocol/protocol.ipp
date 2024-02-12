@@ -18,9 +18,9 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/make_string_view.hpp>
 
 #include <boost/mysql/impl/internal/error/server_error_to_string.hpp>
-#include <boost/mysql/impl/internal/make_string_view.hpp>
 #include <boost/mysql/impl/internal/protocol/basic_types.hpp>
 #include <boost/mysql/impl/internal/protocol/binary_serialization.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>

@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(success)
         .check(fix);
 
     // The charset was updated
-    BOOST_TEST(fix.st.charset_ptr()->name == string_view("utf8mb4"));
+    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
 }
 
 BOOST_AUTO_TEST_CASE(success_previous_charset)
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(success_previous_charset)
         .check(fix);
 
     // The charset was updated
-    BOOST_TEST(fix.st.charset_ptr()->name == string_view("utf8mb4"));
+    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
 }
 
 BOOST_AUTO_TEST_CASE(error_network)

@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(ctor_without_storage)
 
     // Check error state and options
     BOOST_TEST(ctx.error_state() == error_code());
-    BOOST_TEST(ctx.format_opts().charset.name == string_view("utf8mb4"));
+    BOOST_TEST(ctx.format_opts().charset.name == "utf8mb4");
 
     // Can be used to append and result can be retrieved
     ctx.append_raw("SELECT ").append_value(42);
@@ -76,7 +76,7 @@ BOOST_AUTO_TEST_CASE(ctor_with_storage)
 
     // Check error state and options
     BOOST_TEST(ctx.error_state() == error_code());
-    BOOST_TEST(ctx.format_opts().charset.name == string_view("utf8mb4"));
+    BOOST_TEST(ctx.format_opts().charset.name == "utf8mb4");
 
     // Can be used to append and result can be retrieved
     ctx.append_raw("SELECT ").append_value(42);
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE(move_constructor)
 
     // Check error state and options
     BOOST_TEST(ctx.error_state() == error_code());
-    BOOST_TEST(ctx.format_opts().charset.name == string_view("utf8mb4"));
+    BOOST_TEST(ctx.format_opts().charset.name == "utf8mb4");
 
     // Can be used to append and result can be retrieved
     ctx.append_value(42);
@@ -131,7 +131,7 @@ BOOST_AUTO_TEST_CASE(move_assign)
 
     // Check error state and options
     BOOST_TEST(ctx.error_state() == error_code());
-    BOOST_TEST(ctx.format_opts().charset.name == string_view("utf8mb4"));
+    BOOST_TEST(ctx.format_opts().charset.name == "utf8mb4");
 
     // Can be used to append and result can be retrieved
     ctx.append_value(42);
@@ -163,7 +163,7 @@ BOOST_AUTO_TEST_CASE(string_format_context)
 
     // Check
     BOOST_TEST(ctx.error_state() == error_code());
-    BOOST_TEST(ctx.format_opts().charset.name == string_view("utf8mb4"));
+    BOOST_TEST(ctx.format_opts().charset.name == "utf8mb4");
 
     // Move construction
     ctx.append_raw("SELECT ");

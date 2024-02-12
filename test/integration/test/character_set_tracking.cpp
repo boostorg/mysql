@@ -46,13 +46,13 @@ BOOST_AUTO_TEST_CASE(charset_lifecycle)
     // and in the server. This double-checks that all supported servers support the
     // collation we use by default.
     conn.connect(default_connect_params(ssl_mode::disable));
-    BOOST_TEST(conn.current_character_set()->name == string_view("utf8mb4"));
+    BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
     validate_db_charset(conn, "utf8mb4");
 
     // Using set_character_set updates the character set everywhere
     character_set greek_charset{"greek", ascii_charset.next_char};
     conn.set_character_set(greek_charset);
-    BOOST_TEST(conn.current_character_set()->name == string_view("greek"));
+    BOOST_TEST(conn.current_character_set()->name == "greek");
     validate_db_charset(conn, "greek");
 
     // Using reset_connection wipes out client-side character set information
@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(charset_lifecycle)
 
     // We can use set_character_set to recover from this
     conn.set_character_set(greek_charset);
-    BOOST_TEST(conn.current_character_set()->name == string_view("greek"));
+    BOOST_TEST(conn.current_character_set()->name == "greek");
     validate_db_charset(conn, "greek");
 }
 
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(connect_with_unknown_collation)
 
     // Explicitly setting the character set solves the issue
     conn.set_character_set(ascii_charset);
-    BOOST_TEST(conn.current_character_set()->name == string_view("ascii"));
+    BOOST_TEST(conn.current_character_set()->name == "ascii");
     validate_db_charset(conn, "ascii");
 }
 
