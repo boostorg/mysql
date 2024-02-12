@@ -11,12 +11,12 @@
 
 [heading Character set refresher]
 
-MySQL defines a character set as "a set of symbols and their respective encodings". `ascii`,
-`latin1`, `utf8` and `utf16` are character sets supported by MySQL.
+MySQL defines a character set as "a set of symbols and their respective encodings". `utf8mb4`,
+`utf16` and `ascii` are character sets supported by MySQL.
 
 A collation is a set of rules for comparing characters in a character set. For example, a case-insensitive
 collation will make strings that only differ in case compare equal. All collations are associated to a single
-character set. For example, `utf8_spanish_ci` is a case-insensitive collation associated to the `utf8` character
+character set. For example, `utf8mb4_spanish_ci` is a case-insensitive collation associated to the `utf8mb4` character
 set. Every character set has a default collation, which will be used if a character set without a collation is specified.
 For example, `latin1_swedish_ci` is the default collation for the `latin1` character set.
 
@@ -127,8 +127,8 @@ The table below summarizes the encoding used by each piece of functionality in t
 
 [heading:tracking (Experimental) Character set tracking]
 
-[reflink any_connection] attempts to track the connection's current character set,
-as given by `character_set_client`. You can access this information using
+[reflink any_connection] attempts to track the connection's current character set.
+You can access this information using
 [refmem any_connection current_character_set] and [refmem any_connection format_opts].
 
 [note
@@ -185,50 +185,7 @@ For example, this is how you could implement the `utf8mb4` character set. For br
 a small part of the implementation is shown - have a look at the definition of [reflink utf8mb4_charset]
 for a full implementation.
 
-```
-// next_char must return the length of input's first character,
-// or 0 if the character is invalid. It must not throw exceptions.
-std::size_t utf8mb4_next_char(string_view input) noexcept
-{
-    // Input strings are never empty - they always have 1 byte, at least.
-    assert(!input.empty());
-
-    // In UTF8, we need to look at the first byte to know the character's length
-    auto first_char = static_cast<unsigned char>(input.front());
-
-    if (first_char < 0x80)
-    {
-        // 0x00 to 0x7F: ASCII range. The character is 1 byte long
-        return 1;
-    }
-    else if (first_char <= 0xc1)
-    {
-        // 0x80 to 0xc1: invalid. No UTF8 character starts with such a byte
-        return 0;
-    }
-    else if (first_char <= 0xdf)
-    {
-        // 0xc2 to 0xdf: two byte characters.
-        // It's vital that we check that the characters are valid. Otherwise, vulnerabilities can arise.
-        
-        // Check that the string has enough bytes
-        if (input.size() < 2u) return 0;
-
-        // The second byte must be between 0x80 and 0xbf. Otherwise, the character is invalid
-        // Do not skip this check - otherwise escaping will yield invalid results
-        auto second_byte = static_cast<unsigned char>(input[1]);
-        if (second_byte < 0x80 || second_byte > 0xbf) return 0;
-
-        // Valid, 2 byte character
-        return 2;
-    }
-    // Omitted: 3 and 4 byte long characters
-    else
-    {
-        return 0;
-    }
-}
-```
+[charsets_next_char]
 
 
 [endsect]

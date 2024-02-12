@@ -9,6 +9,7 @@
 // They're here so they are built and run, to ensure correctness
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
@@ -54,6 +55,7 @@
 #include <boost/asio/use_future.hpp>
 #include <boost/config.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <boost/core/span.hpp>
 #include <boost/describe/class.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/system/system_error.hpp>
@@ -1057,13 +1059,75 @@ void section_metadata(tcp_ssl_connection& conn)
     //]
 }
 
+// next_char must interpret input as a string encoded according to the
+// utf8mb4 character set and return the size of the first character,
+// or 0 if the byte sequence does not represent a valid character.
+// It must not throw exceptions.
+//[charsets_next_char
+std::size_t utf8mb4_next_char(boost::span<const unsigned char> input) noexcept
+{
+    // Input strings are never empty - they always have 1 byte, at least.
+    assert(!input.empty());
+
+    // In UTF8, we need to look at the first byte to know the character's length
+    auto first_char = input[0];
+
+    if (first_char < 0x80)
+    {
+        // 0x00 to 0x7F: ASCII range. The character is 1 byte long
+        return 1;
+    }
+    else if (first_char <= 0xc1)
+    {
+        // 0x80 to 0xc1: invalid. No UTF8 character starts with such a byte
+        return 0;
+    }
+    else if (first_char <= 0xdf)
+    {
+        // 0xc2 to 0xdf: two byte characters.
+        // It's vital that we check that the characters are valid. Otherwise, vulnerabilities can arise.
+
+        // Check that the string has enough bytes
+        if (input.size() < 2u)
+            return 0;
+
+        // The second byte must be between 0x80 and 0xbf. Otherwise, the character is invalid
+        // Do not skip this check - otherwise escaping will yield invalid results
+        if (input[1] < 0x80 || input[1] > 0xbf)
+            return 0;
+
+        // Valid, 2 byte character
+        return 2;
+    }
+    // Omitted: 3 and 4 byte long characters
+    else
+    {
+        return 0;
+    }
+}
+//]
+
 void section_charsets(tcp_ssl_connection& conn)
 {
-    //[charsets_set_names
-    results result;
-    conn.execute("SET NAMES utf8mb4", result);
-    // Further operations can assume utf8mb4 as conn's charset
-    //]
+    {
+        //[charsets_set_names
+        results result;
+        conn.execute("SET NAMES utf8mb4", result);
+        // Further operations can assume utf8mb4 as conn's charset
+        //]
+    }
+    {
+        // Verify that utf8mb4_next_char can be used in a character_set
+        boost::mysql::character_set charset{"utf8mb4", utf8mb4_next_char};
+
+        // It works for valid input
+        unsigned char buff_valid[] = {0xc3, 0xb1, 0x50};
+        ASSERT(charset.next_char(buff_valid) == 2u);
+
+        // It works for invalid input
+        unsigned char buff_invalid[] = {0xc3, 0xff, 0x50};
+        ASSERT(charset.next_char(buff_invalid) == 0u);
+    }
 }
 
 void section_time_types(tcp_ssl_connection& conn)
