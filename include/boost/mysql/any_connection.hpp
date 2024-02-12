@@ -246,12 +246,9 @@ public:
     /**
      * \brief Returns the character set used by this connection.
      * \details
-     * The MySQL protocol doesn't expose a clean way to track the character set
-     * used by this connection. This can change inadvertently by SQL queries or by calling \ref
-     * reset_connection.
-     * \n
-     * Connections attempt to keep track of the current character set
-     * used by the connection. When the character set is known, this function returns
+     * Connections attempt to keep track of the current character set.
+     * Deficiencies in the protocol can cause the character set to be unknown, though.
+     * When the character set is known, this function returns
      * the character set currently in use. Otherwise, returns \ref client_errc::unknown_character_set.
      * \n
      * The following functions can modify the return value of this function: \n
@@ -264,13 +261,9 @@ public:
      *       unknown.
      *
      * \par Avoid changing the character set directly
-     * If you change the connection's character set directly using SQL statements,
-     * like in `conn.execute("SET NAMES utf8mb4")`, the client has no way to track this change,
-     * and this function will return incorrect results. If you're using this function, avoid: \n
-     *   \li The `SET NAMES` statement
-     *   \li The `SET CHARACTER SET` statement
-     *   \li Modifying the `character_set_client`, `character_set_connection` and `character_set_results`
-     *       session variables.
+     * If you change the connection's character set directly using SQL statements
+     * like `"SET NAMES utf8mb4"`, the client has no way to track this change,
+     * and this function will return incorrect results.
      *
      * \par Errors
      * \li \ref client_errc::unknown_character_set if the current character set is unknown.
