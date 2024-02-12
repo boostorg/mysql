@@ -60,7 +60,7 @@ public:
      * \brief Constructs an unqualified identifier.
      * \details
      * Unqualified identifiers are usually field, table or database names,
-     * and get formatted as: \code "`column_name`" \endcode.
+     * and get formatted as: \code "`column_name`" \endcode
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -72,7 +72,7 @@ public:
      * \details
      * Identifiers with one qualifier are used for field, table and view names.
      * The qualifier identifies the parent object. For instance,
-     * `identifier("table_name", "field_name")` maps to: \code "`table_name`.`field_name`" \endcode.
+     * `identifier("table_name", "field_name")` maps to: \code "`table_name`.`field_name`" \endcode
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -85,7 +85,7 @@ public:
      * Identifiers with two qualifier are used for field names.
      * The first qualifier identifies the database, the second, the table name.
      * For instance, `identifier("db", "table_name", "field_name")` maps to:
-     * \code "`db`.`table_name`.`field_name`" \endcode.
+     * \code "`db`.`table_name`.`field_name`" \endcode
      *
      * \par Exception safety
      * No-throw guarantee.
