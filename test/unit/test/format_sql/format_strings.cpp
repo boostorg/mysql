@@ -17,6 +17,7 @@
 
 #include "format_common.hpp"
 #include "test_common/printing.hpp"
+#include "test_unit/ff_charset.hpp"
 
 using namespace boost::mysql;
 
@@ -113,8 +114,8 @@ BOOST_AUTO_TEST_CASE(success)
 // backslash_slashes and character set are propagated
 BOOST_AUTO_TEST_CASE(options_propagated)
 {
-    format_options opts_charset{ff_charset, true};
-    format_options opts_backslashes{ff_charset, false};
+    format_options opts_charset{test::ff_charset, true};
+    format_options opts_backslashes{test::ff_charset, false};
 
     // Charset affects format strings
     BOOST_TEST(format_sql("SELECT \xffh + {};", opts_charset, 42) == "SELECT \xffh + 42;");
@@ -132,7 +133,7 @@ BOOST_AUTO_TEST_CASE(options_propagated)
 // interpret {} characters as continuations, rather than trying to expand them
 BOOST_AUTO_TEST_CASE(format_strings_brace_continuation)
 {
-    format_options custom_opts{ff_charset, true};
+    format_options custom_opts{test::ff_charset, true};
 
     BOOST_TEST(format_sql("SELECT \xff{ + {};", custom_opts, 42) == "SELECT \xff{ + 42;");
     BOOST_TEST(format_sql("SELECT \xff} + {};", custom_opts, 42) == "SELECT \xff} + 42;");

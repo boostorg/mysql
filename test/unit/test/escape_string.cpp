@@ -21,27 +21,11 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
+#include "test_unit/ff_charset.hpp"
 
 using namespace boost::mysql;
 
 BOOST_AUTO_TEST_SUITE(test_escape_string)
-
-// A hypothetical character set with rules that may confuse the algorithm.
-// Some MySQL charsets (e.g. gbk) contain ASCII-compatible continuation characters
-std::size_t next_char_test_encoding(string_view input) noexcept
-{
-    // This is a hypothetical encoding used for testing
-    BOOST_ASSERT(!input.empty());
-
-    // Multibyte characters start with 0xff, and continuation bytes can include ascii-compatible characters
-    if (input.size() >= 2u && static_cast<unsigned char>(input[0]) == 0xff)
-        return 2;
-
-    // Otherwise, it's a plain character
-    return 1;
-}
-
-constexpr character_set test_charset{"test", &next_char_test_encoding};
 
 //
 // Escaping using backslashes
@@ -135,7 +119,7 @@ BOOST_AUTO_TEST_CASE(backslashes_multibyte_ascii_compatible_chars)
     string_view s = "This is \\ a string \xff\\ with a weird \xff\" encoding \"";
     std::string output = "abc";
 
-    auto ec = escape_string(s, {test_charset, true}, quoting_context::double_quote, output);
+    auto ec = escape_string(s, {test::ff_charset, true}, quoting_context::double_quote, output);
 
     BOOST_TEST(ec == error_code());
     BOOST_TEST(output == "This is \\\\ a string \xff\\ with a weird \xff\" encoding \\\"");
@@ -245,7 +229,7 @@ BOOST_AUTO_TEST_CASE(quotes_multibyte_ascii_compatible_chars)
     string_view s = "This is \" a string \xfe\" with a weird \xff\" encoding \"";
     std::string output = "abc";
 
-    auto ec = escape_string(s, {test_charset, false}, quoting_context::double_quote, output);
+    auto ec = escape_string(s, {test::ff_charset, false}, quoting_context::double_quote, output);
 
     BOOST_TEST(ec == error_code());
     BOOST_TEST(output == "This is \"\" a string \xfe\"\" with a weird \xff\" encoding \"\"");

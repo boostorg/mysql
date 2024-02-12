@@ -12,18 +12,19 @@
 
 #include <boost/mysql/detail/config.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstddef>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-inline std::size_t next_char_latin1(string_view) noexcept { return 1; }
-inline std::size_t next_char_ascii(string_view input) noexcept
+inline std::size_t next_char_ascii(span<const unsigned char> input) noexcept
 {
-    return static_cast<unsigned char>(input[0]) <= 0x7f ? 1 : 0;
+    return input[0] <= 0x7f ? 1 : 0;
 }
-BOOST_MYSQL_DECL std::size_t next_char_utf8mb4(string_view input) noexcept;
+BOOST_MYSQL_DECL std::size_t next_char_utf8mb4(span<const unsigned char> input) noexcept;
 
 }  // namespace detail
 }  // namespace mysql

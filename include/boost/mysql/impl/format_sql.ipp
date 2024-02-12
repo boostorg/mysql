@@ -231,7 +231,7 @@ class format_state
     BOOST_ATTRIBUTE_NODISCARD
     bool advance(const char*& it, const char* end)
     {
-        std::size_t size = ctx_.impl_.opts.charset.next_char({it, end});
+        std::size_t size = detail::call_next_char(ctx_.impl_.opts.charset, it, end);
         if (size == 0)
         {
             ctx_.add_error(client_errc::format_string_invalid_encoding);

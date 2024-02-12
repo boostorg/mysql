@@ -11,6 +11,8 @@
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <string>
 #include <vector>
 
@@ -49,16 +51,6 @@ struct formatter<custom::condition>
         ctx.append_value(identifier(v.name)).append_raw("=").append_value(v.value);
     }
 };
-
-// Custom charset function
-inline std::size_t ff_charset_next_char(string_view s) noexcept
-{
-    auto c = static_cast<unsigned char>(s[0]);
-    if (c == 0xff)  // 0xff marks a two-byte character
-        return s.size() > 1u ? 2u : 0u;
-    return 1u;
-};
-constexpr character_set ff_charset{"ff_charset", ff_charset_next_char};
 
 }  // namespace mysql
 }  // namespace boost

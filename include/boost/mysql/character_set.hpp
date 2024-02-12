@@ -14,6 +14,8 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/make_string_view.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstddef>
 
 namespace boost {
@@ -38,11 +40,12 @@ struct character_set
     string_view name;
 
     /**
-     * \brief Obtains the given string's first character size.
+     * \brief Obtains the size of the first character of a string.
      * \details
-     * Given an input string `s`, this function must return the number of
-     * bytes that the first character in `s` spans, or 0 in case of error.
-     * `s` is guaranteed to be a non-empty string (`s.size() > 0`).
+     * Given a range of bytes, `r`, this function must interpret `r` as a
+     * string encoded using this character set, and return the number of
+     * bytes that the first character in the string spans, or 0 in case of error.
+     * `r` is guaranteed to be non-empty (`r.size() > 0`).
      * \n
      * In some character sets (like UTF-8), not all byte sequences represent
      * valid characters. If this function finds an invalid byte sequence while
@@ -51,9 +54,10 @@ struct character_set
      * This function must not throw exceptions or have side effects.
      * \n
      * \par Function signature
-     * The function signature should be: `std::size_t (*next_char)(string_view) noexcept`
+     * The function signature should be:
+     * `std::size_t (*next_char)(boost::span<const unsigned char> r) noexcept`
      */
-    std::size_t (*next_char)(string_view) noexcept;
+    std::size_t (*next_char)(span<const unsigned char>) noexcept;
 };
 
 /// (EXPERIMENTAL) The utf8mb4 character set (the one you should use by default).

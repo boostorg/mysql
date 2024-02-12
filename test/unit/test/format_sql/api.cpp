@@ -18,6 +18,7 @@
 
 #include "format_common.hpp"
 #include "test_common/printing.hpp"
+#include "test_unit/ff_charset.hpp"
 
 //
 // Contains spotchecks verifying that the main success and error cases

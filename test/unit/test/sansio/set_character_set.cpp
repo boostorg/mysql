@@ -14,7 +14,10 @@
 
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
+
+#include <cstddef>
 
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
@@ -110,11 +113,14 @@ BOOST_AUTO_TEST_CASE(error_response)
     BOOST_TEST(fix.st.charset_ptr() == nullptr);
 }
 
+// Character set function that always returns 1
+static std::size_t stub_next_char(boost::span<const unsigned char>) noexcept { return 1u; }
+
 // Ensure we don't create vulnerabilities when composing SET NAMES
 BOOST_AUTO_TEST_CASE(charset_name_needs_escaping)
 {
     // Setup
-    fixture fix({"lat'in\\", detail::next_char_latin1});
+    fixture fix({"lat'in\\", stub_next_char});
 
     // Run the algo
     algo_test()
@@ -126,7 +132,7 @@ BOOST_AUTO_TEST_CASE(charset_name_needs_escaping)
 BOOST_AUTO_TEST_CASE(error_nonascii_charset_name)
 {
     // Setup
-    fixture fix({"lat\xc3\xadn", detail::next_char_latin1});
+    fixture fix({"lat\xc3\xadn", stub_next_char});
 
     // Run the algo
     algo_test().check(fix, client_errc::invalid_encoding);
