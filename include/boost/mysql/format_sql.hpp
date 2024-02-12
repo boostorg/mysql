@@ -143,6 +143,7 @@ struct formatter
  */
 class format_context_base
 {
+#ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
         detail::output_string_ref output;
@@ -152,6 +153,7 @@ class format_context_base
 
     friend struct detail::access;
     friend class detail::format_state;
+#endif
 
     BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg);
 
@@ -197,7 +199,7 @@ public:
     /**
      * \brief Formats a value and adds it to the output string.
      * \details
-     * `value` is formatted according to its type. If formatting
+     * value is formatted according to its type. If formatting
      * generates an error (for instance, a string with invalid encoding is passed),
      * the error state may be set.
      * \n
@@ -207,7 +209,7 @@ public:
      * Basic guarantee. Memory allocations may throw.
      *
      * \par Errors
-     * The error state may be updated with the following errors:
+     * The error state may be updated with the following errors: \n
      * \li \ref client_errc::invalid_encoding if a string with byte sequences that can't be decoded
      *          with the current character set is passed.
      * \li \ref client_errc::unformattable_value if a NaN or infinity `float` or `double` is passed.
@@ -264,7 +266,7 @@ public:
  * this type is aware of the output string's actual type. `basic_format_context` owns
  * an instance of `OutputString`. Format operations will append characters to such string.
  * \n
- * `basic_format_context` are single-use: once the result has been retrieved using \ref get,
+ * Objects of this type are single-use: once the result has been retrieved using \ref get,
  * they cannot be re-used. This is a move-only type.
  * \see format_context
  */
@@ -312,8 +314,10 @@ public:
         output_.clear();
     }
 
+#ifndef BOOST_MYSQL_DOXYGEN
     basic_format_context(const basic_format_context&) = delete;
     basic_format_context& operator=(const basic_format_context&) = delete;
+#endif
 
     /**
      * \brief Move constructor.
