@@ -324,7 +324,7 @@ __assume_setup__
 [section:batch_inserts (Experimental) Batch inserts using client-side query formatting]
 
 This example demonstrates how to use client-side query formatting using
-[reflink format_context] to implement batch inserts. Batch inserting
+[reflink format_sql_to] to implement batch inserts. Batch inserting
 can highly improve application performance.
 
 The example employs sync functions with exceptions.
@@ -361,7 +361,7 @@ __assume_setup__
 
 [section:dynamic_filters (Experimental) Dynamic filters using client-side query formatting]
 
-This example demonstrates how use [reflink format_context]
+This example demonstrates how to use [reflink format_sql_to]
 to implement filters that can be enabled dynamically.
 
 The example employs async functions with stackful coroutines.
@@ -380,7 +380,7 @@ __assume_setup__
 
 [section:patch_updates (Experimental) PATCH-like updates using client-side query formatting]
 
-This example demonstrates how use [reflink format_context]
+This example demonstrates how use [reflink format_sql_to]
 to implement `UPDATE` queries with `PATCH` semantics, i.e.,
 that update a dynamic set of fields.
 

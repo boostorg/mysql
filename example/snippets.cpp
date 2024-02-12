@@ -1554,7 +1554,7 @@ std::string compose_update_query(
     // format_context will accumulate the query as we compose it
     boost::mysql::format_context ctx(opts);
 
-    // append_raw adds raw SQL, without quoting or escaping.
+    // append_raw adds raw SQL to the generated query, without quoting or escaping.
     // You can only pass strings known at compile-time to append_raw,
     // unless you use the runtime function.
     ctx.append_raw("UPDATE employee SET ");
@@ -1720,7 +1720,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 #endif
     {
         //[sql_formatting_manual_indices
-        // Recall that you need to set connect_params.multi_queries when connecting
+        // Recall that you need to set connect_params::multi_queries to true when connecting
         // before running semicolon-separated queries.
         std::string query = boost::mysql::format_sql(
             "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
@@ -1805,9 +1805,9 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         try
         {
             //[sql_formatting_invalid_encoding
-            // If the connection is using UTF8 (the default), this will throw an error,
+            // If the connection is using UTF-8 (the default), this will throw an error,
             // because the string to be formatted contains invalid UTF8.
-            format_sql("SELECT {}", conn.format_opts().value(), "bad\xff UTF8");
+            format_sql("SELECT {}", conn.format_opts().value(), "bad\xff UTF-8");
             //]
 
             ASSERT(false);
@@ -1909,7 +1909,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, 4.2f) == "SELECT 4.199999809265137e+00"
+            format_sql("SELECT {}", opts, 4.2) == "SELECT 4.2e+00"
             //<-
         );
         //->

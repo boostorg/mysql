@@ -97,7 +97,7 @@ explanation on format strings.
 [heading Formatting identifiers]
 
 By default, strings are formatted as values. If you need to generate a dynamic
-SQL identifier (like a field or table name), you need to use the [reflink identifier] class:
+SQL identifier (like a field or table name), use the [reflink identifier] class:
 
 [sql_formatting_identifiers]
 
@@ -109,7 +109,7 @@ SQL identifier (like a field or table name), you need to use the [reflink identi
 
 [heading Building SQL strings incrementally using format_sql_to]
 
-Many use cases, including batch inserts or dynamic filters, may not be
+Many use cases, including batch inserts and dynamic filters, may not be
 expressible in terms of a single format string. In such cases, you can
 use [reflink format_context] and [reflink format_sql_to] to
 build query strings incrementally:
@@ -117,8 +117,8 @@ build query strings incrementally:
 [sql_formatting_incremental_fn]
 [sql_formatting_incremental_use]
 
-You can also use [refmemunq basic_format_context append_raw] and [refmemunq basic_format_context append_value]
-on format contexts to add raw SQL and formatted values without a format string.
+[refmemunq basic_format_context append_raw] and [refmemunq basic_format_context append_value]
+can be used on format contexts to add raw SQL and formatted values without a format string.
 
 
 
@@ -198,7 +198,7 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
 * Prepared statements always entail a [*mutation of session state], while client-formatted SQL may not.
   If you're using a [reflink connection_pool] with prepared statements, you can't use
   [refmem pooled_connection return_without_reset], as this will leak the statement.
-  You may be able to do it with client-formatted queries, if your SQL doesn't mutate session state.
+  With client-formatted queries, reset may not be required if your SQL doesn't mutate session state.
 * Client-formatted SQL queries use a usually [*less efficient text-based protocol], while prepared statements
   use a more compact binary protocol. This is relevant if you're retrieving lots of data that is
   slow to convert to and from text (like doubles).
@@ -241,14 +241,22 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
         ]
     ]
     [
-        [`std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`), [reflink string_view], `std::string_view`, `const char*`]
+        [
+            `std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`)[br]
+            [reflink string_view][br]
+            [br]`std::string_view`
+            [br]`const char*`
+        ]
         [Single-quoted escaped string literal]
         [
             [sql_formatting_reference_string]
         ]
     ]
     [
-        [`std::basic_vector<unsigned char, Allocator>` (including [reflink blob]), [reflink blob_view]]
+        [
+            `std::basic_vector<unsigned char, Allocator>` (including [reflink blob])[br]
+            [reflink blob_view]
+        ]
         [Hex string literal]
         [
             [sql_formatting_reference_blob]
