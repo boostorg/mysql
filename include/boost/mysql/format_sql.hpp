@@ -268,7 +268,6 @@ public:
  * \n
  * Objects of this type are single-use: once the result has been retrieved using \ref get,
  * they cannot be re-used. This is a move-only type.
- * \see format_context
  */
 template <BOOST_MYSQL_OUTPUT_STRING OutputString>
 class basic_format_context : public format_context_base
@@ -490,8 +489,6 @@ void format_sql_to(constant_string_view format_str, format_context_base& ctx, co
  *     (`{}`) and manual indexed (`{1}`) replacement fields.
  * \li \ref client_errc::format_arg_not_found if an argument referenced by `format_str` isn't present
  *     in `args` (there aren't enough arguments or a named argument is not found).
- *
- * \see format_sql_to
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
 std::string format_sql(
