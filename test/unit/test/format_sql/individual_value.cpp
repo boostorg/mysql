@@ -17,6 +17,7 @@
 #include <boost/mysql/time.hpp>
 
 #include <boost/config.hpp>
+#include <boost/core/ignore_unused.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -467,6 +468,15 @@ BOOST_AUTO_TEST_CASE(individual_identifier)
     BOOST_TEST(format_sql(fmt, opts, identifier("", "myt", "")) == "SELECT ``.`myt`.`` FROM myt");
     BOOST_TEST(format_sql(fmt, opts, identifier("mydb", "", "")) == "SELECT `mydb`.``.`` FROM myt");
     BOOST_TEST(format_sql(fmt, opts, identifier("", "", "")) == "SELECT ``.``.`` FROM myt");
+
+    // Spotcheck: identifiers constexpr-ness works
+    constexpr string_view s("abc", 3);  // traits is not constexpr until C++17
+    constexpr identifier id1(s);
+    constexpr identifier id2(s, s);
+    constexpr identifier id3(s, s, s);
+    boost::ignore_unused(id1);
+    boost::ignore_unused(id2);
+    boost::ignore_unused(id3);
 }
 
 BOOST_AUTO_TEST_CASE(individual_custom_type)
