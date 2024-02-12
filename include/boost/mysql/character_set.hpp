@@ -55,7 +55,7 @@ struct character_set
      * \n
      * \par Function signature
      * The function signature should be:
-     * `std::size_t (*next_char)(boost::span<const unsigned char> r) noexcept`
+     * `std::size_t (*next_char)(boost::span<const unsigned char> r) noexcept`.
      */
     std::size_t (*next_char)(span<const unsigned char>) noexcept;
 };
@@ -76,7 +76,8 @@ constexpr character_set ascii_charset
 
 /**
  * \brief (EXPERIMENTAL) Settings required to format SQL queries client-side.
- * \see any_connection::format_opts
+ * \details
+ * The recommended way to obtain a value of this type is using \ref any_connection::format_opts.
  */
 struct format_options
 {
