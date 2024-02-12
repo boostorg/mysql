@@ -1600,7 +1600,7 @@ template <>
 struct formatter<employee_t>
 {
     // formatter<T> should define, at least, a function with signature:
-    //    static void format(const T&, format_context:base&)
+    //    static void format(const T&, format_context_base&)
     // This function must use format_sql_to, format_context_base::append_raw
     // or format_context_base::append_value to format the passed value.
     // We will make this suitable for INSERT statements
@@ -2050,11 +2050,89 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
             "INSERT INTO employee (first_name, last_name, company_id) VALUES "
             "('John', 'Doe', 'HGS'), ('Rick', 'Johnson', 'AWC')"
         );
-
-        // You can also use format_context::append_value passing an employee
         //]
 
         conn.execute(query, r);
+    }
+    {
+        const auto opts = conn.format_opts().value();
+
+        //[sql_formatting_auto_indexing
+        ASSERT(format_sql("SELECT {}, {}, {}", opts, 42, "abc", nullptr) == "SELECT 42, 'abc', NULL");
+        //]
+    }
+    {
+        const auto opts = conn.format_opts().value();
+
+        //[sql_formatting_manual_auto_mix
+        try
+        {
+            // Mixing manual and auto indexing is illegal. This will throw an exception.
+            format_sql("SELECT {0}, {}", opts, 42);
+            //<-
+            ASSERT(false);
+            //->
+        }
+        catch (const boost::system::system_error& err)
+        {
+            ASSERT(err.code() == boost::mysql::client_errc::format_string_manual_auto_mix);
+        }
+        //]
+    }
+    {
+        const auto opts = conn.format_opts().value();
+
+        //[sql_formatting_unused_args
+        // This is OK
+        std::string query = format_sql("SELECT {}", opts, 42, "abc");
+        //]
+        ASSERT(query == "SELECT 42");
+    }
+    {
+        const auto opts = conn.format_opts().value();
+
+        //[sql_formatting_brace_literal
+        ASSERT(format_sql("SELECT 'Brace literals: {{ and }}'", opts) == "SELECT 'Brace literals: { and }'");
+        //]
+    }
+    {
+        const auto opts = conn.format_opts().value();
+
+        //[sql_formatting_format_double_error
+        try
+        {
+            // We're trying to format a double infinity value, which is not
+            // supported by MySQL. This will throw an exception.
+            format_sql("SELECT {}", opts, HUGE_VAL);
+            //<-
+            ASSERT(false);
+            //->
+        }
+        catch (const boost::system::system_error& err)
+        {
+            ASSERT(err.code() == boost::mysql::client_errc::unformattable_value);
+        }
+        //]
+    }
+    {
+        const auto opts = conn.format_opts().value();
+
+        //[sql_formatting_no_exceptions
+        // ctx contains an error code that tracks whether any error happened
+        boost::mysql::format_context ctx(opts);
+
+        // We're trying to format a infinity, which is an error. This
+        // will set the error state, but won't throw.
+        format_sql_to("SELECT {}, {}", ctx, HUGE_VAL, 42);
+
+        // The error state gets checked at this point. Since it is set,
+        // res will contain an error.
+        boost::system::result<std::string> res = std::move(ctx).get();
+        ASSERT(!res.has_value());
+        ASSERT(res.has_error());
+        ASSERT(res.error() == boost::mysql::client_errc::unformattable_value);
+        // res.value() would throw an error, like format_sql would
+        //]
     }
 #ifdef __cpp_lib_polymorphic_allocator
     {
