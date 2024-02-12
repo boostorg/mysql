@@ -26,7 +26,7 @@
 #ifdef __cpp_consteval
     #define BOOST_MYSQL_CONSTEVAL consteval
 #else
-    #define BOOST_MYSQL_CONSTEVAL BOOST_CXX14_CONSTEXPR
+    #define BOOST_MYSQL_CONSTEVAL constexpr
 #endif
 
 // Separate build

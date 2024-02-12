@@ -22,7 +22,7 @@ namespace mysql {
 /**
  * \brief (EXPERIMENTAL) A string view that should be known at compile-time.
  * \details
- * This type is commonly used when a string function argument must always be known at compile-time
+ * This type is used when a string function argument must always be known at compile-time
  * except in rare cases. See \ref format_sql format strings for an example.
  * \n
  * \par Object lifetimes
@@ -34,8 +34,8 @@ class constant_string_view
     string_view impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    BOOST_CXX14_CONSTEXPR constant_string_view(string_view value, int) noexcept : impl_(value) {}
-    friend BOOST_CXX14_CONSTEXPR inline constant_string_view runtime(string_view) noexcept;
+    constexpr constant_string_view(string_view value, int) noexcept : impl_(value) {}
+    friend constexpr constant_string_view runtime(string_view) noexcept;
 #endif
 
 public:
@@ -79,7 +79,7 @@ public:
      * \par Object lifetimes
      * The returned view has the same lifetime rules as `*this`.
      */
-    BOOST_CXX14_CONSTEXPR string_view get() const noexcept { return impl_; }
+    constexpr string_view get() const noexcept { return impl_; }
 };
 
 /**
@@ -97,10 +97,7 @@ public:
  * \par Object lifetimes
  * The returned value has the same lifetime semantics as the passed view.
  */
-BOOST_CXX14_CONSTEXPR inline constant_string_view runtime(string_view value) noexcept
-{
-    return constant_string_view(value, 0);
-}
+constexpr constant_string_view runtime(string_view value) noexcept { return constant_string_view(value, 0); }
 
 }  // namespace mysql
 }  // namespace boost
