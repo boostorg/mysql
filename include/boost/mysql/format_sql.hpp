@@ -45,56 +45,52 @@ class identifier
         std::size_t qual_level;
         string_view ids[3];
 
-        BOOST_CXX14_CONSTEXPR impl_t(
-            std::size_t qual_level,
-            string_view id1,
-            string_view id2,
-            string_view id3
-        ) noexcept
+        constexpr impl_t(std::size_t qual_level, string_view id1, string_view id2, string_view id3) noexcept
             : qual_level(qual_level), ids{id1, id2, id3}
         {
         }
     } impl_;
 
+#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
+#endif
 
 public:
     /**
      * \brief Constructs an unqualified identifier.
      * \details
      * Unqualified identifiers are usually field, table or database names,
-     * and get formatted as `"`column_name`"`.
+     * and get formatted as: \code "`column_name`" \endcode.
      *
      * \par Exception safety
      * No-throw guarantee.
      */
-    BOOST_CXX14_CONSTEXPR explicit identifier(string_view id) noexcept : impl_(1u, id, {}, {}) {}
+    constexpr explicit identifier(string_view id) noexcept : impl_(1u, id, {}, {}) {}
 
     /**
      * \brief Constructs an identifier with a single qualifier.
      * \details
      * Identifiers with one qualifier are used for field, table and view names.
      * The qualifier identifies the parent object. For instance,
-     * `qualifier("table_name", "field_name")` maps to `"`table_name`.`field_name`"`.
+     * `identifier("table_name", "field_name")` maps to: \code "`table_name`.`field_name`" \endcode.
      *
      * \par Exception safety
      * No-throw guarantee.
      */
-    BOOST_CXX14_CONSTEXPR identifier(string_view qualifier, string_view id) noexcept
-        : impl_(2u, qualifier, id, {})
-    {
-    }
+    constexpr identifier(string_view qualifier, string_view id) noexcept : impl_(2u, qualifier, id, {}) {}
 
     /**
      * \brief Constructs an identifier with two qualifiers.
      * \details
      * Identifiers with two qualifier are used for field names.
      * The first qualifier identifies the database, the second, the table name.
+     * For instance, `identifier("db", "table_name", "field_name")` maps to:
+     * \code "`db`.`table_name`.`field_name`" \endcode.
      *
      * \par Exception safety
      * No-throw guarantee.
      */
-    BOOST_CXX14_CONSTEXPR identifier(string_view qual1, string_view qual2, string_view id) noexcept
+    constexpr identifier(string_view qual1, string_view qual2, string_view id) noexcept
         : impl_(3u, qual1, qual2, id)
     {
     }
