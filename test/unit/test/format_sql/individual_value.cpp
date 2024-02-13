@@ -51,91 +51,91 @@ constexpr auto single_fmt = "SELECT {};";
 BOOST_AUTO_TEST_CASE(individual_null)
 {
     // nullptr interpreted as NULL
-    BOOST_TEST(format_sql(single_fmt, opts, nullptr) == "SELECT NULL;");
+    BOOST_TEST(format_sql(opts, single_fmt, nullptr) == "SELECT NULL;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_signed_char)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (signed char)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (signed char)-1) == "SELECT -1;");
-    BOOST_TEST(format_sql(single_fmt, opts, (signed char)-128) == "SELECT -128;");
-    BOOST_TEST(format_sql(single_fmt, opts, (signed char)127) == "SELECT 127;");
+    BOOST_TEST(format_sql(opts, single_fmt, (signed char)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (signed char)-1) == "SELECT -1;");
+    BOOST_TEST(format_sql(opts, single_fmt, (signed char)-128) == "SELECT -128;");
+    BOOST_TEST(format_sql(opts, single_fmt, (signed char)127) == "SELECT 127;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_unsigned_char)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned char)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned char)0) == "SELECT 0;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned char)0xff) == "SELECT 255;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned char)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned char)0) == "SELECT 0;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned char)0xff) == "SELECT 255;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_short)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (short)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (short)-1) == "SELECT -1;");
-    BOOST_TEST(format_sql(single_fmt, opts, (short)-32768) == "SELECT -32768;");
-    BOOST_TEST(format_sql(single_fmt, opts, (short)32767) == "SELECT 32767;");
+    BOOST_TEST(format_sql(opts, single_fmt, (short)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (short)-1) == "SELECT -1;");
+    BOOST_TEST(format_sql(opts, single_fmt, (short)-32768) == "SELECT -32768;");
+    BOOST_TEST(format_sql(opts, single_fmt, (short)32767) == "SELECT 32767;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_unsigned_short)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned short)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned short)0) == "SELECT 0;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned short)0xffff) == "SELECT 65535;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned short)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned short)0) == "SELECT 0;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned short)0xffff) == "SELECT 65535;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_int)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (int)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (int)-1) == "SELECT -1;");
-    BOOST_TEST(format_sql(single_fmt, opts, (int)-0x7fffffff - 1) == "SELECT -2147483648;");
-    BOOST_TEST(format_sql(single_fmt, opts, (int)0x7fffffff) == "SELECT 2147483647;");
+    BOOST_TEST(format_sql(opts, single_fmt, (int)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (int)-1) == "SELECT -1;");
+    BOOST_TEST(format_sql(opts, single_fmt, (int)-0x7fffffff - 1) == "SELECT -2147483648;");
+    BOOST_TEST(format_sql(opts, single_fmt, (int)0x7fffffff) == "SELECT 2147483647;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_unsigned_int)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned int)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned int)0) == "SELECT 0;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned int)0xffffffff) == "SELECT 4294967295;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned int)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned int)0) == "SELECT 0;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned int)0xffffffff) == "SELECT 4294967295;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_long)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (long)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (long)-1) == "SELECT -1;");
-    BOOST_TEST(format_sql(single_fmt, opts, (long)0x7fffffff) == "SELECT 2147483647;");
+    BOOST_TEST(format_sql(opts, single_fmt, (long)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (long)-1) == "SELECT -1;");
+    BOOST_TEST(format_sql(opts, single_fmt, (long)0x7fffffff) == "SELECT 2147483647;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_unsigned_long)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned long)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned long)0) == "SELECT 0;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned long)0xffffffff) == "SELECT 4294967295;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned long)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned long)0) == "SELECT 0;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned long)0xffffffff) == "SELECT 4294967295;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_long_long)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (long long)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (long long)-1) == "SELECT -1;");
+    BOOST_TEST(format_sql(opts, single_fmt, (long long)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (long long)-1) == "SELECT -1;");
     BOOST_TEST(
-        format_sql(single_fmt, opts, (long long)(-0x7fffffffffffffff - 1)) == "SELECT -9223372036854775808;"
+        format_sql(opts, single_fmt, (long long)(-0x7fffffffffffffff - 1)) == "SELECT -9223372036854775808;"
     );
-    BOOST_TEST(format_sql(single_fmt, opts, (long long)0x7fffffffffffffff) == "SELECT 9223372036854775807;");
+    BOOST_TEST(format_sql(opts, single_fmt, (long long)0x7fffffffffffffff) == "SELECT 9223372036854775807;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_unsigned_long_long)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned long long)42) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, (unsigned long long)0) == "SELECT 0;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned long long)42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, (unsigned long long)0) == "SELECT 0;");
     BOOST_TEST(
-        format_sql(single_fmt, opts, (unsigned long long)0xffffffffffffffff) == "SELECT 18446744073709551615;"
+        format_sql(opts, single_fmt, (unsigned long long)0xffffffffffffffff) == "SELECT 18446744073709551615;"
     );
 }
 
 BOOST_AUTO_TEST_CASE(individual_bool)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, true) == "SELECT 1;");
-    BOOST_TEST(format_sql(single_fmt, opts, false) == "SELECT 0;");
+    BOOST_TEST(format_sql(opts, single_fmt, true) == "SELECT 1;");
+    BOOST_TEST(format_sql(opts, single_fmt, false) == "SELECT 0;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_double)
@@ -170,7 +170,7 @@ BOOST_AUTO_TEST_CASE(individual_double)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            auto str = format_sql("{}", opts, tc.value);
+            auto str = format_sql(opts, "{}", tc.value);
             BOOST_TEST(str == tc.expected);
         }
     }
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(individual_float)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            auto str = format_sql("{}", opts, tc.value);
+            auto str = format_sql(opts, "{}", tc.value);
             BOOST_TEST(str == tc.expected);
         }
     }
@@ -217,44 +217,44 @@ BOOST_AUTO_TEST_CASE(individual_float)
 
 BOOST_AUTO_TEST_CASE(individual_string_literal)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, "abc") == "SELECT 'abc';");
-    BOOST_TEST(format_sql(single_fmt, opts, "abc'\\ OR 1=1") == "SELECT 'abc\\'\\\\ OR 1=1';");
-    BOOST_TEST(format_sql(single_fmt, opts, "hola \xc3\xb1!") == "SELECT 'hola \xc3\xb1!';");
-    BOOST_TEST(format_sql(single_fmt, opts, "") == "SELECT '';");
+    BOOST_TEST(format_sql(opts, single_fmt, "abc") == "SELECT 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, "abc'\\ OR 1=1") == "SELECT 'abc\\'\\\\ OR 1=1';");
+    BOOST_TEST(format_sql(opts, single_fmt, "hola \xc3\xb1!") == "SELECT 'hola \xc3\xb1!';");
+    BOOST_TEST(format_sql(opts, single_fmt, "") == "SELECT '';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_c_str)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, static_cast<const char*>("abc")) == "SELECT 'abc';");
-    BOOST_TEST(format_sql(single_fmt, opts, static_cast<const char*>("")) == "SELECT '';");
+    BOOST_TEST(format_sql(opts, single_fmt, static_cast<const char*>("abc")) == "SELECT 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, static_cast<const char*>("")) == "SELECT '';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_string)
 {
     std::string lval = "I'm an lvalue";
     const std::string clval = "I'm const";
-    BOOST_TEST(format_sql(single_fmt, opts, lval) == "SELECT 'I\\'m an lvalue';");
-    BOOST_TEST(format_sql(single_fmt, opts, clval) == "SELECT 'I\\'m const';");
-    BOOST_TEST(format_sql(single_fmt, opts, std::string("abc")) == "SELECT 'abc';");
-    BOOST_TEST(format_sql(single_fmt, opts, std::string()) == "SELECT '';");
-    BOOST_TEST(format_sql(single_fmt, opts, string_with_alloc("abc'")) == "SELECT 'abc\\'';");
+    BOOST_TEST(format_sql(opts, single_fmt, lval) == "SELECT 'I\\'m an lvalue';");
+    BOOST_TEST(format_sql(opts, single_fmt, clval) == "SELECT 'I\\'m const';");
+    BOOST_TEST(format_sql(opts, single_fmt, std::string("abc")) == "SELECT 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, std::string()) == "SELECT '';");
+    BOOST_TEST(format_sql(opts, single_fmt, string_with_alloc("abc'")) == "SELECT 'abc\\'';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_string_view)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, string_view("abc")) == "SELECT 'abc';");
-    BOOST_TEST(format_sql(single_fmt, opts, string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';");
-    BOOST_TEST(format_sql(single_fmt, opts, string_view()) == "SELECT '';");
+    BOOST_TEST(format_sql(opts, single_fmt, string_view("abc")) == "SELECT 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';");
+    BOOST_TEST(format_sql(opts, single_fmt, string_view()) == "SELECT '';");
 }
 
 #ifdef __cpp_lib_string_view
 BOOST_AUTO_TEST_CASE(individual_std_string_view)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, std::string_view("abc")) == "SELECT 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, std::string_view("abc")) == "SELECT 'abc';");
     BOOST_TEST(
-        format_sql(single_fmt, opts, std::string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';"
+        format_sql(opts, single_fmt, std::string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';"
     );
-    BOOST_TEST(format_sql(single_fmt, opts, std::string_view()) == "SELECT '';");
+    BOOST_TEST(format_sql(opts, single_fmt, std::string_view()) == "SELECT '';");
 }
 #endif
 
@@ -263,9 +263,9 @@ BOOST_AUTO_TEST_CASE(individual_blob)
 {
     blob lval{0x01, 0x00, 0x5c};
     const blob clval{0x20, 0x71, 0xff};
-    BOOST_TEST(format_sql(single_fmt, opts, lval) == "SELECT x'01005c';");
-    BOOST_TEST(format_sql(single_fmt, opts, clval) == "SELECT x'2071ff';");
-    BOOST_TEST(format_sql(single_fmt, opts, blob{0x00, 0x2c}) == "SELECT x'002c';");
+    BOOST_TEST(format_sql(opts, single_fmt, lval) == "SELECT x'01005c';");
+    BOOST_TEST(format_sql(opts, single_fmt, clval) == "SELECT x'2071ff';");
+    BOOST_TEST(format_sql(opts, single_fmt, blob{0x00, 0x2c}) == "SELECT x'002c';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_blob_coverage)
@@ -351,46 +351,46 @@ BOOST_AUTO_TEST_CASE(individual_blob_coverage)
 
     for (const auto& tc : test_cases)
     {
-        BOOST_TEST_CONTEXT(tc.name) { BOOST_TEST(format_sql(single_fmt, opts, tc.input) == tc.expected); }
+        BOOST_TEST_CONTEXT(tc.name) { BOOST_TEST(format_sql(opts, single_fmt, tc.input) == tc.expected); }
     }
 }
 
 BOOST_AUTO_TEST_CASE(individual_blob_view)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, makebv("hello\\")) == "SELECT x'68656c6c6f5c';");
-    BOOST_TEST(format_sql(single_fmt, opts, makebv("hello \xc3\xb1!")) == "SELECT x'68656c6c6f20c3b121';");
-    BOOST_TEST(format_sql(single_fmt, opts, makebv("hello \xc3'!")) == "SELECT x'68656c6c6f20c32721';");
-    BOOST_TEST(format_sql(single_fmt, opts, blob_view()) == "SELECT x'';");
+    BOOST_TEST(format_sql(opts, single_fmt, makebv("hello\\")) == "SELECT x'68656c6c6f5c';");
+    BOOST_TEST(format_sql(opts, single_fmt, makebv("hello \xc3\xb1!")) == "SELECT x'68656c6c6f20c3b121';");
+    BOOST_TEST(format_sql(opts, single_fmt, makebv("hello \xc3'!")) == "SELECT x'68656c6c6f20c32721';");
+    BOOST_TEST(format_sql(opts, single_fmt, blob_view()) == "SELECT x'';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_date)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, date(2021, 1, 20)) == "SELECT '2021-01-20';");
-    BOOST_TEST(format_sql(single_fmt, opts, date()) == "SELECT '0000-00-00';");
-    BOOST_TEST(format_sql(single_fmt, opts, date(0xffff, 0xff, 0xff)) == "SELECT '65535-255-255';");
+    BOOST_TEST(format_sql(opts, single_fmt, date(2021, 1, 20)) == "SELECT '2021-01-20';");
+    BOOST_TEST(format_sql(opts, single_fmt, date()) == "SELECT '0000-00-00';");
+    BOOST_TEST(format_sql(opts, single_fmt, date(0xffff, 0xff, 0xff)) == "SELECT '65535-255-255';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_datetime)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, datetime(2021, 1, 20)) == "SELECT '2021-01-20 00:00:00.000000';");
+    BOOST_TEST(format_sql(opts, single_fmt, datetime(2021, 1, 20)) == "SELECT '2021-01-20 00:00:00.000000';");
     BOOST_TEST(
-        format_sql(single_fmt, opts, datetime(1998, 1, 1, 21, 3, 5, 12)) ==
+        format_sql(opts, single_fmt, datetime(1998, 1, 1, 21, 3, 5, 12)) ==
         "SELECT '1998-01-01 21:03:05.000012';"
     );
-    BOOST_TEST(format_sql(single_fmt, opts, datetime()) == "SELECT '0000-00-00 00:00:00.000000';");
+    BOOST_TEST(format_sql(opts, single_fmt, datetime()) == "SELECT '0000-00-00 00:00:00.000000';");
     BOOST_TEST(
-        format_sql(single_fmt, opts, datetime(0xffff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xffffffff)) ==
+        format_sql(opts, single_fmt, datetime(0xffff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xffffffff)) ==
         "SELECT '65535-255-255 255:255:255.4294967295';"
     );
 }
 
 BOOST_AUTO_TEST_CASE(individual_time)
 {
-    BOOST_TEST(format_sql(single_fmt, opts, maket(127, 1, 10, 123)) == "SELECT '127:01:10.000123';");
-    BOOST_TEST(format_sql(single_fmt, opts, -maket(9, 1, 10)) == "SELECT '-09:01:10.000000';");
-    BOOST_TEST(format_sql(single_fmt, opts, mysql_time()) == "SELECT '00:00:00.000000';");
-    BOOST_TEST(format_sql(single_fmt, opts, (mysql_time::min)()) == "SELECT '-2562047788:00:54.775808';");
-    BOOST_TEST(format_sql(single_fmt, opts, (mysql_time::max)()) == "SELECT '2562047788:00:54.775807';");
+    BOOST_TEST(format_sql(opts, single_fmt, maket(127, 1, 10, 123)) == "SELECT '127:01:10.000123';");
+    BOOST_TEST(format_sql(opts, single_fmt, -maket(9, 1, 10)) == "SELECT '-09:01:10.000000';");
+    BOOST_TEST(format_sql(opts, single_fmt, mysql_time()) == "SELECT '00:00:00.000000';");
+    BOOST_TEST(format_sql(opts, single_fmt, (mysql_time::min)()) == "SELECT '-2562047788:00:54.775808';");
+    BOOST_TEST(format_sql(opts, single_fmt, (mysql_time::max)()) == "SELECT '2562047788:00:54.775807';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_duration)
@@ -398,30 +398,30 @@ BOOST_AUTO_TEST_CASE(individual_duration)
     // Durations work as long as they're compatible with time
     using namespace std::chrono;
 
-    BOOST_TEST(format_sql(single_fmt, opts, hours(21)) == "SELECT '21:00:00.000000';");
-    BOOST_TEST(format_sql(single_fmt, opts, minutes(3)) == "SELECT '00:03:00.000000';");
-    BOOST_TEST(format_sql(single_fmt, opts, seconds(-10)) == "SELECT '-00:00:10.000000';");
-    BOOST_TEST(format_sql(single_fmt, opts, milliseconds(-9)) == "SELECT '-00:00:00.009000';");
-    BOOST_TEST(format_sql(single_fmt, opts, microseconds(3214)) == "SELECT '00:00:00.003214';");
+    BOOST_TEST(format_sql(opts, single_fmt, hours(21)) == "SELECT '21:00:00.000000';");
+    BOOST_TEST(format_sql(opts, single_fmt, minutes(3)) == "SELECT '00:03:00.000000';");
+    BOOST_TEST(format_sql(opts, single_fmt, seconds(-10)) == "SELECT '-00:00:10.000000';");
+    BOOST_TEST(format_sql(opts, single_fmt, milliseconds(-9)) == "SELECT '-00:00:00.009000';");
+    BOOST_TEST(format_sql(opts, single_fmt, microseconds(3214)) == "SELECT '00:00:00.003214';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_field_view)
 {
     field referenced("def\\");
-    BOOST_TEST(format_sql(single_fmt, opts, field_view()) == "SELECT NULL;");
-    BOOST_TEST(format_sql(single_fmt, opts, field_view(42)) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, field_view("'abc'")) == "SELECT '\\'abc\\'';");
-    BOOST_TEST(format_sql(single_fmt, opts, field_view(referenced)) == "SELECT 'def\\\\';");
+    BOOST_TEST(format_sql(opts, single_fmt, field_view()) == "SELECT NULL;");
+    BOOST_TEST(format_sql(opts, single_fmt, field_view(42)) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, field_view("'abc'")) == "SELECT '\\'abc\\'';");
+    BOOST_TEST(format_sql(opts, single_fmt, field_view(referenced)) == "SELECT 'def\\\\';");
 }
 
 BOOST_AUTO_TEST_CASE(individual_field)
 {
     field f_lval("hol\"a");
     const field f_clval(42);
-    BOOST_TEST(format_sql(single_fmt, opts, field()) == "SELECT NULL;");
-    BOOST_TEST(format_sql(single_fmt, opts, field(4.2)) == "SELECT 4.2e+00;");
-    BOOST_TEST(format_sql(single_fmt, opts, f_lval) == "SELECT 'hol\\\"a';");
-    BOOST_TEST(format_sql(single_fmt, opts, f_clval) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, field()) == "SELECT NULL;");
+    BOOST_TEST(format_sql(opts, single_fmt, field(4.2)) == "SELECT 4.2e+00;");
+    BOOST_TEST(format_sql(opts, single_fmt, f_lval) == "SELECT 'hol\\\"a';");
+    BOOST_TEST(format_sql(opts, single_fmt, f_clval) == "SELECT 42;");
 }
 
 BOOST_AUTO_TEST_CASE(individual_boost_optional)
@@ -430,12 +430,12 @@ BOOST_AUTO_TEST_CASE(individual_boost_optional)
     boost::optional<const std::string> co_lval("ab'c");
     const boost::optional<std::string> o_clval("\\");
     const boost::optional<const std::string> co_clval("abdef");
-    BOOST_TEST(format_sql(single_fmt, opts, boost::optional<int>()) == "SELECT NULL;");
-    BOOST_TEST(format_sql(single_fmt, opts, boost::optional<int>(42)) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, o_lval) == "SELECT 'abc';");
-    BOOST_TEST(format_sql(single_fmt, opts, co_lval) == "SELECT 'ab\\'c';");
-    BOOST_TEST(format_sql(single_fmt, opts, o_clval) == "SELECT '\\\\';");
-    BOOST_TEST(format_sql(single_fmt, opts, co_clval) == "SELECT 'abdef';");
+    BOOST_TEST(format_sql(opts, single_fmt, boost::optional<int>()) == "SELECT NULL;");
+    BOOST_TEST(format_sql(opts, single_fmt, boost::optional<int>(42)) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, o_lval) == "SELECT 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, co_lval) == "SELECT 'ab\\'c';");
+    BOOST_TEST(format_sql(opts, single_fmt, o_clval) == "SELECT '\\\\';");
+    BOOST_TEST(format_sql(opts, single_fmt, co_clval) == "SELECT 'abdef';");
 }
 
 #ifdef __cpp_lib_optional
@@ -445,41 +445,41 @@ BOOST_AUTO_TEST_CASE(individual_std_optional)
     std::optional<const std::string> co_lval("ab'c");
     const std::optional<std::string> o_clval("\\");
     const std::optional<const std::string> co_clval("abdef");
-    BOOST_TEST(format_sql(single_fmt, opts, std::optional<int>()) == "SELECT NULL;");
-    BOOST_TEST(format_sql(single_fmt, opts, std::optional<int>(42)) == "SELECT 42;");
-    BOOST_TEST(format_sql(single_fmt, opts, o_lval) == "SELECT 'abc';");
-    BOOST_TEST(format_sql(single_fmt, opts, co_lval) == "SELECT 'ab\\'c';");
-    BOOST_TEST(format_sql(single_fmt, opts, o_clval) == "SELECT '\\\\';");
-    BOOST_TEST(format_sql(single_fmt, opts, co_clval) == "SELECT 'abdef';");
+    BOOST_TEST(format_sql(opts, single_fmt, std::optional<int>()) == "SELECT NULL;");
+    BOOST_TEST(format_sql(opts, single_fmt, std::optional<int>(42)) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, single_fmt, o_lval) == "SELECT 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, co_lval) == "SELECT 'ab\\'c';");
+    BOOST_TEST(format_sql(opts, single_fmt, o_clval) == "SELECT '\\\\';");
+    BOOST_TEST(format_sql(opts, single_fmt, co_clval) == "SELECT 'abdef';");
 }
 #endif
 
 BOOST_AUTO_TEST_CASE(individual_identifier)
 {
     constexpr const char* fmt = "SELECT {} FROM myt";
-    BOOST_TEST(format_sql(fmt, opts, identifier("myfield")) == "SELECT `myfield` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("myt", "myf")) == "SELECT `myt`.`myf` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("myfield")) == "SELECT `myfield` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("myt", "myf")) == "SELECT `myt`.`myf` FROM myt");
     BOOST_TEST(
-        format_sql(fmt, opts, identifier("mydb", "myt", "myf")) == "SELECT `mydb`.`myt`.`myf` FROM myt"
+        format_sql(opts, fmt, identifier("mydb", "myt", "myf")) == "SELECT `mydb`.`myt`.`myf` FROM myt"
     );
-    BOOST_TEST(format_sql(fmt, opts, identifier("inj`ect'ion")) == "SELECT `inj``ect'ion` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("inj`ect'ion")) == "SELECT `inj``ect'ion` FROM myt");
     BOOST_TEST(
-        format_sql(fmt, opts, identifier("mo`e\\", "inj``ection", "att\nemmpts`")) ==
+        format_sql(opts, fmt, identifier("mo`e\\", "inj``ection", "att\nemmpts`")) ==
         "SELECT `mo``e\\`.`inj````ection`.`att\nemmpts``` FROM myt"
     );
 
     // Empty identifiers are not valid in MySQL but they shouldn't case formatting problems.
     // They are correctly rejected by MySQL (they don't cause problems)
-    BOOST_TEST(format_sql(fmt, opts, identifier("")) == "SELECT `` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("", "myf")) == "SELECT ``.`myf` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("myt", "")) == "SELECT `myt`.`` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("", "myt", "myf")) == "SELECT ``.`myt`.`myf` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("mydb", "", "myf")) == "SELECT `mydb`.``.`myf` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("mydb", "myt", "")) == "SELECT `mydb`.`myt`.`` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("", "", "myf")) == "SELECT ``.``.`myf` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("", "myt", "")) == "SELECT ``.`myt`.`` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("mydb", "", "")) == "SELECT `mydb`.``.`` FROM myt");
-    BOOST_TEST(format_sql(fmt, opts, identifier("", "", "")) == "SELECT ``.``.`` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("")) == "SELECT `` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("", "myf")) == "SELECT ``.`myf` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("myt", "")) == "SELECT `myt`.`` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("", "myt", "myf")) == "SELECT ``.`myt`.`myf` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("mydb", "", "myf")) == "SELECT `mydb`.``.`myf` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("mydb", "myt", "")) == "SELECT `mydb`.`myt`.`` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("", "", "myf")) == "SELECT ``.``.`myf` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("", "myt", "")) == "SELECT ``.`myt`.`` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("mydb", "", "")) == "SELECT `mydb`.``.`` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, identifier("", "", "")) == "SELECT ``.``.`` FROM myt");
 
     // Spotcheck: identifiers constexpr-ness works
     constexpr string_view s("abc", 3);  // traits is not constexpr until C++17
@@ -493,7 +493,7 @@ BOOST_AUTO_TEST_CASE(individual_identifier)
 
 BOOST_AUTO_TEST_CASE(individual_custom_type)
 {
-    auto actual = format_sql("SELECT * FROM myt WHERE {}", opts, custom::condition{"myfield", 42});
+    auto actual = format_sql(opts, "SELECT * FROM myt WHERE {}", custom::condition{"myfield", 42});
     string_view expected = "SELECT * FROM myt WHERE `myfield`=42";
     BOOST_TEST(actual == expected);
 }

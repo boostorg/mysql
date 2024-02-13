@@ -1629,7 +1629,7 @@ std::string compose_update_query(
         // format_sql_to expands a format string and appends the result
         // to a format context. This way, we can build our query in small pieces
         // Add the first_name update clause
-        boost::mysql::format_sql_to("first_name = {}", ctx, *new_first_name);
+        boost::mysql::format_sql_to(ctx, "first_name = {}", *new_first_name);
     }
     if (new_last_name)
     {
@@ -1637,11 +1637,11 @@ std::string compose_update_query(
             ctx.append_raw(", ");
 
         // Add the last_name update clause
-        boost::mysql::format_sql_to("last_name = {}", ctx, *new_last_name);
+        boost::mysql::format_sql_to(ctx, "last_name = {}", *new_last_name);
     }
 
     // Add the where clause
-    boost::mysql::format_sql_to(" WHERE id = {}", ctx, employee_id);
+    boost::mysql::format_sql_to(ctx, " WHERE id = {}", employee_id);
 
     // Retrieve the generated query string
     return std::move(ctx).get().value();
@@ -1671,7 +1671,7 @@ struct formatter<employee_t>
     // We will make this suitable for INSERT statements
     static void format(const employee_t& emp, format_context_base& ctx)
     {
-        format_sql_to("{}, {}, {}", ctx, emp.first_name, emp.last_name, emp.company_id);
+        format_sql_to(ctx, "{}, {}, {}", emp.first_name, emp.last_name, emp.company_id);
     }
 };
 
@@ -1733,8 +1733,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 
         // Compose the SQL query in the client
         std::string query = boost::mysql::format_sql(
-            "SELECT id, salary FROM employee WHERE last_name = {}",
             conn.format_opts().value(),
+            "SELECT id, salary FROM employee WHERE last_name = {}",
             employee_name
         );
 
@@ -1752,8 +1752,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     {
         //[sql_formatting_other_scalars
         std::string query = boost::mysql::format_sql(
-            "SELECT id FROM employee WHERE salary > {}",
             conn.format_opts().value(),
+            "SELECT id FROM employee WHERE salary > {}",
             42000
         );
 
@@ -1768,8 +1768,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         std::optional<std::int64_t> salary;  // get salary from a possibly untrusted source
 
         std::string query = boost::mysql::format_sql(
-            "UPDATE employee SET salary = {} WHERE id = {}",
             conn.format_opts().value(),
+            "UPDATE employee SET salary = {} WHERE id = {}",
             salary,
             1
         );
@@ -1788,8 +1788,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         // Recall that you need to set connect_params::multi_queries to true when connecting
         // before running semicolon-separated queries.
         std::string query = boost::mysql::format_sql(
-            "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
             conn.format_opts().value(),
+            "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
             42,
             "John"
         );
@@ -1805,8 +1805,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     {
         //[sql_formatting_named_args
         std::string query = boost::mysql::format_sql(
-            "UPDATE employee SET first_name = {name} WHERE id = {id}; SELECT * FROM employee WHERE id = {id}",
             conn.format_opts().value(),
+            "UPDATE employee SET first_name = {name} WHERE id = {id}; SELECT * FROM employee WHERE id = {id}",
             boost::mysql::arg("id", 42),
             boost::mysql::arg("name", "John")
         );
@@ -1822,8 +1822,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     {
         //[sql_formatting_identifiers
         std::string query = boost::mysql::format_sql(
-            "SELECT id, last_name FROM employee ORDER BY {} DESC",
             conn.format_opts().value(),
+            "SELECT id, last_name FROM employee ORDER BY {} DESC",
             boost::mysql::identifier("company_id")
         );
 
@@ -1835,10 +1835,10 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     {
         //[sql_formatting_qualified_identifiers
         std::string query = boost::mysql::format_sql(
+            conn.format_opts().value(),
             "SELECT salary, tax_id FROM employee "
             "INNER JOIN company ON employee.company_id = company.id "
             "ORDER BY {} DESC",
-            conn.format_opts().value(),
             boost::mysql::identifier("company", "id")
         );
         // SELECT ... ORDER BY `company`.`id` DESC
@@ -1872,7 +1872,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
             //[sql_formatting_invalid_encoding
             // If the connection is using UTF-8 (the default), this will throw an error,
             // because the string to be formatted contains invalid UTF8.
-            format_sql("SELECT {}", conn.format_opts().value(), "bad\xff UTF-8");
+            format_sql(conn.format_opts().value(), "SELECT {}", "bad\xff UTF-8");
             //]
 
             ASSERT(false);
@@ -1891,14 +1891,14 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, 42) == "SELECT 42"
+            format_sql(opts, "SELECT {}", 42) == "SELECT 42"
             //<-
         );
         //->
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, -1) == "SELECT -1"
+            format_sql(opts, "SELECT {}", -1) == "SELECT -1"
             //<-
         );
         //->
@@ -1908,7 +1908,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, 42u) == "SELECT 42"
+            format_sql(opts, "SELECT {}", 42u) == "SELECT 42"
             //<-
         );
         //->
@@ -1918,14 +1918,14 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, false) == "SELECT 0"
+            format_sql(opts, "SELECT {}", false) == "SELECT 0"
             //<-
         );
         //->
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, true) == "SELECT 1"
+            format_sql(opts, "SELECT {}", true) == "SELECT 1"
             //<-
         );
         //->
@@ -1935,14 +1935,14 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, "Hello world") == "SELECT 'Hello world'"
+            format_sql(opts, "SELECT {}", "Hello world") == "SELECT 'Hello world'"
             //<-
         );
         //->
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, "Hello 'world'") == R"(SELECT 'Hello \'world\'')"
+            format_sql(opts, "SELECT {}", "Hello 'world'") == R"(SELECT 'Hello \'world\'')"
             //<-
         );
         //->
@@ -1952,7 +1952,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, blob{0x00, 0x48, 0xff}) == R"(SELECT x'0048ff')"
+            format_sql(opts, "SELECT {}", blob{0x00, 0x48, 0xff}) == R"(SELECT x'0048ff')"
             //<-
         );
         //->
@@ -1962,9 +1962,9 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            // Equivalent to format_sql("SELECT {}", opts, static_cast<double>(4.2f))
+            // Equivalent to format_sql(opts, "SELECT {}", static_cast<double>(4.2f))
             // Note that MySQL uses doubles for all floating point literals
-            format_sql("SELECT {}", opts, 4.2f) == "SELECT 4.199999809265137e+00"
+            format_sql(opts, "SELECT {}", 4.2f) == "SELECT 4.199999809265137e+00"
             //<-
         );
         //->
@@ -1974,7 +1974,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, 4.2) == "SELECT 4.2e+00"
+            format_sql(opts, "SELECT {}", 4.2) == "SELECT 4.2e+00"
             //<-
         );
         //->
@@ -1984,7 +1984,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, date(2021, 1, 2)) == "SELECT '2021-01-02'"
+            format_sql(opts, "SELECT {}", date(2021, 1, 2)) == "SELECT '2021-01-02'"
             //<-
         );
         //->
@@ -1995,7 +1995,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         ASSERT(
             // clang-format off
             //->
-            format_sql("SELECT {}", opts, datetime(2021, 1, 2, 23, 51, 14)) == "SELECT '2021-01-02 23:51:14.000000'"
+            format_sql(opts, "SELECT {}", datetime(2021, 1, 2, 23, 51, 14)) == "SELECT '2021-01-02 23:51:14.000000'"
             //<-
             // clang-format on
         );
@@ -2006,7 +2006,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, std::chrono::seconds(121)) == "SELECT '00:02:01.000000'"
+            format_sql(opts, "SELECT {}", std::chrono::seconds(121)) == "SELECT '00:02:01.000000'"
             //<-
         );
         //->
@@ -2016,7 +2016,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, nullptr) == "SELECT NULL"
+            format_sql(opts, "SELECT {}", nullptr) == "SELECT NULL"
             //<-
         );
         //->
@@ -2026,14 +2026,14 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, optional<int>(42)) == "SELECT 42"
+            format_sql(opts, "SELECT {}", optional<int>(42)) == "SELECT 42"
             //<-
         );
         //->
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, optional<int>()) == "SELECT NULL"
+            format_sql(opts, "SELECT {}", optional<int>()) == "SELECT NULL"
             //<-
         );
         //->
@@ -2043,21 +2043,21 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, field(42)) == "SELECT 42"
+            format_sql(opts, "SELECT {}", field(42)) == "SELECT 42"
             //<-
         );
         //->
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, field("abc")) == "SELECT 'abc'"
+            format_sql(opts, "SELECT {}", field("abc")) == "SELECT 'abc'"
             //<-
         );
         //->
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {}", opts, field()) == "SELECT NULL"
+            format_sql(opts, "SELECT {}", field()) == "SELECT NULL"
             //<-
         );
         //->
@@ -2067,14 +2067,14 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {} FROM t", opts, identifier("salary")) == "SELECT `salary` FROM t"
+            format_sql(opts, "SELECT {} FROM t", identifier("salary")) == "SELECT `salary` FROM t"
             //<-
         );
         //->
         //<-
         ASSERT(
             //->
-            format_sql("SELECT {} FROM t", opts, identifier("sal`ary")) == "SELECT `sal``ary` FROM t"
+            format_sql(opts, "SELECT {} FROM t", identifier("sal`ary")) == "SELECT `sal``ary` FROM t"
             //<-
         );
         //->
@@ -2082,7 +2082,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         ASSERT(
             // clang-format off
             //->
-            format_sql("SELECT {} FROM t", opts, identifier("mytable", "myfield")) == "SELECT `mytable`.`myfield` FROM t"
+            format_sql(opts, "SELECT {} FROM t", identifier("mytable", "myfield")) == "SELECT `mytable`.`myfield` FROM t"
             //<-
             // clang-format on
         );
@@ -2091,7 +2091,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         ASSERT(
             // clang-format off
             //->
-            format_sql("SELECT {} FROM t", opts, identifier("mydb", "mytable", "myfield")) == "SELECT `mydb`.`mytable`.`myfield` FROM t"
+            format_sql(opts, "SELECT {} FROM t", identifier("mydb", "mytable", "myfield")) == "SELECT `mydb`.`mytable`.`myfield` FROM t"
             //<-
             // clang-format on
         );
@@ -2104,8 +2104,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         //[sql_formatting_formatter_use
         // We can now use employee as a built-in value
         std::string query = boost::mysql::format_sql(
-            "INSERT INTO employee (first_name, last_name, company_id) VALUES ({}), ({})",
             conn.format_opts().value(),
+            "INSERT INTO employee (first_name, last_name, company_id) VALUES ({}), ({})",
             employee_t{"John", "Doe", "HGS"},
             employee_t{"Rick", "Johnson", "AWC"}
         );
@@ -2123,7 +2123,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         const auto opts = conn.format_opts().value();
 
         //[sql_formatting_auto_indexing
-        ASSERT(format_sql("SELECT {}, {}, {}", opts, 42, "abc", nullptr) == "SELECT 42, 'abc', NULL");
+        ASSERT(format_sql(opts, "SELECT {}, {}, {}", 42, "abc", nullptr) == "SELECT 42, 'abc', NULL");
         //]
     }
     {
@@ -2133,7 +2133,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         try
         {
             // Mixing manual and auto indexing is illegal. This will throw an exception.
-            format_sql("SELECT {0}, {}", opts, 42);
+            format_sql(opts, "SELECT {0}, {}", 42);
             //<-
             ASSERT(false);
             //->
@@ -2149,7 +2149,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 
         //[sql_formatting_unused_args
         // This is OK
-        std::string query = format_sql("SELECT {}", opts, 42, "abc");
+        std::string query = format_sql(opts, "SELECT {}", 42, "abc");
         //]
         ASSERT(query == "SELECT 42");
     }
@@ -2157,7 +2157,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         const auto opts = conn.format_opts().value();
 
         //[sql_formatting_brace_literal
-        ASSERT(format_sql("SELECT 'Brace literals: {{ and }}'", opts) == "SELECT 'Brace literals: { and }'");
+        ASSERT(format_sql(opts, "SELECT 'Brace literals: {{ and }}'") == "SELECT 'Brace literals: { and }'");
         //]
     }
     {
@@ -2168,7 +2168,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         {
             // We're trying to format a double infinity value, which is not
             // supported by MySQL. This will throw an exception.
-            format_sql("SELECT {}", opts, HUGE_VAL);
+            format_sql(opts, "SELECT {}", HUGE_VAL);
             //<-
             ASSERT(false);
             //->
@@ -2188,7 +2188,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 
         // We're trying to format a infinity, which is an error. This
         // will set the error state, but won't throw.
-        format_sql_to("SELECT {}, {}", ctx, HUGE_VAL, 42);
+        format_sql_to(ctx, "SELECT {}, {}", HUGE_VAL, 42);
 
         // The error state gets checked at this point. Since it is set,
         // res will contain an error.
@@ -2206,7 +2206,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         boost::mysql::basic_format_context<std::pmr::string> ctx(conn.format_opts().value());
 
         // Compose your query as usual
-        boost::mysql::format_sql_to("SELECT * FROM employee WHERE id = {}", ctx, 42);
+        boost::mysql::format_sql_to(ctx, "SELECT * FROM employee WHERE id = {}", 42);
 
         // Retrieve the query as usual
         std::pmr::string query = std::move(ctx).get().value();

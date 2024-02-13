@@ -182,7 +182,7 @@ std::string compose_get_employees_query(boost::mysql::format_options opts, const
         // format_sql_to expands the given format string and appends it to
         // the context's output. The {} field will be replaced by *filts.first_name.
         // first_name will be quoted and escaped adequately to prevent SQL injection attacks.
-        boost::mysql::format_sql_to("first_name = {}", ctx, *filts.first_name);
+        boost::mysql::format_sql_to(ctx, "first_name = {}", *filts.first_name);
     }
 
     // Add the last_name clause
@@ -194,7 +194,7 @@ std::string compose_get_employees_query(boost::mysql::format_options opts, const
         has_prev = true;
 
         // Clause
-        boost::mysql::format_sql_to("last_name = {}", ctx, *filts.last_name);
+        boost::mysql::format_sql_to(ctx, "last_name = {}", *filts.last_name);
     }
 
     // Add the company_id clause
@@ -206,7 +206,7 @@ std::string compose_get_employees_query(boost::mysql::format_options opts, const
         has_prev = true;
 
         // Clause
-        boost::mysql::format_sql_to("company_id = {}", ctx, *filts.company_id);
+        boost::mysql::format_sql_to(ctx, "company_id = {}", *filts.company_id);
     }
 
     // Add the min_salary clause
@@ -218,7 +218,7 @@ std::string compose_get_employees_query(boost::mysql::format_options opts, const
         has_prev = true;
 
         // Clause
-        boost::mysql::format_sql_to("salary >= {}", ctx, *filts.min_salary);
+        boost::mysql::format_sql_to(ctx, "salary >= {}", *filts.min_salary);
     }
 
     // Add the order by
@@ -226,7 +226,7 @@ std::string compose_get_employees_query(boost::mysql::format_options opts, const
     {
         // identifier formats a string as a SQL identifier, instead of a string literal.
         // For instance, this may generate "ORDER BY `first_name`"
-        boost::mysql::format_sql_to("ORDER BY {}", ctx, boost::mysql::identifier(*filts.order_by));
+        boost::mysql::format_sql_to(ctx, "ORDER BY {}", boost::mysql::identifier(*filts.order_by));
     }
 
     // Get our generated query

@@ -182,7 +182,7 @@ struct format_arg_store<0u>
 };
 
 BOOST_MYSQL_DECL
-void vformat_sql_to(string_view format_str, format_context_base& ctx, span<const format_arg> args);
+void vformat_sql_to(format_context_base& ctx, string_view format_str, span<const format_arg> args);
 
 BOOST_MYSQL_DECL
 std::string check_format_sql_result(system::result<std::string>&& r);

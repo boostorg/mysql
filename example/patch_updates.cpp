@@ -226,11 +226,11 @@ void main_impl(int argc, char** argv)
     // which allows semicolon-separated statements.
     // As in std::format, we can use explicit indices like {0} and {1} to reference arguments.
     std::string query = boost::mysql::format_sql(
+        conn.format_opts().value(),
         "START TRANSACTION; "
         "UPDATE employee SET {0} WHERE id = {1}; "
         "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
         "COMMIT",
-        conn.format_opts().value(),
         args.updates,
         args.employee_id
     );

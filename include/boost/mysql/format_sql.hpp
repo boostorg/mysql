@@ -454,10 +454,10 @@ inline
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-void format_sql_to(constant_string_view format_str, format_context_base& ctx, const Formattable&... args)
+void format_sql_to(format_context_base& ctx, constant_string_view format_str, const Formattable&... args)
 {
     detail::format_arg_store<sizeof...(Formattable)> store(args...);
-    detail::vformat_sql_to(format_str.get(), ctx, store.get());
+    detail::vformat_sql_to(ctx, format_str.get(), store.get());
 }
 
 /**
@@ -492,14 +492,14 @@ void format_sql_to(constant_string_view format_str, format_context_base& ctx, co
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
 std::string format_sql(
-    constant_string_view format_str,
     const format_options& opts,
+    constant_string_view format_str,
     const Formattable&... args
 )
 {
     format_context ctx(opts);
     detail::format_arg_store<sizeof...(Formattable)> store(args...);
-    detail::vformat_sql_to(format_str.get(), ctx, store.get());
+    detail::vformat_sql_to(ctx, format_str.get(), store.get());
     return detail::check_format_sql_result(std::move(ctx).get());
 }
 

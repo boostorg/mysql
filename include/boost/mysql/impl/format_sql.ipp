@@ -22,6 +22,7 @@
 #include <boost/mysql/detail/format_sql.hpp>
 #include <boost/mysql/detail/output_string.hpp>
 
+#include <boost/mysql/impl/internal/call_next_char.hpp>
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 
 #include <boost/charconv/from_chars.hpp>
@@ -448,8 +449,8 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
 }
 
 void boost::mysql::detail::vformat_sql_to(
-    string_view format_str,
     format_context_base& ctx,
+    string_view format_str,
     span<const detail::format_arg> args
 )
 {

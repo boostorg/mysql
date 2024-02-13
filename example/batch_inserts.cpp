@@ -109,8 +109,8 @@ static std::string compose_batch_insert(
         // When formatted, strings are quoted and escaped as string literals.
         // Doubles are formatted as number literals.
         boost::mysql::format_sql_to(
-            "({}, {}, {}, {})",
             ctx,
+            "({}, {}, {}, {})",
             emp.first_name,
             emp.last_name,
             emp.company_id,

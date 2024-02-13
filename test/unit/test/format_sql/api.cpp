@@ -38,7 +38,7 @@ constexpr format_options opts{utf8mb4_charset, true};
 BOOST_AUTO_TEST_CASE(format_sql_success)
 {
     constexpr const char* format_str = "SELECT * FROM {} WHERE id = {} OR name = {}";
-    auto str = format_sql(format_str, opts, identifier("my`table"), 42, "Joh'n");
+    auto str = format_sql(opts, format_str, identifier("my`table"), 42, "Joh'n");
     BOOST_TEST(str == R"(SELECT * FROM `my``table` WHERE id = 42 OR name = 'Joh\'n')");
 }
 
@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE(format_sql_invalid_args)
 {
     // When passed invalid arguments (like strings with invalid UTF-8 or NaNs) we throw
     BOOST_CHECK_EXCEPTION(
-        format_sql("SELECT {}", opts, "Invalid\xffUTF8"),
+        format_sql(opts, "SELECT {}", "Invalid\xffUTF8"),
         boost::system::system_error,
         [&](const boost::system::system_error& err) {
             std::string expected_diag =
@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(format_sql_invalid_format_string)
 {
     // When passed an invalid format string, we throw
     BOOST_CHECK_EXCEPTION(
-        format_sql("SELECT {not_found}", opts, 42),
+        format_sql(opts, "SELECT {not_found}", 42),
         boost::system::system_error,
         [&](const boost::system::system_error& err) {
             std::string expected_diag =
@@ -82,7 +82,7 @@ BOOST_AUTO_TEST_CASE(format_sql_invalid_format_string)
 BOOST_AUTO_TEST_CASE(format_sql_to_success)
 {
     format_context ctx(opts);
-    format_sql_to("SELECT * FROM {} WHERE id = {} OR name = {}", ctx, identifier("my`table"), 42, "Joh'n");
+    format_sql_to(ctx, "SELECT * FROM {} WHERE id = {} OR name = {}", identifier("my`table"), 42, "Joh'n");
     BOOST_TEST(
         std::move(ctx).get().value() == R"(SELECT * FROM `my``table` WHERE id = 42 OR name = 'Joh\'n')"
     );
@@ -92,22 +92,22 @@ BOOST_AUTO_TEST_CASE(format_sql_to_append)
 {
     // The output string is not cleared by format_sql_to, allowing appending
     format_context ctx(opts);
-    format_sql_to("SELECT {}", ctx, 42);
-    format_sql_to(", {}, {}", ctx, "'John'", "\"Doe\"");
+    format_sql_to(ctx, "SELECT {}", 42);
+    format_sql_to(ctx, ", {}, {}", "'John'", "\"Doe\"");
     BOOST_TEST(std::move(ctx).get().value() == R"(SELECT 42, '\'John\'', '\"Doe\"')");
 }
 
 BOOST_AUTO_TEST_CASE(format_sql_to_custom_type)
 {
     format_context ctx(opts);
-    format_sql_to("SELECT {}", ctx, custom::condition{"number", 42});
+    format_sql_to(ctx, "SELECT {}", custom::condition{"number", 42});
     BOOST_TEST(std::move(ctx).get().value() == "SELECT `number`=42");
 }
 
 BOOST_AUTO_TEST_CASE(format_sql_to_no_arguments)
 {
     format_context ctx(opts);
-    format_sql_to("SELECT 42", ctx);
+    format_sql_to(ctx, "SELECT 42");
     BOOST_TEST(std::move(ctx).get().value() == "SELECT 42");
 }
 
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(format_sql_to_custom_charset)
 {
     // The character set is honored by the format string and by format args
     format_context ctx({ff_charset, true});
-    format_sql_to("SELECT \xff{ {}", ctx, "Joh\xff'n'");
+    format_sql_to(ctx, "SELECT \xff{ {}", "Joh\xff'n'");
     BOOST_TEST(std::move(ctx).get().value() == "SELECT \xff{ 'Joh\xff'n\\''");
 }
 
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(format_sql_to_backslash_escapes)
 {
     // The backslash escapes options is honored
     format_context ctx({utf8mb4_charset, false});
-    format_sql_to("SELECT {}", ctx, "Joh'n");
+    format_sql_to(ctx, "SELECT {}", "Joh'n");
     BOOST_TEST(std::move(ctx).get().value() == "SELECT 'Joh''n'");
 }
 
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(format_sql_to_custom_string)
     using context_t = basic_format_context<boost::static_string<string_size>>;
 
     context_t ctx(opts);
-    format_sql_to("SELECT * FROM {} WHERE id = {} OR name = {}", ctx, identifier("myt`able"), 42, "Joh'n");
+    format_sql_to(ctx, "SELECT * FROM {} WHERE id = {} OR name = {}", identifier("myt`able"), 42, "Joh'n");
     BOOST_TEST(
         std::move(ctx).get().value() == R"(SELECT * FROM `myt``able` WHERE id = 42 OR name = 'Joh\'n')"
     );
@@ -143,14 +143,14 @@ BOOST_AUTO_TEST_CASE(format_sql_to_custom_string)
 BOOST_AUTO_TEST_CASE(format_sql_to_invalid_arg)
 {
     format_context ctx(opts);
-    format_sql_to("SELECT {}, {}", ctx, "Bad\xc5", 42);
+    format_sql_to(ctx, "SELECT {}, {}", "Bad\xc5", 42);
     BOOST_TEST(std::move(ctx).get().error() == client_errc::invalid_encoding);
 }
 
 BOOST_AUTO_TEST_CASE(format_sql_to_invalid_format_string)
 {
     format_context ctx(opts);
-    format_sql_to("SELECT {broken", ctx, 42);
+    format_sql_to(ctx, "SELECT {broken", 42);
     BOOST_TEST(std::move(ctx).get().error() == client_errc::format_string_invalid_syntax);
 }
 

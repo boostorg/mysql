@@ -246,8 +246,8 @@ void main_impl(int argc, char** argv)
     // which can contain an error if the connection doesn't know which character set is using.
     // Use set_character_set if this happens.
     std::string query = boost::mysql::format_sql(
-        "INSERT INTO employee ({}) VALUES {}",
         conn.format_opts().value(),
+        "INSERT INTO employee ({}) VALUES {}",
         field_name_list<employee>(),
         insert_list<employee>{values}
     );
