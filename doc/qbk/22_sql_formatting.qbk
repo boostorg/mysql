@@ -247,7 +247,10 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
             [br]`std::string_view`
             [br]`const char*`
         ]
-        [Single-quoted escaped string literal]
+        [
+            Single-quoted escaped string literal[br]
+            Note that `LIKE` special characters (`%` and `_`) are not escaped.
+        ]
         [
             [sql_formatting_reference_string]
         ]
