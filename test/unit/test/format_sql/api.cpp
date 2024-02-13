@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE(format_context_success)
     );
 }
 
-// charset and backslash_slashes options are honored
+// charset and backslash_escapes options are honored
 BOOST_AUTO_TEST_CASE(format_context_charset)
 {
     format_options opts_charset{ff_charset, true};

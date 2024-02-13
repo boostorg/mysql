@@ -15,8 +15,8 @@ using namespace boost::mysql::detail;
 static bool parse_ok_response(const uint8_t* data, size_t size) noexcept
 {
     boost::mysql::diagnostics diag;
-    bool backslash_slashes = true;
-    auto ec = deserialize_ok_response({data, size}, db_flavor::mariadb, diag, backslash_slashes);
+    bool backslash_escapes = true;
+    auto ec = deserialize_ok_response({data, size}, db_flavor::mariadb, diag, backslash_escapes);
     return !ec.failed() && diag.server_message().empty();
 }
 

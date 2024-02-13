@@ -111,7 +111,7 @@ BOOST_AUTO_TEST_CASE(success)
     BOOST_TEST(format_sql("\xc3\xb1{}", opts, "abc") == "\xc3\xb1'abc'");
 }
 
-// backslash_slashes and character set are propagated
+// backslash_escapes and character set are propagated
 BOOST_AUTO_TEST_CASE(options_propagated)
 {
     format_options opts_charset{test::ff_charset, true};

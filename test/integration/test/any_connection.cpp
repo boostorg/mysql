@@ -238,25 +238,31 @@ BOOST_AUTO_TEST_CASE(backslash_escapes)
     // Connect doesn't change the value
     connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
     BOOST_TEST(conn.backslash_escapes());
+    BOOST_TEST(conn.format_opts()->backslash_escapes);
 
     // Setting the SQL mode to NO_BACKSLASH_ESCAPES updates the value
     results r;
     execute_fn(conn, "SET sql_mode = 'NO_BACKSLASH_ESCAPES'", r).validate_no_error();
     BOOST_TEST(!conn.backslash_escapes());
+    BOOST_TEST(!conn.format_opts()->backslash_escapes);
 
     // Executing a different statement doesn't change the value
     execute_fn(conn, "SELECT 1", r).validate_no_error();
     BOOST_TEST(!conn.backslash_escapes());
+    BOOST_TEST(!conn.format_opts()->backslash_escapes);
 
     // Clearing the SQL mode updates the value
     execute_fn(conn, "SET sql_mode = ''", r).validate_no_error();
     BOOST_TEST(conn.backslash_escapes());
+    BOOST_TEST(conn.format_opts()->backslash_escapes);
 
     // Reconnecting clears the value
     execute_fn(conn, "SET sql_mode = 'NO_BACKSLASH_ESCAPES'", r).validate_no_error();
     BOOST_TEST(!conn.backslash_escapes());
+    BOOST_TEST(!conn.format_opts()->backslash_escapes);
     connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
     BOOST_TEST(conn.backslash_escapes());
+    BOOST_TEST(conn.format_opts()->backslash_escapes);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
