@@ -393,6 +393,18 @@ BOOST_AUTO_TEST_CASE(individual_time)
     BOOST_TEST(format_sql(single_fmt, opts, (mysql_time::max)()) == "SELECT '2562047788:00:54.775807';");
 }
 
+BOOST_AUTO_TEST_CASE(individual_duration)
+{
+    // Durations work as long as they're compatible with time
+    using namespace std::chrono;
+
+    BOOST_TEST(format_sql(single_fmt, opts, hours(21)) == "SELECT '21:00:00.000000';");
+    BOOST_TEST(format_sql(single_fmt, opts, minutes(3)) == "SELECT '00:03:00.000000';");
+    BOOST_TEST(format_sql(single_fmt, opts, seconds(-10)) == "SELECT '-00:00:10.000000';");
+    BOOST_TEST(format_sql(single_fmt, opts, milliseconds(-9)) == "SELECT '-00:00:00.009000';");
+    BOOST_TEST(format_sql(single_fmt, opts, microseconds(3214)) == "SELECT '00:00:00.003214';");
+}
+
 BOOST_AUTO_TEST_CASE(individual_field_view)
 {
     field referenced("def\\");

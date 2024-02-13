@@ -98,6 +98,14 @@ static_assert(!is_writable_field<int&&>::value, "");
 static_assert(!is_writable_field<const double&>::value, "");
 static_assert(!is_writable_field<const boost::mysql::date&>::value, "");
 
+// durations accepted as long as they can be converted to time
+static_assert(is_writable_field<std::chrono::hours>::value, "");
+static_assert(is_writable_field<std::chrono::minutes>::value, "");
+static_assert(is_writable_field<std::chrono::seconds>::value, "");
+static_assert(is_writable_field<std::chrono::milliseconds>::value, "");
+static_assert(is_writable_field<std::chrono::microseconds>::value, "");
+static_assert(!is_writable_field<std::chrono::nanoseconds>::value, "");
+
 // characters (except signed/unsigned char) not accepted
 static_assert(!is_writable_field<char>::value, "");
 static_assert(!is_writable_field<const char>::value, "");
