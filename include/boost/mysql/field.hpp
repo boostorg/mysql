@@ -147,6 +147,26 @@ public:
     explicit field(unsigned long long v) noexcept : repr_(std::uint64_t(v)) {}
 
     /**
+     * \brief Constructors from character types would incorrectly construct a `field` holding an integer,
+     * so they are not allowed.
+     */
+    explicit field(char) = delete;
+
+    /// \copydoc field(char)
+    explicit field(wchar_t) = delete;
+
+    /// \copydoc field(char)
+    explicit field(char16_t) = delete;
+
+    /// \copydoc field(char)
+    explicit field(char32_t) = delete;
+
+#ifdef __cpp_char8_t
+    /// \copydoc field(char)
+    explicit field(char8_t) = delete;
+#endif
+
+    /**
      * \brief Constructs a `field` holding a string.
      * \par Exception safety
      * Strong guarantee. Internal allocations may throw.
@@ -333,6 +353,26 @@ public:
         repr_.data.emplace<std::uint64_t>(v);
         return *this;
     }
+
+    /**
+     * \brief Assignments from character types would incorrectly assign an integer,
+     * so they are not allowed.
+     */
+    field& operator=(char) = delete;
+
+    /// \copydoc operator=(char)
+    field& operator=(wchar_t) = delete;
+
+    /// \copydoc operator=(char)
+    field& operator=(char16_t) = delete;
+
+    /// \copydoc operator=(char)
+    field& operator=(char32_t) = delete;
+
+#ifdef __cpp_char8_t
+    /// \copydoc operator=(char)
+    field& operator=(char8_t) = delete;
+#endif
 
     /**
      * \brief Replaces `*this` with `v`, changing the kind to `string` and destroying any previous

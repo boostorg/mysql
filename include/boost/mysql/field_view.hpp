@@ -130,14 +130,23 @@ public:
     /// \copydoc field_view(unsigned char)
     BOOST_CXX14_CONSTEXPR explicit field_view(unsigned long long v) noexcept : impl_{std::uint64_t(v)} {}
 
-    // TODO: document this
-    // Explicitly disallow character types that cause surprising behavior
-    // because they are promoted to int
+    /**
+     * \brief Constructors from character types would incorrectly construct a `field_view` holding an integer,
+     * so they are not allowed.
+     */
     explicit field_view(char) = delete;
+
+    /// \copydoc field_view(char)
     explicit field_view(wchar_t) = delete;
+
+    /// \copydoc field_view(char)
     explicit field_view(char16_t) = delete;
+
+    /// \copydoc field_view(char)
     explicit field_view(char32_t) = delete;
+
 #ifdef __cpp_char8_t
+    /// \copydoc field_view(char)
     explicit field_view(char8_t) = delete;
 #endif
 

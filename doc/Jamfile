@@ -40,6 +40,7 @@ docca.reference reference.qbk
         <doxygen:param>"PREDEFINED=\\
             BOOST_MYSQL_DOXYGEN \\
             __cpp_lib_string_view \\
+            __cpp_char8_t \\
             \"BOOST_ATTRIBUTE_NODISCARD=[[nodiscard]]\" \\
             \"BOOST_ASIO_INITFN_RESULT_TYPE(t,a)=auto\" \\
             \"BOOST_ASIO_COMPLETION_TOKEN_FOR(sig)=class\" \\
