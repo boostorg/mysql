@@ -23,11 +23,32 @@
 #include <boost/system/result.hpp>
 
 #include <cstddef>
+#include <initializer_list>
 #include <string>
 #include <type_traits>
 
 namespace boost {
 namespace mysql {
+
+class format_arg
+{
+#ifndef BOOST_MYSQL_DOXYGEN
+    struct
+    {
+        string_view name;
+        detail::format_arg_value value;
+    } impl_;
+
+    friend struct detail::access;
+#endif
+
+public:
+    template <BOOST_MYSQL_FORMATTABLE Formattable>
+    format_arg(string_view name, const Formattable& value) noexcept
+        : impl_{name, detail::make_format_value(value)}
+    {
+    }
+};
 
 /**
  * \brief (EXPERIMENTAL) A SQL identifier to use for client-side SQL formatting.
@@ -390,32 +411,13 @@ struct formatter<identifier>
     static void format(const identifier& value, format_context_base& ctx);
 };
 
-/**
- * \brief (EXPERIMENTAL) Creates a named argument for SQL formatting.
- * \details
- * The return type of this function is not specified, but is guaranteed to satisfy
- * `Formattable` (so it can be passed to \ref format_sql and \ref format_sql_to).
- * Nesting `arg` calls (as in `arg("name1", arg("name2", value))`) is not allowed.
- *
- * \par Object lifetimes
- * The return type doesn't have ownership of the `name` string or the passed `value`.
- * This function should only be used in calls to \ref format_sql and \ref format_sql_to,
- * to avoid lifetime issues.
- *
- * \par Exception safety
- * No-throw guarantee.
- */
-template <BOOST_MYSQL_FORMATTABLE Formattable>
-inline
-#ifdef BOOST_MYSQL_DOXYGEN
-    __see_below__
-#else
-    detail::format_arg
-#endif
-    arg(string_view name, const Formattable& value) noexcept
+inline void format_sql_to(
+    format_context_base& ctx,
+    constant_string_view format_str,
+    std::initializer_list<format_arg> args
+)
 {
-    static_assert(!std::is_same<Formattable, detail::format_arg>::value, "Nested arg calls are not allowed");
-    return {detail::make_format_value(value), name};
+    detail::vformat_sql_to(ctx, format_str.get(), {args.begin(), args.end()});
 }
 
 /**
@@ -456,8 +458,22 @@ inline
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
 void format_sql_to(format_context_base& ctx, constant_string_view format_str, const Formattable&... args)
 {
-    detail::format_arg_store<sizeof...(Formattable)> store(args...);
-    detail::vformat_sql_to(ctx, format_str.get(), store.get());
+    std::initializer_list<format_arg> args_il{
+        {string_view(), args}
+        ...
+    };
+    format_sql_to(ctx, format_str, args_il);
+}
+
+inline std::string format_sql(
+    const format_options& opts,
+    constant_string_view format_str,
+    std::initializer_list<format_arg> args
+)
+{
+    format_context ctx(opts);
+    detail::vformat_sql_to(ctx, format_str.get(), {args.begin(), args.end()});
+    return detail::check_format_sql_result(std::move(ctx).get());
 }
 
 /**
@@ -497,10 +513,11 @@ std::string format_sql(
     const Formattable&... args
 )
 {
-    format_context ctx(opts);
-    detail::format_arg_store<sizeof...(Formattable)> store(args...);
-    detail::vformat_sql_to(ctx, format_str.get(), store.get());
-    return detail::check_format_sql_result(std::move(ctx).get());
+    std::initializer_list<format_arg> args_il{
+        {string_view(), args}
+        ...
+    };
+    return format_sql(opts, format_str, args_il);
 }
 
 }  // namespace mysql

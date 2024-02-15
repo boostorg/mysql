@@ -31,11 +31,11 @@ template <class T>
 struct formatter;
 
 class format_context_base;
+class format_arg;
 
 namespace detail {
 
 class format_state;
-struct format_arg;
 
 struct formatter_is_unspecialized
 {
@@ -51,8 +51,7 @@ constexpr bool has_specialized_formatter() noexcept
 template <class T>
 constexpr bool is_formattable_type()
 {
-    return is_writable_field<T>::value || has_specialized_formatter<T>() ||
-           std::is_same<T, format_arg>::value;
+    return is_writable_field<T>::value || has_specialized_formatter<T>();
 }
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -64,9 +63,7 @@ concept formattable =
     // This covers basic types and optionals
     is_writable_field<T>::value ||
     // This covers custom types that specialized boost::mysql::formatter
-    has_specialized_formatter<T>() ||
-    // The return type of boost::mysql::arg
-    std::same_as<T, format_arg>;
+    has_specialized_formatter<T>();
 
 #define BOOST_MYSQL_FORMATTABLE ::boost::mysql::detail::formattable
 
@@ -141,45 +138,6 @@ format_arg_value make_format_value(const T& v) noexcept
     );
     return make_format_value_impl(v, is_writable_field<T>{});
 }
-
-// A (name, value) pair
-struct format_arg
-{
-    format_arg_value value;
-    string_view name;
-};
-
-// Pass-through anything that is already a format_arg_descriptor.
-// Used by named arguments
-inline format_arg make_format_arg(const format_arg& v) noexcept { return v; }
-
-template <class T>
-format_arg make_format_arg(const T& val)
-{
-    return {make_format_value(val), {}};
-}
-
-// std::array<T, 0> with non-default-constructible T has bugs in MSVC prior to 14.3
-template <std::size_t N>
-struct format_arg_store
-{
-    std::array<format_arg, N> data;
-
-    template <class... Args>
-    format_arg_store(const Args&... args) noexcept : data{{make_format_arg(args)...}}
-    {
-    }
-
-    span<const format_arg> get() const noexcept { return data; }
-};
-
-template <>
-struct format_arg_store<0u>
-{
-    format_arg_store() = default;
-
-    span<const format_arg> get() const noexcept { return {}; }
-};
 
 BOOST_MYSQL_DECL
 void vformat_sql_to(format_context_base& ctx, string_view format_str, span<const format_arg> args);

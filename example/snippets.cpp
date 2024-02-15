@@ -1803,13 +1803,19 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         conn.execute(query, r);
     }
     {
+        // clang-format off
         //[sql_formatting_named_args
         std::string query = boost::mysql::format_sql(
             conn.format_opts().value(),
             "UPDATE employee SET first_name = {name} WHERE id = {id}; SELECT * FROM employee WHERE id = {id}",
-            boost::mysql::arg("id", 42),
-            boost::mysql::arg("name", "John")
+            {
+                {"id",   42    },
+                {"name", "John"}
+            }
         );
+        //<-
+        // clang-format on
+        //>-
 
         ASSERT(
             query ==

@@ -245,7 +245,7 @@ class format_state
     bool uses_auto_ids() const noexcept { return next_arg_id_ > 0; }
     bool uses_explicit_ids() const noexcept { return next_arg_id_ == -1; }
 
-    void do_field(format_arg arg) { ctx_.format_arg(arg.value); }
+    void do_field(format_arg arg) { ctx_.format_arg(access::get_impl(arg).value); }
 
     BOOST_ATTRIBUTE_NODISCARD
     bool do_indexed_field(int arg_id)
@@ -328,7 +328,7 @@ class format_state
         // Find the argument
         for (const auto& arg : args_)
         {
-            if (arg.name == field_name)
+            if (access::get_impl(arg).name == field_name)
             {
                 do_field(arg);
                 return true;
@@ -451,7 +451,7 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
 void boost::mysql::detail::vformat_sql_to(
     format_context_base& ctx,
     string_view format_str,
-    span<const detail::format_arg> args
+    span<const format_arg> args
 )
 {
     detail::format_state(ctx, args).format(format_str);

@@ -69,32 +69,9 @@ BOOST_AUTO_TEST_CASE(success)
     BOOST_TEST(format_sql(opts, "SELECT {1}, {0}", 42, "abc") == "SELECT 'abc', 42");
     BOOST_TEST(format_sql(opts, "SELECT {0}, {0}", 42) == "SELECT 42, 42");  // repeated
 
-    // Named arguments
-    BOOST_TEST(format_sql(opts, "SELECT {val}", arg("val", 42)) == "SELECT 42");
-    BOOST_TEST(
-        format_sql(opts, "SELECT {val2}, {val}", arg("val", 42), arg("val2", "abc")) == "SELECT 'abc', 42"
-    );
-    BOOST_TEST(format_sql(opts, "SELECT {Str1_geName}", arg("Str1_geName", 42)) == "SELECT 42");
-    BOOST_TEST(format_sql(opts, "SELECT {_name}", arg("_name", 42)) == "SELECT 42");
-    BOOST_TEST(format_sql(opts, "SELECT {name123}", arg("name123", 42)) == "SELECT 42");
-    BOOST_TEST(format_sql(opts, "SELECT {NAME}", arg("NAME", 42)) == "SELECT 42");
-    BOOST_TEST(format_sql(opts, "SELECT {a}", arg("a", 42)) == "SELECT 42");
-
-    // Named arguments can be referenced by position and automatically, too
-    BOOST_TEST(format_sql(opts, "SELECT {}, {}", arg("val", 42), arg("other", 50)) == "SELECT 42, 50");
-    BOOST_TEST(format_sql(opts, "SELECT {1}, {0}", arg("val", 42), arg("other", 50)) == "SELECT 50, 42");
-
-    // Named arguments can be mixed with positional and automatic
-    BOOST_TEST(format_sql(opts, "SELECT {}, {val}", arg("val", 42)) == "SELECT 42, 42");
-    BOOST_TEST(format_sql(opts, "SELECT {}, {val}", 50, arg("val", 42)) == "SELECT 50, 42");
-    BOOST_TEST(format_sql(opts, "SELECT {0}, {val}", arg("val", 42)) == "SELECT 42, 42");
-
     // Unused arguments are ignored
     BOOST_TEST(format_sql(opts, "SELECT {}", 42, "abc", nullptr) == "SELECT 42");
     BOOST_TEST(format_sql(opts, "SELECT {2}, {1}", 42, "abc", nullptr, 4.2) == "SELECT NULL, 'abc'");
-    BOOST_TEST(
-        format_sql(opts, "SELECT {value}", arg("a", 10), arg("value", 42), arg("a", "ac")) == "SELECT 42"
-    );
 
     // Indices with leading zeroes are parsed correctly and not interpreted as octal
     BOOST_TEST(format_sql(opts, "SELECT {010}", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12) == "SELECT 10");
@@ -108,6 +85,30 @@ BOOST_AUTO_TEST_CASE(success)
     // Format strings with non-ascii (but valid) characters
     BOOST_TEST(format_sql(opts, "SELECT `e\xc3\xb1u` + {};", 42) == "SELECT `e\xc3\xb1u` + 42;");
     BOOST_TEST(format_sql(opts, "\xc3\xb1{}", "abc") == "\xc3\xb1'abc'");
+}
+
+BOOST_AUTO_TEST_CASE(success_named_args)
+{
+    // clang-format off
+    BOOST_TEST(format_sql(opts, "SELECT {val}", {{"val", 42}}) == "SELECT 42");
+    BOOST_TEST(
+        format_sql(opts, "SELECT {val2}, {val}", {{"val", 42}, {"val2", "abc"}}) == "SELECT 'abc', 42"
+    );
+    BOOST_TEST(format_sql(opts, "SELECT {Str1_geName}", {{"Str1_geName", 42}}) == "SELECT 42");
+    BOOST_TEST(format_sql(opts, "SELECT {_name}", {{"_name", 42}}) == "SELECT 42");
+    BOOST_TEST(format_sql(opts, "SELECT {name123}", {{"name123", 42}}) == "SELECT 42");
+    BOOST_TEST(format_sql(opts, "SELECT {NAME}", {{"NAME", 42}}) == "SELECT 42");
+    BOOST_TEST(format_sql(opts, "SELECT {a}", {{"a", 42}}) == "SELECT 42");
+
+    // Named arguments can be referenced by position and automatically, too
+    BOOST_TEST(format_sql(opts, "SELECT {}, {}", {{"val", 42}, {"other", 50}}) == "SELECT 42, 50");
+    BOOST_TEST(format_sql(opts, "SELECT {1}, {0}", {{"val", 42}, {"other", 50}}) == "SELECT 50, 42");
+    BOOST_TEST(format_sql(opts, "SELECT {}, {val}", {{"val", 42}, {"other", 50}}) == "SELECT 42, 42");
+    BOOST_TEST(format_sql(opts, "SELECT {1}, {val}", {{"val", 42}, {"other", 50}}) == "SELECT 50, 42");
+
+    // Unused arguments are ignored
+    BOOST_TEST(format_sql(opts, "SELECT {value}", {{"a", 10}, {"value", 42}, {"a", "ac"}}) == "SELECT 42");
+    // clang-format on
 }
 
 // backslash_escapes and character set are propagated
@@ -193,7 +194,9 @@ BOOST_AUTO_TEST_CASE(error)
         BOOST_TEST_CONTEXT(tc.name)
         {
             format_context ctx(opts);
-            format_sql_to(ctx, runtime(tc.format_str), 42, arg("name", "abc"));
+            // clang-format off
+            format_sql_to(ctx, runtime(tc.format_str), {{"number", 42}, {"name", "abc"}});
+            // clang-format on
             BOOST_TEST(std::move(ctx).get().error() == tc.expected_ec);
         }
     }

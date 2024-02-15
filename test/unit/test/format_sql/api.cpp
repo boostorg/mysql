@@ -15,6 +15,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <initializer_list>
 
 #include "format_common.hpp"
 #include "test_common/printing.hpp"
@@ -74,6 +75,19 @@ BOOST_AUTO_TEST_CASE(format_sql_invalid_format_string)
             return true;
         }
     );
+}
+
+BOOST_AUTO_TEST_CASE(format_sql_initializer_list)
+{
+    std::initializer_list<format_arg> args{
+        {"name", "value"}
+    };
+    BOOST_TEST(format_sql(opts, "SELECT {name}", args) == "SELECT 'value'");
+}
+
+BOOST_AUTO_TEST_CASE(format_sql_empty_initializer_list)
+{
+    BOOST_TEST(format_sql(opts, "SELECT 42", {}) == "SELECT 42");
 }
 
 //
@@ -152,6 +166,23 @@ BOOST_AUTO_TEST_CASE(format_sql_to_invalid_format_string)
     format_context ctx(opts);
     format_sql_to(ctx, "SELECT {broken", 42);
     BOOST_TEST(std::move(ctx).get().error() == client_errc::format_string_invalid_syntax);
+}
+
+BOOST_AUTO_TEST_CASE(format_sql_to_initializer_list)
+{
+    format_context ctx(opts);
+    std::initializer_list<format_arg> args{
+        {"name", "abc"}
+    };
+    format_sql_to(ctx, "SELECT {name}", args);
+    BOOST_TEST(std::move(ctx).get().value() == "SELECT 'abc'");
+}
+
+BOOST_AUTO_TEST_CASE(format_sql_to_empty_initializer_list)
+{
+    format_context ctx(opts);
+    format_sql_to(ctx, "SELECT 42", {});
+    BOOST_TEST(std::move(ctx).get().value() == "SELECT 42");
 }
 
 //
