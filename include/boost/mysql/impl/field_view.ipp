@@ -13,15 +13,13 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/config.hpp>
-
+#include <boost/mysql/impl/internal/byte_to_hex.hpp>
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 
-#include <boost/charconv/to_chars.hpp>
+#include <boost/assert.hpp>
 
 #include <cstddef>
 #include <ostream>
-#include <system_error>
 
 namespace boost {
 namespace mysql {
@@ -32,23 +30,20 @@ inline std::ostream& print_blob(std::ostream& os, blob_view value)
     if (value.empty())
         return os << "{}";
 
-    char buffer[16]{};
+    char buffer[16]{'0', 'x'};
 
     os << "{ ";
     for (std::size_t i = 0; i < value.size(); ++i)
     {
+        // Separating comma
         if (i != 0)
             os << ", ";
-        os << "0x";
-
-        unsigned byte = value[i];
-        if (byte <= 0x0f)
-            os << '0';
 
         // Convert to hex
-        auto res = charconv::to_chars(buffer, buffer + sizeof(buffer), byte, 16);
-        BOOST_ASSERT(res.ec == std::errc());
-        os << string_view(buffer, res.ptr - buffer);
+        byte_to_hex(value[i], buffer + 2);
+
+        // Insert
+        os << string_view(buffer, 4);
     }
     os << " }";
     return os;

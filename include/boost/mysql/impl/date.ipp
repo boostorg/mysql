@@ -13,8 +13,6 @@
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/access.hpp>
-
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 
 #include <cstddef>

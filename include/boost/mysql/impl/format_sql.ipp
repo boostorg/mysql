@@ -22,6 +22,7 @@
 #include <boost/mysql/detail/format_sql.hpp>
 #include <boost/mysql/detail/output_string.hpp>
 
+#include <boost/mysql/impl/internal/byte_to_hex.hpp>
 #include <boost/mysql/impl/internal/call_next_char.hpp>
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 
@@ -122,11 +123,6 @@ inline void append_blob(blob_view b, format_context_base& ctx)
     char* it = buffer;
     char* const end = buffer + buffer_size;
 
-    // We implement the translation to hex ourselves, since it's easy enough.
-    // We use a table to look up characters
-    constexpr char character_table[16] =
-        {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
     // Binary string introducer
     output.append("x'");
 
@@ -134,10 +130,7 @@ inline void append_blob(blob_view b, format_context_base& ctx)
     for (unsigned char byte : b)
     {
         // Serialize the byte
-        char char_upper = character_table[(byte & ~15) >> 4];
-        char char_lower = character_table[byte & 15];
-        *it++ = char_upper;
-        *it++ = char_lower;
+        it = byte_to_hex(byte, it);
 
         // If we filled the buffer, dump it
         if (it == end)
