@@ -85,7 +85,7 @@ Like `std::format`, you can use arguments with explicit indices:
 
 [sql_formatting_manual_indices]
 
-You can also use named args, using the initializer list overload:
+You can also use named arguments, using the initializer list overload:
 
 [sql_formatting_named_args]
 

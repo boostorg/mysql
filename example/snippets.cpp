@@ -1815,7 +1815,7 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         );
         //<-
         // clang-format on
-        //>-
+        //->
 
         ASSERT(
             query ==
