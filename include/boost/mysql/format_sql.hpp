@@ -434,21 +434,6 @@ struct formatter<identifier>
 };
 
 /**
- * \copydoc format_sql_to
- * \details
- * \n
- * This overload allows using named arguments.
- */
-inline void format_sql_to(
-    format_context_base& ctx,
-    constant_string_view format_str,
-    std::initializer_list<format_arg> args
-)
-{
-    detail::vformat_sql_to(ctx, format_str.get(), {args.begin(), args.end()});
-}
-
-/**
  * \brief (EXPERIMENTAL) Composes a SQL query client-side appending it to a format context.
  * \details
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
@@ -490,7 +475,22 @@ void format_sql_to(format_context_base& ctx, constant_string_view format_str, co
         {string_view(), args}
         ...
     };
-    format_sql_to(ctx, format_str, args_il);
+    detail::vformat_sql_to(ctx, format_str.get(), args_il);
+}
+
+/**
+ * \copydoc format_sql_to
+ * \details
+ * \n
+ * This overload allows using named arguments.
+ */
+inline void format_sql_to(
+    format_context_base& ctx,
+    constant_string_view format_str,
+    std::initializer_list<format_arg> args
+)
+{
+    detail::vformat_sql_to(ctx, format_str.get(), args);
 }
 
 /**
@@ -505,9 +505,7 @@ inline std::string format_sql(
     std::initializer_list<format_arg> args
 )
 {
-    format_context ctx(opts);
-    detail::vformat_sql_to(ctx, format_str.get(), {args.begin(), args.end()});
-    return detail::check_format_sql_result(std::move(ctx).get());
+    return detail::vformat_sql(opts, format_str.get(), args);
 }
 
 /**
@@ -551,7 +549,7 @@ std::string format_sql(
         {string_view(), args}
         ...
     };
-    return format_sql(opts, format_str, args_il);
+    return detail::vformat_sql(opts, format_str.get(), args_il);
 }
 
 }  // namespace mysql

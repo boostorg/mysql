@@ -451,16 +451,21 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
 void boost::mysql::detail::vformat_sql_to(
     format_context_base& ctx,
     string_view format_str,
-    span<const format_arg> args
+    std::initializer_list<format_arg> args
 )
 {
-    detail::format_state(ctx, args).format(format_str);
+    detail::format_state(ctx, {args.begin(), args.end()}).format(format_str);
 }
 
-std::string boost::mysql::detail::check_format_sql_result(system::result<std::string>&& r)
+std::string boost::mysql::detail::vformat_sql(
+    const format_options& opts,
+    string_view format_str,
+    std::initializer_list<format_arg> args
+)
 {
-    // Having this as a compiled function reduces source_location bloat
-    return std::move(r).value();
+    format_context ctx(opts);
+    detail::vformat_sql_to(ctx, format_str, args);
+    return std::move(ctx).get().value();
 }
 
 #endif

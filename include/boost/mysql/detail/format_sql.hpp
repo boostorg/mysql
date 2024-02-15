@@ -14,8 +14,7 @@
 
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
-#include <boost/system/result.hpp>
-
+#include <initializer_list>
 #include <string>
 #include <type_traits>
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -31,6 +30,7 @@ struct formatter;
 
 class format_context_base;
 class format_arg;
+struct format_options;
 
 namespace detail {
 
@@ -139,10 +139,14 @@ format_arg_value make_format_value(const T& v) noexcept
 }
 
 BOOST_MYSQL_DECL
-void vformat_sql_to(format_context_base& ctx, string_view format_str, span<const format_arg> args);
+void vformat_sql_to(format_context_base& ctx, string_view format_str, std::initializer_list<format_arg> args);
 
 BOOST_MYSQL_DECL
-std::string check_format_sql_result(system::result<std::string>&& r);
+std::string vformat_sql(
+    const format_options& opts,
+    string_view format_str,
+    std::initializer_list<format_arg> args
+);
 
 }  // namespace detail
 }  // namespace mysql
