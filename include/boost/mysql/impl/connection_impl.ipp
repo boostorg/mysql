@@ -10,10 +10,14 @@
 
 #pragma once
 
+#include <boost/mysql/client_errc.hpp>
+
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/connection_impl.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state.hpp>
+
+#include <boost/system/result.hpp>
 
 #include <memory>
 
@@ -69,10 +73,13 @@ boost::mysql::diagnostics& boost::mysql::detail::connection_impl::shared_diag() 
     return st_->data().shared_diag;
 }
 
-const boost::mysql::character_set* boost::mysql::detail::connection_impl::current_character_set(
-) const noexcept
+boost::system::result<boost::mysql::character_set> boost::mysql::detail::connection_impl::
+    current_character_set() const noexcept
 {
-    return st_->data().charset_ptr();
+    const auto* res = st_->data().charset_ptr();
+    if (res == nullptr)
+        return client_errc::unknown_character_set;
+    return *res;
 }
 
 #endif

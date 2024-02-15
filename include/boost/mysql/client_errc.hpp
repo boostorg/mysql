@@ -80,6 +80,27 @@ enum class client_errc : int
 
     /// (EXPERIMENTAL) An invalid byte sequence was found while trying to decode a string.
     invalid_encoding,
+
+    /// (EXPERIMENTAL) A formatting operation could not format one of its arguments.
+    unformattable_value,
+
+    /// (EXPERIMENTAL) An format string with invalid syntax was provided to a SQL formatting function.
+    format_string_invalid_syntax,
+
+    /// (EXPERIMENTAL) A format string with an invalid byte sequence was provided to a SQL formatting
+    /// function.
+    format_string_invalid_encoding,
+
+    /// (EXPERIMENTAL) A format string mixes manual (e.g. {0}) and automatic (e.g. {}) indexing.
+    format_string_manual_auto_mix,
+
+    /// (EXPERIMENTAL) A format argument referenced by a format string was not found. Check the number
+    /// of format arguments passed and their names.
+    format_arg_not_found,
+
+    /// (EXPERIMENTAL) The character set used by the connection is not known by the client. Use
+    /// set_character_set or async_set_character_set before invoking operations that require a known charset.
+    unknown_character_set,
 };
 
 BOOST_MYSQL_DECL

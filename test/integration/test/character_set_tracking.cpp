@@ -14,6 +14,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
 
 using namespace boost::mysql;
@@ -39,28 +40,33 @@ BOOST_AUTO_TEST_CASE(charset_lifecycle)
     any_connection conn(ctx);
 
     // Non-connected connections have an unknown charset
-    BOOST_TEST(conn.current_character_set() == nullptr);
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
+    BOOST_TEST(conn.format_opts().error() == client_errc::unknown_character_set);
 
     // Connect with the default character set uses utf8mb4, both in the client
     // and in the server. This double-checks that all supported servers support the
     // collation we use by default.
     conn.connect(default_connect_params(ssl_mode::disable));
-    BOOST_TEST(conn.current_character_set()->name == string_view("utf8mb4"));
+    BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
+    BOOST_TEST(conn.format_opts()->charset.name == "utf8mb4");
     validate_db_charset(conn, "utf8mb4");
 
     // Using set_character_set updates the character set everywhere
-    character_set greek_charset{"greek", latin1_charset.next_char};
+    character_set greek_charset{"greek", ascii_charset.next_char};
     conn.set_character_set(greek_charset);
-    BOOST_TEST(conn.current_character_set()->name == string_view("greek"));
+    BOOST_TEST(conn.current_character_set()->name == "greek");
+    BOOST_TEST(conn.format_opts()->charset.name == "greek");
     validate_db_charset(conn, "greek");
 
     // Using reset_connection wipes out client-side character set information
     conn.reset_connection();
-    BOOST_TEST(conn.current_character_set() == nullptr);
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
+    BOOST_TEST(conn.format_opts().error() == client_errc::unknown_character_set);
 
     // We can use set_character_set to recover from this
     conn.set_character_set(greek_charset);
-    BOOST_TEST(conn.current_character_set()->name == string_view("greek"));
+    BOOST_TEST(conn.current_character_set()->name == "greek");
+    BOOST_TEST(conn.format_opts()->charset.name == "greek");
     validate_db_charset(conn, "greek");
 }
 
@@ -75,12 +81,13 @@ BOOST_AUTO_TEST_CASE(connect_with_unknown_collation)
     params.connection_collation = mysql_collations::utf8mb4_0900_ai_ci;  // not supported by MariaDB, triggers
                                                                          // fallback
     conn.connect(params);
-    BOOST_TEST(conn.current_character_set() == nullptr);
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
+    BOOST_TEST(conn.format_opts().error() == client_errc::unknown_character_set);
 
     // Explicitly setting the character set solves the issue
-    conn.set_character_set(latin1_charset);
-    BOOST_TEST(conn.current_character_set()->name == string_view("latin1"));
-    validate_db_charset(conn, "latin1");
+    conn.set_character_set(ascii_charset);
+    BOOST_TEST(conn.current_character_set()->name == "ascii");
+    validate_db_charset(conn, "ascii");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

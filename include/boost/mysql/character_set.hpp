@@ -12,6 +12,9 @@
 
 #include <boost/mysql/detail/character_set.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/make_string_view.hpp>
+
+#include <boost/core/span.hpp>
 
 #include <cstddef>
 
@@ -28,20 +31,21 @@ namespace mysql {
 struct character_set
 {
     /**
-     * \brief The character set name, as a NULL-terminated string.
+     * \brief The character set name.
      * \details
      * This should match the character set name in MySQL. This is the string
      * you specify when issuing `SET NAMES` statements. You can find available
      * character sets using the `SHOW CHARACTER SET` statement.
      */
-    const char* name;
+    string_view name;
 
     /**
-     * \brief Obtains the given string's first character size.
+     * \brief Obtains the size of the first character of a string.
      * \details
-     * Given an input string `s`, this function must return the number of
-     * bytes that the first character in `s` spans, or 0 in case of error.
-     * `s` is guaranteed to be a non-empty string (`s.size() > 0`).
+     * Given a range of bytes, `r`, this function must interpret `r` as a
+     * string encoded using this character set, and return the number of
+     * bytes that the first character in the string spans, or 0 in case of error.
+     * `r` is guaranteed to be non-empty (`r.size() > 0`).
      * \n
      * In some character sets (like UTF-8), not all byte sequences represent
      * valid characters. If this function finds an invalid byte sequence while
@@ -50,16 +54,39 @@ struct character_set
      * This function must not throw exceptions or have side effects.
      * \n
      * \par Function signature
-     * The function signature should be: `std::size_t (*next_char)(string_view) noexcept`
+     * The function signature should be:
+     * `std::size_t (*next_char)(boost::span<const unsigned char> r) noexcept`.
      */
-    std::size_t (*next_char)(string_view) noexcept;
+    std::size_t (*next_char)(span<const unsigned char>) noexcept;
 };
 
-/// (EXPERIMENTAL) The utf8mb4 character set (and the one you should use by default).
-constexpr character_set utf8mb4_charset{"utf8mb4", detail::next_char_utf8mb4};
+/// (EXPERIMENTAL) The utf8mb4 character set (the one you should use by default).
+constexpr character_set utf8mb4_charset
+#ifndef BOOST_MYSQL_DOXYGEN
+    {detail::make_string_view("utf8mb4"), detail::next_char_utf8mb4}
+#endif
+;
 
-/// (EXPERIMENTAL) The latin1 character set.
-constexpr character_set latin1_charset{"latin1", detail::next_char_latin1};
+/// (EXPERIMENTAL) The ascii character set.
+constexpr character_set ascii_charset
+#ifndef BOOST_MYSQL_DOXYGEN
+    {detail::make_string_view("ascii"), detail::next_char_ascii};
+#endif
+;
+
+/**
+ * \brief (EXPERIMENTAL) Settings required to format SQL queries client-side.
+ * \details
+ * The recommended way to obtain a value of this type is using \ref any_connection::format_opts.
+ */
+struct format_options
+{
+    /// The connection's current character set.
+    character_set charset;
+
+    /// Whether backslashes represent escape sequences.
+    bool backslash_escapes;
+};
 
 }  // namespace mysql
 }  // namespace boost

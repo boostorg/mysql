@@ -1,0 +1,354 @@
+[/
+    Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:sql_formatting (Experimental) Client-side SQL query formatting]
+[nochunk]
+
+When issuing queries that contain untrusted input, prepared statement are usually
+the way to go. However, some use cases like dynamic filters or batch inserts
+are not attainable using them.
+
+The functions described in this section can be used to compose SQL query
+strings dynamically client-side while keeping your application secure.
+
+[note
+    This feature is experimental. Its API may change in subsequent releases.
+]
+
+
+
+[heading Common use cases]
+
+* Queries involving several [*dynamic filters].
+  See [link mysql.examples.dynamic_filters this example].
+* [*Batch inserts]. Inserting rows one by one can lead to poor efficiency.
+  You can use client-side query formatting to compose a single `INSERT` that
+  performs several insertions at once. See [link mysql.examples.batch_inserts this example]
+  for simple batch inserts and [link mysql.examples.batch_inserts_generic this other] for
+  a generic utility to implement this case.
+* [*PATCH-like updates]. If your query must update fields dynamically, based on some input,
+  prepared statements may not be suitable. See [link mysql.examples.patch_updates this example].
+* Queries involving [*dynamic identifiers], like table and field names.
+* Performing [*conditional sorting].
+* Any other use case that involves SQL that can change dynamically.
+
+This feature can also be used to improve efficiency, as text queries perform less
+round-trips to the server. See [link mysql.sql_formatting.efficiency this section]
+for more info.
+
+[warning
+    [*Security considerations]: misusing the tools described in this section
+    can lead to [*SQL injection vulnerabilities]. Please read the documentation
+    carefully and thoroughly test your code when using this feature.
+]
+
+
+
+[heading Formatting simple queries]
+
+You can use [reflink format_sql] to generate a SQL query from a format string
+and a set of parameters, using a notation similar to `std::format`:
+
+[sql_formatting_simple]
+
+[reflink format_sql] doesn't involve communication with the server.
+In order to work, it requires a [reflink format_options] instance describing
+connection configuration, like the character set currently in use.
+[refmem any_connection format_opts] provides an easy way to retrieve these.
+
+[note
+  Getting an `unknown_character_set` error? Have a look at [link mysql.sql_formatting.unknown_character_set this section].
+]
+
+All fundamental types can be used with query formatting. This includes integers, floating point types,
+strings, blobs, dates and times:
+
+[sql_formatting_other_scalars]
+
+`std::optional<T>` and `boost::optional<T>` can also be used:
+
+[sql_formatting_optionals]
+
+See [link mysql.sql_formatting.reference this table] for a reference of types
+that have built-in support for SQL formatting.
+
+[note
+  Like with `std::format`, the format string passed to `format_sql` must be known at
+  compile-time. You can skip this check using the [reflink runtime] function.
+]
+
+Like `std::format`, you can use arguments with explicit indices:
+
+[sql_formatting_manual_indices]
+
+You can also use named arguments, using the initializer list overload:
+
+[sql_formatting_named_args]
+
+See [link mysql.sql_formatting_advanced.format_string_syntax this section] for an in-depth
+explanation on format strings.
+
+
+
+[heading Formatting identifiers]
+
+By default, strings are formatted as values. If you need to generate a dynamic
+SQL identifier (like a field or table name), use the [reflink identifier] class:
+
+[sql_formatting_identifiers]
+
+[reflink identifier] can also generate qualified identifiers:
+
+[sql_formatting_qualified_identifiers]
+
+
+
+[heading Building SQL strings incrementally using format_sql_to]
+
+Many use cases, including batch inserts and dynamic filters, may not be
+expressible in terms of a single format string. In such cases, you can
+use [reflink format_context] and [reflink format_sql_to] to
+build query strings incrementally:
+
+[sql_formatting_incremental_fn]
+[sql_formatting_incremental_use]
+
+[refmemunq basic_format_context append_raw] and [refmemunq basic_format_context append_value]
+can be used on format contexts to add raw SQL and formatted values without a format string.
+
+
+
+
+
+[heading:unit_test Unit testing]
+
+If you are composing very complex queries, it's very advisable to unit test them.
+For instance:
+
+[sql_formatting_unit_test]
+
+In tests, it's safe to manually create a [reflink format_options] value like the one above.
+But don't do it in production code!
+
+
+
+
+[heading:unknown_character_set Solving the unknown_character_set error]
+
+If you are getting a `client_errc::unknown_character_set` error, your connection
+is currently unaware of the character set it's using, which is required by format operations.
+Try the following:
+
+* Make sure that you are performing connection establishment ([refmem any_connection connect] or
+  [refmemunq any_connection async_connect]) before calling [refmemunq any_connection format_opts].
+* Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
+  to set your connection's character set instead of using raw SQL.
+* Some [refmem connect_params connection_collation] values are not supported by all servers
+  and often trigger fallback behavior. If you are using a non-UTF8 character set, prefer setting it
+  explicitly using [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set].
+  Don't rely on [refmem connect_params connection_collation].
+* [refmem any_connection reset_connection] and [refmemunq any_connection async_reset_connection] wipe
+  character set information. Call [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
+  after resetting your connection.
+
+[warning
+  [*Security considerations]: don't craft [reflink format_options] values manually.
+  Always use [refmem any_connection format_opts].
+]
+
+For an explanation on why [reflink format_options] is necessary and how
+character set tracking works, please read [link mysql.sql_formatting_advanced.format_options this section].
+
+
+
+
+[heading Solving the invalid_encoding error]
+
+SQL formatting can fail if you provide values that can't be securely formatted.
+The most common cause is passing string values that are not valid according to the
+passed character set. This triggers a `client_errc::invalid_encoding` error:
+
+[sql_formatting_invalid_encoding]
+
+You can validate your strings beforehand or handle the error once
+it happened and reject the input. Other types may also produce format errors.
+
+[tip
+    If you prefer handling errors with error codes, instead of exceptions,
+    use [reflink format_sql_to]. Please read
+    [link mysql.sql_formatting_advanced.error_handling this section] for details.
+]
+
+
+
+
+
+[heading:efficiency Efficiency considerations]
+
+Both client-side SQL formatting and prepared statements have pros and cons efficiency-wise:
+
+* Client-formatted SQL entails [*less round-trips to the server]. For prepared statements, you usually need
+  a call to prepare the statement, another one to execute it, and possibly a final one to close it.
+  Client-formatted SQL only requires the execution round-trip. This performance gain increases with network
+  latency and if you are using TLS.
+* Prepared statements always entail a [*mutation of session state], while client-formatted SQL may not.
+  If you're using a [reflink connection_pool] with prepared statements, you can't use
+  [refmem pooled_connection return_without_reset], as this will leak the statement.
+  With client-formatted queries, reset may not be required if your SQL doesn't mutate session state.
+* Client-formatted SQL queries use a usually [*less efficient text-based protocol], while prepared statements
+  use a more compact binary protocol. This is relevant if you're retrieving lots of data that is
+  slow to convert to and from text (like doubles).
+* [*Prepared statements can be re-used]. If you need to execute a query several times,
+  prepared statements will only be parsed once.
+* Client-formatted SQL allows [*more efficient patterns] than prepared statements,
+  like batch inserts.
+* You can use client-formatted SQL to generate several [*semicolon-separated queries]
+  to be run in batch.
+
+
+
+[heading:reference Types with built-in support for SQL formatting]
+
+[table
+    [
+        [C++ type]
+        [Formatted as...]
+        [Example]
+    ]
+    [
+        [`signed char`, `short`, `int`, `long`, `long long`]
+        [Integral literal]
+        [
+            [sql_formatting_reference_signed]
+        ]
+    ]
+    [
+        [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
+        [Integral literal]
+        [
+            [sql_formatting_reference_unsigned]
+        ]
+    ]
+    [
+        [`bool`]
+        [Integral literal `1` if `true`, `0` if `false`]
+        [
+            [sql_formatting_reference_bool]
+        ]
+    ]
+    [
+        [
+            `std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`)[br]
+            [reflink string_view][br]
+            [br]`std::string_view`
+            [br]`const char*`
+        ]
+        [
+            Single-quoted escaped string literal[br]
+            Note that `LIKE` special characters (`%` and `_`) are not escaped.
+        ]
+        [
+            [sql_formatting_reference_string]
+        ]
+    ]
+    [
+        [
+            `std::basic_vector<unsigned char, Allocator>` (including [reflink blob])[br]
+            [reflink blob_view]
+        ]
+        [Hex string literal]
+        [
+            [sql_formatting_reference_blob]
+        ]
+    ]
+    [
+        [`float`, except NaN and inf]
+        [
+            Floating-point literal, after casting to `double.`[br]
+            MySQL does not support NaNs and infinities. Attempting to format
+            these cause a `client_errc::unformattable_value` error.
+        ]
+        [
+            [sql_formatting_reference_float]
+        ]
+    ]
+    [
+        [`double`, except NaN and inf]
+        [
+            Floating-point literal.[br]
+            MySQL does not support NaNs and infinities. Attempting to format
+            these cause a `client_errc::unformattable_value` error.
+        ]
+        [
+            [sql_formatting_reference_double]
+        ]
+    ]
+    [
+        [[reflink date]]
+        [Single quoted, `DATE`-compatible string literal]
+        [
+            [sql_formatting_reference_date]
+        ]
+    ]
+    [
+        [[reflink datetime]]
+        [Single quoted `DATETIME`-compatible string literal]
+        [
+            [sql_formatting_reference_datetime]
+        ]
+    ]
+    [
+        [[reflink time] and `std::chrono::duration` types convertible to [reflink time]]
+        [Single quoted `TIME`-compatible string literal]
+        [
+            [sql_formatting_reference_time]
+        ]
+    ]
+    [
+        [`std::nullptr_t`]
+        [`NULL`]
+        [
+            [sql_formatting_reference_nullptr]
+        ]
+    ]
+    [
+        [
+            `boost::optional<T>` and `std::optional<T>`, `T` being one of the fundamental types above.[br]
+            Not applicable to custom types or [reflink identifier].
+        ]
+        [
+            Formats the underlying value if there is any.[br]
+            `NULL` otherwise.[br]
+        ]
+        [
+            [sql_formatting_reference_optional]
+        ]
+    ]
+    [
+        [[reflink field] and [reflink field_view]]
+        [
+            Formats the underlying value.
+        ]
+        [
+            [sql_formatting_reference_field]
+        ]
+    ]
+    [
+        [[reflink identifier]]
+        [Backtick-quoted, escaped SQL identifier]
+        [
+            [sql_formatting_reference_identifier]
+        ]
+    ]
+    [
+        [Custom type that specializes [reflink formatter]]
+        [Calls `formatter::format`]
+        []
+    ]
+]
+
+[endsect]

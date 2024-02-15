@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
@@ -597,10 +598,10 @@ BOOST_AUTO_TEST_CASE(spotcheck_success)
             conn.connect(default_connect_params());
 
             // Issue the command
-            fns.set_character_set(conn, latin1_charset).validate_no_error();
+            fns.set_character_set(conn, ascii_charset).validate_no_error();
 
             // Success
-            BOOST_TEST(conn.current_character_set()->name == string_view("latin1"));
+            BOOST_TEST(conn.current_character_set()->name == "ascii");
         }
     }
 }
@@ -624,7 +625,7 @@ BOOST_AUTO_TEST_CASE(spotcheck_error)
                 );
 
             // The character set was not modified
-            BOOST_TEST(conn.current_character_set()->name == string_view("utf8mb4"));
+            BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
         }
     }
 }

@@ -32,6 +32,7 @@
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/mp11/integer_sequence.hpp>
+#include <boost/system/result.hpp>
 
 #include <array>
 #include <cstddef>
@@ -235,7 +236,7 @@ public:
     BOOST_MYSQL_DECL std::vector<field_view>& get_shared_fields() noexcept;
     BOOST_MYSQL_DECL bool ssl_active() const noexcept;
     BOOST_MYSQL_DECL bool backslash_escapes() const noexcept;
-    BOOST_MYSQL_DECL const character_set* current_character_set() const noexcept;
+    BOOST_MYSQL_DECL system::result<character_set> current_character_set() const noexcept;
 
     // Generic algorithm
     template <class AlgoParams, class CompletionToken>

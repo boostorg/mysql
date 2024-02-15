@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -232,110 +233,17 @@ BOOST_AUTO_TEST_CASE(operator_equals)
     }
 }
 
+// operator<< is implemented in terms of datetime_to_string (see dt_to_string.hpp)
 BOOST_AUTO_TEST_CASE(operator_stream)
 {
-    // Helper struct to define stream operations for date, datetime and time
-    // We will list the possibilities for each component (hours, minutes, days...) and will
-    // take the Cartessian product of all them
-    struct component_value
-    {
-        const char* name;
-        unsigned v;
-        const char* repr;
-    };
-
-    constexpr component_value year_values[] = {
-        {"min",       0,      "0000" },
-        {"onedig",    1,      "0001" },
-        {"twodig",    98,     "0098" },
-        {"threedig",  789,    "0789" },
-        {"regular",   1999,   "1999" },
-        {"max_mysql", 9999,   "9999" },
-        {"max",       0xffff, "65535"},
-    };
-
-    constexpr component_value month_values[] = {
-        {"zero",   0,    "00" },
-        {"onedig", 2,    "02" },
-        {"twodig", 12,   "12" },
-        {"max",    0xff, "255"},
-    };
-
-    constexpr component_value day_values[] = {
-        {"zero",   0,    "00" },
-        {"onedig", 1,    "01" },
-        {"twodig", 31,   "31" },
-        {"max",    0xff, "255"},
-    };
-
-    constexpr component_value hours_values[] = {
-        {"zero",   0,    "00" },
-        {"onedig", 5,    "05" },
-        {"twodig", 23,   "23" },
-        {"max",    0xff, "255"},
-    };
-
-    constexpr component_value mins_secs_values[] = {
-        {"zero",   0,    "00" },
-        {"onedig", 5,    "05" },
-        {"twodig", 59,   "59" },
-        {"max",    0xff, "255"},
-    };
-
-    constexpr component_value micros_values[] = {
-        {"zero",      0,          "000000"    },
-        {"onedig",    5,          "000005"    },
-        {"twodig",    50,         "000050"    },
-        {"max_mysql", 999999,     "999999"    },
-        {"max",       0xffffffff, "4294967295"},
-    };
-
-    // clang-format off
-    for (const auto& year : year_values)
-    {
-    for (const auto& month : month_values)
-    {
-    for (const auto& day : day_values)
-    {
-    for (const auto& hours : hours_values)
-    {
-    for (const auto& mins : mins_secs_values)
-    {
-    for (const auto& secs : mins_secs_values)
-    {
-    for (const auto& micros : micros_values)
-    {
-        BOOST_TEST_CONTEXT(
-            "year=" << year.name << ", month=" << month.name << "day=" << day.name <<
-            "hour=" << hours.name << ", mins=" << mins.name << ", secs=" << secs.name <<
-            "micros=" << micros.name
-        )
-        {
-            std::string str_val = stringize(
-                year.repr, '-', month.repr, '-', day.repr, ' ',
-                hours.repr, ':', mins.repr, ':', secs.repr,
-                '.', micros.repr
-            );
-            datetime dt(
-                static_cast<std::uint16_t>(year.v),
-                static_cast<std::uint8_t>(month.v),
-                static_cast<std::uint8_t>(day.v),
-                static_cast<std::uint8_t>(hours.v),
-                static_cast<std::uint8_t>(mins.v),
-                static_cast<std::uint8_t>(secs.v),
-                static_cast<std::uint32_t>(micros.v)
-            );
-
-            BOOST_TEST(stringize(dt) == str_val);
-        }
-    }
-    }
-    }
-    }
-    }
-    }
-    }
-    // clang-format on
+    BOOST_TEST(stringize(datetime(2023, 1, 2, 12, 10, 1, 0)) == "2023-01-02 12:10:01.000000");
+    BOOST_TEST(stringize(datetime(2022, 12, 31)) == "2022-12-31 00:00:00.000000");
+    BOOST_TEST(stringize(datetime(2020, 3, 2, 23, 59, 59, 12345)) == "2020-03-02 23:59:59.012345");
+    BOOST_TEST(stringize(datetime()) == "0000-00-00 00:00:00.000000");
+    BOOST_TEST(
+        stringize(datetime(0xffff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xffffffff)) ==
+        "65535-255-255 255:255:255.4294967295"
+    );
 }
 
 BOOST_AUTO_TEST_CASE(now)

@@ -106,4 +106,17 @@ field names and values, which may contain arbitrary input. Please use with cauti
 
 This message may contain non-ASCII characters. It's encoded using the connection's character set.
 
+[heading:system_result Using boost::system::result]
+
+Some functions, like [refmem basic_format_context get], use
+[@boost:/libs/system/doc/html/system.html#ref_boostsystemresult_hpp `boost::system::result<T>`]
+to communicate errors. `result<T>` contains either a value (an instance of `T`), or an [reflink error_code],
+if the operation failed. `result<T>` is similar to `std::expected`, but only requires C++11.
+
+Given a `result<T>` object `r`, you can get its contained value calling `r.value()`.
+If `r` contained an error, a `boost::system::result` exception with the contained
+error code is thrown. `r.has_value()`, `r.has_error()` and `r.error()` can be
+used to inspect the object.
+
+
 [endsect]

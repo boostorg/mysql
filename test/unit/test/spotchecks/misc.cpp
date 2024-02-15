@@ -404,4 +404,21 @@ BOOST_AUTO_TEST_CASE(net_error_void_signature)
     }
 }
 
+// We can bind and execute statements using references
+BOOST_AUTO_TEST_CASE(stmt_tuple_ref)
+{
+    // Setup
+    std::string s = "abcdef";
+    blob b{0x00, 0x01, 0x02};
+    results r;
+    auto stmt = statement_builder().id(1).num_params(2).build();
+
+    // Connection
+    test_connection conn;
+    conn.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
+
+    // This should compile and run
+    BOOST_CHECK_NO_THROW(conn.execute(stmt.bind(std::ref(s), std::ref(b)), r));
+}
+
 BOOST_AUTO_TEST_SUITE_END()

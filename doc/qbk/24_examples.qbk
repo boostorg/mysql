@@ -26,9 +26,13 @@ Here is a list of available examples:
 # [link mysql.examples.unix_socket UNIX sockets]
 # [link mysql.examples.ssl Setting SSL options]
 # [link mysql.examples.source_script Using multi-queries to source a .sql file]
-# [link mysql.examples.any_connection Using type-erased connections]
-# [link mysql.examples.connection_pool A REST API server that uses connection pooling]
-# [@https://github.com/anarthal/servertech-chat The BoostServerTech chat project uses Boost.MySQL to implement a chat server]
+# [link mysql.examples.any_connection (Experimental) Using type-erased connections]
+# [link mysql.examples.batch_inserts (Experimental) Batch inserts using client-side query formatting]
+# [link mysql.examples.batch_inserts_generic (Experimental) Generic batch inserts with Boost.Describe: extending format_sql]
+# [link mysql.examples.dynamic_filters (Experimental) Implements a query with several dynamic filters using client-side query formatting]
+# [link mysql.examples.patch_updates (Experimental) Implements a dynamic UPDATE query for PATCH-like update semantics using client-side query formatting]
+# [link mysql.examples.connection_pool (Experimental) A REST API server that uses connection pooling]
+# [@https://github.com/anarthal/servertech-chat The BoostServerTech chat project uses Boost.MySQL and Boost.Redis to implement a chat server]
 
 [heading Setup]
 
@@ -300,7 +304,7 @@ __assume_setup__
 
 
 
-[section:any_connection Using type-erased connections]
+[section:any_connection (Experimental) Using type-erased connections]
 
 This example demonstrates how to use [reflink any_connection].
 
@@ -317,9 +321,85 @@ __assume_setup__
 
 
 
+[section:batch_inserts (Experimental) Batch inserts using client-side query formatting]
+
+This example demonstrates how to use client-side query formatting using
+[reflink format_sql_to] to implement batch inserts. Batch inserting
+can highly improve application performance.
+
+The example employs sync functions with exceptions.
+
+__assume_setup__
+
+[import ../../example/batch_inserts.cpp]
+[example_batch_inserts]
+
+[endsect]
 
 
-[section:connection_pool Connection pools]
+
+
+
+[section:batch_inserts_generic (Experimental) Generic batch inserts with Boost.Describe: extending format_sql]
+
+This example demonstrates how to extend [reflink format_sql] using [reflink formatter]
+to implement batch inserts for any struct that contains Boost.Describe metadata.
+
+The example employs sync functions with exceptions.
+
+__assume_setup__
+
+[import ../../example/batch_inserts_generic.cpp]
+[example_batch_inserts_generic]
+
+[endsect]
+
+
+
+
+
+
+[section:dynamic_filters (Experimental) Dynamic filters using client-side query formatting]
+
+This example demonstrates how to use [reflink format_sql_to]
+to implement filters that can be enabled dynamically.
+
+The example employs async functions with stackful coroutines.
+
+__assume_setup__
+
+[import ../../example/dynamic_filters.cpp]
+[example_dynamic_filters]
+
+[endsect]
+
+
+
+
+
+
+[section:patch_updates (Experimental) PATCH-like updates using client-side query formatting]
+
+This example demonstrates how use [reflink format_sql_to]
+to implement `UPDATE` queries with `PATCH` semantics, i.e.,
+that update a dynamic set of fields.
+
+The example employs sync functions with exceptions.
+
+__assume_setup__
+
+[import ../../example/patch_updates.cpp]
+[example_patch_updates]
+
+[endsect]
+
+
+
+
+
+
+
+[section:connection_pool (Experimental) Connection pools]
 
 This example demonstrates how to use [reflink connection_pool].
 It implements an HTTP REST API server for a text notes

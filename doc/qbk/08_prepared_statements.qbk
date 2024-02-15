@@ -162,7 +162,10 @@ is interpreted by MySQL, depeding on `v`'s type.
         [`DATETIME`, `TIMESTAMP`]
     ]
     [
-        [[reflink time]]
+        [
+            [reflink time][br]
+            Any `std::chrono::duration` convertible to `time`
+        ]
         [`TIME`]
         [`TIME`]
     ]

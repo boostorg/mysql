@@ -7,7 +7,11 @@
 
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/days.hpp>
+#include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/access.hpp>
+
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <stdexcept>
@@ -121,62 +125,13 @@ BOOST_AUTO_TEST_CASE(operator_equals)
     }
 }
 
+// operator stream is implemented in terms of to_string (see dt_to_string.hpp)
 BOOST_AUTO_TEST_CASE(operator_stream)
 {
-    struct
-    {
-        const char* name;
-        std::uint16_t value;
-        const char* repr;
-    } year_values[] = {
-        {"min",      0,      "0000" },
-        {"onedig",   1,      "0001" },
-        {"twodig",   98,     "0098" },
-        {"threedig", 789,    "0789" },
-        {"regular",  1999,   "1999" },
-        {"fourdig",  9999,   "9999" },
-        {"max",      0xffff, "65535"},
-    };
-
-    struct
-    {
-        const char* name;
-        std::uint8_t value;
-        const char* repr;
-    } month_values[] = {
-        {"zero", 0,    "00" },
-        {"1dig", 2,    "02" },
-        {"2dig", 12,   "12" },
-        {"max",  0xff, "255"},
-    };
-
-    struct
-    {
-        const char* name;
-        std::uint8_t value;
-        const char* repr;
-    } day_values[] = {
-        {"zero", 0,    "00" },
-        {"1dig", 1,    "01" },
-        {"2dig", 31,   "31" },
-        {"max",  0xff, "255"},
-    };
-
-    for (const auto& year : year_values)
-    {
-        for (const auto& month : month_values)
-        {
-            for (const auto& day : day_values)
-            {
-                BOOST_TEST_CONTEXT("year=" << year.name << ", month=" << month.name << ", day=" << day.name)
-                {
-                    auto expected = stringize(year.repr, '-', month.repr, '-', day.repr);
-                    auto actual = stringize(date(year.value, month.value, day.value));
-                    BOOST_TEST(actual == expected);
-                }
-            }
-        }
-    }
+    BOOST_TEST(stringize(date(2022, 1, 3)) == "2022-01-03");
+    BOOST_TEST(stringize(date(2023, 12, 31)) == "2023-12-31");
+    BOOST_TEST(stringize(date(0, 0, 0)) == "0000-00-00");
+    BOOST_TEST(stringize(date(0xffff, 0xff, 0xff)) == "65535-255-255");
 }
 
 BOOST_AUTO_TEST_CASE(now)

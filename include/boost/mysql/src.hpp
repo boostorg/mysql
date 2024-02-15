@@ -33,6 +33,7 @@
 #include <boost/mysql/impl/field.ipp>
 #include <boost/mysql/impl/field_kind.ipp>
 #include <boost/mysql/impl/field_view.ipp>
+#include <boost/mysql/impl/format_sql.ipp>
 #include <boost/mysql/impl/internal/auth/auth.ipp>
 #include <boost/mysql/impl/internal/error/server_error_to_string.ipp>
 #include <boost/mysql/impl/internal/protocol/binary_serialization.ipp>

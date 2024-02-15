@@ -11,10 +11,10 @@
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/test/unit_test.hpp>
 
-#include <cstddef>
 #include <cstdint>
 #include <sstream>
 #include <vector>
@@ -22,7 +22,6 @@
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/stringize.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -621,89 +620,7 @@ struct stream_sample
     }
 };
 
-void add_time_samples(std::vector<stream_sample>& output)
-{
-    // Helper struct to define stream operations for date, datetime and time
-    // We will list the possibilities for each component (hours, minutes, days...) and will
-    // take the Cartessian product of all them
-    struct component_value
-    {
-        const char* name;
-        int v;
-        const char* repr;
-    };
-
-    constexpr component_value sign_values[] = {
-        {"positive", 1,  "" },
-        {"negative", -1, "-"}
-    };
-
-    constexpr component_value hours_values[] = {
-        {"zero",      0,   "00" },
-        {"onedigit",  5,   "05" },
-        {"twodigits", 23,  "23" },
-        {"max",       838, "838"}
-    };
-
-    constexpr component_value mins_secs_values[] = {
-        {"zero",      0,  "00"},
-        {"onedigit",  5,  "05"},
-        {"twodigits", 59, "59"}
-    };
-
-    constexpr component_value micros_values[] = {
-        {"zero",      0,      "000000"},
-        {"onedigit",  5,      "000005"},
-        {"twodigits", 50,     "000050"},
-        {"max",       999999, "999999"},
-    };
-
-    for (const auto& sign : sign_values)
-    {
-        for (const auto& hours : hours_values)
-        {
-            for (const auto& mins : mins_secs_values)
-            {
-                for (const auto& secs : mins_secs_values)
-                {
-                    for (const auto& micros : micros_values)
-                    {
-                        std::string name = stringize(
-                            "time_",
-                            sign.name,
-                            "_h",
-                            hours.name,
-                            "_m",
-                            mins.name,
-                            "_s",
-                            secs.name,
-                            "_u",
-                            micros.name
-                        );
-                        std::string str_val = stringize(
-                            sign.repr,
-                            hours.repr,
-                            ':',
-                            mins.repr,
-                            ':',
-                            secs.repr,
-                            '.',
-                            micros.repr
-                        );
-                        auto val = sign.v * maket(hours.v, mins.v, secs.v, micros.v);
-                        if (sign.v == -1 && val == maket(0, 0, 0))
-                            continue;  // This case makes no sense, as negative zero is represented
-                                       // as zero
-                        output.emplace_back(std::move(name), field_view(val), std::move(str_val));
-                    }
-                }
-            }
-        }
-    }
-}
-
-// Samples made out of owning fields
-void add_ref_samples(std::vector<stream_sample>& output)
+BOOST_AUTO_TEST_CASE(operator_stream)
 {
     struct owning_fields_t
     {
@@ -722,44 +639,46 @@ void add_ref_samples(std::vector<stream_sample>& output)
     };
     static owning_fields_t owning_fields;
 
-    output.emplace_back("ref_null", owning_fields.f_null, "<NULL>");
-    output.emplace_back("ref_int64", owning_fields.f_int64, "-1");
-    output.emplace_back("ref_uint64", owning_fields.f_uint64, "50");
-    output.emplace_back("ref_string", owning_fields.f_string, "long_test_string");
-    output.emplace_back("ref_blob", owning_fields.f_blob, "{ 0x00, 0x32, 0x01 }");
-    output.emplace_back("ref_float", owning_fields.f_float, "4.2");
-    output.emplace_back("ref_double", owning_fields.f_double, "5.1");
-    output.emplace_back("ref_date", owning_fields.f_date, "2020-01-01");
-    output.emplace_back("ref_datetime", owning_fields.f_datetime, "2019-01-01 21:19:01.000009");
-    output.emplace_back("ref_time", owning_fields.f_time, "09:01:00.000210");
-}
+    struct test_case_t
+    {
+        string_view name;
+        field_view input;
+        string_view expected;
+    } test_cases[] = {
+  // Field views holding values
+        {"null", field_view(), "<NULL>"},
+        {"i64_positive", field_view(std::int64_t(42)), "42"},
+        {"i64_negative", field_view(std::int64_t(-90)), "-90"},
+        {"i64_zero", field_view(std::int64_t(0)), "0"},
+        {"u64_positive", field_view(std::uint64_t(42)), "42"},
+        {"u64_zero", field_view(std::uint64_t(0)), "0"},
+        {"string_view", field_view("a_string"), "a_string"},
+        {"blob_empty", field_view(blob_view()), "{}"},
+        {"blob_one_elm", field_view(makebv("\4")), "{ 0x04 }"},
+        {"blob_two_elms", field_view(makebv("\4\5")), "{ 0x04, 0x05 }"},
+        {"blob_several_elms", field_view(makebv("\0\x0a\x2f\xff")), "{ 0x00, 0x0a, 0x2f, 0xff }"},
+        {"blob_padding",
+         field_view(makebv("\x0e\x0f\x0a\x0b\x1f\x20\x7f\x80\xff")),
+         "{ 0x0e, 0x0f, 0x0a, 0x0b, 0x1f, 0x20, 0x7f, 0x80, 0xff }"},
+        {"float", field_view(2.43f), "2.43"},
+        {"double", field_view(8.12), "8.12"},
+        {"date", field_view(date(2020, 1, 19)), "2020-01-19"},
+        {"datetime", field_view(datetime(2020, 1, 19, 11, 30, 21, 98765)), "2020-01-19 11:30:21.098765"},
+        {"time", field_view(-maket(12, 1, 5, 345)), "-12:01:05.000345"},
 
-std::vector<stream_sample> make_stream_samples()
-{
-    std::vector<stream_sample> res{
-        {"null", nullptr, "<NULL>"},
-        {"i64_positive", std::int64_t(42), "42"},
-        {"i64_negative", std::int64_t(-90), "-90"},
-        {"i64_zero", std::int64_t(0), "0"},
-        {"u64_positive", std::uint64_t(42), "42"},
-        {"u64_zero", std::uint64_t(0), "0"},
-        {"string_view", "a_string", "a_string"},
-        {"blob_empty", blob_view(), "{}"},
-        {"blob_one_elm", makebv("\4"), "{ 0x04 }"},
-        {"blob_several_elms", makebv("\0\x0a\x2f\xff"), "{ 0x00, 0x0a, 0x2f, 0xff }"},
-        {"float", 2.43f, "2.43"},
-        {"double", 8.12, "8.12"},
-        {"date", date(2020, 1, 19), "2020-01-19"},
-        {"datetime", datetime(2020, 1, 19, 11, 30, 21, 98765), "2020-01-19 11:30:21.098765"},
+ // Field views holding pointers to fields
+        {"ref_null", field_view(owning_fields.f_null), "<NULL>"},
+        {"ref_int64", field_view(owning_fields.f_int64), "-1"},
+        {"ref_uint64", field_view(owning_fields.f_uint64), "50"},
+        {"ref_string", field_view(owning_fields.f_string), "long_test_string"},
+        {"ref_blob", field_view(owning_fields.f_blob), "{ 0x00, 0x32, 0x01 }"},
+        {"ref_float", field_view(owning_fields.f_float), "4.2"},
+        {"ref_double", field_view(owning_fields.f_double), "5.1"},
+        {"ref_date", field_view(owning_fields.f_date), "2020-01-01"},
+        {"ref_datetime", field_view(owning_fields.f_datetime), "2019-01-01 21:19:01.000009"},
+        {"ref_time", field_view(owning_fields.f_time), "09:01:00.000210"},
     };
-    add_time_samples(res);
-    add_ref_samples(res);
-    return res;
-}
 
-BOOST_AUTO_TEST_CASE(operator_stream)
-{
-    auto test_cases = make_stream_samples();
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name)

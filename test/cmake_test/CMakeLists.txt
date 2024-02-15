@@ -19,12 +19,12 @@ else()
         # Primary dependencies
         asio
         assert
+        charconv
         config
         core
         describe
         endian
         intrusive
-        lexical_cast
         mp11
         optional
         system
@@ -39,12 +39,9 @@ else()
         static_assert
         container_hash
         move
-        container
-        integer
-        numeric/conversion
-        type_traits
         detail
         predef
+        type_traits
         utility
         winapi
         pool
@@ -52,19 +49,23 @@ else()
         exception
         algorithm
         io
+        lexical_cast
+        numeric/conversion
         range
         tokenizer
         preprocessor
-        conversion
-        mpl
         array
         bind
         concept_check
         "function"
         iterator
+        mpl
         regex
         tuple
         unordered
+        container
+        integer
+        conversion
         function_types
         fusion
         functional

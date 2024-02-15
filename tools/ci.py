@@ -118,7 +118,7 @@ def _install_boost(
             _run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
         else:
             _run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
-
+    
     # Bootstrap
     if is_clean:
         if _is_windows:
@@ -277,6 +277,7 @@ def _cmake_build(
             '--with-test',
             '--with-json',
             '--with-url',
+            '--with-charconv',
             '-d0',
         ] + (['cxxstd={}'.format(cxxstd)] if cxxstd else []) + [
             'install'

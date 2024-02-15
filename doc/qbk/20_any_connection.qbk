@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:any_connection Type-erased connections with any_connection]
+[section:any_connection (Experimental) Type-erased connections with any_connection]
 [nochunk]
 
 [reflink any_connection] is a type-erased alternative to [reflink connection].

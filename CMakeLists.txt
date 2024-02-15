@@ -28,13 +28,13 @@ add_library(Boost::mysql ALIAS boost_mysql)
 # Dependencies
 if (BOOST_MYSQL_IS_ROOT)
     # If we're the root project, error if a dependency is not found
-    find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS headers)
+    find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS headers charconv)
     find_package(Threads REQUIRED)
     find_package(OpenSSL REQUIRED)
     target_link_libraries(
         boost_mysql
         INTERFACE
-        Boost::headers
+        Boost::charconv
         Threads::Threads
         OpenSSL::Crypto
         OpenSSL::SSL
@@ -60,12 +60,12 @@ else()
         INTERFACE
         Boost::asio
         Boost::assert
+        Boost::charconv
         Boost::config
         Boost::core
         Boost::describe
         Boost::endian
         Boost::intrusive
-        Boost::lexical_cast
         Boost::mp11
         Boost::optional
         Boost::system

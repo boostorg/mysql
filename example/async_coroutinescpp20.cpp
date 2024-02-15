@@ -181,7 +181,7 @@ int main(int argc, char** argv)
         // You will only get this type of exceptions if you use throw_on_error.
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
-        // field value that caused the error) and is encoded using to the connection's encoding
+        // field value that caused the error) and is encoded using to the connection's character set
         // (UTF-8 by default). Treat is as untrusted input.
         std::cerr << "Error: " << err.what() << '\n'
                   << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;

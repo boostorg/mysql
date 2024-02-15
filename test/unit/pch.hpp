@@ -23,6 +23,7 @@
 #include <boost/mp11.hpp>
 #include <boost/system/error_category.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/system/result.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/throw_exception.hpp>

@@ -13,18 +13,20 @@
 // clang-format off
 
 // Concepts
-#if defined(__has_include)
-    #if __has_include(<version>)
-        #include <version>
-        #if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
-            #define BOOST_MYSQL_HAS_CONCEPTS
-        #endif
-    #endif
+#if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
+    #define BOOST_MYSQL_HAS_CONCEPTS
 #endif
 
 // C++14 conformance
 #if BOOST_CXX_VERSION >= 201402L
     #define BOOST_MYSQL_CXX14
+#endif
+
+// Consteval
+#ifdef __cpp_consteval
+    #define BOOST_MYSQL_CONSTEVAL consteval
+#else
+    #define BOOST_MYSQL_CONSTEVAL constexpr
 #endif
 
 // Separate build

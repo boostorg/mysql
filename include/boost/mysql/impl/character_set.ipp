@@ -16,17 +16,16 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline bool in_range(char byte, unsigned char lower, unsigned char upper) noexcept
+inline bool in_range(unsigned char byte, unsigned char lower, unsigned char upper) noexcept
 {
-    auto b = static_cast<unsigned char>(byte);
-    return b >= lower && b <= upper;
+    return byte >= lower && byte <= upper;
 }
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-std::size_t boost::mysql::detail::next_char_utf8mb4(string_view input) noexcept
+std::size_t boost::mysql::detail::next_char_utf8mb4(span<const unsigned char> input) noexcept
 {
     // s[0]    s[1]    s[2]    s[3]    comment
     // 00-7F                           ascii
@@ -42,7 +41,7 @@ std::size_t boost::mysql::detail::next_char_utf8mb4(string_view input) noexcept
 
     BOOST_ASSERT(!input.empty());
 
-    auto first_char = static_cast<unsigned char>(input.front());
+    auto first_char = input.front();
     if (first_char < 0x80)
     {
         return 1;

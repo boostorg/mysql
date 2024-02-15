@@ -8,6 +8,8 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/impl/internal/call_next_char.hpp>
+
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -21,6 +23,12 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_character_set)
 
+// Helper
+static std::size_t call_next_char(const character_set& charset, string_view s) noexcept
+{
+    return detail::call_next_char(charset, s.data(), s.data() + s.size());
+}
+
 BOOST_AUTO_TEST_CASE(utf8mb4_single_byte_valid)
 {
     for (int i = 0; i < 0x80; ++i)
@@ -29,11 +37,11 @@ BOOST_AUTO_TEST_CASE(utf8mb4_single_byte_valid)
         {
             // Exactly the required space
             char str[2]{static_cast<char>(i), '\0'};
-            auto actual_len = utf8mb4_charset.next_char(string_view(str, 1));
+            auto actual_len = detail::call_next_char(utf8mb4_charset, str, str + 1);
             BOOST_TEST(actual_len == 1u);
 
             // Extra space
-            actual_len = utf8mb4_charset.next_char(string_view(str, 2));
+            actual_len = detail::call_next_char(utf8mb4_charset, str, str + 2);
             BOOST_TEST(actual_len == 1u);
         }
     }
@@ -193,17 +201,17 @@ BOOST_AUTO_TEST_CASE(utf8mb4_multibyte_valid)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Exactly the required space
-            auto actual_len = utf8mb4_charset.next_char(tc.input);
+            auto actual_len = call_next_char(utf8mb4_charset, tc.input);
             BOOST_TEST(actual_len == tc.expected);
 
             // Extra space
             auto extra_space_input = std::string(tc.input) + "abc";
-            actual_len = utf8mb4_charset.next_char(extra_space_input);
+            actual_len = call_next_char(utf8mb4_charset, extra_space_input);
             BOOST_TEST(actual_len == tc.expected);
 
             // Not enough space (end of data before the end of the byte sequence)
             auto not_enough_input = tc.input.substr(1);
-            actual_len = utf8mb4_charset.next_char(not_enough_input);
+            actual_len = call_next_char(utf8mb4_charset, not_enough_input);
             BOOST_TEST(actual_len == 0u);
         }
     }
@@ -224,7 +232,7 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_start_byte)
         BOOST_TEST_CONTEXT(+b)
         {
             auto input = static_cast<char>(b);
-            auto size = utf8mb4_charset.next_char(string_view(&input, 1));
+            auto size = detail::call_next_char(utf8mb4_charset, &input, &input + 1);
             BOOST_TEST(size == 0u);
         }
     }
@@ -442,21 +450,33 @@ BOOST_AUTO_TEST_CASE(utf8mb4_invalid_continuation)
         {
             // add some extra continuation bytes, so we never fail because of lack of space
             auto input = std::string(tc.input) + "\x91\x91";
-            auto size = utf8mb4_charset.next_char(input);
+            auto size = call_next_char(utf8mb4_charset, input);
             BOOST_TEST(size == 0u);
         }
     }
 }
 
-BOOST_AUTO_TEST_CASE(latin1)
+BOOST_AUTO_TEST_CASE(ascii)
 {
-    for (std::size_t i = 0; i <= 0xff; ++i)
+    // valid
+    for (std::size_t i = 0; i <= 0x7f; ++i)
     {
         BOOST_TEST_CONTEXT(i)
         {
             char str[2]{static_cast<char>(i), '\0'};
-            auto size = latin1_charset.next_char(string_view(str, 2));
+            auto size = detail::call_next_char(ascii_charset, str, str + 2);
             BOOST_TEST(size == 1u);
+        }
+    }
+
+    // invalid
+    for (std::size_t i = 0x80; i <= 0xff; ++i)
+    {
+        BOOST_TEST_CONTEXT(i)
+        {
+            char str[2]{static_cast<char>(i), '\0'};
+            auto size = detail::call_next_char(ascii_charset, str, str + 2);
+            BOOST_TEST(size == 0u);
         }
     }
 }

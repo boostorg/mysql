@@ -30,16 +30,18 @@
 
   <xsl:variable name="emphasized-template-parameter-types" select="
     'CompletionToken',
-    'Stream',
-    'SocketStream',
-    'Executor',
     'ExecutionContext',
-    'WritableFieldTuple',
-    'FieldViewFwdIterator',
     'ExecutionRequest',
-    'StaticRow',
+    'ExecutionStateType',
+    'Executor',
+    'FieldViewFwdIterator',
+    'Formattable',
+    'OutputString',
     'ResultsType',
-    'ExecutionStateType'
+    'SocketStream',
+    'StaticRow',
+    'Stream',
+    'WritableFieldTuple'
   "/>
 
 </xsl:stylesheet>

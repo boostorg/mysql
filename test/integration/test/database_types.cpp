@@ -13,10 +13,12 @@
  */
 
 #include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
@@ -39,7 +41,6 @@
 #include <cstdint>
 #include <memory>
 #include <ostream>
-#include <sstream>
 #include <stdint.h>
 #include <type_traits>
 #include <unordered_map>
@@ -47,7 +48,6 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/stringize.hpp"
 #include "test_integration/metadata_validator.hpp"
 #include "test_integration/safe_getenv.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
@@ -84,26 +84,24 @@ const flagsvec flags_unsigned{&metadata::is_unsigned};
 const flagsvec flags_zerofill{&metadata::is_unsigned, &metadata::is_zerofill};
 const flagsvec no_flags{};
 
+constexpr format_options opts{utf8mb4_charset, true};
+
 struct database_types_fixture : tcp_network_fixture
 {
-    // Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
-    void set_time_zone()
-    {
-        results result;
-        conn.execute("SET session time_zone = '+02:00'", result);
-    }
-
-    void set_sql_mode()
-    {
-        results result;
-        conn.execute("SET session sql_mode = 'ALLOW_INVALID_DATES'", result);
-    }
-
     database_types_fixture()
     {
+        // Connect
+        params.set_multi_queries(true);
         connect();
-        set_time_zone();
-        set_sql_mode();
+
+        // Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
+        // Sets also sql_mode to allow invalid dates
+        results result;
+        conn.execute(
+            "SET session time_zone = '+02:00'; "
+            "SET session sql_mode = 'ALLOW_INVALID_DATES'",
+            result
+        );
     }
 };
 
@@ -182,24 +180,59 @@ struct table_base
         }
     }
 
-    std::string select_sql() const { return stringize("SELECT * FROM ", name, " ORDER BY id"); }
-
-    std::string insert_sql() const
+    std::string select_sql() const
     {
-        std::ostringstream ss;
-        ss << "INSERT INTO " << name << " VALUES (";
+        return format_sql(opts, "SELECT * FROM {} ORDER BY id", identifier(name));
+    }
+
+    std::string insert_sql_stmt() const
+    {
+        format_context ctx(opts);
+        format_sql_to(ctx, "INSERT INTO {} VALUES (", identifier(name));
         for (std::size_t i = 0; i < metas.size(); ++i)
         {
             if (i == 0)
-                ss << "?";
+                ctx.append_raw("?");
             else
-                ss << ", ?";
+                ctx.append_raw(", ?");
         }
-        ss << ")";
-        return ss.str();
+        ctx.append_raw(")");
+        return std::move(ctx).get().value();
     }
 
-    std::string delete_sql() const { return stringize("DELETE FROM ", name); }
+    std::string insert_sql() const
+    {
+        format_context ctx(opts);
+        format_sql_to(ctx, "INSERT INTO {} VALUES ", identifier(name));
+
+        bool is_first_row = true;
+        for (const auto& r : rws)
+        {
+            // Comma separator between rows
+            if (!is_first_row)
+                ctx.append_raw(", ");
+            is_first_row = false;
+
+            // Actual row
+            ctx.append_raw("(");
+            bool is_first_field = true;
+            for (const field_view fv : r)
+            {
+                // Comma separator between fields
+                if (!is_first_field)
+                    ctx.append_raw(", ");
+                is_first_field = false;
+
+                // Actual field
+                ctx.append_value(fv);
+            }
+            ctx.append_raw(")");
+        }
+
+        return std::move(ctx).get().value();
+    }
+
+    std::string delete_sql() const { return format_sql(opts, "DELETE FROM {}", identifier(name)); }
 };
 
 template <class T>
@@ -478,7 +511,8 @@ table_ptr types_bit()
         "field_40",
         "field_48",
         "field_56",
-        "field_64"};
+        "field_64"
+    };
     for (const char* col : columns)
         res->add_meta(col, column_type::bit, flags_unsigned);
 
@@ -1017,6 +1051,29 @@ BOOST_FIXTURE_TEST_CASE(query_read, database_types_fixture)
     }
 }
 
+BOOST_FIXTURE_TEST_CASE(sql_format_query_write, database_types_fixture)
+{
+    start_transaction();
+
+    for (const auto& table : all_tables())
+    {
+        BOOST_TEST_CONTEXT(table->name)
+        {
+            // Remove all contents from the table
+            results result;
+            conn.execute(table->delete_sql(), result);
+
+            // Insert all the contents again
+            conn.execute(table->insert_sql(), result);
+
+            // Query them again and verify the insertion was okay
+            conn.execute(table->select_sql(), result);
+            validate_meta(result.meta(), table->metas);
+            table->validate_rows(result.rows());
+        }
+    }
+}
+
 BOOST_FIXTURE_TEST_CASE(statement_read, database_types_fixture)
 {
     for (const auto& table : all_tables())
@@ -1046,7 +1103,7 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
         BOOST_TEST_CONTEXT(table->name)
         {
             // Prepare the statements
-            auto insert_stmt = conn.prepare_statement(table->insert_sql());
+            auto insert_stmt = conn.prepare_statement(table->insert_sql_stmt());
             auto query_stmt = conn.prepare_statement(table->select_sql());
 
             // Remove all contents from the table
@@ -1054,11 +1111,9 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
             conn.execute(table->delete_sql(), result);
 
             // Insert all the contents again
-            boost::mysql::execution_state st;
             for (const auto& row : table->rws)
             {
-                conn.start_execution(insert_stmt.bind(row.begin(), row.end()), st);
-                BOOST_TEST_REQUIRE(st.complete());
+                conn.execute(insert_stmt.bind(row.begin(), row.end()), result);
             }
 
             // Query them again and verify the insertion was okay

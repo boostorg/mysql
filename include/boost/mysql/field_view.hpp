@@ -131,6 +131,26 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(unsigned long long v) noexcept : impl_{std::uint64_t(v)} {}
 
     /**
+     * \brief Constructors from character types would incorrectly construct a `field_view` holding an integer,
+     * so they are not allowed.
+     */
+    explicit field_view(char) = delete;
+
+    /// \copydoc field_view(char)
+    explicit field_view(wchar_t) = delete;
+
+    /// \copydoc field_view(char)
+    explicit field_view(char16_t) = delete;
+
+    /// \copydoc field_view(char)
+    explicit field_view(char32_t) = delete;
+
+#ifdef __cpp_char8_t
+    /// \copydoc field_view(char)
+    explicit field_view(char8_t) = delete;
+#endif
+
+    /**
      * \brief (EXPERIMENTAL) Constructs a `field_view` holding a string.
      * \par Exception safety
      * No-throw guarantee.

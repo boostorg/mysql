@@ -1,0 +1,21 @@
+[/
+    Copyright (c) 2019-2023 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:boost__mysql__Formattable Formattable concept]
+
+A type `T` is `Formattable` if it can be passed as a format argument to SQL formatting
+functions, like [reflink format_sql] or [refmem format_context_base append_value].
+
+Formally, a type `T` satisfies `Formattable` if any of the following are true:
+
+* It satisfies [reflink2 WritableFieldTuple WritableField]. This includes scalar types and optionals.
+* It is [reflink identifier].
+* The class [reflink formatter] has been specialized for `T`.
+
+For a reference table on built-in formattable types, see [link mysql.sql_formatting.reference this section].
+
+[endsect]

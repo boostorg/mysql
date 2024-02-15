@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 3.5...3.22)
 
 project(boost_mysql_example LANGUAGES CXX)
 
-find_package(Boost REQUIRED COMPONENTS headers)
+find_package(Boost REQUIRED COMPONENTS headers charconv)
 find_package(Threads REQUIRED)
 find_package(OpenSSL REQUIRED)
 
@@ -22,7 +22,7 @@ add_executable(
     # List any other .cpp your exe has here
     main.cpp
 )
-target_link_libraries(main PRIVATE Boost::headers Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
+target_link_libraries(main PRIVATE Boost::charconv Threads::Threads OpenSSL::Crypto OpenSSL::SSL)
 
 # We need to define BOOST_MYSQL_SEPARATE_COMPILATION in any code using Boost.MySQL in separate-build mode
 target_compile_definitions(main PRIVATE BOOST_MYSQL_SEPARATE_COMPILATION)

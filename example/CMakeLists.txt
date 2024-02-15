@@ -31,6 +31,18 @@ function(add_example_target EXAMPLE_NAME EXAMPLE_PATH)
     boost_mysql_common_target_settings(${EXAMPLE_NAME})
 endfunction()
 
+# Run an example through a Python runner
+function(run_python_example EXAMPLE_TARGET RUNNER_NAME)
+    add_test(
+        NAME ${EXAMPLE_TARGET}
+        COMMAND
+        python
+        ${CMAKE_CURRENT_SOURCE_DIR}/private/${RUNNER_NAME}
+        $<TARGET_FILE:${EXAMPLE_TARGET}>
+        ${SERVER_HOST}
+    )
+endfunction()
+
 # Build and run an example
 function(add_example EXAMPLE_NAME EXAMPLE_PATH)
     add_example_target(${EXAMPLE_NAME} ${EXAMPLE_PATH})
@@ -62,14 +74,7 @@ endfunction()
 # The order management examples must be run several times through a Python script
 function(add_example_order_management EXAMPLE_NAME EXAMPLE_PATH)
     add_example_target(${EXAMPLE_NAME} ${EXAMPLE_PATH})
-    add_test(
-        NAME ${EXAMPLE_NAME}
-        COMMAND
-        python
-        ${CMAKE_CURRENT_SOURCE_DIR}/private/run_stored_procedures.py
-        $<TARGET_FILE:${EXAMPLE_NAME}>
-        ${SERVER_HOST}
-    )
+    run_python_example(${EXAMPLE_NAME} run_stored_procedures.py)
 endfunction()
 
 # Regular examples are the ones that require no extra linking libs and can be run
@@ -108,10 +113,11 @@ foreach(FILE_NAME ${ORDER_EXAMPLES})
     )
 endforeach()
 
-# Rest of the examples
+# Coroutine examples
 add_example_coroutines(async_coroutines)
 add_example_coroutines(any_connection)
 
+# UNIX sockets
 if("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
     add_example(
         boost_mysql_example_unix_socket
@@ -120,11 +126,31 @@ if("$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
     )
 endif()
 
+# Source script
 add_example(
     boost_mysql_example_source_script
     source_script.cpp
     example_user example_password ${SERVER_HOST} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql
 )
+
+# Patch updates
+add_example_target(boost_mysql_example_patch_updates patch_updates.cpp)
+run_python_example(boost_mysql_example_patch_updates run_patch_updates.py)
+
+# Dynamic filters
+add_example_target(boost_mysql_example_dynamic_filters dynamic_filters.cpp)
+target_link_libraries(boost_mysql_example_dynamic_filters PRIVATE Boost::context)
+run_python_example(boost_mysql_example_dynamic_filters run_dynamic_filters.py)
+
+# Batch inserts
+add_example_target(boost_mysql_example_batch_inserts batch_inserts.cpp)
+target_link_libraries(boost_mysql_example_batch_inserts PRIVATE Boost::json)
+run_python_example(boost_mysql_example_batch_inserts run_batch_inserts.py)
+
+# Batch inserts, generic version
+add_example_target(boost_mysql_example_batch_inserts_generic batch_inserts_generic.cpp)
+target_link_libraries(boost_mysql_example_batch_inserts_generic PRIVATE Boost::json)
+run_python_example(boost_mysql_example_batch_inserts_generic run_batch_inserts.py)
 
 # HTTP server
 add_executable(
@@ -143,11 +169,4 @@ target_link_libraries(
     Boost::url
 )
 boost_mysql_common_target_settings(boost_mysql_example_connection_pool)
-add_test(
-    NAME boost_mysql_example_connection_pool
-    COMMAND
-    python
-    ${CMAKE_CURRENT_SOURCE_DIR}/private/run_connection_pool.py
-    $<TARGET_FILE:boost_mysql_example_connection_pool>
-    ${SERVER_HOST}
-)
+run_python_example(boost_mysql_example_connection_pool run_connection_pool.py)

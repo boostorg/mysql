@@ -59,6 +59,7 @@ add_executable(
     test/detail/writable_field_traits.cpp
     test/detail/socket_stream.cpp
     test/detail/connect_params_helpers.cpp
+    test/detail/output_string.cpp
 
     test/detail/typing/meta_check_context.cpp
     test/detail/typing/pos_map.cpp
@@ -66,6 +67,7 @@ add_executable(
     test/detail/typing/row_traits.cpp
     test/detail/typing/get_type_index.cpp
 
+    test/impl/dt_to_string.cpp
     test/impl/ssl_context_with_default.cpp
 
     test/spotchecks/connection_use_after_move.cpp
@@ -73,6 +75,12 @@ add_executable(
     test/spotchecks/read_some_rows_static.cpp
     test/spotchecks/multifn.cpp
     test/spotchecks/misc.cpp
+
+    test/format_sql/formattable.cpp
+    test/format_sql/basic_format_context.cpp
+    test/format_sql/individual_value.cpp
+    test/format_sql/format_strings.cpp
+    test/format_sql/api.cpp
 
     test/execution_state.cpp
     test/static_execution_state.cpp
@@ -103,6 +111,7 @@ add_executable(
     test/connection_pool.cpp
     test/character_set.cpp
     test/escape_string.cpp
+    test/constant_string_view.cpp
 )
 target_include_directories(
     boost_mysql_unittests
@@ -114,6 +123,14 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
+if (NOT BOOST_MYSQL_IS_ROOT)
+    # Target only available when building from the superproject
+    target_link_libraries(
+        boost_mysql_unittests
+        PRIVATE
+        Boost::static_string
+    )
+endif()
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
         boost_mysql_unittests

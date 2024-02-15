@@ -21,6 +21,7 @@
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/days.hpp>
@@ -34,6 +35,7 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/mariadb_collations.hpp>
 #include <boost/mysql/mariadb_server_errc.hpp>

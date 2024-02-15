@@ -1499,8 +1499,7 @@ public:
      * \n
      * You can find the character set that your server will use after reset by running:
      * \code
-     * SELECT @@global.character_set_client, @@global.character_set_connection,
-     * @@global.character_set_results;
+     * "SELECT @@global.character_set_client, @@global.character_set_results;"
      * \endcode
      */
     void reset_connection(error_code& err, diagnostics& diag)
