@@ -51,6 +51,11 @@ target_link_libraries(
     Boost::mysql
     Boost::context
 )
+target_compile_definitions(
+    boost_mysql_integrationtests
+    PRIVATE
+    BOOST_ALLOW_DEPRECATED # Integration tests still exercise the old execution interface
+)
 boost_mysql_common_target_settings(boost_mysql_integrationtests)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(

@@ -123,6 +123,11 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
+target_compile_definitions(
+    boost_mysql_unittests
+    PRIVATE
+    BOOST_ALLOW_DEPRECATED # Unit tests still exercise the old execution interface
+)
 if (NOT BOOST_MYSQL_IS_ROOT)
     # Target only available when building from the superproject
     target_link_libraries(

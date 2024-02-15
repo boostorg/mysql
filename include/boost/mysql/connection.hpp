@@ -548,7 +548,7 @@ public:
     }
 
     /**
-     * \brief (Deprecated) Executes a SQL text query.
+     * \brief (Deprecated - will be removed in Boost 1.86) Executes a SQL text query.
      * \details
      * Sends `query_string` to the server for execution and reads the response into `result`.
      * query_string should be encoded using the connection's character set.
@@ -562,16 +562,18 @@ public:
      * vulnerable to SQL injection attacks</b>. If your query contains patameters unknown at
      * compile time, use prepared statements instead of this function.
      *
-     * \par Deprecation notice
-     * This function is only provided for backwards-compatibility. For new code, please
+     * \par Deprecation warning
+     * This function is deprecated and will be removed in Boost 1.86. Please
      * use \ref execute or \ref async_execute instead.
      */
+    BOOST_DEPRECATED("query is deprecated and will be removed in Boost 1.86. Use execute, instead")
     void query(string_view query_string, results& result, error_code& err, diagnostics& diag)
     {
         execute(query_string, result, err, diag);
     }
 
     /// \copydoc query
+    BOOST_DEPRECATED("query is deprecated and will be removed in Boost 1.86. Use execute, instead")
     void query(string_view query_string, results& result) { execute(query_string, result); }
 
     /**
@@ -587,8 +589,9 @@ public:
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_query(
+    BOOST_DEPRECATED("async_query is deprecated and will be removed in Boost 1.86. Use async_execute, instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_query(
         string_view query_string,
         results& result,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
@@ -600,8 +603,9 @@ public:
     /// \copydoc async_query
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_query(
+    BOOST_DEPRECATED("async_query is deprecated and will be removed in Boost 1.86. Use async_execute, instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_query(
         string_view query_string,
         results& result,
         diagnostics& diag,
@@ -612,7 +616,7 @@ public:
     }
 
     /**
-     * \brief (Deprecated) Starts a text query as a multi-function operation.
+     * \brief (Deprecated - will be removed in Boost 1.86) Starts a text query as a multi-function operation.
      * \details
      * Writes the query request and reads the initial server response and the column
      * metadata, but not the generated rows or subsequent resultsets, if any.
@@ -626,16 +630,22 @@ public:
      * \n
      * `query_string` should be encoded using the connection's character set.
      *
-     * \par Deprecation notice
-     * This function is only provided for backwards-compatibility. For new code, please
-     * use \ref start_execution or \ref async_start_execution instead.
+     * \par Deprecation warning
+     * This function is deprecated and will be removed in Boost 1.86. Please
+     * use \ref execute or \ref async_execute instead.
      */
+    BOOST_DEPRECATED(
+        "start_query is deprecated and will be removed in Boost 1.86. Use start_execution, instead"
+    )
     void start_query(string_view query_string, execution_state& st, error_code& err, diagnostics& diag)
     {
         start_execution(query_string, st, err, diag);
     }
 
     /// \copydoc start_query
+    BOOST_DEPRECATED(
+        "start_query is deprecated and will be removed in Boost 1.86. Use start_execution, instead"
+    )
     void start_query(string_view query_string, execution_state& st) { start_execution(query_string, st); }
 
     /**
@@ -651,8 +661,11 @@ public:
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_start_query(
+    BOOST_DEPRECATED(
+        "async_start_query is deprecated and will be removed in Boost 1.86. Use async_start_execution, "
+        "instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_query(
         string_view query_string,
         execution_state& st,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
@@ -664,8 +677,11 @@ public:
     /// \copydoc async_start_query
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_start_query(
+    BOOST_DEPRECATED(
+        "async_start_query is deprecated and will be removed in Boost 1.86. Use async_start_execution, "
+        "instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_query(
         string_view query_string,
         execution_state& st,
         diagnostics& diag,
@@ -734,7 +750,7 @@ public:
     }
 
     /**
-     * \brief (Deprecated) Executes a prepared statement.
+     * \brief (Deprecated - will be removed in Boost 1.86) Executes a prepared statement.
      * \details
      * Executes a statement with the given parameters and reads the response into `result`.
      * \n
@@ -748,8 +764,8 @@ public:
      * Metadata in `result` will be populated according to `conn.meta_mode()`, where `conn`
      * is the connection that prepared this statement.
      *
-     * \par Deprecation notice
-     * This function is only provided for backwards-compatibility. For new code, please
+     * \par Deprecation warning
+     * This function is deprecated and will be removed in Boost 1.86. Please
      * use \ref execute or \ref async_execute instead.
      *
      * \par Preconditions
@@ -759,6 +775,8 @@ public:
         BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
         class EnableIf =
             typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+    BOOST_DEPRECATED("execute_statement is deprecated and will be removed in Boost 1.86. Use execute, instead"
+    )
     void execute_statement(
         const statement& stmt,
         const WritableFieldTuple& params,
@@ -775,6 +793,8 @@ public:
         BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
         class EnableIf =
             typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+    BOOST_DEPRECATED("execute_statement is deprecated and will be removed in Boost 1.86. Use execute, instead"
+    )
     void execute_statement(const statement& stmt, const WritableFieldTuple& params, results& result)
     {
         execute(stmt.bind(params), result);
@@ -797,8 +817,10 @@ public:
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
         class EnableIf =
             typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_execute_statement(
+    BOOST_DEPRECATED(
+        "async_execute_statement is deprecated and will be removed in Boost 1.86. Use async_execute, instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_execute_statement(
         const statement& stmt,
         WritableFieldTuple&& params,
         results& result,
@@ -821,8 +843,10 @@ public:
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
         class EnableIf =
             typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_execute_statement(
+    BOOST_DEPRECATED(
+        "async_execute_statement is deprecated and will be removed in Boost 1.86. Use async_execute, instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_execute_statement(
         const statement& stmt,
         WritableFieldTuple&& params,
         results& result,
@@ -839,7 +863,8 @@ public:
     }
 
     /**
-     * \brief (Deprecated) Starts a statement execution as a multi-function operation.
+     * \brief (Deprecated - will be removed in Boost 1.86) Starts a statement execution
+     *        as a multi-function operation.
      * \details
      * Writes the execute request and reads the initial server response and the column
      * metadata, but not the generated rows or subsequent resultsets, if any. After this operation completes,
@@ -853,9 +878,9 @@ public:
      * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
      * String parameters should be encoded using the connection's character set.
      *
-     * \par Deprecation notice
-     * This function is only provided for backwards-compatibility. For new code, please
-     * use \ref start_execution or \ref async_start_execution instead.
+     * \par Deprecation warning
+     * This function is deprecated and will be removed in Boost 1.86. Please
+     * use \ref execute or \ref async_execute instead.
      *
      * \par Preconditions
      *    `stmt.valid() == true`
@@ -864,6 +889,10 @@ public:
         BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
         class EnableIf =
             typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+    BOOST_DEPRECATED(
+        "start_statement_execution is deprecated and will be removed in Boost 1.86. Use start_execution, "
+        "instead"
+    )
     void start_statement_execution(
         const statement& stmt,
         const WritableFieldTuple& params,
@@ -880,6 +909,10 @@ public:
         BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
         class EnableIf =
             typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+    BOOST_DEPRECATED(
+        "start_statement_execution is deprecated and will be removed in Boost 1.86. Use start_execution, "
+        "instead"
+    )
     void start_statement_execution(
         const statement& stmt,
         const WritableFieldTuple& params,
@@ -907,8 +940,11 @@ public:
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
         class EnableIf =
             typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_start_statement_execution(
+    BOOST_DEPRECATED(
+        "async_start_statement_execution is deprecated and will be removed in Boost 1.86. Use "
+        "async_start_execution, instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_statement_execution(
         const statement& stmt,
         WritableFieldTuple&& params,
         execution_state& st,
@@ -931,8 +967,11 @@ public:
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
         class EnableIf =
             typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_start_statement_execution(
+    BOOST_DEPRECATED(
+        "async_start_statement_execution is deprecated and will be removed in Boost 1.86. Use "
+        "async_start_execution, instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_statement_execution(
         const statement& stmt,
         WritableFieldTuple&& params,
         execution_state& st,
@@ -949,7 +988,9 @@ public:
     }
 
     /**
-     * \brief (Deprecated) Starts a statement execution as a multi-function operation.
+     * \brief (Deprecated - will be removed in Boost 1.86) Starts a statement execution as a multi-function
+     *        operation.
+     *
      * \details
      * Writes the execute request and reads the initial server response and the column
      * metadata, but not the generated rows or any subsequent resultsets, if any. After this operation
@@ -962,14 +1003,18 @@ public:
      * The statement actual parameters are passed as an iterator range.
      * String parameters should be encoded using the connection's character set.
      *
-     * \par Deprecation notice
-     * This function is only provided for backwards-compatibility. For new code, please
-     * use \ref start_execution or \ref async_start_execution instead.
+     * \par Deprecation warning
+     * This function is deprecated and will be removed in Boost 1.86. Please
+     * use \ref execute or \ref async_execute instead.
      *
      * \par Preconditions
      *    `stmt.valid() == true`
      */
     template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+    BOOST_DEPRECATED(
+        "start_statement_execution is deprecated and will be removed in Boost 1.86. Use start_execution, "
+        "instead"
+    )
     void start_statement_execution(
         const statement& stmt,
         FieldViewFwdIterator params_first,
@@ -984,6 +1029,10 @@ public:
 
     /// \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,diagnostics&)
     template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+    BOOST_DEPRECATED(
+        "start_statement_execution is deprecated and will be removed in Boost 1.86. Use start_execution, "
+        "instead"
+    )
     void start_statement_execution(
         const statement& stmt,
         FieldViewFwdIterator params_first,
@@ -1008,8 +1057,11 @@ public:
         BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_start_statement_execution(
+    BOOST_DEPRECATED(
+        "async_start_statement_execution is deprecated and will be removed in Boost 1.86. Use "
+        "async_start_execution, instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_statement_execution(
         const statement& stmt,
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last,
@@ -1032,8 +1084,11 @@ public:
         BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_start_statement_execution(
+    BOOST_DEPRECATED(
+        "async_start_statement_execution is deprecated and will be removed in Boost 1.86. Use "
+        "async_start_execution, instead"
+    )
+    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_statement_execution(
         const statement& stmt,
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last,

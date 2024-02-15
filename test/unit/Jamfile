@@ -9,6 +9,8 @@ cpp-pch pch
     :
         pch.hpp
         /boost/mysql/test//boost_mysql_test
+    : requirements 
+        <define>BOOST_ALLOW_DEPRECATED # Unit tests still exercise the old execution interface
     ;
 
 run
@@ -124,5 +126,6 @@ run
     : requirements
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
         <include>include
+        <define>BOOST_ALLOW_DEPRECATED # Unit tests still exercise the old execution interface
     : target-name boost_mysql_unittests
     ;
