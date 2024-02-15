@@ -179,7 +179,7 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
 
     // Microseconds
     *it++ = '.';
-    it = write_pad6(it, end, num_micros);
+    it = write_pad6(it, end, static_cast<unsigned long>(num_micros));
 
     // Done
     return it - output.data();
