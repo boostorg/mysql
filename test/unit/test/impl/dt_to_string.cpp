@@ -11,9 +11,7 @@
 #include <boost/mysql/impl/internal/dt_to_string.hpp>
 
 #include <boost/core/span.hpp>
-#include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <cstddef>
 #include <cstdint>

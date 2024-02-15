@@ -84,13 +84,10 @@ public:
 
 private:
 #ifndef BOOST_MYSQL_DOXYGEN
-    struct impl_t
+    struct
     {
         bool is_server{};
         std::string msg;
-
-        impl_t() = default;
-        impl_t(bool is_server, std::string m) noexcept : is_server(is_server), msg(std::move(m)) {}
 
         void assign_client(std::string from)
         {
@@ -104,8 +101,6 @@ private:
             is_server = true;
         }
     } impl_;
-
-    diagnostics(bool is_server, std::string msg) noexcept : impl_(is_server, std::move(msg)) {}
 
     friend bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept;
     friend struct detail::access;
