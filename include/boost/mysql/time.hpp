@@ -9,14 +9,12 @@
 #define BOOST_MYSQL_TIME_HPP
 
 #include <chrono>
-#include <cstdint>
-#include <ratio>
 
 namespace boost {
 namespace mysql {
 
 /// Type representing MySQL `TIME` data type.
-using time = std::chrono::duration<std::int64_t, std::micro>;
+using time = std::chrono::microseconds;
 
 /// The minimum allowed value for \ref time.
 constexpr time min_time = -std::chrono::hours(839);

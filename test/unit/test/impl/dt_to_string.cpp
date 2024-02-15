@@ -363,14 +363,14 @@ static std::string invoke_to_string(::boost::mysql::time t)
 BOOST_AUTO_TEST_CASE(time_minmax)
 {
     // Double-check C++ min/max work (regression check)
-    BOOST_TEST(invoke_to_string(::boost::mysql::time::min()) == "-2562047788:00:54.775808");
+    BOOST_TEST(invoke_to_string((::boost::mysql::time::min)()) == "-2562047788:00:54.775808");
     BOOST_TEST(
-        invoke_to_string(::boost::mysql::time::min() + std::chrono::microseconds(1)) ==
+        invoke_to_string((::boost::mysql::time::min)() + std::chrono::microseconds(1)) ==
         "-2562047788:00:54.775807"
     );
-    BOOST_TEST(invoke_to_string(::boost::mysql::time::max()) == "2562047788:00:54.775807");
+    BOOST_TEST(invoke_to_string((::boost::mysql::time::max)()) == "2562047788:00:54.775807");
     BOOST_TEST(
-        invoke_to_string(::boost::mysql::time::max() - std::chrono::microseconds(1)) ==
+        invoke_to_string((::boost::mysql::time::max)() - std::chrono::microseconds(1)) ==
         "2562047788:00:54.775806"
     );
 }

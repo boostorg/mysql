@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <system_error>
+#include <type_traits>
 
 // gcc-11+ issues spurious warnings about to_chars
 #if BOOST_GCC >= 70000
@@ -30,21 +31,24 @@ namespace mysql {
 namespace detail {
 
 // Helpers
-inline char* call_to_chars(char* begin, char* end, std::uint64_t value) noexcept
+template <class IntType>
+inline char* call_to_chars(char* begin, char* end, IntType value) noexcept
 {
     auto r = charconv::to_chars(begin, end, value);
     BOOST_ASSERT(r.ec == std::errc());
     return r.ptr;
 }
 
-inline char* write_pad2(char* begin, char* end, std::uint64_t value) noexcept
+template <class UnsignedInt>
+inline char* write_pad2(char* begin, char* end, UnsignedInt value) noexcept
 {
+    static_assert(std::is_unsigned<UnsignedInt>::value, "");
     if (value < 10u)
         *begin++ = '0';
     return call_to_chars(begin, end, value);
 }
 
-inline char* write_pad4(char* begin, char* end, std::uint64_t value) noexcept
+inline char* write_pad4(char* begin, char* end, unsigned long value) noexcept
 {
     for (auto l : {1000u, 100u, 10u})
     {
@@ -54,7 +58,7 @@ inline char* write_pad4(char* begin, char* end, std::uint64_t value) noexcept
     return call_to_chars(begin, end, value);
 }
 
-inline char* write_pad6(char* begin, char* end, std::uint64_t value) noexcept
+inline char* write_pad6(char* begin, char* end, unsigned long value) noexcept
 {
     for (auto l : {100000u, 10000u, 1000u, 100u, 10u})
     {
@@ -82,11 +86,11 @@ inline std::size_t date_to_string(
 
     // Month
     *it++ = '-';
-    it = write_pad2(it, end, month);
+    it = write_pad2(it, end, static_cast<unsigned long>(month));
 
     // Day
     *it++ = '-';
-    it = write_pad2(it, end, day);
+    it = write_pad2(it, end, static_cast<unsigned long>(day));
 
     // Done
     return it - output.data();
@@ -114,15 +118,15 @@ inline std::size_t datetime_to_string(
 
     // Hour
     *it++ = ' ';
-    it = write_pad2(it, end, hour);
+    it = write_pad2(it, end, static_cast<unsigned long>(hour));
 
     // Minutes
     *it++ = ':';
-    it = write_pad2(it, end, minute);
+    it = write_pad2(it, end, static_cast<unsigned long>(minute));
 
     // Seconds
     *it++ = ':';
-    it = write_pad2(it, end, second);
+    it = write_pad2(it, end, static_cast<unsigned long>(second));
 
     // Microseconds
     *it++ = '.';
@@ -136,11 +140,12 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
 {
     // Worst-case output is 34 chars, extra space just in case
 
-    // Values. Note that std::abs(mysql_time::min()) invokes UB because of
+    // Values. Note that std::abs(time::min()) invokes UB because of
     // signed integer overflow
     constexpr auto min_val = (::boost::mysql::time::min)();
-    auto total_count = value == min_val ? static_cast<std::uint64_t>(min_val.count())
-                                        : static_cast<std::uint64_t>(std::abs(value.count()));
+    using unsigned_t = typename std::make_unsigned<typename ::boost::mysql::time::rep>::type;
+    auto total_count = value == min_val ? static_cast<unsigned_t>(min_val.count())
+                                        : static_cast<unsigned_t>(std::abs(value.count()));
 
     auto num_micros = total_count % 1000000u;
     total_count /= 1000000u;
@@ -162,15 +167,15 @@ inline std::size_t time_to_string(::boost::mysql::time value, span<char, 64> out
         *it++ = '-';
 
     // Hours
-    it = write_pad2(it, end, num_hours);
+    it = write_pad2(it, end, num_hours);  // type is unspecified
 
     // Minutes
     *it++ = ':';
-    it = write_pad2(it, end, num_mins);
+    it = write_pad2(it, end, static_cast<unsigned long>(num_mins));
 
     // Seconds
     *it++ = ':';
-    it = write_pad2(it, end, num_secs);
+    it = write_pad2(it, end, static_cast<unsigned long>(num_secs));
 
     // Microseconds
     *it++ = '.';
