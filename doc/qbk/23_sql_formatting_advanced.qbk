@@ -44,8 +44,8 @@ Indices can appear in any order, and can be repeated:
 
 [sql_formatting_manual_indices]
 
-Finally, you can assign your arguments a name by calling [reflink arg], and reference
-them using that name:
+Finally, you can use named args by using the initializer-list overloads,
+which creates [reflink format_arg] values:
 
 [sql_formatting_named_args]
 

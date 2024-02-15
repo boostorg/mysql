@@ -30,6 +30,16 @@
 namespace boost {
 namespace mysql {
 
+/**
+ * \brief (EXPERIMENTAL) A named format argument, to be used in initializer lists.
+ * \details
+ * Represents a name, value pair to be passed to a formatting function.
+ * This type should only be used in initializer lists, as a function argument.
+ *
+ * \par Object lifetimes
+ * This is a non-owning type. Both the argument name and value are stored
+ * as views.
+ */
 class format_arg
 {
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -43,8 +53,20 @@ class format_arg
 #endif
 
 public:
+    /**
+     * \brief Constructor.
+     * \details
+     * Constructs an argument from a name and a value.
+     * value must satisfy the `Formattable` concept.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Both `name` and `value` are stored as views.
+     */
     template <BOOST_MYSQL_FORMATTABLE Formattable>
-    format_arg(string_view name, const Formattable& value) noexcept
+    constexpr format_arg(string_view name, const Formattable& value) noexcept
         : impl_{name, detail::make_format_value(value)}
     {
     }
@@ -411,6 +433,12 @@ struct formatter<identifier>
     static void format(const identifier& value, format_context_base& ctx);
 };
 
+/**
+ * \copydoc format_sql_to
+ * \details
+ * \n
+ * This overload allows using named arguments.
+ */
 inline void format_sql_to(
     format_context_base& ctx,
     constant_string_view format_str,
@@ -465,6 +493,12 @@ void format_sql_to(format_context_base& ctx, constant_string_view format_str, co
     format_sql_to(ctx, format_str, args_il);
 }
 
+/**
+ * \copydoc format_sql
+ * \details
+ * \n
+ * This overload allows using named arguments.
+ */
 inline std::string format_sql(
     const format_options& opts,
     constant_string_view format_str,

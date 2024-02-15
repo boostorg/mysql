@@ -16,7 +16,6 @@
 
 #include <boost/system/result.hpp>
 
-#include <cstddef>
 #include <string>
 #include <type_traits>
 #ifdef BOOST_MYSQL_HAS_CONCEPTS

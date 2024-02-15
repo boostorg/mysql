@@ -35,6 +35,7 @@
           <member><link linkend="mysql.ref.boost__mysql__execution_state">execution_state</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field">field</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field_view">field_view</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__format_arg">format_arg</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_context_base">format_context_base</link></member>
           <member><link linkend="mysql.ref.boost__mysql__formatter">formatter</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_options">format_options</link></member>
@@ -86,7 +87,6 @@
         </simplelist>
         <bridgehead renderas="sect3">Functions</bridgehead>
         <simplelist type="vert" columns="1">
-          <member><link linkend="mysql.ref.boost__mysql__arg">arg</link></member>
           <member><link linkend="mysql.ref.boost__mysql__escape_string">escape_string</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_sql">format_sql</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_sql_to">format_sql_to</link></member>
