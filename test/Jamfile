@@ -15,6 +15,9 @@ project /boost/mysql/test ;
 # Support header-only builds
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
 
+# Support builds with BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
+feature.feature boost.mysql.use-ts-executor : on off : propagated composite ;
+
 # System libraries
 if [ os.name ] = NT
 {
@@ -99,6 +102,7 @@ local requirements =
         <target-os>windows:<define>_WIN32_WINNT=0x0601
         <define>BOOST_ASIO_SEPARATE_COMPILATION
         <include>../include
+        <boost.mysql.use-ts-executor>on:<define>BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
     ;
 
 alias boost_mysql

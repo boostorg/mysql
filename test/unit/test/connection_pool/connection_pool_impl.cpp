@@ -21,17 +21,10 @@
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/append.hpp>
-#include <boost/asio/associated_cancellation_slot.hpp>
-#include <boost/asio/associated_executor.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/bind_executor.hpp>
-#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
-#include <boost/asio/detached.hpp>
-#include <boost/asio/error.hpp>
-#include <boost/asio/execution_context.hpp>
 #include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
@@ -41,14 +34,18 @@
 
 #include <chrono>
 #include <cstddef>
-#include <list>
 #include <memory>
 #include <utility>
 
+#include "mock_timer.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/pool_printing.hpp"
+
+// These tests rely on channels, which are not compatible with this
+// See https://github.com/chriskohlhoff/asio/issues/1398
+#ifndef BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
@@ -71,191 +68,6 @@ using std::chrono::steady_clock;
  */
 
 BOOST_AUTO_TEST_SUITE(test_connection_pool_impl)
-
-/**
- * Used by mock timers. Like asio::detail::deadline_timer_service, but for mock timers.
- * Mock timers don't rely on the actual clock, but on a time_point hold by this class.
- * Call mock_timer_service::advance_time_xx to adjust the current time. This will
- * call timer handlers as if time had advanced. Note that we don't have a way to mock
- * steady_clock::now(). Our code under test must make sure not to call it.
- */
-class mock_timer_service : public asio::execution_context::service
-{
-public:
-    // Required by all Boost.Asio services
-    void shutdown() final {}
-    static const asio::execution_context::id id;
-    mock_timer_service(asio::execution_context& owner) : asio::execution_context::service(owner) {}
-
-    // A pending timer
-    struct pending_timer
-    {
-        // When does the timer expire?
-        steady_clock::time_point expiry;
-
-        // The executor to use
-        asio::any_io_executor ex;
-
-        // What handler should we call?
-        asio::any_completion_handler<void(error_code)> handler;
-
-        // Uniquely identifies the timer, so we can implement cancellation
-        int timer_id;
-    };
-
-    // Used by timer's wait initiation
-    void add_timer(pending_timer&& t)
-    {
-        if (t.expiry <= current_time_)
-        {
-            // If the timer's expiry is in the past, directly call the handler
-            post_handler(std::move(t), error_code());
-        }
-        else
-        {
-            // Add the timer op into the queue
-            pending_.push_front(std::move(t));
-
-            // Enable cancellation
-            auto slot = asio::get_associated_cancellation_slot(pending_.front().handler);
-            if (slot.is_connected())
-            {
-                slot.emplace<cancel_handler>(cancel_handler{this, pending_.begin()});
-            }
-        }
-    }
-
-    // Cancel all ops for the given timer_id
-    std::size_t cancel(int timer_id)
-    {
-        std::size_t num_cancels = 0;
-        for (auto it = pending_.begin(); it != pending_.end();)
-        {
-            if (it->timer_id == timer_id)
-            {
-                ++num_cancels;
-                it = erase_and_post_handler(it, asio::error::operation_aborted);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-        return num_cancels;
-    }
-
-    // Set the new current time, calling handlers in the process
-    void advance_time_to(steady_clock::time_point new_time)
-    {
-        for (auto it = pending_.begin(); it != pending_.end();)
-        {
-            if (it->expiry <= new_time)
-                it = erase_and_post_handler(it, error_code());
-            else
-                ++it;
-        }
-        current_time_ = new_time;
-    }
-
-    // Same, but with a duration
-    void advance_time_by(steady_clock::duration by) { advance_time_to(current_time_ + by); }
-
-    // Used by timers, to retrieve their timer id
-    int allocate_timer_id() { return ++current_timer_id_; }
-
-    steady_clock::time_point current_time() const noexcept { return current_time_; }
-
-private:
-    std::list<pending_timer> pending_;
-    steady_clock::time_point current_time_;
-    int current_timer_id_{0};
-
-    struct cancel_handler
-    {
-        mock_timer_service* svc;
-        std::list<pending_timer>::iterator it;
-
-        void operator()(asio::cancellation_type_t)
-        {
-            svc->erase_and_post_handler(it, asio::error::operation_aborted);
-        }
-    };
-
-    // Schedule the handler to be called
-    void post_handler(pending_timer&& t, error_code ec)
-    {
-        asio::get_associated_cancellation_slot(t.handler).clear();
-        asio::post(std::move(t.ex), asio::append(std::move(t.handler), ec));
-    }
-
-    // Same, but also removes the op from the list
-    std::list<pending_timer>::iterator erase_and_post_handler(
-        std::list<pending_timer>::iterator it,
-        error_code ec
-    )
-    {
-        auto t = std::move(*it);
-        auto res = pending_.erase(it);
-        post_handler(std::move(t), ec);
-        return res;
-    }
-};
-
-const asio::execution_context::id mock_timer_service::id;
-
-// A mock for asio::steady_timer
-class mock_timer
-{
-    mock_timer_service* svc_;
-    int timer_id_;
-    asio::any_io_executor ex_;
-    steady_clock::time_point expiry_;
-
-    struct initiate_wait
-    {
-        template <class Handler>
-        void operator()(Handler&& h, mock_timer* self)
-        {
-            // If the handler had an executor, use this. Otherwise, use the timer's
-            auto ex = asio::get_associated_executor(h, self->ex_);
-            self->svc_->add_timer({self->expiry_, ex, std::forward<Handler>(h), self->timer_id_});
-        }
-    };
-
-public:
-    mock_timer(asio::any_io_executor ex)
-        : svc_(&asio::use_service<mock_timer_service>(ex.context())),
-          timer_id_(svc_->allocate_timer_id()),
-          ex_(std::move(ex)),
-          expiry_(svc_->current_time())
-    {
-    }
-
-    asio::any_io_executor get_executor() { return ex_; }
-
-    std::size_t expires_at(steady_clock::time_point new_expiry)
-    {
-        // cancel anything in flight, then set expiry
-        std::size_t res = svc_->cancel(timer_id_);
-        expiry_ = new_expiry;
-        return res;
-    }
-
-    std::size_t expires_after(steady_clock::duration dur) { return expires_at(svc_->current_time() + dur); }
-
-    std::size_t cancel() { return svc_->cancel(timer_id_); }
-
-    template <class CompletionToken>
-    auto async_wait(CompletionToken&& token)
-        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_wait(),
-            token,
-            std::declval<mock_timer*>()
-        ))
-    {
-        return asio::async_initiate<CompletionToken, void(error_code)>(initiate_wait(), token, this);
-    }
-};
 
 enum fn_type
 {
@@ -535,6 +347,12 @@ protected:
     bool& finished_;
     bool initial_{true};
 
+    void return_connection(mock_node& node, bool should_reset)
+    {
+        node.mark_as_collectable(should_reset);
+        node.notify_collectable();
+    }
+
     void poll() { static_cast<asio::io_context&>(pool_.get_executor().context()).poll(); }
 
     std::size_t num_pending_requests() const noexcept { return pool_.shared_state().pending_requests.size(); }
@@ -623,7 +441,7 @@ public:
         derived_this().invoke();
         if (derived_this().is_complete())
         {
-            pool_.cancel();
+            pool_.cancel_unsafe();
             finished_ = true;
         }
     }
@@ -768,7 +586,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
                 check_shared_st(error_code(), diagnostics(), 0, 0);
 
                 // Simulate a user returning the connection (without reset)
-                node.mark_as_collectable(false);
+                return_connection(node, false);
 
                 // The connection goes back to idle without invoking resets
                 wait_for_status(node, connection_status::idle);
@@ -798,7 +616,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
                 node.mark_as_in_use();
 
                 // Simulate a user returning the connection (with reset)
-                node.mark_as_collectable(true);
+                return_connection(node, true);
 
                 // A reset is issued
                 wait_for_status(node, connection_status::reset_in_progress);
@@ -831,7 +649,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
                 BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 wait_for_status(node, connection_status::idle);
                 node.mark_as_in_use();
-                node.mark_as_collectable(true);
+                return_connection(node, true);
                 wait_for_status(node, connection_status::reset_in_progress);
 
                 // Reset fails. This triggers a reconnection. Diagnostics are not saved
@@ -867,7 +685,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
                 BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 wait_for_status(node, connection_status::idle);
                 node.mark_as_in_use();
-                node.mark_as_collectable(true);
+                return_connection(node, true);
                 wait_for_status(node, connection_status::reset_in_progress);
 
                 // Reset times out. This triggers a reconnection
@@ -905,7 +723,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
                 BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
                 wait_for_status(node, connection_status::idle);
                 node.mark_as_in_use();
-                node.mark_as_collectable(true);
+                return_connection(node, true);
                 wait_for_status(node, connection_status::reset_in_progress);
 
                 // Reset doesn't time out, regardless of how much time we wait
@@ -1334,7 +1152,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
                 BOOST_TEST(pool_.nodes().size() == 2u);
 
                 // When one of the connections is returned, the request is fulfilled
-                node2->mark_as_collectable(false);
+                return_connection(*node2, false);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node2);
                 BOOST_TEST(num_pending_requests() == 0u);
                 BOOST_TEST(pool_.nodes().size() == 2u);
@@ -1382,12 +1200,12 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
                 BOOST_ASIO_CORO_YIELD wait_for_task(task4, client_errc::timeout);
 
                 // A connection is returned. The first task to enter is served
-                node1->mark_as_collectable(true);
+                return_connection(*node1, true);
                 BOOST_ASIO_CORO_YIELD step(*node1, fn_type::reset);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node1);
 
                 // The next connection to be returned is for task5
-                node2->mark_as_collectable(false);
+                return_connection(*node2, false);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task5, *node2);
 
                 // Done
@@ -1422,7 +1240,7 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
                 wait_for_num_requests(2);
 
                 // While in flight, cancel the pool
-                pool_.cancel();
+                pool_.cancel_unsafe();
 
                 // All tasks fail with a cancelled code
                 BOOST_ASIO_CORO_YIELD wait_for_task(task1, client_errc::cancelled);
@@ -1584,3 +1402,5 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif

@@ -257,6 +257,7 @@ boost::asio::awaitable<void> overview_coro(tcp_ssl_connection& conn)
     //]
 }
 
+#ifndef BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
 boost::asio::awaitable<void> dont_run()
 {
     using namespace boost::asio::experimental::awaitable_operators;
@@ -275,6 +276,7 @@ boost::asio::awaitable<void> dont_run()
     );
     //]
 }
+#endif
 #else
 void run_overview_coro(tcp_ssl_connection&) {}
 #endif

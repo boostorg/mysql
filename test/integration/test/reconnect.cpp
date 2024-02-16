@@ -128,6 +128,8 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_while_connected, reconnect_fixture, samples_a
     BOOST_TEST(r.rows().at(0).at(0).as_string().starts_with("root"));
 }
 
+// parallel_group doesn't work with this macro. See https://github.com/chriskohlhoff/asio/issues/1398
+#ifndef BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
 BOOST_AUTO_TEST_CASE(reconnect_after_cancel)
 {
     run_stackful_coro([](boost::asio::yield_context yield) {
@@ -158,6 +160,7 @@ BOOST_AUTO_TEST_CASE(reconnect_after_cancel)
         boost::mysql::throw_on_error(ec, diag);
     });
 }
+#endif
 
 // any_connection can change the stream type used by successive connect calls.
 // We need to split this test in two (TCP and UNIX), so UNIX cases don't run on Windows.

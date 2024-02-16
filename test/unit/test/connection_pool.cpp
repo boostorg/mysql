@@ -153,6 +153,7 @@ BOOST_FIXTURE_TEST_CASE(return_without_reset, pooled_connection_fixture)
     conn.return_without_reset();
     BOOST_TEST(!conn.valid());
     BOOST_TEST(node->get_collection_state() == collection_state::needs_collect);
+    ctx.poll();
 
     // Regression check: the reference to the pool is released
     BOOST_TEST(pool.use_count() == 1);

@@ -185,6 +185,7 @@ def _b2_build(
     separate_compilation: bool = True,
     address_sanitizer: bool = False,
     undefined_sanitizer: bool = False,
+    use_ts_executor: bool = False,
 ) -> None:
     # Config
     os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
@@ -212,6 +213,7 @@ def _b2_build(
         'variant={}'.format(variant),
         'stdlib={}'.format(stdlib),
         'boost.mysql.separate-compilation={}'.format('on' if separate_compilation else 'off'),
+        'boost.mysql.use-ts-executor={}'.format('on' if use_ts_executor else 'off'),
     ] + (['address-sanitizer=norecover'] if address_sanitizer else [])     # can only be disabled by omitting the arg
       + (['undefined-sanitizer=norecover'] if undefined_sanitizer else []) # can only be disabled by omitting the arg
       + [
@@ -512,6 +514,7 @@ def main():
     parser.add_argument('--stdlib', choices=['native', 'libc++'], default='native')
     parser.add_argument('--address-model', choices=['32', '64'], default='64')
     parser.add_argument('--separate-compilation', type=_str2bool, default=True)
+    parser.add_argument('--use-ts-executor', type=_str2bool, default=False)
     parser.add_argument('--address-sanitizer', type=_str2bool, default=False)
     parser.add_argument('--undefined-sanitizer', type=_str2bool, default=False)
     parser.add_argument('--server-host', default='127.0.0.1')
@@ -530,6 +533,7 @@ def main():
             stdlib=args.stdlib,
             address_model=args.address_model,
             separate_compilation=args.separate_compilation,
+            use_ts_executor=args.use_ts_executor,
             address_sanitizer=args.address_sanitizer,
             undefined_sanitizer=args.undefined_sanitizer,
             clean=args.clean,

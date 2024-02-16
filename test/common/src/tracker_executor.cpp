@@ -9,7 +9,10 @@
 
 #include <boost/asio/execution/blocking.hpp>
 #include <boost/asio/execution/relationship.hpp>
+#include <boost/asio/execution_context.hpp>
 #include <boost/asio/require.hpp>
+
+#include <utility>
 
 using namespace boost::mysql::test;
 
@@ -41,6 +44,44 @@ public:
     }
     ~tracker_executor() = default;
 
+    bool operator==(const tracker_executor& rhs) const noexcept
+    {
+        return ex_ == rhs.ex_ && tracked_ == rhs.tracked_;
+    }
+    bool operator!=(const tracker_executor& rhs) const noexcept { return !(*this == rhs); }
+
+    executor_info* get_tracked() const noexcept { return tracked_; }
+
+#ifdef BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
+
+    // TS-executor interface
+    asio::execution_context& context() const noexcept { return ex_.context(); }
+    void on_work_started() const noexcept { ex_.on_work_started(); }
+    void on_work_finished() const noexcept { ex_.on_work_finished(); }
+
+    template <typename Function, typename Allocator>
+    void dispatch(Function&& f, const Allocator& a) const
+    {
+        ++tracked_->num_dispatches;
+        ex_.dispatch(std::forward<Function>(f), a);
+    }
+
+    template <typename Function, typename Allocator>
+    void post(Function&& f, const Allocator& a) const
+    {
+        ++tracked_->num_posts;
+        ex_.post(std::forward<Function>(f), a);
+    }
+
+    template <typename Function, typename Allocator>
+    void defer(Function&& f, const Allocator& a) const
+    {
+        ex_.defer(std::forward<Function>(f), a);
+    }
+
+#else
+
+    // Standard executors interface
     template <class Property>
     tracker_executor require(
         const Property& p,
@@ -84,13 +125,7 @@ public:
         ex_.execute(std::forward<Function>(f));
     }
 
-    bool operator==(const tracker_executor& rhs) const noexcept
-    {
-        return ex_ == rhs.ex_ && tracked_ == rhs.tracked_;
-    }
-    bool operator!=(const tracker_executor& rhs) const noexcept { return !(*this == rhs); }
-
-    executor_info* get_tracked() const noexcept { return tracked_; }
+#endif
 
 private:
     boost::asio::any_io_executor ex_;

@@ -28,7 +28,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
+#if defined(BOOST_ASIO_HAS_CO_AWAIT) && !defined(BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT)
 
 #include <boost/asio/experimental/awaitable_operators.hpp>
 

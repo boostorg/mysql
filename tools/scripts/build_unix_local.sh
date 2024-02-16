@@ -40,6 +40,7 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boo
     --cxxstd=11 \
     --variant=debug \
     --separate-compilation=1 \
+    --use-ts-executor=0 \
     --cmake-standalone-tests=1 \
     --cmake-add-subdir-tests=1 \
     --cmake-install-tests=1 \

@@ -23,6 +23,7 @@
 
 #include <chrono>
 #include <memory>
+#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -58,21 +59,13 @@ class pooled_connection
     friend class detail::basic_pool_impl<detail::io_traits, pooled_connection>;
 #endif
 
+    detail::connection_node* impl_{nullptr};
+    std::shared_ptr<detail::pool_impl> pool_impl_;
+
     pooled_connection(detail::connection_node& node, std::shared_ptr<detail::pool_impl> pool_impl) noexcept
         : impl_(&node), pool_impl_(std::move(pool_impl))
     {
     }
-
-    struct deleter
-    {
-        void operator()(detail::connection_node* node) const noexcept
-        {
-            detail::mark_as_collectable(*node, true);
-        }
-    };
-
-    std::unique_ptr<detail::connection_node, deleter> impl_;
-    std::shared_ptr<detail::pool_impl> pool_impl_;
 
 public:
     /**
@@ -96,7 +89,11 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    pooled_connection(pooled_connection&& other) = default;
+    pooled_connection(pooled_connection&& other) noexcept
+        : impl_(other.impl_), pool_impl_(std::move(other.pool_impl_))
+    {
+        other.impl_ = nullptr;
+    }
 
     /**
      * \brief Move assignment.
@@ -111,7 +108,15 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    pooled_connection& operator=(pooled_connection&& other) = default;
+    pooled_connection& operator=(pooled_connection&& other) noexcept
+    {
+        if (impl_)
+            detail::return_connection(std::move(pool_impl_), *impl_, true);
+        impl_ = other.impl_;
+        other.impl_ = nullptr;
+        pool_impl_ = std::move(other.pool_impl_);
+        return *this;
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     pooled_connection(const pooled_connection&) = delete;
@@ -131,14 +136,18 @@ public:
      * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
      * \ref connection_pool::cancel and \ref return_without_reset on other `pooled_connection` objects.
      */
-    ~pooled_connection() = default;
+    ~pooled_connection()
+    {
+        if (impl_)
+            detail::return_connection(std::move(pool_impl_), *impl_, true);
+    }
 
     /**
      * \brief Returns whether the object owns a connection or not.
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool valid() const noexcept { return impl_.get() != nullptr; }
+    bool valid() const noexcept { return impl_ != nullptr; }
 
     /**
      * \brief Retrieves the connection owned by this object.
@@ -195,8 +204,8 @@ public:
     void return_without_reset() noexcept
     {
         BOOST_ASSERT(valid());
-        detail::mark_as_collectable(*impl_.release(), false);
-        pool_impl_.reset();
+        detail::return_connection(std::move(pool_impl_), *impl_, false);
+        impl_ = nullptr;
     }
 };
 

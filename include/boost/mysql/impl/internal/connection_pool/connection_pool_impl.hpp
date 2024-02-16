@@ -14,7 +14,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
 
-#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
@@ -24,22 +23,14 @@
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
-#include <boost/asio/detached.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/asio/experimental/channel_error.hpp>
-#include <boost/asio/experimental/concurrent_channel.hpp>
-#include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/post.hpp>
-#include <boost/asio/steady_timer.hpp>
-#include <boost/asio/strand.hpp>
 #include <boost/core/ignore_unused.hpp>
-#include <boost/optional/optional.hpp>
 
 #include <chrono>
 #include <cstddef>
@@ -75,7 +66,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     std::list<node_type> all_conns_;
     shared_state_type shared_st_;
     wait_group wait_gp_;
-    asio::experimental::concurrent_channel<void(error_code)> cancel_chan_;
+    timer_type cancel_timer_;
 
     std::shared_ptr<this_type> shared_from_this_wrapper()
     {
@@ -134,7 +125,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
 
                 // Wait for the cancel notification to arrive.
                 BOOST_ASIO_CORO_YIELD
-                obj_->cancel_chan_.async_receive(std::move(self));
+                obj_->cancel_timer_.async_wait(std::move(self));
 
                 // If the token passed to async_run had a bound executor,
                 // the handler will be invoked within that executor.
@@ -273,7 +264,7 @@ public:
           ex_(ex_params.pool_executor()),
           conn_ex_(ex_params.connection_executor()),
           wait_gp_(ex_),
-          cancel_chan_(ex_, 1)
+          cancel_timer_(ex_, (std::chrono::steady_clock::time_point::max)())
     {
     }
 
@@ -292,11 +283,8 @@ public:
         );
     }
 
-    void cancel()
-    {
-        // This is a concurrent channel, no need to dispatch to the strand
-        cancel_chan_.try_send(error_code());
-    }
+    // Not thread-safe
+    void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ConnectionWrapper))

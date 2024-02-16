@@ -17,18 +17,15 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/deferred.hpp>
-#include <boost/asio/detached.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/ssl/context.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
-#include <boost/test/tools/interface.hpp>
-#include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <chrono>
 #include <cstddef>
@@ -46,6 +43,26 @@ using namespace boost::mysql::test;
 namespace asio = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_connection_pool)
+
+// For synchronization between tasks
+class condition_variable
+{
+    asio::steady_timer timer_;
+
+public:
+    condition_variable(asio::any_io_executor ex)
+        : timer_(std::move(ex), (std::chrono::steady_clock::time_point::max)())
+    {
+    }
+
+    void notify() { timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
+
+    void wait(asio::yield_context yield)
+    {
+        error_code ignored;
+        timer_.async_wait(yield[ignored]);
+    }
+};
 
 pool_params create_pool_params(std::size_t max_size = 151)
 {
@@ -269,12 +286,15 @@ BOOST_FIXTURE_TEST_CASE(cancel_run, fixture)
 {
     run_stackful_coro([&](asio::yield_context yield) {
         results r;
-        asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
+        condition_variable run_cv(yield.get_executor());
 
         // Construct a pool and run it
         connection_pool pool(yield.get_executor(), create_pool_params());
         pool_guard grd(&pool);
-        pool.async_run([&run_chan](error_code run_ec) { run_chan.try_send(run_ec); });
+        pool.async_run([&run_cv](error_code run_ec) {
+            BOOST_TEST(run_ec == error_code());
+            run_cv.notify();
+        });
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -282,8 +302,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_run, fixture)
 
         // Cancel. This will make run() return
         pool.cancel();
-        run_chan.async_receive(yield[ec]);
-        BOOST_TEST(ec == error_code());
+        run_cv.wait(yield);
 
         // Cancel again does nothing
         pool.cancel();
@@ -309,15 +328,15 @@ BOOST_FIXTURE_TEST_CASE(cancel_get_connection, fixture)
 {
     run_stackful_coro([&](asio::yield_context yield) {
         results r;
-        asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
-        asio::experimental::channel<void(error_code)> getconn_chan(yield.get_executor(), 1);
+        condition_variable run_cv(yield.get_executor());
+        condition_variable getconn_cv(yield.get_executor());
 
         // Construct a pool and run it
         connection_pool pool(yield.get_executor(), create_pool_params(1));
         pool_guard grd(&pool);
-        pool.async_run([&run_chan](error_code run_ec) {
+        pool.async_run([&run_cv](error_code run_ec) {
             BOOST_TEST(run_ec == error_code());
-            run_chan.try_send(error_code());
+            run_cv.notify();
         });
 
         // Get a connection
@@ -328,13 +347,13 @@ BOOST_FIXTURE_TEST_CASE(cancel_get_connection, fixture)
         pool.async_get_connection(diag, [&](error_code getconn_ec, pooled_connection conn2) {
             BOOST_TEST(getconn_ec == client_errc::cancelled);
             BOOST_TEST(!conn2.valid());
-            getconn_chan.try_send(error_code());
+            getconn_cv.notify();
         });
 
         // Cancel. This will make run and get_connection return
         pool.cancel();
-        run_chan.async_receive(yield);
-        getconn_chan.async_receive(yield);
+        run_cv.wait(yield);
+        getconn_cv.wait(yield);
 
         // Calling get_connection after cancel will return client_errc::cancelled
         conn = pool.async_get_connection(diag, yield[ec]);
@@ -366,10 +385,10 @@ BOOST_FIXTURE_TEST_CASE(pooled_connection_extends_pool_lifetime, fixture)
         );
 
         // Run the pool in a way we can synchronize with
-        asio::experimental::channel<void(error_code)> run_chan(yield.get_executor(), 1);
-        pool->async_run([&run_chan](error_code run_ec) {
+        condition_variable run_cv(yield.get_executor());
+        pool->async_run([&run_cv](error_code run_ec) {
             BOOST_TEST(run_ec == error_code());
-            run_chan.try_send(error_code());
+            run_cv.notify();
         });
 
         // Get a connection
@@ -381,7 +400,7 @@ BOOST_FIXTURE_TEST_CASE(pooled_connection_extends_pool_lifetime, fixture)
         pool.reset();
 
         // Wait for run to exit, since run extends lifetime, too
-        run_chan.async_receive(yield);
+        run_cv.wait(yield);
 
         // The connection we got can still be used and returned
         conn->async_ping(yield);

@@ -49,6 +49,7 @@ add_executable(
 
     test/connection_pool/timer_list.cpp
     test/connection_pool/wait_group.cpp
+    test/connection_pool/run_with_timeout.cpp
     test/connection_pool/sansio_connection_node.cpp
     test/connection_pool/connection_pool_impl.cpp
 
