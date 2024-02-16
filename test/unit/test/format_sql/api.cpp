@@ -10,15 +10,16 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/format_sql.hpp>
 
-#include <boost/static_string/static_string.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cmath>
 #include <cstddef>
 #include <initializer_list>
+#include <string>
 
 #include "format_common.hpp"
 #include "test_common/printing.hpp"
+#include "test_unit/custom_allocator.hpp"
 #include "test_unit/ff_charset.hpp"
 
 //
@@ -30,6 +31,8 @@ using namespace boost::mysql;
 using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_format_sql_api)
+
+using string_with_alloc = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
 
 constexpr format_options opts{utf8mb4_charset, true};
 
@@ -144,8 +147,7 @@ BOOST_AUTO_TEST_CASE(format_sql_to_backslash_escapes)
 BOOST_AUTO_TEST_CASE(format_sql_to_custom_string)
 {
     // We can use format_sql_to with contexts that are not format_context
-    constexpr std::size_t string_size = 128;
-    using context_t = basic_format_context<boost::static_string<string_size>>;
+    using context_t = basic_format_context<string_with_alloc>;
 
     context_t ctx(opts);
     format_sql_to(ctx, "SELECT * FROM {} WHERE id = {} OR name = {}", identifier("myt`able"), 42, "Joh'n");
@@ -309,8 +311,7 @@ BOOST_AUTO_TEST_CASE(format_context_error)
 // Spotcheck: we can use string types that are not std::string with format context
 BOOST_AUTO_TEST_CASE(format_context_custom_string)
 {
-    constexpr std::size_t string_size = 128;
-    using context_t = basic_format_context<boost::static_string<string_size>>;
+    using context_t = basic_format_context<string_with_alloc>;
 
     context_t ctx(opts);
     ctx.append_raw("SELECT * FROM ")

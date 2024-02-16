@@ -128,14 +128,6 @@ target_compile_definitions(
     PRIVATE
     BOOST_ALLOW_DEPRECATED # Unit tests still exercise the old execution interface
 )
-if (NOT BOOST_MYSQL_IS_ROOT)
-    # Target only available when building from the superproject
-    target_link_libraries(
-        boost_mysql_unittests
-        PRIVATE
-        Boost::static_string
-    )
-endif()
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
         boost_mysql_unittests

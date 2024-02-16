@@ -11,16 +11,14 @@
 #include <boost/mysql/escape_string.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/static_string/static_string.hpp>
-#include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <cstddef>
 #include <string>
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
+#include "test_unit/custom_allocator.hpp"
 #include "test_unit/ff_charset.hpp"
 
 using namespace boost::mysql;
@@ -284,7 +282,7 @@ BOOST_AUTO_TEST_CASE(parameter_coverage)
 BOOST_AUTO_TEST_CASE(other_string_types)
 {
     // Spotcheck: escape_string can be used with string types != std::string
-    boost::static_string<64> output = "abc";
+    std::basic_string<char, std::char_traits<char>, test::custom_allocator<char>> output = "abc";
     auto ec = escape_string("some 'value'", {utf8mb4_charset, true}, quoting_context::single_quote, output);
     BOOST_TEST(ec == error_code());
     BOOST_TEST(output == R"(some \'value\')");

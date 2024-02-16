@@ -7,7 +7,6 @@
 
 #include <boost/mysql/detail/output_string.hpp>
 
-#include <boost/static_string/static_string.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
@@ -68,10 +67,10 @@ BOOST_AUTO_TEST_CASE(ref_string)
     BOOST_TEST(s == "abcd hello world");
 }
 
-BOOST_AUTO_TEST_CASE(ref_static_string)
+BOOST_AUTO_TEST_CASE(ref_string_with_alloc)
 {
-    // A reference can be created from a static_string
-    boost::static_string<32> s("abcd");
+    // A reference can be created from a std::basic_string with custom allocator
+    string_with_alloc s("abcd");
     auto ref = detail::output_string_ref::create(s);
 
     // Appending works
@@ -116,11 +115,6 @@ static_assert(output_string<string_with_alloc>);
 static_assert(output_string<string_no_defctor>);
 static_assert(output_string<string_with_traits>);
 
-// same with boost::static_string
-static_assert(output_string<boost::static_string<10>>);
-static_assert(output_string<boost::static_string<45>>);
-static_assert(output_string<boost::static_strings::basic_static_string<10, char, other_traits>>);
-
 // Archetype allowed
 static_assert(output_string<output_string_archetype>);
 
@@ -133,13 +127,16 @@ static_assert(!output_string<std::vector<char>>);
 
 // Strings with other character types disallowed
 static_assert(!output_string<std::wstring>);
-static_assert(!output_string<boost::static_wstring<16>>);
+static_assert(!output_string<std::u32string>);
 
 // References not allowed
 static_assert(!output_string<std::string&>);
 static_assert(!output_string<const std::string&>);
 static_assert(!output_string<std::string&&>);
 static_assert(!output_string<const std::string&&>);
+
+// Views not allowed
+static_assert(!output_string<string_view>);
 
 #endif
 

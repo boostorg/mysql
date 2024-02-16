@@ -142,4 +142,4 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_AUXILIAR_STATIC_STRING_HPP_ */
+#endif
