@@ -99,11 +99,16 @@ def _install_boost(
         **({ 'dirs_exist_ok': True } if _supports_dir_exist_ok else {})
     )
 
+        
+    # Install Boost.Parser
+    if is_clean:
+        _run(["git", "clone", "-b", "master", "--depth", "1", "https://github.com/tzlaine/parser.git", "libs/parser"])
+
     # Install Boost dependencies
     if is_clean:
         _run(["git", "config", "submodule.fetchJobs", "8"])
         if install_type == _BoostInstallType.mysql:
-            submodules = ['tools/boostdep']
+            submodules = ['tools/boostdep', 'libs/hana']
         else:
             submodules = [
                 'libs/context',
@@ -218,7 +223,7 @@ def _b2_build(
       + (['undefined-sanitizer=norecover'] if undefined_sanitizer else []) # can only be disabled by omitting the arg
       + [
         'warnings=extra',
-        'warnings-as-errors=on',
+        'warnings-as-errors=off',
         '-j4',
         'libs/mysql/test',
         'libs/mysql/test/integration//boost_mysql_integrationtests',

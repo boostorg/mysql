@@ -71,6 +71,7 @@ else()
         Boost::system
         Boost::throw_exception
         Boost::variant2
+        Boost::parser
         Threads::Threads
         OpenSSL::Crypto
         OpenSSL::SSL

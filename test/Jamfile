@@ -89,7 +89,7 @@ local requirements =
         <define>BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
         <define>BOOST_ALLOW_DEPRECATED_HEADERS=1
         # Disable warning C4702: unreachable code, produced by Boost.Asio buffer.hpp 
-        <toolset>msvc:<cxxflags>"/bigobj /wd4702 /permissive-"
+        <toolset>msvc:<cxxflags>"/bigobj /wd4702 /permissive- /Zc:__cplusplus"
         <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS=1
         <toolset>msvc:<define>_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING

@@ -28,10 +28,14 @@
 
 #include <boost/charconv/from_chars.hpp>
 #include <boost/charconv/to_chars.hpp>
+#include <boost/core/span.hpp>
+#include <boost/parser/parser.hpp>
+#include <boost/parser/parser_fwd.hpp>
 #include <boost/system/result.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/throw_exception.hpp>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <limits>
@@ -203,14 +207,7 @@ inline void append_field_view(field_view fv, format_context_base& ctx)
     }
 }
 
-// Helpers for parsing format strings
-inline bool is_number(char c) noexcept { return c >= '0' && c <= '9'; }
-
-inline bool is_name_start(char c) noexcept
-{
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
-}
-
+// Parsing
 class format_state
 {
     format_context_base& ctx_;
@@ -222,101 +219,26 @@ class format_state
     // >0: we're doing auto indexing
     int next_arg_id_{0};
 
-    BOOST_ATTRIBUTE_NODISCARD
-    bool advance(const char*& it, const char* end)
-    {
-        std::size_t size = detail::call_next_char(ctx_.impl_.opts.charset, it, end);
-        if (size == 0)
-        {
-            ctx_.add_error(client_errc::format_string_invalid_encoding);
-            return false;
-        }
-        it += size;
-        return true;
-    }
-
     bool uses_auto_ids() const noexcept { return next_arg_id_ > 0; }
     bool uses_explicit_ids() const noexcept { return next_arg_id_ == -1; }
 
     void do_field(format_arg arg) { ctx_.format_arg(access::get_impl(arg).value); }
 
-    BOOST_ATTRIBUTE_NODISCARD
-    bool do_indexed_field(int arg_id)
+    void do_indexed_field(int arg_id)
     {
         BOOST_ASSERT(arg_id >= 0);
         if (static_cast<std::size_t>(arg_id) >= args_.size())
         {
             ctx_.add_error(client_errc::format_arg_not_found);
-            return false;
+            return;
         }
         do_field(args_[arg_id]);
-        return true;
     }
 
-    BOOST_ATTRIBUTE_NODISCARD
-    bool parse_field(const char*& it, const char* format_end)
-    {
-        // {{ : escape for brace
-        // {}:  auto field
-        // {integer}: index
-        // {identifier}: named field
-        // All characters until the closing } must be ASCII, otherwise the format string is not valid
+public:
+    format_state(format_context_base& ctx, span<const format_arg> args) noexcept : ctx_(ctx), args_(args) {}
 
-        if (it == format_end)
-        {
-            ctx_.add_error(client_errc::format_string_invalid_syntax);
-            return false;
-        }
-        else if (*it == '{')
-        {
-            ctx_.append_raw("{");
-            ++it;
-            return true;
-        }
-        else if (*it == '}')
-        {
-            ++it;
-            return append_auto_field();
-        }
-        else if (is_number(*it))
-        {
-            unsigned short field_index = 0;
-            auto res = charconv::from_chars(it, format_end, field_index);
-            if (res.ec != std::errc{})
-            {
-                ctx_.add_error(client_errc::format_string_invalid_syntax);
-                return false;
-            }
-            it = res.ptr;
-            if (it == format_end || *it++ != '}')
-            {
-                ctx_.add_error(client_errc::format_string_invalid_syntax);
-                return false;
-            }
-            return append_indexed_field(static_cast<int>(field_index));
-        }
-        else
-        {
-            const char* name_begin = it;
-            if (!is_name_start(*it++))
-            {
-                ctx_.add_error(client_errc::format_string_invalid_syntax);
-                return false;
-            }
-            while (it != format_end && (is_name_start(*it) || is_number(*it)))
-                ++it;
-            string_view field_name(name_begin, it);
-            if (it == format_end || *it++ != '}')
-            {
-                ctx_.add_error(client_errc::format_string_invalid_syntax);
-                return false;
-            }
-            return append_named_field(field_name);
-        }
-    }
-
-    BOOST_ATTRIBUTE_NODISCARD
-    bool append_named_field(string_view field_name)
+    void append_named_field(string_view field_name)
     {
         // Find the argument
         for (const auto& arg : args_)
@@ -324,84 +246,104 @@ class format_state
             if (access::get_impl(arg).name == field_name)
             {
                 do_field(arg);
-                return true;
+                return;
             }
         }
 
         // Not found
         ctx_.add_error(client_errc::format_arg_not_found);
-        return false;
     }
 
-    BOOST_ATTRIBUTE_NODISCARD
-    bool append_indexed_field(int index)
+    void append_indexed_field(int index)
     {
         if (uses_auto_ids())
         {
             ctx_.add_error(client_errc::format_string_manual_auto_mix);
-            return false;
+            return;
         }
         next_arg_id_ = -1;
-        return do_indexed_field(index);
+        do_indexed_field(index);
     }
 
-    BOOST_ATTRIBUTE_NODISCARD
-    bool append_auto_field()
+    void append_auto_field()
     {
         if (uses_explicit_ids())
         {
             ctx_.add_error(client_errc::format_string_manual_auto_mix);
-            return false;
+            return;
         }
-        return do_indexed_field(next_arg_id_++);
+        do_indexed_field(next_arg_id_++);
     }
 
-public:
-    format_state(format_context_base& ctx, span<const format_arg> args) noexcept : ctx_(ctx), args_(args) {}
+    void append_text(string_view text) { access::get_impl(ctx_).output.append(text); }
+};
 
-    void format(string_view format_str)
+// Actions
+constexpr auto action_text = [](auto& ctx) { _globals(ctx).append_text(_attr(ctx)); };
+constexpr auto action_replacement_field = [](auto& ctx) {
+    const std::optional<std::variant<unsigned short, std::string>>& val = _attr(ctx);
+    format_state& st = _globals(ctx);
+    if (val)
     {
-        // We can use operator++ when we know a character is ASCII. Some charsets
-        // allow ASCII continuation bytes, so we need to skip the entire character othwerwise
-        auto cur_begin = format_str.data();
-        auto it = format_str.data();
-        auto end = format_str.data() + format_str.size();
-        while (it != end)
+        if (const auto* idx = std::get_if<unsigned short>(&*val))
         {
-            if (*it == '{')
-            {
-                // Found a replacement field. Dump the SQL we've been skipping and parse it
-                ctx_.impl_.output.append({cur_begin, it});
-                ++it;
-                if (!parse_field(it, end))
-                    return;
-                cur_begin = it;
-            }
-            else if (*it == '}')
-            {
-                // A lonely } is only legal as a escape curly brace (i.e. }})
-                ctx_.impl_.output.append({cur_begin, it});
-                ++it;
-                if (it == end || *it != '}')
-                {
-                    ctx_.add_error(client_errc::format_string_invalid_syntax);
-                    return;
-                }
-                ctx_.impl_.output.append("}");
-                ++it;
-                cur_begin = it;
-            }
-            else
-            {
-                if (!advance(it, end))
-                    return;
-            }
+            st.append_indexed_field(*idx);
         }
-
-        // Dump any remaining SQL
-        ctx_.impl_.output.append({cur_begin, end});
+        else
+        {
+            st.append_named_field(std::get<std::string>(*val));
+        }
+    }
+    else
+    {
+        st.append_auto_field();
     }
 };
+constexpr auto action_opening_brace = [](auto& ctx) { _globals(ctx).append_text("{"); };
+constexpr auto action_closing_brace = [](auto& ctx) { _globals(ctx).append_text("}"); };
+
+// Character ranges
+constexpr std::array<const char, 63> name_chars{
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
+    'v', 'w', 'x', 'y', 'z', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
+    'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '_', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'
+};
+constexpr boost::span<const char, 53> name_start_chars{name_chars.data(), 53};
+
+// Parsers and rules
+constexpr auto field_name = parser::char_(name_start_chars) >> *(parser::char_(name_chars));
+constexpr auto replacement_id = parser::ushort_ | field_name;
+constexpr auto replacement_field = ('{' >> -replacement_id) > '}';
+
+constexpr auto literal_open_brace = parser::lit("{{");
+constexpr auto literal_close_brace = parser::lit("}}");
+constexpr auto text = +(parser::char_ - '{' - '}');
+constexpr auto format_str_parser = *(
+    text[action_text] | literal_open_brace[action_opening_brace] | literal_close_brace[action_closing_brace] |
+    replacement_field[action_replacement_field]
+);
+
+// Top-level parsing function
+inline void parse_format_str(string_view format_str, format_context_base& ctx, span<const format_arg> args)
+{
+    // By default, parser prints to cerr, which we don't want
+    parser::callback_error_handler handler([](const std::string&) {});
+
+    // Create a parsing state
+    format_state st(ctx, args);
+
+    // Invoke the actual parsing
+    bool result = parser::parse(
+        format_str,
+        parser::with_globals(parser::with_error_handler(format_str_parser, handler), st)
+    );
+
+    // If there was an error, report it
+    if (!result)
+    {
+        ctx.add_error(client_errc::format_string_invalid_syntax);
+    }
+}
 
 }  // namespace detail
 }  // namespace mysql
@@ -447,7 +389,7 @@ void boost::mysql::detail::vformat_sql_to(
     std::initializer_list<format_arg> args
 )
 {
-    detail::format_state(ctx, {args.begin(), args.end()}).format(format_str);
+    detail::parse_format_str(format_str, ctx, {args.begin(), args.end()});
 }
 
 std::string boost::mysql::detail::vformat_sql(
