@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
@@ -23,6 +24,7 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/run_algo.hpp>
@@ -142,9 +144,24 @@ class connection_impl
     };
 
     // Connect
-    static connect_algo_params make_params_connect(diagnostics& diag, const handshake_params& params) noexcept
+    static connect_algo_params make_params_connect(
+        diagnostics& diag,
+        const handshake_params& params,
+        bool secure_channel
+    ) noexcept
     {
-        return connect_algo_params{&diag, params};
+        return connect_algo_params{&diag, params, secure_channel};
+    }
+
+    template <class EndpointType>
+    static bool is_secure_channel(const EndpointType&) noexcept
+    {
+        return false;
+    }
+
+    static bool is_secure_channel(const any_address_view& addr) noexcept
+    {
+        return addr.type == address_type::unix_path;
     }
 
     template <class EndpointType>
@@ -161,7 +178,12 @@ class connection_impl
         )
         {
             stream->set_endpoint(&endpoint);
-            async_run_algo(*stream, *st, make_params_connect(*diag, params), std::forward<Handler>(handler));
+            async_run_algo(
+                *stream,
+                *st,
+                make_params_connect(*diag, params, is_secure_channel(endpoint)),
+                std::forward<Handler>(handler)
+            );
         }
     };
 
@@ -274,7 +296,7 @@ public:
     )
     {
         stream_->set_endpoint(&endpoint);
-        run_algo(*stream_, *st_, make_params_connect(diag, params), err);
+        run_algo(*stream_, *st_, make_params_connect(diag, params, is_secure_channel(endpoint)), err);
     }
 
     template <class EndpointType, class CompletionToken>
@@ -309,7 +331,7 @@ public:
     handshake_algo_params make_params_handshake(const handshake_params& params, diagnostics& diag)
         const noexcept
     {
-        return {&diag, params};
+        return {&diag, params, false};
     }
 
     // Execute

@@ -71,6 +71,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
     handshake_params hparams_;
     auth_response auth_resp_;
     std::uint8_t sequence_number_{0};
+    bool secure_channel_{false};
 
     // Attempts to map the collection_id to a character set. We try to be conservative
     // here, since servers will happily accept unknown collation IDs, silently defaulting
@@ -108,12 +109,15 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
         st_->current_capabilities = negotiated_caps;
         st_->flavor = hello.server;
 
+        // If we're using SSL, mark the channel as secure
+        secure_channel_ = secure_channel_ || use_ssl();
+
         // Compute auth response
         return compute_auth_response(
             hello.auth_plugin_name,
             hparams_.password(),
             hello.auth_plugin_data.to_span(),
-            use_ssl(),
+            secure_channel_,
             auth_resp_
         );
     }
@@ -148,7 +152,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
             msg.plugin_name,
             hparams_.password(),
             msg.auth_data,
-            use_ssl(),
+            secure_channel_,
             auth_resp_
         );
     }
@@ -159,7 +163,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
             auth_resp_.plugin_name,
             hparams_.password(),
             data,
-            use_ssl(),
+            secure_channel_,
             auth_resp_
         );
     }
@@ -197,7 +201,10 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
 
 public:
     handshake_algo(connection_state_data& st, handshake_algo_params params) noexcept
-        : sansio_algorithm(st), diag_(params.diag), hparams_(fix_ssl_mode(params.hparams, st.supports_ssl()))
+        : sansio_algorithm(st),
+          diag_(params.diag),
+          hparams_(fix_ssl_mode(params.hparams, st.supports_ssl())),
+          secure_channel_(params.secure_channel)
     {
     }
 

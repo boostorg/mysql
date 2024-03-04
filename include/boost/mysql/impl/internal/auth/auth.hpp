@@ -33,7 +33,7 @@ error_code compute_auth_response(
     string_view plugin_name,
     string_view password,
     span<const std::uint8_t> challenge,
-    bool use_ssl,
+    bool secure_channel,
     auth_response& output
 );
 

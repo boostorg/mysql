@@ -63,7 +63,7 @@ BOOST_MYSQL_STATIC_OR_INLINE
 error_code mnp_compute_response(
     string_view password,
     boost::span<const std::uint8_t> challenge,
-    bool,  // use_ssl
+    bool,  // secure_channel
     std::vector<std::uint8_t>& output
 )
 {
@@ -133,13 +133,13 @@ BOOST_MYSQL_STATIC_OR_INLINE
 error_code csha2p_compute_response(
     string_view password,
     boost::span<const std::uint8_t> challenge,
-    bool use_ssl,
+    bool secure_channel,
     std::vector<std::uint8_t>& output
 )
 {
     if (should_perform_full_auth(challenge))
     {
-        if (!use_ssl)
+        if (!secure_channel)
         {
             return make_error_code(client_errc::auth_plugin_requires_ssl);
         }
@@ -168,7 +168,7 @@ struct authentication_plugin
     using calculator_signature = error_code (*)(
         string_view password,
         boost::span<const std::uint8_t> challenge,
-        bool use_ssl,
+        bool secure_channel,
         std::vector<std::uint8_t>& output
     );
 
@@ -207,7 +207,7 @@ boost::mysql::error_code boost::mysql::detail::compute_auth_response(
     string_view plugin_name,
     string_view password,
     span<const std::uint8_t> challenge,
-    bool use_ssl,
+    bool secure_channel,
     auth_response& output
 )
 {
@@ -224,7 +224,7 @@ boost::mysql::error_code boost::mysql::detail::compute_auth_response(
         }
         else
         {
-            return plugin->calculator(password, challenge, use_ssl, output.data);
+            return plugin->calculator(password, challenge, secure_channel, output.data);
         }
     }
     else

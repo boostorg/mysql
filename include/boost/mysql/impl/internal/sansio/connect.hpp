@@ -20,8 +20,6 @@
 
 #include <boost/asio/coroutine.hpp>
 
-#include <cstddef>
-
 namespace boost {
 namespace mysql {
 namespace detail {
@@ -33,7 +31,7 @@ class connect_algo : public sansio_algorithm, asio::coroutine
 
 public:
     connect_algo(connection_state_data& st, connect_algo_params params) noexcept
-        : sansio_algorithm(st), handshake_(st, {params.diag, params.hparams})
+        : sansio_algorithm(st), handshake_(st, {params.diag, params.hparams, params.secure_channel})
     {
     }
 

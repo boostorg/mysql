@@ -146,28 +146,36 @@ BOOST_AUTO_TEST_CASE(tcp_caching_sha2_password)
 }
 
 // Users can log-in using the caching_sha2_password auth plugin
-// even if they're using UNIX sockets
-// Re-enable this test when we code https://github.com/boostorg/mysql/issues/189
-// BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
-// BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-// BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
-// BOOST_AUTO_TEST_CASE(unix_caching_sha2_password)
-// {
-//     // Create the connection
-//     boost::asio::io_context ctx;
-//     any_connection conn(ctx);
+// even if they're using UNIX sockets.
+BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
+BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
+BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
+BOOST_AUTO_TEST_CASE(unix_caching_sha2_password)
+{
+    // Setup
+    boost::asio::io_context ctx;
+    any_connection conn(ctx);
+    any_connection root_conn(ctx);
 
-//     // Connect params
-//     auto params = create_params();
-//     params.server_address.emplace_unix_path(default_unix_path);
-//     params.ssl = ssl_mode::require;
-//     params.username = "csha2p_user";
-//     params.password = "csha2p_password";
+    // Clear the sha256 cache. This forces us send the password using plain text.
+    // TODO: we could create a dedicated user - this can make the test more reliable
+    auto root_params = default_connect_params();
+    results r;
+    root_params.username = "root";
+    root_params.password = "";
+    root_conn.connect(root_params);
+    root_conn.execute("FLUSH PRIVILEGES", r);
 
-//     // Call the function
-//     connect_fn(conn, params).validate_no_error();
-//     BOOST_TEST(!conn.uses_ssl());
-// }
+    // Connect params
+    auto params = default_connect_params(ssl_mode::require);
+    params.server_address.emplace_unix_path(default_unix_path);
+    params.username = "csha2p_user";
+    params.password = "csha2p_password";
+
+    // Call the function
+    connect_fn(conn, params).validate_no_error();
+    BOOST_TEST(!conn.uses_ssl());
+}
 
 network_result<void> create_net_result()
 {

@@ -31,6 +31,7 @@ struct connect_algo_params
 {
     diagnostics* diag;
     handshake_params hparams;
+    bool secure_channel;  // Are we using UNIX sockets or any other secure channel?
 
     using result_type = void;
 };
@@ -39,6 +40,7 @@ struct handshake_algo_params
 {
     diagnostics* diag;
     handshake_params hparams;
+    bool secure_channel;  // Are we using UNIX sockets or any other secure channel?
 
     using result_type = void;
 };
