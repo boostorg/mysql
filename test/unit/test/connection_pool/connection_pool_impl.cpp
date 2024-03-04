@@ -6,11 +6,13 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
@@ -47,16 +49,10 @@
 // See https://github.com/chriskohlhoff/asio/issues/1398
 #ifndef BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
 
-using namespace boost::mysql::detail;
+using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
-using boost::mysql::client_errc;
-using boost::mysql::common_server_errc;
-using boost::mysql::connect_params;
-using boost::mysql::diagnostics;
-using boost::mysql::error_code;
-using boost::mysql::pool_params;
-using boost::mysql::pooled_connection;
+using detail::connection_status;
 using std::chrono::steady_clock;
 
 /**
@@ -85,51 +81,78 @@ enum fn_type
 // the passed error_code/diagnostics. All this synchronization uses channels.
 class mock_connection
 {
-    asio::experimental::channel<void(error_code, fn_type)> to_test_chan_;
-    asio::experimental::channel<void(error_code, diagnostics)> from_test_chan_;
-
-    // Code shared between all mocked ops
-    struct mocked_op
+    struct impl_t
     {
-        mock_connection& obj;
-        fn_type op_type;
-        diagnostics* diag;
+        asio::experimental::channel<void(error_code, fn_type)> to_test_chan_;
+        asio::experimental::channel<void(error_code, diagnostics)> from_test_chan_;
 
-        template <class Self>
-        void operator()(Self& self)
+        // Code shared between all mocked ops
+        struct mocked_op
         {
-            // Notify the test that we're about to do op_type
-            obj.to_test_chan_.async_send(error_code(), op_type, std::move(self));
-        }
+            impl_t& obj;
+            fn_type op_type;
+            diagnostics* diag;
 
-        template <class Self>
-        void operator()(Self& self, error_code ec)
-        {
-            if (ec)
+            template <class Self>
+            void operator()(Self& self)
             {
-                // We were cancelled
+                // Notify the test that we're about to do op_type
+                obj.to_test_chan_.async_send(error_code(), op_type, std::move(self));
+            }
+
+            template <class Self>
+            void operator()(Self& self, error_code ec)
+            {
+                if (ec)
+                {
+                    // We were cancelled
+                    self.complete(ec);
+                }
+                else
+                {
+                    // Read from the test what we should return
+                    obj.from_test_chan_.async_receive(std::move(self));
+                }
+            }
+
+            template <class Self>
+            void operator()(Self& self, error_code ec, diagnostics recv_diag)
+            {
+                // Done
+                if (diag)
+                    *diag = std::move(recv_diag);
                 self.complete(ec);
             }
-            else
-            {
-                // Read from the test what we should return
-                obj.from_test_chan_.async_receive(std::move(self));
-            }
+        };
+
+        template <class CompletionToken>
+        auto op_impl(fn_type op_type, diagnostics* diag, CompletionToken&& token)
+            -> decltype(asio::async_compose<CompletionToken, void(error_code)>(
+                std::declval<mocked_op>(),
+                token,
+                asio::any_io_executor()
+            ))
+        {
+            return asio::async_compose<CompletionToken, void(error_code)>(
+                mocked_op{*this, op_type, diag},
+                token,
+                to_test_chan_.get_executor()
+            );
         }
 
-        template <class Self>
-        void operator()(Self& self, error_code ec, diagnostics recv_diag)
+        // We use an internal async_reset_connection that allows setting the character set
+        template <class CompletionToken>
+        auto async_reset_with_charset(const character_set& charset, CompletionToken&& token)
+            -> decltype(op_impl(fn_type::reset, nullptr, std::forward<CompletionToken>(token)))
         {
-            // Done
-            if (diag)
-                *diag = std::move(recv_diag);
-            self.complete(ec);
+            BOOST_TEST(charset.name == "utf8mb4");  // We must always use utf8mb4
+            return op_impl(fn_type::reset, nullptr, std::forward<CompletionToken>(token));
         }
-    };
+    } impl_;
 
     struct step_op
     {
-        mock_connection& obj;
+        impl_t& obj;
         fn_type expected_op_type;
         error_code op_ec;
         diagnostics op_diag;
@@ -161,51 +184,31 @@ class mock_connection
         }
     };
 
-    template <class CompletionToken>
-    auto op_impl(fn_type op_type, diagnostics* diag, CompletionToken&& token)
-        -> decltype(asio::async_compose<CompletionToken, void(error_code)>(
-            std::declval<mocked_op>(),
-            token,
-            asio::any_io_executor()
-        ))
-    {
-        return asio::async_compose<CompletionToken, void(error_code)>(
-            mocked_op{*this, op_type, diag},
-            token,
-            to_test_chan_.get_executor()
-        );
-    }
+    friend struct boost::mysql::detail::access;
 
 public:
     boost::mysql::any_connection_params ctor_params;
     boost::mysql::connect_params last_connect_params;
 
     mock_connection(asio::any_io_executor ex, boost::mysql::any_connection_params ctor_params)
-        : to_test_chan_(ex), from_test_chan_(std::move(ex)), ctor_params(ctor_params)
+        : impl_{ex, ex}, ctor_params(ctor_params)
     {
     }
 
     template <class CompletionToken>
     auto async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
-        -> decltype(op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token)))
+        -> decltype(impl_.op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token)))
     {
         BOOST_TEST(params != nullptr);
         last_connect_params = *params;
-        return op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token));
+        return impl_.op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token));
     }
 
     template <class CompletionToken>
     auto async_ping(CompletionToken&& token)
-        -> decltype(op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
+        -> decltype(impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
     {
-        return op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token));
-    }
-
-    template <class CompletionToken>
-    auto async_reset_connection(CompletionToken&& token)
-        -> decltype(op_impl(fn_type::reset, nullptr, std::forward<CompletionToken>(token)))
-    {
-        return op_impl(fn_type::reset, nullptr, std::forward<CompletionToken>(token));
+        return impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token));
     }
 
     void step(
@@ -216,9 +219,9 @@ public:
     )
     {
         return asio::async_compose<asio::any_completion_handler<void()>, void()>(
-            step_op{*this, expected_op_type, ec, std::move(diag)},
+            step_op{impl_, expected_op_type, ec, std::move(diag)},
             handler,
-            from_test_chan_
+            impl_.from_test_chan_
         );
     }
 };
@@ -231,8 +234,8 @@ struct mock_io_traits
 };
 
 struct mock_pooled_connection;
-using mock_node = basic_connection_node<mock_io_traits>;
-using mock_pool = basic_pool_impl<mock_io_traits, mock_pooled_connection>;
+using mock_node = detail::basic_connection_node<mock_io_traits>;
+using mock_pool = detail::basic_pool_impl<mock_io_traits, mock_pooled_connection>;
 
 // Mock for pooled_connection
 struct mock_pooled_connection
@@ -1339,7 +1342,7 @@ BOOST_AUTO_TEST_CASE(params_connect_1)
 
                 // Check params
                 const auto& cparams = node.connection().last_connect_params;
-                BOOST_TEST(cparams.connection_collation == std::uint16_t(0));
+                BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
                 BOOST_TEST(cparams.server_address.hostname() == "myhost");
                 BOOST_TEST(cparams.server_address.port() == std::uint16_t(1234));
                 BOOST_TEST(cparams.username == "myuser");
@@ -1379,7 +1382,7 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
 
                 // Check params
                 const auto& cparams = node.connection().last_connect_params;
-                BOOST_TEST(cparams.connection_collation == std::uint16_t(0));
+                BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
                 BOOST_TEST(cparams.server_address.unix_socket_path() == "/mysock");
                 BOOST_TEST(cparams.username == "myuser2");
                 BOOST_TEST(cparams.password == "mypasswd2");

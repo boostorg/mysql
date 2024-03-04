@@ -80,7 +80,6 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
     connect_prms.username = std::move(params.username);
     connect_prms.password = std::move(params.password);
     connect_prms.database = std::move(params.database);
-    connect_prms.connection_collation = 0;  // use the server's default collation
     connect_prms.ssl = params.ssl;
     connect_prms.multi_queries = params.multi_queries;
 

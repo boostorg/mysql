@@ -223,6 +223,50 @@ BOOST_FIXTURE_TEST_CASE(pooled_connection_destructor, fixture)
     });
 }
 
+// Pooled connections use utf8mb4
+static void validate_charset(any_connection& conn, asio::yield_context yield)
+{
+    // The connection knows its using utf8mb4
+    BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
+    BOOST_TEST(conn.format_opts()->charset.name == "utf8mb4");
+
+    // The connection is actually using utf8mb4
+    results r;
+    conn.async_execute(
+        "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+        r,
+        yield
+    );
+    const auto rw = r.rows().at(0);
+    BOOST_TEST(rw.at(0).as_string() == "utf8mb4");
+    BOOST_TEST(rw.at(1).as_string() == "utf8mb4");
+    BOOST_TEST(rw.at(2).as_string() == "utf8mb4");
+}
+
+BOOST_FIXTURE_TEST_CASE(charset, fixture)
+{
+    run_stackful_coro([&](asio::yield_context yield) {
+        // Create and run the pool
+        connection_pool pool(yield.get_executor(), create_pool_params(1));
+        pool_guard grd(&pool);
+        pool.async_run(check_err);
+
+        // Get a connection
+        auto conn = pool.async_get_connection(yield);
+        validate_charset(conn.get(), yield);
+
+        // Return the connection and retrieve it again
+        conn = pooled_connection();
+        conn = pool.async_get_connection(yield);
+        validate_charset(conn.get(), yield);
+
+        // Return the connection without reset and retrieve it again
+        conn.return_without_reset();
+        conn = pool.async_get_connection(yield);
+        validate_charset(conn.get(), yield);
+    });
+}
+
 BOOST_FIXTURE_TEST_CASE(connections_created_if_required, fixture)
 {
     run_stackful_coro([&](asio::yield_context yield) {

@@ -91,9 +91,12 @@ create temporary tables, start transactions, or set session variables. When usin
 pooled connections, session state can be problematic: if not reset properly,
 state from a previous operation may affect subsequent ones.
 
-After you return a connection to the pool, it uses [refmem any_connection async_reset_connection]
-to wipe session state before the connection can be obtained again. This will deallocate
-prepared statements, rollback uncommited transactions and clear variables.
+After you return a connection to the pool, the equivalent of
+[refmem any_connection async_reset_connection] and [refmemunq any_connection async_set_character_set]
+are used to wipe session state before
+the connection can be obtained again. This will deallocate
+prepared statements, rollback uncommitted transactions, clear variables and restore the connection's
+character set to `utf8mb4`.
 In particular, you don't need to call [refmem any_connection async_close_statement]
 to deallocate statements.
 
@@ -109,28 +112,20 @@ returned, so it does not affect latency. If you're not sure if an operation
 affects state or not, assume it does.
 
 
-[heading Character sets]
+[heading Character set]
 
-[warning
-    The current implementation, together with unintuitive MySQL defaults,
-    can yield to surprising behavior.
-]
+Pooled connections always use `utf8mb4` as its character set. When connections
+are reset, the equivalent of [refmem any_connection async_set_character_set] is used
+to restore the character set to `utf8mb4` (recall that raw [refmemunq any_connection async_reset_connection]
+will wipe character set data).
 
-When using pooled connections, [*all connections use the server's default character set].
-This is because [refmem any_connection async_reset_connection] discards the character set
-options specified during connection establishment.
+Pooled connections always know the character set they're using.
+This means that [refmem any_connection format_opts] and [refmemunq any_connection current_character_set]
+always succeed.
 
-You can obtain this character set by running:
-
-[!teletype]
-```
-"SELECT @@global.character_set_client, @@global.character_set_results;"
-```
-
-MySQL v8.0+ defaults to `utf8mb4`, but older MySQL and MariaDB servers default to
-`latin1`, which is not usually what you want. Issue a __SET_NAMES__ statement
-after you get a connection to change it. [@https://github.com/boostorg/mysql/issues/187 This issue]
-tracks solving this limitation.
+We recommend to always stick to `utf8mb4`. If you really need to use any other character set,
+use [refmemunq any_connection async_set_character_set] on your connection after it's been retrieved
+from the pool.
 
 
 [heading Connection lifecycle]

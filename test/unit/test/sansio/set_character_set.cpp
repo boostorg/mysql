@@ -25,6 +25,7 @@
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
+#include "test_unit/create_query_frame.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -38,22 +39,6 @@ struct fixture : algo_fixture_base
     fixture(const character_set& charset = utf8mb4_charset) : algo(st, {&diag, charset}) {}
 };
 
-// GCC raises a spurious warning here
-#if BOOST_GCC >= 110000
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-overread"
-#endif
-static std::vector<std::uint8_t> create_query_body(string_view sql)
-{
-    std::vector<std::uint8_t> res{0x03};  // COM_QUERY command id
-    const auto* data = reinterpret_cast<const std::uint8_t*>(sql.data());
-    res.insert(res.end(), data, data + sql.size());
-    return res;
-}
-#if BOOST_GCC >= 110000
-#pragma GCC diagnostic pop
-#endif
-
 BOOST_AUTO_TEST_CASE(success)
 {
     // Setup
@@ -61,7 +46,7 @@ BOOST_AUTO_TEST_CASE(success)
 
     // Run the algo
     algo_test()
-        .expect_write(create_frame(0, create_query_body("SET NAMES 'utf8mb4'")))
+        .expect_write(create_query_frame(0, "SET NAMES 'utf8mb4'"))
         .expect_read(create_ok_frame(1, ok_builder().build()))
         .check(fix);
 
@@ -77,7 +62,7 @@ BOOST_AUTO_TEST_CASE(success_previous_charset)
 
     // Run the algo
     algo_test()
-        .expect_write(create_frame(0, create_query_body("SET NAMES 'utf8mb4'")))
+        .expect_write(create_query_frame(0, "SET NAMES 'utf8mb4'"))
         .expect_read(create_ok_frame(1, ok_builder().build()))
         .check(fix);
 
@@ -89,7 +74,7 @@ BOOST_AUTO_TEST_CASE(error_network)
 {
     // This covers errors in read and write
     algo_test()
-        .expect_write(create_frame(0, create_query_body("SET NAMES 'utf8mb4'")))
+        .expect_write(create_query_frame(0, "SET NAMES 'utf8mb4'"))
         .expect_read(create_ok_frame(1, ok_builder().build()))
         .check_network_errors<fixture>();
 }
@@ -101,7 +86,7 @@ BOOST_AUTO_TEST_CASE(error_response)
 
     // Run the algo
     algo_test()
-        .expect_write(create_frame(0, create_query_body("SET NAMES 'utf8mb4'")))
+        .expect_write(create_query_frame(0, "SET NAMES 'utf8mb4'"))
         .expect_read(err_builder()
                          .seqnum(1)
                          .code(common_server_errc::er_unknown_character_set)
@@ -124,7 +109,7 @@ BOOST_AUTO_TEST_CASE(charset_name_needs_escaping)
 
     // Run the algo
     algo_test()
-        .expect_write(create_frame(0, create_query_body("SET NAMES 'lat\\'in\\\\'")))
+        .expect_write(create_query_frame(0, "SET NAMES 'lat\\'in\\\\'"))
         .expect_read(create_ok_frame(1, ok_builder().build()))
         .check(fix);
 }

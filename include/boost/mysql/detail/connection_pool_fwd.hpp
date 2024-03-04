@@ -8,8 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_POOL_FWD_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_POOL_FWD_HPP
 
-#include <boost/mysql/any_connection.hpp>
-
 #include <boost/mysql/detail/config.hpp>
 
 #include <memory>
@@ -18,6 +16,7 @@ namespace boost {
 namespace mysql {
 
 class pooled_connection;
+class any_connection;
 
 namespace detail {
 

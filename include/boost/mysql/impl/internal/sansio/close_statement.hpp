@@ -58,18 +58,13 @@ public:
                 ping_command{},
                 ping_seqnum_
             );
-            BOOST_ASIO_CORO_YIELD return next_action::write(next_action::write_args_t{{}, false});
+            BOOST_ASIO_CORO_YIELD return next_action::write({});
 
             // Read ping response
             BOOST_ASIO_CORO_YIELD return read(ping_seqnum_);
 
             // Process the OK packet
-            return deserialize_ok_response(
-                st_->reader.message(),
-                st_->flavor,
-                *diag_,
-                st_->backslash_escapes
-            );
+            return st_->deserialize_ok(*diag_);
         }
 
         return next_action();

@@ -117,6 +117,10 @@ class any_connection
 {
     detail::connection_impl impl_;
 
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
     BOOST_MYSQL_DECL
     static std::unique_ptr<detail::any_stream> create_stream(
         asio::any_io_executor ex,

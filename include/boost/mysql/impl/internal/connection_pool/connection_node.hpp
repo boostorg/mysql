@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_NODE_HPP
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -146,7 +147,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 break;
             case next_connection_action::reset:
                 run_with_timeout(
-                    node_.conn_.async_reset_connection(asio::deferred),
+                    access::get_impl(node_.conn_).async_reset_with_charset(utf8mb4_charset, asio::deferred),
                     node_.timer_,
                     node_.params_->ping_timeout,
                     std::move(self)

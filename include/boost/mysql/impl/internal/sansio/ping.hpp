@@ -52,12 +52,7 @@ public:
             BOOST_ASIO_CORO_YIELD return read(seqnum_);
 
             // Process the OK packet
-            return deserialize_ok_response(
-                st_->reader.message(),
-                st_->flavor,
-                *diag_,
-                st_->backslash_escapes
-            );
+            return st_->deserialize_ok(*diag_);
         }
 
         return next_action();

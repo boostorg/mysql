@@ -29,25 +29,31 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Securely compose a SET NAMES statement. This function
+// is also used by the pipelined version of reset_connection
+inline system::result<std::string> compose_set_names(const character_set& charset)
+{
+    // The character set should have a non-empty name
+    BOOST_ASSERT(!charset.name.empty());
+
+    // For security, if the character set has non-ascii characters in it name, reject it.
+    format_context ctx(format_options{ascii_charset, true});
+    ctx.append_raw("SET NAMES ").append_value(charset.name);
+    return std::move(ctx).get();
+}
+
 class set_character_set_algo : public sansio_algorithm, asio::coroutine
 {
     diagnostics* diag_;
     character_set charset_;
     std::uint8_t seqnum_{0};
 
-    static error_code compose_query(const character_set& charset, std::string& output)
+    next_action compose_request()
     {
-        // The character set should have a non-empty name
-        BOOST_ASSERT(!charset.name.empty());
-
-        // For security, if the character set has non-ascii characters in it name, reject it.
-        format_context ctx(format_options{ascii_charset, true});
-        ctx.append_raw("SET NAMES ").append_value(charset.name);
-        auto res = std::move(ctx).get();
-        if (res.has_error())
-            return res.error();
-        output = std::move(res).value();
-        return error_code();
+        auto q = compose_set_names(charset_);
+        if (q.has_error())
+            return q.error();
+        return write(query_command{q.value()}, seqnum_);
     }
 
 public:
@@ -61,26 +67,21 @@ public:
         if (ec)
             return ec;
 
-        std::string query;
-
         // SET NAMES never returns rows. Using execute requires us to allocate
         // a results object, which we can avoid by simply sending the query and reading the OK response.
         BOOST_ASIO_CORO_REENTER(*this)
         {
             // Setup
             diag_->clear();
-            ec = compose_query(charset_, query);
-            if (ec)
-                return ec;
 
             // Send the execution request
-            BOOST_ASIO_CORO_YIELD return write(query_command{query}, seqnum_);
+            BOOST_ASIO_CORO_YIELD return compose_request();
 
             // Read the response
             BOOST_ASIO_CORO_YIELD return read(seqnum_);
 
             // Verify it's what we expected
-            ec = deserialize_ok_response(st_->reader.message(), st_->flavor, *diag_, st_->backslash_escapes);
+            ec = st_->deserialize_ok(*diag_);
             if (ec)
                 return ec;
 

@@ -15,6 +15,7 @@
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+#include <boost/mysql/impl/internal/protocol/protocol.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 #include <boost/mysql/impl/internal/sansio/message_writer.hpp>
 
@@ -92,6 +93,12 @@ struct connection_state_data
             ssl = ssl_state::inactive;
         backslash_escapes = true;
         current_charset = character_set{};
+    }
+
+    // Reads an OK packet from the reader. This operation is repeated in several places.
+    error_code deserialize_ok(diagnostics& diag) noexcept
+    {
+        return deserialize_ok_response(reader.message(), flavor, diag, backslash_escapes);
     }
 };
 
