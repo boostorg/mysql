@@ -36,7 +36,10 @@ BOOST_AUTO_TEST_SUITE(test_pooled_connection)
 struct pooled_connection_fixture
 {
     asio::io_context ctx;
-    std::shared_ptr<detail::pool_impl> pool{std::make_shared<detail::pool_impl>(ctx, pool_params())};
+    std::shared_ptr<detail::pool_impl> pool{std::make_shared<detail::pool_impl>(
+        pool_executor_params{ctx.get_executor(), ctx.get_executor()},
+        pool_params{}
+    )};
 
     std::unique_ptr<detail::connection_node> create_node()
     {
@@ -191,12 +194,48 @@ BOOST_AUTO_TEST_SUITE(test_connection_pool)
 struct pool_fixture
 {
     asio::io_context ctx;
-    connection_pool pool{ctx, pool_params()};
+    connection_pool pool{ctx, pool_params{}};
 };
 
-BOOST_FIXTURE_TEST_CASE(init_ctor, pool_fixture)
+BOOST_AUTO_TEST_CASE(ctor_from_pool_executor_params)
 {
-    // Freshly constructed pools are valid
+    // Construct
+    asio::io_context ctx1, ctx2;
+    connection_pool pool(pool_executor_params{ctx1.get_executor(), ctx2.get_executor()}, pool_params{});
+
+    // Executors are correct
+    BOOST_TEST((pool.get_executor() == ctx1.get_executor()));
+    BOOST_TEST((detail::access::get_impl(pool)->connection_ex() == ctx2.get_executor()));
+
+    // The pool is valid
+    BOOST_TEST(pool.valid());
+}
+
+BOOST_AUTO_TEST_CASE(ctor_from_executor)
+{
+    // Construct
+    asio::io_context ctx;
+    connection_pool pool(ctx.get_executor(), pool_params{});
+
+    // Executors are correct
+    BOOST_TEST((pool.get_executor() == ctx.get_executor()));
+    BOOST_TEST((detail::access::get_impl(pool)->connection_ex() == ctx.get_executor()));
+
+    // The pool is valid
+    BOOST_TEST(pool.valid());
+}
+
+BOOST_AUTO_TEST_CASE(ctor_from_execution_context)
+{
+    // Construct
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params{});
+
+    // Executors are correct
+    BOOST_TEST((pool.get_executor() == ctx.get_executor()));
+    BOOST_TEST((detail::access::get_impl(pool)->connection_ex() == ctx.get_executor()));
+
+    // The pool is valid
     BOOST_TEST(pool.valid());
 }
 

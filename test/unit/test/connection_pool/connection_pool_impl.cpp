@@ -460,7 +460,10 @@ static void pool_test(boost::mysql::pool_params params, Args&&... args)
     asio::io_context ctx;
 
     // Pool (must be created using dynamic memory)
-    auto pool = std::make_shared<mock_pool>(ctx, std::move(params));
+    auto pool = std::make_shared<mock_pool>(
+        pool_executor_params{ctx.get_executor(), ctx.get_executor()},
+        std::move(params)
+    );
 
     // This flag is only set to true after the test finishes.
     // If the test timeouts, it will be false

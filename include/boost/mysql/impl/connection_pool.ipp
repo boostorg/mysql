@@ -57,8 +57,8 @@ boost::mysql::any_connection& boost::mysql::detail::get_connection(boost::mysql:
     return node.connection();
 }
 
-boost::mysql::connection_pool::connection_pool(const pool_executor_params& ex_params, pool_params params)
-    : impl_(std::make_shared<detail::pool_impl>(ex_params, std::move(params)))
+boost::mysql::connection_pool::connection_pool(pool_executor_params&& ex_params, pool_params&& params, int)
+    : impl_(std::make_shared<detail::pool_impl>(std::move(ex_params), std::move(params)))
 {
 }
 

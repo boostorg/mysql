@@ -20,45 +20,16 @@
 using namespace boost::mysql;
 namespace asio = boost::asio;
 
-BOOST_AUTO_TEST_SUITE(test_pool_executor_params)
+BOOST_AUTO_TEST_SUITE(test_pool_params)
 
-BOOST_AUTO_TEST_CASE(ctor_from_one_executor)
-{
-    asio::io_context ctx;
-    pool_executor_params params(ctx.get_executor());
-    BOOST_TEST((params.pool_executor() == ctx.get_executor()));
-    BOOST_TEST((params.connection_executor() == ctx.get_executor()));
-}
-
-BOOST_AUTO_TEST_CASE(ctor_from_two_executors)
-{
-    asio::io_context ctx;
-    auto strand = asio::make_strand(ctx);
-    pool_executor_params params(ctx.get_executor(), strand);
-    BOOST_TEST((params.pool_executor() == ctx.get_executor()));
-    BOOST_TEST((params.connection_executor() == strand));
-}
-
-BOOST_AUTO_TEST_CASE(ctor_from_execution_context)
-{
-    asio::io_context ctx;
-    pool_executor_params params(ctx);
-    BOOST_TEST((params.pool_executor() == ctx.get_executor()));
-    BOOST_TEST((params.connection_executor() == ctx.get_executor()));
-}
-
-BOOST_AUTO_TEST_CASE(thread_safe)
+BOOST_AUTO_TEST_CASE(pool_executor_params_thread_safe)
 {
     // The strand is only applied to the pool, and not to connections
     asio::io_context ctx;
     auto params = pool_executor_params::thread_safe(ctx.get_executor());
-    BOOST_TEST((params.pool_executor() != ctx.get_executor()));
-    BOOST_TEST((params.connection_executor() == ctx.get_executor()));
+    BOOST_TEST((params.pool_executor != ctx.get_executor()));
+    BOOST_TEST((params.connection_executor == ctx.get_executor()));
 }
-
-BOOST_AUTO_TEST_SUITE_END()
-
-BOOST_AUTO_TEST_SUITE(test_pool_params)
 
 BOOST_AUTO_TEST_CASE(invalid_params)
 {

@@ -109,7 +109,7 @@ BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
         BOOST_TEST((pool_ex != conn_ex));
 
         // Create and run the pool
-        connection_pool pool(pool_executor_params(pool_ex, conn_ex), create_pool_params());
+        connection_pool pool(pool_executor_params{pool_ex, conn_ex}, create_pool_params());
         pool_guard grd(&pool);
         pool.async_run(check_err);
 

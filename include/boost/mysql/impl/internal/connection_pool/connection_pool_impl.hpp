@@ -259,10 +259,10 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     };
 
 public:
-    basic_pool_impl(const pool_executor_params& ex_params, pool_params&& params)
+    basic_pool_impl(pool_executor_params&& ex_params, pool_params&& params)
         : params_(make_internal_pool_params(std::move(params))),
-          ex_(ex_params.pool_executor()),
-          conn_ex_(ex_params.connection_executor()),
+          ex_(std::move(ex_params.pool_executor)),
+          conn_ex_(std::move(ex_params.connection_executor)),
           wait_gp_(ex_),
           cancel_timer_(ex_, (std::chrono::steady_clock::time_point::max)())
     {
@@ -321,6 +321,7 @@ public:
     std::list<node_type>& nodes() noexcept { return all_conns_; }
     shared_state_type& shared_state() noexcept { return shared_st_; }
     internal_pool_params& params() noexcept { return params_; }
+    asio::any_io_executor connection_ex() noexcept { return conn_ex_; }
 };
 
 }  // namespace detail

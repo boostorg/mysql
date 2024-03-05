@@ -256,6 +256,10 @@ class connection_pool
 {
     std::shared_ptr<detail::pool_impl> impl_;
 
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
     static constexpr std::chrono::steady_clock::duration get_default_timeout() noexcept
     {
         return std::chrono::seconds(30);
@@ -322,13 +326,16 @@ class connection_pool
         );
     }
 
+    BOOST_MYSQL_DECL
+    connection_pool(pool_executor_params&& ex_params, pool_params&& params, int);
+
 public:
     /**
      * \brief Constructs a connection pool.
      * \details
-     * Internal I/O objects (like timers and channels) are constructed using
-     * \ref pool_executor_params::pool_executor on `ex_params`. Connections are constructed using
-     * \ref pool_executor_params::connection_executor. This can be used to create
+     * Internal I/O objects (like timers) are constructed using
+     * `ex_params.pool_executor`. Connections are constructed using
+     * `ex_params.connection_executor`. This can be used to create
      * thread-safe pools.
      * \n
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
@@ -342,8 +349,64 @@ public:
      * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
      *         pool_params.
      */
-    BOOST_MYSQL_DECL
-    connection_pool(const pool_executor_params& ex_params, pool_params params);
+    connection_pool(pool_executor_params ex_params, pool_params params)
+        : connection_pool(std::move(ex_params), std::move(params), 0)
+    {
+    }
+
+    /**
+     * \brief Constructs a connection pool.
+     * \details
+     * Both internal I/O objects and connections are constructed using the passed executor.
+     * \n
+     * The pool is created in a "not-running" state. Call \ref async_run to transition to the
+     * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
+     * with \ref client_errc::cancelled.
+     * \n
+     * The constructed pool is always valid (`this->valid() == true`).
+     *
+     * \par Exception safety
+     * Strong guarantee. Exceptions may be thrown by memory allocations.
+     * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
+     *         pool_params.
+     */
+    connection_pool(asio::any_io_executor ex, pool_params params)
+        : connection_pool(pool_executor_params{ex, ex}, std::move(params), 0)
+    {
+    }
+
+    /**
+     * \brief Constructs a connection pool.
+     * \details
+     * Both internal I/O objects and connections are constructed using `ctx.get_executor()`.
+     * \n
+     * The pool is created in a "not-running" state. Call \ref async_run to transition to the
+     * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
+     * with \ref client_errc::cancelled.
+     * \n
+     * The constructed pool is always valid (`this->valid() == true`).
+     * \n
+     * This function participates in overload resolution only if `ExecutionContext`
+     * satisfies the `ExecutionContext` requirements imposed by Boost.Asio.
+     *
+     * \par Exception safety
+     * Strong guarantee. Exceptions may be thrown by memory allocations.
+     * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
+     *         pool_params.
+     */
+    template <
+        class ExecutionContext
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
+        class = typename std::enable_if<std::is_convertible<
+            decltype(std::declval<ExecutionContext&>().get_executor()),
+            asio::any_io_executor>::value>::type
+#endif
+        >
+    connection_pool(ExecutionContext& ctx, pool_params params)
+        : connection_pool({ctx.get_executor(), ctx.get_executor()}, std::move(params), 0)
+    {
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
     connection_pool(const connection_pool&) = delete;

@@ -39,71 +39,13 @@ namespace mysql {
  * This part of the API is experimental, and may change in successive
  * releases without previous notice.
  */
-class pool_executor_params
+struct pool_executor_params
 {
-#ifndef BOOST_MYSQL_DOXYGEN
-    struct
-    {
-        asio::any_io_executor pool_ex;
-        asio::any_io_executor conn_ex;
-    } impl_;
-#endif
+    /// The executor to be used by the pool's internal objects.
+    asio::any_io_executor pool_executor;
 
-public:
-    /**
-     * \brief Constructor from individual executors.
-     * \details
-     * The constructed object has `this->pool_executor() == pool_ex`.
-     * If `conn_ex` is a default-constructed executor (this is the default),
-     * then the pool's executor will be used for connections, too
-     * (`this->connection_executor() == pool_ex`).
-     * Otherwise, `this->pool_executor() == conn_ex`.
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    pool_executor_params(asio::any_io_executor pool_ex, asio::any_io_executor conn_ex = {})
-        : impl_{std::move(pool_ex), std::move(conn_ex)}
-    {
-        if (!impl_.conn_ex)
-            impl_.conn_ex = impl_.pool_ex;
-    }
-
-    /**
-     * \brief Constructor from an execution context.
-     * \details
-     * Equivalent to `pool_executor_params(ctx.get_executor())`.
-     * Uses the same executor for the pool and for the connections.
-     *
-     * \par Exception safety
-     * Strong guaantee. Exceptions thrown by `ctx.get_executor()` are propagated.
-     */
-    template <
-        class ExecutionContext
-#ifndef BOOST_MYSQL_DOXYGEN
-        ,
-        class = typename std::enable_if<std::is_convertible<
-            decltype(std::declval<ExecutionContext&>().get_executor()),
-            asio::any_io_executor>::value>::type
-#endif
-        >
-    pool_executor_params(ExecutionContext& ctx) : pool_executor_params(ctx.get_executor())
-    {
-    }
-
-    /**
-     * \brief Retrieves the executor to be used by the pool's internal objects.
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    asio::any_io_executor pool_executor() const noexcept { return impl_.pool_ex; }
-
-    /**
-     * \brief Retrieves the executor to be used by connections created by the pool.
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    asio::any_io_executor connection_executor() const noexcept { return impl_.conn_ex; }
+    /// The executor to be used by connections created by the pool.
+    asio::any_io_executor connection_executor;
 
     /**
      * \brief Creates a pool_executor_params object that makes pools thread-safe.
@@ -120,7 +62,7 @@ public:
      */
     static pool_executor_params thread_safe(asio::any_io_executor ex)
     {
-        return pool_executor_params(asio::make_strand(ex), ex);
+        return pool_executor_params{asio::make_strand(ex), ex};
     }
 };
 
