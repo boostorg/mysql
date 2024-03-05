@@ -73,7 +73,7 @@ public:
     BOOST_CXX14_CONSTEXPR field_view() = default;
 
     /**
-     * \brief (EXPERIMENTAL) Constructs a `field_view` holding NULL.
+     * \brief Constructs a `field_view` holding NULL.
      * \details
      * Caution: `field_view(NULL)` will <b>not</b> match this overload. It will try to construct
      * a `string_view` from a NULL C string, causing undefined behavior.
@@ -87,7 +87,7 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(std::nullptr_t) noexcept {}
 
     /**
-     * \brief (EXPERIMENTAL) Constructs a `field_view` holding an `int64`.
+     * \brief Constructs a `field_view` holding an `int64`.
      * \par Exception safety
      * No-throw guarantee.
      *
@@ -109,7 +109,7 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(long long v) noexcept : impl_{std::int64_t(v)} {}
 
     /**
-     * \brief (EXPERIMENTAL) Constructs a `field_view` holding a `uint64`.
+     * \brief Constructs a `field_view` holding a `uint64`.
      * \par Exception safety
      * No-throw guarantee.
      *
@@ -151,7 +151,7 @@ public:
 #endif
 
     /**
-     * \brief (EXPERIMENTAL) Constructs a `field_view` holding a string.
+     * \brief Constructs a `field_view` holding a string.
      * \par Exception safety
      * No-throw guarantee.
      *
@@ -162,7 +162,7 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(string_view v) noexcept : impl_{v} {}
 
     /**
-     * \brief (EXPERIMENTAL) Constructs a `field_view` holding a blob.
+     * \brief Constructs a `field_view` holding a blob.
      * \par Exception safety
      * No-throw guarantee.
      *
@@ -173,7 +173,7 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(blob_view v) noexcept : impl_{v} {}
 
     /**
-     * \brief  (EXPERIMENTAL) Constructs a `field_view` holding a `float`.
+     * \brief Constructs a `field_view` holding a `float`.
      * \par Exception safety
      * No-throw guarantee.
      *
@@ -183,7 +183,7 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(float v) noexcept : impl_{v} {}
 
     /**
-     * \brief  (EXPERIMENTAL) Constructs a `field_view` holding a `double`.
+     * \brief Constructs a `field_view` holding a `double`.
      * \par Exception safety
      * No-throw guarantee.
      *
@@ -193,7 +193,7 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(double v) noexcept : impl_{v} {}
 
     /**
-     * \brief  (EXPERIMENTAL) Constructs a `field_view` holding a `date`.
+     * \brief Constructs a `field_view` holding a `date`.
      * \par Exception safety
      * No-throw guarantee.
      *
@@ -203,7 +203,7 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(const date& v) noexcept : impl_{v} {}
 
     /**
-     * \brief  (EXPERIMENTAL) Constructs a `field_view` holding a `datetime`.
+     * \brief Constructs a `field_view` holding a `datetime`.
      * \par Exception safety
      * No-throw guarantee.
      *
@@ -213,7 +213,7 @@ public:
     BOOST_CXX14_CONSTEXPR explicit field_view(const datetime& v) noexcept : impl_{v} {}
 
     /**
-     * \brief  (EXPERIMENTAL) Constructs a `field_view` holding a `time`.
+     * \brief Constructs a `field_view` holding a `time`.
      * \par Exception safety
      * No-throw guarantee.
      *
