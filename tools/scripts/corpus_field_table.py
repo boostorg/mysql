@@ -6,7 +6,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-# Generates the seed corpus from captured wireshark frames.
+# Generates the seed corpus for field and row fuzzers from captured wireshark frames.
 
 import json
 from enum import Enum
@@ -14,8 +14,7 @@ from pathlib import Path
 from os import path
 import struct
 from typing import List, NamedTuple
-import tarfile
-from io import BytesIO
+import csv
 
 _REPO_BASE = Path(path.join(path.dirname(path.realpath(__file__)), '..', '..')).absolute()
 _TEXT_JSON = _REPO_BASE.joinpath('private', 'fuzzing', 'text.json')
@@ -127,6 +126,7 @@ def _compute_column_type(mysql_frame) -> _ColumnType:
 
 
 class _Sample(NamedTuple):
+    fuzzer: str
     name: str
     content: bytes
 
@@ -175,8 +175,9 @@ def _gen_text_field_samples(response, table: str) -> List[_Sample]:
         row = bytes.fromhex(rec[0][2*4:])
         fields = _parse_text_row(row, num_fields)
         res += [_Sample(
-            f'fuzz_text_field/{table}_{i}_{j}.bin',
-            meta + field
+            fuzzer='fuzz_text_field',
+            name=f'{table}_{i}_{j}',
+            content=meta + field
         ) for j, (meta, field) in enumerate(zip(metas, fields))]
 
     return res
@@ -197,8 +198,9 @@ def _gen_row_samples(response, enc: _Encoding, table: str) -> List[_Sample]:
     # Rows
     return [
         _Sample(
-            f'fuzz_row/{_encoding_to_str(enc)}_{table}_{i}.bin',
-            b''.join((header, meta, bytes.fromhex(rec[0][2*4:])))
+            fuzzer='fuzz_row',
+            name=f'{_encoding_to_str(enc)}_{table}_{i}',
+            content=b''.join((header, meta, bytes.fromhex(rec[0][2*4:])))
         )
         for i, rec in enumerate(mysql_raw[1 + num_fields:-1])
     ]
@@ -233,22 +235,16 @@ def main():
         table = bytes.fromhex(query['_source']['layers']['mysql']['mysql.request_raw'][0])[1:].decode().split(' ')[-1]
         corpus += _gen_row_samples(response, _Encoding.binary, table)
     
-    # Frames for simpler deserialization functions are stored in a json file
-    with open(_REPO_BASE.joinpath('tools', 'scripts', 'seed_corpus_samples.json'), 'rt') as f:
-        obj = json.load(f)
-    for fuzzer, samples in obj.items():
-        corpus += [_Sample(
-            f'{fuzzer}/{sample["name"]}.bin',
-            bytes.fromhex(sample["msg"])
-        ) for sample in samples]
-    
-    # Write the final file
-    corpus_path = _REPO_BASE.joinpath('test', 'fuzzing', 'seedcorpus.tar.gz')
-    with tarfile.open(corpus_path, "w:gz") as tar:
-        for sample in corpus:
-            tinfo = tarfile.TarInfo(sample.name)
-            tinfo.size = len(sample.content)
-            tar.addfile(tinfo, BytesIO(sample.content))
+    # Write all frames to a CSV file
+    csv_path = _REPO_BASE.joinpath('tools', 'seed_corpus', 'field_table.csv') 
+    with open(csv_path, 'wt') as f:
+        writer = csv.DictWriter(f, fieldnames=_Sample._fields)
+        writer.writeheader()
+        writer.writerows({
+            "fuzzer": sample.fuzzer,
+            "name": sample.name,
+            "content": sample.content.hex()
+        } for sample in corpus)
 
 
 if __name__ == '__main__':

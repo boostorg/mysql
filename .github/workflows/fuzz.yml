@@ -33,7 +33,7 @@ jobs:
       # Note: this will take care of using the corpus and updating it
       - name: Build and run the fuzzer
         run: |
-          python tools/ci.py \
+          python tools/ci/main.py \
             --build-kind=fuzz \
             --source-dir=$(pwd)
       

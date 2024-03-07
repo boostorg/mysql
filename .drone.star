@@ -30,7 +30,7 @@ def _b2_command(
     address_sanitizer=0,
     undefined_sanitizer=0
 ):
-    return 'python tools/ci.py ' + \
+    return 'python tools/ci/main.py ' + \
                 '--clean=1 ' + \
                 '--build-kind=b2 ' + \
                 '--source-dir="{}" '.format(source_dir) + \
@@ -60,7 +60,7 @@ def _cmake_command(
     db='mysql8',
     server_host='127.0.0.1'
 ):
-    return 'python tools/ci.py ' + \
+    return 'python tools/ci/main.py ' + \
                 '--build-kind=cmake ' + \
                 '--clean=1 ' + \
                 '--generator="{}" '.format(generator) + \
@@ -240,7 +240,7 @@ def docs():
         name='Linux docs',
         image=_image('build-docs'),
         os='linux',
-        command='python tools/ci.py --build-kind=docs --clean=1 --source-dir=$(pwd)',
+        command='python tools/ci/main.py --build-kind=docs --clean=1 --source-dir=$(pwd)',
         db=None
     )
 

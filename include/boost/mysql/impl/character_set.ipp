@@ -42,11 +42,9 @@ std::size_t boost::mysql::detail::next_char_utf8mb4(span<const unsigned char> in
     BOOST_ASSERT(!input.empty());
 
     auto first_char = input.front();
-    if (first_char < 0x80)
-    {
-        return 1;
-    }
-    else if (first_char < 0xc2)
+    BOOST_ASSERT(first_char >= 0x80);  // ascii range covered by call_next_char
+
+    if (first_char < 0xc2)
     {
         return 0;
     }

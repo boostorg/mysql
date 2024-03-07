@@ -27,7 +27,7 @@ docker start $CONTAINER || docker run -dit \
     $FULL_IMAGE
 docker network connect my-net $DB || echo "DB already connected"
 docker network connect my-net $CONTAINER || echo "Network already connected"
-docker exec $CONTAINER python /opt/boost-mysql/tools/ci.py --source-dir=/opt/boost-mysql \
+docker exec $CONTAINER python /opt/boost-mysql/tools/ci/main.py --source-dir=/opt/boost-mysql \
     --build-kind=$BK \
     --build-shared-libs=1 \
     --valgrind=0 \

@@ -12,12 +12,21 @@ local all_fuzzers = [ regex.replace-list
     [ glob "fuzz_*.cpp" ] : ".cpp" : ""
 ] ;
 
+# Fuzzers that should use a longer time period
+local long_fuzzers =
+    fuzz_row
+    fuzz_text_field
+    fuzz_utf8mb4
+    fuzz_escape_string
+    fuzz_format_strings
+    fuzz_format_args
+;
+
+
 for local fuzzer in $(all_fuzzers)
 {
-    # These two fuzzers are the most complex ones. The rest are really
-    # simple, so less time is enough
     local fuzz_time = 10 ;
-    if $(fuzzer) = "fuzz_row" || $(fuzzer) = "fuzz_text_field"
+    if $(fuzzer) in $(long_fuzzers)
     {
         fuzz_time = 30 ;
     }
