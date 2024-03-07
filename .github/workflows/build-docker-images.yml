@@ -24,6 +24,8 @@ jobs:
           - { image: build-clang11,      dockerfile: build-clang11,      platforms: "linux/amd64",                }
           - { image: build-clang14,      dockerfile: build-clang14,      platforms: "linux/amd64, linux/arm64/v8" }
           - { image: build-clang16,      dockerfile: build-clang16,      platforms: "linux/amd64"                 }
+          - { image: build-clang17,      dockerfile: build-clang17,      platforms: "linux/amd64"                 }
+          - { image: build-clang18,      dockerfile: build-clang18,      platforms: "linux/amd64"                 }
           - { image: build-clang16-i386, dockerfile: build-clang16-i386, platforms: "linux/amd64"                 }
           - { image: build-gcc5,         dockerfile: build-gcc5,         platforms: "linux/amd64",                }
           - { image: build-gcc6,         dockerfile: build-gcc6,         platforms: "linux/amd64",                }

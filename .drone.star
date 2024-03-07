@@ -6,8 +6,8 @@
 #
 
 _triggers = { "branch": [ "master", "develop", "drone*", "feature/*", "bugfix/*", "fix/*", "pr/*" ] }
-_container_tag = '1f4d636dddc2f5af1774b42e6177a06457808330'
-_win_container_tag = '1f4d636dddc2f5af1774b42e6177a06457808330'
+_container_tag = 'ca0db5925a497b70e7d6b303c81d56b70c06f9ef'
+_win_container_tag = 'ca0db5925a497b70e7d6b303c81d56b70c06f9ef'
 
 
 def _image(name):
@@ -271,6 +271,8 @@ def main(ctx):
         linux_b2('Linux B2 clang-16-sanit',       _image('build-clang16'),       toolset='clang-16',  cxxstd='20', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-16-i386-sanit',  _image('build-clang16-i386'),  toolset='clang-16',  cxxstd='20', address_model=32, address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 gcc-5',                _image('build-gcc5'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
+        linux_b2('Linux B2 clang-17',             _image('build-clang17'),       toolset='clang-17',  cxxstd='20'),
+        linux_b2('Linux B2 clang-18',             _image('build-clang18'),       toolset='clang-18',  cxxstd='23'),
         linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
         linux_b2('Linux B2 gcc-6',                _image('build-gcc6'),          toolset='gcc-6',     cxxstd='14,17'),
         linux_b2('Linux B2 gcc-10',               _image('build-gcc10'),         toolset='gcc-10',    cxxstd='17,20'),
