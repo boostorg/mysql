@@ -5,12 +5,15 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+require-b2 5.0.1 ;
+import-search /boost/config/checks ;
+
 import os ;
 import path ;
 import feature ;
-import ../config/checks/config : requires ;
+import config : requires ;
 
-project /boost/mysql/test ;
+project ;
 
 # Support header-only builds
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
@@ -19,63 +22,14 @@ feature.feature boost.mysql.separate-compilation : on off : propagated composite
 feature.feature boost.mysql.use-ts-executor : on off : propagated composite ;
 
 # System libraries
-if [ os.name ] = NT
+local OPENSSL_ROOT = [ os.environ OPENSSL_ROOT ] ;
+if [ os.on-windows ]
 {
-    local OPENSSL_ROOT_ENV = [ os.environ OPENSSL_ROOT ] ;
-    local OPENSSL_ROOT = "" ;
-    if $(OPENSSL_ROOT_ENV)
-    {
-        OPENSSL_ROOT = $(OPENSSL_ROOT_ENV) ;
-    }
-    else 
-    {
-        OPENSSL_ROOT = "C:/OpenSSL" ;
-    }
-    local openssl_requirements =
-        <include>$(OPENSSL_ROOT)/include
-        <library-path>$(OPENSSL_ROOT)/lib
-    ; 
-
-    if [ path.exists $(OPENSSL_ROOT)/lib/libssl.lib ]
-    {
-        echo "OpenSSL > 1.1.0. Including libssl" ;
-        lib ssl : : <target-os>windows <name>libssl : : $(openssl_requirements) ;
-    }
-    else if [ path.exists $(OPENSSL_ROOT)/lib/ssleay32.lib ] 
-    {
-        echo "OpenSSL < 1.1.0. Including ssleay32" ;
-        lib ssl : : <target-os>windows <name>ssleay32 : : $(openssl_requirements) ;
-    }
-    else
-    {
-        lib ssl : : <link>shared : : $(openssl_requirements) ;
-    }
-
-    if [ path.exists $(OPENSSL_ROOT)/lib/libcrypto.lib ]
-    {
-        echo "OpenSSL > 1.1.0. Including libcrypto" ;
-        lib crypto : : <target-os>windows <name>libcrypto : : $(openssl_requirements) ;
-    }
-    else if [ path.exists $(OPENSSL_ROOT)/lib/libeay32.lib ]
-    {
-        echo "OpenSSL < 1.1.0. Including libeay32" ;
-        lib crypto : : <target-os>windows <name>libeay32 : : $(openssl_requirements) ;
-    }
-    else
-    {
-        lib crypto : : <link>shared : : $(openssl_requirements) ;
-    }
+    OPENSSL_ROOT ?= "C:/OpenSSL" ;
 }
-else
-{
-    local OPENSSL_ROOT = [ os.environ OPENSSL_ROOT ] ;
-    local openssl_requirements =
-        <include>$(OPENSSL_ROOT)/include
-        <library-path>$(OPENSSL_ROOT)/lib
-    ; 
-    lib ssl : : <link>shared : : $(openssl_requirements) ;
-    lib crypto : : <link>shared : : $(openssl_requirements) ;
-}
+using openssl : : <search>$(OPENSSL_ROOT)/lib <include>$(OPENSSL_ROOT)/include ;
+alias ssl : : <source>/openssl//ssl/<link>shared ;
+alias crypto : : <source>/openssl//crypto/<link>shared ;
 
 # Requirements to use across targets
 local requirements = 
@@ -101,7 +55,6 @@ local requirements =
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
         <define>BOOST_ASIO_SEPARATE_COMPILATION
-        <include>../include
         <boost.mysql.use-ts-executor>on:<define>BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
     ;
 
