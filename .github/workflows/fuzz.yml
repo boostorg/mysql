@@ -19,13 +19,13 @@ jobs:
   fuzz:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/anarthal-containers/build-clang16
+      image: ghcr.io/anarthal-containers/build-clang18
     steps:
       - name: Fetch code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Restore corpus
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: /tmp/corpus.tar.gz
           key: corpus-${{ github.run_id }}
@@ -37,9 +37,9 @@ jobs:
           python tools/ci/main.py \
             --build-kind=fuzz \
             --source-dir=$(pwd)
-      
+
       - name: Archive any crashes as an artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: crashes
