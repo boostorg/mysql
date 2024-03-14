@@ -9,8 +9,8 @@ _triggers = {
     "refs": [
         "refs/heads/master",
         "refs/heads/develop",
-        "refs/pull/**",
-        "refs/tags/**"
+        # "refs/pull/**",
+        # "refs/tags/**"
     ]
 }
 _container_tag = '252732b3d7af7f78618e877479b85d4d611a61f4'
