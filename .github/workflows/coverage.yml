@@ -9,8 +9,10 @@ name: coverage
 
 on:
   push:
-    branches-ignore: [gh-pages]
+    branches: [develop, master]
+    tags: ['*']
   pull_request:
+  workflow_dispatch:
 
 env:
   GCOV_REPORT_DIR: /tmp/gcov-reports
