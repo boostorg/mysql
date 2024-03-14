@@ -106,6 +106,7 @@ def _b2_build(
     address_sanitizer: bool = False,
     undefined_sanitizer: bool = False,
     use_ts_executor: bool = False,
+    coverage: bool = False,
 ) -> None:
     # Config
     os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
@@ -136,6 +137,7 @@ def _b2_build(
         'boost.mysql.use-ts-executor={}'.format('on' if use_ts_executor else 'off'),
     ] + (['address-sanitizer=norecover'] if address_sanitizer else [])     # can only be disabled by omitting the arg
       + (['undefined-sanitizer=norecover'] if undefined_sanitizer else []) # can only be disabled by omitting the arg
+      + (['coverage=on'] if coverage else [])
       + [
         'warnings=extra',
         'warnings-as-errors=on',
@@ -156,7 +158,6 @@ def _cmake_build(
     generator: str = 'Ninja',
     build_shared_libs: bool = True,
     valgrind: bool = False,
-    coverage: bool = False,
     clean: bool = False,
     standalone_tests: bool = True,
     add_subdir_tests: bool = True,
@@ -205,9 +206,6 @@ def _cmake_build(
             'install'
         ])
 
-        # Don't include our library, as this confuses coverage reports
-        if coverage:
-            rmtree(b2_distro.joinpath('include', 'boost', 'mysql'))
 
     # Build the library, run the tests, and install, from the superproject
     _mkdir_and_cd(BOOST_ROOT.joinpath('__build_cmake_test__'))
@@ -242,7 +240,6 @@ def _cmake_build(
         ] + (['-DCMAKE_CXX_STANDARD={}'.format(cxxstd)] if cxxstd else []) + [
             '-DBOOST_MYSQL_INTEGRATION_TESTS=ON',
             '-DBOOST_MYSQL_VALGRIND_TESTS={}'.format(_cmake_bool(valgrind)),
-            '-DBOOST_MYSQL_COVERAGE={}'.format(_cmake_bool(coverage)),
             '-G',
             generator,
             '..'
@@ -286,8 +283,7 @@ def _cmake_build(
 
     # Subdir tests, using find_package with the b2 distribution
     # (library can be consumed using find_package on a distro built by b2)
-    # These are incompatible with coverage builds (we rmtree include/boost/mysql)
-    if standalone_tests and not coverage:
+    if standalone_tests:
         _mkdir_and_cd(BOOST_ROOT.joinpath('libs', 'mysql', 'test', 'cmake_b2_test', '__build_cmake_b2_test__'))
         run([
             'cmake',
@@ -314,26 +310,6 @@ def _cmake_build(
         ])
         run(['cmake', '--build', '.', '--config', build_type])
         run(['ctest', '--output-on-failure', '--build-config', build_type])
-
-    # Gather coverage data, if available
-    if coverage:
-        lib_dir = str(BOOST_ROOT.joinpath('libs', 'mysql'))
-        os.chdir(lib_dir)
-
-        # Generate an adequate coverage.info file to upload. Codecov's
-        # default is to compute coverage for tests and examples, too, which
-        # is not correct
-        run(['lcov', '--capture', '--no-external', '--directory', '.', '-o', 'coverage.info'])
-        run(['lcov', '-o', 'coverage.info', '--extract', 'coverage.info', '**include/boost/mysql/**'])
-
-        # Make all file parts rooted at $BOOST_ROOT/libs/mysql (required by codecov)
-        with open('coverage.info', 'rt') as f:
-            lines = [l.replace('SF:{}'.format(lib_dir), 'SF:') for l in f]
-        with open('coverage.info', 'wt') as f:
-            f.writelines(lines)
-        
-        # Upload the results
-        run(['codecov', '-Z', '-f', 'coverage.info'])
 
 
 def _str2bool(v: Union[bool, str]) -> bool:
@@ -412,7 +388,8 @@ def main():
             undefined_sanitizer=args.undefined_sanitizer,
             clean=args.clean,
             boost_branch=boost_branch,
-            db=args.db
+            db=args.db,
+            coverage=args.coverage
         )
     elif args.build_kind == 'cmake':
         _cmake_build(
@@ -420,7 +397,6 @@ def main():
             generator=args.generator,
             build_shared_libs=args.build_shared_libs,
             valgrind=args.valgrind,
-            coverage=args.coverage,
             clean=args.clean,
             standalone_tests=args.cmake_standalone_tests,
             add_subdir_tests=args.cmake_add_subdir_tests,

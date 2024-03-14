@@ -9,6 +9,7 @@ name: fuzz
 
 on:
   push:
+    branches-ignore: [gh-pages]
   pull_request:
   schedule:
     - cron: "25 00 * * *"

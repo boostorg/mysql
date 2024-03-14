@@ -6,7 +6,7 @@
 #
 
 _triggers = { "branch": [ "master", "develop", "drone*", "feature/*", "bugfix/*", "fix/*", "pr/*" ] }
-_container_tag = 'ca0db5925a497b70e7d6b303c81d56b70c06f9ef'
+_container_tag = '252732b3d7af7f78618e877479b85d4d611a61f4'
 _win_container_tag = 'ca0db5925a497b70e7d6b303c81d56b70c06f9ef'
 
 
@@ -52,7 +52,6 @@ def _cmake_command(
     cmake_build_type='Debug',
     cxxstd='20',
     valgrind=0,
-    coverage=0,
     standalone_tests=1,
     add_subdir_tests=1,
     install_tests=1,
@@ -69,7 +68,6 @@ def _cmake_command(
                 '--cmake-build-type={} '.format(cmake_build_type) + \
                 '--cxxstd={} '.format(cxxstd) + \
                 '--valgrind={} '.format(valgrind) + \
-                '--coverage={} '.format(coverage) + \
                 '--cmake-standalone-tests={} '.format(standalone_tests) + \
                 '--cmake-add-subdir-tests={} '.format(add_subdir_tests) + \
                 '--cmake-install-tests={} '.format(install_tests) + \
@@ -106,12 +104,7 @@ def _pipeline(
                 "name": "mysql-socket",
                 "path": "/var/run/mysqld"
             }] if db != None else [],
-            "commands": [command],
-            "environment": {
-                "CODECOV_TOKEN": {
-                    "from_secret": "CODECOV_TOKEN"
-                }
-            }
+            "commands": [command]
         }],
         "services": [{
             "name": "mysql",
@@ -193,7 +186,6 @@ def linux_cmake(
     cmake_build_type='Debug',
     cxxstd='20',
     valgrind=0,
-    coverage=0,
     standalone_tests=1,
     add_subdir_tests=1,
     install_tests=1,
@@ -205,7 +197,6 @@ def linux_cmake(
         cmake_build_type=cmake_build_type,
         cxxstd=cxxstd,
         valgrind=valgrind,
-        coverage=coverage,
         standalone_tests=standalone_tests,
         add_subdir_tests=add_subdir_tests,
         install_tests=install_tests,
@@ -228,7 +219,7 @@ def windows_cmake(
     )
     return _pipeline(
         name=name,
-        image=_image('build-msvc14_3'),
+        image=_win_image('build-msvc14_3'),
         os='windows',
         command=command,
         db=None
@@ -249,7 +240,6 @@ def main(ctx):
     return [
         # CMake Linux
         linux_cmake('Linux CMake valgrind',       _image('build-gcc11'), valgrind=1, build_shared_libs=0),
-        linux_cmake('Linux CMake coverage',       _image('build-gcc11'), coverage=1, build_shared_libs=0),
         linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang14'), db='mysql5', build_shared_libs=0),
         linux_cmake('Linux CMake MariaDB',        _image('build-clang14'), db='mariadb', build_shared_libs=1),
         linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11', standalone_tests=0, install_tests=0),

@@ -49,12 +49,6 @@ function(boost_mysql_common_target_settings TARGET_NAME)
         target_include_directories(${TARGET_NAME} PUBLIC ${VALGRIND_INCLUDE_DIR})
         target_compile_definitions(${TARGET_NAME} PUBLIC BOOST_MYSQL_VALGRIND_TESTS)
     endif()
-
-    # Coverage
-    if(BOOST_MYSQL_COVERAGE)
-        target_compile_options(${TARGET_NAME} PUBLIC --coverage)
-        target_link_options(${TARGET_NAME} PUBLIC --coverage)
-    endif()
 endfunction()
 
 # Valgrind stuff

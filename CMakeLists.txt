@@ -96,10 +96,6 @@ if(BOOST_MYSQL_IS_ROOT)
     # Valgrind tests and Valgrind-friendly code (e.g. mark SSL buffers as initialized)
     option(BOOST_MYSQL_VALGRIND_TESTS OFF "Whether to run Valgrind tests or not (requires Valgrind)")
     mark_as_advanced(BOOST_MYSQL_VALGRIND_TESTS)
-    
-    # Build with coverage
-    option(BOOST_MYSQL_COVERAGE OFF "Whether to build using coverage")
-    mark_as_advanced(BOOST_MYSQL_COVERAGE)
 endif()
 
 # Examples and tests

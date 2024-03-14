@@ -103,6 +103,8 @@ local requirements =
         <define>BOOST_ASIO_SEPARATE_COMPILATION
         <include>../include
         <boost.mysql.use-ts-executor>on:<define>BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
+        # Disable assertions when doing coverage, as they distort coverage data
+        <coverage>on:<define>BOOST_DISABLE_ASSERTS
     ;
 
 alias boost_mysql

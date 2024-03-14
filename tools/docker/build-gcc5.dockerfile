@@ -10,15 +10,17 @@ FROM ubuntu:16.04
 RUN \
     apt-get update && \
     apt-get --no-install-recommends -y install \
-        software-properties-common \
-        ca-certificates \
+        gcc-5 \
+        g++-5 \
         libssl-dev \
         git \
+        ca-certificates \
         python3 \
         python3-requests \
+        cmake \
+        ninja-build \
+        valgrind \
         mysql-client && \
-    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
-    apt-get --no-install-recommends -y install gcc-5 g++-5 && \
     ln -s /usr/bin/g++-5 /usr/bin/g++ && \
     ln -s /usr/bin/gcc-5 /usr/bin/gcc && \
     ln -s /usr/bin/python3 /usr/bin/python

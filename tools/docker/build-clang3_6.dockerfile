@@ -10,17 +10,16 @@ FROM ubuntu:16.04
 RUN \
     apt-get update && \
     apt-get --no-install-recommends -y install \
-        software-properties-common \
-        ca-certificates \
+        clang-3.6 \
         libssl-dev \
         git \
+        ca-certificates \
         python3 \
         python3-requests \
-        # Workaround for https://github.com/bfgroup/b2/issues/354
-        g++ \
+        cmake \
+        ninja-build \
+        valgrind \
         mysql-client && \
-    add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
-    apt-get --no-install-recommends -y install clang-3.6 && \
     ln -s /usr/bin/clang++-3.6 /usr/bin/clang++ && \
     ln -s /usr/bin/clang-3.6 /usr/bin/clang && \
     ln -s /usr/bin/python3 /usr/bin/python

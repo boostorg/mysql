@@ -10,7 +10,7 @@ set -e
 
 BK=b2
 IMAGE=build-gcc13
-SHA=1f4d636dddc2f5af1774b42e6177a06457808330
+SHA=252732b3d7af7f78618e877479b85d4d611a61f4
 CONTAINER=builder-$IMAGE-$BK
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
 DB=mysql8
@@ -37,7 +37,7 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci/main.py --source-dir=/op
     --address-model=64 \
     --address-sanitizer=0 \
     --undefined-sanitizer=0 \
-    --cxxstd=11 \
+    --cxxstd=20 \
     --variant=debug \
     --separate-compilation=1 \
     --use-ts-executor=0 \
@@ -45,6 +45,7 @@ docker exec $CONTAINER python /opt/boost-mysql/tools/ci/main.py --source-dir=/op
     --cmake-add-subdir-tests=1 \
     --cmake-install-tests=1 \
     --cmake-build-type=Debug \
+    --coverage=0 \
     --stdlib=native \
     --server-host=$DB \
     --db=$DB
