@@ -5,7 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-_triggers = { "branch": [ "master", "develop", "drone*", "bugfix/*", "fix/*", "pr/*" ] }
+_triggers = { "branch": [ "master", "develop" ] }
 _container_tag = '252732b3d7af7f78618e877479b85d4d611a61f4'
 _win_container_tag = 'ca0db5925a497b70e7d6b303c81d56b70c06f9ef'
 
