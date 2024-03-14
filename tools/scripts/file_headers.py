@@ -32,7 +32,8 @@ BASE_FOLDERS = [
 ]
 BASE_FILES = [
     'CMakeLists.txt',
-    '.drone.star'
+    '.drone.star',
+    '.codecov.yml'
 ]
 HTML_GEN_PATH = path.join(REPO_BASE, 'doc', 'html')
 
