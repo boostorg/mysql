@@ -6,6 +6,7 @@
 #
 
 _triggers = {
+    "branches": [],
     "refs": [
         "refs/heads/master",
         "refs/heads/develop",
