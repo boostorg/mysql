@@ -9,11 +9,12 @@ name: fuzz
 
 on:
   push:
-    branches-ignore: [gh-pages]
+    branches: [develop, master]
+    tags: ['*']
   pull_request:
+  workflow_dispatch:
   schedule:
     - cron: "25 00 * * *"
-  workflow_dispatch:
 
 jobs:
   fuzz:
