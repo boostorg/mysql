@@ -20,6 +20,7 @@ local long_fuzzers =
     fuzz_escape_string
     fuzz_format_strings
     fuzz_format_args
+    fuzz_format_sql_injection
 ;
 
 
@@ -41,6 +42,7 @@ for local fuzzer in $(all_fuzzers)
             /boost/mysql/test//boost_mysql
             $(fuzzer).cpp
         : requirements
+            <include>../common/include
             <debug-symbols>on
             <optimization>speed
             <address-sanitizer>on
