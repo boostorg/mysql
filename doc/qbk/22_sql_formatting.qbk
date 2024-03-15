@@ -139,8 +139,9 @@ But don't do it in production code!
 
 [heading:unknown_character_set Solving the unknown_character_set error]
 
-If you are getting a `client_errc::unknown_character_set` error, your connection
-is currently unaware of the character set it's using, which is required by format operations.
+If you are getting a `boost::system::system_error` with a
+`client_errc::unknown_character_set` error code (or getting this error code by other means),
+your connection is currently unaware of the character set it's using, which is required by format operations.
 Try the following:
 
 * Make sure that you are performing connection establishment ([refmem any_connection connect] or

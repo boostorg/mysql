@@ -117,6 +117,10 @@ static std::string compose_batch_insert(
             emp.salary
         );
         is_first = false;
+
+        // If you find yourself repeating the formatting logic for a type
+        // like employee over and over, you can specialize boost::mysql::formatter<employee>
+        // employee objects usable as format arguments. See batch_inserts_generic for an example.
     }
 
     // fomat_context::get() returns the result of our formatting operation.

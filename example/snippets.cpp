@@ -2176,9 +2176,10 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
         {
             // We're trying to format a double infinity value, which is not
             // supported by MySQL. This will throw an exception.
-            format_sql(opts, "SELECT {}", HUGE_VAL);
+            std::string formatted_query = format_sql(opts, "SELECT {}", HUGE_VAL);
             //<-
             ASSERT(false);
+            boost::ignore_unused(formatted_query);
             //->
         }
         catch (const boost::system::system_error& err)
@@ -2226,11 +2227,21 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
 #endif
     {
         //[sql_formatting_memory_reuse
-        std::string storage;  // we want to re-use memory held by storage
+        // we want to re-use memory held by storage
+        std::string storage;
+
+        // storage is moved into ctx by the constructor. If any memory
+        // had been allocated by the string, it will be re-used.
         boost::mysql::format_context ctx(conn.format_opts().value(), std::move(storage));
 
         // Use ctx as you normally would
+        boost::mysql::format_sql_to(ctx, "SELECT {}", 42);
+
+        // When calling get(), the string is moved out of the context
+        std::string query = std::move(ctx).get().value();
         //]
+
+        ASSERT(query == "SELECT 42");
     }
 }
 
