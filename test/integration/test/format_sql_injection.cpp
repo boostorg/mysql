@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/format_sql.hpp>
@@ -21,9 +22,9 @@
 using namespace boost::mysql;
 namespace asio = boost::asio;
 
-// A set of payloads extracted by running sqlmap against a test server.
-static constexpr const char* sqlmap_payloads[] =
+static constexpr const char* payloads[] =
     {
+        // These payloads have been extracted by running sqlmap against a test server
         R"PREFIX(6772)PREFIX",
         R"PREFIX(f0',"(..)()))PREFIX",
         R"PREFIX(f0'Zsstap<'">TJPatz)PREFIX",
@@ -1212,6 +1213,25 @@ static constexpr const char* sqlmap_payloads[] =
         R"PREFIX(-3096 ORDER BY 1#)PREFIX",
         R"PREFIX(-5168 ORDER BY 1#)PREFIX",
         R"PREFIX(-2191' ORDER BY 1#)PREFIX",
+
+        // Some hand-crafted payloads from unit tests
+        "2byte \" \xc3\xb1 UTF-8\\ \xc3\xb2 \\",
+        "3byte '\xef\xbf\xbf UTF-8'",
+        "4byte \r'\xf0\x90\x80\x80 UTF-8\n",
+        R"(\\)",
+        R"(' or ")",
+        R"(-- or #)",
+        R"(' OR '1)",
+        R"(' OR 1 -- -)",
+        R"(" OR "" = ")",
+        R"(" OR 1 = 1 -- -)",
+        R"(' OR '' = ')",
+        R"('=')",
+        R"('LIKE')",
+        R"('=0--+)",
+        R"(' OR 'x'='x)",
+        R"(' AND id IS NULL; --)",
+        R"('''''''''''''UNION SELECT '2)",
 };
 
 BOOST_AUTO_TEST_CASE(test_format_sql_injection)
@@ -1225,7 +1245,34 @@ BOOST_AUTO_TEST_CASE(test_format_sql_injection)
     // Connect
     conn.connect(test::default_connect_params(ssl_mode::disable));
 
-    for (const char* payload : sqlmap_payloads)
+    // Verify injection
+    for (string_view payload : payloads)
+    {
+        BOOST_TEST_CONTEXT(payload)
+        {
+            // Create the query
+            auto query = format_sql(
+                conn.format_opts().value(),
+                "SELECT id FROM three_rows_table WHERE field_varchar = {} OR field_varchar = {}",
+                payload,
+                blob_view(reinterpret_cast<const unsigned char*>(payload.data()), payload.size())
+            );
+
+            // Execute it
+            conn.execute(query, result, netres.err, *netres.diag);
+
+            // Verify that we didn't crash or get data we didn't have to
+            netres.validate_no_error();
+            BOOST_TEST(result.rows().size() == 0u);
+        }
+    }
+
+    // Disable backslash escapes
+    conn.execute("SET sql_mode = 'NO_BACKSLASH_ESCAPES'", result);
+    BOOST_TEST(conn.backslash_escapes() == false);
+
+    // Check injection again
+    for (string_view payload : payloads)
     {
         BOOST_TEST_CONTEXT(payload)
         {
