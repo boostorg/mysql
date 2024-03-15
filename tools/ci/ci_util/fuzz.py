@@ -11,12 +11,15 @@ import os
 from shutil import unpack_archive, make_archive
 from .common import install_boost, BOOST_ROOT, run
 from .seed_corpus import generate_seed_corpus
+from .db_setup import db_setup
 
 
 def fuzz_build(
     source_dir: Path,
-    clean: bool = False,
-    boost_branch: str = 'develop',
+    clean: bool,
+    boost_branch: str,
+    db: str,
+    server_host: str,
 ) -> None:
     # Config
     os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
@@ -40,6 +43,9 @@ def fuzz_build(
     # Setup the seed corpus
     print('+  Generating seed corpus')
     generate_seed_corpus()
+
+    # Setup DB (required for injection testing)
+    db_setup(source_dir, db, server_host)
 
     # Build and run the fuzzing targets
     run([
