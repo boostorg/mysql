@@ -250,6 +250,16 @@ def _gen_format_args() -> List[_Sample]:
     
     return cases
 
+def _gen_format_sql_injection() -> List[_Sample]:
+    with open(REPO_BASE.joinpath('tools', 'seed_corpus', 'sql_injection_payloads.txt'), 'rt', encoding='utf-8') as f:
+        payloads = filter(lambda p: p != '', f.read().split('\n'))
+    
+    return [_Sample(
+        'fuzz_format_sql_injection',
+        str(i),
+        payload.encode()
+    ) for i, payload in enumerate(payloads)]
+
 
 def generate_seed_corpus():
     # Generate the samples in memory
@@ -261,6 +271,7 @@ def generate_seed_corpus():
         _gen_escape_string(),
         _gen_format_string(),
         _gen_format_args(),
+        _gen_format_sql_injection(),
     ))
 
     # Generate the directory structure
