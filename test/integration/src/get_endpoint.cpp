@@ -17,27 +17,16 @@
 
 #include <cstdlib>
 
-#include "test_integration/safe_getenv.hpp"
-
-namespace {
+#include "test_common/ci_server.hpp"
 
 // Get the endpoint to use for TCP from an environment variable.
 // Required as CI MySQL doesn't run on loocalhost
-boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
+static boost::asio::ip::tcp::endpoint get_tcp_valid_endpoint()
 {
-    std::string hostname = boost::mysql::test::get_hostname();
     boost::asio::io_context ctx;
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
-    auto results = resolver.resolve(hostname, boost::mysql::default_port_string);
+    auto results = resolver.resolve(boost::mysql::test::get_hostname(), boost::mysql::default_port_string);
     return *results.begin();
-}
-
-}  // namespace
-
-boost::mysql::string_view boost::mysql::test::get_hostname()
-{
-    static auto res = safe_getenv("BOOST_MYSQL_SERVER_HOST", "127.0.0.1");
-    return res;
 }
 
 boost::asio::ip::tcp::endpoint boost::mysql::test::endpoint_getter<boost::asio::ip::tcp>::operator()()

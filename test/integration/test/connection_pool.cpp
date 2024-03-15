@@ -32,10 +32,9 @@
 #include <memory>
 #include <stdexcept>
 
+#include "test_common/ci_server.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
-#include "test_integration/common.hpp"
-#include "test_integration/get_endpoint.hpp"
 #include "test_integration/run_stackful_coro.hpp"
 
 using namespace boost::mysql;
@@ -68,9 +67,9 @@ pool_params create_pool_params(std::size_t max_size = 151)
 {
     pool_params res;
     res.server_address.emplace_host_and_port(get_hostname());
-    res.username = default_user;
-    res.password = default_passwd;
-    res.database = default_db;
+    res.username = integ_user;
+    res.password = integ_passwd;
+    res.database = integ_db;
     res.ssl = ssl_mode::disable;
     res.max_size = max_size;
     return res;

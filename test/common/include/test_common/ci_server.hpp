@@ -5,11 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_SAFE_GETENV_HPP
-#define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_SAFE_GETENV_HPP
+#ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_CI_SERVER_HPP
+#define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_CI_SERVER_HPP
+
+#include <boost/config.hpp>
 
 #include <cstdlib>
 #include <string>
+
+// Constant and utilities to interact with the CI database server
 
 namespace boost {
 namespace mysql {
@@ -28,6 +32,14 @@ inline std::string safe_getenv(const char* name, const char* default_value)
 #endif
     return res ? res : default_value;
 }
+
+// Interface
+inline std::string get_hostname() { return safe_getenv("BOOST_MYSQL_SERVER_HOST", "127.0.0.1"); }
+constexpr const char* integ_user = "integ_user";
+constexpr const char* integ_passwd = "integ_password";
+constexpr const char* integ_db = "boost_mysql_integtests";
+constexpr const char* default_unix_path = "/var/run/mysqld/mysqld.sock";
+inline bool is_mariadb() { return safe_getenv("BOOST_MYSQL_TEST_DB", "mysql8") == "mariadb"; }
 
 }  // namespace test
 }  // namespace mysql

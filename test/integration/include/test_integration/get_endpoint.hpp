@@ -13,10 +13,6 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 
-#include <stdexcept>
-#include <string>
-#include <utility>
-
 namespace boost {
 namespace mysql {
 namespace test {
@@ -43,10 +39,6 @@ typename Stream::lowest_layer_type::endpoint_type get_endpoint()
 {
     return endpoint_getter<typename Stream::lowest_layer_type::protocol_type>()();
 }
-
-string_view get_hostname();
-
-static constexpr const char* default_unix_path = "/var/run/mysqld/mysqld.sock";
 
 }  // namespace test
 }  // namespace mysql
