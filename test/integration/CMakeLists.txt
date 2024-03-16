@@ -87,15 +87,3 @@ else()
         COMMAND boost_mysql_integrationtests "-t" ${TEST_FILTER}
     )
 endif()
-
-# If we are using memcheck, then run a subset of the integration tests
-# under valgrind. Coroutine tests don't work well under Valgrind, and
-# SSL tests are too slow. We do some other exclusions to reduce runtime
-if (BOOST_MYSQL_VALGRIND_TESTS)
-    string(JOIN ":" TEST_FILTER ${TEST_EXCLUSIONS} "!@ssl" "!@async_coroutine")
-    add_memcheck_test(
-        NAME boost_mysql_integrationtests_memcheck
-        TARGET boost_mysql_integrationtests
-        ARGUMENTS "-t" ${TEST_FILTER}
-    )
-endif()

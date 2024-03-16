@@ -74,6 +74,7 @@ def _b2_build(
     undefined_sanitizer: bool,
     use_ts_executor: bool,
     coverage: bool,
+    valgrind: bool,
 ) -> None:
     # Config
     os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
@@ -105,6 +106,7 @@ def _b2_build(
     ] + (['address-sanitizer=norecover'] if address_sanitizer else [])     # can only be disabled by omitting the arg
       + (['undefined-sanitizer=norecover'] if undefined_sanitizer else []) # can only be disabled by omitting the arg
       + (['coverage=on'] if coverage else [])
+      + (['valgrind=on'] if valgrind else [])
       + [
         'warnings=extra',
         'warnings-as-errors=on',
@@ -124,7 +126,6 @@ def _cmake_build(
     source_dir: Path,
     generator: str,
     build_shared_libs: bool,
-    valgrind: bool,
     clean: bool,
     standalone_tests: bool,
     add_subdir_tests: bool,
@@ -207,7 +208,6 @@ def _cmake_build(
             '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
         ] + (['-DCMAKE_CXX_STANDARD={}'.format(cxxstd)] if cxxstd else []) + [
             '-DBOOST_MYSQL_INTEGRATION_TESTS=ON',
-            '-DBOOST_MYSQL_VALGRIND_TESTS={}'.format(_cmake_bool(valgrind)),
             '-G',
             generator,
             '..'
@@ -358,14 +358,14 @@ def main():
             boost_branch=boost_branch,
             db=args.db,
             server_host=args.server_host,
-            coverage=args.coverage
+            coverage=args.coverage,
+            valgrind=args.valgrind
         )
     elif args.build_kind == 'cmake':
         _cmake_build(
             source_dir=args.source_dir,
             generator=args.generator,
             build_shared_libs=args.build_shared_libs,
-            valgrind=args.valgrind,
             clean=args.clean,
             standalone_tests=args.cmake_standalone_tests,
             add_subdir_tests=args.cmake_add_subdir_tests,
