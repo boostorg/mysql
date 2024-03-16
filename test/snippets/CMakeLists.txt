@@ -7,17 +7,22 @@
 
 add_executable(
     boost_mysql_snippets
+    test/overview.cpp
+    test/dynamic.cpp
+    test/static.cpp
+    test/prepared_statements.cpp
     snippets.cpp
 )
 target_include_directories(
     boost_mysql_snippets
     PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../common/include"
+    include
 )
 target_link_libraries(
     boost_mysql_snippets
     PRIVATE
-    boost_mysql_compiled
+    boost_mysql_testing
 )
 boost_mysql_common_target_settings(boost_mysql_snippets)
 
