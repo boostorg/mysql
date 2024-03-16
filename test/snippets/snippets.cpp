@@ -70,6 +70,8 @@
 #include <thread>
 #include <tuple>
 
+#include "test_common/ci_server.hpp"
+
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
 #endif
@@ -108,6 +110,11 @@ using boost::mysql::static_results;
         std::cerr << "Assertion failed: " #expr << std::endl; \
         exit(1);                                              \
     }
+
+// Connection params
+std::string server_hostname = boost::mysql::test::get_hostname();
+static constexpr const char* mysql_username = "example_user";
+static constexpr const char* mysql_password = "example_password";
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 void run_coro(boost::asio::any_io_executor ex, std::function<boost::asio::awaitable<void>(void)> fn)
@@ -803,20 +810,20 @@ void section_multi_resultset(tcp_ssl_connection& conn)
     }
 }
 
-void section_multi_resultset_multi_queries(char** argv)
+void section_multi_resultset_multi_queries()
 {
     boost::asio::io_context ctx;
     boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
     boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
 
-    auto endpoint = *resolver.resolve(argv[3], boost::mysql::default_port_string).begin();
+    auto endpoint = *resolver.resolve(server_hostname, boost::mysql::default_port_string).begin();
 
     //[multi_resultset_multi_queries
     // The username and password to use
     boost::mysql::handshake_params params(
-        argv[1],                // username
-        argv[2],                // password
+        mysql_username,         // username, as a string
+        mysql_password,         // password, as a string
         "boost_mysql_examples"  // database
     );
 
@@ -1320,15 +1327,15 @@ error_code connect_with_retries(
 }
 //]
 
-void section_any_connection(string_view server_hostname, string_view username, string_view password)
+void section_any_connection()
 {
-    create_and_connect(server_hostname, username, password, "boost_mysql_examples");
+    create_and_connect(server_hostname, mysql_username, mysql_password, "boost_mysql_examples");
 
     {
         boost::mysql::connect_params params;
         params.server_address.emplace_host_and_port(server_hostname);  // server host
-        params.username = username;                                    // username to log in as
-        params.password = password;                                    // password to use
+        params.username = mysql_username;                              // username to log in as
+        params.password = mysql_password;                              // password to use
 
         boost::asio::io_context ctx;
         boost::mysql::any_connection conn(ctx);
@@ -1374,8 +1381,8 @@ void section_any_connection(string_view server_hostname, string_view username, s
         // Connect params
         boost::mysql::connect_params params;
         params.server_address.emplace_host_and_port(server_hostname);  // server host
-        params.username = username;                                    // username to log in as
-        params.password = password;                                    // password to use
+        params.username = mysql_username;                              // username to log in as
+        params.password = mysql_password;                              // password to use
         params.ssl = boost::mysql::ssl_mode::require;                  // fail if TLS is not available
 
         // Connect
@@ -1501,7 +1508,7 @@ public:
 };
 //]
 
-void section_connection_pool(string_view server_hostname, string_view username, string_view password)
+void section_connection_pool()
 {
     {
         //[connection_pool_create
@@ -1511,8 +1518,8 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         // You can configure a lot of other things, like pool limits
         boost::mysql::pool_params params;
         params.server_address.emplace_host_and_port(server_hostname);
-        params.username = username;
-        params.password = password;
+        params.username = mysql_username;
+        params.password = mysql_password;
         params.database = "boost_mysql_examples";
 
         // The I/O context, required by all I/O operations
@@ -1545,8 +1552,8 @@ void section_connection_pool(string_view server_hostname, string_view username, 
 
         // Set the usual params
         params.server_address.emplace_host_and_port(server_hostname);
-        params.username = username;
-        params.password = password;
+        params.username = mysql_username;
+        params.password = mysql_password;
         params.database = "boost_mysql_examples";
 
         // Create 10 connections at startup, and allow up to 1000 connections
@@ -1572,8 +1579,8 @@ void section_connection_pool(string_view server_hostname, string_view username, 
         // The usual pool configuration params
         boost::mysql::pool_params params;
         params.server_address.emplace_host_and_port(server_hostname);
-        params.username = username;
-        params.password = password;
+        params.username = mysql_username;
+        params.password = mysql_password;
         params.database = "boost_mysql_examples";
 
         // By passing pool_executor_params::thread_safe to connection_pool,
@@ -1592,8 +1599,8 @@ void section_connection_pool(string_view server_hostname, string_view username, 
     {
         boost::mysql::pool_params params;
         params.server_address.emplace_host_and_port(server_hostname);
-        params.username = username;
-        params.password = password;
+        params.username = mysql_username;
+        params.password = mysql_password;
         params.database = "boost_mysql_examples";
 
         sync_pool spool(std::move(params));
@@ -1713,12 +1720,12 @@ void test_compose_update_query()
 //]
 #endif
 
-void section_sql_formatting(string_view server_hostname, string_view username, string_view password)
+void section_sql_formatting()
 {
     boost::mysql::connect_params params;
     params.server_address.emplace_host_and_port(server_hostname);
-    params.username = username;
-    params.password = password;
+    params.username = mysql_username;
+    params.password = mysql_password;
     params.database = "boost_mysql_examples";
     params.multi_queries = true;
     params.ssl = boost::mysql::ssl_mode::disable;
@@ -2245,14 +2252,8 @@ void section_sql_formatting(string_view server_hostname, string_view username, s
     }
 }
 
-void main_impl(int argc, char** argv)
+void main_impl()
 {
-    if (argc != 4)
-    {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
-        exit(1);
-    }
-
     //
     // setup and connect - this is included in overview, too
     //
@@ -2272,12 +2273,12 @@ void main_impl(int argc, char** argv)
     //[overview_connect
     // Resolve the hostname to get a collection of endpoints
     boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
-    auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
+    auto endpoints = resolver.resolve(server_hostname, boost::mysql::default_port_string);
 
     // The username and password to use
     boost::mysql::handshake_params params(
-        argv[1],                // username
-        argv[2],                // password
+        mysql_username,         // username
+        mysql_password,         // password
         "boost_mysql_examples"  // database
     );
 
@@ -2290,23 +2291,23 @@ void main_impl(int argc, char** argv)
     section_static(conn);
     section_prepared_statements(conn);
     section_multi_resultset(conn);
-    section_multi_resultset_multi_queries(argv);
+    section_multi_resultset_multi_queries();
     section_multi_function(conn);
     section_metadata(conn);
     section_charsets(conn);
     section_time_types(conn);
-    section_any_connection(argv[3], argv[1], argv[2]);
-    section_connection_pool(argv[3], argv[1], argv[2]);
-    section_sql_formatting(argv[3], argv[1], argv[2]);
+    section_any_connection();
+    section_connection_pool();
+    section_sql_formatting();
 
     conn.close();
 }
 
-int main(int argc, char** argv)
+int main()
 {
     try
     {
-        main_impl(argc, argv);
+        main_impl();
     }
     catch (const boost::mysql::error_with_diagnostics& err)
     {
