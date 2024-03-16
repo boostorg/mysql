@@ -49,7 +49,6 @@ rule run_python_example (
 }
 
 # "Regular" examples
-run_regular_example snippets ;
 run_regular_example tutorial ;
 run_regular_example async_callbacks ;
 run_regular_example async_coroutinescpp20 ;
