@@ -92,10 +92,6 @@ if(BOOST_MYSQL_IS_ROOT)
     # Don't run integration testing unless explicitly requested
     option(BOOST_MYSQL_INTEGRATION_TESTS OFF "Whether to build and run integration tests or not")
     mark_as_advanced(BOOST_MYSQL_INTEGRATION_TESTS)
-
-    # Valgrind tests and Valgrind-friendly code (e.g. mark SSL buffers as initialized)
-    option(BOOST_MYSQL_VALGRIND_TESTS OFF "Whether to run Valgrind tests or not (requires Valgrind)")
-    mark_as_advanced(BOOST_MYSQL_VALGRIND_TESTS)
 endif()
 
 # Examples and tests
