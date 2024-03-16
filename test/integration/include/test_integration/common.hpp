@@ -22,33 +22,29 @@
 
 #include <initializer_list>
 
+#include "test_common/ci_server.hpp"
 #include "test_integration/er_connection.hpp"
 #include "test_integration/er_network_variant.hpp"
-#include "test_integration/get_endpoint.hpp"
 #include "test_integration/metadata_validator.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-constexpr const char* default_user = "integ_user";
-constexpr const char* default_passwd = "integ_password";
-constexpr const char* default_db = "boost_mysql_integtests";
-
 inline connect_params default_connect_params(ssl_mode ssl = ssl_mode::enable)
 {
     connect_params res;
     res.server_address.emplace_host_and_port(get_hostname());
-    res.username = default_user;
-    res.password = default_passwd;
-    res.database = default_db;
+    res.username = integ_user;
+    res.password = integ_passwd;
+    res.database = integ_db;
     res.ssl = ssl;
     return res;
 }
 
 struct network_fixture_base
 {
-    handshake_params params{default_user, default_passwd, default_db};
+    handshake_params params{integ_user, integ_passwd, integ_db};
     boost::asio::io_context ctx;
     boost::asio::ssl::context ssl_ctx{boost::asio::ssl::context::tls_client};
 };

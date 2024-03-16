@@ -1,0 +1,51 @@
+#
+# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+name: Build Docker Windows images
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - tools/docker/build-msvc.dockerfile
+
+
+jobs:
+  docker-windows:
+    strategy:
+      matrix:
+        include:
+          - { image: build-msvc14_1, base-image: "cppalliance/dronevs2017:1" }
+          - { image: build-msvc14_2, base-image: "cppalliance/dronevs2019:1" }
+          - { image: build-msvc14_3, base-image: "cppalliance/dronevs2022:1" }
+
+    permissions:
+      contents: read
+      packages: write
+
+    runs-on: windows-2019
+
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: anarthal-containers
+          password: ${{ secrets.ANARTHAL_CONTAINERS_TOKEN }}
+      
+      - name: Build and push Docker image
+        run: |
+          FULL_IMAGE=ghcr.io/anarthal-containers/${{ matrix.image }}
+          docker build -f tools/docker/build-msvc.dockerfile --build-arg BASE_IMAGE=${{ matrix.base-image }} -t $FULL_IMAGE:$GITHUB_SHA -t $FULL_IMAGE:latest .
+          docker push $FULL_IMAGE --all-tags

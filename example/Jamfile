@@ -25,9 +25,11 @@ rule run_regular_example (
     run
         "$(example_name).cpp"
         /boost/mysql/test//boost_mysql_compiled
+        /boost/mysql/test//launch_with_valgrind
         $(sources)
-    :
+    : requirements
         <testing.arg>"example_user example_password $(hostname)"
+    : target-name "boost_mysql_example_$(example_name)"
     ;
 }
 
@@ -93,6 +95,7 @@ if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
 run
         source_script.cpp
         /boost/mysql/test//boost_mysql_compiled
+        /boost/mysql/test//launch_with_valgrind
     : requirements
         <testing.arg>"example_user example_password $(hostname) $(this_dir)/private/test_script.sql"
     ;

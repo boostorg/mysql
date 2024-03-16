@@ -47,18 +47,10 @@ endfunction()
 function(add_example EXAMPLE_NAME EXAMPLE_PATH)
     add_example_target(${EXAMPLE_NAME} ${EXAMPLE_PATH})
 
-    if(BOOST_MYSQL_VALGRIND_TESTS)
-        add_memcheck_test(
-            NAME "${EXAMPLE_NAME}_memcheck"
-            TARGET ${EXAMPLE_NAME}
-            ARGUMENTS ${ARGN}
-        )
-    else()
-        add_test(
-            NAME ${EXAMPLE_NAME}
-            COMMAND ${EXAMPLE_NAME} ${ARGN}
-        )
-    endif()
+    add_test(
+        NAME ${EXAMPLE_NAME}
+        COMMAND ${EXAMPLE_NAME} ${ARGN}
+    )
 endfunction()
 
 # Coroutines needs Boost.Context and shouldn't be memchecked

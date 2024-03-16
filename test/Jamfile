@@ -56,6 +56,8 @@ local requirements =
         <target-os>windows:<define>_WIN32_WINNT=0x0601
         <define>BOOST_ASIO_SEPARATE_COMPILATION
         <boost.mysql.use-ts-executor>on:<define>BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
+        # Disable assertions when doing coverage, as they distort coverage data
+        <coverage>on:<define>BOOST_DISABLE_ASSERTS
     ;
 
 alias boost_mysql
@@ -90,9 +92,11 @@ lib boost_mysql_compiled
     : requirements
         <boost.mysql.separate-compilation>on:<source>common/src/boost_mysql.cpp
         <boost.mysql.separate-compilation>on:<define>BOOST_MYSQL_SEPARATE_COMPILATION
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
         <link>static
     : usage-requirements
         <boost.mysql.separate-compilation>on:<define>BOOST_MYSQL_SEPARATE_COMPILATION
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
     ;
 
 alias common_test_sources
@@ -115,6 +119,13 @@ alias boost_mysql_test
         <include>common/include
     : usage-requirements
         <include>common/include
+    ;
+
+# Mark a test as runnable using Valgrind. Some tests use
+# an intermediate Python runner, so just setting testing.launcher globally is incorrect
+alias launch_with_valgrind
+    : usage-requirements
+        <valgrind>on:<testing.launcher>"valgrind --leak-check=full --error-limit=yes --error-exitcode=1 --gen-suppressions=all"
     ;
 
 build-project unit ;

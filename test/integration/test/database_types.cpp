@@ -46,10 +46,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "test_common/ci_server.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/metadata_validator.hpp"
-#include "test_integration/safe_getenv.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
 using namespace boost::mysql::test;
@@ -76,8 +76,6 @@ using boost::describe::operators::operator==;
 #endif
 
 // Helpers
-bool is_mariadb() { return safe_getenv("BOOST_MYSQL_TEST_DB", "mysql8") == "mariadb"; }
-
 using flagsvec = std::vector<meta_validator::flag_getter>;
 
 const flagsvec flags_unsigned{&metadata::is_unsigned};
