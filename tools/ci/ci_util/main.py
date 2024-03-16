@@ -7,19 +7,12 @@
 #
 
 from pathlib import Path
-from typing import List, Union
-import subprocess
+from typing import Union
 import os
 from shutil import rmtree, copytree
 import argparse
 from .common import IS_WINDOWS, BOOST_ROOT, install_boost, BoostInstallType, run
-
-
-def _run_piped_stdin(args: List[str], fname: Path) -> None:
-    with open(str(fname), 'rt', encoding='utf8') as f:
-        content = f.read()
-    print('+ ', args, '(with < {})'.format(fname), flush=True)
-    subprocess.run(args, input=content.encode(), check=True)
+from .db_setup import db_setup
 
 
 def _add_to_path(path: Path) -> None:
@@ -36,37 +29,10 @@ def _cmake_bool(value: bool) -> str:
     return 'ON' if value else 'OFF'
 
 
-def _common_settings(
-    boost_root: Path,
-    server_host: str = '127.0.0.1',
-    db: str = 'mysql8'
-) -> None:
-    _add_to_path(boost_root)
-    os.environ['BOOST_MYSQL_SERVER_HOST'] = server_host
-    os.environ['BOOST_MYSQL_TEST_DB'] = db
-    if IS_WINDOWS:
-        os.environ['BOOST_MYSQL_NO_UNIX_SOCKET_TESTS'] = '1'
-
-
-def _run_sql_file(fname: Path) -> None:
-    _run_piped_stdin(['mysql', '-u', 'root'], fname)
-
-
-def _db_setup(
-    source_dir: Path,
-    db: str = 'mysql8'
-) -> None:
-    _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))
-    _run_sql_file(source_dir.joinpath('example', 'order_management', 'db_setup.sql'))
-    _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
-    if db == 'mysql8':
-        _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))
-
-
 def _doc_build(
     source_dir: Path,
-    clean: bool = False,
-    boost_branch: str = 'develop'
+    clean: bool,
+    boost_branch: str
 ):
     # Get Boost. This leaves us inside boost root
     install_boost(
@@ -97,16 +63,17 @@ def _b2_build(
     toolset: str,
     cxxstd: str,
     variant: str,
-    stdlib: str = 'native',
-    address_model: str = '64',
-    clean: bool = False,
-    boost_branch: str = 'develop',
-    db: str = 'mysql8',
-    separate_compilation: bool = True,
-    address_sanitizer: bool = False,
-    undefined_sanitizer: bool = False,
-    use_ts_executor: bool = False,
-    coverage: bool = False,
+    stdlib: str,
+    address_model: str,
+    clean: bool,
+    boost_branch: str,
+    db: str,
+    server_host: str,
+    separate_compilation: bool,
+    address_sanitizer: bool,
+    undefined_sanitizer: bool,
+    use_ts_executor: bool,
+    coverage: bool,
 ) -> None:
     # Config
     os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
@@ -122,7 +89,7 @@ def _b2_build(
     )
 
     # Setup DB
-    _db_setup(source_dir, db)
+    db_setup(source_dir, db, server_host)
 
     # Invoke b2
     run([
@@ -155,17 +122,18 @@ def _build_prefix_path(*paths: Union[str, Path]) -> str:
 
 def _cmake_build(
     source_dir: Path,
-    generator: str = 'Ninja',
-    build_shared_libs: bool = True,
-    valgrind: bool = False,
-    clean: bool = False,
-    standalone_tests: bool = True,
-    add_subdir_tests: bool = True,
-    install_tests: bool = True,
-    build_type: str = 'Debug',
-    cxxstd: str = '20',
-    boost_branch: str = 'develop',
-    db: str = 'mysql8'
+    generator: str,
+    build_shared_libs: bool,
+    valgrind: bool,
+    clean: bool,
+    standalone_tests: bool,
+    add_subdir_tests: bool,
+    install_tests: bool,
+    build_type: str,
+    cxxstd: str,
+    boost_branch: str,
+    db: str,
+    server_host: str,
 ) -> None:
     # Config
     home = Path(os.path.expanduser('~'))
@@ -189,7 +157,7 @@ def _cmake_build(
     )
 
     # Setup DB
-    _db_setup(source_dir, db)
+    db_setup(source_dir, db, server_host)
 
     # Generate "pre-built" b2 distro
     if standalone_tests:
@@ -371,7 +339,7 @@ def main():
 
     args = parser.parse_args()
 
-    _common_settings(BOOST_ROOT, args.server_host, db=args.db)
+    _add_to_path(BOOST_ROOT)
     boost_branch = _deduce_boost_branch() if args.boost_branch is None else args.boost_branch
 
     if args.build_kind == 'b2':
@@ -389,6 +357,7 @@ def main():
             clean=args.clean,
             boost_branch=boost_branch,
             db=args.db,
+            server_host=args.server_host,
             coverage=args.coverage
         )
     elif args.build_kind == 'cmake':
@@ -404,7 +373,8 @@ def main():
             build_type=args.cmake_build_type,
             cxxstd=args.cxxstd,
             boost_branch=boost_branch,
-            db=args.db
+            db=args.db,
+            server_host=args.server_host
         )
     elif args.build_kind == 'fuzz':
         # Fuzzing uses some Python features only available in newer CIs
@@ -413,6 +383,8 @@ def main():
             source_dir=args.source_dir,
             clean=args.clean,
             boost_branch=boost_branch,
+            db=args.db,
+            server_host=args.server_host
         )
     else:
         _doc_build(

@@ -100,7 +100,6 @@ local requirements =
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
-        <define>BOOST_ASIO_SEPARATE_COMPILATION
         <include>../include
         <boost.mysql.use-ts-executor>on:<define>BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
         # Disable assertions when doing coverage, as they distort coverage data
@@ -139,9 +138,11 @@ lib boost_mysql_compiled
     : requirements
         <boost.mysql.separate-compilation>on:<source>common/src/boost_mysql.cpp
         <boost.mysql.separate-compilation>on:<define>BOOST_MYSQL_SEPARATE_COMPILATION
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
         <link>static
     : usage-requirements
         <boost.mysql.separate-compilation>on:<define>BOOST_MYSQL_SEPARATE_COMPILATION
+        <define>BOOST_ASIO_SEPARATE_COMPILATION
     ;
 
 alias common_test_sources

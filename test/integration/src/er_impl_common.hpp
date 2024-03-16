@@ -30,11 +30,11 @@
 #include <string>
 #include <type_traits>
 
+#include "test_common/ci_server.hpp"
 #include "test_common/network_result.hpp"
 #include "test_integration/er_connection.hpp"
 #include "test_integration/er_network_variant.hpp"
 #include "test_integration/get_endpoint.hpp"
-#include "test_integration/static_rows.hpp"
 #include "test_integration/streams.hpp"
 
 namespace boost {
