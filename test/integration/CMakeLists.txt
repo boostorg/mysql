@@ -9,7 +9,6 @@
 # BOOST_MYSQL_INTEGRATION_TESTS is on
 
 cmake_minimum_required(VERSION 3.12...3.22) # string JOIN
-find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS context)
 
 add_executable(
     boost_mysql_integrationtests
@@ -42,13 +41,12 @@ add_executable(
 target_include_directories(
     boost_mysql_integrationtests
     PRIVATE
-    "include"
+    include
 )
 target_link_libraries(
     boost_mysql_integrationtests
     PRIVATE
     boost_mysql_testing
-    Boost::mysql
     Boost::context
 )
 target_compile_definitions(
