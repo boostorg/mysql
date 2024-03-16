@@ -167,4 +167,11 @@ alias boost_mysql_test
         <include>common/include
     ;
 
+# Mark a test as runnable using Valgrind. Some tests use
+# an intermediate Python runner, so just setting testing.launcher globally is incorrect
+alias launch_with_valgrind
+    : usage-requirements
+        <valgrind>on:<testing.launcher>"valgrind --leak-check=full --error-limit=yes --error-exitcode=1 --gen-suppressions=all"
+    ;
+
 build-project unit ;
