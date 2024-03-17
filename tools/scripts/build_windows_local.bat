@@ -14,8 +14,6 @@ docker exec %CONTAINER% python.exe "C:\boost-mysql\tools\ci\main.py" --source-di
     --build-kind=cmake ^
     "--generator=Visual Studio 17 2022" ^
     --build-shared-libs=1 ^
-    --clean=1 ^
-    --cmake-standalone-tests=0 ^
     --cxxstd=20 ^
     --variant=debug ^
     --address-model=32 || exit /b 1

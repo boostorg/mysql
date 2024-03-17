@@ -15,14 +15,12 @@ from .install_boost import install_boost
 
 def docs_build(
     source_dir: Path,
-    clean: bool,
     boost_branch: str
 ):
     # Get Boost. This leaves us inside boost root
     install_boost(
         source_dir=source_dir,
         boost_branch=boost_branch,
-        clean=clean,
         docs_install=True,
     )
 

@@ -17,7 +17,6 @@ from .install_boost import install_boost
 
 def fuzz_build(
     source_dir: Path,
-    clean: bool,
     boost_branch: str,
     db: str,
     server_host: str,
@@ -29,7 +28,6 @@ def fuzz_build(
     install_boost(
         source_dir=source_dir,
         boost_branch=boost_branch,
-        clean=clean,
     )
 
     # Setup corpus from previous runs. /tmp/corpus.tar.gz is restored by the CI

@@ -32,7 +32,6 @@ def _b2_command(
     valgrind=0
 ):
     return 'python tools/ci/main.py ' + \
-                '--clean=1 ' + \
                 '--build-kind=b2 ' + \
                 '--source-dir="{}" '.format(source_dir) + \
                 '--toolset={} '.format(toolset) + \
@@ -61,7 +60,6 @@ def _cmake_command(
                 '--build-kind=cmake ' + \
                 '--source-dir="{}" '.format(source_dir) + \
                 '--generator="{}" '.format(generator) + \
-                '--clean=1 ' + \
                 '--build-shared-libs={} '.format(build_shared_libs) + \
                 '--cmake-build-type={} '.format(cmake_build_type) + \
                 '--cxxstd={} '.format(cxxstd) + \
@@ -243,7 +241,7 @@ def docs():
         name='Linux docs',
         image=_image('build-docs'),
         os='linux',
-        command='python tools/ci/main.py --build-kind=docs --clean=1 --source-dir=$(pwd)',
+        command='python tools/ci/main.py --build-kind=docs --source-dir=$(pwd)',
         db=None
     )
 

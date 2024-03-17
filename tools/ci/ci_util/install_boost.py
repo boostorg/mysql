@@ -13,34 +13,21 @@ from pathlib import Path
 import os
 from .common import run, IS_WINDOWS, BOOST_ROOT
 
+def _remove_readonly(func, path, _):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
 
-def install_boost(
-    source_dir: Path,
-    boost_branch: str,
-    clean: bool,
-    docs_install: bool = False
-) -> None:
-    assert source_dir.is_absolute()
+def _copy_lib_to_boost(source_dir: Path):
+    # Config
+    supports_dir_exist_ok = sys.version_info.minor >= 8
     lib_dir = BOOST_ROOT.joinpath('libs', 'mysql')
     
-    def remove_readonly(func, path, _):
-        os.chmod(path, stat.S_IWRITE)
-        func(path)
-
-    # See if target exists
-    if BOOST_ROOT.exists() and clean:
-        rmtree(str(BOOST_ROOT), onerror=remove_readonly)
+    # Old versions of Python don't support dirs_exist_ok.
+    # For these, we need to remove any old copies of our lib before copying
+    if lib_dir.exists() and not supports_dir_exist_ok:
+        rmtree(str(lib_dir), onerror=_remove_readonly)
     
-    # Clone Boost
-    is_clean = not BOOST_ROOT.exists()
-    if is_clean:
-        run(['git', 'clone', '-b', boost_branch, '--depth', '1', 'https://github.com/boostorg/boost.git', str(BOOST_ROOT)])
-    os.chdir(str(BOOST_ROOT))
-
-    # Put our library inside boost root
-    supports_dir_exist_ok = sys.version_info.minor >= 8
-    if lib_dir.exists() and (clean or not supports_dir_exist_ok):
-        rmtree(str(lib_dir), onerror=remove_readonly)
+    # Do the copying
     copytree(
         str(source_dir),
         str(lib_dir),
@@ -48,30 +35,48 @@ def install_boost(
         **({ 'dirs_exist_ok': True } if supports_dir_exist_ok else {}) # type: ignore
     )
 
+
+def install_boost(
+    source_dir: Path,
+    boost_branch: str,
+    docs_install: bool = False
+) -> None:
+    assert source_dir.is_absolute()
+    
+    # If BOOST_ROOT already exists, this is a re-build.
+    # Copy our library into libs/ and exit
+    if BOOST_ROOT.exists():
+        _copy_lib_to_boost(source_dir)
+        return
+
+    # Clone Boost
+    run(['git', 'clone', '-b', boost_branch, '--depth', '1', 'https://github.com/boostorg/boost.git', str(BOOST_ROOT)])
+    os.chdir(str(BOOST_ROOT))
+
+    # Put our library inside boost root
+    _copy_lib_to_boost(source_dir)
+
     # Install Boost dependencies
-    if is_clean:
-        run(["git", "config", "submodule.fetchJobs", "8"])
-        if docs_install:
-            submodules = ['tools/boostdep']
-        else:
-            submodules = [
-                'libs/context',
-                'tools/boostdep',
-                'tools/boostbook',
-                'tools/docca',
-                'tools/quickbook'
-            ]
-        for subm in submodules:
-            run(["git", "submodule", "update", "-q", "--init", subm])
-        if docs_install:
-            run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
-        else:
-            run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
+    submodules = [
+        'libs/context',
+        'tools/boostdep',
+        'tools/boostbook',
+        'tools/docca',
+        'tools/quickbook'
+    ] if docs_install else [
+        'tools/boostdep'
+    ]
+    run(["git", "config", "submodule.fetchJobs", "8"])
+    run(["git", "submodule", "update", "-q", "--init"] + submodules)
+
+    if docs_install:
+        run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
+    else:
+        run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
     
     # Bootstrap
-    if is_clean:
-        if IS_WINDOWS:
-            run(['cmd', '/q', '/c', 'bootstrap.bat'])
-        else:
-            run(['bash', 'bootstrap.sh'])
-        run(['b2', 'headers'])
+    if IS_WINDOWS:
+        run(['cmd', '/q', '/c', 'bootstrap.bat'])
+    else:
+        run(['bash', 'bootstrap.sh'])
+    run(['b2', 'headers'])

@@ -70,7 +70,6 @@ def main():
     parser.add_argument('--build-shared-libs', type=_str2bool, default=True)
     parser.add_argument('--valgrind', type=_str2bool, default=False)
     parser.add_argument('--coverage', type=_str2bool, default=False)
-    parser.add_argument('--clean', type=_str2bool, default=False)
     parser.add_argument('--db', choices=['mysql5', 'mysql8', 'mariadb'], default='mysql8')
     parser.add_argument('--cmake-build-type', choices=['Debug', 'Release', 'MinSizeRel'], default='Debug')
     parser.add_argument('--toolset', default='clang')
@@ -101,7 +100,6 @@ def main():
             use_ts_executor=args.use_ts_executor,
             address_sanitizer=args.address_sanitizer,
             undefined_sanitizer=args.undefined_sanitizer,
-            clean=args.clean,
             boost_branch=boost_branch,
             db=args.db,
             server_host=args.server_host,
@@ -114,7 +112,6 @@ def main():
             boost_branch=boost_branch,
             generator=args.generator,
             build_shared_libs=args.build_shared_libs,
-            clean=args.clean,
             build_type=args.cmake_build_type,
             cxxstd=args.cxxstd,
             db=args.db,
@@ -138,7 +135,6 @@ def main():
         fuzz_build(
             source_dir=args.source_dir,
             boost_branch=boost_branch,
-            clean=args.clean,
             db=args.db,
             server_host=args.server_host
         )
@@ -146,5 +142,4 @@ def main():
         docs_build(
             source_dir=args.source_dir,
             boost_branch=boost_branch,
-            clean=args.clean,
         )

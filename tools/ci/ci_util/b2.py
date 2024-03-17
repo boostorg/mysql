@@ -19,7 +19,6 @@ def b2_build(
     variant: str,
     stdlib: str,
     address_model: str,
-    clean: bool,
     boost_branch: str,
     db: str,
     server_host: str,
@@ -39,7 +38,6 @@ def b2_build(
     install_boost(
         source_dir=source_dir,
         boost_branch=boost_branch,
-        clean=clean,
     )
 
     # Setup DB

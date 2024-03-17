@@ -29,7 +29,6 @@ def cmake_build(
     boost_branch: str,
     generator: str,
     build_shared_libs: bool,
-    clean: bool,
     build_type: str,
     cxxstd: str,
     db: str,
@@ -44,7 +43,6 @@ def cmake_build(
     install_boost(
         source_dir=source_dir,
         boost_branch=boost_branch,
-        clean=clean,
     )
 
     # Setup DB
@@ -117,7 +115,6 @@ def cmake_noopenssl_build(
     install_boost(
         source_dir=source_dir,
         boost_branch=boost_branch,
-        clean=True,
     )
 
     # Build Boost and install. This won't build the library if there is no OpenSSL,
@@ -156,7 +153,6 @@ def find_package_b2_test(
     install_boost(
         source_dir=source_dir,
         boost_branch=boost_branch,
-        clean=True,
     )
 
     # Generate a b2 Boost distribution
