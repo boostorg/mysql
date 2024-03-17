@@ -26,6 +26,11 @@ def run(args: List[str]) -> None:
     subprocess.run(args, check=True)
 
 
+def mkdir_and_cd(path: Path) -> None:
+    os.makedirs(str(path), exist_ok=True)
+    os.chdir(str(path))
+
+
 class BoostInstallType(enum.Enum):
     mysql = 0
     docs = 1

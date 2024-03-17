@@ -53,24 +53,18 @@ def _cmake_command(
     build_shared_libs=0,
     cmake_build_type='Debug',
     cxxstd='20',
-    standalone_tests=1,
-    add_subdir_tests=1,
-    install_tests=1,
     generator='Ninja',
     db='mysql8',
     server_host='127.0.0.1'
 ):
     return 'python tools/ci/main.py ' + \
                 '--build-kind=cmake ' + \
-                '--clean=1 ' + \
-                '--generator="{}" '.format(generator) + \
                 '--source-dir="{}" '.format(source_dir) + \
+                '--generator="{}" '.format(generator) + \
+                '--clean=1 ' + \
                 '--build-shared-libs={} '.format(build_shared_libs) + \
                 '--cmake-build-type={} '.format(cmake_build_type) + \
                 '--cxxstd={} '.format(cxxstd) + \
-                '--cmake-standalone-tests={} '.format(standalone_tests) + \
-                '--cmake-add-subdir-tests={} '.format(add_subdir_tests) + \
-                '--cmake-install-tests={} '.format(install_tests) + \
                 '--db={} '.format(db) + \
                 '--server-host={} '.format(server_host)
 
@@ -187,9 +181,6 @@ def linux_cmake(
     build_shared_libs=0,
     cmake_build_type='Debug',
     cxxstd='20',
-    standalone_tests=1,
-    add_subdir_tests=1,
-    install_tests=1,
     db='mysql8'
 ):
     command = _cmake_command(
@@ -197,13 +188,17 @@ def linux_cmake(
         build_shared_libs=build_shared_libs,
         cmake_build_type=cmake_build_type,
         cxxstd=cxxstd,
-        standalone_tests=standalone_tests,
-        add_subdir_tests=add_subdir_tests,
-        install_tests=install_tests,
         db=db,
         server_host='mysql'
     )
     return _pipeline(name=name, image=image, os='linux', command=command, db=db)
+
+
+def linux_cmake_noopenssl(name):
+    command = 'python tools/ci/main.py ' + \
+                '--build-kind=cmake-noopenssl ' + \
+                '--generator=Ninja '
+    return _pipeline(name=name, image=_image('build-noopenssl'), os='linux', command=command, db=None)
 
 
 def windows_cmake(
@@ -226,6 +221,23 @@ def windows_cmake(
     )
 
 
+def _find_package_b2_command(source_dir, generator):
+    command = 'python tools/ci/main.py ' + \
+                '--build-kind=find-package-b2 ' + \
+                '--source-dir="{}" '.format(source_dir) + \
+                '--generator="{}" '.format(generator)
+
+
+def find_package_b2_linux(name):
+    command = _find_package_b2_command(source_dir='$(pwd)', generator='Ninja')
+    return _pipeline(name=name, image=_image('build-gcc13'), os='linux', command=command, db=None)
+
+
+def find_package_b2_windows(name):
+    command = _find_package_b2_command(source_dir='$Env:DRONE_WORKSPACE', generator='Visual Studio 17 2022')
+    return _pipeline(name=name, image=_image('build-msvc14_3'), os='windows', command=command, db=None)
+
+
 def docs():
     return _pipeline(
         name='Linux docs',
@@ -241,14 +253,18 @@ def main(ctx):
         # CMake Linux
         linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang14'), db='mysql5', build_shared_libs=0),
         linux_cmake('Linux CMake MariaDB',        _image('build-clang14'), db='mariadb', build_shared_libs=1),
-        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11', standalone_tests=0, install_tests=0),
-        linux_cmake('Linux CMake no OpenSSL',     _image('build-noopenssl'), standalone_tests=0, add_subdir_tests=0, install_tests=0),
+        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11'),
         linux_cmake('Linux CMake gcc Release',    _image('build-gcc11'), cmake_build_type='Release'),
-        linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc11'), cmake_build_type='MinSizeRel'),
+        linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc13'), cmake_build_type='MinSizeRel'),
+        linux_cmake_noopenssl('Linux CMake no OpenSSL'),
 
         # CMake Windows
         windows_cmake('Windows CMake static', build_shared_libs=0),
         windows_cmake('Windows CMake shared', build_shared_libs=1),
+
+        # find_package with B2 distribution
+        find_package_b2_linux('Linux find_package b2 distribution'),
+        find_package_b2_windows('Windows find_package b2 distribution'),
 
         # B2 Linux
         linux_b2('Linux B2 clang-3.6',            _image('build-clang3_6'),      toolset='clang-3.6', cxxstd='11,14'),
