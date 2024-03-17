@@ -1,10 +1,17 @@
+#!/usr/bin/python3
+#
+# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
 from pathlib import Path
 import os
 from typing import Optional
-from .common import run, BOOST_ROOT, IS_WINDOWS, mkdir_and_cd, install_boost
+from .common import run, BOOST_ROOT, IS_WINDOWS, mkdir_and_cd
 from .db_setup import db_setup
+from .install_boost import install_boost
 
 
 def _cmake_prefix_path(extra_path: Optional[Path] = None) -> str:
@@ -35,10 +42,9 @@ def cmake_build(
 
     # Get Boost
     install_boost(
-        BOOST_ROOT,
-        source_dir,
+        source_dir=source_dir,
+        boost_branch=boost_branch,
         clean=clean,
-        branch=boost_branch
     )
 
     # Setup DB
@@ -109,10 +115,9 @@ def cmake_noopenssl_build(
 
     # Get Boost
     install_boost(
-        BOOST_ROOT,
-        source_dir,
+        source_dir=source_dir,
+        boost_branch=boost_branch,
         clean=True,
-        branch=boost_branch
     )
 
     # Build Boost and install. This won't build the library if there is no OpenSSL,
@@ -149,10 +154,9 @@ def find_package_b2_test(
 
     # Get Boost
     install_boost(
-        BOOST_ROOT,
-        source_dir,
+        source_dir=source_dir,
+        boost_branch=boost_branch,
         clean=True,
-        branch=boost_branch
     )
 
     # Generate a b2 Boost distribution

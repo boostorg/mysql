@@ -9,105 +9,16 @@
 from pathlib import Path
 from typing import Union
 import os
-from shutil import rmtree, copytree
 import argparse
-from .common import IS_WINDOWS, BOOST_ROOT, install_boost, BoostInstallType, run, mkdir_and_cd
-from .db_setup import db_setup
+from .common import IS_WINDOWS, BOOST_ROOT
 from .cmake import cmake_build, cmake_noopenssl_build, find_package_b2_test
+from .b2 import b2_build
+from .docs import docs_build
 
 
 def _add_to_path(path: Path) -> None:
     sep = ';' if IS_WINDOWS  else ':'
     os.environ['PATH'] = '{}{}{}'.format(path, sep, os.environ["PATH"])
-
-
-def _doc_build(
-    source_dir: Path,
-    clean: bool,
-    boost_branch: str
-):
-    # Get Boost. This leaves us inside boost root
-    install_boost(
-        BOOST_ROOT,
-        source_dir=source_dir,
-        clean=clean,
-        install_type=BoostInstallType.docs,
-        branch=boost_branch
-    )
-
-    # Write the config file
-    config_path = os.path.expanduser('~/user-config.jam')
-    with open(config_path, 'wt') as f:
-        f.writelines(['using doxygen ;\n', 'using boostbook ;\n', 'using saxonhe ;\n'])
-
-    # Run b2
-    run(['b2', '-j4', 'cxxstd=17', 'libs/mysql/doc//boostrelease'])
-
-    # Copy the resulting docs into a well-known path
-    output_dir = source_dir.joinpath('doc', 'html')
-    if output_dir.exists():
-        rmtree(output_dir)
-    copytree(BOOST_ROOT.joinpath('libs', 'mysql', 'doc', 'html'), output_dir)
-
-
-def _b2_build(
-    source_dir: Path,
-    toolset: str,
-    cxxstd: str,
-    variant: str,
-    stdlib: str,
-    address_model: str,
-    clean: bool,
-    boost_branch: str,
-    db: str,
-    server_host: str,
-    separate_compilation: bool,
-    address_sanitizer: bool,
-    undefined_sanitizer: bool,
-    use_ts_executor: bool,
-    coverage: bool,
-    valgrind: bool,
-) -> None:
-    # Config
-    os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
-    if IS_WINDOWS:
-        os.environ['OPENSSL_ROOT'] = 'C:\\openssl-{}'.format(address_model)
-
-    # Get Boost. This leaves us inside boost root
-    install_boost(
-        BOOST_ROOT,
-        source_dir=source_dir,
-        clean=clean,
-        branch=boost_branch
-    )
-
-    # Setup DB
-    db_setup(source_dir, db, server_host)
-
-    # Invoke b2
-    run([
-        'b2',
-        '--abbreviate-paths',
-        'toolset={}'.format(toolset),
-        'cxxstd={}'.format(cxxstd),
-        'address-model={}'.format(address_model),
-        'variant={}'.format(variant),
-        'stdlib={}'.format(stdlib),
-        'boost.mysql.separate-compilation={}'.format('on' if separate_compilation else 'off'),
-        'boost.mysql.use-ts-executor={}'.format('on' if use_ts_executor else 'off'),
-    ] + (['address-sanitizer=norecover'] if address_sanitizer else [])     # can only be disabled by omitting the arg
-      + (['undefined-sanitizer=norecover'] if undefined_sanitizer else []) # can only be disabled by omitting the arg
-      + (['coverage=on'] if coverage else [])
-      + (['valgrind=on'] if valgrind else [])
-      + [
-        'warnings=extra',
-        'warnings-as-errors=on',
-        '-j4',
-        'libs/mysql/test',
-        'libs/mysql/test/integration//boost_mysql_integrationtests',
-        'libs/mysql/test/thread_safety',
-        'libs/mysql/example'
-    ])
 
 
 def _str2bool(v: Union[bool, str]) -> bool:
@@ -179,7 +90,7 @@ def main():
     boost_branch = _deduce_boost_branch() if args.boost_branch is None else args.boost_branch
 
     if args.build_kind == 'b2':
-        _b2_build(
+        b2_build(
             source_dir=args.source_dir,
             toolset=args.toolset,
             cxxstd=args.cxxstd,
@@ -232,7 +143,7 @@ def main():
             server_host=args.server_host
         )
     else:
-        _doc_build(
+        docs_build(
             source_dir=args.source_dir,
             boost_branch=boost_branch,
             clean=args.clean,

@@ -9,9 +9,10 @@
 from pathlib import Path
 import os
 from shutil import unpack_archive, make_archive
-from .common import install_boost, BOOST_ROOT, run
+from .common import run
 from .seed_corpus import generate_seed_corpus
 from .db_setup import db_setup
+from .install_boost import install_boost
 
 
 def fuzz_build(
@@ -26,10 +27,9 @@ def fuzz_build(
 
     # Get Boost. This leaves us inside boost root
     install_boost(
-        BOOST_ROOT,
         source_dir=source_dir,
+        boost_branch=boost_branch,
         clean=clean,
-        branch=boost_branch
     )
 
     # Setup corpus from previous runs. /tmp/corpus.tar.gz is restored by the CI
