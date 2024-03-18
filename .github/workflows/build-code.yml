@@ -21,7 +21,7 @@ jobs:
     env:
       OPENSSL_ROOT: /usr/local/opt/openssl
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: |
           unlink /usr/local/bin/python || echo "/usr/local/bin/python not found"
           ln -s /usr/local/bin/python3 /usr/local/bin/python
