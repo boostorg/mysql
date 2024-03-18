@@ -9,8 +9,11 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_SNIPPETS_DESCRIBE_HPP
 
 #include <boost/describe/class.hpp>
+#include <boost/optional/optional.hpp>
 
+#include <cstdint>
 #include <string>
+#include <tuple>
 
 namespace boost {
 namespace mysql {
@@ -29,6 +32,30 @@ struct post
 // We must use Boost.Describe to add reflection capabilities to post.
 // We must list all the fields that should be populated by Boost.MySQL
 BOOST_DESCRIBE_STRUCT(post, (), (id, title, body))
+//]
+
+//[describe_stored_procedures
+// Describes the first resultset
+struct company
+{
+    std::string id;
+    std::string name;
+    std::string tax_id;
+};
+BOOST_DESCRIBE_STRUCT(company, (), (id, name, tax_id))
+
+// Describes the second resultset
+struct employee
+{
+    std::string first_name;
+    std::string last_name;
+    boost::optional<std::uint64_t> salary;
+};
+BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, salary))
+
+// The last resultset will always be empty.
+// We can use an empty tuple to represent it.
+using empty = std::tuple<>;
 //]
 
 }  // namespace test
