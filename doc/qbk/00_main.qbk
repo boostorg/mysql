@@ -123,7 +123,19 @@ BEGIN
 END
 ```]
 
-[import ../../test/snippets/snippets.cpp]
+[import ../../test/integration/include/test_integration/snippets/describe.hpp]
+[import ../../test/integration/test/snippets/overview.cpp]
+[import ../../test/integration/test/snippets/dynamic.cpp]
+[import ../../test/integration/test/snippets/static.cpp]
+[import ../../test/integration/test/snippets/prepared_statements.cpp]
+[import ../../test/integration/test/snippets/multi_resultset.cpp]
+[import ../../test/integration/test/snippets/multi_function.cpp]
+[import ../../test/integration/test/snippets/metadata.cpp]
+[import ../../test/integration/test/snippets/charsets.cpp]
+[import ../../test/integration/test/snippets/time_types.cpp]
+[import ../../test/integration/test/snippets/any_connection.cpp]
+[import ../../test/integration/test/snippets/connection_pool.cpp]
+[import ../../test/integration/test/snippets/sql_formatting.cpp]
 
 [include 01_intro.qbk]
 [include 02_integrating.qbk]
