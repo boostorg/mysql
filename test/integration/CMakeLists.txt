@@ -47,6 +47,7 @@ add_executable(
     test/snippets/multi_resultset.cpp
     test/snippets/multi_function.cpp
     test/snippets/metadata.cpp
+    test/snippets/charsets.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests
