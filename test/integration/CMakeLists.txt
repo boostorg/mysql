@@ -50,6 +50,7 @@ add_executable(
     test/snippets/charsets.cpp
     test/snippets/time_types.cpp
     test/snippets/any_connection.cpp
+    test/snippets/connection_pool.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests
