@@ -68,7 +68,7 @@ def _cmake_command(
 
 
 def _find_package_b2_command(source_dir, generator):
-    command = 'python tools/ci/main.py ' + \
+    return 'python tools/ci/main.py ' + \
                 '--source-dir="{}" '.format(source_dir) + \
                 'find-package-b2 ' + \
                 '--generator="{}" '.format(generator)
