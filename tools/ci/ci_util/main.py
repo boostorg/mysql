@@ -52,94 +52,79 @@ def _deduce_boost_branch() -> str:
     return res
 
 
-def main():
-    build_kinds = [
-        'b2',
-        'cmake',
-        'cmake-noopenssl',
-        'find-package-b2',
-        'fuzz',
-        'docs'
-    ]
+# Adds any DB args for builds requiring these
+def _add_db_args(subp: argparse.ArgumentParser) -> None:
+    subp.add_argument('--server-host', default='127.0.0.1')
+    subp.add_argument('--db', choices=['mysql5', 'mysql8', 'mariadb'], default='mysql8')
 
+
+# Fuzzing uses some Python features only available in newer CIs,
+# so we use a dynamic import to avoid failures in older CIs
+def _do_fuzz_build(**kwargs):
+    from .fuzz import fuzz_build
+    fuzz_build(**kwargs)
+
+
+def main():
+    # Main parser
     parser = argparse.ArgumentParser()
-    parser.add_argument('--build-kind', choices=build_kinds, required=True)
     parser.add_argument('--source-dir', type=Path, required=True)
     parser.add_argument('--boost-branch', default=None) # None means "let this script deduce it"
-    parser.add_argument('--generator', default='Ninja')
-    parser.add_argument('--build-shared-libs', type=_str2bool, default=True)
-    parser.add_argument('--valgrind', type=_str2bool, default=False)
-    parser.add_argument('--coverage', type=_str2bool, default=False)
-    parser.add_argument('--db', choices=['mysql5', 'mysql8', 'mariadb'], default='mysql8')
-    parser.add_argument('--cmake-build-type', choices=['Debug', 'Release', 'MinSizeRel'], default='Debug')
-    parser.add_argument('--toolset', default='clang')
-    parser.add_argument('--cxxstd', default='20')
-    parser.add_argument('--variant', default='release')
-    parser.add_argument('--stdlib', choices=['native', 'libc++'], default='native')
-    parser.add_argument('--address-model', choices=['32', '64'], default='64')
-    parser.add_argument('--separate-compilation', type=_str2bool, default=True)
-    parser.add_argument('--use-ts-executor', type=_str2bool, default=False)
-    parser.add_argument('--address-sanitizer', type=_str2bool, default=False)
-    parser.add_argument('--undefined-sanitizer', type=_str2bool, default=False)
-    parser.add_argument('--server-host', default='127.0.0.1')
+    subparsers = parser.add_subparsers()
 
+    # b2
+    subp = subparsers.add_parser('b2', help='B2 build')
+    _add_db_args(subp)
+    subp.add_argument('--toolset', default='clang')
+    subp.add_argument('--cxxstd', default='20')
+    subp.add_argument('--variant', default='release')
+    subp.add_argument('--stdlib', choices=['native', 'libc++'], default='native')
+    subp.add_argument('--address-model', choices=['32', '64'], default='64')
+    subp.add_argument('--separate-compilation', type=_str2bool, default=True)
+    subp.add_argument('--use-ts-executor', type=_str2bool, default=False)
+    subp.add_argument('--address-sanitizer', type=_str2bool, default=False)
+    subp.add_argument('--undefined-sanitizer', type=_str2bool, default=False)
+    subp.add_argument('--coverage', type=_str2bool, default=False)
+    subp.add_argument('--valgrind', type=_str2bool, default=False)
+    subp.set_defaults(func=b2_build)
+
+    # cmake
+    subp = subparsers.add_parser('cmake', help='CMake build')
+    _add_db_args(subp)
+    subp.add_argument('--generator', default='Ninja')
+    subp.add_argument('--cmake-build-type', choices=['Debug', 'Release', 'MinSizeRel'], default='Debug', dest='build_type')
+    subp.add_argument('--build-shared-libs', type=_str2bool, default=True)
+    subp.add_argument('--cxxstd', default='20')
+    subp.set_defaults(func=cmake_build)
+
+    # cmake without openssl
+    subp = subparsers.add_parser('cmake-noopenssl', help='CMake build without OpenSSL')
+    subp.add_argument('--generator', default='Ninja')
+    subp.set_defaults(func=cmake_noopenssl_build)
+
+    # find_package with b2 distribution
+    subp = subparsers.add_parser('find-package-b2', help='find_package with b2 distribution test')
+    subp.add_argument('--generator', default='Ninja')
+    subp.set_defaults(func=find_package_b2_test)
+
+    # fuzz
+    subp = subparsers.add_parser('fuzz', help='Fuzzing')
+    _add_db_args(subp)
+    subp.set_defaults(func=_do_fuzz_build)
+
+    # docs
+    subp = subparsers.add_parser('docs', help='Docs build')
+    subp.set_defaults(func=docs_build)
+
+    # Parse the arguments
     args = parser.parse_args()
 
+    # Adjust Boost branch
+    if args.boost_branch is None:
+        args.boost_branch = _deduce_boost_branch()
+    
+    # Common code
     _add_to_path(BOOST_ROOT)
-    boost_branch = _deduce_boost_branch() if args.boost_branch is None else args.boost_branch
-
-    if args.build_kind == 'b2':
-        b2_build(
-            source_dir=args.source_dir,
-            toolset=args.toolset,
-            cxxstd=args.cxxstd,
-            variant=args.variant,
-            stdlib=args.stdlib,
-            address_model=args.address_model,
-            separate_compilation=args.separate_compilation,
-            use_ts_executor=args.use_ts_executor,
-            address_sanitizer=args.address_sanitizer,
-            undefined_sanitizer=args.undefined_sanitizer,
-            boost_branch=boost_branch,
-            db=args.db,
-            server_host=args.server_host,
-            coverage=args.coverage,
-            valgrind=args.valgrind
-        )
-    elif args.build_kind == 'cmake':
-        cmake_build(
-            source_dir=args.source_dir,
-            boost_branch=boost_branch,
-            generator=args.generator,
-            build_shared_libs=args.build_shared_libs,
-            build_type=args.cmake_build_type,
-            cxxstd=args.cxxstd,
-            db=args.db,
-            server_host=args.server_host
-        )
-    elif args.build_kind == 'cmake-noopenssl':
-        cmake_noopenssl_build(
-            source_dir=args.source_dir,
-            boost_branch=args.boost_branch,
-            generator=args.generator
-        )
-    elif args.build_kind == 'find-package-b2':
-        find_package_b2_test(
-            source_dir=args.source_dir,
-            boost_branch=args.boost_branch,
-            generator=args.generator
-        )
-    elif args.build_kind == 'fuzz':
-        # Fuzzing uses some Python features only available in newer CIs
-        from .fuzz import fuzz_build
-        fuzz_build(
-            source_dir=args.source_dir,
-            boost_branch=boost_branch,
-            db=args.db,
-            server_host=args.server_host
-        )
-    else:
-        docs_build(
-            source_dir=args.source_dir,
-            boost_branch=boost_branch,
-        )
+    
+    # Call the build function, removing the func attribute
+    args.func(**{name: value for name, value in vars(args).items() if name != 'func'})

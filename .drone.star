@@ -22,9 +22,9 @@ def _b2_command(
     toolset,
     cxxstd,
     variant,
+    server_host='127.0.0.1',
     stdlib='native',
     address_model='64',
-    server_host='127.0.0.1',
     separate_compilation=1,
     use_ts_executor=0,
     address_sanitizer=0,
@@ -32,14 +32,14 @@ def _b2_command(
     valgrind=0
 ):
     return 'python tools/ci/main.py ' + \
-                '--build-kind=b2 ' + \
                 '--source-dir="{}" '.format(source_dir) + \
+                'b2 ' + \
+                '--server-host={} '.format(server_host) + \
                 '--toolset={} '.format(toolset) + \
                 '--cxxstd={} '.format(cxxstd) + \
                 '--variant={} '.format(variant) + \
                 '--stdlib={} '.format(stdlib) + \
                 '--address-model={} '.format(address_model) + \
-                '--server-host={} '.format(server_host) + \
                 '--separate-compilation={} '.format(separate_compilation) + \
                 '--use-ts-executor={} '.format(use_ts_executor) + \
                 '--address-sanitizer={} '.format(address_sanitizer) + \
@@ -49,22 +49,29 @@ def _b2_command(
 
 def _cmake_command(
     source_dir,
-    build_shared_libs=0,
-    cmake_build_type='Debug',
-    cxxstd='20',
-    generator='Ninja',
+    server_host='127.0.0.1',
     db='mysql8',
-    server_host='127.0.0.1'
+    generator='Ninja',
+    cmake_build_type='Debug',
+    build_shared_libs=0,
+    cxxstd='20'
 ):
     return 'python tools/ci/main.py ' + \
-                '--build-kind=cmake ' + \
                 '--source-dir="{}" '.format(source_dir) + \
-                '--generator="{}" '.format(generator) + \
-                '--build-shared-libs={} '.format(build_shared_libs) + \
-                '--cmake-build-type={} '.format(cmake_build_type) + \
-                '--cxxstd={} '.format(cxxstd) + \
+                'cmake ' + \
+                '--server-host={} '.format(server_host) + \
                 '--db={} '.format(db) + \
-                '--server-host={} '.format(server_host)
+                '--generator="{}" '.format(generator) + \
+                '--cmake-build-type={} '.format(cmake_build_type) + \
+                '--build-shared-libs={} '.format(build_shared_libs) + \
+                '--cxxstd={} '.format(cxxstd)
+
+
+def _find_package_b2_command(source_dir, generator):
+    command = 'python tools/ci/main.py ' + \
+                '--source-dir="{}" '.format(source_dir) + \
+                'find-package-b2 ' + \
+                '--generator="{}" '.format(generator)
 
 
 def _pipeline(
@@ -219,13 +226,6 @@ def windows_cmake(
     )
 
 
-def _find_package_b2_command(source_dir, generator):
-    command = 'python tools/ci/main.py ' + \
-                '--build-kind=find-package-b2 ' + \
-                '--source-dir="{}" '.format(source_dir) + \
-                '--generator="{}" '.format(generator)
-
-
 def find_package_b2_linux(name):
     command = _find_package_b2_command(source_dir='$(pwd)', generator='Ninja')
     return _pipeline(name=name, image=_image('build-gcc13'), os='linux', command=command, db=None)
@@ -236,9 +236,9 @@ def find_package_b2_windows(name):
     return _pipeline(name=name, image=_image('build-msvc14_3'), os='windows', command=command, db=None)
 
 
-def docs():
+def docs(name):
     return _pipeline(
-        name='Linux docs',
+        name=name,
         image=_image('build-docs'),
         os='linux',
         command='python tools/ci/main.py --build-kind=docs --source-dir=$(pwd)',
@@ -294,6 +294,6 @@ def main(ctx):
         windows_b2('Windows B2 msvc14.3-ts-executor', _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
 
         # Docs
-        docs()
+        docs('Linux docs')
     ]
 
