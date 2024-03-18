@@ -129,25 +129,6 @@ void run_coro(boost::asio::any_io_executor ex, std::function<boost::asio::awaita
 }
 #endif
 
-void section_metadata(tcp_ssl_connection& conn)
-{
-    //[metadata
-    // By default, a connection has metadata_mode::minimal
-    results result;
-    conn.execute("SELECT 1 AS my_field", result);
-    string_view colname = result.meta()[0].column_name();
-
-    // colname will be empty because conn.meta_mode() == metadata_mode::minimal
-    ASSERT(colname == "");
-
-    // If you are using metadata names, set the connection's metadata_mode
-    conn.set_meta_mode(metadata_mode::full);
-    conn.execute("SELECT 1 AS my_field", result);
-    colname = result.meta()[0].column_name();
-    ASSERT(colname == "my_field");
-    //]
-}
-
 // next_char must interpret input as a string encoded according to the
 // utf8mb4 character set and return the size of the first character,
 // or 0 if the byte sequence does not represent a valid character.
