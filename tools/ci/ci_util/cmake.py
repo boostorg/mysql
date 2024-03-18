@@ -55,7 +55,7 @@ class _CMakeRunner:
     def ctest(self, no_tests_error: bool = True) -> None:
         run(
             ['ctest', '--output-on-failure'] +
-            ['--no-tests=error'] if no_tests_error else [] +
+            (['--no-tests=error'] if no_tests_error else []) +
             ['--build-config', self._build_type]
         )
 
