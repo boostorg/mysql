@@ -8,7 +8,7 @@
 
 from pathlib import Path
 import os
-from typing import Optional
+from typing import Optional, Dict
 from .common import run, BOOST_ROOT, IS_WINDOWS, mkdir_and_cd
 from .db_setup import db_setup
 from .install_boost import install_boost
@@ -23,12 +23,14 @@ def _cmake_bool(value: bool) -> str:
     return 'ON' if value else 'OFF'
 
 
-class CMakeRunner:
+class _CMakeRunner:
     def __init__(self, generator: str, build_type: str) -> None:
         self._generator = generator
         self._build_type = build_type
-    
-    def configure(self, source_dir: Path, binary_dir: Path, **kwargs: str):
+        os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '4'
+
+
+    def configure(self, source_dir: Path, binary_dir: Path, variables: Dict[str, str]) -> None:
         mkdir_and_cd(binary_dir)
         run(
             [
@@ -37,9 +39,21 @@ class CMakeRunner:
                 self._generator,
                 '-DCMAKE_BUILD_TYPE={}'.format(self._build_type),
             ] +
-            ['-D{}={}'.format(name, value) for name, value in kwargs.items()] +
+            ['-D{}={}'.format(name, value) for name, value in variables.items()] +
             [str(source_dir)]
         )
+
+
+    def build(self, target: str) -> None:
+        run(['cmake', '--build', '.', '--target', target, '--config', self._build_type])
+    
+
+    def build_all(self) -> None:
+        run(['cmake', '--build', '.', '--config', self._build_type])
+
+
+    def ctest(self) -> None:
+        run(['ctest', '--output-on-failure', '--build-config', self._build_type])
 
 
 # Regular CMake build
@@ -56,7 +70,7 @@ def cmake_build(
     # Config
     cmake_distro = Path(os.path.expanduser('~')).joinpath('cmake-distro')
     test_folder = BOOST_ROOT.joinpath('libs', 'mysql', 'test', 'cmake_test')
-    os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '4'
+    runner = _CMakeRunner(generator=generator, build_type=build_type)
 
     # Get Boost
     install_boost(
@@ -67,69 +81,60 @@ def cmake_build(
     # Setup DB
     db_setup(source_dir, db, server_host)
 
-    # Build the library, run the tests, and install
-    # Step 1
-    mkdir_and_cd(BOOST_ROOT.joinpath('__build'))
-    run([
-        'cmake',
-        '-G',
-        generator,
-        '-DCMAKE_PREFIX_PATH={}'.format(_cmake_prefix_path()),
-        '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-    ] + (['-DCMAKE_CXX_STANDARD={}'.format(cxxstd)] if cxxstd else []) + [
-        '-DBOOST_INCLUDE_LIBRARIES=mysql',
-        '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
-        '-DCMAKE_INSTALL_PREFIX={}'.format(cmake_distro),
-        '-DBUILD_TESTING=ON',
-        '-DBoost_VERBOSE=ON',
-        '-DCMAKE_INSTALL_MESSAGE=NEVER',
-        '-DBOOST_MYSQL_INTEGRATION_TESTS=OFF', # Explicitly state this to make rebuilds work
-        '..'
-    ])
-    run(['cmake', '--build', '.', '--target', 'tests', '--config', build_type])
-    run(['ctest', '--output-on-failure', '--build-config', build_type])
-    run(['cmake', '--build', '.', '--target', 'install', '--config', build_type])
+    # Build the library, run the tests, and install, as the Boost superproject does
+    bin_dir = BOOST_ROOT.joinpath('__build')
+    runner.configure(
+        source_dir=BOOST_ROOT,
+        binary_dir=bin_dir,
+        variables={
+            'CMAKE_PREFIX_PATH': _cmake_prefix_path(),
+            'BOOST_INCLUDE_LIBRARIES': 'mysql',
+            'BUILD_SHARED_LIBS': _cmake_bool(build_shared_libs),
+            'CMAKE_INSTALL_PREFIX': str(cmake_distro),
+            'BUILD_TESTING': 'ON',
+            'CMAKE_INSTALL_MESSAGE': 'NEVER',
+            'BOOST_MYSQL_INTEGRATION_TESTS': 'OFF', # Explicitly state this to make rebuilds work
+            **({ 'CMAKE_CXX_STANDARD': cxxstd } if cxxstd else {})
+        }
+    )
+    runner.build(target='tests')
+    runner.ctest()
+    runner.build(target='install')
 
     # Step 2
-    run([
-        'cmake',
-        '-G',
-        generator,
-        '-DBOOST_MYSQL_INTEGRATION_TESTS=ON',
-        '..'
-    ])
-    run(['cmake', '--build', '.', '--config', build_type])
-    run(['ctest', '--output-on-failure', '--build-config', build_type])
+    runner.configure(
+        source_dir=BOOST_ROOT,
+        binary_dir=bin_dir,
+        variables={'DBOOST_MYSQL_INTEGRATION_TESTS': 'ON'}
+    )
+    runner.build(target='all')
+    runner.ctest()
 
     # The library can be consumed using add_subdirectory
-    mkdir_and_cd(test_folder.joinpath('__build_add_subdirectory'))
-    run([
-        'cmake',
-        '-G',
-        generator,
-        '-DCMAKE_PREFIX_PATH={}'.format(_cmake_prefix_path()),
-        '-DBOOST_CI_INSTALL_TEST=OFF',
-        '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
-        '..'
-    ])
-    run(['cmake', '--build', '.', '--config', build_type])
-    run(['ctest', '--output-on-failure', '--build-config', build_type])
+    runner.configure(
+        source_dir=test_folder,
+        binary_dir=test_folder.joinpath('__build_add_subdirectory'),
+        variables={
+            'CMAKE_PREFIX_PATH': _cmake_prefix_path(),
+            'BOOST_CI_INSTALL_TEST': 'OFF',
+            'BUILD_SHARED_LIBS': _cmake_bool(build_shared_libs)
+        }
+    )
+    runner.build_all()
+    runner.ctest()
 
     # The library can be consumed using find_package on a Boost distro built by cmake
-    mkdir_and_cd(test_folder.joinpath('__build_find_package'))
-    run([
-        'cmake',
-        '-G',
-        generator,
-        '-DBOOST_CI_INSTALL_TEST=ON',
-        '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
-        '-DCMAKE_PREFIX_PATH={}'.format(_cmake_prefix_path(cmake_distro)),
-        '..'
-    ])
-    run(['cmake', '--build', '.', '--config', build_type])
-    run(['ctest', '--output-on-failure', '--build-config', build_type])
+    runner.configure(
+        source_dir=test_folder,
+        binary_dir=test_folder.joinpath('__build_find_package'),
+        variables={
+            'BOOST_CI_INSTALL_TEST': 'ON',
+            'BUILD_SHARED_LIBS': _cmake_bool(build_shared_libs),
+            'CMAKE_PREFIX_PATH': _cmake_prefix_path(cmake_distro)
+        }
+    )
+    runner.build_all()
+    runner.ctest()
 
 
 # Check that we bail out correctly when no OpenSSL is available
@@ -139,8 +144,7 @@ def cmake_noopenssl_build(
     generator: str
 ):
     # Config
-    os.environ['CMAKE_BUILD_PARALLEL_LEVEL'] = '4'
-    build_type = 'Release'
+    runner = _CMakeRunner(generator=generator, build_type='Release')
 
     # Get Boost
     install_boost(
@@ -150,23 +154,19 @@ def cmake_noopenssl_build(
 
     # Build Boost and install. This won't build the library if there is no OpenSSL,
     # but shouldn't cause any error.
-    mkdir_and_cd(BOOST_ROOT.joinpath('__build_cmake_test__'))
-    run([
-        'cmake',
-        '-G',
-        generator,
-        '-DBOOST_INCLUDE_LIBRARIES=mysql',
-        '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DBOOST_MYSQL_INTEGRATION_TESTS=ON',
-        '-DBUILD_TESTING=ON',
-        '-DBoost_VERBOSE=ON',
-        '-DCMAKE_INSTALL_MESSAGE=NEVER',
-        '..'
-    ])
-    run(['cmake', '--build', '.', '--target', 'tests', '--config', build_type])
-    run(['ctest', '--output-on-failure', '--build-config', build_type])
-    run(['cmake', '--build', '.', '--target', 'install', '--config', build_type])
-
+    runner.configure(
+        source_dir=BOOST_ROOT,
+        binary_dir=BOOST_ROOT.joinpath('__build'),
+        variables={
+            'BOOST_INCLUDE_LIBRARIES': 'mysql',
+            'BOOST_MYSQL_INTEGRATION_TESTS': 'ON',
+            'BUILD_TESTING': 'ON',
+            'CMAKE_INSTALL_MESSAGE': 'NEVER',
+        }
+    )
+    runner.build(target='tests')
+    runner.ctest()
+    runner.build(target='install')
 
 
 # Check that CMake can consume a Boost distribution created by b2
@@ -177,8 +177,8 @@ def find_package_b2_test(
 ) -> None:
     # Config
     b2_distro = Path(os.path.expanduser('~')).joinpath('b2-distro')
-    build_type = 'Release'
     prefix_path = _cmake_prefix_path(b2_distro)
+    runner = _CMakeRunner(generator=generator, build_type='Release')
 
     # Get Boost
     install_boost(
@@ -200,30 +200,28 @@ def find_package_b2_test(
     ])
 
     # Check that the library can be consumed using find_package on the distro above
-    mkdir_and_cd(BOOST_ROOT.joinpath('libs', 'mysql', 'test', 'cmake_b2_test', '__build_cmake_b2_test__'))
-    run([
-        'cmake',
-        '-G',
-        generator,
-        '-DCMAKE_PREFIX_PATH={}'.format(prefix_path),
-        '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DBUILD_TESTING=ON',
-        '..'
-    ])
-    run(['cmake', '--build', '.', '--config', build_type])
-    run(['ctest', '--output-on-failure', '--build-config', build_type])
+    test_dir = BOOST_ROOT.joinpath('libs', 'mysql', 'test', 'cmake_b2_test')
+    runner.configure(
+        source_dir=test_dir,
+        binary_dir=test_dir.joinpath('__build'),
+        variables={
+            'CMAKE_PREFIX_PATH': prefix_path,
+            'BUILD_TESTING': 'ON'
+        }
+    )
+    runner.build_all()
+    runner.ctest()
 
     # Same as the above, but for separate-build mode
-    mkdir_and_cd(BOOST_ROOT.joinpath('libs', 'mysql', 'test', 'cmake_b2_separate_compilation_test', '__build__'))
-    run([
-        'cmake',
-        '-G',
-        generator,
-        '-DCMAKE_PREFIX_PATH={}'.format(prefix_path),
-        '-DCMAKE_BUILD_TYPE={}'.format(build_type),
-        '-DBUILD_TESTING=ON',
-        '..'
-    ])
-    run(['cmake', '--build', '.', '--config', build_type])
-    run(['ctest', '--output-on-failure', '--build-config', build_type])
+    test_dir = BOOST_ROOT.joinpath('libs', 'mysql', 'test', 'cmake_b2_separate_compilation_test')
+    runner.configure(
+        source_dir=test_dir,
+        binary_dir=test_dir.joinpath('__build'),
+        variables={
+            'CMAKE_PREFIX_PATH': prefix_path,
+            'BUILD_TESTING': 'ON'
+        }
+    )
+    runner.build_all()
+    runner.ctest()
 
