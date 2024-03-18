@@ -28,9 +28,8 @@ jobs:
           python -m pip install requests
           source tools/setup_db_osx.sh
           python tools/ci/main.py \
-            --build-kind=b2 \
             --source-dir=$(pwd) \
+            b2 \
             --toolset=clang \
             --cxxstd=20 \
-            --variant=debug,release \
-            --server-host=127.0.0.1 # Force use IPv4
+            --variant=debug,release
