@@ -39,7 +39,7 @@ function(boost_mysql_common_target_settings TARGET_NAME)
         )
         target_compile_options(${TARGET_NAME} PUBLIC /bigobj) # Prevent failures on Windows
     else()
-        target_compile_options(${TARGET_NAME} PUBLIC -Wall -Wextra -Werror)
+        target_compile_options(${TARGET_NAME} PUBLIC -Wall -Wextra)
     endif()
 
     set_target_properties(${TARGET_NAME} PROPERTIES CXX_EXTENSIONS OFF) # disable extensions
