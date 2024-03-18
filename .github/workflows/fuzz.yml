@@ -45,8 +45,8 @@ jobs:
       - name: Build and run the fuzzer
         run: |
           python tools/ci/main.py \
-            --build-kind=fuzz \
             --source-dir=$(pwd) \
+            fuzz \
             --server-host=mysql
 
       - name: Archive any crashes as an artifact

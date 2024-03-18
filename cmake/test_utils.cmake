@@ -39,6 +39,10 @@ function(boost_mysql_common_target_settings TARGET_NAME)
         )
         target_compile_options(${TARGET_NAME} PUBLIC /bigobj) # Prevent failures on Windows
     else()
+        # gcc-13 doesn't understand view types
+        if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13.0)
+            target_compile_options(${TARGET_NAME} PUBLIC -Wno-dangling-reference -Wno-array-bounds)
+        endif()
         target_compile_options(${TARGET_NAME} PUBLIC -Wall -Wextra)
     endif()
 

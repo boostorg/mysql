@@ -6,8 +6,7 @@
 #
 
 # Note: examples count as integration tests. This is only processed
-# when we're the main project and BOOST_MYSQL_INTEGRATION_TESTS is on
-find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS context json url)
+# when BOOST_MYSQL_INTEGRATION_TESTS is on
 
 # Get the MySQL hostname to use for examples
 if(DEFINED ENV{BOOST_MYSQL_SERVER_HOST})
@@ -20,7 +19,6 @@ add_library(boost_mysql_examples_common INTERFACE)
 target_link_libraries(
     boost_mysql_examples_common
     INTERFACE
-    Boost::disable_autolinking
     boost_mysql_compiled
 )
 
@@ -159,6 +157,7 @@ target_link_libraries(
     Boost::context
     Boost::json
     Boost::url
+    Boost::beast
 )
 boost_mysql_common_target_settings(boost_mysql_example_connection_pool)
 run_python_example(boost_mysql_example_connection_pool run_connection_pool.py)
