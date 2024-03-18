@@ -70,9 +70,9 @@ def install_boost(
     run(["git", "submodule", "update", "-q", "--init"] + submodules)
 
     if docs_install:
-        run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
-    else:
         run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
+    else:
+        run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
     
     # Bootstrap
     if IS_WINDOWS:
