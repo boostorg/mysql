@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -36,6 +37,8 @@ BOOST_AUTO_TEST_CASE(section_metadata)
     colname = result.meta()[0].column_name();
     BOOST_TEST(colname == "my_field");
     //]
+
+    conn.set_meta_mode(metadata_mode::minimal);
 }
 
 }  // namespace
