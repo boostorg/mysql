@@ -107,7 +107,7 @@ def cmake_build(
         binary_dir=bin_dir,
         variables={'BOOST_MYSQL_INTEGRATION_TESTS': 'ON'}
     )
-    runner.build(target='all')
+    runner.build_all()
     runner.ctest()
 
     # The library can be consumed using add_subdirectory
