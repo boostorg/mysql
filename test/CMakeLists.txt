@@ -70,5 +70,4 @@ add_subdirectory(unit)
 # Integration testing
 if(BOOST_MYSQL_INTEGRATION_TESTS)
     add_subdirectory(integration)
-    add_subdirectory(snippets)
 endif()

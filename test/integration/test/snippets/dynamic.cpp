@@ -16,7 +16,7 @@
 #include <iostream>
 #include <string>
 
-#include "snippets/get_connection.hpp"
+#include "test_integration/snippets/get_connection.hpp"
 
 using namespace boost::mysql;
 

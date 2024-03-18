@@ -10,7 +10,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "snippets/get_connection.hpp"
+#include "test_integration/snippets/get_connection.hpp"
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>

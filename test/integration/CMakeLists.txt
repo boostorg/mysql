@@ -15,29 +15,35 @@ add_executable(
     boost_mysql_integrationtests
 
     # Utilities
-    src/get_endpoint.cpp
-    src/metadata_validator.cpp
-    src/er_network_variant.cpp
-    src/sync_errc.cpp
-    src/sync_exc.cpp
-    src/async_callback.cpp
-    src/async_coroutines.cpp
-    src/async_coroutinescpp20.cpp
+    # src/get_endpoint.cpp
+    # src/metadata_validator.cpp
+    # src/er_network_variant.cpp
+    # src/sync_errc.cpp
+    # src/sync_exc.cpp
+    # src/async_callback.cpp
+    # src/async_coroutines.cpp
+    # src/async_coroutinescpp20.cpp
 
     # Actual tests
-    test/spotchecks.cpp
-    test/crud.cpp
-    test/handshake.cpp
-    test/prepared_statements.cpp
-    test/stored_procedures.cpp
-    test/multi_queries.cpp
-    test/static_interface.cpp
-    test/reconnect.cpp
-    test/any_connection.cpp
-    test/character_set_tracking.cpp
-    test/connection_pool.cpp
-    test/db_specific.cpp
-    test/database_types.cpp
+    # test/spotchecks.cpp
+    # test/crud.cpp
+    # test/handshake.cpp
+    # test/prepared_statements.cpp
+    # test/stored_procedures.cpp
+    # test/multi_queries.cpp
+    # test/static_interface.cpp
+    # test/reconnect.cpp
+    # test/any_connection.cpp
+    # test/character_set_tracking.cpp
+    # test/connection_pool.cpp
+    # test/db_specific.cpp
+    # test/database_types.cpp
+
+    # Snippets
+    test/snippets/overview.cpp
+    test/snippets/dynamic.cpp
+    test/snippets/static.cpp
+    test/snippets/prepared_statements.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests

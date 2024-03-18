@@ -23,11 +23,11 @@
 
 #include <string>
 
-#include "snippets/credentials.hpp"
-#include "snippets/describe.hpp"
-#include "snippets/get_connection.hpp"
-#include "snippets/run_coro.hpp"
 #include "test_common/ci_server.hpp"
+#include "test_integration/snippets/credentials.hpp"
+#include "test_integration/snippets/describe.hpp"
+#include "test_integration/snippets/get_connection.hpp"
+#include "test_integration/snippets/run_coro.hpp"
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 #include <boost/asio/experimental/awaitable_operators.hpp>

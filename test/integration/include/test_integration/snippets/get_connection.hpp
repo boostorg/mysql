@@ -5,15 +5,15 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_SNIPPETS_INCLUDE_SNIPPETS_GET_CONNECTION_HPP
-#define BOOST_MYSQL_TEST_SNIPPETS_INCLUDE_SNIPPETS_GET_CONNECTION_HPP
+#ifndef BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_SNIPPETS_GET_CONNECTION_HPP
+#define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_SNIPPETS_GET_CONNECTION_HPP
 
 #include <boost/mysql/tcp.hpp>
 
 #include <boost/asio/io_context.hpp>
 
-#include "snippets/credentials.hpp"
 #include "test_common/ci_server.hpp"
+#include "test_integration/snippets/credentials.hpp"
 
 namespace boost {
 namespace mysql {
