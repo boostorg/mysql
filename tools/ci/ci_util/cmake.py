@@ -23,6 +23,25 @@ def _cmake_bool(value: bool) -> str:
     return 'ON' if value else 'OFF'
 
 
+class CMakeRunner:
+    def __init__(self, generator: str, build_type: str) -> None:
+        self._generator = generator
+        self._build_type = build_type
+    
+    def configure(self, source_dir: Path, binary_dir: Path, **kwargs: str):
+        mkdir_and_cd(binary_dir)
+        run(
+            [
+                'cmake',
+                '-G',
+                self._generator,
+                '-DCMAKE_BUILD_TYPE={}'.format(self._build_type),
+            ] +
+            ['-D{}={}'.format(name, value) for name, value in kwargs.items()] +
+            [str(source_dir)]
+        )
+
+
 # Regular CMake build
 def cmake_build(
     source_dir: Path,
@@ -49,7 +68,8 @@ def cmake_build(
     db_setup(source_dir, db, server_host)
 
     # Build the library, run the tests, and install
-    mkdir_and_cd(BOOST_ROOT.joinpath('__build_cmake_test__'))
+    # Step 1
+    mkdir_and_cd(BOOST_ROOT.joinpath('__build'))
     run([
         'cmake',
         '-G',
@@ -60,18 +80,29 @@ def cmake_build(
         '-DBOOST_INCLUDE_LIBRARIES=mysql',
         '-DBUILD_SHARED_LIBS={}'.format(_cmake_bool(build_shared_libs)),
         '-DCMAKE_INSTALL_PREFIX={}'.format(cmake_distro),
-        '-DBOOST_MYSQL_INTEGRATION_TESTS=ON',
         '-DBUILD_TESTING=ON',
         '-DBoost_VERBOSE=ON',
         '-DCMAKE_INSTALL_MESSAGE=NEVER',
+        '-DBOOST_MYSQL_INTEGRATION_TESTS=OFF', # Explicitly state this to make rebuilds work
         '..'
     ])
     run(['cmake', '--build', '.', '--target', 'tests', '--config', build_type])
     run(['ctest', '--output-on-failure', '--build-config', build_type])
     run(['cmake', '--build', '.', '--target', 'install', '--config', build_type])
 
+    # Step 2
+    run([
+        'cmake',
+        '-G',
+        generator,
+        '-DBOOST_MYSQL_INTEGRATION_TESTS=ON',
+        '..'
+    ])
+    run(['cmake', '--build', '.', '--config', build_type])
+    run(['ctest', '--output-on-failure', '--build-config', build_type])
+
     # The library can be consumed using add_subdirectory
-    mkdir_and_cd(test_folder.joinpath('__build_cmake_subdir_test__'))
+    mkdir_and_cd(test_folder.joinpath('__build_add_subdirectory'))
     run([
         'cmake',
         '-G',
@@ -86,7 +117,7 @@ def cmake_build(
     run(['ctest', '--output-on-failure', '--build-config', build_type])
 
     # The library can be consumed using find_package on a Boost distro built by cmake
-    mkdir_and_cd(test_folder.joinpath('__build_cmake_install_test__'))
+    mkdir_and_cd(test_folder.joinpath('__build_find_package'))
     run([
         'cmake',
         '-G',
