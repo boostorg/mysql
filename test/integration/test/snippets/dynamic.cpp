@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(section_dynamic)
         }
         else
         {
-            // Oops, something went wrong - schema msimatch?
+            // Oops, something went wrong - schema mismatch?
         }
 
         // Alternative: use the as_xxx accessor

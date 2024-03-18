@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(section_any_connection)
 
     {
         //[any_connection_ssl_ctx
-        // The I/O context requied to run network operations
+        // The I/O context required to run network operations
         boost::asio::io_context ctx;
 
         // Create a SSL context

@@ -37,7 +37,7 @@ BOOST_AUTO_TEST_CASE(section_multi_resultset)
         // We're using the dynamic interface. results can stored multiple resultsets
         results result;
 
-        // The procedure parameter, employe_id, will likely be obtained from an untrusted source,
+        // The procedure parameter, employee_id, will likely be obtained from an untrusted source,
         // so we will use a prepared statement
         statement get_employee_stmt = conn.prepare_statement("CALL get_employees(?)");
 
@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE(section_multi_resultset_multi_queries)
     boost::mysql::resultset_view select_result = result.at(2);
 
     // select_result is a view that points into result.
-    // We can take ownership of it using the resultse class:
+    // We can take ownership of it using the resultset class:
     boost::mysql::resultset owning_select_result(select_result);  // valid even after result is destroyed
 
     // We can access rows of resultset objects as usual:

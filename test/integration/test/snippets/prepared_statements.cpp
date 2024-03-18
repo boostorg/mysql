@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(section_prepared_statements)
         );
         //]
 
-        // Run the functions to verify that evth works
+        // Run the functions to verify that everything works
         insert_product(conn, stmt, string_view("This is a product"), 2000, true);
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
         insert_product(conn, stmt, std::optional<string_view>(), 2000, true);

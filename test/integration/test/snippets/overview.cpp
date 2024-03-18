@@ -258,7 +258,7 @@ BOOST_AUTO_TEST_CASE(section_overview)
     {
         //[overview_multifn
         // Create the table and some sample data
-        // In a real system, body may be megabaytes long.
+        // In a real system, body may be megabytes long.
         results result;
         conn.execute(
             R"%(
