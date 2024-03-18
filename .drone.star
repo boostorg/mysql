@@ -201,7 +201,8 @@ def linux_cmake(
 
 def linux_cmake_noopenssl(name):
     command = 'python tools/ci/main.py ' + \
-                '--build-kind=cmake-noopenssl ' + \
+                '--source-dir=$(pwd) ' + \
+                'cmake-noopenssl ' + \
                 '--generator=Ninja '
     return _pipeline(name=name, image=_image('build-noopenssl'), os='linux', command=command, db=None)
 
