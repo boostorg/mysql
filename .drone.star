@@ -233,7 +233,7 @@ def find_package_b2_linux(name):
 
 def find_package_b2_windows(name):
     command = _find_package_b2_command(source_dir='$Env:DRONE_WORKSPACE', generator='Visual Studio 17 2022')
-    return _pipeline(name=name, image=_image('build-msvc14_3'), os='windows', command=command, db=None)
+    return _pipeline(name=name, image=_win_image('build-msvc14_3'), os='windows', command=command, db=None)
 
 
 def docs(name):
@@ -241,7 +241,7 @@ def docs(name):
         name=name,
         image=_image('build-docs'),
         os='linux',
-        command='python tools/ci/main.py --build-kind=docs --source-dir=$(pwd)',
+        command='python tools/ci/main.py --source-dir=$(pwd) docs',
         db=None
     )
 
