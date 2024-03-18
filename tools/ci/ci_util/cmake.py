@@ -105,7 +105,7 @@ def cmake_build(
     runner.configure(
         source_dir=BOOST_ROOT,
         binary_dir=bin_dir,
-        variables={'DBOOST_MYSQL_INTEGRATION_TESTS': 'ON'}
+        variables={'BOOST_MYSQL_INTEGRATION_TESTS': 'ON'}
     )
     runner.build(target='all')
     runner.ctest()
