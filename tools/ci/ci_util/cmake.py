@@ -190,10 +190,6 @@ def find_package_b2_test(
     run([
         'b2',
         '--prefix={}'.format(b2_distro),
-        '--with-context',
-        '--with-test',
-        '--with-json',
-        '--with-url',
         '--with-charconv',
         '-d0',
         'install'
