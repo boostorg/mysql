@@ -91,8 +91,8 @@ std::string compose_update_query(
 }  // namespace
 
 //[sql_formatting_formatter_specialization
-// We want to add formatting support for employee_t
-struct employee_t
+// We want to add formatting support for employee
+struct employee
 {
     std::string first_name;
     std::string last_name;
@@ -103,14 +103,14 @@ namespace boost {
 namespace mysql {
 
 template <>
-struct formatter<employee_t>
+struct formatter<employee>
 {
     // formatter<T> should define, at least, a function with signature:
     //    static void format(const T&, format_context_base&)
     // This function must use format_sql_to, format_context_base::append_raw
     // or format_context_base::append_value to format the passed value.
     // We will make this suitable for INSERT statements
-    static void format(const employee_t& emp, format_context_base& ctx)
+    static void format(const employee& emp, format_context_base& ctx)
     {
         format_sql_to(ctx, "{}, {}, {}", emp.first_name, emp.last_name, emp.company_id);
     }
@@ -557,8 +557,8 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         std::string query = boost::mysql::format_sql(
             conn.format_opts().value(),
             "INSERT INTO employee (first_name, last_name, company_id) VALUES ({}), ({})",
-            employee_t{"John", "Doe", "HGS"},
-            employee_t{"Rick", "Johnson", "AWC"}
+            employee{"John", "Doe", "HGS"},
+            employee{"Rick", "Johnson", "AWC"}
         );
 
         BOOST_TEST(
