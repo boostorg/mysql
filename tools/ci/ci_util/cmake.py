@@ -52,8 +52,12 @@ class _CMakeRunner:
         run(['cmake', '--build', '.', '--config', self._build_type])
 
 
-    def ctest(self) -> None:
-        run(['ctest', '--output-on-failure', '--build-config', self._build_type])
+    def ctest(self, no_tests_error: bool = True) -> None:
+        run(
+            ['ctest', '--output-on-failure'] +
+            ['--no-tests=error'] if no_tests_error else [] +
+            ['--build-config', self._build_type]
+        )
 
 
 # Regular CMake build
@@ -165,7 +169,7 @@ def cmake_noopenssl_build(
         }
     )
     runner.build(target='tests')
-    runner.ctest()
+    runner.ctest(no_tests_error=False)
     runner.build(target='install')
 
 
