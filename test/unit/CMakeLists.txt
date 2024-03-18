@@ -138,15 +138,8 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
 endif()
 boost_mysql_common_target_settings(boost_mysql_unittests)
 
-if (BOOST_MYSQL_VALGRIND_TESTS)
-    add_memcheck_test(
-        NAME boost_mysql_unittests_memcheck
-        TARGET boost_mysql_unittests
-    )
-else()
-    add_test(
-        NAME boost_mysql_unittests
-        COMMAND boost_mysql_unittests
-    )
-    add_dependencies(tests boost_mysql_unittests)
-endif()
+add_test(
+    NAME boost_mysql_unittests
+    COMMAND boost_mysql_unittests
+)
+add_dependencies(tests boost_mysql_unittests)

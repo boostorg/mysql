@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <type_traits>
 
-#ifdef BOOST_MYSQL_VALGRIND_TESTS
+#ifdef BOOST_USE_VALGRIND
 #include <valgrind/memcheck.h>
 #endif
 
@@ -28,7 +28,7 @@ namespace mysql {
 namespace detail {
 
 // Valgrind
-#ifdef BOOST_MYSQL_VALGRIND_TESTS
+#ifdef BOOST_USE_VALGRIND
 inline void valgrind_make_mem_defined(const void* data, std::size_t size)
 {
     VALGRIND_MAKE_MEM_DEFINED(data, size);

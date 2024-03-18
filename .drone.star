@@ -28,7 +28,8 @@ def _b2_command(
     separate_compilation=1,
     use_ts_executor=0,
     address_sanitizer=0,
-    undefined_sanitizer=0
+    undefined_sanitizer=0,
+    valgrind=0
 ):
     return 'python tools/ci/main.py ' + \
                 '--clean=1 ' + \
@@ -43,7 +44,8 @@ def _b2_command(
                 '--separate-compilation={} '.format(separate_compilation) + \
                 '--use-ts-executor={} '.format(use_ts_executor) + \
                 '--address-sanitizer={} '.format(address_sanitizer) + \
-                '--undefined-sanitizer={} '.format(undefined_sanitizer)
+                '--undefined-sanitizer={} '.format(undefined_sanitizer) + \
+                '--valgrind={} '.format(valgrind)
 
 
 def _cmake_command(
@@ -51,7 +53,6 @@ def _cmake_command(
     build_shared_libs=0,
     cmake_build_type='Debug',
     cxxstd='20',
-    valgrind=0,
     standalone_tests=1,
     add_subdir_tests=1,
     install_tests=1,
@@ -67,7 +68,6 @@ def _cmake_command(
                 '--build-shared-libs={} '.format(build_shared_libs) + \
                 '--cmake-build-type={} '.format(cmake_build_type) + \
                 '--cxxstd={} '.format(cxxstd) + \
-                '--valgrind={} '.format(valgrind) + \
                 '--cmake-standalone-tests={} '.format(standalone_tests) + \
                 '--cmake-add-subdir-tests={} '.format(add_subdir_tests) + \
                 '--cmake-install-tests={} '.format(install_tests) + \
@@ -133,6 +133,7 @@ def linux_b2(
     use_ts_executor = 0,
     address_sanitizer=0,
     undefined_sanitizer=0,
+    valgrind=0,
     arch='amd64',
 ):
     command = _b2_command(
@@ -146,7 +147,8 @@ def linux_b2(
         separate_compilation=separate_compilation,
         use_ts_executor=use_ts_executor,
         address_sanitizer=address_sanitizer,
-        undefined_sanitizer=undefined_sanitizer
+        undefined_sanitizer=undefined_sanitizer,
+        valgrind=valgrind
     )
     return _pipeline(
         name=name,
@@ -185,7 +187,6 @@ def linux_cmake(
     build_shared_libs=0,
     cmake_build_type='Debug',
     cxxstd='20',
-    valgrind=0,
     standalone_tests=1,
     add_subdir_tests=1,
     install_tests=1,
@@ -196,7 +197,6 @@ def linux_cmake(
         build_shared_libs=build_shared_libs,
         cmake_build_type=cmake_build_type,
         cxxstd=cxxstd,
-        valgrind=valgrind,
         standalone_tests=standalone_tests,
         add_subdir_tests=add_subdir_tests,
         install_tests=install_tests,
@@ -239,7 +239,6 @@ def docs():
 def main(ctx):
     return [
         # CMake Linux
-        linux_cmake('Linux CMake valgrind',       _image('build-gcc11'), valgrind=1, build_shared_libs=0),
         linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang14'), db='mysql5', build_shared_libs=0),
         linux_cmake('Linux CMake MariaDB',        _image('build-clang14'), db='mariadb', build_shared_libs=1),
         linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11', standalone_tests=0, install_tests=0),
@@ -271,6 +270,7 @@ def main(ctx):
         linux_b2('Linux B2 gcc-11-arm64-sanit',   _image('build-gcc11'),         toolset='gcc-11',    cxxstd='20',    arch='arm64', variant='debug'),
         linux_b2('Linux B2 gcc-13',               _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='release'),
         linux_b2('Linux B2 gcc-13-sanit',         _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 gcc-13-valgrind',      _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', valgrind=1),
 
         # B2 Windows
         windows_b2('Windows B2 msvc14.1 32-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
