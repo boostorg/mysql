@@ -54,7 +54,8 @@ def _cmake_command(
     generator='Ninja',
     cmake_build_type='Debug',
     build_shared_libs=0,
-    cxxstd='20'
+    cxxstd='20',
+    install_test=1
 ):
     return 'python tools/ci/main.py ' + \
                 '--source-dir="{}" '.format(source_dir) + \
@@ -64,7 +65,8 @@ def _cmake_command(
                 '--generator="{}" '.format(generator) + \
                 '--cmake-build-type={} '.format(cmake_build_type) + \
                 '--build-shared-libs={} '.format(build_shared_libs) + \
-                '--cxxstd={} '.format(cxxstd)
+                '--cxxstd={} '.format(cxxstd) + \
+                '--install-test={} '.format(install_test)
 
 
 def _find_package_b2_command(source_dir, generator):
@@ -186,7 +188,8 @@ def linux_cmake(
     build_shared_libs=0,
     cmake_build_type='Debug',
     cxxstd='20',
-    db='mysql8'
+    db='mysql8',
+    install_test=1
 ):
     command = _cmake_command(
         source_dir='$(pwd)',
@@ -194,7 +197,8 @@ def linux_cmake(
         cmake_build_type=cmake_build_type,
         cxxstd=cxxstd,
         db=db,
-        server_host='mysql'
+        server_host='mysql',
+        install_test=install_test
     )
     return _pipeline(name=name, image=image, os='linux', command=command, db=db)
 
@@ -252,7 +256,7 @@ def main(ctx):
         # CMake Linux
         linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang14'), db='mysql5', build_shared_libs=0),
         linux_cmake('Linux CMake MariaDB',        _image('build-clang14'), db='mariadb', build_shared_libs=1),
-        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11'),
+        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11', install_test=0),
         linux_cmake('Linux CMake gcc Release',    _image('build-gcc11'), cmake_build_type='Release'),
         linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc13'), cmake_build_type='MinSizeRel'),
         linux_cmake_noopenssl('Linux CMake no OpenSSL'),

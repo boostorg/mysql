@@ -11,7 +11,7 @@ set -e
 repo_base=$(realpath $(dirname $0)/../..)
 
 BK=cmake
-IMAGE=build-gcc13
+IMAGE=build-cmake3_8
 SHA=252732b3d7af7f78618e877479b85d4d611a61f4
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
@@ -51,6 +51,7 @@ case $BK in
             --cmake-build-type=Debug
             --build-shared-libs=1
             --cxxstd=20
+            --install-test=1
             "
         ;;
     

@@ -70,6 +70,7 @@ def cmake_build(
     cxxstd: str,
     db: str,
     server_host: str,
+    install_test: bool,
 ) -> None:
     # Config
     cmake_distro = Path(os.path.expanduser('~')).joinpath('cmake-distro')
@@ -127,18 +128,21 @@ def cmake_build(
     runner.build_all()
     runner.ctest()
 
-    # The library can be consumed using find_package on a Boost distro built by cmake
-    runner.configure(
-        source_dir=test_folder,
-        binary_dir=test_folder.joinpath('__build_find_package'),
-        variables={
-            'BOOST_CI_INSTALL_TEST': 'ON',
-            'BUILD_SHARED_LIBS': _cmake_bool(build_shared_libs),
-            'CMAKE_PREFIX_PATH': _cmake_prefix_path(cmake_distro)
-        }
-    )
-    runner.build_all()
-    runner.ctest()
+    # The library can be consumed using find_package on a Boost distro built by cmake.
+    # Generating a modular installation requires CMake 3.13+, so this test can be disabled
+    # for jobs running old cmake versions
+    if install_test:
+        runner.configure(
+            source_dir=test_folder,
+            binary_dir=test_folder.joinpath('__build_find_package'),
+            variables={
+                'BOOST_CI_INSTALL_TEST': 'ON',
+                'BUILD_SHARED_LIBS': _cmake_bool(build_shared_libs),
+                'CMAKE_PREFIX_PATH': _cmake_prefix_path(cmake_distro)
+            }
+        )
+        runner.build_all()
+        runner.ctest()
 
 
 # Check that we bail out correctly when no OpenSSL is available

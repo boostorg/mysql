@@ -95,6 +95,7 @@ def main():
     subp.add_argument('--cmake-build-type', choices=['Debug', 'Release', 'MinSizeRel'], default='Debug', dest='build_type')
     subp.add_argument('--build-shared-libs', type=_str2bool, default=True)
     subp.add_argument('--cxxstd', default='20')
+    subp.add_argument('--install-test', type=_str2bool, default=True)
     subp.set_defaults(func=cmake_build)
 
     # cmake without openssl
