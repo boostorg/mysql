@@ -60,7 +60,7 @@ struct readable_field_checker
 template <class TypeList>
 static constexpr bool check_readable_field() noexcept
 {
-    mp11::mp_for_each<TypeList>(readable_field_checker{});
+    mp11::mp_for_each<mp11::mp_transform<mp11::mp_identity, TypeList>>(readable_field_checker{});
     return true;
 }
 
@@ -154,12 +154,11 @@ class row_traits<DescribeStruct, true>
 {
     using members = row_members<DescribeStruct>;
 
+    // clang-format off
     template <class D>
-    struct descriptor_to_type
-    {
-        using helper = decltype(std::declval<DescribeStruct>().*std::declval<D>().pointer);
-        using type = typename std::remove_reference<helper>::type;
-    };
+    using descriptor_to_type = typename
+        std::remove_reference<decltype(std::declval<DescribeStruct>().*std::declval<D>().pointer)>::type;
+    // clang-format on
 
     using member_types = mp11::mp_transform<descriptor_to_type, members>;
 
@@ -189,12 +188,11 @@ template <class... ReadableField>
 class row_traits<std::tuple<ReadableField...>, false>
 {
     using tuple_type = std::tuple<ReadableField...>;
-    using field_types = boost::mp11::mp_list<boost::mp11::mp_identity<ReadableField>...>;
 
-    static_assert(check_readable_field<field_types>(), "");
+    static_assert(check_readable_field<tuple_type>(), "");
 
 public:
-    using types = field_types;
+    using types = tuple_type;
     static constexpr std::size_t size() noexcept { return std::tuple_size<tuple_type>::value; }
     static constexpr name_table_t name_table() noexcept { return name_table_t(); }
     static void parse(parse_functor& parser, tuple_type& to) { boost::mp11::tuple_for_each(to, parser); }

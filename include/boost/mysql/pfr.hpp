@@ -61,15 +61,11 @@ constexpr std::array<string_view, N> to_name_table_storage(std::array<std::strin
 template <class T>
 constexpr auto pfr_names_storage = to_name_table_storage(pfr::names_as_array<T>());
 
-template <class... T>
-std::tuple<mp11::mp_identity<T>...> tuple_to_identity(const std::tuple<T...>&);
-
 template <class T>
 class row_traits<pfr_by_name<T>, false>
 {
 public:
-    // TODO: can we improve this?
-    using types = decltype(tuple_to_identity(pfr::structure_to_tuple(std::declval<const T&>())));
+    using types = decltype(pfr::structure_to_tuple(std::declval<const T&>()));
 
     static constexpr std::size_t size() noexcept { return pfr::tuple_size_v<T>; }
 

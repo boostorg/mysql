@@ -25,6 +25,9 @@
 #include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/void_t.hpp>
 
+#include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/utility.hpp>
+
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -595,10 +598,10 @@ struct meta_check_field_fn
 {
     meta_check_context ctx;
 
-    template <class T>
-    void operator()(T)
+    template <class TypeIdentity>
+    void operator()(TypeIdentity)
     {
-        meta_check_field<typename T::type>(ctx);
+        meta_check_field<typename TypeIdentity::type>(ctx);
     }
 };
 
@@ -611,7 +614,7 @@ error_code meta_check_field_type_list(
 )
 {
     meta_check_field_fn fn{meta_check_context(field_map, name_table, meta)};
-    boost::mp11::mp_for_each<ReadableFieldList>(fn);
+    mp11::mp_for_each<mp11::mp_transform<mp11::mp_identity, ReadableFieldList>>(fn);
     return fn.ctx.check_errors(diag);
 }
 

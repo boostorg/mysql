@@ -26,8 +26,6 @@
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/core/span.hpp>
-#include <boost/mp11/detail/mp_list.hpp>
-#include <boost/mp11/utility.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/optional/optional_io.hpp>
 #include <boost/test/unit_test.hpp>
@@ -35,6 +33,7 @@
 #include <cstddef>
 #include <limits>
 #include <string>
+#include <tuple>
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
@@ -47,7 +46,6 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
-namespace mp11 = boost::mp11;
 using boost::span;
 using boost::mysql::detail::is_readable_field;
 using boost::mysql::detail::meta_check_context;
@@ -452,9 +450,8 @@ BOOST_AUTO_TEST_CASE(success)
         {"int64_signed_min",
          field_view(-0x7fffffffffffffff - 1),
          parse_and_check<std::int64_t>(-0x7fffffffffffffff - 1)},
-        {"int64_signed_max",
-         field_view(0x7f00000000000000),
-         parse_and_check<std::int64_t>(0x7f00000000000000)},
+        {"int64_signed_max", field_view(0x7f00000000000000), parse_and_check<std::int64_t>(0x7f00000000000000)
+        },
         {"int64_unsigned_regular", field_view(42u), parse_and_check<std::int64_t>(42u)},
         {"int64_unsigned_max",
          field_view(0x7f00000000000000u),
@@ -624,9 +621,6 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(meta_check_field_type_list_)
 
-template <class... T>
-using identity_list = mp11::mp_list<mp11::mp_identity<T>...>;
-
 const metadata meta[] = {
     meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
     meta_builder().type(column_type::varchar).nullable(false).build(),
@@ -636,7 +630,7 @@ const metadata meta[] = {
 BOOST_AUTO_TEST_CASE(positional_success)
 {
     // meta is: TINYINT, VARCHAR, FLOAT
-    using types = identity_list<int, std::string, float>;
+    using types = std::tuple<int, std::string, float>;
     const std::size_t pos_map[] = {0, 1, 2};
     diagnostics diag;
 
@@ -649,7 +643,7 @@ BOOST_AUTO_TEST_CASE(positional_success)
 BOOST_AUTO_TEST_CASE(positional_success_trailing_fields)
 {
     // meta is: TINYINT, VARCHAR, FLOAT
-    using types = identity_list<int, std::string>;
+    using types = std::tuple<int, std::string>;
     const std::size_t pos_map[] = {0, 1};
     diagnostics diag;
 
@@ -662,7 +656,7 @@ BOOST_AUTO_TEST_CASE(positional_success_trailing_fields)
 BOOST_AUTO_TEST_CASE(positional_missing_fields)
 {
     // meta is: TINYINT, VARCHAR, FLOAT
-    using types = identity_list<int, std::string, float, int, int>;
+    using types = std::tuple<int, std::string, float, int, int>;
     const std::size_t pos_map[] = {0, 1, 2, pos_absent, pos_absent};
     const char* expected_msg =
         "Field in position 3 can't be mapped: there are more fields in your C++ data type than in your query"
@@ -678,7 +672,7 @@ BOOST_AUTO_TEST_CASE(positional_missing_fields)
 
 BOOST_AUTO_TEST_CASE(positional_no_fields)
 {
-    using types = identity_list<int, std::string>;
+    using types = std::tuple<int, std::string>;
     const std::size_t pos_map[] = {pos_absent, pos_absent};
     const char* expected_msg =
         "Field in position 0 can't be mapped: there are more fields in your C++ data type than in your query"
@@ -695,7 +689,7 @@ BOOST_AUTO_TEST_CASE(positional_no_fields)
 BOOST_AUTO_TEST_CASE(named_success)
 {
     // meta is: TINYINT, VARCHAR, FLOAT
-    using types = identity_list<float, int, std::string>;
+    using types = std::tuple<float, int, std::string>;
     const std::size_t pos_map[] = {2, 0, 1};
     const string_view names[] = {"f1", "f2", "f3"};
     diagnostics diag;
@@ -709,7 +703,7 @@ BOOST_AUTO_TEST_CASE(named_success)
 BOOST_AUTO_TEST_CASE(named_success_extra_fields)
 {
     // meta is: TINYINT, VARCHAR, FLOAT
-    using types = identity_list<std::string, int>;
+    using types = std::tuple<std::string, int>;
     const std::size_t pos_map[] = {1, 0};
     const string_view names[] = {"f1", "f2"};
     diagnostics diag;
@@ -723,7 +717,7 @@ BOOST_AUTO_TEST_CASE(named_success_extra_fields)
 BOOST_AUTO_TEST_CASE(named_absent_fields)
 {
     // meta is: TINYINT, VARCHAR, FLOAT
-    using types = identity_list<std::string, int, float>;
+    using types = std::tuple<std::string, int, float>;
     const std::size_t pos_map[] = {pos_absent, 0, pos_absent};
     const string_view names[] = {"f1", "f2", "f3"};
     const char* expected_msg =
@@ -740,7 +734,7 @@ BOOST_AUTO_TEST_CASE(named_absent_fields)
 
 BOOST_AUTO_TEST_CASE(named_no_fields)
 {
-    using types = identity_list<int, int>;
+    using types = std::tuple<int, int>;
     const std::size_t pos_map[] = {pos_absent, pos_absent};
     const string_view names[] = {"f1", "f2"};
     const char* expected_msg =
@@ -758,7 +752,7 @@ BOOST_AUTO_TEST_CASE(named_no_fields)
 BOOST_AUTO_TEST_CASE(failed_checks)
 {
     // meta is: TINYINT, VARCHAR, FLOAT
-    using types = identity_list<float, float, float>;
+    using types = std::tuple<float, float, float>;
     const std::size_t pos_map[] = {2, 1, 0};
     const string_view names[] = {"f1", "f2", "f3"};
     const char* expected_msg =
@@ -775,7 +769,7 @@ BOOST_AUTO_TEST_CASE(failed_checks)
 
 BOOST_AUTO_TEST_CASE(all_fields_discarded)
 {
-    using types = identity_list<>;
+    using types = std::tuple<>;
     diagnostics diag;
 
     auto err = meta_check_field_type_list<types>(span<const std::size_t>(), name_table_t(), meta, diag);
@@ -786,7 +780,7 @@ BOOST_AUTO_TEST_CASE(all_fields_discarded)
 
 BOOST_AUTO_TEST_CASE(empty)
 {
-    using types = identity_list<>;
+    using types = std::tuple<>;
     diagnostics diag;
 
     auto err = meta_check_field_type_list<types>(
