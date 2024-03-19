@@ -83,7 +83,7 @@ def install_boost(
         for subm in submodules:
             run(["git", "submodule", "update", "-q", "--init", subm])
         if install_type == BoostInstallType.mysql:
-            run(["python", "tools/boostdep/depinst/depinst.py", "--include", "example", "mysql"])
+            run(["python", "tools/boostdep/depinst/depinst.py", "--verbose", "--include", "example", "mysql"])
         else:
             run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
     
