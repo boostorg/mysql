@@ -675,10 +675,10 @@ public:
      * \n
      * This function can report schema mismatches.
      */
-    template <class SpanStaticRow, class... StaticRow>
+    template <class SpanElementType, class... StaticRow>
     std::size_t read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         error_code& err,
         diagnostics& diag
     )
@@ -712,8 +712,8 @@ public:
      * \n
      * This function can report schema mismatches.
      */
-    template <class SpanStaticRow, class... StaticRow>
-    std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanStaticRow> output)
+    template <class SpanElementType, class... StaticRow>
+    std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanElementType> output)
     {
         error_code err;
         diagnostics diag;
@@ -756,13 +756,13 @@ public:
      * The storage that `output` references must be kept alive until the operation completes.
      */
     template <
-        class SpanStaticRow,
+        class SpanElementType,
         class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -803,13 +803,13 @@ public:
      * The storage that `output` references must be kept alive until the operation completes.
      */
     template <
-        class SpanStaticRow,
+        class SpanElementType,
         class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )

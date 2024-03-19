@@ -15,6 +15,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/get_row_type.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -203,7 +204,7 @@ static error_code execst_parse_fn(
     const output_ref& ref
 )
 {
-    return parse(pos_map, from, ref.span_element<StaticRow>());
+    return parse<StaticRow>(pos_map, from, ref.span_element<get_row_type_t<StaticRow>>());
 }
 
 template <class... StaticRow>
@@ -214,7 +215,7 @@ constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> create_e
         get_row_name_table<StaticRow>(),
         &meta_check<StaticRow>,
         &execst_parse_fn<StaticRow>,
-        get_type_index<StaticRow, StaticRow...>(),
+        get_type_index<get_row_type_t<StaticRow>, StaticRow...>(),
     }...}};
 }
 

@@ -16,6 +16,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/get_row_type.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -121,6 +122,9 @@ public:
 };
 
 // Base template
+template <class T>
+constexpr bool is_static_row = boost::describe::has_describe_members<T>::value;
+
 template <class T, bool is_describe_struct = boost::describe::has_describe_members<T>::value>
 class row_traits;
 
@@ -178,14 +182,8 @@ public:
 };
 
 // Tuples
-template <class T>
-struct is_tuple : std::false_type
-{
-};
 template <class... T>
-struct is_tuple<std::tuple<T...>> : std::true_type
-{
-};
+constexpr bool is_static_row<std::tuple<T...>> = true;
 
 template <class... ReadableField>
 class row_traits<std::tuple<ReadableField...>, false>
@@ -202,19 +200,13 @@ public:
     static void parse(parse_functor& parser, tuple_type& to) { boost::mp11::tuple_for_each(to, parser); }
 };
 
-// We want is_static_row to only inspect the shape of the row (i.e. it's a tuple vs. it's nothing we know),
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+
+// Note that static_row only inspects the shape of the row only (i.e. it's a tuple vs. it's nothing we know),
 // and not individual fields. These are static_assert-ed in individual row_traits. This gives us an error
 // message that contains the offending types, at least.
 template <class T>
-struct is_static_row
-{
-    static constexpr bool value = is_tuple<T>::value || describe::has_describe_members<T>::value;
-};
-
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-
-template <class T>
-concept static_row = is_static_row<T>::value;
+concept static_row = is_static_row<T>;
 
 #define BOOST_MYSQL_STATIC_ROW ::boost::mysql::detail::static_row
 
@@ -244,7 +236,7 @@ error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view 
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-error_code parse(span<const std::size_t> pos_map, span<const field_view> from, StaticRow& to)
+error_code parse(span<const std::size_t> pos_map, span<const field_view> from, get_row_type_t<StaticRow>& to)
 {
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
     BOOST_ASSERT(from.size() >= get_row_size<StaticRow>());

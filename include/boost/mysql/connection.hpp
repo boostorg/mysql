@@ -1252,14 +1252,14 @@ public:
      * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
-     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * must exactly be `T2`. If this is not the case, a runtime error will be issued. TODO: docs
      * \n
      * This function can report schema mismatches.
      */
-    template <class SpanStaticRow, class... StaticRow>
+    template <class SpanElementType, class... StaticRow>
     std::size_t read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         error_code& err,
         diagnostics& diag
     )
@@ -1294,8 +1294,8 @@ public:
      * \n
      * This function can report schema mismatches.
      */
-    template <class SpanStaticRow, class... StaticRow>
-    std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanStaticRow> output)
+    template <class SpanElementType, class... StaticRow>
+    std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanElementType> output)
     {
         error_code err;
         diagnostics diag;
@@ -1339,14 +1339,14 @@ public:
      * The storage that `output` references must be kept alive until the operation completes.
      */
     template <
-        class SpanStaticRow,
+        class SpanElementType,
         class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -1388,14 +1388,14 @@ public:
      * The storage that `output` references must be kept alive until the operation completes.
      */
     template <
-        class SpanStaticRow,
+        class SpanElementType,
         class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )

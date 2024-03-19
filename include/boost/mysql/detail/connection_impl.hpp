@@ -429,15 +429,19 @@ public:
     }
 
     // Read some rows (static)
-    template <class SpanRowType, class... RowType>
+    template <class SpanElementType, class... RowType>
     read_some_rows_algo_params make_params_read_some_rows(
         static_execution_state<RowType...>& exec_st,
-        span<SpanRowType> output,
+        span<SpanElementType> output,
         diagnostics& diag
     ) const noexcept
     {
-        constexpr std::size_t index = get_type_index<SpanRowType, RowType...>();
-        static_assert(index != index_not_found, "SpanRowType must be one of the types returned by the query");
+        constexpr std::size_t index = get_type_index<SpanElementType, RowType...>();
+        // TODO: update this
+        static_assert(
+            index != index_not_found,
+            "SpanElementType must be one of the types returned by the query"
+        );
         return {&diag, &access::get_impl(exec_st).get_interface(), output_ref(output, index)};
     }
 

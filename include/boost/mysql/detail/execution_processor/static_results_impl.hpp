@@ -14,6 +14,7 @@
 
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/get_row_type.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -204,7 +205,7 @@ private:
 };
 
 template <class... StaticRow>
-using results_rows_t = std::tuple<std::vector<StaticRow>...>;
+using results_rows_t = std::tuple<std::vector<get_row_type_t<StaticRow>>...>;
 
 template <class... StaticRow>
 struct results_fns
@@ -231,19 +232,20 @@ struct results_fns
     template <std::size_t I>
     static error_code do_parse(span<const std::size_t> pos_map, span<const field_view> from, void* to)
     {
+        using StaticRowT = mp11::mp_at_c<mp11::mp_list<StaticRow...>, I>;
         auto& v = std::get<I>(*static_cast<rows_t*>(to));
         v.emplace_back();
-        return parse(pos_map, from, v.back());
+        return parse<StaticRowT>(pos_map, from, v.back());
     }
 
     template <std::size_t I>
     static constexpr results_resultset_descriptor create_descriptor()
     {
-        using T = mp11::mp_at_c<mp11::mp_list<StaticRow...>, I>;
+        using StaticRowT = mp11::mp_at_c<mp11::mp_list<StaticRow...>, I>;
         return {
-            get_row_size<T>(),
-            get_row_name_table<T>(),
-            &meta_check<T>,
+            get_row_size<StaticRowT>(),
+            get_row_name_table<StaticRowT>(),
+            &meta_check<StaticRowT>,
             &do_parse<I>,
         };
     }
@@ -261,6 +263,10 @@ constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)>
     results_resultset_descriptor_table = results_fns<StaticRow...>::create_descriptors(
         mp11::make_index_sequence<sizeof...(StaticRow)>()
     );
+
+template <std::size_t I, class... StaticRow>
+using rows_span_t = boost::span<
+    const typename std::tuple_element<I, std::tuple<get_row_type_t<StaticRow>...>>::type>;
 
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_results_impl
@@ -326,8 +332,7 @@ public:
 
     // User facing
     template <std::size_t I>
-    boost::span<const typename std::tuple_element<I, std::tuple<StaticRow...>>::type> get_rows(
-    ) const noexcept
+    rows_span_t<I, StaticRow...> get_rows() const noexcept
     {
         return std::get<I>(data_.rows);
     }

@@ -87,26 +87,26 @@ using t3 = std::tuple<std::string, std::int32_t, double>;
 using tbad = std::tuple<int, unrelated, double>;
 
 // is_row_type concept: doesn't inspect individual fields
-static_assert(is_static_row<sempty>::value, "");
-static_assert(is_static_row<s1>::value, "");
-static_assert(is_static_row<s2>::value, "");
-static_assert(is_static_row<sinherit>::value, "");
-static_assert(is_static_row<sbad>::value, "");
+static_assert(is_static_row<sempty>, "");
+static_assert(is_static_row<s1>, "");
+static_assert(is_static_row<s2>, "");
+static_assert(is_static_row<sinherit>, "");
+static_assert(is_static_row<sbad>, "");
 
-static_assert(is_static_row<tempty>::value, "");
-static_assert(is_static_row<t1>::value, "");
-static_assert(is_static_row<t2>::value, "");
-static_assert(is_static_row<t3>::value, "");
-static_assert(is_static_row<tbad>::value, "");
+static_assert(is_static_row<tempty>, "");
+static_assert(is_static_row<t1>, "");
+static_assert(is_static_row<t2>, "");
+static_assert(is_static_row<t3>, "");
+static_assert(is_static_row<tbad>, "");
 
-static_assert(!is_static_row<unrelated>::value, "");
-static_assert(!is_static_row<int>::value, "");
-static_assert(!is_static_row<row>::value, "");
-static_assert(!is_static_row<s1&>::value, "");
-static_assert(!is_static_row<const s1&>::value, "");
-static_assert(!is_static_row<s1&&>::value, "");
-static_assert(!is_static_row<const s1&&>::value, "");
-static_assert(!is_static_row<s1*>::value, "");
+static_assert(!is_static_row<unrelated>, "");
+static_assert(!is_static_row<int>, "");
+static_assert(!is_static_row<row>, "");
+static_assert(!is_static_row<s1&>, "");
+static_assert(!is_static_row<const s1&>, "");
+static_assert(!is_static_row<s1&&>, "");
+static_assert(!is_static_row<const s1&&>, "");
+static_assert(!is_static_row<s1*>, "");
 
 // Helpers
 void compare_name_tables(name_table_t lhs, name_table_t rhs)
@@ -184,7 +184,7 @@ BOOST_AUTO_TEST_CASE(parse_success)
     const auto fv = make_fv_arr(8.1, "abc", 42, 4.3f);
     const std::size_t pos_map[] = {2, 3, 0};
     sinherit value;
-    auto err = parse(pos_map, fv, value);
+    auto err = parse<sinherit>(pos_map, fv, value);
     BOOST_TEST(err == error_code());
     BOOST_TEST(value.i == 42);
     BOOST_TEST(value.f == 4.3f);
@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE(parse_one_error)
     const auto fv = make_fv_arr(8.1, "abc", nullptr, 4.3f);
     const std::size_t pos_map[] = {2, 3, 0};
     sinherit value;
-    auto err = parse(pos_map, fv, value);
+    auto err = parse<sinherit>(pos_map, fv, value);
     BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
@@ -208,14 +208,14 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
     const auto fv = make_fv_arr(8.1, "abc", 0xffffffffffffffff, nullptr);
     const std::size_t pos_map[] = {2, 3, 0};
     sinherit value;
-    auto err = parse(pos_map, fv, value);
+    auto err = parse<sinherit>(pos_map, fv, value);
     BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
 BOOST_AUTO_TEST_CASE(parse_empty_struct)
 {
     sempty value;
-    auto err = parse(span<const std::size_t>(), span<const field_view>(), value);
+    auto err = parse<sempty>(span<const std::size_t>(), span<const field_view>(), value);
     BOOST_TEST(err == error_code());
 }
 
@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE(parse_success)
     const auto fv = make_fv_arr("abc", 42, 9.1, "jkl");
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
-    auto err = parse(pos_map, fv, value);
+    auto err = parse<t3>(pos_map, fv, value);
     BOOST_TEST(err == error_code());
     BOOST_TEST(std::get<0>(value) == "abc");
     BOOST_TEST(std::get<1>(value) == 42);
@@ -299,7 +299,7 @@ BOOST_AUTO_TEST_CASE(parse_one_error)
     const auto fv = make_fv_arr("abc", nullptr, 4.3, "jkl");
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
-    auto err = parse(pos_map, fv, value);
+    auto err = parse<t3>(pos_map, fv, value);
     BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
@@ -310,14 +310,14 @@ BOOST_AUTO_TEST_CASE(parse_several_errors)
     const auto fv = make_fv_arr(nullptr, 0xffffffffffffffff, 4.2);
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
-    auto err = parse(pos_map, fv, value);
+    auto err = parse<t3>(pos_map, fv, value);
     BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
 BOOST_AUTO_TEST_CASE(parse_empty_tuple)
 {
     tempty value;
-    auto err = parse(span<const std::size_t>(), span<const field_view>(), value);
+    auto err = parse<tempty>(span<const std::size_t>(), span<const field_view>(), value);
     BOOST_TEST(err == error_code());
 }
 
