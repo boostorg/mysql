@@ -173,9 +173,10 @@ public:
         return describe_names_storage<DescribeStruct>.span();
     }
 
-    static void parse(parse_functor& parser, DescribeStruct& to)
+    template <class F>
+    static void for_each_member(DescribeStruct& to, F&& function)
     {
-        boost::mp11::mp_for_each<members>([&](auto D) { parser(to.*D.pointer); });
+        mp11::mp_for_each<members>([&](auto D) { function(to.*D.pointer); });
     }
 };
 
@@ -193,7 +194,12 @@ class row_traits<std::tuple<ReadableField...>, false>
 public:
     using types = tuple_type;
     static constexpr name_table_t name_table() noexcept { return name_table_t(); }
-    static void parse(parse_functor& parser, tuple_type& to) { boost::mp11::tuple_for_each(to, parser); }
+
+    template <class F>
+    static void for_each_member(tuple_type& to, F&& function)
+    {
+        mp11::tuple_for_each(to, std::forward<F>(function));
+    }
 };
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -236,9 +242,9 @@ error_code parse(span<const std::size_t> pos_map, span<const field_view> from, g
 {
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
     BOOST_ASSERT(from.size() >= get_row_size<StaticRow>());
-    parse_functor ctx(pos_map, from);
-    row_traits<StaticRow>::parse(ctx, to);
-    return ctx.error();
+    parse_functor parser(pos_map, from);
+    row_traits<StaticRow>::for_each_member(to, parser);
+    return parser.error();
 }
 
 using meta_check_fn_t =

@@ -66,9 +66,10 @@ public:
 
     static constexpr name_table_t name_table() noexcept { return pfr_names_storage<T>; }
 
-    static void parse(parse_functor& parser, T& to)
+    template <class F>
+    static void for_each_member(T& to, F&& function)
     {
-        pfr::for_each_field(to, [&parser](auto& mem) { parser(mem); });
+        pfr::for_each_field(to, [&function](auto& mem) { function(mem); });
     }
 };
 
