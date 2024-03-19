@@ -13,16 +13,13 @@
 
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
-#include <boost/mp11/utility.hpp>
 #include <boost/pfr/core.hpp>
 #include <boost/pfr/core_name.hpp>
 #include <boost/pfr/traits.hpp>
-#include <boost/pfr/tuple_size.hpp>
 
 #include <array>
 #include <cstddef>
 #include <string_view>
-#include <tuple>
 #include <utility>
 
 namespace boost {
@@ -66,8 +63,6 @@ class row_traits<pfr_by_name<T>, false>
 {
 public:
     using types = decltype(pfr::structure_to_tuple(std::declval<const T&>()));
-
-    static constexpr std::size_t size() noexcept { return pfr::tuple_size_v<T>; }
 
     static constexpr name_table_t name_table() noexcept { return pfr_names_storage<T>; }
 

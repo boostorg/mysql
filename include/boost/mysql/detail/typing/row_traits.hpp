@@ -29,6 +29,7 @@
 #include <boost/assert.hpp>
 #include <boost/describe/members.hpp>
 #include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/list.hpp>
 #include <boost/mp11/utility.hpp>
 
 #include <cstddef>
@@ -167,8 +168,6 @@ class row_traits<DescribeStruct, true>
 public:
     using types = member_types;
 
-    static constexpr std::size_t size() noexcept { return boost::mp11::mp_size<members>::value; }
-
     static constexpr name_table_t name_table() noexcept
     {
         return describe_names_storage<DescribeStruct>.span();
@@ -193,7 +192,6 @@ class row_traits<std::tuple<ReadableField...>, false>
 
 public:
     using types = tuple_type;
-    static constexpr std::size_t size() noexcept { return std::tuple_size<tuple_type>::value; }
     static constexpr name_table_t name_table() noexcept { return name_table_t(); }
     static void parse(parse_functor& parser, tuple_type& to) { boost::mp11::tuple_for_each(to, parser); }
 };
@@ -216,7 +214,7 @@ concept static_row = is_static_row<T>;
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
 constexpr std::size_t get_row_size()
 {
-    return row_traits<StaticRow>::size();
+    return mp11::mp_size<typename row_traits<StaticRow>::types>::value;
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
