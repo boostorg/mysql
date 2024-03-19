@@ -20,6 +20,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 #include <string>
 #include <utility>
