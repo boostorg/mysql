@@ -5,12 +5,6 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-# This is only processed when we're the main project and
-# BOOST_MYSQL_INTEGRATION_TESTS is on
-
-cmake_minimum_required(VERSION 3.12...3.22) # string JOIN
-find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS context)
-
 add_executable(
     boost_mysql_integrationtests
 
@@ -56,13 +50,12 @@ add_executable(
 target_include_directories(
     boost_mysql_integrationtests
     PRIVATE
-    "include"
+    include
 )
 target_link_libraries(
     boost_mysql_integrationtests
     PRIVATE
     boost_mysql_testing
-    Boost::mysql
     Boost::context
 )
 target_compile_definitions(
@@ -80,24 +73,17 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
 endif()
 
 # Compose the test filter
-if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
-    list(APPEND TEST_EXCLUSIONS "!@unix")
-endif()
 set (DB_SYSTEM $ENV{BOOST_MYSQL_TEST_DB})
 if ("${DB_SYSTEM}" STREQUAL "")
     set(DB_SYSTEM "mysql8")
 endif()
-list(APPEND TEST_EXCLUSIONS "!@skip_${DB_SYSTEM}")
-string(JOIN ":" TEST_FILTER ${TEST_EXCLUSIONS})
+set(TEST_FILTER "!@skip_${DB_SYSTEM}")
 
-if ("${TEST_FILTER}" STREQUAL "")
-    add_test(
-        NAME boost_mysql_integrationtests
-        COMMAND boost_mysql_integrationtests
-    )
-else()
-    add_test(
-        NAME boost_mysql_integrationtests
-        COMMAND boost_mysql_integrationtests "-t" ${TEST_FILTER}
-    )
+if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
+    set(TEST_FILTER "${TEST_FILTER}:!@unix")
 endif()
+
+add_test(
+    NAME boost_mysql_integrationtests
+    COMMAND boost_mysql_integrationtests "-t" ${TEST_FILTER}
+)
