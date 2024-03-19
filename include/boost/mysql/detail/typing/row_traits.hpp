@@ -173,12 +173,8 @@ class row_traits<DescribeStruct, true>
         std::remove_reference<decltype(std::declval<DescribeStruct>().*std::declval<D>().pointer)>::type;
     // clang-format on
 
-    using member_types = mp11::mp_transform<descriptor_to_type, members>;
-
-    static_assert(check_readable_field<member_types>(), "");
-
 public:
-    using types = member_types;
+    using types = mp11::mp_transform<descriptor_to_type, members>;
 
     static constexpr name_table_t name_table() noexcept
     {
@@ -199,19 +195,21 @@ constexpr bool is_static_row<std::tuple<T...>> = true;
 template <class... ReadableField>
 class row_traits<std::tuple<ReadableField...>, false>
 {
-    using tuple_type = std::tuple<ReadableField...>;
-
-    static_assert(check_readable_field<tuple_type>(), "");
-
 public:
-    using types = tuple_type;
+    using types = std::tuple<ReadableField...>;
     static constexpr name_table_t name_table() noexcept { return name_table_t(); }
 
     template <class F>
-    static void for_each_member(tuple_type& to, F&& function)
+    static void for_each_member(std::tuple<ReadableField...>& to, F&& function)
     {
         mp11::tuple_for_each(to, std::forward<F>(function));
     }
+};
+
+template <class StaticRow>
+struct row_traits_with_check : row_traits<StaticRow>
+{
+    static_assert(check_readable_field<typename row_traits<StaticRow>::types>(), "");
 };
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -232,19 +230,19 @@ concept static_row = is_static_row<T>;
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
 constexpr std::size_t get_row_size()
 {
-    return mp11::mp_size<typename row_traits<StaticRow>::types>::value;
+    return mp11::mp_size<typename row_traits_with_check<StaticRow>::types>::value;
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
 constexpr name_table_t get_row_name_table()
 {
-    return row_traits<StaticRow>::name_table();
+    return row_traits_with_check<StaticRow>::name_table();
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
 error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view meta, diagnostics& diag)
 {
-    using fields = typename row_traits<StaticRow>::types;
+    using fields = typename row_traits_with_check<StaticRow>::types;
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
     return meta_check_field_type_list<fields>(pos_map, get_row_name_table<StaticRow>(), meta, diag);
 }
@@ -255,7 +253,7 @@ error_code parse(span<const std::size_t> pos_map, span<const field_view> from, g
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
     BOOST_ASSERT(from.size() >= get_row_size<StaticRow>());
     parse_context ctx(pos_map, from);
-    row_traits<StaticRow>::for_each_member(to, parse_functor{ctx});
+    row_traits_with_check<StaticRow>::for_each_member(to, parse_functor{ctx});
     return ctx.error();
 }
 
