@@ -95,7 +95,7 @@ constexpr std::size_t get_length(const char* s) noexcept
 }
 
 // Helpers
-class parse_functor
+class parse_context
 {
     span<const std::size_t> pos_map_;
     span<const field_view> fields_;
@@ -103,13 +103,13 @@ class parse_functor
     error_code ec_;
 
 public:
-    parse_functor(span<const std::size_t> pos_map, span<const field_view> fields) noexcept
+    parse_context(span<const std::size_t> pos_map, span<const field_view> fields) noexcept
         : pos_map_(pos_map), fields_(fields)
     {
     }
 
     template <class ReadableField>
-    void operator()(ReadableField& output)
+    void parse(ReadableField& output)
     {
         auto ec = readable_field_traits<ReadableField>::parse(
             map_field_view(pos_map_, index_++, fields_),
@@ -120,6 +120,18 @@ public:
     }
 
     error_code error() const noexcept { return ec_; }
+};
+
+// Using this instead of a lambda reduces the number of generated instantiations
+struct parse_functor
+{
+    parse_context& ctx;
+
+    template <class ReadableField>
+    void operator()(ReadableField& output) const
+    {
+        ctx.parse(output);
+    }
 };
 
 // Base template
@@ -176,7 +188,7 @@ public:
     template <class F>
     static void for_each_member(DescribeStruct& to, F&& function)
     {
-        mp11::mp_for_each<members>([&](auto D) { function(to.*D.pointer); });
+        mp11::mp_for_each<members>([function, &to](auto D) { function(to.*D.pointer); });
     }
 };
 
@@ -242,9 +254,9 @@ error_code parse(span<const std::size_t> pos_map, span<const field_view> from, g
 {
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
     BOOST_ASSERT(from.size() >= get_row_size<StaticRow>());
-    parse_functor parser(pos_map, from);
-    row_traits<StaticRow>::for_each_member(to, parser);
-    return parser.error();
+    parse_context ctx(pos_map, from);
+    row_traits<StaticRow>::for_each_member(to, parse_functor{ctx});
+    return ctx.error();
 }
 
 using meta_check_fn_t =

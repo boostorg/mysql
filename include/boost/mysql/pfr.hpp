@@ -69,7 +69,7 @@ public:
     template <class F>
     static void for_each_member(T& to, F&& function)
     {
-        pfr::for_each_field(to, [&function](auto& mem) { function(mem); });
+        pfr::for_each_field(to, std::forward<F>(function));
     }
 };
 
