@@ -205,7 +205,7 @@ private:
 };
 
 template <class... StaticRow>
-using results_rows_t = std::tuple<std::vector<get_row_type_t<StaticRow>>...>;
+using results_rows_t = std::tuple<std::vector<underlying_row_t<StaticRow>>...>;
 
 template <class... StaticRow>
 struct results_fns
@@ -266,7 +266,7 @@ constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)>
 
 template <std::size_t I, class... StaticRow>
 using rows_span_t = boost::span<
-    const typename std::tuple_element<I, std::tuple<get_row_type_t<StaticRow>...>>::type>;
+    const typename std::tuple_element<I, std::tuple<underlying_row_t<StaticRow>...>>::type>;
 
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_results_impl

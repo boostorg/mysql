@@ -41,30 +41,31 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Helpers to check that all the fields satisfy ReadableField
-// and produce meaningful error messages, with the offending field type, at least
+//
+// Base templates. Every StaticRow type must:
+//   - Specialize is_static_row to true.
+//   - Specialize underlying_row (optional), which supports marker types like pfr_by_name.
+//     This is in a separate header because it's included in connection, which shouldn't include all the
+//     static interface.
+//   - Specialize the row_traits class, providing the following members:
+//
+//         using types = /* mp11 list with the row's member types */ ;
+//
+//         static constexpr name_table_t name_table() noexcept; // field names
+//
+//         /* Apply F to each member */
+//         template <class F>
+//         static void for_each_member(underlying_row_t<StaticRow>& to, F&& function);
+//
+template <class T>
+constexpr bool is_static_row = describe::has_describe_members<T>::value;
 
-// Workaround clang 3.6 not liking generic lambdas in the below constexpr function
-struct readable_field_checker
-{
-    template <class TypeIdentity>
-    constexpr void operator()(TypeIdentity) const noexcept
-    {
-        using T = typename TypeIdentity::type;
-        static_assert(
-            is_readable_field<T>::value,
-            "You're trying to use an unsupported field type in a row type. Review your row type definitions."
-        );
-    }
-};
+template <class T, bool is_describe_struct = describe::has_describe_members<T>::value>
+class row_traits;
 
-template <class TypeList>
-static constexpr bool check_readable_field() noexcept
-{
-    mp11::mp_for_each<mp11::mp_transform<mp11::mp_identity, TypeList>>(readable_field_checker{});
-    return true;
-}
-
+//
+// Describe structs
+//
 // Workaround std::array::data not being constexpr in C++14
 template <class T, std::size_t N>
 struct array_wrapper
@@ -94,7 +95,100 @@ constexpr std::size_t get_length(const char* s) noexcept
     return p - s;
 }
 
-// Helpers
+template <class DescribeStruct>
+using row_members = describe::
+    describe_members<DescribeStruct, describe::mod_public | describe::mod_inherited>;
+
+template <template <class...> class ListType, class... MemberDescriptor>
+constexpr array_wrapper<string_view, sizeof...(MemberDescriptor)> get_describe_names(ListType<
+                                                                                     MemberDescriptor...>)
+{
+    return {{string_view(MemberDescriptor::name, get_length(MemberDescriptor::name))...}};
+}
+
+template <class DescribeStruct>
+constexpr auto describe_names_storage = get_describe_names(row_members<DescribeStruct>{});
+
+template <class DescribeStruct>
+class row_traits<DescribeStruct, true>
+{
+    using members = row_members<DescribeStruct>;
+
+    // clang-format off
+    template <class D>
+    using descriptor_to_type = typename
+        std::remove_reference<decltype(std::declval<DescribeStruct>().*std::declval<D>().pointer)>::type;
+    // clang-format on
+
+public:
+    using types = mp11::mp_transform<descriptor_to_type, members>;
+
+    static constexpr name_table_t name_table() noexcept
+    {
+        return describe_names_storage<DescribeStruct>.span();
+    }
+
+    template <class F>
+    static void for_each_member(DescribeStruct& to, F&& function)
+    {
+        mp11::mp_for_each<members>([function, &to](auto D) { function(to.*D.pointer); });
+    }
+};
+
+//
+// Tuples
+//
+template <class... T>
+constexpr bool is_static_row<std::tuple<T...>> = true;
+
+template <class... ReadableField>
+class row_traits<std::tuple<ReadableField...>, false>
+{
+public:
+    using types = std::tuple<ReadableField...>;
+    static constexpr name_table_t name_table() noexcept { return name_table_t(); }
+
+    template <class F>
+    static void for_each_member(std::tuple<ReadableField...>& to, F&& function)
+    {
+        mp11::tuple_for_each(to, std::forward<F>(function));
+    }
+};
+
+//
+// Helpers to implement the external interface section
+//
+
+// Helpers to check that all the fields satisfy ReadableField
+// and produce meaningful error messages, with the offending field type, at least
+// Workaround clang 3.6 not liking generic lambdas in the below constexpr function
+struct readable_field_checker
+{
+    template <class TypeIdentity>
+    constexpr void operator()(TypeIdentity) const noexcept
+    {
+        using T = typename TypeIdentity::type;
+        static_assert(
+            is_readable_field<T>::value,
+            "You're trying to use an unsupported field type in a row type. Review your row type definitions."
+        );
+    }
+};
+
+template <class TypeList>
+static constexpr bool check_readable_field() noexcept
+{
+    mp11::mp_for_each<mp11::mp_transform<mp11::mp_identity, TypeList>>(readable_field_checker{});
+    return true;
+}
+
+// Centralize where check_readable_field happens
+template <class StaticRow>
+struct row_traits_with_check : row_traits<StaticRow>
+{
+    static_assert(check_readable_field<typename row_traits<StaticRow>::types>(), "");
+};
+
 class parse_context
 {
     span<const std::size_t> pos_map_;
@@ -134,83 +228,10 @@ struct parse_functor
     }
 };
 
-// Base template
-template <class T>
-constexpr bool is_static_row = boost::describe::has_describe_members<T>::value;
-
-template <class T, bool is_describe_struct = boost::describe::has_describe_members<T>::value>
-class row_traits;
-
-// Describe structs
-template <class DescribeStruct>
-using row_members = boost::describe::
-    describe_members<DescribeStruct, boost::describe::mod_public | boost::describe::mod_inherited>;
-
-template <class MemberDescriptor>
-constexpr string_view get_member_name(MemberDescriptor d) noexcept
-{
-    return string_view(d.name, get_length(d.name));
-}
-
-template <template <class...> class ListType, class... MemberDescriptor>
-constexpr array_wrapper<string_view, sizeof...(MemberDescriptor)> get_describe_names(ListType<
-                                                                                     MemberDescriptor...>)
-{
-    return {{get_member_name(MemberDescriptor())...}};
-}
-
-template <class DescribeStruct>
-constexpr auto describe_names_storage = get_describe_names(row_members<DescribeStruct>{});
-
-template <class DescribeStruct>
-class row_traits<DescribeStruct, true>
-{
-    using members = row_members<DescribeStruct>;
-
-    // clang-format off
-    template <class D>
-    using descriptor_to_type = typename
-        std::remove_reference<decltype(std::declval<DescribeStruct>().*std::declval<D>().pointer)>::type;
-    // clang-format on
-
-public:
-    using types = mp11::mp_transform<descriptor_to_type, members>;
-
-    static constexpr name_table_t name_table() noexcept
-    {
-        return describe_names_storage<DescribeStruct>.span();
-    }
-
-    template <class F>
-    static void for_each_member(DescribeStruct& to, F&& function)
-    {
-        mp11::mp_for_each<members>([function, &to](auto D) { function(to.*D.pointer); });
-    }
-};
-
-// Tuples
-template <class... T>
-constexpr bool is_static_row<std::tuple<T...>> = true;
-
-template <class... ReadableField>
-class row_traits<std::tuple<ReadableField...>, false>
-{
-public:
-    using types = std::tuple<ReadableField...>;
-    static constexpr name_table_t name_table() noexcept { return name_table_t(); }
-
-    template <class F>
-    static void for_each_member(std::tuple<ReadableField...>& to, F&& function)
-    {
-        mp11::tuple_for_each(to, std::forward<F>(function));
-    }
-};
-
-template <class StaticRow>
-struct row_traits_with_check : row_traits<StaticRow>
-{
-    static_assert(check_readable_field<typename row_traits<StaticRow>::types>(), "");
-};
+//
+// External interface. Other Boost.MySQL components should never use row_traits
+// directly, but the functions below, instead.
+//
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
@@ -226,7 +247,6 @@ concept static_row = is_static_row<T>;
 #define BOOST_MYSQL_STATIC_ROW class
 #endif
 
-// External interface
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
 constexpr std::size_t get_row_size()
 {
@@ -248,7 +268,11 @@ error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view 
 }
 
 template <BOOST_MYSQL_STATIC_ROW StaticRow>
-error_code parse(span<const std::size_t> pos_map, span<const field_view> from, get_row_type_t<StaticRow>& to)
+error_code parse(
+    span<const std::size_t> pos_map,
+    span<const field_view> from,
+    underlying_row_t<StaticRow>& to
+)
 {
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
     BOOST_ASSERT(from.size() >= get_row_size<StaticRow>());

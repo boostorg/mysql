@@ -29,7 +29,7 @@ template <class T>
 struct pfr_by_name;
 
 template <class T>
-struct get_row_type<pfr_by_name<T>>
+struct underlying_row<pfr_by_name<T>>
 {
     using type = T;
 };

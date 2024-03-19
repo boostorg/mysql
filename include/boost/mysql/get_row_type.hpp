@@ -14,14 +14,14 @@ namespace mysql {
 // TODO: do we want this header?
 // TODO: document
 
-template <class RowType>
-struct get_row_type
+template <class StaticRow>
+struct underlying_row
 {
-    using type = RowType;
+    using type = StaticRow;
 };
 
-template <class RowType>
-using get_row_type_t = typename get_row_type<RowType>::type;
+template <class StaticRow>
+using underlying_row_t = typename underlying_row<StaticRow>::type;
 
 }  // namespace mysql
 }  // namespace boost
