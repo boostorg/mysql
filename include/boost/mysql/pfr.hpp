@@ -28,22 +28,8 @@ namespace mysql {
 template <class T>
 struct pfr_by_name;
 
-template <class T>
-struct underlying_row<pfr_by_name<T>>
-{
-    using type = T;
-};
-
 // TODO: probably move this
 namespace detail {
-
-struct mysql_pfr_tag
-{
-};
-
-// TODO: we can make this better
-template <class T>
-constexpr bool is_static_row<pfr_by_name<T>> = true;
 
 // PFR field names use std::string_view
 template <std::size_t N>
@@ -61,8 +47,11 @@ constexpr auto pfr_names_storage = to_name_table_storage(pfr::names_as_array<T>(
 template <class T>
 class row_traits<pfr_by_name<T>, false>
 {
+    // TODO: C++20 guards
+    // TODO: static assert that T is PFR-reflectable
 public:
-    using types = decltype(pfr::structure_to_tuple(std::declval<const T&>()));
+    using underlying_row_type = T;
+    using field_types = decltype(pfr::structure_to_tuple(std::declval<const T&>()));
 
     static constexpr name_table_t name_table() noexcept { return pfr_names_storage<T>; }
 

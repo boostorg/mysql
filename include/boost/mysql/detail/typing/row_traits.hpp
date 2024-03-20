@@ -19,7 +19,6 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/underlying_row.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/typing/meta_check_context.hpp>
@@ -42,26 +41,30 @@ namespace mysql {
 namespace detail {
 
 //
-// Base templates. Every StaticRow type must:
-//   - Specialize is_static_row to true.
-//   - Specialize underlying_row (optional), which supports marker types like pfr_by_name.
-//     This is in a separate header because it's included in connection, which shouldn't include all the
-//     static interface.
-//   - Specialize the row_traits class, providing the following members:
+// Base templates. Every StaticRow type must specialize the row_traits class,
+// providing the following members:
 //
-//         using types = /* mp11 list with the row's member types */ ;
+//    // type of the actual row to be parsed. This supports marker types, like pfr_by_name
+//    using underlying_row_type = /* */;
 //
-//         static constexpr name_table_t name_table() noexcept; // field names
+//    // MP11 type list with the row's member types
+//    using field_types = /* */;
 //
-//         /* Apply F to each member */
-//         template <class F>
-//         static void for_each_member(underlying_row_t<StaticRow>& to, F&& function);
+//    static constexpr name_table_t name_table() noexcept; // field names
 //
-template <class T>
-constexpr bool is_static_row = describe::has_describe_members<T>::value;
+//    template <class F> /* Apply F to each member */
+//    static void for_each_member(underlying_row_t<StaticRow>& to, F&& function);
+//
+
+//
+struct row_traits_is_unspecialized
+{
+};
 
 template <class T, bool is_describe_struct = describe::has_describe_members<T>::value>
-class row_traits;
+class row_traits : public row_traits_is_unspecialized
+{
+};
 
 //
 // Describe structs
@@ -112,8 +115,6 @@ constexpr auto describe_names_storage = get_describe_names(row_members<DescribeS
 template <class DescribeStruct>
 class row_traits<DescribeStruct, true>
 {
-    using members = row_members<DescribeStruct>;
-
     // clang-format off
     template <class D>
     using descriptor_to_type = typename
@@ -121,7 +122,8 @@ class row_traits<DescribeStruct, true>
     // clang-format on
 
 public:
-    using types = mp11::mp_transform<descriptor_to_type, members>;
+    using underlying_row_type = DescribeStruct;
+    using field_types = mp11::mp_transform<descriptor_to_type, row_members<DescribeStruct>>;
 
     static constexpr name_table_t name_table() noexcept
     {
@@ -131,25 +133,23 @@ public:
     template <class F>
     static void for_each_member(DescribeStruct& to, F&& function)
     {
-        mp11::mp_for_each<members>([function, &to](auto D) { function(to.*D.pointer); });
+        mp11::mp_for_each<row_members<DescribeStruct>>([function, &to](auto D) { function(to.*D.pointer); });
     }
 };
 
 //
 // Tuples
 //
-template <class... T>
-constexpr bool is_static_row<std::tuple<T...>> = true;
-
 template <class... ReadableField>
 class row_traits<std::tuple<ReadableField...>, false>
 {
 public:
-    using types = std::tuple<ReadableField...>;
+    using underlying_row_type = std::tuple<ReadableField...>;
+    using field_types = std::tuple<ReadableField...>;
     static constexpr name_table_t name_table() noexcept { return name_table_t(); }
 
     template <class F>
-    static void for_each_member(std::tuple<ReadableField...>& to, F&& function)
+    static void for_each_member(underlying_row_type& to, F&& function)
     {
         mp11::tuple_for_each(to, std::forward<F>(function));
     }
@@ -186,7 +186,7 @@ static constexpr bool check_readable_field() noexcept
 template <class StaticRow>
 struct row_traits_with_check : row_traits<StaticRow>
 {
-    static_assert(check_readable_field<typename row_traits<StaticRow>::types>(), "");
+    static_assert(check_readable_field<typename row_traits<StaticRow>::field_types>(), "");
 };
 
 class parse_context
@@ -232,6 +232,8 @@ struct parse_functor
 // External interface. Other Boost.MySQL components should never use row_traits
 // directly, but the functions below, instead.
 //
+template <class T>
+constexpr bool is_static_row = !std::is_base_of<row_traits_is_unspecialized, row_traits<T>>::value;
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
@@ -247,27 +249,30 @@ concept static_row = is_static_row<T>;
 #define BOOST_MYSQL_STATIC_ROW class
 #endif
 
-template <BOOST_MYSQL_STATIC_ROW StaticRow>
+template <class StaticRow>
+using underlying_row_t = typename row_traits<StaticRow>::underlying_row_type;
+
+template <class StaticRow>
 constexpr std::size_t get_row_size()
 {
-    return mp11::mp_size<typename row_traits_with_check<StaticRow>::types>::value;
+    return mp11::mp_size<typename row_traits_with_check<StaticRow>::field_types>::value;
 }
 
-template <BOOST_MYSQL_STATIC_ROW StaticRow>
+template <class StaticRow>
 constexpr name_table_t get_row_name_table()
 {
     return row_traits_with_check<StaticRow>::name_table();
 }
 
-template <BOOST_MYSQL_STATIC_ROW StaticRow>
+template <class StaticRow>
 error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view meta, diagnostics& diag)
 {
-    using fields = typename row_traits_with_check<StaticRow>::types;
+    using fields = typename row_traits_with_check<StaticRow>::field_types;
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
     return meta_check_field_type_list<fields>(pos_map, get_row_name_table<StaticRow>(), meta, diag);
 }
 
-template <BOOST_MYSQL_STATIC_ROW StaticRow>
+template <class StaticRow>
 error_code parse(
     span<const std::size_t> pos_map,
     span<const field_view> from,

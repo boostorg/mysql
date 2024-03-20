@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_UNDERLYING_ROW_HPP
 #define BOOST_MYSQL_UNDERLYING_ROW_HPP
 
+#include <boost/mysql/detail/typing/row_traits.hpp>
+
 namespace boost {
 namespace mysql {
 
@@ -15,13 +17,7 @@ namespace mysql {
 // TODO: document
 
 template <class StaticRow>
-struct underlying_row
-{
-    using type = StaticRow;
-};
-
-template <class StaticRow>
-using underlying_row_t = typename underlying_row<StaticRow>::type;
+using underlying_row_t = detail::underlying_row_t<StaticRow>;
 
 }  // namespace mysql
 }  // namespace boost
