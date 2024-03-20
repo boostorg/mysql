@@ -19,11 +19,11 @@ namespace detail {
 
 constexpr std::size_t index_not_found = static_cast<std::size_t>(-1);
 
-template <class SpanElementType, class... RowType>
+template <class UnderlyingRowType, class... RowType>
 constexpr std::size_t get_type_index() noexcept
 {
     using lunique = mp11::mp_unique<mp11::mp_list<underlying_row_t<RowType>...>>;
-    using index_t = mp11::mp_find<lunique, SpanElementType>;
+    using index_t = mp11::mp_find<lunique, UnderlyingRowType>;
     return index_t::value < mp11::mp_size<lunique>::value ? index_t::value : index_not_found;
 }
 
