@@ -279,6 +279,17 @@ public:
 
     ~static_execution_state_impl() = default;
 
+    template <class SpanElementType>
+    output_ref make_output_ref(span<SpanElementType> output) const noexcept
+    {
+        constexpr std::size_t index = get_type_index<SpanElementType, StaticRow...>();
+        static_assert(
+            index != index_not_found,
+            "SpanElementType must be one of the types returned by the query"
+        );
+        return output_ref(output, index);
+    }
+
     const static_execution_state_erased_impl& get_interface() const noexcept { return impl_; }
     static_execution_state_erased_impl& get_interface() noexcept { return impl_; }
 };

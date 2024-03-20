@@ -683,7 +683,7 @@ public:
         diagnostics& diag
     )
     {
-        return impl_.run(impl_.make_params_read_some_rows(st, output, diag), err);
+        return impl_.run(impl_.make_params_read_some_rows_static(st, output, diag), err);
     }
 
     /**
@@ -815,7 +815,7 @@ public:
     )
     {
         return impl_.async_run(
-            impl_.make_params_read_some_rows(st, output, diag),
+            impl_.make_params_read_some_rows_static(st, output, diag),
             std::forward<CompletionToken>(token)
         );
     }
