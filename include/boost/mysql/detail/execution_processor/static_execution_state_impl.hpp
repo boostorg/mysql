@@ -15,10 +15,10 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/get_row_type.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/underlying_row.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/typing/get_type_index.hpp>

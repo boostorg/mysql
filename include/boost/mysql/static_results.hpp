@@ -12,9 +12,9 @@
 
 #ifdef BOOST_MYSQL_CXX14
 
-#include <boost/mysql/get_row_type.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/underlying_row.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/static_results_impl.hpp>

@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_PFR_HPP
 #define BOOST_MYSQL_PFR_HPP
 
-#include <boost/mysql/get_row_type.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/underlying_row.hpp>
 
 #include <boost/mysql/detail/typing/row_traits.hpp>
 

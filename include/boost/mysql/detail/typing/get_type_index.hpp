@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_TYPING_GET_TYPE_INDEX_HPP
 #define BOOST_MYSQL_DETAIL_TYPING_GET_TYPE_INDEX_HPP
 
-#include <boost/mysql/get_row_type.hpp>
+#include <boost/mysql/underlying_row.hpp>
 
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/list.hpp>
