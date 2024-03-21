@@ -42,29 +42,75 @@ using detail::name_table_t;
 using detail::parse;
 using detail::pos_absent;
 
+//
+// Some test rows, used for parse() tests.
+//
+
 namespace boost {
 namespace mysql {
 namespace test {
 
-template <class Inner>
-struct test_marker;
+struct test_row
+{
+    std::int32_t i{};
+    float f{};
+    double double_field{};
+};
+
+struct test_empty_row
+{
+};
+
+struct test_nonreadable_row
+{
+};
 
 }  // namespace test
 
 namespace detail {
 
-template <class Inner>
-class row_traits<test_marker<Inner>, false>
+template <>
+class row_traits<test_row, false>
 {
 public:
-    using underlying_row_type = typename Inner::underlying_row_type;
-    using field_types = typename Inner::field_types;
+    using underlying_row_type = test_row;
+    using field_types = std::tuple<int, float, double>;
     name_table_t name_table() const noexcept { return {}; }
 
     template <class F>
     static void for_each_member(underlying_row_type& to, F&& f)
     {
-        Inner::for_each_member(to, std::forward<F>(f));
+        f(to.i);
+        f(to.f);
+        f(to.double_field);
+    }
+};
+
+template <>
+class row_traits<test_empty_row, false>
+{
+public:
+    using underlying_row_type = test_empty_row;
+    using field_types = std::tuple<>;
+    name_table_t name_table() const noexcept { return {}; }
+
+    template <class F>
+    static void for_each_member(underlying_row_type&, F&&)
+    {
+    }
+};
+
+template <>
+class row_traits<test_nonreadable_row, false>
+{
+public:
+    using underlying_row_type = test_nonreadable_row;
+    using field_types = std::tuple<int, char*>;
+    name_table_t name_table() const noexcept { return {}; }
+
+    template <class F>
+    static void for_each_member(underlying_row_type&, F&&)
+    {
     }
 };
 
@@ -74,85 +120,46 @@ public:
 
 BOOST_AUTO_TEST_SUITE(test_row_traits)
 
-void compare_name_tables(name_table_t lhs, name_table_t rhs)
+// a struct without any relationship with this lib
+struct unrelated
+{
+};
+
+// Helper for name tables - this forces printing them on error
+static void compare_name_tables(name_table_t lhs, name_table_t rhs)
 {
     std::vector<string_view> lhsvec(lhs.begin(), lhs.end());
     std::vector<string_view> rhsvec(rhs.begin(), rhs.end());
     BOOST_TEST(lhsvec == rhsvec);
 }
 
-// type definitions: describe structs
-struct sempty
-{
-};
-BOOST_DESCRIBE_STRUCT(sempty, (), ())
-
-struct s1
-{
-    std::int32_t i;
-};
-BOOST_DESCRIBE_STRUCT(s1, (), (i))
-
-struct s2
-{
-    std::int32_t i;
-    float f;
-};
-BOOST_DESCRIBE_STRUCT(s2, (), (i, f))
-
-struct sinherit : s2
-{
-    double double_field;
-};
-BOOST_DESCRIBE_STRUCT(sinherit, (s2), (double_field))
-
-// a struct without any relationship with this lib and no describe data
-struct unrelated
-{
-};
-
-struct sbad
-{
-    int i;
-    unrelated f;
-    double d;
-};
-BOOST_DESCRIBE_STRUCT(sbad, (), (i, f, d))
-
-// type definitions: tuples
-using tempty = std::tuple<>;
-using t1 = std::tuple<double>;
-using t2 = std::tuple<std::int32_t, float>;
-using t3 = std::tuple<std::string, std::int32_t, double>;
-using tbad = std::tuple<int, unrelated, double>;
-
+//
 // is_row_type concept: doesn't inspect individual fields
-static_assert(is_static_row<sempty>, "");
-static_assert(is_static_row<s1>, "");
-static_assert(is_static_row<s2>, "");
-static_assert(is_static_row<sinherit>, "");
-static_assert(is_static_row<sbad>, "");
-
-static_assert(is_static_row<tempty>, "");
-static_assert(is_static_row<t1>, "");
-static_assert(is_static_row<t2>, "");
-static_assert(is_static_row<t3>, "");
-static_assert(is_static_row<tbad>, "");
-
-static_assert(is_static_row<row_identity<tempty>>, "");
-static_assert(is_static_row<row_identity<t1>>, "");
-static_assert(is_static_row<row_identity<tbad>>, "");
+//
+static_assert(is_static_row<test_row>, "");
+static_assert(is_static_row<test_empty_row>, "");
+static_assert(is_static_row<test_nonreadable_row>, "");
 
 static_assert(!is_static_row<unrelated>, "");
 static_assert(!is_static_row<int>, "");
 static_assert(!is_static_row<row>, "");
-static_assert(!is_static_row<s1&>, "");
-static_assert(!is_static_row<const s1&>, "");
-static_assert(!is_static_row<s1&&>, "");
-static_assert(!is_static_row<const s1&&>, "");
-static_assert(!is_static_row<s1*>, "");
+static_assert(!is_static_row<test_row&>, "");
+static_assert(!is_static_row<const test_row&>, "");
+static_assert(!is_static_row<test_row&&>, "");
+static_assert(!is_static_row<const test_row&&>, "");
+static_assert(!is_static_row<test_row*>, "");
 
-// We perform metadata checks correctly given a generic, compliant row traits class
+//
+// get_row_size: counts the number of fields
+//
+static_assert(get_row_size<test_row>() == 3u, "");
+static_assert(get_row_size<test_empty_row>() == 0u, "");
+
+//
+// meta_check
+// We test meta_check via meta_check_impl because it allows us to inject name
+// tables and field types without specializing the traits class
+//
 BOOST_AUTO_TEST_SUITE(meta_check_)
 
 const metadata meta[] = {
@@ -330,105 +337,120 @@ BOOST_AUTO_TEST_CASE(empty)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+//
+// parse: we use the test row types, which implement compliant traits, to test.
+//
 BOOST_AUTO_TEST_SUITE(parse_)
 
-struct test_row
-{
-    struct underlying_row_type
-    {
-        std::int32_t i{};
-        float f{};
-        double double_field{};
-    };
-
-    using field_types = std::tuple<int, float, double>;
-
-    template <class F>
-    static void for_each_member(underlying_row_type& u, F&& f)
-    {
-        f(u.i);
-        f(u.f);
-        f(u.double_field);
-    }
-};
-
-struct test_empty_row
-{
-    struct underlying_row_type
-    {
-    };
-
-    using field_types = std::tuple<>;
-
-    template <class F>
-    static void for_each_member(underlying_row_type&, F&&)
-    {
-    }
-};
-
-BOOST_AUTO_TEST_CASE(parse_success)
+BOOST_AUTO_TEST_CASE(success)
 {
     // int, float, double
     const auto fv = make_fv_arr(8.1, "abc", 42, 4.3f);
     const std::size_t pos_map[] = {2, 3, 0};
-    test_row::underlying_row_type value;
-    auto err = parse<test_marker<test_row>>(pos_map, fv, value);
+    test_row value;
+    auto err = parse<row_identity<test_row>>(pos_map, fv, value);
     BOOST_TEST(err == error_code());
     BOOST_TEST(value.i == 42);
     BOOST_TEST(value.f == 4.3f);
     BOOST_TEST(value.double_field == 8.1);
 }
 
-BOOST_AUTO_TEST_CASE(parse_one_error)
+BOOST_AUTO_TEST_CASE(one_error)
 {
     // int, float, double
     const auto fv = make_fv_arr(8.1, "abc", nullptr, 4.3f);
     const std::size_t pos_map[] = {2, 3, 0};
-    test_row::underlying_row_type value;
-    auto err = parse<test_marker<test_row>>(pos_map, fv, value);
+    test_row value;
+    auto err = parse<row_identity<test_row>>(pos_map, fv, value);
     BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
-BOOST_AUTO_TEST_CASE(parse_several_errors)
+BOOST_AUTO_TEST_CASE(several_errors)
 {
     // int, float, double
     // we return the first error only
     const auto fv = make_fv_arr(8.1, "abc", 0xffffffffffffffff, nullptr);
     const std::size_t pos_map[] = {2, 3, 0};
-    test_row::underlying_row_type value;
-    auto err = parse<test_marker<test_row>>(pos_map, fv, value);
+    test_row value;
+    auto err = parse<row_identity<test_row>>(pos_map, fv, value);
     BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
-BOOST_AUTO_TEST_CASE(parse_error_success_interleaved)
+BOOST_AUTO_TEST_CASE(error_success_interleaved)
 {
     // int, float, double
     const auto fv = make_fv_arr(8.1, "abc", 42, nullptr);
     const std::size_t pos_map[] = {2, 3, 0};
-    test_row::underlying_row_type value;
-    auto err = parse<test_marker<test_row>>(pos_map, fv, value);
+    test_row value;
+    auto err = parse<row_identity<test_row>>(pos_map, fv, value);
     BOOST_TEST(err == client_errc::static_row_parsing_error);
 }
 
-BOOST_AUTO_TEST_CASE(parse_all_fields_discarded)
+BOOST_AUTO_TEST_CASE(all_fields_discarded)
 {
     // int, float, double
     const auto fv = make_fv_arr(8.1, "abc", 42, nullptr);
-    test_empty_row::underlying_row_type value;
-    auto err = parse<test_marker<test_empty_row>>(span<const std::size_t>(), fv, value);
+    test_empty_row value;
+    auto err = parse<row_identity<test_empty_row>>(span<const std::size_t>(), fv, value);
     BOOST_TEST(err == error_code());
 }
 
-BOOST_AUTO_TEST_CASE(parse_no_fields)
+BOOST_AUTO_TEST_CASE(no_fields)
 {
-    test_empty_row::underlying_row_type value;
-    auto err = parse<test_marker<test_empty_row>>(span<const std::size_t>(), span<const field_view>(), value);
+    test_empty_row value;
+    auto err = parse<row_identity<test_empty_row>>(
+        span<const std::size_t>(),
+        span<const field_view>(),
+        value
+    );
     BOOST_TEST(err == error_code());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
 
+//
+// Describe structs
+//
 BOOST_AUTO_TEST_SUITE(describe_structs)
+
+struct sempty
+{
+};
+BOOST_DESCRIBE_STRUCT(sempty, (), ())
+
+struct s1
+{
+    std::int32_t i;
+};
+BOOST_DESCRIBE_STRUCT(s1, (), (i))
+
+struct s2
+{
+    std::int32_t i;
+    float f;
+};
+BOOST_DESCRIBE_STRUCT(s2, (), (i, f))
+
+struct sinherit : s2
+{
+    double double_field;
+};
+BOOST_DESCRIBE_STRUCT(sinherit, (s2), (double_field))
+
+struct sbad
+{
+    int i;
+    unrelated f;
+    double d;
+};
+BOOST_DESCRIBE_STRUCT(sbad, (), (i, f, d))
+
+// is_row_type
+static_assert(is_static_row<sempty>, "");
+static_assert(is_static_row<s1>, "");
+static_assert(is_static_row<s2>, "");
+static_assert(is_static_row<sinherit>, "");
+static_assert(is_static_row<sbad>, "");
 
 // size
 static_assert(get_row_size<sempty>() == 0u, "");
@@ -436,6 +458,7 @@ static_assert(get_row_size<s1>() == 1u, "");
 static_assert(get_row_size<s2>() == 2u, "");
 static_assert(get_row_size<sinherit>() == 3u, "");
 
+// name table
 BOOST_AUTO_TEST_CASE(get_row_name_table_)
 {
     const string_view expected_s1[] = {"i"};
@@ -521,7 +544,24 @@ BOOST_AUTO_TEST_CASE(parse_empty_struct)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+//
+// tuples
+//
 BOOST_AUTO_TEST_SUITE(tuples)
+
+// type definitions
+using tempty = std::tuple<>;
+using t1 = std::tuple<double>;
+using t2 = std::tuple<std::int32_t, float>;
+using t3 = std::tuple<std::string, std::int32_t, double>;
+using tbad = std::tuple<int, unrelated, double>;
+
+// is_row_type concept: doesn't inspect individual fields
+static_assert(is_static_row<tempty>, "");
+static_assert(is_static_row<t1>, "");
+static_assert(is_static_row<t2>, "");
+static_assert(is_static_row<t3>, "");
+static_assert(is_static_row<tbad>, "");
 
 // size
 static_assert(get_row_size<tempty>() == 0, "");
