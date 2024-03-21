@@ -24,22 +24,62 @@
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
+#include <tuple>
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_meta.hpp"
+#include "test_unit/row_identity.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 using boost::span;
-using boost::mysql::detail::get_row_name_table;
-using boost::mysql::detail::get_row_size;
-using boost::mysql::detail::is_static_row;
-using boost::mysql::detail::meta_check;
-using boost::mysql::detail::name_table_t;
-using boost::mysql::detail::parse;
+using detail::get_row_name_table;
+using detail::get_row_size;
+using detail::is_static_row;
+using detail::meta_check_impl;
+using detail::name_table_t;
+using detail::parse;
+using detail::pos_absent;
+
+namespace boost {
+namespace mysql {
+namespace test {
+
+template <class Inner>
+struct test_marker;
+
+}  // namespace test
+
+namespace detail {
+
+template <class Inner>
+class row_traits<test_marker<Inner>, false>
+{
+public:
+    using underlying_row_type = typename Inner::underlying_row_type;
+    using field_types = typename Inner::field_types;
+    name_table_t name_table() const noexcept { return {}; }
+
+    template <class F>
+    static void for_each_member(underlying_row_type& to, F&& f)
+    {
+        Inner::for_each_member(to, std::forward<F>(f));
+    }
+};
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 BOOST_AUTO_TEST_SUITE(test_row_traits)
+
+void compare_name_tables(name_table_t lhs, name_table_t rhs)
+{
+    std::vector<string_view> lhsvec(lhs.begin(), lhs.end());
+    std::vector<string_view> rhsvec(rhs.begin(), rhs.end());
+    BOOST_TEST(lhsvec == rhsvec);
+}
 
 // type definitions: describe structs
 struct sempty
@@ -99,6 +139,10 @@ static_assert(is_static_row<t2>, "");
 static_assert(is_static_row<t3>, "");
 static_assert(is_static_row<tbad>, "");
 
+static_assert(is_static_row<row_identity<tempty>>, "");
+static_assert(is_static_row<row_identity<t1>>, "");
+static_assert(is_static_row<row_identity<tbad>>, "");
+
 static_assert(!is_static_row<unrelated>, "");
 static_assert(!is_static_row<int>, "");
 static_assert(!is_static_row<row>, "");
@@ -108,13 +152,281 @@ static_assert(!is_static_row<s1&&>, "");
 static_assert(!is_static_row<const s1&&>, "");
 static_assert(!is_static_row<s1*>, "");
 
-// Helpers
-void compare_name_tables(name_table_t lhs, name_table_t rhs)
+// We perform metadata checks correctly given a generic, compliant row traits class
+BOOST_AUTO_TEST_SUITE(meta_check_)
+
+const metadata meta[] = {
+    meta_builder().type(column_type::tinyint).unsigned_flag(false).nullable(false).build(),
+    meta_builder().type(column_type::varchar).nullable(false).build(),
+    meta_builder().type(column_type::float_).nullable(false).build(),
+};
+
+BOOST_AUTO_TEST_CASE(positional_success)
 {
-    std::vector<string_view> lhsvec(lhs.begin(), lhs.end());
-    std::vector<string_view> rhsvec(rhs.begin(), rhs.end());
-    BOOST_TEST(lhsvec == rhsvec);
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = std::tuple<int, std::string, float>;
+    const std::size_t pos_map[] = {0, 1, 2};
+    diagnostics diag;
+
+    auto err = detail::meta_check_impl<types>(name_table_t(), pos_map, meta, diag);
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(diag.client_message() == "");
 }
+
+BOOST_AUTO_TEST_CASE(positional_success_trailing_fields)
+{
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = std::tuple<int, std::string>;
+    const std::size_t pos_map[] = {0, 1};
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(name_table_t(), pos_map, meta, diag);
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(diag.client_message() == "");
+}
+
+BOOST_AUTO_TEST_CASE(positional_missing_fields)
+{
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = std::tuple<int, std::string, float, int, int>;
+    const std::size_t pos_map[] = {0, 1, 2, pos_absent, pos_absent};
+    const char* expected_msg =
+        "Field in position 3 can't be mapped: there are more fields in your C++ data type than in your query"
+        "\n"
+        "Field in position 4 can't be mapped: there are more fields in your C++ data type than in your query";
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(name_table_t(), pos_map, meta, diag);
+
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_AUTO_TEST_CASE(positional_no_fields)
+{
+    using types = std::tuple<int, std::string>;
+    const std::size_t pos_map[] = {pos_absent, pos_absent};
+    const char* expected_msg =
+        "Field in position 0 can't be mapped: there are more fields in your C++ data type than in your query"
+        "\n"
+        "Field in position 1 can't be mapped: there are more fields in your C++ data type than in your query";
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(name_table_t(), pos_map, metadata_collection_view(), diag);
+
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_AUTO_TEST_CASE(named_success)
+{
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = std::tuple<float, int, std::string>;
+    const std::size_t pos_map[] = {2, 0, 1};
+    const string_view names[] = {"f1", "f2", "f3"};
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(names, pos_map, meta, diag);
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(diag.client_message() == "");
+}
+
+BOOST_AUTO_TEST_CASE(named_success_extra_fields)
+{
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = std::tuple<std::string, int>;
+    const std::size_t pos_map[] = {1, 0};
+    const string_view names[] = {"f1", "f2"};
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(names, pos_map, meta, diag);
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(diag.client_message() == "");
+}
+
+BOOST_AUTO_TEST_CASE(named_absent_fields)
+{
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = std::tuple<std::string, int, float>;
+    const std::size_t pos_map[] = {pos_absent, 0, pos_absent};
+    const string_view names[] = {"f1", "f2", "f3"};
+    const char* expected_msg =
+        "Field 'f1' is not present in the data returned by the server"
+        "\n"
+        "Field 'f3' is not present in the data returned by the server";
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(names, pos_map, meta, diag);
+
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_AUTO_TEST_CASE(named_no_fields)
+{
+    using types = std::tuple<int, int>;
+    const std::size_t pos_map[] = {pos_absent, pos_absent};
+    const string_view names[] = {"f1", "f2"};
+    const char* expected_msg =
+        "Field 'f1' is not present in the data returned by the server"
+        "\n"
+        "Field 'f2' is not present in the data returned by the server";
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(names, pos_map, metadata_collection_view(), diag);
+
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_AUTO_TEST_CASE(failed_checks)
+{
+    // meta is: TINYINT, VARCHAR, FLOAT
+    using types = std::tuple<float, float, float>;
+    const std::size_t pos_map[] = {2, 1, 0};
+    const string_view names[] = {"f1", "f2", "f3"};
+    const char* expected_msg =
+        "Incompatible types for field 'f2': C++ type 'float' is not compatible with DB type 'VARCHAR'"
+        "\n"
+        "Incompatible types for field 'f3': C++ type 'float' is not compatible with DB type 'TINYINT'";
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(names, pos_map, meta, diag);
+
+    BOOST_TEST(err == client_errc::metadata_check_failed);
+    BOOST_TEST(diag.client_message() == expected_msg);
+}
+
+BOOST_AUTO_TEST_CASE(all_fields_discarded)
+{
+    using types = std::tuple<>;
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(name_table_t(), span<const std::size_t>(), meta, diag);
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(diag.client_message() == "");
+}
+
+BOOST_AUTO_TEST_CASE(empty)
+{
+    using types = std::tuple<>;
+    diagnostics diag;
+
+    auto err = meta_check_impl<types>(
+        name_table_t(),
+        boost::span<const std::size_t>(),
+        metadata_collection_view(),
+        diag
+    );
+
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(diag.client_message() == "");
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(parse_)
+
+struct test_row
+{
+    struct underlying_row_type
+    {
+        std::int32_t i{};
+        float f{};
+        double double_field{};
+    };
+
+    using field_types = std::tuple<int, float, double>;
+
+    template <class F>
+    static void for_each_member(underlying_row_type& u, F&& f)
+    {
+        f(u.i);
+        f(u.f);
+        f(u.double_field);
+    }
+};
+
+struct test_empty_row
+{
+    struct underlying_row_type
+    {
+    };
+
+    using field_types = std::tuple<>;
+
+    template <class F>
+    static void for_each_member(underlying_row_type&, F&&)
+    {
+    }
+};
+
+BOOST_AUTO_TEST_CASE(parse_success)
+{
+    // int, float, double
+    const auto fv = make_fv_arr(8.1, "abc", 42, 4.3f);
+    const std::size_t pos_map[] = {2, 3, 0};
+    test_row::underlying_row_type value;
+    auto err = parse<test_marker<test_row>>(pos_map, fv, value);
+    BOOST_TEST(err == error_code());
+    BOOST_TEST(value.i == 42);
+    BOOST_TEST(value.f == 4.3f);
+    BOOST_TEST(value.double_field == 8.1);
+}
+
+BOOST_AUTO_TEST_CASE(parse_one_error)
+{
+    // int, float, double
+    const auto fv = make_fv_arr(8.1, "abc", nullptr, 4.3f);
+    const std::size_t pos_map[] = {2, 3, 0};
+    test_row::underlying_row_type value;
+    auto err = parse<test_marker<test_row>>(pos_map, fv, value);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
+}
+
+BOOST_AUTO_TEST_CASE(parse_several_errors)
+{
+    // int, float, double
+    // we return the first error only
+    const auto fv = make_fv_arr(8.1, "abc", 0xffffffffffffffff, nullptr);
+    const std::size_t pos_map[] = {2, 3, 0};
+    test_row::underlying_row_type value;
+    auto err = parse<test_marker<test_row>>(pos_map, fv, value);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
+}
+
+BOOST_AUTO_TEST_CASE(parse_error_success_interleaved)
+{
+    // int, float, double
+    const auto fv = make_fv_arr(8.1, "abc", 42, nullptr);
+    const std::size_t pos_map[] = {2, 3, 0};
+    test_row::underlying_row_type value;
+    auto err = parse<test_marker<test_row>>(pos_map, fv, value);
+    BOOST_TEST(err == client_errc::static_row_parsing_error);
+}
+
+BOOST_AUTO_TEST_CASE(parse_all_fields_discarded)
+{
+    // int, float, double
+    const auto fv = make_fv_arr(8.1, "abc", 42, nullptr);
+    test_empty_row::underlying_row_type value;
+    auto err = parse<test_marker<test_empty_row>>(span<const std::size_t>(), fv, value);
+    BOOST_TEST(err == error_code());
+}
+
+BOOST_AUTO_TEST_CASE(parse_no_fields)
+{
+    test_empty_row::underlying_row_type value;
+    auto err = parse<test_marker<test_empty_row>>(span<const std::size_t>(), span<const field_view>(), value);
+    BOOST_TEST(err == error_code());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(describe_structs)
 
@@ -124,7 +436,6 @@ static_assert(get_row_size<s1>() == 1u, "");
 static_assert(get_row_size<s2>() == 2u, "");
 static_assert(get_row_size<sinherit>() == 3u, "");
 
-// names
 BOOST_AUTO_TEST_CASE(get_row_name_table_)
 {
     const string_view expected_s1[] = {"i"};
@@ -147,7 +458,7 @@ BOOST_AUTO_TEST_CASE(meta_check_ok)
     };
     const std::size_t pos_map[] = {2, 0, 1};
     diagnostics diag;
-    auto err = meta_check<sinherit>(pos_map, meta, diag);
+    auto err = detail::meta_check<sinherit>(pos_map, meta, diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -161,7 +472,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
     };
     const std::size_t pos_map[] = {0, 1, 2};
     diagnostics diag;
-    auto err = meta_check<sinherit>(pos_map, meta, diag);
+    auto err = detail::meta_check<sinherit>(pos_map, meta, diag);
     BOOST_TEST(err == client_errc::metadata_check_failed);
     BOOST_TEST(
         diag.client_message() ==
@@ -172,7 +483,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
 BOOST_AUTO_TEST_CASE(meta_check_empty_struct)
 {
     diagnostics diag;
-    auto err = meta_check<sempty>(span<const std::size_t>(), metadata_collection_view(), diag);
+    auto err = detail::meta_check<sempty>(span<const std::size_t>(), metadata_collection_view(), diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -191,21 +502,10 @@ BOOST_AUTO_TEST_CASE(parse_success)
     BOOST_TEST(value.double_field == 8.1);
 }
 
-BOOST_AUTO_TEST_CASE(parse_one_error)
+BOOST_AUTO_TEST_CASE(parse_error)
 {
     // int, float, double
     const auto fv = make_fv_arr(8.1, "abc", nullptr, 4.3f);
-    const std::size_t pos_map[] = {2, 3, 0};
-    sinherit value;
-    auto err = parse<sinherit>(pos_map, fv, value);
-    BOOST_TEST(err == client_errc::static_row_parsing_error);
-}
-
-BOOST_AUTO_TEST_CASE(parse_several_errors)
-{
-    // int, float, double
-    // we return the first error only
-    const auto fv = make_fv_arr(8.1, "abc", 0xffffffffffffffff, nullptr);
     const std::size_t pos_map[] = {2, 3, 0};
     sinherit value;
     auto err = parse<sinherit>(pos_map, fv, value);
@@ -248,7 +548,7 @@ BOOST_AUTO_TEST_CASE(meta_check_ok)
     };
     const std::size_t pos_map[] = {0, 1, 2};
     diagnostics diag;
-    auto err = meta_check<t3>(pos_map, meta, diag);
+    auto err = detail::meta_check<t3>(pos_map, meta, diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -262,7 +562,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
     };
     const std::size_t pos_map[] = {0, 1, 2};
     diagnostics diag;
-    auto err = meta_check<t3>(pos_map, meta, diag);
+    auto err = detail::meta_check<t3>(pos_map, meta, diag);
     BOOST_TEST(err == client_errc::metadata_check_failed);
     BOOST_TEST(
         diag.client_message() ==
@@ -274,7 +574,7 @@ BOOST_AUTO_TEST_CASE(meta_check_fail)
 BOOST_AUTO_TEST_CASE(meta_check_empty)
 {
     diagnostics diag;
-    auto err = meta_check<tempty>(span<const std::size_t>(), metadata_collection_view(), diag);
+    auto err = detail::meta_check<tempty>(span<const std::size_t>(), metadata_collection_view(), diag);
     BOOST_TEST(err == error_code());
     BOOST_TEST(diag.client_message() == "");
 }
@@ -293,21 +593,10 @@ BOOST_AUTO_TEST_CASE(parse_success)
     BOOST_TEST(std::get<2>(value) == 9.1);
 }
 
-BOOST_AUTO_TEST_CASE(parse_one_error)
+BOOST_AUTO_TEST_CASE(parse_error)
 {
     // string, int, double
     const auto fv = make_fv_arr("abc", nullptr, 4.3, "jkl");
-    const std::size_t pos_map[] = {0, 1, 2};
-    t3 value;
-    auto err = parse<t3>(pos_map, fv, value);
-    BOOST_TEST(err == client_errc::static_row_parsing_error);
-}
-
-BOOST_AUTO_TEST_CASE(parse_several_errors)
-{
-    // string, int, double
-    // we return the first error only
-    const auto fv = make_fv_arr(nullptr, 0xffffffffffffffff, 4.2);
     const std::size_t pos_map[] = {0, 1, 2};
     t3 value;
     auto err = parse<t3>(pos_map, fv, value);

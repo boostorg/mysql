@@ -594,30 +594,6 @@ void meta_check_field(meta_check_context& ctx)
     ctx.advance();
 }
 
-struct meta_check_field_fn
-{
-    meta_check_context ctx;
-
-    template <class TypeIdentity>
-    void operator()(TypeIdentity)
-    {
-        meta_check_field<typename TypeIdentity::type>(ctx);
-    }
-};
-
-template <typename ReadableFieldList>
-error_code meta_check_field_type_list(
-    span<const std::size_t> field_map,
-    name_table_t name_table,
-    metadata_collection_view meta,
-    diagnostics& diag
-)
-{
-    meta_check_field_fn fn{meta_check_context(field_map, name_table, meta)};
-    mp11::mp_for_each<mp11::mp_transform<mp11::mp_identity, ReadableFieldList>>(fn);
-    return fn.ctx.check_errors(diag);
-}
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost

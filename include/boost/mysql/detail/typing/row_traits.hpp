@@ -189,6 +189,34 @@ struct row_traits_with_check : row_traits<StaticRow>
     static_assert(check_readable_field<typename row_traits<StaticRow>::field_types>(), "");
 };
 
+// Meta checking
+struct meta_check_field_fn
+{
+    meta_check_context& ctx;
+
+    template <class TypeIdentity>
+    void operator()(TypeIdentity)
+    {
+        meta_check_field<typename TypeIdentity::type>(ctx);
+    }
+};
+
+// Useful for testing
+template <class ReadableFieldList>
+error_code meta_check_impl(
+    name_table_t name_table,
+    span<const std::size_t> pos_map,
+    metadata_collection_view meta,
+    diagnostics& diag
+)
+{
+    BOOST_ASSERT(pos_map.size() == mp11::mp_size<ReadableFieldList>::value);
+    meta_check_context ctx(pos_map, name_table, meta);
+    mp11::mp_for_each<mp11::mp_transform<mp11::mp_identity, ReadableFieldList>>(meta_check_field_fn{ctx});
+    return ctx.check_errors(diag);
+}
+
+// Parsing
 class parse_context
 {
     span<const std::size_t> pos_map_;
@@ -250,16 +278,16 @@ concept static_row = is_static_row<T>;
 #endif
 
 template <class StaticRow>
-using underlying_row_t = typename row_traits<StaticRow>::underlying_row_type;
+using underlying_row_t = typename row_traits_with_check<StaticRow>::underlying_row_type;
 
 template <class StaticRow>
-constexpr std::size_t get_row_size()
+constexpr std::size_t get_row_size() noexcept
 {
     return mp11::mp_size<typename row_traits_with_check<StaticRow>::field_types>::value;
 }
 
 template <class StaticRow>
-constexpr name_table_t get_row_name_table()
+constexpr name_table_t get_row_name_table() noexcept
 {
     return row_traits_with_check<StaticRow>::name_table();
 }
@@ -267,9 +295,9 @@ constexpr name_table_t get_row_name_table()
 template <class StaticRow>
 error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view meta, diagnostics& diag)
 {
-    using fields = typename row_traits_with_check<StaticRow>::field_types;
+    using field_types = typename row_traits_with_check<StaticRow>::field_types;
     BOOST_ASSERT(pos_map.size() == get_row_size<StaticRow>());
-    return meta_check_field_type_list<fields>(pos_map, get_row_name_table<StaticRow>(), meta, diag);
+    return meta_check_impl<field_types>(get_row_name_table<StaticRow>(), pos_map, meta, diag);
 }
 
 template <class StaticRow>
