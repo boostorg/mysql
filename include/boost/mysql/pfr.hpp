@@ -8,6 +8,10 @@
 #ifndef BOOST_MYSQL_PFR_HPP
 #define BOOST_MYSQL_PFR_HPP
 
+#include <boost/pfr/config.hpp>
+
+#if BOOST_PFR_ENABLED
+
 #include <boost/pfr/core_name.hpp>
 
 namespace boost {
@@ -29,5 +33,7 @@ struct pfr_by_name;
 }  // namespace boost
 
 #include <boost/mysql/impl/pfr.hpp>
+
+#endif
 
 #endif
