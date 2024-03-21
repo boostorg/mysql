@@ -22,20 +22,20 @@
 
 #include "execution_processor_helpers.hpp"
 #include "static_execution_processor_helpers.hpp"
-#include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/printing.hpp"
+#include "test_unit/row_identity.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
-using boost::mysql::detail::output_ref;
-using boost::mysql::detail::resultset_encoding;
-using boost::mysql::detail::static_results_erased_impl;
-using boost::mysql::detail::static_results_impl;
+using detail::output_ref;
+using detail::resultset_encoding;
+using detail::static_results_erased_impl;
+using detail::static_results_impl;
 
 namespace {
 
@@ -83,9 +83,13 @@ struct fixture
     std::vector<field_view> fields;
 };
 
+// We use row_identity to make sure we use underlying_row_t when required
+template <class... StaticRow>
+using static_res_t = static_results_impl<row_identity<StaticRow>...>;
+
 BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 {
-    static_results_impl<row1> rt;
+    static_res_t<row1> rt;
     auto& r = rt.get_interface();
 
     // Initial
@@ -127,7 +131,7 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_data, fixture)
 
 BOOST_FIXTURE_TEST_CASE(one_resultset_empty, fixture)
 {
-    static_results_impl<empty> rt;
+    static_res_t<empty> rt;
     auto& r = rt.get_interface();
 
     // Initial
@@ -147,7 +151,7 @@ BOOST_FIXTURE_TEST_CASE(one_resultset_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 {
     // Resultset r1
-    static_results_impl<row1, row2> rt;
+    static_res_t<row1, row2> rt;
     auto& r = rt.get_interface();
     exec_access(r).meta(create_meta_r1()).row(42, "abc").row(50, "def");
 
@@ -190,7 +194,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_data, fixture)
 
 BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 {
-    static_results_impl<empty, row2> rt;
+    static_res_t<empty, row2> rt;
     auto& r = rt.get_interface();
 
     // Empty resultset r1, indicating more results
@@ -231,7 +235,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_data, fixture)
 BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
 {
     // Resultset r1
-    static_results_impl<row1, empty> rt;
+    static_res_t<row1, empty> rt;
     auto& r = rt.get_interface();
     exec_access(r).meta(create_meta_r1()).row(42, "abc").row(50, "def");
 
@@ -260,7 +264,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_data_empty, fixture)
 
 BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
 {
-    static_results_impl<empty, empty> rt;
+    static_res_t<empty, empty> rt;
     auto& r = rt.get_interface();
 
     // Resultset r1
@@ -285,7 +289,7 @@ BOOST_FIXTURE_TEST_CASE(two_resultsets_empty_empty, fixture)
 BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 {
     // First resultset
-    static_results_impl<empty, empty, row3> rt;
+    static_res_t<empty, empty, row3> rt;
     auto& r = rt.get_interface();
     add_ok(r, create_ok_r1(true));
 
@@ -338,7 +342,7 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_empty_empty_data, fixture)
 BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
 {
     // Two first resultets
-    static_results_impl<row1, row2, row3> rt;
+    static_res_t<row1, row2, row3> rt;
     auto& r = rt.get_interface();
     exec_access(r)
         .meta(create_meta_r1())
@@ -399,7 +403,7 @@ BOOST_FIXTURE_TEST_CASE(three_resultsets_data_data_data, fixture)
 BOOST_FIXTURE_TEST_CASE(reset, fixture)
 {
     // Previous state
-    static_results_impl<row1, row2, empty> rt;
+    static_res_t<row1, row2, empty> rt;
     auto& r = rt.get_interface();
     exec_access(r)
         .meta({
@@ -460,7 +464,7 @@ BOOST_FIXTURE_TEST_CASE(reset, fixture)
 
 BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
 {
-    static_results_impl<empty, empty, row2> rt;
+    static_res_t<empty, empty, row2> rt;
     auto& r = rt.get_interface();
 
     // Head OK packet
@@ -485,7 +489,7 @@ BOOST_FIXTURE_TEST_CASE(info_string_ownserhip, fixture)
 // Verify that we clear the fields before adding new ones
 BOOST_FIXTURE_TEST_CASE(storage_reuse, fixture)
 {
-    static_results_impl<row1> rt;
+    static_res_t<row1> rt;
     auto& r = rt.get_interface();
     add_meta(r, create_meta_r1());
 
@@ -511,7 +515,7 @@ BOOST_FIXTURE_TEST_CASE(storage_reuse, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_meta_mismatch, fixture)
 {
-    static_results_impl<row1> rt;
+    static_res_t<row1> rt;
     auto& r = rt.get_interface();
 
     r.on_num_meta(1);
@@ -529,7 +533,7 @@ BOOST_FIXTURE_TEST_CASE(error_meta_mismatch, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_meta_mismatch_head, fixture)
 {
-    static_results_impl<row1> rt;
+    static_res_t<row1> rt;
     auto& r = rt.get_interface();
 
     auto err = r.on_head_ok_packet(create_ok_r1(), diag);
@@ -542,7 +546,7 @@ BOOST_FIXTURE_TEST_CASE(error_meta_mismatch_head, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
 {
-    static_results_impl<row1> rt;
+    static_res_t<row1> rt;
     auto& r = rt.get_interface();
     add_meta(r, create_meta_r1());
     auto bad_row = create_text_row_body(42, "abc");
@@ -555,7 +559,7 @@ BOOST_FIXTURE_TEST_CASE(error_deserializing_row, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
 {
-    static_results_impl<row1> rt;
+    static_res_t<row1> rt;
     auto& r = rt.get_interface();
     add_meta(r, create_meta_r1());
     auto bad_row = create_text_row_body(nullptr, "abc");  // should not be NULL
@@ -566,7 +570,7 @@ BOOST_FIXTURE_TEST_CASE(error_parsing_row, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_empty, fixture)
 {
-    static_results_impl<empty, row2> rt;
+    static_res_t<empty, row2> rt;
     auto& r = rt.get_interface();
 
     auto err = r.on_head_ok_packet(create_ok_r1(), diag);
@@ -575,7 +579,7 @@ BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_empty, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_empty, fixture)
 {
-    static_results_impl<empty> rt;
+    static_res_t<empty> rt;
     auto& r = rt.get_interface();
 
     auto err = r.on_head_ok_packet(create_ok_r1(true), diag);
@@ -584,7 +588,7 @@ BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_empty, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_data, fixture)
 {
-    static_results_impl<row1, row2> rt;
+    static_res_t<row1, row2> rt;
     auto& r = rt.get_interface();
     add_meta(r, create_meta_r1());
 
@@ -594,7 +598,7 @@ BOOST_FIXTURE_TEST_CASE(error_too_few_resultsets_data, fixture)
 
 BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_data, fixture)
 {
-    static_results_impl<row1> rt;
+    static_res_t<row1> rt;
     auto& r = rt.get_interface();
     add_meta(r, create_meta_r1());
 
@@ -604,7 +608,7 @@ BOOST_FIXTURE_TEST_CASE(error_too_many_resultsets_data, fixture)
 
 struct ctor_assign_fixture
 {
-    using results_t = static_results_impl<row1, row2>;
+    using results_t = static_res_t<row1, row2>;
 
     std::unique_ptr<results_t> rt_old{new results_t{}};
 
@@ -708,7 +712,7 @@ BOOST_FIXTURE_TEST_CASE(move_assignment, ctor_assign_fixture)
 BOOST_AUTO_TEST_CASE(tuples)
 {
     std::vector<field_view> fields;
-    static_results_impl<row1_tuple, empty, row3_tuple> stp;
+    static_res_t<row1_tuple, empty, row3_tuple> stp;
     auto& st = stp.get_interface();
 
     // Meta r1
@@ -758,7 +762,7 @@ BOOST_AUTO_TEST_CASE(tuples)
 BOOST_AUTO_TEST_CASE(field_selection_structs)
 {
     std::vector<field_view> fields;
-    static_results_impl<row3_selection> stp;
+    static_res_t<row3_selection> stp;
     auto& st = stp.get_interface();
 
     // Meta
@@ -783,7 +787,7 @@ BOOST_AUTO_TEST_CASE(field_selection_structs)
 BOOST_AUTO_TEST_CASE(field_selection_tuples)
 {
     std::vector<field_view> fields;
-    static_results_impl<row3_selection_tuple> stp;
+    static_res_t<row3_selection_tuple> stp;
     auto& st = stp.get_interface();
 
     // Meta
@@ -808,7 +812,7 @@ BOOST_AUTO_TEST_CASE(field_selection_tuples)
 BOOST_AUTO_TEST_CASE(repeated_row_types)
 {
     std::vector<field_view> fields;
-    static_results_impl<row1, row1, row2, row1> stp;
+    static_res_t<row1, row1, row2, row1> stp;
     auto& st = stp.get_interface();
 
     // 1st resultset
@@ -862,7 +866,7 @@ BOOST_AUTO_TEST_CASE(repeated_row_types)
 BOOST_AUTO_TEST_CASE(all_fields_discarded)
 {
     std::vector<field_view> fields;
-    static_results_impl<empty, empty> stp;
+    static_res_t<empty, empty> stp;
     auto& st = stp.get_interface();
 
     // 1st resultset
@@ -888,7 +892,7 @@ BOOST_AUTO_TEST_CASE(all_fields_discarded)
 
 BOOST_FIXTURE_TEST_CASE(meta_mode_minimal, fixture)
 {
-    static_results_impl<row1> stp;
+    static_res_t<row1> stp;
     auto& st = stp.get_interface();
 
     exec_access(st)
@@ -902,7 +906,7 @@ BOOST_FIXTURE_TEST_CASE(meta_mode_minimal, fixture)
 
 BOOST_FIXTURE_TEST_CASE(meta_mode_full, fixture)
 {
-    static_results_impl<row1> stp;
+    static_res_t<row1> stp;
     auto& st = stp.get_interface();
 
     exec_access(st)
