@@ -277,22 +277,22 @@ concept static_row = is_static_row<T>;
 #define BOOST_MYSQL_STATIC_ROW class
 #endif
 
-template <class StaticRow>
+template <BOOST_MYSQL_STATIC_ROW StaticRow>
 using underlying_row_t = typename row_traits_with_check<StaticRow>::underlying_row_type;
 
-template <class StaticRow>
+template <BOOST_MYSQL_STATIC_ROW StaticRow>
 constexpr std::size_t get_row_size() noexcept
 {
     return mp11::mp_size<typename row_traits_with_check<StaticRow>::field_types>::value;
 }
 
-template <class StaticRow>
+template <BOOST_MYSQL_STATIC_ROW StaticRow>
 constexpr name_table_t get_row_name_table() noexcept
 {
     return row_traits_with_check<StaticRow>::name_table();
 }
 
-template <class StaticRow>
+template <BOOST_MYSQL_STATIC_ROW StaticRow>
 error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view meta, diagnostics& diag)
 {
     using field_types = typename row_traits_with_check<StaticRow>::field_types;
@@ -300,7 +300,7 @@ error_code meta_check(span<const std::size_t> pos_map, metadata_collection_view 
     return meta_check_impl<field_types>(get_row_name_table<StaticRow>(), pos_map, meta, diag);
 }
 
-template <class StaticRow>
+template <BOOST_MYSQL_STATIC_ROW StaticRow>
 error_code parse(
     span<const std::size_t> pos_map,
     span<const field_view> from,

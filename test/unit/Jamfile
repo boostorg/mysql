@@ -124,6 +124,7 @@ run
         test/character_set.cpp
         test/escape_string.cpp
         test/constant_string_view.cpp
+        test/pfr.cpp
         
     : requirements
         <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711

@@ -39,6 +39,12 @@ constexpr std::array<string_view, N> to_name_table_storage(std::array<std::strin
     return res;
 }
 
+// Workaround for https://github.com/boostorg/pfr/issues/165
+constexpr std::array<string_view, 0u> to_name_table_storage(std::array<std::nullptr_t, 0u>) noexcept
+{
+    return {};
+}
+
 template <class T>
 constexpr auto pfr_names_storage = to_name_table_storage(pfr::names_as_array<T>());
 
