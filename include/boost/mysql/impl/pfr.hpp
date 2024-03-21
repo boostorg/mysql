@@ -19,12 +19,12 @@
 #include <boost/pfr/core_name.hpp>
 #include <boost/pfr/traits.hpp>
 
-#include <cstddef>
 #include <type_traits>
 #include <utility>
 
 #if BOOST_PFR_CORE_NAME_ENABLED
 #include <array>
+#include <cstddef>
 #include <string_view>
 #endif
 
@@ -36,8 +36,13 @@ namespace detail {
 template <class T>
 constexpr bool is_pfr_reflectable() noexcept
 {
-    return std::is_class<T>::value && !std::is_const<T>::value &&
-           pfr::is_implicitly_reflectable_v<T, struct mysql_tag>;
+    return std::is_class<T>::value && !std::is_const<T>::value
+    // is_implicitly_reflectable_v returns always false when implicit reflection
+    // (which requires structured bindings and C++17) is not available
+#if BOOST_PFR_ENABLE_IMPLICIT_REFLECTION
+           && pfr::is_implicitly_reflectable_v<T, struct mysql_tag>
+#endif
+        ;
 }
 
 template <class T>
