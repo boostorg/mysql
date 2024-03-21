@@ -13,9 +13,13 @@
 namespace boost {
 namespace mysql {
 
+// TODO: document
+
+template <class T>
+struct pfr_by_position;
+
 #if BOOST_PFR_CORE_NAME_ENABLED
 
-// TODO: document
 template <class T>
 struct pfr_by_name;
 
@@ -24,8 +28,6 @@ struct pfr_by_name;
 }  // namespace mysql
 }  // namespace boost
 
-#if BOOST_PFR_CORE_NAME_ENABLED
-#include <boost/mysql/impl/pfr_by_name.hpp>
-#endif
+#include <boost/mysql/impl/pfr.hpp>
 
 #endif

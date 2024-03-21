@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_PFR_BY_NAME_HPP
-#define BOOST_MYSQL_IMPL_PFR_BY_NAME_HPP
+#ifndef BOOST_MYSQL_IMPL_PFR_HPP
+#define BOOST_MYSQL_IMPL_PFR_HPP
 
 #pragma once
 
@@ -19,19 +19,31 @@
 #include <boost/pfr/core_name.hpp>
 #include <boost/pfr/traits.hpp>
 
-#include <array>
 #include <cstddef>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 
-#if !BOOST_PFR_CORE_NAME_ENABLED
-#error "This header requires BOOST_PFR_CORE_NAME_ENABLED"
+#if BOOST_PFR_CORE_NAME_ENABLED
+#include <array>
+#include <string_view>
 #endif
 
 namespace boost {
 namespace mysql {
 namespace detail {
+
+// Not all types reflected by PFR are acceptable for us - this function performs this checking
+template <class T>
+constexpr bool is_pfr_reflectable() noexcept
+{
+    return std::is_class<T>::value && !std::is_const<T>::value &&
+           pfr::is_implicitly_reflectable_v<T, struct mysql_tag>;
+}
+
+template <class T>
+using pfr_fields_t = decltype(pfr::structure_to_tuple(std::declval<const T&>()));
+
+#if BOOST_PFR_CORE_NAME_ENABLED
 
 // PFR field names use std::string_view
 template <std::size_t N>
@@ -52,17 +64,9 @@ constexpr std::array<string_view, 0u> to_name_table_storage(std::array<std::null
 template <class T>
 constexpr auto pfr_names_storage = to_name_table_storage(pfr::names_as_array<T>());
 
-// Not all types reflected by PFR are acceptable for us - this function performs this checking
-template <class T>
-constexpr bool is_pfr_reflectable() noexcept
-{
-    return std::is_class_v<T> && !std::is_const_v<T> && pfr::is_implicitly_reflectable_v<T, struct mysql_tag>;
-}
-
 template <class T>
 class row_traits<pfr_by_name<T>, false>
 {
-    // TODO: C++20 guards
     static_assert(
         is_pfr_reflectable<T>(),
         "T needs to be a non-const object type that supports PFR reflection"
@@ -70,9 +74,32 @@ class row_traits<pfr_by_name<T>, false>
 
 public:
     using underlying_row_type = T;
-    using field_types = decltype(pfr::structure_to_tuple(std::declval<const T&>()));
+    using field_types = pfr_fields_t<T>;
 
     static constexpr name_table_t name_table() noexcept { return pfr_names_storage<T>; }
+
+    template <class F>
+    static void for_each_member(T& to, F&& function)
+    {
+        pfr::for_each_field(to, std::forward<F>(function));
+    }
+};
+
+#endif
+
+template <class T>
+class row_traits<pfr_by_position<T>, false>
+{
+    static_assert(
+        is_pfr_reflectable<T>(),
+        "T needs to be a non-const object type that supports PFR reflection"
+    );
+
+public:
+    using underlying_row_type = T;
+    using field_types = pfr_fields_t<T>;
+
+    static constexpr name_table_t name_table() noexcept { return {}; }
 
     template <class F>
     static void for_each_member(T& to, F&& function)
