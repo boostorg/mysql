@@ -19,6 +19,7 @@ using namespace boost::mysql::test;
 
 using detail::get_row_name_table;
 using detail::get_row_size;
+using detail::is_pfr_reflectable;
 using detail::is_static_row;
 using detail::name_table_t;
 
@@ -46,6 +47,27 @@ struct sbad
     empty non_readable_field;
     double d;
 };
+
+union test_union
+{
+    int i;
+    float f;
+};
+
+// is_pfr_reflectable
+static_assert(is_pfr_reflectable<empty>(), "");
+static_assert(is_pfr_reflectable<s1>(), "");
+static_assert(is_pfr_reflectable<s2>(), "");
+static_assert(!is_pfr_reflectable<const s1>(), "");
+static_assert(!is_pfr_reflectable<s1&>(), "");
+static_assert(!is_pfr_reflectable<const s1&>(), "");
+static_assert(!is_pfr_reflectable<s1&&>(), "");
+static_assert(!is_pfr_reflectable<const s1&&>(), "");
+static_assert(!is_pfr_reflectable<test_union>(), "");
+static_assert(!is_pfr_reflectable<s1[10]>(), "");
+static_assert(!is_pfr_reflectable<int>(), "");
+static_assert(!is_pfr_reflectable<const char*>(), "");
+static_assert(!is_pfr_reflectable<s1*>(), "");
 
 // is_row_type
 static_assert(is_static_row<pfr_by_name<empty>>, "");

@@ -48,10 +48,10 @@ constexpr std::array<string_view, 0u> to_name_table_storage(std::array<std::null
 template <class T>
 constexpr auto pfr_names_storage = to_name_table_storage(pfr::names_as_array<T>());
 
+// Not all types reflected by PFR are acceptable for us - this function performs this checking
 template <class T>
 constexpr bool is_pfr_reflectable() noexcept
 {
-    // TODO: static assert that T is PFR-reflectable
     return std::is_class_v<T> && !std::is_const_v<T> && pfr::is_implicitly_reflectable_v<T, struct mysql_tag>;
 }
 
