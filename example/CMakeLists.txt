@@ -70,7 +70,6 @@ endfunction()
 # Regular examples are the ones that require no extra linking libs and can be run
 # with example_user example_password
 set(REGULAR_EXAMPLES
-    snippets
     tutorial
     async_callbacks
     async_coroutinescpp20
