@@ -7,6 +7,8 @@
 
 #include <boost/mysql/pfr.hpp>
 
+#if BOOST_PFR_CORE_NAME_ENABLED
+
 #include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
@@ -178,3 +180,5 @@ BOOST_AUTO_TEST_CASE(parse_empty_struct)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif

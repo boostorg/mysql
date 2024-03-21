@@ -117,6 +117,7 @@ BOOST_FIXTURE_TEST_CASE(tuples, tcp_network_fixture)
     BOOST_TEST(result.info() == "");
 }
 
+#if BOOST_PFR_CORE_NAME_ENABLED
 BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
 {
     connect();
@@ -134,6 +135,7 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
     BOOST_TEST(result.last_insert_id() == 0u);
     BOOST_TEST(result.info() == "");
 }
+#endif
 
 // This spotchecks having a repeated empty row type, too
 BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
@@ -307,6 +309,7 @@ BOOST_FIXTURE_TEST_CASE(tuples, tcp_network_fixture)
     BOOST_TEST(result.info() == "");
 }
 
+#if BOOST_PFR_CORE_NAME_ENABLED
 BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
 {
     connect();
@@ -332,6 +335,7 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
     BOOST_TEST(result.last_insert_id() == 0u);
     BOOST_TEST(result.info() == "");
 }
+#endif
 
 // This spotchecks having repeated empty row types, too
 BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
