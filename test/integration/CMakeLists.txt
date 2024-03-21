@@ -32,6 +32,20 @@ add_executable(
     test/connection_pool.cpp
     test/db_specific.cpp
     test/database_types.cpp
+
+    # Snippets
+    test/snippets/overview.cpp
+    test/snippets/dynamic.cpp
+    test/snippets/static.cpp
+    test/snippets/prepared_statements.cpp
+    test/snippets/multi_resultset.cpp
+    test/snippets/multi_function.cpp
+    test/snippets/metadata.cpp
+    test/snippets/charsets.cpp
+    test/snippets/time_types.cpp
+    test/snippets/any_connection.cpp
+    test/snippets/connection_pool.cpp
+    test/snippets/sql_formatting.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests
