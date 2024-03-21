@@ -53,6 +53,14 @@ struct row_multifield_pfr
     std::string field_varchar;
 };
 
+// Same, but with the fields in order (what you get when running SELECT *)
+struct row_multifield_pfr_order
+{
+    std::int64_t id;
+    std::string field_varchar;
+    std::int32_t field_int;
+};
+
 void validate_multifield_meta(metadata_collection_view meta)
 {
     check_meta(
@@ -136,6 +144,24 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
     BOOST_TEST(result.info() == "");
 }
 #endif
+
+BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
+{
+    connect();
+
+    static_results<pfr_by_position<row_multifield_pfr_order>> result;
+    conn.execute("SELECT * FROM multifield_table ORDER BY id", result);
+
+    // Verify results
+    validate_multifield_meta(result.meta());
+    BOOST_TEST_REQUIRE(result.rows().size() == 2u);
+    BOOST_TEST(boost::pfr::eq(result.rows()[0], row_multifield_pfr_order{1, "aaa", 11}));
+    BOOST_TEST(boost::pfr::eq(result.rows()[1], row_multifield_pfr_order{2, "bbb", 22}));
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
 
 // This spotchecks having a repeated empty row type, too
 BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
@@ -336,6 +362,32 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
     BOOST_TEST(result.info() == "");
 }
 #endif
+
+BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
+{
+    connect();
+
+    // Start
+    static_execution_state<pfr_by_position<row_multifield_pfr_order>> result;
+    conn.start_execution("SELECT * FROM multifield_table WHERE id = 1", result);
+    validate_multifield_meta(result.meta());
+    BOOST_TEST(result.should_read_rows());
+
+    // Read rows
+    std::array<row_multifield_pfr_order, 3> rws;
+    std::size_t num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr_order>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST(boost::pfr::eq(rws[0], row_multifield_pfr_order{1, "aaa", 11}));
+
+    // Read again, in case the EOF came separately
+    num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr_order>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 0u);
+    BOOST_TEST(result.complete());
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
 
 // This spotchecks having repeated empty row types, too
 BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
