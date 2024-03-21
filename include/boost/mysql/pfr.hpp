@@ -8,16 +8,24 @@
 #ifndef BOOST_MYSQL_PFR_HPP
 #define BOOST_MYSQL_PFR_HPP
 
+#include <boost/pfr/core_name.hpp>
+
 namespace boost {
 namespace mysql {
+
+#if BOOST_PFR_CORE_NAME_ENABLED
 
 // TODO: document
 template <class T>
 struct pfr_by_name;
 
+#endif
+
 }  // namespace mysql
 }  // namespace boost
 
-#include <boost/mysql/impl/pfr.hpp>
+#if BOOST_PFR_CORE_NAME_ENABLED
+#include <boost/mysql/impl/pfr_by_name.hpp>
+#endif
 
 #endif

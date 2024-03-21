@@ -41,6 +41,7 @@ docca.reference reference.qbk
             BOOST_MYSQL_DOXYGEN \\
             __cpp_lib_string_view \\
             __cpp_char8_t \\
+            \"BOOST_PFR_CORE_NAME_ENABLED=1\" \\
             \"BOOST_DEPRECATED(a)=\" \\
             \"BOOST_ATTRIBUTE_NODISCARD=[[nodiscard]]\" \\
             \"BOOST_ASIO_INITFN_RESULT_TYPE(t,a)=auto\" \\

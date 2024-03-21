@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_PFR_HPP
-#define BOOST_MYSQL_IMPL_PFR_HPP
+#ifndef BOOST_MYSQL_IMPL_PFR_BY_NAME_HPP
+#define BOOST_MYSQL_IMPL_PFR_BY_NAME_HPP
 
 #pragma once
 
@@ -24,6 +24,10 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+
+#if !BOOST_PFR_CORE_NAME_ENABLED
+#error "This header requires BOOST_PFR_CORE_NAME_ENABLED"
+#endif
 
 namespace boost {
 namespace mysql {
