@@ -17,7 +17,6 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
-#include <boost/mysql/detail/typing/get_type_index.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>

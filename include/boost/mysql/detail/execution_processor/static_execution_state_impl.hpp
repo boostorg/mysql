@@ -20,7 +20,6 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/typing/get_type_index.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/assert.hpp>

@@ -66,7 +66,6 @@ add_executable(
     test/detail/typing/pos_map.cpp
     test/detail/typing/readable_field_traits.cpp
     test/detail/typing/row_traits.cpp
-    test/detail/typing/get_type_index.cpp
 
     test/impl/dt_to_string.cpp
     test/impl/ssl_context_with_default.cpp
