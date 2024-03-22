@@ -45,20 +45,20 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_static_iface)
 
-// A row type like row_multifield, but without Describe metadata
+// A row type like row_multifield, but without Describe metadata.
 struct row_multifield_pfr
 {
     boost::optional<float> field_nullable;
     std::int32_t field_int;
-    std::string field_varchar;
+    std::int64_t id;
 };
 
-// Same, but with the fields in order (what you get when running SELECT *)
-struct row_multifield_pfr_order
+// Same, but only with literal fields (required by PFR in C++14 mode)
+struct row_multifield_pfr_literal
 {
     std::int64_t id;
-    std::string field_varchar;
     std::int32_t field_int;
+    double field_double;
 };
 
 void validate_multifield_meta(metadata_collection_view meta)
@@ -150,14 +150,14 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
 {
     connect();
 
-    static_results<pfr_by_position<row_multifield_pfr_order>> result;
-    conn.execute("SELECT * FROM multifield_table ORDER BY id", result);
+    static_results<pfr_by_position<row_multifield_pfr_literal>> result;
+    conn.execute("SELECT id, field_int, field_double FROM multifield_table ORDER BY id", result);
 
     // Verify results
-    validate_multifield_meta(result.meta());
+    check_meta(result.meta(), {column_type::bigint, column_type::int_, column_type::double_});
     BOOST_TEST_REQUIRE(result.rows().size() == 2u);
-    BOOST_TEST(boost::pfr::eq(result.rows()[0], row_multifield_pfr_order{1, "aaa", 11}));
-    BOOST_TEST(boost::pfr::eq(result.rows()[1], row_multifield_pfr_order{2, "bbb", 22}));
+    BOOST_TEST(boost::pfr::eq(result.rows()[0], row_multifield_pfr_literal{1, 11, 0.1}));
+    BOOST_TEST(boost::pfr::eq(result.rows()[1], row_multifield_pfr_literal{2, 22, 0.2}));
     BOOST_TEST(result.affected_rows() == 0u);
     BOOST_TEST(result.warning_count() == 0u);
     BOOST_TEST(result.last_insert_id() == 0u);
@@ -371,19 +371,19 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
     connect();
 
     // Start
-    static_execution_state<pfr_by_position<row_multifield_pfr_order>> result;
-    conn.start_execution("SELECT * FROM multifield_table WHERE id = 1", result);
-    validate_multifield_meta(result.meta());
+    static_execution_state<pfr_by_position<row_multifield_pfr_literal>> result;
+    conn.start_execution("SELECT id, field_int, field_double FROM multifield_table WHERE id = 1", result);
+    check_meta(result.meta(), {column_type::bigint, column_type::int_, column_type::double_});
     BOOST_TEST(result.should_read_rows());
 
     // Read rows
-    std::array<row_multifield_pfr_order, 3> rws;
-    std::size_t num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr_order>(rws));
+    std::array<row_multifield_pfr_literal, 3> rws;
+    std::size_t num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr_literal>(rws));
     BOOST_TEST_REQUIRE(num_rows == 1u);
-    BOOST_TEST(boost::pfr::eq(rws[0], row_multifield_pfr_order{1, "aaa", 11}));
+    BOOST_TEST(boost::pfr::eq(rws[0], row_multifield_pfr_literal{1, 11, 0.1}));
 
     // Read again, in case the EOF came separately
-    num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr_order>(rws));
+    num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr_literal>(rws));
     BOOST_TEST_REQUIRE(num_rows == 0u);
     BOOST_TEST(result.complete());
     BOOST_TEST(result.affected_rows() == 0u);

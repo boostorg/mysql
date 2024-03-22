@@ -40,13 +40,13 @@ struct s1
 
 struct s2
 {
-    std::string s;
+    std::uint64_t s;
 };
 
 struct sbad
 {
     int i;
-    empty non_readable_field;
+    void* non_readable_field;
     double d;
 };
 
