@@ -7,7 +7,7 @@
 
 #include <boost/mysql/pfr.hpp>
 
-#if BOOST_PFR_ENABLED
+#if BOOST_PFR_ENABLED && defined(BOOST_MYSQL_CXX14)
 
 #include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>

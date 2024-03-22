@@ -8,9 +8,11 @@
 #ifndef BOOST_MYSQL_PFR_HPP
 #define BOOST_MYSQL_PFR_HPP
 
+#include <boost/mysql/detail/config.hpp>
+
 #include <boost/pfr/config.hpp>
 
-#if BOOST_PFR_ENABLED
+#if BOOST_PFR_ENABLED && defined(BOOST_MYSQL_CXX14)
 
 #include <boost/pfr/core_name.hpp>
 

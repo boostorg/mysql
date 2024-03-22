@@ -145,7 +145,7 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
 }
 #endif
 
-#if BOOST_PFR_ENABLED
+#if BOOST_PFR_ENABLED && defined(BOOST_MYSQL_CXX14)
 BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
 {
     connect();
@@ -365,7 +365,7 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
 }
 #endif
 
-#if BOOST_PFR_ENABLED
+#if BOOST_PFR_ENABLED && defined(BOOST_MYSQL_CXX14)
 BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
 {
     connect();
