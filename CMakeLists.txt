@@ -50,7 +50,7 @@ target_link_libraries(
 )
 
 # Includes & features
-target_include_directories(boost_mysql SYSTEM INTERFACE include)
+target_include_directories(boost_mysql INTERFACE include)
 target_compile_features(boost_mysql INTERFACE cxx_std_11)
 
 # Don't run integration testing unless explicitly requested, since these require a running MySQL server
