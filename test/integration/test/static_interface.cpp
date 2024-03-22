@@ -45,12 +45,12 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_static_iface)
 
-// A row type like row_multifield, but without Describe metadata.
+// A row type like row_multifield, but without Describe metadata
 struct row_multifield_pfr
 {
     boost::optional<float> field_nullable;
     std::int32_t field_int;
-    std::int64_t id;
+    std::string field_varchar;
 };
 
 // Same, but only with literal fields (required by PFR in C++14 mode)
