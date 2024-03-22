@@ -10,6 +10,15 @@
 
 #pragma once
 
+#include <boost/config.hpp>
+
+// Silence PFR warnings caused by https://github.com/boostorg/pfr/issues/166
+// Only affecting gcc-11+
+#if BOOST_GCC >= 110000
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpragmas"
+#endif
+
 #include <boost/mysql/pfr.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -26,6 +35,10 @@
 #include <array>
 #include <cstddef>
 #include <string_view>
+#endif
+
+#if BOOST_GCC >= 110000
+#pragma GCC diagnostic pop
 #endif
 
 namespace boost {
