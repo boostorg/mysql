@@ -14,8 +14,6 @@
 
 #if BOOST_PFR_ENABLED && defined(BOOST_MYSQL_CXX14)
 
-#include <boost/pfr/core_name.hpp>
-
 namespace boost {
 namespace mysql {
 
