@@ -154,7 +154,7 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
     conn.execute("SELECT id, field_int, field_double FROM multifield_table ORDER BY id", result);
 
     // Verify results
-    check_meta(result.meta(), {column_type::bigint, column_type::int_, column_type::double_});
+    check_meta(result.meta(), {column_type::int_, column_type::int_, column_type::double_});
     BOOST_TEST_REQUIRE(result.rows().size() == 2u);
     BOOST_TEST(boost::pfr::eq(result.rows()[0], row_multifield_pfr_literal{1, 11, 0.1}));
     BOOST_TEST(boost::pfr::eq(result.rows()[1], row_multifield_pfr_literal{2, 22, 0.2}));
@@ -373,7 +373,7 @@ BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
     // Start
     static_execution_state<pfr_by_position<row_multifield_pfr_literal>> result;
     conn.start_execution("SELECT id, field_int, field_double FROM multifield_table WHERE id = 1", result);
-    check_meta(result.meta(), {column_type::bigint, column_type::int_, column_type::double_});
+    check_meta(result.meta(), {column_type::int_, column_type::int_, column_type::double_});
     BOOST_TEST(result.should_read_rows());
 
     // Read rows
