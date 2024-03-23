@@ -5,11 +5,6 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-# This may be called from add_subdirectory, too
-if(BOOST_MYSQL_IS_ROOT)
-    find_package(Boost ${BOOST_MYSQL_VERSION} REQUIRED COMPONENTS unit_test_framework)
-endif()
-
 # Separately compiled Boost.MySQL and Boost.Asio
 add_library(
     boost_mysql_compiled
@@ -35,28 +30,11 @@ target_sources(
     ${CMAKE_CURRENT_SOURCE_DIR}/common/src/entry_point.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/src/tracker_executor.cpp
 )
-target_link_libraries(boost_mysql_testing INTERFACE boost_mysql_compiled)
-
-if(BOOST_MYSQL_IS_ROOT)
-    target_link_libraries(
-        boost_mysql_testing
-        INTERFACE
-        Boost::unit_test_framework
-        Boost::disable_autolinking
-    )
-else()
-    target_link_libraries(
-        boost_mysql_testing
-        INTERFACE
-        Boost::unit_test_framework
-        Boost::optional
-    )
-endif()
-
-target_compile_features(
+target_link_libraries(
     boost_mysql_testing
     INTERFACE
-    cxx_std_11
+    boost_mysql_compiled
+    Boost::unit_test_framework
 )
 target_include_directories(
     boost_mysql_testing

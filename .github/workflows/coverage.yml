@@ -38,13 +38,13 @@ jobs:
       - name: Build code
         run: |
           python tools/ci/main.py \
-            --build-kind=b2 \
             --source-dir=$(pwd) \
+            b2 \
+            --server-host=mysql \
             --toolset=gcc \
             --cxxstd=20 \
             --variant=debug \
-            --coverage=1 \
-            --server-host=mysql
+            --coverage=1
       
       - name: Generate coverage reports
         shell: bash

@@ -21,16 +21,15 @@ jobs:
     env:
       OPENSSL_ROOT: /usr/local/opt/openssl
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: |
           unlink /usr/local/bin/python || echo "/usr/local/bin/python not found"
           ln -s /usr/local/bin/python3 /usr/local/bin/python
           python -m pip install requests
           source tools/setup_db_osx.sh
           python tools/ci/main.py \
-            --build-kind=b2 \
             --source-dir=$(pwd) \
+            b2 \
             --toolset=clang \
             --cxxstd=20 \
-            --variant=debug,release \
-            --server-host=127.0.0.1 # Force use IPv4
+            --variant=debug,release
