@@ -8,7 +8,7 @@
 
 from pathlib import Path
 import os
-from .common import IS_WINDOWS, run
+from .common import run
 from .db_setup import db_setup
 from .install_boost import install_boost
 
@@ -31,8 +31,6 @@ def b2_build(
 ) -> None:
     # Config
     os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
-    if IS_WINDOWS:
-        os.environ['OPENSSL_ROOT'] = 'C:\\openssl-{}'.format(address_model)
 
     # Get Boost. This leaves us inside boost root
     install_boost(
