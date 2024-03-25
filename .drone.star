@@ -293,7 +293,7 @@ def main(ctx):
         linux_b2('Linux B2 gcc-13',               _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='release'),
         linux_b2('Linux B2 gcc-13-sanit',         _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 gcc-13-valgrind',      _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', valgrind=1),
-        linux_b2('Linux B2 noopenssl',            _image('build-noopenssl'),     toolset='gcc'),
+        linux_b2('Linux B2 noopenssl',            _image('build-noopenssl'),     toolset='gcc',       cxxstd='20'),
 
         # B2 Windows
         windows_b2('Windows B2 msvc14.1 32-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
