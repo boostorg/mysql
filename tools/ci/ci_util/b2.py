@@ -9,7 +9,7 @@
 from pathlib import Path
 import os
 from typing import List, Optional
-from .common import run
+from .common import run, IS_WINDOWS
 from .db_setup import db_setup
 from .install_boost import install_boost
 
@@ -67,6 +67,8 @@ def b2_build(
         _conditional('undefined-sanitizer=norecover', undefined_sanitizer),
         _conditional('coverage=on', coverage),
         _conditional('valgrind=on', valgrind),
+        # Workaround for https://github.com/bfgroup/b2/issues/368
+        _conditional('architecture=x86', address_model == '32' and not IS_WINDOWS),
         'warnings=extra',
         'warnings-as-errors=on',
         '-j4',
