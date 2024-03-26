@@ -46,6 +46,7 @@ def install_boost(
     # If BOOST_ROOT already exists, this is a re-build.
     # Copy our library into libs/ and exit
     if BOOST_ROOT.exists():
+        os.chdir(str(BOOST_ROOT))
         _copy_lib_to_boost(source_dir)
         return
 
