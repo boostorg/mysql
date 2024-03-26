@@ -8,9 +8,19 @@
 
 from pathlib import Path
 import os
+from typing import List, Optional
 from .common import run
 from .db_setup import db_setup
 from .install_boost import install_boost
+
+
+def _conditional_run(args: List[Optional[str]]) -> None:
+    run([elm for elm in args if elm is not None])
+
+
+def _conditional(arg: str, condition: bool) -> Optional[str]:
+    return arg if condition else None
+
 
 def b2_build(
     source_dir: Path,
@@ -43,7 +53,7 @@ def b2_build(
     db_setup(source_dir, db, server_host)
 
     # Invoke b2
-    run([
+    _conditional_run([
         'b2',
         '--abbreviate-paths',
         'toolset={}'.format(toolset),
@@ -51,20 +61,18 @@ def b2_build(
         'address-model={}'.format(address_model),
         'variant={}'.format(variant),
         'stdlib={}'.format(stdlib),
-        'boost.mysql.separate-compilation={}'.format('on' if separate_compilation else 'off'),
-        'boost.mysql.use-ts-executor={}'.format('on' if use_ts_executor else 'off'),
-    ] + (['address-sanitizer=norecover'] if address_sanitizer else [])     # can only be disabled by omitting the arg
-      + (['undefined-sanitizer=norecover'] if undefined_sanitizer else []) # can only be disabled by omitting the arg
-      + (['coverage=on'] if coverage else [])
-      + (['valgrind=on'] if valgrind else [])
-      + [
+        _conditional('boost.mysql.separate-compilation=on', separate_compilation),
+        _conditional('boost.mysql.use-ts-executor=on', use_ts_executor),
+        _conditional('address-sanitizer=norecover', address_sanitizer),
+        _conditional('undefined-sanitizer=norecover', undefined_sanitizer),
+        _conditional('coverage=on', coverage),
+        _conditional('valgrind=on', valgrind),
         'warnings=extra',
         'warnings-as-errors=on',
         '-j4',
         'libs/mysql/test',
         'libs/mysql/test/integration//boost_mysql_integrationtests',
         'libs/mysql/test/thread_safety',
-        'libs/mysql/example'
-    ] + 
-        ['libs/mysql/test//fail_if_no_openssl'] if fail_if_no_openssl else []
-    )
+        'libs/mysql/example',
+        _conditional('libs/mysql/test//fail_if_no_openssl', fail_if_no_openssl)
+    ])
