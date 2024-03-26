@@ -29,7 +29,8 @@ def _b2_command(
     use_ts_executor=0,
     address_sanitizer=0,
     undefined_sanitizer=0,
-    valgrind=0
+    valgrind=0,
+    fail_if_no_openssl=1
 ):
     return 'python tools/ci/main.py ' + \
                 '--source-dir="{}" '.format(source_dir) + \
@@ -44,7 +45,8 @@ def _b2_command(
                 '--use-ts-executor={} '.format(use_ts_executor) + \
                 '--address-sanitizer={} '.format(address_sanitizer) + \
                 '--undefined-sanitizer={} '.format(undefined_sanitizer) + \
-                '--valgrind={} '.format(valgrind)
+                '--valgrind={} '.format(valgrind) + \
+                '--fail-if-no-openssl={} '.format(fail_if_no_openssl)
 
 
 def _cmake_command(
@@ -136,6 +138,7 @@ def linux_b2(
     undefined_sanitizer=0,
     valgrind=0,
     arch='amd64',
+    fail_if_no_openssl=1
 ):
     command = _b2_command(
         source_dir='$(pwd)',
@@ -149,7 +152,8 @@ def linux_b2(
         use_ts_executor=use_ts_executor,
         address_sanitizer=address_sanitizer,
         undefined_sanitizer=undefined_sanitizer,
-        valgrind=valgrind
+        valgrind=valgrind,
+        fail_if_no_openssl=fail_if_no_openssl
     )
     return _pipeline(
         name=name,
@@ -293,7 +297,7 @@ def main(ctx):
         linux_b2('Linux B2 gcc-13',               _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='release'),
         linux_b2('Linux B2 gcc-13-sanit',         _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 gcc-13-valgrind',      _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', valgrind=1),
-        linux_b2('Linux B2 noopenssl',            _image('build-noopenssl'),     toolset='gcc',       cxxstd='20'),
+        linux_b2('Linux B2 noopenssl',            _image('build-noopenssl'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
 
         # B2 Windows
         windows_b2('Windows B2 msvc14.1 32-bit',      _win_image('build-msvc14_1'), toolset='msvc-14.1', cxxstd='11,14,17', variant='release',       address_model='32'),
