@@ -175,7 +175,7 @@ def windows_b2(
     use_ts_executor = 0
 ):
     commands = [
-        'Copy-Item "$Env:DRONE_WORKSPACE/tools/user-config-win.jam" -Destination "$Env:HOME/user-config.jam"',
+        'Copy-Item "$Env:DRONE_WORKSPACE/tools/user-config-win.jam" -Destination "$Env:HOMEDRIVE$Env:HOMEPATH/user-config.jam"',
         _b2_command(
             source_dir='$Env:DRONE_WORKSPACE',
             toolset=toolset,
