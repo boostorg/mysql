@@ -26,9 +26,9 @@ namespace mysql {
  * Field matching is performed by position, with the same algorithm used for `std::tuple`.
  * \n
  * The underlying row type for this marker is `T`, i.e.
- * \ref underlying_row_t `underlying_row_t<pfr_by_position<T>>` is an alias for `T`.
+ * \ref underlying_row_t "underlying_row_t<pfr_by_position<T>>" is an alias for `T`.
  * \n
- * `T` must be a PFR-reflectable non-const object type.
+ * The type `T` must be a PFR-reflectable non-const object type.
  * \n
  * This type is only defined if the macro `BOOST_PFR_ENABLED` is defined and set to `1`.
  */
@@ -46,9 +46,9 @@ struct pfr_by_position;
  * Field matching is performed by name, with the same algorithm used for Boost.Describe structs.
  * \n
  * The underlying row type for this marker is `T`, i.e.
- * \ref underlying_row_t `underlying_row_t<pfr_by_name<T>>` is an alias for `T`.
+ * \ref underlying_row_t "underlying_row_t<pfr_by_name<T>>" is an alias for `T`.
  * \n
- * `T` must be a PFR-reflectable non-const object type.
+ * The type `T` must be a PFR-reflectable non-const object type.
  * \n
  * This type is only defined if the macro `BOOST_PFR_CORE_NAME_ENABLED` is defined and set to `1`
  * (requires C++20).

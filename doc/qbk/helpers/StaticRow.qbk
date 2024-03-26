@@ -18,7 +18,7 @@ Formally, a type `T` is a `StaticRow` if either of the following is true:
   members fulfill the `ReadableField` exposition-only concept.
 * It is a non-const `std::tuple` instantiation, and all of its types fulfill the
   `ReadableField` exposition-only concept.
-* It is an instantiation of the [reflink pfr_by_name] or [reflink pfr_by_index]
+* It is an instantiation of the [reflink pfr_by_name] or [reflink pfr_by_position]
   marker types using a type `Underlying` that satisfies the following:
   * Is reflectable using Boost.PFR. For C++17 and later, this means
     satisfying [@boost:/doc/html/boost_pfr/limitations_and_configuration.html `SimpleAggregate`].

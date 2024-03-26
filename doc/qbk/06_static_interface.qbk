@@ -13,7 +13,7 @@ our rows. We have several options:
 
 * Use [@boost:/libs/describe/index.html Boost.Describe] to annotate a plain `struct`
   with `BOOST_DESCRIBE_STRUCT` to enable reflection on it.
-* Use [@boost:/libs/pfr/index.html Boost.PFR] and [reflink pfr_by_name] or [reflink pfr_by_index]
+* Use [@boost:/libs/pfr/index.html Boost.PFR] and [reflink pfr_by_name] or [reflink pfr_by_position]
   to use PFR automatic reflection capabilities.
 * Use `std::tuple`.
 
