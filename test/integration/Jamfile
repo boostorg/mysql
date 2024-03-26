@@ -81,7 +81,6 @@ run
 
     : requirements
         <testing.arg>$(test_command)
-        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
         <include>include
         <define>BOOST_ALLOW_DEPRECATED # Integration tests still exercise the old execution interface
     : target-name boost_mysql_integrationtests
