@@ -15,19 +15,6 @@
   <xsl:variable name="private" select="0"/>
   <xsl:variable name="include-private-members" select="false()"/>
 
-  <xsl:template mode="includes-template-footer" match="location">
-    <xsl:variable name="convenience-header" as="xs:string?">
-      <xsl:apply-templates mode="convenience-header" select="@file"/>
-    </xsl:variable>
-    <xsl:if test="$convenience-header">
-      <xsl:text>{$nl}</xsl:text>
-      <xsl:text>Convenience header [include_file boost/{$convenience-header}]</xsl:text>
-      <xsl:text>{$nl}</xsl:text>
-    </xsl:if>
-  </xsl:template>
-
-  <xsl:template mode="convenience-header" match="@file[contains(., 'boost/mysql')]">mysql.hpp</xsl:template>
-
   <xsl:variable name="emphasized-template-parameter-types" select="
     'CompletionToken',
     'ExecutionContext',
