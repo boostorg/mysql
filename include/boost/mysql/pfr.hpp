@@ -17,13 +17,42 @@
 namespace boost {
 namespace mysql {
 
-// TODO: document
-
+/**
+ * \brief Static interface marker type to use Boost.PFR reflection with positional matching.
+ * \details
+ * A marker type that satisfies the `StaticRow` concept.
+ * When used within the static interface, modifies its behavior
+ * for the marked type so that Boost.PFR is used for reflection, instead of Boost.Describe.
+ * Field matching is performed by position, with the same algorithm used for `std::tuple`.
+ * \n
+ * The underlying row type for this marker is `T`, i.e.
+ * \ref underlying_row_t `underlying_row_t<pfr_by_position<T>>` is an alias for `T`.
+ * \n
+ * `T` must be a PFR-reflectable non-const object type.
+ * \n
+ * This type is only defined if the macro `BOOST_PFR_ENABLED` is defined and set to `1`.
+ */
 template <class T>
 struct pfr_by_position;
 
 #if BOOST_PFR_CORE_NAME_ENABLED
 
+/**
+ * \brief Static interface marker type to use Boost.PFR reflection with name-based field matching.
+ * \details
+ * A marker type that satisfies the `StaticRow` concept.
+ * When used within the static interface, modifies its behavior
+ * for the marked type so that Boost.PFR is used for reflection, instead of Boost.Describe.
+ * Field matching is performed by name, with the same algorithm used for Boost.Describe structs.
+ * \n
+ * The underlying row type for this marker is `T`, i.e.
+ * \ref underlying_row_t `underlying_row_t<pfr_by_name<T>>` is an alias for `T`.
+ * \n
+ * `T` must be a PFR-reflectable non-const object type.
+ * \n
+ * This type is only defined if the macro `BOOST_PFR_CORE_NAME_ENABLED` is defined and set to `1`
+ * (requires C++20).
+ */
 template <class T>
 struct pfr_by_name;
 
