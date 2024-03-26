@@ -26,18 +26,18 @@ using openssl ;
 # Provide a way to fail the build if OpenSSL is not found - used by CIs
 rule do_fail_impl ( a * )
 {
-    exit "OpenSSL could not be found. Don't build target fail_if_not_openssl to skip this check" ;
+    exit "OpenSSL could not be found. Don't build target fail_if_no_openssl to skip this check" ;
 }
 
 local do_fail = [ indirect.make do_fail_impl ] ;
 
-alias fail_if_not_openssl
+alias fail_if_no_openssl
     : requirements
         [ ac.check-library /openssl//ssl    : : <conditional>@$(do_fail) ]
         [ ac.check-library /openssl//crypto : : <conditional>@$(do_fail) ]
 ;
 
-explicit fail_if_not_openssl ;
+explicit fail_if_no_openssl ;
 
 # Requirements to use across targets
 local requirements = 

@@ -66,5 +66,5 @@ def b2_build(
         'libs/mysql/test/thread_safety',
         'libs/mysql/example'
     ] + 
-        ['libs/mysql/test//fail_if_not_openssl'] if fail_if_no_openssl else []
+        ['libs/mysql/test//fail_if_no_openssl'] if fail_if_no_openssl else []
     )
