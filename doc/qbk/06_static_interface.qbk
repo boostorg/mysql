@@ -86,37 +86,15 @@ In this case, the correct definition would be:
 
 [heading Using Boost.PFR]
 
-If you're using C++20 or above, you can use [reflink pfr_by_name] to achieve
-a similar goal than Boost.Describe, but without the `BOOST_DESCRIBE_STRUCT` macro:
+If you're using C++20 or above, you can use Boost.PFR to reflect types
+without the `BOOST_DESCRIBE_STRUCT` macro:
 
-```
-// post_v2 doesn't contain any metadata - we're not using BOOST_DESCRIBE_STRUCT here
-struct post_v2
-{
-    std::string title;
-    int id;
-    std::string body;
-};
+[describe_post_pfr]
 
-void f()
-{
-    // pfr_by_name is a marker type. It tells static_results to use
-    // Boost.PFR for reflection, instead of Boost.Describe.
-    // As with Boost.Describe, the declaration order of fields in post_v2 is irrelevant, 
-    // as static_results will perform database to C++ field matching using the
-    // field names reflected by Boost.PFR.
-    static_results<pfr_by_name<post_v2>> result;
-    conn.execute(query, result);
+PFR reflection can be enabled in Boost.MySQL by using [reflink pfr_by_name]:
 
-    // Note that result.rows() is a span of post_v2 objects,
-    // rather than pfr_by_name<post_v2> objects
-    for (const post_v2& p : result.rows())
-    {
-        // Process the post as required
-        std::cout << "Title: " << p.title << "\n" << p.body << "\n";
-    }
-}
-```
+[static_pfr_by_name]
+
 
 Note that [reflink pfr_by_name] is what we call a ['marker type] - an empty type that tells
 classes like [reflink static_results] how to reflect a type. If no
@@ -126,34 +104,15 @@ marker type is used, Boost.Describe is used to retrieve reflection data for stru
 columns in the query to struct fields by position, rather than name.
 It only requires C++14 to work. For instance:
 
-```
-// post_v2 doesn't contain any metadata - we're not using BOOST_DESCRIBE_STRUCT here
-struct post_v2
-{
-    std::string title;
-    int id;
-    std::string body;
-};
-
-void f()
-{
-    // pfr_by_position is another marker type.
-    // Fields in post_v2 must appear in the same order as in the query,
-    // as matching will be done by position.
-    static_results<pfr_by_position<post_v2>> result;
-    conn.execute("SELECT title, id, body FROM posts", result);
-
-    // Note that rows are of type post_v2
-    for (const post_v2& p : result.rows())
-    {
-        // Process the post as required
-        std::cout << "Title: " << p.title << "\n" << p.body << "\n";
-    }
-}
-```
+[static_pfr_by_position]
 
 Please refer to [link mysql.static_interface.comparison this table] for a comparison
 with Boost.Describe.
+
+
+
+
+
 
 
 [heading Using tuples]
@@ -200,10 +159,8 @@ This table may help you decide:
     [
         [Boost.Describe]
         [
-            [describe_post]
-            ```
-                static_results<post> result;
-            ```
+            [static_comparison_describe_struct][br]
+            [static_comparison_describe]
         ]
         [
             C++14
@@ -220,15 +177,8 @@ This table may help you decide:
     [
         [Boost.PFR using names]
         [
-            ```
-            struct post_v2
-            {
-                std::string title;
-                int id;
-                std::string body;
-            };
-            ```
-            static_results<pfr_by_name<post_v2>> result;
+            [static_comparison_pfr_struct][br]
+            [static_comparison_pfr_by_name]
         ]
         [
             C++20
@@ -245,33 +195,29 @@ This table may help you decide:
     [
         [Boost.PFR using field position]
         [
-            ```
-            struct post_v2
-            {
-                std::string title;
-                int id;
-                std::string body;
-            };
-            ```
-            static_results<pfr_by_position<post_v2>> result;
+            [static_comparison_pfr_struct][br]
+            [static_comparison_pfr_by_position]
         ]
         [
-            C++14
+            C++17[br]
+            C++14 with limitations
         ]
         [
             * Doesn't require adding metadata to structs.[br]
             * Matches fields by position.[br]
-            * Works for row types satisfying [@boost:/doc/html/boost_pfr/limitations_and_configuration.html `SimpleAggregate`].
-              [@boost:/doc/html/boost_pfr/limitations_and_configuration.html Additional limitations] apply for C++14 compilers.
+            * In C++17 mode, it works for row types satisfying [@boost:/doc/html/boost_pfr/limitations_and_configuration.html `SimpleAggregate`].
+            * In C++14 mode, it may not work for rows containing certain field types, like strings. See
+              [@boost:/doc/html/boost_pfr/limitations_and_configuration.html Boost.PFR documentation] on C++14 limitations.
         ]
         [
-            `BOOST_PFR_ENABLED` is defined and set to `1`
+            `BOOST_PFR_ENABLED` is defined and set to `1`.
+            `BOOST_PFR_USE_CPP17` is defined and set to `1` for C++17 mode.
         ]
     ]
     [
         [Standard tuples]
         [
-            [static_tuples]
+            [static_comparison_tuples]
         ]
         [
             C++14
