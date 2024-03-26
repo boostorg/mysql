@@ -9,18 +9,35 @@ import os ;
 import path ;
 import feature ;
 import ac ;
+import indirect ;
 import ../config/checks/config : requires ;
 
 project /boost/mysql/test ;
-
-# Configure openssl if it hasn't been done yet
-using openssl ;
 
 # Support header-only builds
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
 
 # Support builds with BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
 feature.feature boost.mysql.use-ts-executor : on off : propagated composite ;
+
+# Configure openssl if it hasn't been done yet
+using openssl ;
+
+# Provide a way to fail the build if OpenSSL is not found - used by CIs
+rule do_fail_impl ( a * )
+{
+    exit "OpenSSL could not be found. Don't build target fail_if_not_openssl to skip this check" ;
+}
+
+local do_fail = [ indirect.make do_fail_impl ] ;
+
+alias fail_if_not_openssl
+    : requirements
+        [ ac.check-library /openssl//ssl    : : <conditional>@$(do_fail) ]
+        [ ac.check-library /openssl//crypto : : <conditional>@$(do_fail) ]
+;
+
+explicit fail_if_not_openssl ;
 
 # Requirements to use across targets
 local requirements = 

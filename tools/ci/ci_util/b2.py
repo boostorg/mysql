@@ -28,6 +28,7 @@ def b2_build(
     use_ts_executor: bool,
     coverage: bool,
     valgrind: bool,
+    fail_if_no_openssl: bool,
 ) -> None:
     # Config
     os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
@@ -64,4 +65,6 @@ def b2_build(
         'libs/mysql/test/integration//boost_mysql_integrationtests',
         'libs/mysql/test/thread_safety',
         'libs/mysql/example'
-    ])
+    ] + 
+        ['libs/mysql/test//fail_if_not_openssl'] if fail_if_no_openssl else []
+    )
