@@ -20,7 +20,7 @@ our rows. We have several options:
 We will start with Boost.Describe and explain the other options later.
 For a comparison, please refer to [link mysql.static_interface.comparison this table].
 
-For example, given the following table definition and query:
+For example, given the following table definition:
 
 [static_setup]
 
@@ -28,7 +28,7 @@ We can define our row type like this:
 
 [describe_post]
 
-To run the query, we can write:
+And write the following to query our table:
 
 [static_query]
 

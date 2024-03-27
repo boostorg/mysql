@@ -93,26 +93,25 @@ BOOST_AUTO_TEST_CASE(section_static)
 
     auto& conn = test::get_connection();
 
+    //[static_setup
+    constexpr const char* table_definition = R"%(
+        CREATE TEMPORARY TABLE posts (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            title VARCHAR (256) NOT NULL,
+            body TEXT NOT NULL
+        )
+    )%";
+    //]
+
+    results r;
+    conn.execute(table_definition, r);
+
     {
         using test::post;
 
-        //[static_setup
-        constexpr const char* table_definition = R"%(
-            CREATE TEMPORARY TABLE posts (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR (256) NOT NULL,
-                body TEXT NOT NULL
-            )
-        )%";
-        constexpr const char* query = "SELECT id, title, body FROM posts";
-        //]
-
-        results r;
-        conn.execute(table_definition, r);
-
         //[static_query
         static_results<post> result;
-        conn.execute(query, result);
+        conn.execute("SELECT id, title, body FROM posts", result);
 
         for (const post& p : result.rows())
         {
@@ -120,8 +119,6 @@ BOOST_AUTO_TEST_CASE(section_static)
             std::cout << "Title: " << p.title << "\n" << p.body << "\n";
         }
         //]
-
-        conn.execute("DROP TABLE posts", r);
     }
     {
         //[static_field_order
@@ -190,7 +187,7 @@ BOOST_AUTO_TEST_CASE(section_static)
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
     {
         //[static_nulls_table
-        const char* table_definition = R"%(
+        constexpr const char* table_definition = R"%(
             CREATE TEMPORARY TABLE posts_v2 (
                 id INT PRIMARY KEY AUTO_INCREMENT,
                 title VARCHAR (256) NOT NULL,
@@ -243,6 +240,8 @@ BOOST_AUTO_TEST_CASE(section_static)
         //]
     }
 #endif  // BOOST_MYSQL_CXX14
+
+    conn.execute("DROP TABLE posts", r);
 }
 
 }  // namespace
