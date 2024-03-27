@@ -8,6 +8,8 @@
 import os ;
 import path ;
 import feature ;
+import ac ;
+import indirect ;
 import ../config/checks/config : requires ;
 
 project /boost/mysql/test ;
@@ -16,66 +18,26 @@ project /boost/mysql/test ;
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
 
 # Support builds with BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
-feature.feature boost.mysql.use-ts-executor : on off : propagated composite ;
+feature.feature boost.mysql.use-ts-executor : off on : propagated composite ;
 
-# System libraries
-if [ os.name ] = NT
+# Configure openssl if it hasn't been done yet
+using openssl ;
+
+# Provide a way to fail the build if OpenSSL is not found - used by CIs
+rule do_fail_impl ( a * )
 {
-    local OPENSSL_ROOT_ENV = [ os.environ OPENSSL_ROOT ] ;
-    local OPENSSL_ROOT = "" ;
-    if $(OPENSSL_ROOT_ENV)
-    {
-        OPENSSL_ROOT = $(OPENSSL_ROOT_ENV) ;
-    }
-    else 
-    {
-        OPENSSL_ROOT = "C:/OpenSSL" ;
-    }
-    local openssl_requirements =
-        <include>$(OPENSSL_ROOT)/include
-        <library-path>$(OPENSSL_ROOT)/lib
-    ; 
-
-    if [ path.exists $(OPENSSL_ROOT)/lib/libssl.lib ]
-    {
-        echo "OpenSSL > 1.1.0. Including libssl" ;
-        lib ssl : : <target-os>windows <name>libssl : : $(openssl_requirements) ;
-    }
-    else if [ path.exists $(OPENSSL_ROOT)/lib/ssleay32.lib ] 
-    {
-        echo "OpenSSL < 1.1.0. Including ssleay32" ;
-        lib ssl : : <target-os>windows <name>ssleay32 : : $(openssl_requirements) ;
-    }
-    else
-    {
-        lib ssl : : <link>shared : : $(openssl_requirements) ;
-    }
-
-    if [ path.exists $(OPENSSL_ROOT)/lib/libcrypto.lib ]
-    {
-        echo "OpenSSL > 1.1.0. Including libcrypto" ;
-        lib crypto : : <target-os>windows <name>libcrypto : : $(openssl_requirements) ;
-    }
-    else if [ path.exists $(OPENSSL_ROOT)/lib/libeay32.lib ]
-    {
-        echo "OpenSSL < 1.1.0. Including libeay32" ;
-        lib crypto : : <target-os>windows <name>libeay32 : : $(openssl_requirements) ;
-    }
-    else
-    {
-        lib crypto : : <link>shared : : $(openssl_requirements) ;
-    }
+    exit "OpenSSL could not be found. Don't build target fail_if_no_openssl to skip this check" ;
 }
-else
-{
-    local OPENSSL_ROOT = [ os.environ OPENSSL_ROOT ] ;
-    local openssl_requirements =
-        <include>$(OPENSSL_ROOT)/include
-        <library-path>$(OPENSSL_ROOT)/lib
-    ; 
-    lib ssl : : <link>shared : : $(openssl_requirements) ;
-    lib crypto : : <link>shared : : $(openssl_requirements) ;
-}
+
+local do_fail = [ indirect.make do_fail_impl ] ;
+
+alias fail_if_no_openssl
+    : requirements
+        [ ac.check-library /openssl//ssl    : : <conditional>@$(do_fail) ]
+        [ ac.check-library /openssl//crypto : : <conditional>@$(do_fail) ]
+;
+
+explicit fail_if_no_openssl ;
 
 # Requirements to use across targets
 local requirements = 
@@ -108,9 +70,9 @@ local requirements =
 
 alias boost_mysql
     :
-        ssl
-        crypto
         /boost/charconv//boost_charconv
+        /openssl//ssl/<link>shared
+        /openssl//crypto/<link>shared
     : requirements
         [ requires
             cxx11_defaulted_moves
@@ -126,6 +88,8 @@ alias boost_mysql
             cxx11_template_aliases
             cxx11_variadic_templates
         ]
+        [ ac.check-library /openssl//ssl    : <library>/openssl//ssl/<link>shared : <build>no ]
+        [ ac.check-library /openssl//crypto : <library>/openssl//crypto/<link>shared : <build>no ]
         $(requirements)
     : usage-requirements
         $(requirements)

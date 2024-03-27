@@ -86,6 +86,7 @@ def main():
     subp.add_argument('--undefined-sanitizer', type=_str2bool, default=False)
     subp.add_argument('--coverage', type=_str2bool, default=False)
     subp.add_argument('--valgrind', type=_str2bool, default=False)
+    subp.add_argument('--fail-if-no-openssl', type=_str2bool, default=True)
     subp.set_defaults(func=b2_build)
 
     # cmake

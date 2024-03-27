@@ -18,13 +18,12 @@ on:
 jobs:
   osx:
     runs-on: macos-latest
-    env:
-      OPENSSL_ROOT: /usr/local/opt/openssl
     steps:
       - uses: actions/checkout@v4
       - run: |
           unlink /usr/local/bin/python || echo "/usr/local/bin/python not found"
           ln -s /usr/local/bin/python3 /usr/local/bin/python
+          cp tools/user-config-osx-gha.jam ~/user-config.jam
           python -m pip install requests
           source tools/setup_db_osx.sh
           python tools/ci/main.py \
