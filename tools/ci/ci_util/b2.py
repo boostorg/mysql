@@ -22,6 +22,19 @@ def _conditional(arg: str, condition: bool) -> Optional[str]:
     return arg if condition else None
 
 
+def _win_openssl_line(address_model: int) -> str:
+    s = 'using openssl : : <include>"C:/openssl-{0}/include" <search>"C:/openssl-{0}/lib" <ssl-name>libssl <crypto-name>libcrypto : <address-model>{0} ;\n'
+    return s.format(address_model)
+
+
+def _write_windows_user_config() -> None:
+    config_path = os.path.expandvars('%HOMEDRIVE%%HOMEPATH%\\user-config.jam')
+    print(' + Writing user-config.jam to {config_path}'.format(config_path))
+    with open(config_path, 'wt', encoding='utf-8') as f:
+        for am in (32, 64):
+            f.write(_win_openssl_line(am))
+
+
 def b2_build(
     source_dir: Path,
     toolset: str,
@@ -42,6 +55,8 @@ def b2_build(
 ) -> None:
     # Config
     os.environ['UBSAN_OPTIONS'] = 'print_stacktrace=1'
+    if IS_WINDOWS:
+        _write_windows_user_config()
 
     # Get Boost. This leaves us inside boost root
     install_boost(

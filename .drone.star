@@ -82,7 +82,7 @@ def _pipeline(
     name,
     image,
     os,
-    commands,
+    command,
     db,
     arch='amd64'
 ):
@@ -107,7 +107,7 @@ def _pipeline(
                 "name": "mysql-socket",
                 "path": "/var/run/mysqld"
             }] if db != None else [],
-            "commands": commands
+            "commands": [command]
         }],
         "services": [{
             "name": "mysql",
@@ -159,7 +159,7 @@ def linux_b2(
         name=name,
         image=image,
         os='linux',
-        commands=[command],
+        command=command,
         db='mysql8',
         arch=arch
     )
@@ -174,19 +174,16 @@ def windows_b2(
     address_model = '64',
     use_ts_executor = 0
 ):
-    commands = [
-        'Copy-Item "$Env:DRONE_WORKSPACE/tools/user-config-win.jam" -Destination "$Env:HOMEDRIVE$Env:HOMEPATH/user-config.jam"',
-        _b2_command(
-            source_dir='$Env:DRONE_WORKSPACE',
-            toolset=toolset,
-            cxxstd=cxxstd,
-            variant=variant,
-            address_model=address_model,
-            server_host='127.0.0.1',
-            use_ts_executor=use_ts_executor
-        )
-    ]
-    return _pipeline(name=name, image=image, os='windows', commands=commands, db=None)
+    command = _b2_command(
+        source_dir='$Env:DRONE_WORKSPACE',
+        toolset=toolset,
+        cxxstd=cxxstd,
+        variant=variant,
+        address_model=address_model,
+        server_host='127.0.0.1',
+        use_ts_executor=use_ts_executor
+    )
+    return _pipeline(name=name, image=image, os='windows', command=command, db=None)
 
 
 def linux_cmake(
@@ -207,7 +204,7 @@ def linux_cmake(
         server_host='mysql',
         install_test=install_test
     )
-    return _pipeline(name=name, image=image, os='linux', commands=[command], db=db)
+    return _pipeline(name=name, image=image, os='linux', command=command, db=db)
 
 
 def linux_cmake_noopenssl(name):
@@ -215,7 +212,7 @@ def linux_cmake_noopenssl(name):
                 '--source-dir=$(pwd) ' + \
                 'cmake-noopenssl ' + \
                 '--generator=Ninja '
-    return _pipeline(name=name, image=_image('build-noopenssl'), os='linux', commands=[command], db=None)
+    return _pipeline(name=name, image=_image('build-noopenssl'), os='linux', command=command, db=None)
 
 
 def windows_cmake(
@@ -233,19 +230,19 @@ def windows_cmake(
         name=name,
         image=_win_image('build-msvc14_3'),
         os='windows',
-        commands=[command],
+        command=command,
         db=None
     )
 
 
 def find_package_b2_linux(name):
     command = _find_package_b2_command(source_dir='$(pwd)', generator='Ninja')
-    return _pipeline(name=name, image=_image('build-gcc13'), os='linux', commands=[command], db=None)
+    return _pipeline(name=name, image=_image('build-gcc13'), os='linux', command=command, db=None)
 
 
 def find_package_b2_windows(name):
     command = _find_package_b2_command(source_dir='$Env:DRONE_WORKSPACE', generator='Visual Studio 17 2022')
-    return _pipeline(name=name, image=_win_image('build-msvc14_3'), os='windows', commands=[command], db=None)
+    return _pipeline(name=name, image=_win_image('build-msvc14_3'), os='windows', command=command, db=None)
 
 
 def docs(name):
@@ -253,7 +250,7 @@ def docs(name):
         name=name,
         image=_image('build-docs'),
         os='linux',
-        commands=['python tools/ci/main.py --source-dir=$(pwd) docs'],
+        command='python tools/ci/main.py --source-dir=$(pwd) docs',
         db=None
     )
 
