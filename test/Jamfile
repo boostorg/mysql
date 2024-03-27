@@ -18,7 +18,7 @@ project /boost/mysql/test ;
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
 
 # Support builds with BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
-feature.feature boost.mysql.use-ts-executor : on off : propagated composite ;
+feature.feature boost.mysql.use-ts-executor : off on : propagated composite ;
 
 # Configure openssl if it hasn't been done yet
 using openssl ;
