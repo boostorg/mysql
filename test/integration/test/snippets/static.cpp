@@ -23,7 +23,8 @@
 
 using namespace boost::mysql;
 
-namespace {
+// PFR types can't be placed in anonymous namespaces
+namespace snippets_static {
 
 //[describe_statistics
 struct statistics
@@ -239,9 +240,10 @@ BOOST_AUTO_TEST_CASE(section_static)
         conn.execute("SELECT id, title, body FROM posts", result);
         //]
     }
-#endif  // BOOST_MYSQL_CXX14
 
     conn.execute("DROP TABLE posts", r);
+
+#endif  // BOOST_MYSQL_CXX14
 }
 
-}  // namespace
+}  // namespace snippets_static
