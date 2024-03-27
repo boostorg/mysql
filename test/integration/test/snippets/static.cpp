@@ -94,18 +94,20 @@ BOOST_AUTO_TEST_CASE(section_static)
 
     auto& conn = test::get_connection();
 
-    //[static_setup
-    constexpr const char* table_definition = R"%(
-        CREATE TEMPORARY TABLE posts (
-            id INT PRIMARY KEY AUTO_INCREMENT,
-            title VARCHAR (256) NOT NULL,
-            body TEXT NOT NULL
-        )
-    )%";
-    //]
+    {
+        //[static_setup
+        constexpr const char* table_definition = R"%(
+            CREATE TEMPORARY TABLE posts (
+                id INT PRIMARY KEY AUTO_INCREMENT,
+                title VARCHAR (256) NOT NULL,
+                body TEXT NOT NULL
+            )
+        )%";
+        //]
 
-    results r;
-    conn.execute(table_definition, r);
+        results r;
+        conn.execute(table_definition, r);
+    }
 
     {
         using test::post;
@@ -241,7 +243,10 @@ BOOST_AUTO_TEST_CASE(section_static)
         //]
     }
 
-    conn.execute("DROP TABLE posts", r);
+    {
+        results r;
+        conn.execute("DROP TABLE posts", r);
+    }
 
 #endif  // BOOST_MYSQL_CXX14
 }
