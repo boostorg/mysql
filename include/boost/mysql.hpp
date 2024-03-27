@@ -61,6 +61,7 @@
 #include <boost/mysql/tcp_ssl.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 #include <boost/mysql/time.hpp>
+#include <boost/mysql/underlying_row.hpp>
 #include <boost/mysql/unix.hpp>
 #include <boost/mysql/unix_ssl.hpp>
 

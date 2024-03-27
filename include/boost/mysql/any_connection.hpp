@@ -668,22 +668,23 @@ public:
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
      * \n
-     * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
+     * The type `SpanElementType` must be the underlying row type for one of the types in the
+     * `StaticRow` parameter pack (i.e., one of the types in `underlying_row_t<StaticRow>...`).
      * The type must match the resultset that is currently being processed by `st`. For instance,
-     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
-     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanElementType`
+     * must exactly be `underlying_row_t<T2>`. If this is not the case, a runtime error will be issued.
      * \n
      * This function can report schema mismatches.
      */
-    template <class SpanStaticRow, class... StaticRow>
+    template <class SpanElementType, class... StaticRow>
     std::size_t read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         error_code& err,
         diagnostics& diag
     )
     {
-        return impl_.run(impl_.make_params_read_some_rows(st, output, diag), err);
+        return impl_.run(impl_.make_params_read_some_rows_static(st, output, diag), err);
     }
 
     /**
@@ -705,15 +706,16 @@ public:
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
      * \n
-     * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
+     * The type `SpanElementType` must be the underlying row type for one of the types in the
+     * `StaticRow` parameter pack (i.e., one of the types in `underlying_row_t<StaticRow>...`).
      * The type must match the resultset that is currently being processed by `st`. For instance,
-     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
-     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanElementType`
+     * must exactly be `underlying_row_t<T2>`. If this is not the case, a runtime error will be issued.
      * \n
      * This function can report schema mismatches.
      */
-    template <class SpanStaticRow, class... StaticRow>
-    std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanStaticRow> output)
+    template <class SpanElementType, class... StaticRow>
+    std::size_t read_some_rows(static_execution_state<StaticRow...>& st, span<SpanElementType> output)
     {
         error_code err;
         diagnostics diag;
@@ -741,10 +743,11 @@ public:
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
      * \n
-     * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
+     * The type `SpanElementType` must be the underlying row type for one of the types in the
+     * `StaticRow` parameter pack (i.e., one of the types in `underlying_row_t<StaticRow>...`).
      * The type must match the resultset that is currently being processed by `st`. For instance,
-     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
-     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanElementType`
+     * must exactly be `underlying_row_t<T2>`. If this is not the case, a runtime error will be issued.
      * \n
      * This function can report schema mismatches.
      *
@@ -756,13 +759,13 @@ public:
      * The storage that `output` references must be kept alive until the operation completes.
      */
     template <
-        class SpanStaticRow,
+        class SpanElementType,
         class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
@@ -788,10 +791,11 @@ public:
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
      * \n
-     * `SpanStaticRow` must exactly be one of the types in the `StaticRow` parameter pack.
+     * The type `SpanElementType` must be the underlying row type for one of the types in the
+     * `StaticRow` parameter pack (i.e., one of the types in `underlying_row_t<StaticRow>...`).
      * The type must match the resultset that is currently being processed by `st`. For instance,
-     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanStaticRow`
-     * must exactly be `T2`. If this is not the case, a runtime error will be issued.
+     * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanElementType`
+     * must exactly be `underlying_row_t<T2>`. If this is not the case, a runtime error will be issued.
      * \n
      * This function can report schema mismatches.
      *
@@ -803,19 +807,19 @@ public:
      * The storage that `output` references must be kept alive until the operation completes.
      */
     template <
-        class SpanStaticRow,
+        class SpanElementType,
         class... StaticRow,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_read_some_rows(
         static_execution_state<StaticRow...>& st,
-        span<SpanStaticRow> output,
+        span<SpanElementType> output,
         diagnostics& diag,
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     )
     {
         return impl_.async_run(
-            impl_.make_params_read_some_rows(st, output, diag),
+            impl_.make_params_read_some_rows_static(st, output, diag),
             std::forward<CompletionToken>(token)
         );
     }

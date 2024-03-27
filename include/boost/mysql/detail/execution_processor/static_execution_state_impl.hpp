@@ -20,7 +20,6 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/typing/get_type_index.hpp>
 #include <boost/mysql/detail/typing/row_traits.hpp>
 
 #include <boost/assert.hpp>
@@ -203,7 +202,7 @@ static error_code execst_parse_fn(
     const output_ref& ref
 )
 {
-    return parse(pos_map, from, ref.span_element<StaticRow>());
+    return parse<StaticRow>(pos_map, from, ref.span_element<underlying_row_t<StaticRow>>());
 }
 
 template <class... StaticRow>
@@ -214,7 +213,7 @@ constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> create_e
         get_row_name_table<StaticRow>(),
         &meta_check<StaticRow>,
         &execst_parse_fn<StaticRow>,
-        get_type_index<StaticRow, StaticRow...>(),
+        get_type_index<underlying_row_t<StaticRow>, StaticRow...>(),
     }...}};
 }
 
@@ -277,6 +276,17 @@ public:
     }
 
     ~static_execution_state_impl() = default;
+
+    template <class SpanElementType>
+    output_ref make_output_ref(span<SpanElementType> output, std::size_t offset = 0) const noexcept
+    {
+        constexpr std::size_t index = get_type_index<SpanElementType, StaticRow...>();
+        static_assert(
+            index != index_not_found,
+            "SpanElementType must be one of the types returned by the query"
+        );
+        return output_ref(output, index, offset);
+    }
 
     const static_execution_state_erased_impl& get_interface() const noexcept { return impl_; }
     static_execution_state_erased_impl& get_interface() noexcept { return impl_; }

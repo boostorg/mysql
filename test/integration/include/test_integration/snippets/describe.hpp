@@ -29,7 +29,7 @@ struct post
     std::string body;
 };
 
-// We must use Boost.Describe to add reflection capabilities to post.
+// We use BOOST_DESCRIBE_STRUCT to add reflection capabilities to post.
 // We must list all the fields that should be populated by Boost.MySQL
 BOOST_DESCRIBE_STRUCT(post, (), (id, title, body))
 //]

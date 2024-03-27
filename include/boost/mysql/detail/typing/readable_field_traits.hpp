@@ -25,6 +25,9 @@
 #include <boost/mysql/detail/typing/pos_map.hpp>
 #include <boost/mysql/detail/void_t.hpp>
 
+#include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/utility.hpp>
+
 #include <cstdint>
 #include <limits>
 #include <string>
@@ -589,30 +592,6 @@ void meta_check_field(meta_check_context& ctx)
     static_assert(is_readable_field<ReadableField>::value, "Should be a ReadableField");
     meta_check_field_impl<ReadableField>(ctx);
     ctx.advance();
-}
-
-struct meta_check_field_fn
-{
-    meta_check_context ctx;
-
-    template <class T>
-    void operator()(T)
-    {
-        meta_check_field<typename T::type>(ctx);
-    }
-};
-
-template <typename ReadableFieldList>
-error_code meta_check_field_type_list(
-    span<const std::size_t> field_map,
-    name_table_t name_table,
-    metadata_collection_view meta,
-    diagnostics& diag
-)
-{
-    meta_check_field_fn fn{meta_check_context(field_map, name_table, meta)};
-    boost::mp11::mp_for_each<ReadableFieldList>(fn);
-    return fn.ctx.check_errors(diag);
 }
 
 }  // namespace detail

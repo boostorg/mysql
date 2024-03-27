@@ -35,6 +35,7 @@ target_link_libraries(
     INTERFACE
     boost_mysql_compiled
     Boost::unit_test_framework
+    Boost::pfr
 )
 target_include_directories(
     boost_mysql_testing
