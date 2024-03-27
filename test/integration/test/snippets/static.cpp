@@ -48,7 +48,6 @@ BOOST_DESCRIBE_STRUCT(post_v2, (), (id, title, body))
 //]
 #endif
 
-#if BOOST_PFR_CORE_NAME_ENABLED
 //[describe_post_pfr
 // post_v3 doesn't contain any metadata - we're not using BOOST_DESCRIBE_STRUCT here
 struct post_v3
@@ -58,7 +57,6 @@ struct post_v3
     std::string body;
 };
 //]
-#endif
 
 //
 // Comparison table - we want all type definitions to be similar
