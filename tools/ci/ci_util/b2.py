@@ -28,7 +28,7 @@ def _win_openssl_line(address_model: int) -> str:
 
 
 def _write_windows_user_config() -> None:
-    config_path = os.path.expandvars('%HOMEDRIVE%%HOMEPATH%\\user-config.jam')
+    config_path = str(Path.home().joinpath('user-config.jam'))
     print(' + Writing user-config.jam to {}'.format(config_path))
     with open(config_path, 'wt', encoding='utf-8') as f:
         for am in (32, 64):
