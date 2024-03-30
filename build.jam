@@ -7,19 +7,19 @@ import project ;
 
 project /boost/mysql
     : common-requirements
-        <source>/boost/asio//boost_asio
-        <source>/boost/assert//boost_assert
-        <source>/boost/config//boost_config
-        <source>/boost/core//boost_core
-        <source>/boost/describe//boost_describe
-        <source>/boost/endian//boost_endian
-        <source>/boost/intrusive//boost_intrusive
-        <source>/boost/lexical_cast//boost_lexical_cast
-        <source>/boost/mp11//boost_mp11
-        <source>/boost/optional//boost_optional
-        <source>/boost/system//boost_system
-        <source>/boost/throw_exception//boost_throw_exception
-        <source>/boost/variant2//boost_variant2
+        <library>/boost/asio//boost_asio
+        <library>/boost/assert//boost_assert
+        <library>/boost/config//boost_config
+        <library>/boost/core//boost_core
+        <library>/boost/describe//boost_describe
+        <library>/boost/endian//boost_endian
+        <library>/boost/intrusive//boost_intrusive
+        <library>/boost/lexical_cast//boost_lexical_cast
+        <library>/boost/mp11//boost_mp11
+        <library>/boost/optional//boost_optional
+        <library>/boost/system//boost_system
+        <library>/boost/throw_exception//boost_throw_exception
+        <library>/boost/variant2//boost_variant2
         <include>include
     ;
 
