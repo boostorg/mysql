@@ -126,7 +126,6 @@ run
         test/constant_string_view.cpp
         
     : requirements
-        <toolset>msvc:<cxxflags>-FI"pch.hpp" # https://github.com/boostorg/boost/issues/711
         <include>include
         <define>BOOST_ALLOW_DEPRECATED # Unit tests still exercise the old execution interface
     : target-name boost_mysql_unittests
