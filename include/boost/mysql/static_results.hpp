@@ -14,6 +14,7 @@
 
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/underlying_row.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/static_results_impl.hpp>
@@ -133,7 +134,7 @@ public:
 #ifdef BOOST_MYSQL_DOXYGEN
     boost::span<const StaticRow... [I]>
 #else
-    boost::span<const typename std::tuple_element<I, std::tuple<StaticRow...> >::type>
+    detail::rows_span_t<I, StaticRow...>
 #endif
     rows() const noexcept {
         static_assert(I < sizeof...(StaticRow), "Index I out of range");

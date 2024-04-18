@@ -16,6 +16,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
+#include <boost/mysql/pfr.hpp>
 #include <boost/mysql/static_execution_state.hpp>
 #include <boost/mysql/static_results.hpp>
 
@@ -24,6 +25,7 @@
 #include <boost/describe/operators.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/optional/optional_io.hpp>
+#include <boost/pfr/ops.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
@@ -32,7 +34,6 @@
 #include "test_common/check_meta.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
-#include "test_integration/metadata_validator.hpp"
 #include "test_integration/static_rows.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
@@ -42,9 +43,23 @@ using namespace boost::mysql::test;
 // Note: the dynamic interface is already covered by stored_procedures, multi_queries, prepared_statements and
 // spotchecks
 
-namespace {
-
 BOOST_AUTO_TEST_SUITE(test_static_iface)
+
+// A row type like row_multifield, but without Describe metadata
+struct row_multifield_pfr
+{
+    boost::optional<float> field_nullable;
+    std::int32_t field_int;
+    std::string field_varchar;
+};
+
+// Same, but only with literal fields (required by PFR in C++14 mode)
+struct row_multifield_pfr_literal
+{
+    std::int64_t id;
+    std::int32_t field_int;
+    double field_double;
+};
 
 void validate_multifield_meta(metadata_collection_view meta)
 {
@@ -109,6 +124,46 @@ BOOST_FIXTURE_TEST_CASE(tuples, tcp_network_fixture)
     BOOST_TEST(result.last_insert_id() == 0u);
     BOOST_TEST(result.info() == "");
 }
+
+#if BOOST_PFR_CORE_NAME_ENABLED
+BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
+{
+    connect();
+
+    static_results<pfr_by_name<row_multifield_pfr>> result;
+    conn.execute("SELECT * FROM multifield_table ORDER BY id", result);
+
+    // Verify results
+    validate_multifield_meta(result.meta());
+    BOOST_TEST_REQUIRE(result.rows().size() == 2u);
+    BOOST_TEST(boost::pfr::eq(result.rows()[0], row_multifield_pfr{1.1f, 11, "aaa"}));
+    BOOST_TEST(boost::pfr::eq(result.rows()[1], row_multifield_pfr{{}, 22, "bbb"}));
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
+#endif
+
+#if BOOST_PFR_ENABLED && defined(BOOST_MYSQL_CXX14)
+BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
+{
+    connect();
+
+    static_results<pfr_by_position<row_multifield_pfr_literal>> result;
+    conn.execute("SELECT id, field_int, field_double FROM multifield_table ORDER BY id", result);
+
+    // Verify results
+    check_meta(result.meta(), {column_type::int_, column_type::int_, column_type::double_});
+    BOOST_TEST_REQUIRE(result.rows().size() == 2u);
+    BOOST_TEST(boost::pfr::eq(result.rows()[0], row_multifield_pfr_literal{1, 11, 0.1}));
+    BOOST_TEST(boost::pfr::eq(result.rows()[1], row_multifield_pfr_literal{2, 22, 0.2}));
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
+#endif
 
 // This spotchecks having a repeated empty row type, too
 BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
@@ -282,6 +337,62 @@ BOOST_FIXTURE_TEST_CASE(tuples, tcp_network_fixture)
     BOOST_TEST(result.info() == "");
 }
 
+#if BOOST_PFR_CORE_NAME_ENABLED
+BOOST_FIXTURE_TEST_CASE(pfr_structs_by_name, tcp_network_fixture)
+{
+    connect();
+
+    // Start
+    static_execution_state<pfr_by_name<row_multifield_pfr>> result;
+    conn.start_execution("SELECT * FROM multifield_table WHERE id = 1", result);
+    validate_multifield_meta(result.meta());
+    BOOST_TEST(result.should_read_rows());
+
+    // Read rows
+    std::array<row_multifield_pfr, 3> rws;
+    std::size_t num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST(boost::pfr::eq(rws[0], row_multifield_pfr{1.1f, 11, "aaa"}));
+
+    // Read again, in case the EOF came separately
+    num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 0u);
+    BOOST_TEST(result.complete());
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
+#endif
+
+#if BOOST_PFR_ENABLED && defined(BOOST_MYSQL_CXX14)
+BOOST_FIXTURE_TEST_CASE(pfr_structs_by_position, tcp_network_fixture)
+{
+    connect();
+
+    // Start
+    static_execution_state<pfr_by_position<row_multifield_pfr_literal>> result;
+    conn.start_execution("SELECT id, field_int, field_double FROM multifield_table WHERE id = 1", result);
+    check_meta(result.meta(), {column_type::int_, column_type::int_, column_type::double_});
+    BOOST_TEST(result.should_read_rows());
+
+    // Read rows
+    std::array<row_multifield_pfr_literal, 3> rws;
+    std::size_t num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr_literal>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST(boost::pfr::eq(rws[0], row_multifield_pfr_literal{1, 11, 0.1}));
+
+    // Read again, in case the EOF came separately
+    num_rows = conn.read_some_rows(result, boost::span<row_multifield_pfr_literal>(rws));
+    BOOST_TEST_REQUIRE(num_rows == 0u);
+    BOOST_TEST(result.complete());
+    BOOST_TEST(result.affected_rows() == 0u);
+    BOOST_TEST(result.warning_count() == 0u);
+    BOOST_TEST(result.last_insert_id() == 0u);
+    BOOST_TEST(result.info() == "");
+}
+#endif
+
 // This spotchecks having repeated empty row types, too
 BOOST_FIXTURE_TEST_CASE(multi_resultset, tcp_network_fixture)
 {
@@ -439,7 +550,5 @@ BOOST_FIXTURE_TEST_CASE(metadata_check_failed_subsequent_resultset, tcp_network_
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
-
-}  // namespace
 
 #endif
