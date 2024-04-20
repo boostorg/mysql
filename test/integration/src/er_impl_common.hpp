@@ -175,41 +175,6 @@ public:
     }
     network_result<void> quit() override final { return error_code(asio::error::operation_not_supported); }
 
-    network_result<void> query(string_view query, results& result) override final
-    {
-        return execute(query, result);
-    }
-    network_result<void> start_query(string_view query, execution_state& result) override final
-    {
-        return start_execution(query, result);
-    }
-    network_result<void> execute_statement(
-        const statement& stmt,
-        field_view fv1,
-        field_view fv2,
-        results& result
-    ) override final
-    {
-        return execute(stmt.bind(fv1, fv2), result);
-    }
-    network_result<void> start_statement_execution(
-        const statement& stmt,
-        field_view fv1,
-        field_view fv2,
-        execution_state& st
-    ) override final
-    {
-        return start_execution(stmt.bind(fv1, fv2), st);
-    }
-    network_result<void> start_statement_execution(
-        const statement& stmt,
-        fv_list_it params_first,
-        fv_list_it params_last,
-        execution_state& st
-    ) override final
-    {
-        return start_execution(stmt.bind(params_first, params_last), st);
-    }
     void sync_close() noexcept override
     {
         try
@@ -383,63 +348,6 @@ private:
     network_result<void> handshake(const handshake_params& params) override                                  \
     {                                                                                                        \
         return this->template fn_impl<void, const handshake_params&>(&conn_type::prefix##handshake, params); \
-    }                                                                                                        \
-    network_result<void> query(string_view query, results& result) override                                  \
-    {                                                                                                        \
-        return this                                                                                          \
-            ->template fn_impl<void, string_view, results&>(&conn_type::prefix##query, query, result);       \
-    }                                                                                                        \
-    network_result<void> start_query(string_view query, execution_state& st) override                        \
-    {                                                                                                        \
-        return this->template fn_impl<void, string_view, execution_state&>(                                  \
-            &conn_type::prefix##start_query,                                                                 \
-            query,                                                                                           \
-            st                                                                                               \
-        );                                                                                                   \
-    }                                                                                                        \
-    network_result<void>                                                                                     \
-    execute_statement(const statement& stmt, field_view param1, field_view param2, results& result) override \
-    {                                                                                                        \
-        return this                                                                                          \
-            ->template fn_impl<void, const statement&, const std::tuple<field_view, field_view>&, results&>( \
-                &conn_type::prefix##execute_statement,                                                       \
-                stmt,                                                                                        \
-                std::make_tuple(param1, param2),                                                             \
-                result                                                                                       \
-            );                                                                                               \
-    }                                                                                                        \
-    network_result<void> start_statement_execution(                                                          \
-        const statement& stmt,                                                                               \
-        field_view param1,                                                                                   \
-        field_view param2,                                                                                   \
-        execution_state& st                                                                                  \
-    ) override                                                                                               \
-    {                                                                                                        \
-        return this->template fn_impl<                                                                       \
-            void,                                                                                            \
-            const statement&,                                                                                \
-            const std::tuple<field_view, field_view>&,                                                       \
-            execution_state&>(                                                                               \
-            &conn_type::prefix##start_statement_execution,                                                   \
-            stmt,                                                                                            \
-            std::make_tuple(param1, param2),                                                                 \
-            st                                                                                               \
-        );                                                                                                   \
-    }                                                                                                        \
-    network_result<void> start_statement_execution(                                                          \
-        const statement& stmt,                                                                               \
-        fv_list_it params_first,                                                                             \
-        fv_list_it params_last,                                                                              \
-        execution_state& st                                                                                  \
-    ) override                                                                                               \
-    {                                                                                                        \
-        return this->template fn_impl<void, const statement&, fv_list_it, fv_list_it, execution_state&>(     \
-            &conn_type::prefix##start_statement_execution,                                                   \
-            stmt,                                                                                            \
-            params_first,                                                                                    \
-            params_last,                                                                                     \
-            st                                                                                               \
-        );                                                                                                   \
     }                                                                                                        \
     network_result<void> quit() override { return this->template fn_impl<void>(&conn_type::prefix##quit); }  \
     BOOST_MYSQL_TEST_IMPLEMENT_GENERIC_COMMON(prefix)

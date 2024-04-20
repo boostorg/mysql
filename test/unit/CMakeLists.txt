@@ -124,11 +124,6 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
-target_compile_definitions(
-    boost_mysql_unittests
-    PRIVATE
-    BOOST_ALLOW_DEPRECATED # Unit tests still exercise the old execution interface
-)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
         boost_mysql_unittests
