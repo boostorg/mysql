@@ -59,8 +59,8 @@ BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
     // Launch coroutine and wait for completion
     run_coroutine(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
         // Call both queries but don't wait on them yet, so they don't initiate
-        auto aw1 = conn.async_query("Q1", result1, boost::asio::use_awaitable);
-        auto aw2 = conn.async_query("Q2", result2, boost::asio::use_awaitable);
+        auto aw1 = conn.async_execute("Q1", result1, boost::asio::use_awaitable);
+        auto aw2 = conn.async_execute("Q2", result2, boost::asio::use_awaitable);
 
         // Run them in reverse order
         co_await std::move(aw2);

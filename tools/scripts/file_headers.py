@@ -154,10 +154,11 @@ class MysqlHppProcessor(HppProcessor):
 
     def process(self, _: List[str], fpath: str) -> List[str]:
         base = Path(REPO_BASE)
+        exclusions = ('src.hpp', 'pfr.hpp')
         includes = [
             fname.relative_to(base.joinpath('include'))
             for fname in sorted(base.joinpath('include', 'boost', 'mysql').glob('*.hpp'))
-            if fname.name != 'src.hpp'
+            if fname.name not in exclusions
         ]
         return gen_header('//', include_guard=self._gen_include_guard(fpath)) + \
             ['\n'] + \

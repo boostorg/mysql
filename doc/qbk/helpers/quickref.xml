@@ -43,6 +43,8 @@
           <member><link linkend="mysql.ref.boost__mysql__host_and_port">host_and_port</link></member>
           <member><link linkend="mysql.ref.boost__mysql__identifier">identifier</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata">metadata</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__pfr_by_name">pfr_by_name</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__pfr_by_position">pfr_by_position</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pool_executor_params">pool_executor_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pool_params">pool_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pooled_connection">pooled_connection</link></member>
@@ -112,6 +114,7 @@
           <member><link linkend="mysql.ref.boost__mysql__tcp_connection">tcp_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__tcp_ssl_connection">tcp_ssl_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__time">time</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__underlying_row_t">underlying_row_t</link></member>
           <member><link linkend="mysql.ref.boost__mysql__unix_connection">unix_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__unix_ssl_connection">unix_ssl_connection</link></member>
         </simplelist>

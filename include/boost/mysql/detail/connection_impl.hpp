@@ -28,7 +28,6 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/run_algo.hpp>
-#include <boost/mysql/detail/typing/get_type_index.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
@@ -429,16 +428,18 @@ public:
     }
 
     // Read some rows (static)
-    template <class SpanRowType, class... RowType>
-    read_some_rows_algo_params make_params_read_some_rows(
-        static_execution_state<RowType...>& exec_st,
-        span<SpanRowType> output,
+    template <class SpanElementType, class ExecutionState>
+    read_some_rows_algo_params make_params_read_some_rows_static(
+        ExecutionState& exec_st,
+        span<SpanElementType> output,
         diagnostics& diag
     ) const noexcept
     {
-        constexpr std::size_t index = get_type_index<SpanRowType, RowType...>();
-        static_assert(index != index_not_found, "SpanRowType must be one of the types returned by the query");
-        return {&diag, &access::get_impl(exec_st).get_interface(), output_ref(output, index)};
+        return {
+            &diag,
+            &access::get_impl(exec_st).get_interface(),
+            access::get_impl(exec_st).make_output_ref(output)
+        };
     }
 
     // Read resultset head

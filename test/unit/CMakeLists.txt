@@ -66,7 +66,6 @@ add_executable(
     test/detail/typing/pos_map.cpp
     test/detail/typing/readable_field_traits.cpp
     test/detail/typing/row_traits.cpp
-    test/detail/typing/get_type_index.cpp
 
     test/impl/dt_to_string.cpp
     test/impl/ssl_context_with_default.cpp
@@ -113,6 +112,7 @@ add_executable(
     test/character_set.cpp
     test/escape_string.cpp
     test/constant_string_view.cpp
+    test/pfr.cpp
 )
 target_include_directories(
     boost_mysql_unittests
@@ -123,11 +123,6 @@ target_link_libraries(
     boost_mysql_unittests
     PRIVATE
     boost_mysql_testing
-)
-target_compile_definitions(
-    boost_mysql_unittests
-    PRIVATE
-    BOOST_ALLOW_DEPRECATED # Unit tests still exercise the old execution interface
 )
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
