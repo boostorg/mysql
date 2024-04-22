@@ -10,14 +10,14 @@
 
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/next_action.hpp>
+
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <boost/asio/coroutine.hpp>
 
 #include <cstddef>
-#include <type_traits>
 
 #ifdef BOOST_USE_VALGRIND
 #include <valgrind/memcheck.h>

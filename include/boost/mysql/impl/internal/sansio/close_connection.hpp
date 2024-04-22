@@ -9,8 +9,8 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CLOSE_CONNECTION_HPP
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 #include <boost/mysql/impl/internal/sansio/quit_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
