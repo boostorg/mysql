@@ -16,7 +16,6 @@
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/any_resumable_ref.hpp>
 
-#include <boost/mysql/impl/internal/sansio/algo_runner.hpp>
 #include <boost/mysql/impl/internal/sansio/close_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/close_statement.hpp>
 #include <boost/mysql/impl/internal/sansio/connect.hpp>
@@ -32,6 +31,7 @@
 #include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
+#include <boost/mysql/impl/internal/sansio/top_level_algo.hpp>
 
 #include <boost/asio/coroutine.hpp>
 #include <boost/variant2/variant.hpp>

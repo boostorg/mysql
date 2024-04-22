@@ -13,8 +13,8 @@
 #include <boost/mysql/detail/any_resumable_ref.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 
-#include <boost/mysql/impl/internal/sansio/algo_runner.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/top_level_algo.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/async_result.hpp>
