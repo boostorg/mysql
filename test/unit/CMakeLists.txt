@@ -28,7 +28,7 @@ add_executable(
     test/sansio/read_buffer.cpp
     test/sansio/message_writer.cpp
     test/sansio/message_reader.cpp
-    test/sansio/algo_runner.cpp
+    test/sansio/top_level_algo.cpp
 
     test/sansio/read_resultset_head.cpp
     test/sansio/start_execution.cpp

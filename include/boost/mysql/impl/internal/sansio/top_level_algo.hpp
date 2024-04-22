@@ -45,8 +45,9 @@ class top_level_algo : asio::coroutine
     connection_state_data& conn_state() noexcept { return algo_.conn_state(); }
 
 public:
-    template <class AlgoParams>  // TODO: this should not be a template
-    top_level_algo(connection_state_data& st_data, AlgoParams params) : algo_(st_data, params)
+    template <class... Args>
+    top_level_algo(connection_state_data& st_data, Args&&... args)
+        : algo_(st_data, std::forward<Args>(args)...)
     {
     }
 
