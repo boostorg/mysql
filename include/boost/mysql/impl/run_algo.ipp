@@ -123,8 +123,8 @@ typename AlgoParams::result_type boost::mysql::detail::run_algo(
     error_code& ec
 )
 {
-    auto algo = st.setup(params);
-    run_algo_impl(stream, algo, ec);
+    auto resumable = st.setup(params);
+    run_algo_impl(stream, resumable, ec);
     return st.result<AlgoParams>();
 }
 
@@ -137,8 +137,8 @@ void boost::mysql::detail::async_run_algo(
 )
 {
     auto handler = make_handler<AlgoParams>(std::move(final_handler), st);
-    auto algo = st.setup(params);
-    async_run_algo_impl(stream, algo, std::move(handler));
+    auto resumable = st.setup(params);
+    async_run_algo_impl(stream, resumable, std::move(handler));
 }
 
 #ifdef BOOST_MYSQL_SEPARATE_COMPILATION

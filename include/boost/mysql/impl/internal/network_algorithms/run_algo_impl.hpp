@@ -10,6 +10,7 @@
 
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/any_resumable_ref.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 
 #include <boost/mysql/impl/internal/sansio/algo_runner.hpp>
@@ -35,11 +36,11 @@ inline asio::mutable_buffer to_buffer(span<std::uint8_t> buff) noexcept
 struct run_algo_op : boost::asio::coroutine
 {
     any_stream& stream_;
-    algo_runner runner_;
+    any_resumable_ref resumable_;
     bool has_done_io_{false};
     error_code stored_ec_;
 
-    run_algo_op(any_stream& stream, any_algo_ref algo) noexcept : stream_(stream), runner_(algo) {}
+    run_algo_op(any_stream& stream, any_resumable_ref algo) noexcept : stream_(stream), resumable_(algo) {}
 
     template <class Self>
     void operator()(Self& self, error_code io_ec = {}, std::size_t bytes_transferred = 0)
@@ -51,7 +52,7 @@ struct run_algo_op : boost::asio::coroutine
             while (true)
             {
                 // Run the op
-                act = runner_.resume(io_ec, bytes_transferred);
+                act = resumable_.resume(io_ec, bytes_transferred);
                 if (act.is_done())
                 {
                     stored_ec_ = act.error();
@@ -105,17 +106,16 @@ struct run_algo_op : boost::asio::coroutine
     }
 };
 
-inline void run_algo_impl(any_stream& stream, any_algo_ref algo, error_code& ec)
+inline void run_algo_impl(any_stream& stream, any_resumable_ref resumable, error_code& ec)
 {
     ec.clear();
     error_code io_ec;
     std::size_t bytes_transferred = 0;
-    algo_runner runner(algo);
 
     while (true)
     {
         // Run the op
-        auto act = runner.resume(io_ec, bytes_transferred);
+        auto act = resumable.resume(io_ec, bytes_transferred);
 
         // Apply the next action
         bytes_transferred = 0;
@@ -162,7 +162,7 @@ inline void run_algo_impl(any_stream& stream, any_algo_ref algo, error_code& ec)
 
 template <class CompletionToken>
 BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-async_run_algo_impl(any_stream& stream, any_algo_ref algo, CompletionToken&& token)
+async_run_algo_impl(any_stream& stream, any_resumable_ref algo, CompletionToken&& token)
 {
     return asio::async_compose<CompletionToken, void(error_code)>(run_algo_op(stream, algo), token, stream);
 }

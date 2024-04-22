@@ -5,8 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/any_resumable_ref.hpp>
 #include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 
@@ -23,14 +25,13 @@
 #include <boost/asio/post.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 
 #include "test_common/netfun_maker.hpp"
 #include "test_common/tracker_executor.hpp"
-#include "test_unit/create_frame.hpp"
-#include "test_unit/mock_message.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -40,7 +41,7 @@ using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_run_algo_impl)
 
-using netfun_maker = netfun_maker_fn<void, any_stream&, any_algo_ref>;
+using netfun_maker = netfun_maker_fn<void, any_stream&, any_resumable_ref>;
 
 const auto sync_fn = netfun_maker::sync_errc_noerrinfo(&run_algo_impl);
 const auto async_fn = netfun_maker::async_noerrinfo(&async_run_algo_impl);
@@ -68,12 +69,21 @@ class mock_stream final : public any_stream
 {
     executor_info stream_executor_info_;
     asio::any_io_executor ex;
-    static std::size_t transfer_empty_frame(asio::mutable_buffer buff)
+
+    void record_read_call(asio::mutable_buffer buff, bool use_ssl)
     {
-        auto empty_frame = create_empty_frame(0);
-        assert(buff.size() >= empty_frame.size());
-        std::memcpy(buff.data(), empty_frame.data(), empty_frame.size());
-        return empty_frame.size();
+        calls.push_back(next_action::read({
+            {static_cast<std::uint8_t*>(buff.data()), buff.size()},
+            use_ssl
+        }));
+    }
+
+    void record_write_call(asio::const_buffer buff, bool use_ssl)
+    {
+        calls.push_back(next_action::write({
+            {static_cast<const std::uint8_t*>(buff.data()), buff.size()},
+            use_ssl
+        }));
     }
 
 public:
@@ -111,9 +121,9 @@ public:
     // Reading
     std::size_t read_some(asio::mutable_buffer buff, bool use_ssl, error_code& ec) override
     {
-        calls.push_back(next_action::read({{}, use_ssl}));
+        record_read_call(buff, use_ssl);
         ec = error_code();
-        return transfer_empty_frame(buff);
+        return buff.size();
     }
     void async_read_some(
         asio::mutable_buffer buff,
@@ -121,14 +131,14 @@ public:
         asio::any_completion_handler<void(error_code, std::size_t)> h
     ) override
     {
-        calls.push_back(next_action::read({{}, use_ssl}));
-        complete_immediate(ex, std::move(h), error_code(), transfer_empty_frame(buff));
+        record_read_call(buff, use_ssl);
+        complete_immediate(ex, std::move(h), error_code(), buff.size());
     }
 
     // Writing
     std::size_t write_some(asio::const_buffer buff, bool use_ssl, error_code& ec) override
     {
-        calls.push_back(next_action::write({{}, use_ssl}));
+        record_write_call(buff, use_ssl);
         ec = {};
         return buff.size();
     }
@@ -138,7 +148,7 @@ public:
         asio::any_completion_handler<void(error_code, std::size_t)> h
     ) override
     {
-        calls.push_back(next_action::write({{}, use_ssl}));
+        record_write_call(buff, use_ssl);
         complete_immediate(ex, std::move(h), error_code(), buff.size());
     }
 
@@ -161,23 +171,21 @@ public:
     }
 };
 
-struct mock_algo : sansio_algorithm, asio::coroutine
+struct mock_algo
 {
-    std::uint8_t seqnum{};
     next_action act;
+    error_code last_ec{boost::mysql::client_errc::cancelled};
+    std::size_t last_bytes{static_cast<std::size_t>(-1)};
 
-    mock_algo(connection_state_data& st, next_action act) : sansio_algorithm(st), act(act) {}
+    mock_algo(next_action act) : act(act) {}
 
-    next_action resume(error_code ec)
+    next_action resume(error_code ec, std::size_t bytes_transferred)
     {
-        BOOST_ASIO_CORO_REENTER(*this)
-        {
-            BOOST_TEST(ec == error_code());
-            st_->reader.prepare_read(seqnum);
-            st_->writer.prepare_write(mock_message{}, seqnum);
-            BOOST_ASIO_CORO_YIELD return act;
-        }
-        return next_action();
+        last_ec = ec;
+        last_bytes = bytes_transferred;
+        auto res = act;
+        act = next_action();
+        return res;
     }
 };
 
@@ -204,32 +212,37 @@ BOOST_AUTO_TEST_CASE(async_completions)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            connection_state_data st(512);
-            mock_algo algo(st, tc.act);
+            mock_algo algo(tc.act);
             asio::io_context ctx;
             mock_stream stream(ctx.get_executor());
 
             // Run the algo. In all cases, the stream's executor should receive one post,
             // and the token's executor should receive one dispatch. This all gets
             // validated by async_fn
-            async_fn(stream, algo).validate_no_error();
+            async_fn(stream, any_resumable_ref(algo)).validate_no_error();
         }
     }
 }
 
-BOOST_AUTO_TEST_CASE(read_ssl)
+// TODO: test cases
+//    an error in resume() interrupts the loop and completes with the correct error_code
+//    same, but with an immediate error
+//    error_code, size_t returned by stream gets passed to resume() correctly
+//    next_action gets translated to adequate stream calls
+
+// returning next_action::read calls the relevant stream function
+BOOST_AUTO_TEST_CASE(next_action_read)
 {
     struct
     {
         const char* name;
         netfun_maker::signature fn;
-        ssl_state ssl_st;
-        bool expected;
+        bool ssl_active;
     } test_cases[] = {
-        {"sync_active",    sync_fn,  ssl_state::active,   true },
-        {"sync_inactive",  sync_fn,  ssl_state::inactive, false},
-        {"async_active",   async_fn, ssl_state::active,   true },
-        {"async_inactive", async_fn, ssl_state::inactive, false},
+        {"sync_ssl_active",    sync_fn,  true },
+        {"sync_ssl_inactive",  sync_fn,  false},
+        {"async_ssl_active",   async_fn, true },
+        {"async_ssl_inactive", async_fn, false},
     };
 
     for (const auto& tc : test_cases)
@@ -237,33 +250,34 @@ BOOST_AUTO_TEST_CASE(read_ssl)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            connection_state_data st(512);
-            st.ssl = tc.ssl_st;
-            mock_algo algo(st, next_action::read({}));
+            std::array<std::uint8_t, 8> buff{};
+            mock_algo algo(next_action::read({buff, tc.ssl_active}));
             asio::io_context ctx;
             mock_stream stream(ctx.get_executor());
 
-            tc.fn(stream, algo).validate_no_error();
+            tc.fn(stream, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(stream.calls.size() == 1u);
             BOOST_TEST(stream.calls[0].type() == next_action::type_t::read);
-            BOOST_TEST(stream.calls[0].read_args().use_ssl == tc.expected);
+            BOOST_TEST(stream.calls[0].read_args().use_ssl == tc.ssl_active);
+            BOOST_TEST(stream.calls[0].read_args().buffer.data() == buff.data());
+            BOOST_TEST(stream.calls[0].read_args().buffer.size() == buff.size());
         }
     }
 }
 
-BOOST_AUTO_TEST_CASE(write_ssl)
+// returning next_action::write calls the relevant stream function
+BOOST_AUTO_TEST_CASE(next_action_write)
 {
     struct
     {
         const char* name;
         netfun_maker::signature fn;
-        ssl_state ssl_st;
-        bool expected;
+        bool ssl_active;
     } test_cases[] = {
-        {"sync_active",    sync_fn,  ssl_state::active,   true },
-        {"sync_inactive",  sync_fn,  ssl_state::inactive, false},
-        {"async_active",   async_fn, ssl_state::active,   true },
-        {"async_inactive", async_fn, ssl_state::inactive, false},
+        {"sync_ssl_active",    sync_fn,  true },
+        {"sync_ssl_inactive",  sync_fn,  false},
+        {"async_ssl_active",   async_fn, true },
+        {"async_ssl_inactive", async_fn, false},
     };
 
     for (const auto& tc : test_cases)
@@ -271,18 +285,21 @@ BOOST_AUTO_TEST_CASE(write_ssl)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            connection_state_data st(512);
-            st.ssl = tc.ssl_st;
-            mock_algo algo(st, next_action::write({}));
+            const std::array<std::uint8_t, 4> buff{};
+            mock_algo algo(next_action::write({buff, tc.ssl_active}));
             asio::io_context ctx;
             mock_stream stream(ctx.get_executor());
 
-            tc.fn(stream, algo).validate_no_error();
+            tc.fn(stream, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(stream.calls.size() == 1u);
             BOOST_TEST(stream.calls[0].type() == next_action::type_t::write);
-            BOOST_TEST(stream.calls[0].write_args().use_ssl == tc.expected);
+            BOOST_TEST(stream.calls[0].write_args().use_ssl == tc.ssl_active);
+            BOOST_TEST(stream.calls[0].write_args().buffer.data() == buff.data());
+            BOOST_TEST(stream.calls[0].write_args().buffer.size() == buff.size());
         }
     }
 }
+
+// TODO: connect, close, handshake, shutdown
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -37,14 +37,20 @@ inline void valgrind_make_mem_defined(const void* data, std::size_t size)
 inline void valgrind_make_mem_defined(const void*, std::size_t) noexcept {}
 #endif
 
-class algo_runner : asio::coroutine
+template <class InnerAlgo>
+class top_level_algo : asio::coroutine
 {
-    any_algo_ref algo_;
+    InnerAlgo algo_;
 
-    connection_state_data& conn_state() noexcept { return algo_.get().conn_state(); }
+    connection_state_data& conn_state() noexcept { return algo_.conn_state(); }
 
 public:
-    algo_runner(any_algo_ref algo) : algo_(algo) {}
+    template <class AlgoParams>  // TODO: this should not be a template
+    top_level_algo(connection_state_data& st_data, AlgoParams params) : algo_(st_data, params)
+    {
+    }
+
+    const InnerAlgo& inner_algo() const noexcept { return algo_; }
 
     next_action resume(error_code ec, std::size_t bytes_transferred)
     {
