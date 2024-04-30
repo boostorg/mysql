@@ -105,8 +105,8 @@ BOOST_AUTO_TEST_CASE(test_is_fatal_error)
         {"ER_ZLIB_Z_DATA_ERROR",           common_server_errc::er_zlib_z_data_error,                       true },
 
         // Non-fatal server errors
-        {"ER_BAD_TABLE_ERROR",             common_server_errc::er_bad_table_error,                         false},
-        {"ER_WRONG_GROUP_FIELD",           common_server_errc::er_wrong_group_field,                       false},
+        {"ER_NO_SUCH_TABLE",               common_server_errc::er_no_such_table,                           false},
+        {"ER_BAD_DB_ERROR",                common_server_errc::er_bad_db_error,                            false},
 
         // Server-specific or user-defined errors
         {"mysql_specific",                 make_mysql_code(mysql_server_errc::er_invalid_cast),            false},

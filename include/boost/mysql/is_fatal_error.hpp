@@ -15,6 +15,19 @@
 namespace boost {
 namespace mysql {
 
+/**
+ * \brief Checks whether an error requires re-connection.
+ * \details
+ * After an operation on an established connection (like executing a query) fails,
+ * the connection may be usable for further operations (if the error was non-fatal)
+ * or not (if the error was fatal). This function determines whether an error
+ * code returned by a connection operation is fatal or not.
+ * \n
+ * To recover from a fatal error code, close and re-establish the connection.
+ *
+ * \par Exception safety
+ * No-throw guarantee.
+ */
 BOOST_MYSQL_DECL
 bool is_fatal_error(error_code ec) noexcept;
 
