@@ -109,7 +109,7 @@ results in an error, two situations may happen:
 
 * The connection object is left in a well-known state. You can safely use the object
   to run further operations without problems. For instance, if a query fails with
-  [reflink common_server_errc er_no_such_table] because you misspelled a table name,
+  `common_server_errc::er_no_such_table` because you misspelled a table name,
   it is safe to run other queries after the failed one. Such errors are called [*non-fatal].
 * The connection object is left un an unknown state. Further operations will fail with
   unpredictable results. You should close and re-establish the connection.
