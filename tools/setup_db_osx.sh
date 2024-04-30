@@ -21,4 +21,4 @@ sudo mkdir -p /var/run/mysqld/
 sudo chmod 777 /var/run/mysqld/
 
 # Start the server
-mysql.server start
+brew services start mysql@8.0
