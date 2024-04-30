@@ -37,6 +37,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/is_fatal_error.hpp>
 #include <boost/mysql/mariadb_collations.hpp>
 #include <boost/mysql/mariadb_server_errc.hpp>
 #include <boost/mysql/metadata.hpp>
