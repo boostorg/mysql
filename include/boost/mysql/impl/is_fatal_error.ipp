@@ -44,7 +44,10 @@ bool boost::mysql::is_fatal_error(error_code ec) noexcept
         case common_server_errc::er_net_read_interrupted:
         case common_server_errc::er_net_error_on_write:
         case common_server_errc::er_net_write_interrupted:
-        case common_server_errc::er_malformed_packet: return true;
+        case common_server_errc::er_malformed_packet:
+        case common_server_errc::er_zlib_z_buf_error:
+        case common_server_errc::er_zlib_z_data_error:
+        case common_server_errc::er_zlib_z_mem_error: return true;
         default: return false;
         }
     }
@@ -58,7 +61,7 @@ bool boost::mysql::is_fatal_error(error_code ec) noexcept
         auto code = static_cast<client_errc>(ec.value());
         switch (code)
         {
-            // These indicates malformed frames or packet mismatches
+        // These indicate malformed frames or packet mismatches
         case client_errc::incomplete_message:
         case client_errc::protocol_value_error:
         case client_errc::extra_bytes:
@@ -75,7 +78,14 @@ bool boost::mysql::is_fatal_error(error_code ec) noexcept
         // While these are currently produced only by the connection pool,
         // any timed out or cancelled operation would leave the connection in an undefined state
         case client_errc::timeout:
-        case client_errc::cancelled: return true;
+        case client_errc::cancelled:
+
+        // These are only produced by handshake. We categorize them as fatal because they need reconnection,
+        // although anything affecting handshake effectively does.
+        case client_errc::server_doesnt_support_ssl:
+        case client_errc::unknown_auth_plugin:
+        case client_errc::server_unsupported:
+        case client_errc::auth_plugin_requires_ssl: return true;
 
         default: return false;
         }
