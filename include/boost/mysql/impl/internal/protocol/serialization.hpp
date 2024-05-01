@@ -47,42 +47,82 @@ inline span<const std::uint8_t> to_span(string_view v) noexcept
     return span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(v.data()), v.size());
 }
 
-struct frame_header_packet
+// Helper
+inline void serialize_frame_header(
+    span<std::uint8_t, frame_header_size> to,
+    std::uint32_t packet_size,
+    std::uint8_t seqnum
+)
 {
-    int3 packet_size;
-    std::uint8_t sequence_number;
-};
+    BOOST_ASSERT(packet_size <= 0xffffff);
+    endian::store_little_u24(to.data(), packet_size);
+    to[3] = seqnum;
+}
 
+// Helper to compose a packet with any required frame headers. Embedding knowledge
+// of frame headers in serialization functions creates messages ready to send.
+// We require the entire message to be created before it's sent, so we don't lose any functionality.
+//
+// This class knows the offset of the next frame header. Adding data with add_checked will correctly
+// insert space for headers as required while copying the data. Other functions may result in
+// "overruns" (writing past the offset of the next header). Overruns are fixed by add_frame_headers,
+// which will memmove data as required. The distinction is made for efficiency.
 class serialization_context
 {
     std::vector<std::uint8_t>& buffer_;
+    std::size_t initial_offset_;
     std::size_t max_frame_size_;
-    std::size_t next_frame_header_;
+    std::size_t next_header_offset_;
+
+    // Inserts any missing space for frame headers, moving data as required.
+    void add_frame_headers()
+    {
+        while (next_header_offset_ <= buffer_.size())
+        {
+            // Insert space for the frame header where needed
+            const std::array<std::uint8_t, frame_header_size> placeholder{};
+            buffer_.insert(buffer_.begin() + next_header_offset_, placeholder.begin(), placeholder.end());
+
+            // Update the next frame header offset
+            next_header_offset_ += (max_frame_size_ + frame_header_size);
+        }
+    }
 
 public:
     serialization_context(std::vector<std::uint8_t>& buff, std::size_t max_frame_size = max_packet_size)
         : buffer_(buff),
+          initial_offset_(buffer_.size()),
           max_frame_size_(max_frame_size),
-          next_frame_header_(buff.size() + max_frame_size_ + frame_header_size)
+          next_header_offset_(buff.size() + max_frame_size_ + frame_header_size)
     {
-        // Add space for the initial header. TODO: do we want to keep this in the constructor?
+        // Add space for the initial header
         buffer_.resize(buffer_.size() + frame_header_size);
     }
 
-    span<std::uint8_t> reserve_space(std::size_t size)
+    // To be called by serialize() functions. Adds size bytes at the end of the buffer
+    // and returns the newly allocated space. Bytes are set to zero.
+    // Doesn't take framing into account.
+    span<std::uint8_t> grow_by(std::size_t size)
     {
         std::size_t offset = buffer_.size();
         buffer_.resize(offset + size);
         return {buffer_.data() + offset, size};
     }
 
+    // To be called by serialize() functions.
+    // Appends a single byte to the buffer. Doesn't take framing into account.
+    void add(std::uint8_t value) { buffer_.push_back(value); }
+
+    // To be called by serialize() functions. Appends bytes to the buffer.
+    // Doesn't take framing into account - use for payloads with bound size.
     void add(span<const std::uint8_t> content)
     {
         buffer_.insert(buffer_.end(), content.begin(), content.end());
     }
 
-    void add(std::uint8_t value) { buffer_.push_back(value); }
-
+    // Like add, but takes framing into account. Use for potentially long payloads.
+    // If the payload is very long, space for frame headers will be added as required,
+    // avoiding expensive memmove's when calling add_frame_headers
     void add_checked(span<const std::uint8_t> content)
     {
         // Add any required frame headers we didn't add until now
@@ -93,9 +133,9 @@ public:
         while (content_offset < content.size())
         {
             // Serialize what we've got space for
-            BOOST_ASSERT(next_frame_header_ > buffer_.size());
+            BOOST_ASSERT(next_header_offset_ > buffer_.size());
             auto remaining_content = static_cast<std::size_t>(content.size() - content_offset);
-            auto remaining_frame = static_cast<std::size_t>(next_frame_header_ - buffer_.size());
+            auto remaining_frame = static_cast<std::size_t>(next_header_offset_ - buffer_.size());
             auto size_to_write = (std::min)(remaining_content, remaining_frame);
             buffer_.insert(
                 buffer_.end(),
@@ -105,52 +145,61 @@ public:
             content_offset += size_to_write;
 
             // Insert space for a frame header if required
-            if (buffer_.size() == next_frame_header_)
+            if (buffer_.size() == next_header_offset_)
             {
                 buffer_.resize(buffer_.size() + 4);
-                next_frame_header_ += (max_frame_size_ + frame_header_size);
+                next_header_offset_ += (max_frame_size_ + frame_header_size);
             }
         }
     }
 
-    void add_frame_headers()
+    // Write frame headers to an already serialized message with space for them
+    std::uint8_t write_frame_headers(std::uint8_t seqnum)
     {
-        while (next_frame_header_ <= buffer_.size())
-        {
-            // Insert space for the frame header where needed
-            const std::array<std::uint8_t, frame_header_size> placeholder{};
-            buffer_.insert(buffer_.begin() + next_frame_header_, placeholder.begin(), placeholder.end());
+        // Add any missing space for headers
+        add_frame_headers();
 
-            // Update the next frame header offset
-            next_frame_header_ += (max_frame_size_ + frame_header_size);
+        // Actually write the headers
+        std::size_t offset = initial_offset_;
+        while (offset < buffer_.size())
+        {
+            // Calculate the current frame size
+            std::size_t frame_first = offset + frame_header_size;
+            std::size_t frame_last = (std::min)(frame_first + max_frame_size_, buffer_.size());
+            auto frame_size = static_cast<std::uint32_t>(frame_last - frame_first);
+
+            // Write the frame header
+            BOOST_ASSERT(frame_first <= buffer_.size());
+            serialize_frame_header(
+                span<std::uint8_t, frame_header_size>(buffer_.data() + offset, frame_header_size),
+                frame_size,
+                seqnum++
+            );
+
+            // Skip to the next frame
+            offset = frame_last;
         }
+
+        // We should have finished just at the buffer end
+        BOOST_ASSERT(offset == buffer_.size());
+
+        return seqnum;
     }
 };
 
 // Integers
 template <class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
-void serialize_to(span<std::uint8_t, sizeof(T)> to, T input)
-{
-    endian::endian_store<T, sizeof(T), endian::order::little>(to.data(), input);
-}
-
-template <class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
 void serialize(serialization_context& ctx, T input)
 {
     std::array<std::uint8_t, sizeof(T)> buffer{};
-    serialize_to(buffer, input);
+    endian::endian_store<T, sizeof(T), endian::order::little>(buffer.data(), input);
     ctx.add(buffer);
-}
-
-inline void serialize_to(span<std::uint8_t, 3> to, int3 input)
-{
-    endian::store_little_u24(to.data(), input.value);
 }
 
 inline void serialize(serialization_context& ctx, int3 input)
 {
     std::array<std::uint8_t, 3> buffer;
-    serialize_to(buffer, input);
+    endian::store_little_u24(buffer.data(), input.value);
     ctx.add(buffer);
 }
 
@@ -232,48 +281,6 @@ void serialize(
 {
     serialize(ctx, first);
     serialize(ctx, second, rest...);
-}
-
-// frame header
-inline void serialize_to(span<std::uint8_t, frame_header_size> to, frame_header_packet input)
-{
-    serialize_to(span<std::uint8_t, 3>(to.data(), 3), input.packet_size);
-    to[3] = input.sequence_number;
-}
-
-// Write frame headers to an already serialized message with space for them
-inline std::uint8_t write_frame_headers(
-    span<std::uint8_t> buffer,
-    std::uint8_t seqnum,
-    std::size_t max_frame_size
-)
-{
-    std::size_t offset = 0;
-    while (offset < buffer.size())
-    {
-        // Calculate the current frame size
-        std::size_t frame_first = offset + frame_header_size;
-        std::size_t frame_last = (std::min)(frame_first + max_frame_size, buffer.size());
-        auto frame_size = static_cast<std::uint32_t>(frame_last - frame_first);
-
-        // Compose the header
-        frame_header_packet header{int3{frame_size}, seqnum++};
-
-        // Write the frame header
-        BOOST_ASSERT(frame_first <= buffer.size());
-        serialize_to(
-            span<std::uint8_t, frame_header_size>(buffer.data() + offset, frame_header_size),
-            header
-        );
-
-        // Skip to the next frame
-        offset = frame_last;
-    }
-
-    // We should have finished just at the buffer end
-    BOOST_ASSERT(offset == buffer.size());
-
-    return seqnum;
 }
 
 //

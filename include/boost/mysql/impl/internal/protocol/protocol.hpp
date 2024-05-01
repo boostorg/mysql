@@ -138,7 +138,17 @@ inline std::uint8_t serialize_top_level(
     std::vector<std::uint8_t>& to,
     std::uint8_t seqnum,
     std::size_t max_frame_size = max_packet_size
-);
+)
+{
+    // Create a serialization context
+    serialization_context ctx(to, max_frame_size);
+
+    // Serialize the object
+    serialize(ctx, input);
+
+    // Correctly set up frame headers
+    return ctx.write_frame_headers(seqnum);
+}
 
 //
 // Deserialization

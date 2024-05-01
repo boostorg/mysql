@@ -115,7 +115,7 @@ void boost::mysql::detail::serialize(serialization_context& ctx, execute_stmt_co
     {
         // NULL bitmap
         null_bitmap_traits traits(stmt_execute_null_bitmap_offset, num_params);
-        auto null_bitmap_buff = ctx.reserve_space(traits.byte_count());  // already zero-initialized
+        auto null_bitmap_buff = ctx.grow_by(traits.byte_count());  // already zero-initialized
         for (std::size_t i = 0; i < num_params; ++i)
         {
             if (cmd.params[i].is_null())
@@ -173,31 +173,6 @@ void boost::mysql::detail::serialize(serialization_context& ctx, ssl_request req
     );
 }
 
-template <class Serializable>
-std::uint8_t boost::mysql::detail::serialize_top_level(
-    const Serializable& input,
-    std::vector<std::uint8_t>& to,
-    std::uint8_t seqnum,
-    std::size_t max_frame_size
-)
-{
-    // Record offsets
-    std::size_t first = to.size();
-
-    // Create a serialization context
-    serialization_context ctx(to, max_frame_size);
-
-    // Serialize the object
-    serialize(ctx, input);
-
-    // Correctly set up frame headers
-    return write_frame_headers(
-        span<std::uint8_t>(to.data() + first, to.data() + to.size()),
-        seqnum,
-        max_frame_size
-    );
-}
-
 //
 // Deserialization
 //
@@ -207,12 +182,13 @@ boost::mysql::detail::frame_header boost::mysql::detail::deserialize_frame_heade
     span<const std::uint8_t, frame_header_size> buffer
 )
 {
-    frame_header_packet pack{};
+    int3 packet_size{};
+    std::uint8_t sequence_number{};
     deserialization_context ctx(buffer.data(), buffer.size());
-    auto err = deserialize(ctx, pack.packet_size, pack.sequence_number);
+    auto err = deserialize(ctx, packet_size, sequence_number);
     BOOST_ASSERT(err == deserialize_errc::ok);
     boost::ignore_unused(err);
-    return frame_header{pack.packet_size.value, pack.sequence_number};
+    return frame_header{packet_size.value, sequence_number};
 }
 
 // OK packets
