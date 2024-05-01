@@ -20,9 +20,11 @@
 #include <boost/mysql/detail/ok_view.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
+#include <boost/mysql/impl/internal/protocol/basic_types.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/constants.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
 
 #include <boost/config.hpp>
@@ -31,29 +33,127 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <vector>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// Frame header
-constexpr std::size_t frame_header_size = 4;
+//
+// Serialization
+//
 
+// quit
+struct quit_command
+{
+};
+inline void serialize(serialization_context& ctx, quit_command) { ctx.add(0x01); }
+
+// ping
+struct ping_command
+{
+};
+inline void serialize(serialization_context& ctx, ping_command) { ctx.add(0x0e); }
+
+// reset_connection
+struct reset_connection_command
+{
+};
+inline void serialize(serialization_context& ctx, reset_connection_command) { ctx.add(0x1f); }
+
+// query
+struct query_command
+{
+    string_view query;
+};
+inline void serialize(serialization_context& ctx, query_command cmd)
+{
+    ctx.add(0x03);
+    serialize_checked(ctx, string_eof{cmd.query});
+}
+
+// prepare_statement
+struct prepare_stmt_command
+{
+    string_view stmt;
+};
+inline void serialize(serialization_context& ctx, prepare_stmt_command cmd)
+{
+    ctx.add(0x16);
+    serialize(ctx, string_eof{cmd.stmt});
+}
+
+// execute statement
+struct execute_stmt_command
+{
+    std::uint32_t statement_id;
+    span<const field_view> params;
+};
+inline void serialize(serialization_context& ctx, execute_stmt_command cmd);
+
+// close statement
+struct close_stmt_command
+{
+    std::uint32_t statement_id;
+};
+inline void serialize(serialization_context& ctx, close_stmt_command cmd)
+{
+    ctx.add(0x19);
+    serialize(ctx, cmd.statement_id);
+}
+
+// Login request
+struct login_request
+{
+    capabilities negotiated_capabilities;  // capabilities
+    std::uint32_t max_packet_size;
+    std::uint32_t collation_id;
+    string_view username;
+    span<const std::uint8_t> auth_response;
+    string_view database;
+    string_view auth_plugin_name;
+};
+inline void serialize(serialization_context& ctx, const login_request&);
+
+// SSL request
+struct ssl_request
+{
+    capabilities negotiated_capabilities;
+    std::uint32_t max_packet_size;
+    std::uint32_t collation_id;
+};
+inline void serialize(serialization_context& ctx, ssl_request);
+
+// Auth switch response
+struct auth_switch_response
+{
+    span<const std::uint8_t> auth_plugin_data;
+};
+inline void serialize(serialization_context& ctx, auth_switch_response cmd) { ctx.add(cmd.auth_plugin_data); }
+
+// Serialize a complete message
+template <class Serializable>
+inline std::uint8_t serialize_top_level(
+    const Serializable& input,
+    std::vector<std::uint8_t>& to,
+    std::uint8_t seqnum,
+    std::size_t max_frame_size = max_packet_size
+);
+
+//
+// Deserialization
+//
+
+// Frame header
 struct frame_header
 {
     std::uint32_t size;
     std::uint8_t sequence_number;
 };
-
-BOOST_MYSQL_DECL
-void serialize_frame_header(frame_header, span<std::uint8_t, frame_header_size> buffer) noexcept;
-
-BOOST_MYSQL_DECL
-frame_header deserialize_frame_header(span<const std::uint8_t, frame_header_size> buffer) noexcept;
+inline frame_header deserialize_frame_header(span<const std::uint8_t, frame_header_size> buffer);
 
 // OK packets (views because strings are non-owning)
-BOOST_MYSQL_DECL
-error_code deserialize_ok_packet(span<const std::uint8_t> msg, ok_view& output) noexcept;  // for testing
+inline error_code deserialize_ok_packet(span<const std::uint8_t> msg, ok_view& output);  // for testing
 
 // Error packets (exposed for testing)
 struct err_view
@@ -61,116 +161,58 @@ struct err_view
     std::uint16_t error_code;
     string_view error_message;
 };
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code deserialize_error_packet(
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_error_packet(
     span<const std::uint8_t> message,
     err_view& pack,
     bool has_sql_state = true
-) noexcept;
-
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code process_error_packet(
+);
+BOOST_ATTRIBUTE_NODISCARD inline error_code process_error_packet(
     span<const std::uint8_t> message,
     db_flavor flavor,
     diagnostics& diag,
     bool has_sql_state = true
 );
 
-// Column definition
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
-deserialize_column_definition(span<const std::uint8_t> input, coldef_view& output) noexcept;
-
-// Quit
-struct quit_command
-{
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
-
-// Ping
-struct ping_command
-{
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
-
-// Reset connection
-struct reset_connection_command
-{
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
-
 // Deserializes a response that may be an OK or an error packet.
 // Applicable for commands like ping and reset connection.
 // If the response is an OK packet, sets backslash_escapes according to the
 // OK packet's server status flags
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code deserialize_ok_response(
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_ok_response(
     span<const std::uint8_t> message,
     db_flavor flavor,
     diagnostics& diag,
     bool& backslash_escapes
 );
 
-// Query
-struct query_command
-{
-    string_view query;
+// Column definition
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_column_definition(
+    span<const std::uint8_t> input,
+    coldef_view& output
+);
 
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
-
-// Prepare statement
-struct prepare_stmt_command
-{
-    string_view stmt;
-
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
+// Prepare statement response
 struct prepare_stmt_response
 {
     std::uint32_t id;
     std::uint16_t num_columns;
     std::uint16_t num_params;
 };
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code deserialize_prepare_stmt_response_impl(
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_prepare_stmt_response_impl(
     span<const std::uint8_t> message,
     prepare_stmt_response& output
-) noexcept;  // exposed for testing, doesn't take header into account
-
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code deserialize_prepare_stmt_response(
+);  // exposed for testing, doesn't take header into account
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_prepare_stmt_response(
     span<const std::uint8_t> message,
     db_flavor flavor,
     prepare_stmt_response& output,
     diagnostics& diag
 );
 
-// Execute statement
-struct execute_stmt_command
-{
-    std::uint32_t statement_id;
-    span<const field_view> params;
-
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
-
-// Close statement
-struct close_stmt_command
-{
-    std::uint32_t statement_id{};
-
-    constexpr close_stmt_command() = default;
-    constexpr close_stmt_command(std::uint32_t statement_id) noexcept : statement_id(statement_id) {}
-
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
-
 // Execution messages
-static_assert(std::is_trivially_destructible<error_code>::value, "");
 struct execute_response
 {
+    static_assert(std::is_trivially_destructible<error_code>::value, "");
+
     enum class type_t
     {
         num_fields,
@@ -192,12 +234,11 @@ struct execute_response
     execute_response(const ok_view& v) noexcept : type(type_t::ok_packet), data(v) {}
     execute_response(error_code v) noexcept : type(type_t::error), data(v) {}
 };
-BOOST_MYSQL_DECL
-execute_response deserialize_execute_response(
+inline execute_response deserialize_execute_response(
     span<const std::uint8_t> msg,
     db_flavor flavor,
     diagnostics& diag
-) noexcept;
+);
 
 struct row_message
 {
@@ -222,11 +263,9 @@ struct row_message
     row_message(const ok_view& ok_pack) noexcept : type(type_t::ok_packet), data(ok_pack) {}
     row_message(error_code v) noexcept : type(type_t::error), data(v) {}
 };
-BOOST_MYSQL_DECL
-row_message deserialize_row_message(span<const std::uint8_t> msg, db_flavor flavor, diagnostics& diag);
+inline row_message deserialize_row_message(span<const std::uint8_t> msg, db_flavor flavor, diagnostics& diag);
 
-BOOST_MYSQL_DECL
-error_code deserialize_row(
+inline error_code deserialize_row(
     resultset_encoding encoding,
     span<const std::uint8_t> message,
     metadata_collection_view meta,
@@ -242,38 +281,15 @@ struct server_hello
     capabilities server_capabilities{};
     string_view auth_plugin_name;
 };
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code deserialize_server_hello_impl(
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_server_hello_impl(
     span<const std::uint8_t> msg,
     server_hello& output
 );  // exposed for testing, doesn't take message header into account
-
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code
-deserialize_server_hello(span<const std::uint8_t> msg, server_hello& output, diagnostics& diag);
-
-// Login & ssl requests
-struct login_request
-{
-    capabilities negotiated_capabilities;  // capabilities
-    std::uint32_t max_packet_size;
-    std::uint32_t collation_id;
-    string_view username;
-    span<const std::uint8_t> auth_response;
-    string_view database;
-    string_view auth_plugin_name;
-
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
-
-struct ssl_request
-{
-    capabilities negotiated_capabilities;
-    std::uint32_t max_packet_size;
-    std::uint32_t collation_id;
-
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_server_hello(
+    span<const std::uint8_t> msg,
+    server_hello& output,
+    diagnostics& diag
+);
 
 // Auth switch
 struct auth_switch
@@ -281,12 +297,12 @@ struct auth_switch
     string_view plugin_name;
     span<const std::uint8_t> auth_data;
 };
-
-BOOST_ATTRIBUTE_NODISCARD BOOST_MYSQL_DECL error_code deserialize_auth_switch(
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_auth_switch(
     span<const std::uint8_t> msg,
     auth_switch& output
-) noexcept;  // exposed for testing
+);  // exposed for testing
 
+// Handshake server response
 struct handhake_server_response
 {
     struct ok_follows_t
@@ -328,27 +344,16 @@ struct handhake_server_response
     {
     }
 };
-BOOST_MYSQL_DECL
-handhake_server_response deserialize_handshake_server_response(
+inline handhake_server_response deserialize_handshake_server_response(
     span<const std::uint8_t> buff,
     db_flavor flavor,
     diagnostics& diag
 );
 
-struct auth_switch_response
-{
-    span<const std::uint8_t> auth_plugin_data;
-
-    BOOST_MYSQL_DECL std::size_t get_size() const noexcept;
-    BOOST_MYSQL_DECL void serialize(span<std::uint8_t> buffer) const noexcept;
-};
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/internal/protocol/protocol.ipp>
-#endif
+#include <boost/mysql/impl/internal/protocol/protocol_impl.hpp>
 
 #endif

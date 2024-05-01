@@ -10,15 +10,13 @@
 
 #pragma once
 
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/row_impl.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_MYSQL_STATIC_OR_INLINE
-std::size_t get_string_size(field_view f) noexcept
+inline std::size_t get_string_size(field_view f)
 {
     switch (f.kind())
     {
@@ -28,8 +26,7 @@ std::size_t get_string_size(field_view f) noexcept
     }
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-unsigned char* copy_string(unsigned char* buffer_it, field_view& f) noexcept
+inline unsigned char* copy_string(unsigned char* buffer_it, field_view& f)
 {
     auto str = f.get_string();
     if (!str.empty())
@@ -41,8 +38,7 @@ unsigned char* copy_string(unsigned char* buffer_it, field_view& f) noexcept
     return buffer_it;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-unsigned char* copy_blob(unsigned char* buffer_it, field_view& f) noexcept
+inline unsigned char* copy_blob(unsigned char* buffer_it, field_view& f)
 {
     auto b = f.get_blob();
     if (!b.empty())
@@ -54,8 +50,7 @@ unsigned char* copy_blob(unsigned char* buffer_it, field_view& f) noexcept
     return buffer_it;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-std::size_t copy_string_as_offset(unsigned char* buffer_first, std::size_t offset, field_view& f) noexcept
+inline std::size_t copy_string_as_offset(unsigned char* buffer_first, std::size_t offset, field_view& f)
 {
     auto str = f.get_string();
     if (!str.empty())
@@ -67,8 +62,7 @@ std::size_t copy_string_as_offset(unsigned char* buffer_first, std::size_t offse
     return 0;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-std::size_t copy_blob_as_offset(unsigned char* buffer_first, std::size_t offset, field_view& f) noexcept
+inline std::size_t copy_blob_as_offset(unsigned char* buffer_first, std::size_t offset, field_view& f)
 {
     auto str = f.get_blob();
     if (!str.empty())
@@ -80,8 +74,7 @@ std::size_t copy_blob_as_offset(unsigned char* buffer_first, std::size_t offset,
     return 0;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-void copy_strings(std::vector<field_view>& fields, std::vector<unsigned char>& string_buffer)
+inline void copy_strings(std::vector<field_view>& fields, std::vector<unsigned char>& string_buffer)
 {
     // Calculate the required size for the new strings
     std::size_t size = 0;
@@ -107,8 +100,7 @@ void copy_strings(std::vector<field_view>& fields, std::vector<unsigned char>& s
     BOOST_ASSERT(buffer_it == string_buffer.data() + size);
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-field_view offset_to_string_view(field_view fv, const std::uint8_t* buffer_first) noexcept
+inline field_view offset_to_string_view(field_view fv, const std::uint8_t* buffer_first)
 {
     auto& impl = detail::access::get_impl(fv);
     if (impl.is_string_offset())

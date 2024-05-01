@@ -36,7 +36,7 @@ namespace detail {
 class message_reader
 {
 public:
-    message_reader(std::size_t initial_buffer_size, std::size_t max_frame_size = MAX_PACKET_SIZE)
+    message_reader(std::size_t initial_buffer_size, std::size_t max_frame_size = max_packet_size)
         : buffer_(initial_buffer_size), max_frame_size_(max_frame_size)
     {
     }

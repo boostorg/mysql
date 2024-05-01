@@ -13,10 +13,11 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/make_string_view.hpp>
 
 #include <boost/mysql/impl/internal/auth/auth.hpp>
+
+#include <boost/config.hpp>
 
 #include <algorithm>
 #include <cstring>
@@ -30,14 +31,13 @@ namespace detail {
 // Authorization for this plugin is always challenge (nonce) -> response
 // (hashed password).
 
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t mnp_challenge_length = 20;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t mnp_response_length = 20;
+BOOST_INLINE_CONSTEXPR std::size_t mnp_challenge_length = 20;
+BOOST_INLINE_CONSTEXPR std::size_t mnp_response_length = 20;
 
 // challenge must point to challenge_length bytes of data
 // output must point to response_length bytes of data
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
-BOOST_MYSQL_STATIC_OR_INLINE
-void mnp_compute_auth_string(string_view password, const void* challenge, void* output)
+inline void mnp_compute_auth_string(string_view password, const void* challenge, void* output)
 {
     // SHA1 (password)
     using sha1_buffer = unsigned char[SHA_DIGEST_LENGTH];
@@ -59,8 +59,7 @@ void mnp_compute_auth_string(string_view password, const void* challenge, void* 
     }
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-error_code mnp_compute_response(
+inline error_code mnp_compute_response(
     string_view password,
     boost::span<const std::uint8_t> challenge,
     bool,  // secure_channel
@@ -90,13 +89,12 @@ error_code mnp_compute_response(
 // auth without an SSL connection, but that requires the server public key,
 // and we do not implement that.
 
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t csha2p_challenge_length = 20;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::size_t csha2p_response_length = 32;
+BOOST_INLINE_CONSTEXPR std::size_t csha2p_challenge_length = 20;
+BOOST_INLINE_CONSTEXPR std::size_t csha2p_response_length = 32;
 
 // challenge must point to challenge_length bytes of data
 // output must point to response_length bytes of data
-BOOST_MYSQL_STATIC_OR_INLINE
-void csha2p_compute_auth_string(string_view password, const void* challenge, void* output)
+inline void csha2p_compute_auth_string(string_view password, const void* challenge, void* output)
 {
     static_assert(csha2p_response_length == SHA256_DIGEST_LENGTH, "Buffer size mismatch");
 
@@ -122,15 +120,13 @@ void csha2p_compute_auth_string(string_view password, const void* challenge, voi
     }
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-bool should_perform_full_auth(boost::span<const std::uint8_t> challenge) noexcept
+inline bool should_perform_full_auth(boost::span<const std::uint8_t> challenge)
 {
     // A challenge of "\4" means "perform full auth"
     return challenge.size() == 1u && challenge[0] == 4;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-error_code csha2p_compute_response(
+inline error_code csha2p_compute_response(
     string_view password,
     boost::span<const std::uint8_t> challenge,
     bool secure_channel,
@@ -176,8 +172,7 @@ struct authentication_plugin
     calculator_signature calculator;
 };
 
-BOOST_MYSQL_STATIC_IF_COMPILED
-constexpr authentication_plugin all_authentication_plugins[] = {
+BOOST_INLINE_CONSTEXPR authentication_plugin all_authentication_plugins[] = {
     {
      make_string_view("mysql_native_password"),
      &mnp_compute_response,
@@ -188,8 +183,7 @@ constexpr authentication_plugin all_authentication_plugins[] = {
      },
 };
 
-BOOST_MYSQL_STATIC_OR_INLINE
-const authentication_plugin* find_plugin(string_view name)
+inline const authentication_plugin* find_plugin(string_view name)
 {
     auto it = std::find_if(
         std::begin(all_authentication_plugins),

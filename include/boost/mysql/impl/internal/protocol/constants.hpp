@@ -15,7 +15,8 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-constexpr std::size_t MAX_PACKET_SIZE = 0xffffff;
+constexpr std::size_t max_packet_size = 0xffffff;
+constexpr std::size_t frame_header_size = 4;
 
 // The binary collation number, used to distinguish blobs from strings
 constexpr std::uint16_t binary_collation = 63;

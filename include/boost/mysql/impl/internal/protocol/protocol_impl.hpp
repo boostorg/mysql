@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_PROTOCOL_IPP
-#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_PROTOCOL_IPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_PROTOCOL_IMPL_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_PROTOCOL_IMPL_HPP
 
 #pragma once
 
@@ -30,44 +30,33 @@
 #include <boost/mysql/impl/internal/protocol/null_bitmap_traits.hpp>
 #include <boost/mysql/impl/internal/protocol/protocol.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
 
+#include <boost/config.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
+#include <cstdint>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
 // Constants
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::uint8_t handshake_protocol_version_9 = 9;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::uint8_t handshake_protocol_version_10 = 10;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::uint8_t error_packet_header = 0xff;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::uint8_t ok_packet_header = 0x00;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::uint8_t eof_packet_header = 0xfe;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::uint8_t auth_switch_request_header = 0xfe;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr std::uint8_t auth_more_data_header = 0x01;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr string_view fast_auth_complete_challenge = make_string_view("\3");
+BOOST_INLINE_CONSTEXPR std::uint8_t handshake_protocol_version_9 = 9;
+BOOST_INLINE_CONSTEXPR std::uint8_t handshake_protocol_version_10 = 10;
+BOOST_INLINE_CONSTEXPR std::uint8_t error_packet_header = 0xff;
+BOOST_INLINE_CONSTEXPR std::uint8_t ok_packet_header = 0x00;
+BOOST_INLINE_CONSTEXPR std::uint8_t eof_packet_header = 0xfe;
+BOOST_INLINE_CONSTEXPR std::uint8_t auth_switch_request_header = 0xfe;
+BOOST_INLINE_CONSTEXPR std::uint8_t auth_more_data_header = 0x01;
+BOOST_INLINE_CONSTEXPR string_view fast_auth_complete_challenge = make_string_view("\3");
 
-// Helpers
-BOOST_MYSQL_STATIC_OR_INLINE
-void serialize_command_id(span<std::uint8_t> buff, std::uint8_t command_id) noexcept
+// Maps from an actual value to a protocol_field_type (for execute statement)
+inline protocol_field_type to_protocol_field_type(field_kind kind)
 {
-    BOOST_ASSERT(buff.size() >= 1u);
-    buff[0] = command_id;
-}
-
-struct frame_header_packet
-{
-    int3 packet_size;
-    std::uint8_t sequence_number;
-};
-
-// Maps from an actual value to a protocol_field_type (for execute statement). Only value's type is used
-static protocol_field_type get_protocol_field_type(field_view input) noexcept
-{
-    switch (input.kind())
+    switch (kind)
     {
     case field_kind::null: return protocol_field_type::null;
     case field_kind::int64: return protocol_field_type::longlong;
@@ -83,25 +72,140 @@ static protocol_field_type get_protocol_field_type(field_view input) noexcept
     }
 }
 
+// Returns the collation ID's first byte (for login packets)
+inline std::uint8_t get_collation_first_byte(std::uint32_t collation_id)
+{
+    return static_cast<std::uint8_t>(collation_id % 0xff);
+}
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-// Frame header
-void boost::mysql::detail::serialize_frame_header(
-    frame_header msg,
-    span<std::uint8_t, frame_header_size> buffer
-) noexcept
+//
+// Serialization
+//
+void boost::mysql::detail::serialize(serialization_context& ctx, execute_stmt_command cmd)
 {
-    BOOST_ASSERT(msg.size <= 0xffffff);  // range check
-    serialization_context ctx(buffer.data());
-    frame_header_packet pack{int3{msg.size}, msg.sequence_number};
-    serialize(ctx, pack.packet_size, pack.sequence_number);
+    // The wire layout is as follows:
+    //  command ID
+    //  std::uint32_t statement_id;
+    //  std::uint8_t flags;
+    //  std::uint32_t iteration_count;
+    //  if num_params > 0:
+    //      NULL bitmap
+    //      std::uint8_t new_params_bind_flag;
+    //      array<meta_packet, num_params> meta;
+    //          protocol_field_type type;
+    //          std::uint8_t unsigned_flag;
+    //      array<field_view, num_params> params;
+
+    constexpr std::uint8_t command_id = 0x17;
+    constexpr std::uint8_t flags = 0;
+    constexpr std::uint32_t iteration_count = 1;
+    constexpr std::uint8_t new_params_bind_flag = 1;
+
+    // header
+    serialize(ctx, command_id, cmd.statement_id, flags, iteration_count);
+
+    // Number of parameters
+    auto num_params = cmd.params.size();
+
+    if (num_params > 0)
+    {
+        // NULL bitmap
+        null_bitmap_traits traits(stmt_execute_null_bitmap_offset, num_params);
+        auto null_bitmap_buff = ctx.reserve_space(traits.byte_count());  // already zero-initialized
+        for (std::size_t i = 0; i < num_params; ++i)
+        {
+            if (cmd.params[i].is_null())
+            {
+                traits.set_null(null_bitmap_buff.data(), i);
+            }
+        }
+
+        // new parameters bind flag
+        serialize(ctx, new_params_bind_flag);
+
+        // value metadata
+        for (field_view param : cmd.params)
+        {
+            field_kind kind = param.kind();
+            protocol_field_type type = to_protocol_field_type(kind);
+            std::uint8_t unsigned_flag = kind == field_kind::uint64 ? std::uint8_t(0x80) : std::uint8_t(0);
+            serialize(ctx, type, unsigned_flag);
+        }
+
+        // actual values
+        for (field_view param : cmd.params)
+        {
+            serialize(ctx, param);
+        }
+    }
 }
 
+void boost::mysql::detail::serialize(serialization_context& ctx, const login_request& req)
+{
+    serialize(
+        ctx,
+        static_cast<std::uint32_t>(req.negotiated_capabilities.get()),  // int4 client_flag
+        req.max_packet_size,                                            // int4 max_packet_size
+        get_collation_first_byte(req.collation_id),                     // int1 character_set
+        string_fixed<23>{},                                             // filler (all zeros)
+        string_null{req.username},
+        string_lenenc{to_string(req.auth_response)}  // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
+    );
+    if (req.negotiated_capabilities.has(CLIENT_CONNECT_WITH_DB))
+    {
+        serialize(ctx, string_null{req.database});  // string_null database
+    }
+    serialize(ctx, string_null{req.auth_plugin_name});  // string_null client_plugin_name
+}
+
+void boost::mysql::detail::serialize(serialization_context& ctx, ssl_request req)
+{
+    serialize(
+        ctx,
+        req.negotiated_capabilities.get(),           // int4 client_flag
+        req.max_packet_size,                         // int4 max_packet_size
+        get_collation_first_byte(req.collation_id),  // int1 character_set,
+        string_fixed<23>{}                           // filler, all zeros
+    );
+}
+
+template <class Serializable>
+std::uint8_t boost::mysql::detail::serialize_top_level(
+    const Serializable& input,
+    std::vector<std::uint8_t>& to,
+    std::uint8_t seqnum,
+    std::size_t max_frame_size
+)
+{
+    // Record offsets
+    std::size_t first = to.size();
+
+    // Create a serialization context
+    serialization_context ctx(to, max_frame_size);
+
+    // Serialize the object
+    serialize(ctx, input);
+
+    // Correctly set up frame headers
+    return write_frame_headers(
+        span<std::uint8_t>(to.data() + first, to.data() + to.size()),
+        seqnum,
+        max_frame_size
+    );
+}
+
+//
+// Deserialization
+//
+
+// Frame header
 boost::mysql::detail::frame_header boost::mysql::detail::deserialize_frame_header(
     span<const std::uint8_t, frame_header_size> buffer
-) noexcept
+)
 {
     frame_header_packet pack{};
     deserialization_context ctx(buffer.data(), buffer.size());
@@ -115,7 +219,7 @@ boost::mysql::detail::frame_header boost::mysql::detail::deserialize_frame_heade
 boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
     span<const std::uint8_t> msg,
     ok_view& output
-) noexcept
+)
 {
     struct ok_packet
     {
@@ -156,7 +260,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_error_packet(
     span<const std::uint8_t> msg,
     err_view& output,
     bool has_sql_state
-) noexcept
+)
 {
     struct err_packet
     {
@@ -226,7 +330,7 @@ boost::mysql::error_code boost::mysql::detail::process_error_packet(
 boost::mysql::error_code boost::mysql::detail::deserialize_column_definition(
     span<const std::uint8_t> input,
     coldef_view& output
-) noexcept
+)
 {
     deserialization_context ctx(input);
 
@@ -302,27 +406,6 @@ boost::mysql::error_code boost::mysql::detail::deserialize_column_definition(
     return ctx.check_extra_bytes();
 }
 
-// quit
-std::size_t boost::mysql::detail::quit_command::get_size() const noexcept { return 1u; }
-void boost::mysql::detail::quit_command::serialize(span<std::uint8_t> buff) const noexcept
-{
-    serialize_command_id(buff, 0x01);
-}
-
-// ping
-std::size_t boost::mysql::detail::ping_command::get_size() const noexcept { return 1u; }
-void boost::mysql::detail::ping_command::serialize(span<std::uint8_t> buff) const noexcept
-{
-    serialize_command_id(buff, 0x0e);
-}
-
-// reset connection
-std::size_t boost::mysql::detail::reset_connection_command::get_size() const noexcept { return 1u; }
-void boost::mysql::detail::reset_connection_command::serialize(span<std::uint8_t> buff) const noexcept
-{
-    serialize_command_id(buff, 0x1f);
-}
-
 boost::mysql::error_code boost::mysql::detail::deserialize_ok_response(
     span<const std::uint8_t> message,
     db_flavor flavor,
@@ -359,38 +442,10 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_response(
     }
 }
 
-// query
-std::size_t boost::mysql::detail::query_command::get_size() const noexcept
-{
-    return ::boost::mysql::detail::get_size(string_eof{query}) + 1;  // command ID
-}
-void boost::mysql::detail::query_command::serialize(span<std::uint8_t> buff) const noexcept
-{
-    constexpr std::uint8_t command_id = 0x03;
-
-    BOOST_ASSERT(buff.size() >= get_size());
-    serialization_context ctx(buff.data());
-    ::boost::mysql::detail::serialize(ctx, command_id, string_eof{query});
-}
-
-// prepare statement
-std::size_t boost::mysql::detail::prepare_stmt_command::get_size() const noexcept
-{
-    return ::boost::mysql::detail::get_size(string_eof{stmt}) + 1;  // command ID
-}
-void boost::mysql::detail::prepare_stmt_command::serialize(span<std::uint8_t> buff) const noexcept
-{
-    constexpr std::uint8_t command_id = 0x16;
-
-    BOOST_ASSERT(buff.size() >= get_size());
-    serialization_context ctx(buff.data());
-    ::boost::mysql::detail::serialize(ctx, command_id, string_eof{stmt});
-}
-
 boost::mysql::error_code boost::mysql::detail::deserialize_prepare_stmt_response_impl(
     span<const std::uint8_t> message,
     prepare_stmt_response& output
-) noexcept
+)
 {
     struct com_stmt_prepare_ok_packet
     {
@@ -452,110 +507,12 @@ boost::mysql::error_code boost::mysql::detail::deserialize_prepare_stmt_response
     }
 }
 
-// execute statement
-// The wire layout is as follows:
-//  command ID
-//  std::uint32_t statement_id;
-//  std::uint8_t flags;
-//  std::uint32_t iteration_count;
-//  if num_params > 0:
-//      NULL bitmap
-//      std::uint8_t new_params_bind_flag;
-//      array<meta_packet, num_params> meta;
-//          protocol_field_type type;
-//          std::uint8_t unsigned_flag;
-//      array<field_view, num_params> params;
-std::size_t boost::mysql::detail::execute_stmt_command::get_size() const noexcept
-{
-    constexpr std::size_t param_meta_packet_size = 2;           // type + unsigned flag
-    constexpr std::size_t stmt_execute_packet_head_size = 1     // command ID
-                                                          + 4   // statement_id
-                                                          + 1   // flags
-                                                          + 4;  // iteration_count
-    std::size_t res = stmt_execute_packet_head_size;
-    auto num_params = params.size();
-    if (num_params > 0u)
-    {
-        res += null_bitmap_traits(stmt_execute_null_bitmap_offset, num_params).byte_count();
-        res += 1;  // new_params_bind_flag
-        res += param_meta_packet_size * num_params;
-        for (field_view param : params)
-        {
-            res += ::boost::mysql::detail::get_size(param);
-        }
-    }
-
-    return res;
-}
-
-void boost::mysql::detail::execute_stmt_command::serialize(span<std::uint8_t> buff) const noexcept
-{
-    constexpr std::uint8_t command_id = 0x17;
-
-    serialization_context ctx(buff.data());
-    BOOST_ASSERT(buff.size() >= get_size());
-
-    std::uint8_t flags = 0;
-    std::uint32_t iteration_count = 1;
-    std::uint8_t new_params_bind_flag = 1;
-
-    ::boost::mysql::detail::serialize(ctx, command_id, this->statement_id, flags, iteration_count);
-
-    // Number of parameters
-    auto num_params = params.size();
-
-    if (num_params > 0)
-    {
-        // NULL bitmap
-        null_bitmap_traits traits(stmt_execute_null_bitmap_offset, num_params);
-        std::memset(ctx.first(), 0, traits.byte_count());  // Initialize to zeroes
-        for (std::size_t i = 0; i < num_params; ++i)
-        {
-            if (params[i].is_null())
-            {
-                traits.set_null(ctx.first(), i);
-            }
-        }
-        ctx.advance(traits.byte_count());
-
-        // new parameters bind flag
-        ::boost::mysql::detail::serialize(ctx, new_params_bind_flag);
-
-        // value metadata
-        for (field_view param : params)
-        {
-            protocol_field_type type = get_protocol_field_type(param);
-            std::uint8_t unsigned_flag = param.is_uint64() ? std::uint8_t(0x80) : std::uint8_t(0);
-            ::boost::mysql::detail::serialize(ctx, type, unsigned_flag);
-        }
-
-        // actual values
-        for (field_view param : params)
-        {
-            ::boost::mysql::detail::serialize(ctx, param);
-        }
-    }
-}
-
-// close statement
-std::size_t boost::mysql::detail::close_stmt_command::get_size() const noexcept { return 5u; }
-
-void boost::mysql::detail::close_stmt_command::serialize(span<std::uint8_t> buff) const noexcept
-{
-    constexpr std::uint8_t command_id = 0x19;
-
-    serialization_context ctx(buff.data());
-    BOOST_ASSERT(buff.size() >= get_size());
-
-    ::boost::mysql::detail::serialize(ctx, command_id, statement_id);
-}
-
 // execute response
 boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute_response(
     span<const std::uint8_t> msg,
     db_flavor flavor,
     diagnostics& diag
-) noexcept
+)
 {
     // Response may be: ok_packet, err_packet, local infile request (not implemented)
     // If it is none of this, then the message type itself is the beginning of
@@ -646,16 +603,14 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_MYSQL_STATIC_OR_INLINE
-bool is_next_field_null(const deserialization_context& ctx) noexcept
+inline bool is_next_field_null(const deserialization_context& ctx)
 {
     if (!ctx.enough_size(1))
         return false;
     return *ctx.first() == 0xfb;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-error_code deserialize_text_row(
+inline error_code deserialize_text_row(
     deserialization_context& ctx,
     metadata_collection_view meta,
     field_view* output
@@ -684,8 +639,7 @@ error_code deserialize_text_row(
     return error_code();
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-error_code deserialize_binary_row(
+inline error_code deserialize_binary_row(
     deserialization_context& ctx,
     metadata_collection_view meta,
     field_view* output
@@ -751,8 +705,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_MYSQL_STATIC_OR_INLINE
-capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> high) noexcept
+inline capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> high)
 {
     std::uint32_t res = 0;
     auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&res);
@@ -761,14 +714,12 @@ capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> high) noe
     return capabilities(boost::endian::little_to_native(res));
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-db_flavor parse_db_version(string_view version_string) noexcept
+inline db_flavor parse_db_version(string_view version_string)
 {
     return version_string.find("MariaDB") != string_view::npos ? db_flavor::mariadb : db_flavor::mysql;
 }
 
-BOOST_MYSQL_STATIC_IF_COMPILED
-constexpr std::uint8_t server_hello_auth1_length = 8;
+BOOST_INLINE_CONSTEXPR std::uint8_t server_hello_auth1_length = 8;
 
 }  // namespace detail
 }  // namespace mysql
@@ -886,124 +837,12 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello(
     }
 }
 
-// Login request
-namespace boost {
-namespace mysql {
-namespace detail {
-
-BOOST_MYSQL_STATIC_OR_INLINE
-std::uint8_t get_collation_first_byte(std::uint32_t collation_id) noexcept
-{
-    return static_cast<std::uint8_t>(collation_id % 0xff);
-}
-
-struct login_request_packet
-{
-    std::uint32_t client_flag;  // capabilities
-    std::uint32_t max_packet_size;
-    std::uint8_t character_set;  // collation ID first byte
-    string_fixed<23> filler;     //     All 0s.
-    string_null username;
-    string_lenenc auth_response;     // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
-    string_null database;            // only to be serialized if CLIENT_CONNECT_WITH_DB
-    string_null client_plugin_name;  // we require CLIENT_PLUGIN_AUTH
-    // CLIENT_CONNECT_ATTRS: not implemented
-};
-
-BOOST_MYSQL_STATIC_OR_INLINE
-login_request_packet to_packet(const login_request& req) noexcept
-{
-    return {
-        req.negotiated_capabilities.get(),
-        req.max_packet_size,
-        get_collation_first_byte(req.collation_id),
-        {},
-        string_null{req.username},
-        string_lenenc{to_string(req.auth_response)},
-        string_null{req.database},
-        string_null{req.auth_plugin_name},
-    };
-}
-
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
-
-std::size_t boost::mysql::detail::login_request::get_size() const noexcept
-{
-    auto pack = to_packet(*this);
-    return ::boost::mysql::detail::get_size(
-               pack.client_flag,
-               pack.max_packet_size,
-               pack.character_set,
-               pack.filler,
-               pack.username,
-               pack.auth_response
-           ) +
-           (negotiated_capabilities.has(CLIENT_CONNECT_WITH_DB)
-                ? ::boost::mysql::detail::get_size(pack.database)
-                : 0) +
-           ::boost::mysql::detail::get_size(pack.client_plugin_name);
-}
-
-void boost::mysql::detail::login_request::serialize(span<std::uint8_t> buff) const noexcept
-{
-    BOOST_ASSERT(buff.size() >= get_size());
-    serialization_context ctx(buff.data());
-
-    auto pack = to_packet(*this);
-    ::boost::mysql::detail::serialize(
-        ctx,
-        pack.client_flag,
-        pack.max_packet_size,
-        pack.character_set,
-        pack.filler,
-        pack.username,
-        pack.auth_response
-    );
-    if (negotiated_capabilities.has(CLIENT_CONNECT_WITH_DB))
-    {
-        ::boost::mysql::detail::serialize(ctx, pack.database);
-    }
-    ::boost::mysql::detail::serialize(ctx, pack.client_plugin_name);
-}
-
-// ssl_request
-std::size_t boost::mysql::detail::ssl_request::get_size() const noexcept { return 4 + 4 + 1 + 23; }
-
-void boost::mysql::detail::ssl_request::serialize(span<std::uint8_t> buff) const noexcept
-{
-    BOOST_ASSERT(buff.size() >= get_size());
-    serialization_context ctx(buff.data());
-
-    struct ssl_request_packet
-    {
-        std::uint32_t client_flag;
-        std::uint32_t max_packet_size;
-        std::uint8_t character_set;
-        string_fixed<23> filler;
-    } pack{
-        negotiated_capabilities.get(),
-        max_packet_size,
-        get_collation_first_byte(collation_id),
-        {},
-    };
-
-    ::boost::mysql::detail::serialize(
-        ctx,
-        pack.client_flag,
-        pack.max_packet_size,
-        pack.character_set,
-        pack.filler
-    );
-}
-
 // auth_switch
 BOOST_ATTRIBUTE_NODISCARD
 boost::mysql::error_code boost::mysql::detail::deserialize_auth_switch(
     span<const std::uint8_t> msg,
     auth_switch& output
-) noexcept
+)
 {
     struct auth_switch_request_packet
     {
@@ -1092,18 +931,6 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
         // Unknown message type
         return make_error_code(client_errc::protocol_value_error);
     }
-}
-
-std::size_t boost::mysql::detail::auth_switch_response::get_size() const noexcept
-{
-    return ::boost::mysql::detail::get_size(string_eof{to_string(auth_plugin_data)});
-}
-
-void boost::mysql::detail::auth_switch_response::serialize(span<std::uint8_t> buff) const noexcept
-{
-    BOOST_ASSERT(buff.size() >= get_size());
-    serialization_context ctx(buff.data());
-    ::boost::mysql::detail::serialize(ctx, string_eof{to_string(auth_plugin_data)});
 }
 
 #endif

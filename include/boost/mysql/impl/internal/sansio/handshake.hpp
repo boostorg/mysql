@@ -19,6 +19,7 @@
 
 #include <boost/mysql/impl/internal/auth/auth.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
+#include <boost/mysql/impl/internal/protocol/constants.hpp>
 #include <boost/mysql/impl/internal/protocol/protocol.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/next_action.hpp>
@@ -26,7 +27,6 @@
 
 #include <boost/asio/coroutine.hpp>
 
-#include <cstddef>
 #include <cstdint>
 
 namespace boost {
@@ -127,7 +127,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
     {
         return ssl_request{
             st_->current_capabilities,
-            static_cast<std::uint32_t>(MAX_PACKET_SIZE),
+            static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
         };
     }
@@ -136,7 +136,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
     {
         return login_request{
             st_->current_capabilities,
-            static_cast<std::uint32_t>(MAX_PACKET_SIZE),
+            static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
             hparams_.username(),
             auth_resp_.data,
