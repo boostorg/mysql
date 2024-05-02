@@ -27,6 +27,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <array>
+#include <memory>
+#include <test_common/assert_buffer_equals.hpp>
 
 #include "operators.hpp"
 #include "serialization_test.hpp"
@@ -71,29 +73,31 @@ BOOST_AUTO_TEST_CASE(frame_header_serialization)
     struct
     {
         const char* name;
-        frame_header value;
+        std::uint32_t size;
+        std::uint8_t seqnum;
         std::array<std::uint8_t, 4> serialized;
     } test_cases[] = {
-        {"small_packet_seqnum_0",     {3, 0},           {{0x03, 0x00, 0x00, 0x00}}},
-        {"small_packet_seqnum_not_0", {9, 2},           {{0x09, 0x00, 0x00, 0x02}}},
-        {"big_packet_seqnum_0",       {0xcacbcc, 0xfa}, {{0xcc, 0xcb, 0xca, 0xfa}}},
-        {"max_packet_max_seqnum",     {0xffffff, 0xff}, {{0xff, 0xff, 0xff, 0xff}}}
+        {"small_packet_seqnum_0",     3,        0,    {{0x03, 0x00, 0x00, 0x00}}},
+        {"small_packet_seqnum_not_0", 9,        2,    {{0x09, 0x00, 0x00, 0x02}}},
+        {"big_packet_seqnum_0",       0xcacbcc, 0xfa, {{0xcc, 0xcb, 0xca, 0xfa}}},
+        {"max_packet_max_seqnum",     0xffffff, 0xff, {{0xff, 0xff, 0xff, 0xff}}}
     };
 
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name << " serialization")
         {
-            serialization_buffer buffer(4);
-            serialize_frame_header(tc.value, span<std::uint8_t, frame_header_size>(buffer.data(), 4));
-            buffer.check(tc.serialized);
+            std::unique_ptr<std::uint8_t[]> buff{new std::uint8_t[4]};
+            span<std::uint8_t, frame_header_size> buff_span(buff.get(), 4);
+            serialize_frame_header(buff_span, tc.size, tc.seqnum);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff_span, tc.serialized);
         }
         BOOST_TEST_CONTEXT(tc.name << " deserialization")
         {
             deserialization_buffer buffer(tc.serialized);
             auto actual = deserialize_frame_header(span<const std::uint8_t, frame_header_size>(buffer));
-            BOOST_TEST(actual.size == tc.value.size);
-            BOOST_TEST(actual.sequence_number == tc.value.sequence_number);
+            BOOST_TEST(actual.size == tc.size);
+            BOOST_TEST(actual.sequence_number == tc.seqnum);
         }
     }
 }
@@ -109,7 +113,7 @@ BOOST_AUTO_TEST_CASE(ok_view_success)
         ok_view expected;
         deserialization_buffer serialized;
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "successful_update",
             ok_builder()
@@ -145,7 +149,7 @@ BOOST_AUTO_TEST_CASE(ok_view_success)
                 .build(),
             {0x00, 0x00, 0x02, 0x00, 0x00, 0x00},
         }
-  // clang-format on
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -208,7 +212,7 @@ BOOST_AUTO_TEST_CASE(err_view_success)
         deserialization_buffer serialized;
         bool has_sql_state;
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "wrong_use_database",
             {1049, "Unknown database 'a'"},
@@ -253,7 +257,7 @@ BOOST_AUTO_TEST_CASE(err_view_success)
             {0x10, 0x04},
             false,
         },
-  // clang-format on
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -369,7 +373,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_success)
         coldef_view expected;
         deserialization_buffer serialized;
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "numeric_auto_increment_primary_key",
             meta_builder()
@@ -498,7 +502,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_success)
                 0x00, 0x04, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x00
             },
         },
-  // clang-format on
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -534,7 +538,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
         error_code expected_err;
         deserialization_buffer serialized;
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "empty",
             client_errc::incomplete_message,
@@ -636,7 +640,7 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
             0x61, 0x74, 0x0d, 0x3f, 0x00, 0x0c, 0x00, 0x00,
             0x00, 0x04, 0x00, 0x00, 0x1f, 0x00, 0x00, 0x00, 0xff}
         }
-  // clang-format on
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -650,23 +654,6 @@ BOOST_AUTO_TEST_CASE(coldef_view_error)
     }
 }
 
-// TODO: move this to common section
-template <class T>
-void do_serialize_toplevel_test(const T& value, span<const std::uint8_t> serialized)
-{
-    // Size
-    std::size_t expected_size = serialized.size();
-    std::size_t actual_size = value.get_size();
-    BOOST_TEST(actual_size == expected_size);
-
-    // Serialize
-    serialization_buffer buffer(actual_size);
-    value.serialize(buffer);
-
-    // Check buffer
-    buffer.check(serialized);
-}
-
 //
 // quit
 //
@@ -674,7 +661,7 @@ BOOST_AUTO_TEST_CASE(quit_serialization)
 {
     quit_command cmd;
     const std::uint8_t serialized[] = {0x01};
-    do_serialize_toplevel_test(cmd, serialized);
+    do_serialize_test(cmd, serialized);
 }
 
 //
@@ -684,7 +671,7 @@ BOOST_AUTO_TEST_CASE(ping_serialization)
 {
     ping_command cmd;
     const std::uint8_t serialized[] = {0x0e};
-    do_serialize_toplevel_test(cmd, serialized);
+    do_serialize_test(cmd, serialized);
 }
 
 //
@@ -694,7 +681,7 @@ BOOST_AUTO_TEST_CASE(reset_connection_serialization)
 {
     reset_connection_command cmd;
     const std::uint8_t serialized[] = {0x1f};
-    do_serialize_toplevel_test(cmd, serialized);
+    do_serialize_test(cmd, serialized);
 }
 
 // OK response (ping & reset connection)
@@ -746,7 +733,7 @@ BOOST_AUTO_TEST_CASE(query_serialization)
     query_command cmd{"show databases"};
     const std::uint8_t serialized[] =
         {0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x73};
-    do_serialize_toplevel_test(cmd, serialized);
+    do_serialize_test(cmd, serialized);
 }
 
 //
@@ -759,7 +746,7 @@ BOOST_AUTO_TEST_CASE(prepare_statement_serialization)
                                        0x72, 0x6f, 0x6d, 0x20, 0x74, 0x68, 0x72, 0x65, 0x65, 0x5f, 0x72,
                                        0x6f, 0x77, 0x73, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x20, 0x57,
                                        0x48, 0x45, 0x52, 0x45, 0x20, 0x69, 0x64, 0x20, 0x3d, 0x20, 0x3f};
-    do_serialize_toplevel_test(cmd, serialized);
+    do_serialize_test(cmd, serialized);
 }
 
 BOOST_AUTO_TEST_CASE(deserialize_prepare_stmt_response_impl_success)
@@ -840,7 +827,7 @@ BOOST_AUTO_TEST_CASE(deserialize_prepare_stmt_response_error)
         const char* expected_diag;
         deserialization_buffer serialized;
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "error_message_type",
             client_errc::incomplete_message,
@@ -865,7 +852,7 @@ BOOST_AUTO_TEST_CASE(deserialize_prepare_stmt_response_error)
             "",
             {0x00, 0x01, 0x00},
         },
-  // clang-format on
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -897,7 +884,7 @@ BOOST_AUTO_TEST_CASE(execute_statement_serialization)
         std::vector<field_view> params;
         std::vector<std::uint8_t> serialized;
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "uint64_t",
             1,
@@ -998,7 +985,7 @@ BOOST_AUTO_TEST_CASE(execute_statement_serialization)
             {},
             {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00}
         }
-  // clang-format on
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -1006,7 +993,7 @@ BOOST_AUTO_TEST_CASE(execute_statement_serialization)
         BOOST_TEST_CONTEXT(tc.name)
         {
             execute_stmt_command cmd{tc.stmt_id, tc.params};
-            do_serialize_toplevel_test(cmd, tc.serialized);
+            do_serialize_test(cmd, tc.serialized);
         }
     }
 }
@@ -1018,7 +1005,7 @@ BOOST_AUTO_TEST_CASE(close_statement_serialization)
 {
     close_stmt_command cmd{1};
     const std::uint8_t serialized[] = {0x19, 0x01, 0x00, 0x00, 0x00};
-    do_serialize_toplevel_test(cmd, serialized);
+    do_serialize_test(cmd, serialized);
 }
 
 //
@@ -1148,7 +1135,7 @@ BOOST_AUTO_TEST_CASE(deserialize_row_message_error)
         error_code expected_error;
         const char* expected_info;
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "invalid_ok_packet",
             { 0xfe, 0x00, 0x00, 0x02, 0x00, 0x00 }, // 1 byte missing
@@ -1177,7 +1164,7 @@ BOOST_AUTO_TEST_CASE(deserialize_row_message_error)
             client_errc::incomplete_message,
             ""
         }
-  // clang-format on
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -1847,7 +1834,7 @@ BOOST_AUTO_TEST_CASE(login_request_serialization)
     // TODO: test case with collation > 0xff
     for (const auto& tc : test_cases)
     {
-        BOOST_TEST_CONTEXT(tc.name) { do_serialize_toplevel_test(tc.value, tc.serialized); }
+        BOOST_TEST_CONTEXT(tc.name) { do_serialize_test(tc.value, tc.serialized); }
     }
 }
 
@@ -1873,7 +1860,7 @@ BOOST_AUTO_TEST_CASE(ssl_request_serialization)
                                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    do_serialize_toplevel_test(value, serialized);
+    do_serialize_test(value, serialized);
 
     // TODO: test case with collation > 0xff
 }
@@ -1947,7 +1934,7 @@ BOOST_AUTO_TEST_CASE(auth_switch_response_serialization)
          0xaa, 0x72, 0x59, 0xfc, 0x53, 0xdf, 0x88, 0x2d, 0xf9, 0xcf}
     };
 
-    do_serialize_toplevel_test(value, serialized);
+    do_serialize_test(value, serialized);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

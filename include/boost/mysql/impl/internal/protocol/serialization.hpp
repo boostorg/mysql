@@ -19,6 +19,7 @@
 #include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/config.hpp>
 #include <boost/core/span.hpp>
 #include <boost/endian/conversion.hpp>
 #include <boost/endian/detail/endian_load.hpp>
@@ -59,6 +60,9 @@ inline void serialize_frame_header(
     to[3] = seqnum;
 }
 
+// Disables framing in serialization_context
+BOOST_INLINE_CONSTEXPR std::size_t disable_framing = static_cast<std::size_t>(-1);
+
 // Helper to compose a packet with any required frame headers. Embedding knowledge
 // of frame headers in serialization functions creates messages ready to send.
 // We require the entire message to be created before it's sent, so we don't lose any functionality.
@@ -72,7 +76,7 @@ class serialization_context
     std::vector<std::uint8_t>& buffer_;
     std::size_t initial_offset_;
     std::size_t max_frame_size_;
-    std::size_t next_header_offset_;
+    std::size_t next_header_offset_{};
 
     // Inserts any missing space for frame headers, moving data as required.
     void add_frame_headers()
@@ -88,42 +92,10 @@ class serialization_context
         }
     }
 
-public:
-    serialization_context(std::vector<std::uint8_t>& buff, std::size_t max_frame_size = max_packet_size)
-        : buffer_(buff),
-          initial_offset_(buffer_.size()),
-          max_frame_size_(max_frame_size),
-          next_header_offset_(buff.size() + max_frame_size_ + frame_header_size)
-    {
-        // Add space for the initial header
-        buffer_.resize(buffer_.size() + frame_header_size);
-    }
+    // max_frame_size_ == -1 can be used to disable framing. Used for testing
+    bool framing_enabled() const { return max_frame_size_ != disable_framing; }
 
-    // To be called by serialize() functions. Adds size bytes at the end of the buffer
-    // and returns the newly allocated space. Bytes are set to zero.
-    // Doesn't take framing into account.
-    span<std::uint8_t> grow_by(std::size_t size)
-    {
-        std::size_t offset = buffer_.size();
-        buffer_.resize(offset + size);
-        return {buffer_.data() + offset, size};
-    }
-
-    // To be called by serialize() functions.
-    // Appends a single byte to the buffer. Doesn't take framing into account.
-    void add(std::uint8_t value) { buffer_.push_back(value); }
-
-    // To be called by serialize() functions. Appends bytes to the buffer.
-    // Doesn't take framing into account - use for payloads with bound size.
-    void add(span<const std::uint8_t> content)
-    {
-        buffer_.insert(buffer_.end(), content.begin(), content.end());
-    }
-
-    // Like add, but takes framing into account. Use for potentially long payloads.
-    // If the payload is very long, space for frame headers will be added as required,
-    // avoiding expensive memmove's when calling add_frame_headers
-    void add_checked(span<const std::uint8_t> content)
+    void add_checked_impl(span<const std::uint8_t> content)
     {
         // Add any required frame headers we didn't add until now
         add_frame_headers();
@@ -153,9 +125,59 @@ public:
         }
     }
 
+public:
+    serialization_context(std::vector<std::uint8_t>& buff, std::size_t max_frame_size = max_packet_size)
+        : buffer_(buff), initial_offset_(buffer_.size()), max_frame_size_(max_frame_size)
+    {
+        // Add space for the initial header
+        if (framing_enabled())
+        {
+            buffer_.resize(buffer_.size() + frame_header_size);
+            next_header_offset_ = buff.size() + max_frame_size_ + frame_header_size;
+        }
+    }
+
+    // To be called by serialize() functions. Adds size bytes at the end of the buffer
+    // and returns the newly allocated space. Bytes are set to zero.
+    // Doesn't take framing into account.
+    span<std::uint8_t> grow_by(std::size_t size)
+    {
+        std::size_t offset = buffer_.size();
+        buffer_.resize(offset + size);
+        return {buffer_.data() + offset, size};
+    }
+
+    // To be called by serialize() functions.
+    // Appends a single byte to the buffer. Doesn't take framing into account.
+    void add(std::uint8_t value) { buffer_.push_back(value); }
+
+    // To be called by serialize() functions. Appends bytes to the buffer.
+    // Doesn't take framing into account - use for payloads with bound size.
+    void add(span<const std::uint8_t> content)
+    {
+        buffer_.insert(buffer_.end(), content.begin(), content.end());
+    }
+
+    // Like add, but takes framing into account. Use for potentially long payloads.
+    // If the payload is very long, space for frame headers will be added as required,
+    // avoiding expensive memmove's when calling add_frame_headers
+    void add_checked(span<const std::uint8_t> content)
+    {
+        if (framing_enabled())
+        {
+            add_checked_impl(content);
+        }
+        else
+        {
+            add(content);
+        }
+    }
+
     // Write frame headers to an already serialized message with space for them
     std::uint8_t write_frame_headers(std::uint8_t seqnum)
     {
+        BOOST_ASSERT(framing_enabled());
+
         // Add any missing space for headers
         add_frame_headers();
 

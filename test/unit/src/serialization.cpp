@@ -20,26 +20,20 @@ using namespace boost::mysql::detail;
 using boost::mysql::column_type;
 
 template <class... Args>
-void serialize_to_vector_inplace(std::vector<std::uint8_t>& res, const Args&... args)
-{
-    std::size_t size = get_size(args...);
-    std::size_t old_size = res.size();
-    res.resize(old_size + size);
-    serialization_context ctx(res.data() + old_size);
-    serialize(ctx, args...);
-}
-
-template <class... Args>
 static std::vector<std::uint8_t> serialize_to_vector(const Args&... args)
 {
-    std::vector<std::uint8_t> res;
-    serialize_to_vector_inplace(res, args...);
-    return res;
+    std::vector<std::uint8_t> buff;
+    serialization_context ctx(buff, disable_framing);
+    serialize(ctx, args...);
+    return buff;
 }
 
 static std::vector<std::uint8_t> serialize_ok_impl(const ok_view& pack, std::uint8_t header)
 {
-    auto res = serialize_to_vector(
+    std::vector<std::uint8_t> buff;
+    serialization_context ctx(buff, disable_framing);
+    serialize(
+        ctx,
         std::uint8_t(header),
         int_lenenc{pack.affected_rows},
         int_lenenc{pack.last_insert_id},
@@ -49,9 +43,9 @@ static std::vector<std::uint8_t> serialize_ok_impl(const ok_view& pack, std::uin
     // When info is empty, it's actually omitted in the ok_packet
     if (!pack.info.empty())
     {
-        serialize_to_vector_inplace(res, string_lenenc{pack.info});
+        serialize(ctx, string_lenenc{pack.info});
     }
-    return res;
+    return buff;
 }
 
 std::vector<std::uint8_t> boost::mysql::test::serialize_ok(const ok_view& pack)
@@ -141,7 +135,8 @@ std::vector<std::uint8_t> boost::mysql::test::serialize_coldef(const detail::col
 
 std::vector<std::uint8_t> boost::mysql::test::serialize_text_row(span<const field_view> fields)
 {
-    std::vector<std::uint8_t> res;
+    std::vector<std::uint8_t> buff;
+    serialization_context ctx(buff, disable_framing);
     for (field_view f : fields)
     {
         std::string s;
@@ -153,11 +148,10 @@ std::vector<std::uint8_t> boost::mysql::test::serialize_text_row(span<const fiel
         case field_kind::double_: s = std::to_string(f.get_double()); break;
         case field_kind::string: s = f.get_string(); break;
         case field_kind::blob: s.assign(f.get_blob().begin(), f.get_blob().end()); break;
-        case field_kind::null: serialize_to_vector_inplace(res, std::uint8_t(0xfb)); continue;
+        case field_kind::null: ctx.add(std::uint8_t(0xfb)); continue;
         default: throw std::runtime_error("create_text_row_message: type not implemented");
         }
-        detail::string_lenenc slenenc{s};
-        serialize_to_vector_inplace(res, slenenc);
+        serialize(ctx, string_lenenc{s});
     }
-    return res;
+    return buff;
 }

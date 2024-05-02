@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_SERIALIZATION_TEST_HPP
 #define BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_SERIALIZATION_TEST_HPP
 
+#include <boost/mysql/impl/internal/protocol/constants.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -23,37 +24,6 @@
 namespace boost {
 namespace mysql {
 namespace test {
-
-// A special buffer for serialization tests. Installs an overrun detector at the end to facilitate overrun
-// detection
-class serialization_buffer
-{
-    std::size_t size_;
-    std::unique_ptr<std::uint8_t[]> data_;
-
-public:
-    serialization_buffer(std::size_t size) : size_(size), data_(new std::uint8_t[size + 8])
-    {
-        std::memset(data_.get() + size, 0xde, 8);  // buffer overrun detector
-    }
-    span<std::uint8_t> to_span() noexcept { return {data(), size()}; }
-    operator span<std::uint8_t>() noexcept { return to_span(); }
-    std::uint8_t* data() noexcept { return data_.get(); }
-    std::size_t size() const noexcept { return size_; }
-    void check(span<const std::uint8_t> expected) const
-    {
-        // Check the actual value
-        span<const std::uint8_t> actual_populated(data_.get(), size_);
-        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected, actual_populated);
-
-        // Check that we didn't overrun the buffer
-        const std::array<std::uint8_t, 8> expected_clean{
-            {0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde}
-        };
-        span<const std::uint8_t> actual_clean(data_.get() + size_, 8);
-        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected_clean, actual_clean);
-    }
-};
 
 // A special buffer for deserialization tests. Allocates the exact size of the serialized message (contrary to
 // std::vector), making it easier for sanitizers to detect overruns
@@ -93,23 +63,17 @@ public:
 };
 
 template <class T>
-void do_serialize_test(T value, span<const std::uint8_t> serialized)
+void do_serialize_test(T value, span<const std::uint8_t> expected)
 {
-    // Size
-    std::size_t expected_size = serialized.size();
-    std::size_t actual_size = detail::get_size(value);
-    BOOST_TEST(actual_size == expected_size);
+    // Setup
+    std::vector<std::uint8_t> buffer;
+    detail::serialization_context ctx(buffer, detail::disable_framing);
 
     // Serialize
-    serialization_buffer buffer(actual_size);
-    detail::serialization_context ctx(buffer.data());
     detail::serialize(ctx, value);
 
-    // Check buffer
-    buffer.check(serialized);
-
-    // Check iterator
-    BOOST_TEST(ctx.first() == buffer.data() + expected_size, "Iterator not updated correctly");
+    // Check
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected, buffer);
 }
 
 template <class T>
