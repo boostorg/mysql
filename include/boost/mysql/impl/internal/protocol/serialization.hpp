@@ -345,23 +345,15 @@ public:
         : first_(first), last_(first + size){};
     const std::uint8_t* first() const { return first_; }
     const std::uint8_t* last() const { return last_; }
+    std::size_t size() const { return last_ - first_; }
     void advance(std::size_t sz)
     {
         first_ += sz;
         BOOST_ASSERT(last_ >= first_);
     }
     void rewind(std::size_t sz) { first_ -= sz; }
-    std::size_t size() const { return last_ - first_; }
     bool empty() const { return last_ == first_; }
     bool enough_size(std::size_t required_size) const { return size() >= required_size; }
-    deserialize_errc copy(void* to, std::size_t sz)
-    {
-        if (!enough_size(sz))
-            return deserialize_errc::incomplete_message;
-        memcpy(to, first_, sz);
-        advance(sz);
-        return deserialize_errc::ok;
-    }
     string_view get_string(std::size_t sz) const
     {
         return string_view(reinterpret_cast<const char*>(first_), sz);
