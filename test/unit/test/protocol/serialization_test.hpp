@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_SERIALIZATION_TEST_HPP
 #define BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_SERIALIZATION_TEST_HPP
 
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/core/span.hpp>
@@ -70,7 +70,7 @@ void do_serialize_test(T value, span<const std::uint8_t> expected)
     detail::serialization_context ctx(buffer, detail::disable_framing);
 
     // Serialize
-    detail::serialize(ctx, value);
+    value.serialize(ctx);
 
     // Check
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(expected, buffer);
@@ -84,7 +84,7 @@ void do_deserialize_test(T value, span<const std::uint8_t> serialized)
     auto size = buffer.size();
     detail::deserialization_context ctx(first, size);
     T actual{};
-    detail::deserialize_errc err = detail::deserialize(ctx, actual);
+    detail::deserialize_errc err = actual.deserialize(ctx);
 
     // No error
     BOOST_TEST(err == detail::deserialize_errc::ok);
@@ -107,7 +107,7 @@ void do_deserialize_extra_space_test(T value, span<const std::uint8_t> serialize
     // Deserialize
     detail::deserialization_context ctx(buffer.data(), buffer.size());
     T actual{};
-    detail::deserialize_errc err = detail::deserialize(ctx, actual);
+    detail::deserialize_errc err = actual.deserialize(ctx);
 
     // No error
     BOOST_TEST(err == detail::deserialize_errc::ok);
@@ -127,7 +127,7 @@ void do_deserialize_not_enough_space_test(span<const std::uint8_t> serialized)
     detail::deserialization_context ctx(buffer.to_span());
 
     T value{};
-    detail::deserialize_errc err = boost::mysql::detail::deserialize(ctx, value);
+    detail::deserialize_errc err = value.deserialize(ctx);
     BOOST_TEST(err == detail::deserialize_errc::incomplete_message);
 }
 
