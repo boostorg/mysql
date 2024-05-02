@@ -9,9 +9,11 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 
 #include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -29,6 +31,14 @@ using detail::deserialize_errc;
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_binary_protocol)
+
+// Adapt field_view to be Serializable
+struct field_view_adaptor
+{
+    field_view fv;
+
+    void serialize(detail::serialization_context& ctx) { detail::serialize_binary_field(ctx, fv); }
+};
 
 BOOST_AUTO_TEST_CASE(serialize)
 {
@@ -103,7 +113,7 @@ BOOST_AUTO_TEST_CASE(serialize)
 
     for (const auto& tc : test_cases)
     {
-        BOOST_TEST_CONTEXT(tc.name) { do_serialize_test(tc.value, tc.serialized); }
+        BOOST_TEST_CONTEXT(tc.name) { do_serialize_test(field_view_adaptor{tc.value}, tc.serialized); }
     }
 }
 

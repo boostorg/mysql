@@ -10,7 +10,6 @@ add_executable(
 
     # Helpers
     src/test_stream.cpp
-    src/serialization.cpp
 
     # Actual tests
     test/auth/auth.cpp

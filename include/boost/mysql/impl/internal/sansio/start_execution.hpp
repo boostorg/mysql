@@ -15,6 +15,7 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>

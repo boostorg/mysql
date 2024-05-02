@@ -23,9 +23,9 @@ namespace test {
 struct mock_message
 {
     span<const std::uint8_t> data;
-};
 
-inline void serialize(detail::serialization_context& ctx, mock_message msg) { ctx.add(msg.data); }
+    void serialize(detail::serialization_context& ctx) const { ctx.add(data); }
+};
 
 }  // namespace test
 }  // namespace mysql

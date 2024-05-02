@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_MESSAGE_WRITER_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_MESSAGE_WRITER_HPP
 
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+
 #include <boost/assert.hpp>
 
 #include <cstddef>
