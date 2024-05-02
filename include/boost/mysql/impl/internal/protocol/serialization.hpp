@@ -17,6 +17,7 @@
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/constants.hpp>
 #include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
+#include <boost/mysql/impl/internal/protocol/span_string.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
@@ -35,18 +36,6 @@
 namespace boost {
 namespace mysql {
 namespace detail {
-
-//
-// helpers
-//
-inline string_view to_string(span<const std::uint8_t> v) noexcept
-{
-    return string_view(reinterpret_cast<const char*>(v.data()), v.size());
-}
-inline span<const std::uint8_t> to_span(string_view v) noexcept
-{
-    return span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(v.data()), v.size());
-}
 
 // Helper
 inline void serialize_frame_header(

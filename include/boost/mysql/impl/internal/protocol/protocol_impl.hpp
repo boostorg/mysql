@@ -350,10 +350,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_column_definition(
     // Deserialize the fixed_fields structure.
     // Intentionally not checking for extra bytes here, since there may be unknown fields that should just get
     // ignored
-    deserialization_context subctx(
-        reinterpret_cast<const std::uint8_t*>(pack.fixed_fields.value.data()),
-        pack.fixed_fields.value.size()
-    );
+    deserialization_context subctx(to_span(pack.fixed_fields.value));
     err = deserialize(
         subctx,
         fixed_fields.character_set,

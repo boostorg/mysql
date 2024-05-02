@@ -42,9 +42,7 @@ inline deserialize_errc deserialize_binary_field_string(
         return err;
     if (is_blob)
     {
-        output = field_view(
-            blob_view(reinterpret_cast<const unsigned char*>(deser.value.data()), deser.value.size())
-        );
+        output = field_view(to_span(deser.value));
     }
     else
     {
