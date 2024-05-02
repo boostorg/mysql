@@ -7,7 +7,6 @@
 
 #include <boost/mysql/diagnostics.hpp>
 
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 using namespace boost::mysql::detail;

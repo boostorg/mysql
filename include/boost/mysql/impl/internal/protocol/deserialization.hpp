@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_DESERIALIZATION_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_DESERIALIZATION_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_DESERIALIZATION_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_DESERIALIZATION_HPP
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
@@ -27,7 +27,7 @@
 
 #include <boost/mysql/impl/internal/error/server_error_to_string.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
+#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/null_bitmap_traits.hpp>
@@ -42,19 +42,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
-#include <vector>
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-// Frame header
-struct frame_header
-{
-    std::uint32_t size;
-    std::uint8_t sequence_number;
-};
-inline frame_header deserialize_frame_header(span<const std::uint8_t, frame_header_size> buffer);
 
 // OK packets (views because strings are non-owning)
 inline error_code deserialize_ok_packet(span<const std::uint8_t> msg, ok_view& output);  // for testing
@@ -277,20 +268,6 @@ BOOST_INLINE_CONSTEXPR std::uint8_t ok_packet_header = 0x00;
 //
 // Deserialization
 //
-
-// Frame header
-boost::mysql::detail::frame_header boost::mysql::detail::deserialize_frame_header(
-    span<const std::uint8_t, frame_header_size> buffer
-)
-{
-    int3 packet_size{};
-    int1 sequence_number{};
-    deserialization_context ctx(buffer.data(), buffer.size());
-    auto err = ctx.deserialize(packet_size, sequence_number);
-    BOOST_ASSERT(err == deserialize_errc::ok);
-    boost::ignore_unused(err);
-    return frame_header{packet_size.value, sequence_number.value};
-}
 
 // OK packets
 boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(

@@ -5,19 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_CONSTANTS_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_CONSTANTS_HPP
-
-#include <boost/config.hpp>
-
-#include <cstddef>
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_DB_FLAVOR_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_DB_FLAVOR_HPP
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-BOOST_INLINE_CONSTEXPR std::size_t max_packet_size = 0xffffff;
-BOOST_INLINE_CONSTEXPR std::size_t frame_header_size = 4;
 
 enum class db_flavor
 {

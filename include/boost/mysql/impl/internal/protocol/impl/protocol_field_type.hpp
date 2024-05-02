@@ -12,8 +12,6 @@
 
 #include <boost/mysql/detail/flags.hpp>
 
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
-
 #include <cstdint>
 
 namespace boost {

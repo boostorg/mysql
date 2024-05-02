@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_SERIALIZATION_CONTEXT_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_SERIALIZATION_CONTEXT_HPP
 
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
+#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/core/ignore_unused.hpp>

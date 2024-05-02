@@ -12,7 +12,6 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/null_bitmap_traits.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
@@ -194,7 +193,7 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
     constexpr int1 new_params_bind_flag{1};
 
     // header
-    ctx.serialize(command_id, statement_id, flags, iteration_count);
+    ctx.serialize(command_id, int4{statement_id}, flags, iteration_count);
 
     // Number of parameters
     auto num_params = params.size();
