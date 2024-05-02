@@ -8,11 +8,11 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_MESSAGE_WRITER_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_MESSAGE_WRITER_HPP
 
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/assert.hpp>
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace boost {
 namespace mysql {

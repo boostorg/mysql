@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_DESERIALIZE_TEXT_FIELD_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_DESERIALIZE_TEXT_FIELD_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_TEXT_PROTOCOL_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_TEXT_PROTOCOL_HPP
 
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/datetime.hpp>
@@ -16,9 +16,10 @@
 
 #include <boost/mysql/detail/datetime.hpp>
 
-#include <boost/mysql/impl/internal/protocol/bit_deserialization.hpp>
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/bit_deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/span_string.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/charconv/from_chars.hpp>
@@ -33,13 +34,23 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline deserialize_errc deserialize_text_field(string_view from, const metadata& meta, field_view& output);
+
+}
+}  // namespace mysql
+}  // namespace boost
+
 //
 // Implementation
 //
 
+namespace boost {
+namespace mysql {
+namespace detail {
+
 // Constants
-constexpr unsigned max_decimals = 6u;
-constexpr unsigned time_max_hour = 838;
+BOOST_INLINE_CONSTEXPR unsigned max_decimals = 6u;
+BOOST_INLINE_CONSTEXPR unsigned time_max_hour = 838;
 
 // Integers
 template <class T>
@@ -371,8 +382,15 @@ inline deserialize_errc deserialize_text_value_time(string_view from, field_view
     return deserialize_errc::ok;
 }
 
-// Interface
-inline deserialize_errc deserialize_text_field(string_view from, const metadata& meta, field_view& output)
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
+inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_text_field(
+    string_view from,
+    const metadata& meta,
+    field_view& output
+)
 {
     switch (meta.type())
     {
@@ -405,9 +423,5 @@ inline deserialize_errc deserialize_text_field(string_view from, const metadata&
     default: return deserialize_text_value_blob(from, output);
     }
 }
-
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
 
 #endif

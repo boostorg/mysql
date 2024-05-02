@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_PROTOCOL_FIELD_TYPE_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_PROTOCOL_FIELD_TYPE_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_PROTOCOL_FIELD_TYPE_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_PROTOCOL_FIELD_TYPE_HPP
 
 #include <boost/mysql/column_type.hpp>
 
@@ -52,6 +52,8 @@ enum class protocol_field_type : std::uint8_t
 };
 
 // Implementation
+BOOST_INLINE_CONSTEXPR std::uint16_t binary_collation = 63;  // used to distinguish blobs from strings
+
 inline column_type compute_field_type_string(std::uint16_t flags, std::uint16_t collation)
 {
     if (flags & column_flags::set)

@@ -20,7 +20,6 @@
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/protocol.hpp>
 
 #include <boost/test/tools/context.hpp>

@@ -7,7 +7,7 @@
 
 #include <boost/mysql/detail/coldef_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 using namespace boost::mysql::detail;
 

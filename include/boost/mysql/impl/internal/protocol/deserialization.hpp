@@ -5,31 +5,34 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_PROTOCOL_IMPL_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_PROTOCOL_IMPL_HPP
-
-#pragma once
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_DESERIALIZATION_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_DESERIALIZATION_HPP
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_kind.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/make_string_view.hpp>
+#include <boost/mysql/detail/ok_view.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/mysql/impl/internal/error/server_error_to_string.hpp>
-#include <boost/mysql/impl/internal/protocol/basic_types.hpp>
-#include <boost/mysql/impl/internal/protocol/binary_serialization.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/deserialize_binary_field.hpp>
-#include <boost/mysql/impl/internal/protocol/deserialize_text_field.hpp>
-#include <boost/mysql/impl/internal/protocol/null_bitmap_traits.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/null_bitmap_traits.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/text_protocol.hpp>
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
 
 #include <boost/config.hpp>
@@ -38,140 +41,238 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
+#include <vector>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// Constants
-BOOST_INLINE_CONSTEXPR std::uint8_t handshake_protocol_version_9 = 9;
-BOOST_INLINE_CONSTEXPR std::uint8_t handshake_protocol_version_10 = 10;
-BOOST_INLINE_CONSTEXPR std::uint8_t error_packet_header = 0xff;
-BOOST_INLINE_CONSTEXPR std::uint8_t ok_packet_header = 0x00;
-BOOST_INLINE_CONSTEXPR std::uint8_t eof_packet_header = 0xfe;
-BOOST_INLINE_CONSTEXPR std::uint8_t auth_switch_request_header = 0xfe;
-BOOST_INLINE_CONSTEXPR std::uint8_t auth_more_data_header = 0x01;
-BOOST_INLINE_CONSTEXPR string_view fast_auth_complete_challenge = make_string_view("\3");
-
-// Maps from an actual value to a protocol_field_type (for execute statement)
-inline protocol_field_type to_protocol_field_type(field_kind kind)
+// Frame header
+struct frame_header
 {
-    switch (kind)
+    std::uint32_t size;
+    std::uint8_t sequence_number;
+};
+inline frame_header deserialize_frame_header(span<const std::uint8_t, frame_header_size> buffer);
+
+// OK packets (views because strings are non-owning)
+inline error_code deserialize_ok_packet(span<const std::uint8_t> msg, ok_view& output);  // for testing
+
+// Error packets (exposed for testing)
+struct err_view
+{
+    std::uint16_t error_code;
+    string_view error_message;
+};
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_error_packet(
+    span<const std::uint8_t> message,
+    err_view& pack,
+    bool has_sql_state = true
+);
+BOOST_ATTRIBUTE_NODISCARD inline error_code process_error_packet(
+    span<const std::uint8_t> message,
+    db_flavor flavor,
+    diagnostics& diag,
+    bool has_sql_state = true
+);
+
+// Deserializes a response that may be an OK or an error packet.
+// Applicable for commands like ping and reset connection.
+// If the response is an OK packet, sets backslash_escapes according to the
+// OK packet's server status flags
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_ok_response(
+    span<const std::uint8_t> message,
+    db_flavor flavor,
+    diagnostics& diag,
+    bool& backslash_escapes
+);
+
+// Column definition
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_column_definition(
+    span<const std::uint8_t> input,
+    coldef_view& output
+);
+
+// Prepare statement response
+struct prepare_stmt_response
+{
+    std::uint32_t id;
+    std::uint16_t num_columns;
+    std::uint16_t num_params;
+};
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_prepare_stmt_response_impl(
+    span<const std::uint8_t> message,
+    prepare_stmt_response& output
+);  // exposed for testing, doesn't take header into account
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_prepare_stmt_response(
+    span<const std::uint8_t> message,
+    db_flavor flavor,
+    prepare_stmt_response& output,
+    diagnostics& diag
+);
+
+// Execution messages
+struct execute_response
+{
+    static_assert(std::is_trivially_destructible<error_code>::value, "");
+
+    enum class type_t
     {
-    case field_kind::null: return protocol_field_type::null;
-    case field_kind::int64: return protocol_field_type::longlong;
-    case field_kind::uint64: return protocol_field_type::longlong;
-    case field_kind::string: return protocol_field_type::string;
-    case field_kind::blob: return protocol_field_type::blob;
-    case field_kind::float_: return protocol_field_type::float_;
-    case field_kind::double_: return protocol_field_type::double_;
-    case field_kind::date: return protocol_field_type::date;
-    case field_kind::datetime: return protocol_field_type::datetime;
-    case field_kind::time: return protocol_field_type::time;
-    default: BOOST_ASSERT(false); return protocol_field_type::null;
-    }
-}
+        num_fields,
+        ok_packet,
+        error
+    } type;
+    union data_t
+    {
+        std::size_t num_fields;
+        ok_view ok_pack;
+        error_code err;
 
-// Returns the collation ID's first byte (for login packets)
-inline std::uint8_t get_collation_first_byte(std::uint32_t collation_id)
+        data_t(size_t v) noexcept : num_fields(v) {}
+        data_t(const ok_view& v) noexcept : ok_pack(v) {}
+        data_t(error_code v) noexcept : err(v) {}
+    } data;
+
+    execute_response(std::size_t v) noexcept : type(type_t::num_fields), data(v) {}
+    execute_response(const ok_view& v) noexcept : type(type_t::ok_packet), data(v) {}
+    execute_response(error_code v) noexcept : type(type_t::error), data(v) {}
+};
+inline execute_response deserialize_execute_response(
+    span<const std::uint8_t> msg,
+    db_flavor flavor,
+    diagnostics& diag
+);
+
+struct row_message
 {
-    return static_cast<std::uint8_t>(collation_id % 0xff);
-}
+    enum class type_t
+    {
+        row,
+        ok_packet,
+        error
+    } type;
+    union data_t
+    {
+        span<const std::uint8_t> row;
+        ok_view ok_pack;
+        error_code err;
+
+        data_t(span<const std::uint8_t> row) noexcept : row(row) {}
+        data_t(const ok_view& ok_pack) noexcept : ok_pack(ok_pack) {}
+        data_t(error_code err) noexcept : err(err) {}
+    } data;
+
+    row_message(span<const std::uint8_t> row) noexcept : type(type_t::row), data(row) {}
+    row_message(const ok_view& ok_pack) noexcept : type(type_t::ok_packet), data(ok_pack) {}
+    row_message(error_code v) noexcept : type(type_t::error), data(v) {}
+};
+inline row_message deserialize_row_message(span<const std::uint8_t> msg, db_flavor flavor, diagnostics& diag);
+
+inline error_code deserialize_row(
+    resultset_encoding encoding,
+    span<const std::uint8_t> message,
+    metadata_collection_view meta,
+    span<field_view> output  // Should point to meta.size() field_view objects
+);
+
+// Server hello
+struct server_hello
+{
+    using auth_buffer_type = static_buffer<8 + 0xff>;
+    db_flavor server;
+    auth_buffer_type auth_plugin_data;
+    capabilities server_capabilities{};
+    string_view auth_plugin_name;
+};
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_server_hello_impl(
+    span<const std::uint8_t> msg,
+    server_hello& output
+);  // exposed for testing, doesn't take message header into account
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_server_hello(
+    span<const std::uint8_t> msg,
+    server_hello& output,
+    diagnostics& diag
+);
+
+// Auth switch
+struct auth_switch
+{
+    string_view plugin_name;
+    span<const std::uint8_t> auth_data;
+};
+BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_auth_switch(
+    span<const std::uint8_t> msg,
+    auth_switch& output
+);  // exposed for testing
+
+// Handshake server response
+struct handhake_server_response
+{
+    struct ok_follows_t
+    {
+    };
+
+    enum class type_t
+    {
+        ok,
+        error,
+        ok_follows,
+        auth_switch,
+        auth_more_data
+    } type;
+
+    union data_t
+    {
+        ok_view ok;
+        error_code err;
+        ok_follows_t ok_follows;
+        auth_switch auth_sw;
+        span<const std::uint8_t> more_data;
+
+        data_t(const ok_view& ok) noexcept : ok(ok) {}
+        data_t(error_code err) noexcept : err(err) {}
+        data_t(ok_follows_t) noexcept : ok_follows({}) {}
+        data_t(auth_switch msg) noexcept : auth_sw(msg) {}
+        data_t(span<const std::uint8_t> more_data) noexcept : more_data(more_data) {}
+    } data;
+
+    handhake_server_response(const ok_view& ok) noexcept : type(type_t::ok), data(ok) {}
+    handhake_server_response(error_code err) noexcept : type(type_t::error), data(err) {}
+    handhake_server_response(ok_follows_t) noexcept : type(type_t::ok_follows), data(ok_follows_t{}) {}
+    handhake_server_response(auth_switch auth_switch) noexcept : type(type_t::auth_switch), data(auth_switch)
+    {
+    }
+    handhake_server_response(span<const std::uint8_t> more_data) noexcept
+        : type(type_t::auth_more_data), data(more_data)
+    {
+    }
+};
+inline handhake_server_response deserialize_handshake_server_response(
+    span<const std::uint8_t> buff,
+    db_flavor flavor,
+    diagnostics& diag
+);
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
 //
-// Serialization
+// Implementations
 //
-void boost::mysql::detail::serialize(serialization_context& ctx, execute_stmt_command cmd)
-{
-    // The wire layout is as follows:
-    //  command ID
-    //  std::uint32_t statement_id;
-    //  std::uint8_t flags;
-    //  std::uint32_t iteration_count;
-    //  if num_params > 0:
-    //      NULL bitmap
-    //      std::uint8_t new_params_bind_flag;
-    //      array<meta_packet, num_params> meta;
-    //          protocol_field_type type;
-    //          std::uint8_t unsigned_flag;
-    //      array<field_view, num_params> params;
 
-    constexpr std::uint8_t command_id = 0x17;
-    constexpr std::uint8_t flags = 0;
-    constexpr std::uint32_t iteration_count = 1;
-    constexpr std::uint8_t new_params_bind_flag = 1;
+namespace boost {
+namespace mysql {
+namespace detail {
 
-    // header
-    serialize(ctx, command_id, cmd.statement_id, flags, iteration_count);
+// Constants
+BOOST_INLINE_CONSTEXPR std::uint8_t error_packet_header = 0xff;
+BOOST_INLINE_CONSTEXPR std::uint8_t ok_packet_header = 0x00;
 
-    // Number of parameters
-    auto num_params = cmd.params.size();
-
-    if (num_params > 0)
-    {
-        // NULL bitmap
-        null_bitmap_traits traits(stmt_execute_null_bitmap_offset, num_params);
-        auto null_bitmap_buff = ctx.grow_by(traits.byte_count());  // already zero-initialized
-        for (std::size_t i = 0; i < num_params; ++i)
-        {
-            if (cmd.params[i].is_null())
-            {
-                traits.set_null(null_bitmap_buff.data(), i);
-            }
-        }
-
-        // new parameters bind flag
-        serialize(ctx, new_params_bind_flag);
-
-        // value metadata
-        for (field_view param : cmd.params)
-        {
-            field_kind kind = param.kind();
-            protocol_field_type type = to_protocol_field_type(kind);
-            std::uint8_t unsigned_flag = kind == field_kind::uint64 ? std::uint8_t(0x80) : std::uint8_t(0);
-            serialize(ctx, type, unsigned_flag);
-        }
-
-        // actual values
-        for (field_view param : cmd.params)
-        {
-            serialize(ctx, param);
-        }
-    }
-}
-
-void boost::mysql::detail::serialize(serialization_context& ctx, const login_request& req)
-{
-    serialize(
-        ctx,
-        static_cast<std::uint32_t>(req.negotiated_capabilities.get()),  // int4 client_flag
-        req.max_packet_size,                                            // int4 max_packet_size
-        get_collation_first_byte(req.collation_id),                     // int1 character_set
-        string_fixed<23>{},                                             // filler (all zeros)
-        string_null{req.username},
-        string_lenenc{to_string(req.auth_response)}  // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
-    );
-    if (req.negotiated_capabilities.has(CLIENT_CONNECT_WITH_DB))
-    {
-        serialize(ctx, string_null{req.database});  // string_null database
-    }
-    serialize(ctx, string_null{req.auth_plugin_name});  // string_null client_plugin_name
-}
-
-void boost::mysql::detail::serialize(serialization_context& ctx, ssl_request req)
-{
-    serialize(
-        ctx,
-        req.negotiated_capabilities.get(),           // int4 client_flag
-        req.max_packet_size,                         // int4 max_packet_size
-        get_collation_first_byte(req.collation_id),  // int1 character_set,
-        string_fixed<23>{}                           // filler, all zeros
-    );
-}
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 //
 // Deserialization
@@ -183,12 +284,12 @@ boost::mysql::detail::frame_header boost::mysql::detail::deserialize_frame_heade
 )
 {
     int3 packet_size{};
-    std::uint8_t sequence_number{};
+    int1 sequence_number{};
     deserialization_context ctx(buffer.data(), buffer.size());
-    auto err = deserialize(ctx, packet_size, sequence_number);
+    auto err = ctx.deserialize(packet_size, sequence_number);
     BOOST_ASSERT(err == deserialize_errc::ok);
     boost::ignore_unused(err);
-    return frame_header{packet_size.value, sequence_number};
+    return frame_header{packet_size.value, sequence_number.value};
 }
 
 // OK packets
@@ -202,20 +303,20 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
         // header: int<1>     header     0x00 or 0xFE the OK packet header
         int_lenenc affected_rows;
         int_lenenc last_insert_id;
-        std::uint16_t status_flags;  // server_status_flags
-        std::uint16_t warnings;
+        int2 status_flags;  // server_status_flags
+        int2 warnings;
         // CLIENT_SESSION_TRACK: not implemented
         string_lenenc info;
     } pack{};
 
     deserialization_context ctx(msg);
-    auto err = deserialize(ctx, pack.affected_rows, pack.last_insert_id, pack.status_flags, pack.warnings);
+    auto err = ctx.deserialize(pack.affected_rows, pack.last_insert_id, pack.status_flags, pack.warnings);
     if (err != deserialize_errc::ok)
         return to_error_code(err);
 
     if (ctx.enough_size(1))  // message is optional, may be omitted
     {
-        err = deserialize(ctx, pack.info);
+        err = pack.info.deserialize(ctx);
         if (err != deserialize_errc::ok)
             return to_error_code(err);
     }
@@ -223,8 +324,8 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
     output = {
         pack.affected_rows.value,
         pack.last_insert_id.value,
-        pack.status_flags,
-        pack.warnings,
+        pack.status_flags.value,
+        pack.warnings.value,
         pack.info.value,
     };
 
@@ -240,8 +341,8 @@ boost::mysql::error_code boost::mysql::detail::deserialize_error_packet(
 {
     struct err_packet
     {
-        // int<1>     header     0xFF ERR packet header
-        std::uint16_t error_code;
+        // int1     header     0xFF ERR packet header
+        int2 error_code;
         // if capabilities & CLIENT_PROTOCOL_41 {  (modeled here as has_sql_state)
         string_fixed<1> sql_state_marker;
         string_fixed<5> sql_state;
@@ -250,19 +351,18 @@ boost::mysql::error_code boost::mysql::detail::deserialize_error_packet(
     } pack{};
 
     deserialization_context ctx(msg);
-    auto err = has_sql_state ? deserialize(
-                                   ctx,
+    auto err = has_sql_state ? ctx.deserialize(
                                    pack.error_code,
                                    pack.sql_state_marker,
                                    pack.sql_state,
                                    pack.error_message
                                )
-                             : deserialize(ctx, pack.error_code, pack.error_message);
+                             : ctx.deserialize(pack.error_code, pack.error_message);
     if (err != deserialize_errc::ok)
         return to_error_code(err);
 
     output = err_view{
-        pack.error_code,
+        pack.error_code.value,
         pack.error_message.value,
     };
 
@@ -325,17 +425,16 @@ boost::mysql::error_code boost::mysql::detail::deserialize_column_definition(
     // The proto allows for extensibility here - adding fields just increasing fixed_fields.length
     struct fixed_fields_pack
     {
-        std::uint16_t character_set;  // collation id, somehow named character_set in the protocol docs
-        std::uint32_t column_length;  // maximum length of the field
-        protocol_field_type type;     // type of the column as defined in enum_field_types
-        std::uint16_t flags;          // Flags as defined in Column Definition Flags
-        std::uint8_t decimals;        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
-                                      // dynamic strings, double, float
+        int2 character_set;  // collation id, somehow named character_set in the protocol docs
+        int4 column_length;  // maximum length of the field
+        int1 type;      // type of the column as defined in enum_field_types - this is a protocol_field_type
+        int2 flags;     // Flags as defined in Column Definition Flags
+        int1 decimals;  // max shown decimal digits. 0x00 for int/static strings; 0x1f for
+                        // dynamic strings, double, float
     } fixed_fields{};
 
     // Deserialize the main structure
-    auto err = deserialize(
-        ctx,
+    auto err = ctx.deserialize(
         pack.catalog,
         pack.schema,
         pack.table,
@@ -351,8 +450,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_column_definition(
     // Intentionally not checking for extra bytes here, since there may be unknown fields that should just get
     // ignored
     deserialization_context subctx(to_span(pack.fixed_fields.value));
-    err = deserialize(
-        subctx,
+    err = subctx.deserialize(
         fixed_fields.character_set,
         fixed_fields.column_length,
         fixed_fields.type,
@@ -369,11 +467,15 @@ boost::mysql::error_code boost::mysql::detail::deserialize_column_definition(
         pack.org_table.value,
         pack.name.value,
         pack.org_name.value,
-        fixed_fields.character_set,
-        fixed_fields.column_length,
-        compute_column_type(fixed_fields.type, fixed_fields.flags, fixed_fields.character_set),
-        fixed_fields.flags,
-        fixed_fields.decimals,
+        fixed_fields.character_set.value,
+        fixed_fields.column_length.value,
+        compute_column_type(
+            static_cast<protocol_field_type>(fixed_fields.type.value),
+            fixed_fields.flags.value,
+            fixed_fields.character_set.value
+        ),
+        fixed_fields.flags.value,
+        fixed_fields.decimals.value,
     };
 
     return ctx.check_extra_bytes();
@@ -387,13 +489,13 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_response(
 )
 {
     // Header
-    std::uint8_t header{};
+    int1 header{};
     deserialization_context ctx(message);
-    auto err = to_error_code(deserialize(ctx, header));
+    auto err = to_error_code(header.deserialize(ctx));
     if (err)
         return err;
 
-    if (header == ok_packet_header)
+    if (header.value == ok_packet_header)
     {
         // Verify that the ok_packet is correct
         ok_view ok{};
@@ -403,7 +505,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_response(
         backslash_escapes = ok.backslash_escapes();
         return error_code();
     }
-    else if (header == error_packet_header)
+    else if (header.value == error_packet_header)
     {
         // Theoretically, the server can answer with an error packet, too
         return process_error_packet(ctx.to_span(), flavor, diag);
@@ -423,18 +525,17 @@ boost::mysql::error_code boost::mysql::detail::deserialize_prepare_stmt_response
     struct com_stmt_prepare_ok_packet
     {
         // std::uint8_t status: must be 0
-        std::uint32_t statement_id;
-        std::uint16_t num_columns;
-        std::uint16_t num_params;
-        std::uint8_t reserved_1;  // must be 0
-        std::uint16_t warning_count;
-        // std::uint8_t metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA: not implemented
+        int4 statement_id;
+        int2 num_columns;
+        int2 num_params;
+        int1 reserved_1;  // must be 0
+        int2 warning_count;
+        // int1 metadata_follows when CLIENT_OPTIONAL_RESULTSET_METADATA: not implemented
     } pack{};
 
     deserialization_context ctx(message);
 
-    auto err = deserialize(
-        ctx,
+    auto err = ctx.deserialize(
         pack.statement_id,
         pack.num_columns,
         pack.num_params,
@@ -445,9 +546,9 @@ boost::mysql::error_code boost::mysql::detail::deserialize_prepare_stmt_response
         return to_error_code(err);
 
     output = prepare_stmt_response{
-        pack.statement_id,
-        pack.num_columns,
-        pack.num_params,
+        pack.statement_id.value,
+        pack.num_columns.value,
+        pack.num_params.value,
     };
 
     return ctx.check_extra_bytes();
@@ -461,16 +562,16 @@ boost::mysql::error_code boost::mysql::detail::deserialize_prepare_stmt_response
 )
 {
     deserialization_context ctx(message);
-    std::uint8_t msg_type = 0;
-    auto err = to_error_code(deserialize(ctx, msg_type));
+    int1 msg_type{};
+    auto err = to_error_code(msg_type.deserialize(ctx));
     if (err)
         return err;
 
-    if (msg_type == error_packet_header)
+    if (msg_type.value == error_packet_header)
     {
         return process_error_packet(ctx.to_span(), flavor, diag);
     }
-    else if (msg_type != 0)
+    else if (msg_type.value != 0)
     {
         return client_errc::protocol_value_error;
     }
@@ -491,12 +592,12 @@ boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute
     // If it is none of this, then the message type itself is the beginning of
     // a length-encoded int containing the field count
     deserialization_context ctx(msg);
-    std::uint8_t msg_type = 0;
-    auto err = to_error_code(deserialize(ctx, msg_type));
+    int1 msg_type{};
+    auto err = to_error_code(msg_type.deserialize(ctx));
     if (err)
         return err;
 
-    if (msg_type == ok_packet_header)
+    if (msg_type.value == ok_packet_header)
     {
         ok_view ok{};
         err = deserialize_ok_packet(ctx.to_span(), ok);
@@ -504,7 +605,7 @@ boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute
             return err;
         return ok;
     }
-    else if (msg_type == error_packet_header)
+    else if (msg_type.value == error_packet_header)
     {
         return process_error_packet(ctx.to_span(), flavor, diag);
     }
@@ -515,7 +616,7 @@ boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute
         // of this packet, so we must rewind the context
         ctx.rewind(1);
         int_lenenc num_fields{};
-        err = to_error_code(deserialize(ctx, num_fields));
+        err = to_error_code(num_fields.deserialize(ctx));
         if (err)
             return err;
         err = ctx.check_extra_bytes();
@@ -540,16 +641,18 @@ boost::mysql::detail::row_message boost::mysql::detail::deserialize_row_message(
     diagnostics& diag
 )
 {
+    constexpr std::uint8_t eof_packet_header = 0xfe;
+
     // Message type: row, error or eof?
-    std::uint8_t msg_type = 0;
+    int1 msg_type{};
     deserialization_context ctx(msg);
-    auto deser_errc = deserialize(ctx, msg_type);
+    auto deser_errc = msg_type.deserialize(ctx);
     if (deser_errc != deserialize_errc::ok)
     {
         return to_error_code(deser_errc);
     }
 
-    if (msg_type == eof_packet_header)
+    if (msg_type.value == eof_packet_header)
     {
         // end of resultset => this is a ok_packet, not a row
         ok_view ok{};
@@ -558,7 +661,7 @@ boost::mysql::detail::row_message boost::mysql::detail::deserialize_row_message(
             return err;
         return ok;
     }
-    else if (msg_type == error_packet_header)
+    else if (msg_type.value == error_packet_header)
     {
         // An error occurred during the generation of the rows
         return process_error_packet(ctx.to_span(), flavor, diag);
@@ -599,7 +702,7 @@ inline error_code deserialize_text_row(
         else
         {
             string_lenenc value_str;
-            auto err = deserialize(ctx, value_str);
+            auto err = value_str.deserialize(ctx);
             if (err != deserialize_errc::ok)
                 return to_error_code(err);
             err = deserialize_text_field(value_str.value, meta[i], output[i]);
@@ -692,8 +795,6 @@ inline db_flavor parse_db_version(string_view version_string)
     return version_string.find("MariaDB") != string_view::npos ? db_flavor::mariadb : db_flavor::mysql;
 }
 
-BOOST_INLINE_CONSTEXPR std::uint8_t server_hello_auth1_length = 8;
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
@@ -703,18 +804,20 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
     server_hello& output
 )
 {
+    constexpr std::uint8_t server_hello_auth1_length = 8;
+
     struct server_hello_packet
     {
         // int<1>     protocol version     Always 10
         string_null server_version;
-        std::uint32_t connection_id;
+        int4 connection_id;
         string_fixed<server_hello_auth1_length> auth_plugin_data_part_1;
-        std::uint8_t filler;  // should be 0
+        int1 filler;  // should be 0
         string_fixed<2> capability_flags_low;
-        std::uint8_t character_set;  // default server a_protocol_character_set, only the lower 8-bits
-        std::uint16_t status_flags;  // server_status_flags
+        int1 character_set;  // default server a_protocol_character_set, only the lower 8-bits
+        int2 status_flags;   // server_status_flags
         string_fixed<2> capability_flags_high;
-        std::uint8_t auth_plugin_data_len;
+        int1 auth_plugin_data_len;
         string_fixed<10> reserved;
         // auth plugin data, 2nd part. This has a weird representation that doesn't fit any defined type
         string_null auth_plugin_name;
@@ -722,8 +825,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
 
     deserialization_context ctx(msg);
 
-    auto err = deserialize(
-        ctx,
+    auto err = ctx.deserialize(
         pack.server_version,
         pack.connection_id,
         pack.auth_plugin_data_part_1,
@@ -744,13 +846,13 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
         return client_errc::server_unsupported;
 
     // Deserialize next fields
-    err = deserialize(ctx, pack.auth_plugin_data_len, pack.reserved);
+    err = ctx.deserialize(pack.auth_plugin_data_len, pack.reserved);
     if (err != deserialize_errc::ok)
         return to_error_code(err);
 
     // Auth plugin data, second part
     auto auth2_length = static_cast<std::uint8_t>(
-        (std::max)(13, pack.auth_plugin_data_len - server_hello_auth1_length)
+        (std::max)(13, pack.auth_plugin_data_len.value - server_hello_auth1_length)
     );
     const void* auth2_data = ctx.first();
     if (!ctx.enough_size(auth2_length))
@@ -758,7 +860,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
     ctx.advance(auth2_length);
 
     // Auth plugin name
-    err = deserialize(ctx, pack.auth_plugin_name);
+    err = pack.auth_plugin_name.deserialize(ctx);
     if (err != deserialize_errc::ok)
         return to_error_code(err);
 
@@ -782,25 +884,28 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello(
     diagnostics& diag
 )
 {
+    constexpr std::uint8_t handshake_protocol_version_9 = 9;
+    constexpr std::uint8_t handshake_protocol_version_10 = 10;
+
     deserialization_context ctx(msg);
 
     // Message type
-    std::uint8_t msg_type = 0;
-    auto err = to_error_code(deserialize(ctx, msg_type));
+    int1 msg_type{};
+    auto err = to_error_code(msg_type.deserialize(ctx));
     if (err)
         return err;
-    if (msg_type == handshake_protocol_version_9)
+    if (msg_type.value == handshake_protocol_version_9)
     {
         return make_error_code(client_errc::server_unsupported);
     }
-    else if (msg_type == error_packet_header)
+    else if (msg_type.value == error_packet_header)
     {
         // We don't know which DB is yet. The server has no knowledge of our capabilities
         // yet, so it will assume we don't support the 4.1 protocol and send an error
         // packet without SQL state
         return process_error_packet(ctx.to_span(), db_flavor::mysql, diag, false);
     }
-    else if (msg_type != handshake_protocol_version_10)
+    else if (msg_type.value != handshake_protocol_version_10)
     {
         return make_error_code(client_errc::protocol_value_error);
     }
@@ -825,7 +930,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_auth_switch(
 
     deserialization_context ctx(msg);
 
-    auto err = deserialize(ctx, pack.plugin_name, pack.auth_plugin_data);
+    auto err = ctx.deserialize(pack.plugin_name, pack.auth_plugin_data);
     if (err != deserialize_errc::ok)
         return to_error_code(err);
 
@@ -850,13 +955,17 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
     diagnostics& diag
 )
 {
+    constexpr std::uint8_t auth_switch_request_header = 0xfe;
+    constexpr std::uint8_t auth_more_data_header = 0x01;
+    constexpr string_view fast_auth_complete_challenge = make_string_view("\3");
+
     deserialization_context ctx(buff);
-    std::uint8_t msg_type = 0;
-    auto err = to_error_code(deserialize(ctx, msg_type));
+    int1 msg_type{};
+    auto err = to_error_code(msg_type.deserialize(ctx));
     if (err)
         return err;
 
-    if (msg_type == ok_packet_header)
+    if (msg_type.value == ok_packet_header)
     {
         ok_view ok{};
         err = deserialize_ok_packet(ctx.to_span(), ok);
@@ -864,11 +973,11 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
             return err;
         return ok;
     }
-    else if (msg_type == error_packet_header)
+    else if (msg_type.value == error_packet_header)
     {
         return process_error_packet(ctx.to_span(), flavor, diag);
     }
-    else if (msg_type == auth_switch_request_header)
+    else if (msg_type.value == auth_switch_request_header)
     {
         // We have received an auth switch request. Deserialize it
         auth_switch auth_sw{};
@@ -877,12 +986,12 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
             return err;
         return auth_sw;
     }
-    else if (msg_type == auth_more_data_header)
+    else if (msg_type.value == auth_more_data_header)
     {
         // We have received an auth more data request. Deserialize it.
         // Note that string_eof never fails deserialization (by definition)
         string_eof auth_more_data;
-        auto ec = deserialize(ctx, auth_more_data);
+        auto ec = auth_more_data.deserialize(ctx);
         BOOST_ASSERT(ec == deserialize_errc::ok);
         boost::ignore_unused(ec);
 

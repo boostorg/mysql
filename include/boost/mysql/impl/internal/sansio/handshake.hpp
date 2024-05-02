@@ -20,7 +20,8 @@
 #include <boost/mysql/impl/internal/auth/auth.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/next_action.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>

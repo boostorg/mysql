@@ -12,7 +12,7 @@
 
 #include <boost/mysql/detail/execution_processor/results_impl.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 boost::mysql::detail::per_resultset_data& boost::mysql::detail::resultset_container::emplace_back()
 {

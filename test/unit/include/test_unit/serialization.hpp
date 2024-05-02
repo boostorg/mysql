@@ -10,7 +10,7 @@
 
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 #include <cstdint>
 

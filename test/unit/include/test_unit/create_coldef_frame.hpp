@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_COLDEF_FRAME_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_COLDEF_FRAME_HPP
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/detail/coldef_view.hpp>
 
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"

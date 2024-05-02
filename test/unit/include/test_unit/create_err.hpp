@@ -11,7 +11,7 @@
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 #include "test_unit/create_frame.hpp"
 #include "test_unit/serialization.hpp"

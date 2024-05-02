@@ -10,7 +10,7 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include <boost/core/span.hpp>
 

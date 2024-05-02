@@ -5,10 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_NULL_BITMAP_TRAITS_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_NULL_BITMAP_TRAITS_HPP
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_NULL_BITMAP_TRAITS_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_NULL_BITMAP_TRAITS_HPP
 
 #include <boost/assert.hpp>
+#include <boost/config/detail/suffix.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -44,8 +45,8 @@ public:
     }
 };
 
-constexpr std::size_t stmt_execute_null_bitmap_offset = 0;
-constexpr std::size_t binary_row_null_bitmap_offset = 2;
+BOOST_INLINE_CONSTEXPR std::size_t stmt_execute_null_bitmap_offset = 0;
+BOOST_INLINE_CONSTEXPR std::size_t binary_row_null_bitmap_offset = 2;
 
 }  // namespace detail
 }  // namespace mysql
