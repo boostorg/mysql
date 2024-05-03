@@ -101,6 +101,7 @@ run
         test/common_server_errc.cpp
         test/mysql_server_errc.cpp
         test/mariadb_server_errc.cpp
+        test/is_fatal_error.cpp
         test/connection.cpp
         test/date.cpp
         test/datetime.cpp
