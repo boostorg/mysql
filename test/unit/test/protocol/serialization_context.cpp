@@ -129,9 +129,9 @@ BOOST_AUTO_TEST_CASE(add_frame_headers_chunks)
     BOOST_TEST(ctx.next_header_offset() == 24u);
 }
 
+// add_checked should behave like add + write_frame_headers
 BOOST_AUTO_TEST_CASE(add_checked)
 {
-    // Should behave like add + write_frame_headers
     constexpr std::size_t fs = 8u;  // frame size
     const std::vector<std::uint8_t> initial_buffer{0xaa, 0xbb, 0xcc, 0xdd, 0xee};
 
@@ -154,6 +154,77 @@ BOOST_AUTO_TEST_CASE(add_checked)
     }
 }
 
+// Spotcheck: add_checked should work fine if the initial buffer is empty
+BOOST_AUTO_TEST_CASE(add_checked_initial_buffer_empty)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 8);
+
+    // Add payload and set headers
+    const std::array<std::uint8_t, 10> payload{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    ctx.add_checked(payload);
+
+    // Check
+    const std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 9, 10};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.next_header_offset() == 24u);
+}
+
+// If there are any missing frame headers when add_checked is called,
+// they are inserted
+BOOST_AUTO_TEST_CASE(add_checked_missing_frame_headers)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 8);
+
+    // Create some missing frame headers by using unchecked add
+    const std::array<std::uint8_t, 20> payload1{
+        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+    };
+    ctx.add(payload1);
+
+    // Add (checked) some data
+    const std::array<std::uint8_t, 10> payload2{
+        {21, 22, 23, 24, 25, 26, 27, 28, 29, 30}
+    };
+    ctx.add_checked(payload2);
+
+    // Check
+    const std::vector<std::uint8_t> expected{0,  0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  0,  0,  0,  0,
+                                             9,  10, 11, 12, 13, 14, 15, 16, 0,  0,  0,  0,  17, 18, 19, 20,
+                                             21, 22, 23, 24, 0,  0,  0,  0,  25, 26, 27, 28, 29, 30};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.next_header_offset() == 48u);
+}
+
+// Same as above, but what we insert via add_checked is not enough to fill a frame
+BOOST_AUTO_TEST_CASE(add_checked_missing_frame_headers_small_payload)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 8);
+
+    // Create some missing frame headers by using unchecked add
+    const std::array<std::uint8_t, 20> payload1{
+        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
+    };
+    ctx.add(payload1);
+
+    // Add (checked) some data
+    const std::array<std::uint8_t, 2> payload2{
+        {21, 22}
+    };
+    ctx.add_checked(payload2);
+
+    // Check
+    const std::vector<std::uint8_t> expected{0,  0,  0,  0,  1,  2,  3,  4, 5, 6, 7, 8,  0,  0,  0,  0,  9,
+                                             10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 17, 18, 19, 20, 21, 22};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.next_header_offset() == 36u);
+}
+
 // framing disabled
 //   add (u8)
 //   add (span)
@@ -161,7 +232,6 @@ BOOST_AUTO_TEST_CASE(add_checked)
 //   grow_by zeroes
 // framing enabled
 //  grow_by:  spotcheck: should behave like add(span)
-//  add_checked: with some missing frame headers before
 //  write_frame_headers: with all sizes
 //                     seqnum wrap
 //  frame header with more than 0xff
