@@ -128,7 +128,9 @@ inline std::uint8_t serialize_top_level(
     std::uint8_t seqnum
 )
 {
-    return serialization_context(to).serialize_top_level(input, seqnum);
+    serialization_context ctx(to);
+    input.serialize(ctx);
+    return ctx.write_frame_headers(seqnum);
 }
 
 }  // namespace detail

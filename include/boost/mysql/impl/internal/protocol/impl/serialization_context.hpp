@@ -54,20 +54,6 @@ class serialization_context
     std::size_t max_frame_size_;
     std::size_t next_header_offset_{};
 
-    // Inserts any missing space for frame headers, moving data as required.
-    void add_frame_headers()
-    {
-        while (next_header_offset_ <= buffer_.size())
-        {
-            // Insert space for the frame header where needed
-            const std::array<std::uint8_t, frame_header_size> placeholder{};
-            buffer_.insert(buffer_.begin() + next_header_offset_, placeholder.begin(), placeholder.end());
-
-            // Update the next frame header offset
-            next_header_offset_ += (max_frame_size_ + frame_header_size);
-        }
-    }
-
     // max_frame_size_ == -1 can be used to disable framing. Used for testing
     bool framing_enabled() const { return max_frame_size_ != disable_framing; }
 
@@ -109,9 +95,12 @@ public:
         if (framing_enabled())
         {
             buffer_.resize(buffer_.size() + frame_header_size);
-            next_header_offset_ = buff.size() + max_frame_size_ + frame_header_size;
+            next_header_offset_ = initial_offset_ + max_frame_size_ + frame_header_size;
         }
     }
+
+    // Exposed for testing
+    std::size_t next_header_offset() const { return next_header_offset_; }
 
     // To be called by serialize() functions. Adds size bytes at the end of the buffer
     // and returns the newly allocated space. Bytes are set to zero.
@@ -146,6 +135,21 @@ public:
         else
         {
             add(content);
+        }
+    }
+
+    // Inserts any missing space for frame headers, moving data as required.
+    // Exposed for testing
+    void add_frame_headers()
+    {
+        while (next_header_offset_ <= buffer_.size())
+        {
+            // Insert space for the frame header where needed
+            const std::array<std::uint8_t, frame_header_size> placeholder{};
+            buffer_.insert(buffer_.begin() + next_header_offset_, placeholder.begin(), placeholder.end());
+
+            // Update the next frame header offset
+            next_header_offset_ += (max_frame_size_ + frame_header_size);
         }
     }
 
@@ -190,16 +194,6 @@ public:
     {
         int dummy[] = {(s.serialize(*this), 0)...};
         ignore_unused(dummy);
-    }
-
-    template <class Serializable>
-    std::uint8_t serialize_top_level(const Serializable& input, std::uint8_t seqnum)
-    {
-        // Serialize the object
-        input.serialize(*this);
-
-        // Correctly set up frame headers
-        return write_frame_headers(seqnum);
     }
 };
 
