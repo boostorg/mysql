@@ -96,6 +96,34 @@ BOOST_AUTO_TEST_CASE(add_frame_headers_initial_buffer_empty)
     BOOST_TEST(ctx.next_header_offset() == 24u);
 }
 
+// Spotcheck: adding single bytes or in chunks also works fine
+BOOST_AUTO_TEST_CASE(add_frame_headers_chunks)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 8);
+
+    // Add data
+    const std::array<std::uint8_t, 4> payload1{
+        {1, 2, 3, 4}
+    };
+    const std::array<std::uint8_t, 5> payload2{
+        {5, 6, 7, 8, 9}
+    };
+    ctx.add(0xff);
+    ctx.add(payload1);
+    ctx.add(0xfe);
+    ctx.add(payload2);
+    ctx.add(0xfc);
+    ctx.add_frame_headers();
+
+    // Check
+    const std::vector<std::uint8_t> expected{0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe,
+                                             5, 6, 0, 0, 0,    0, 7, 8, 9, 0xfc};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.next_header_offset() == 24u);
+}
+
 // framing disabled
 //   add (u8)
 //   add (span)
@@ -114,8 +142,6 @@ BOOST_AUTO_TEST_CASE(add_frame_headers_initial_buffer_empty)
 //      size 2F+1
 //      size 2F+5
 //      size 3F
-//  add (u8): spotcheck: should behave like add(span)
-//  add in chunks: spotcheck
 //  grow_by:  spotcheck: should behave like add(span)
 //  add_checked: with all sizes
 //               with some missing frame headers before
