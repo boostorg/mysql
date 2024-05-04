@@ -22,15 +22,17 @@ using namespace boost::mysql;
 
 BOOST_AUTO_TEST_SUITE(test_serialization_context)
 
-BOOST_AUTO_TEST_CASE(add_frame_headers)
+struct framing_test_case
 {
-    struct
-    {
-        string_view name;
-        std::size_t expected_next_frame_offset;  // not counting previous contents
-        std::vector<std::uint8_t> payload;
-        std::vector<std::uint8_t> expected_buffer;  // not counting previous contents
-    } test_cases[] = {
+    string_view name;
+    std::size_t expected_next_frame_offset;  // not counting previous contents
+    std::vector<std::uint8_t> payload;
+    std::vector<std::uint8_t> expected_buffer;  // not counting previous contents
+};
+
+std::vector<framing_test_case> make_test_cases()
+{
+    return {
         // clang-format off
         {"0 bytes",     12,   {},                          {0, 0, 0, 0}                                       },
         {"1 byte",      12,   {1},                         {0, 0, 0, 0, 1}                                    },
@@ -52,11 +54,14 @@ BOOST_AUTO_TEST_CASE(add_frame_headers)
             {0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 17, 18, 19, 20, 21, 22, 23, 24, 0, 0, 0, 0, 25}},
         // clang-format on
     };
+}
 
+BOOST_AUTO_TEST_CASE(add_frame_headers)
+{
     constexpr std::size_t fs = 8u;  // frame size
     const std::vector<std::uint8_t> initial_buffer{0xaa, 0xbb, 0xcc, 0xdd, 0xee};
 
-    for (const auto& tc : test_cases)
+    for (const auto& tc : make_test_cases())
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
@@ -124,28 +129,39 @@ BOOST_AUTO_TEST_CASE(add_frame_headers_chunks)
     BOOST_TEST(ctx.next_header_offset() == 24u);
 }
 
+BOOST_AUTO_TEST_CASE(add_checked)
+{
+    // Should behave like add + write_frame_headers
+    constexpr std::size_t fs = 8u;  // frame size
+    const std::vector<std::uint8_t> initial_buffer{0xaa, 0xbb, 0xcc, 0xdd, 0xee};
+
+    for (const auto& tc : make_test_cases())
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            std::vector<std::uint8_t> buff{initial_buffer};
+            detail::serialization_context ctx(buff, fs);
+
+            // Add payload and set headers
+            ctx.add_checked(tc.payload);
+
+            // Check
+            auto expected = test::concat_copy(initial_buffer, tc.expected_buffer);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+            BOOST_TEST(ctx.next_header_offset() == tc.expected_next_frame_offset + initial_buffer.size());
+        }
+    }
+}
+
 // framing disabled
 //   add (u8)
 //   add (span)
 //   add (span past 0xffffff)
 //   grow_by zeroes
 // framing enabled
-//   Aux: size cases
-//      size 0
-//      size 1
-//      size 5
-//      size F-1
-//      size F
-//      size F+1
-//      size 2F-1
-//      size 2F
-//      size 2F+1
-//      size 2F+5
-//      size 3F
 //  grow_by:  spotcheck: should behave like add(span)
-//  add_checked: with all sizes
-//               with some missing frame headers before
-//  Ctor adds an initial frame
+//  add_checked: with some missing frame headers before
 //  write_frame_headers: with all sizes
 //                     seqnum wrap
 //  frame header with more than 0xff
