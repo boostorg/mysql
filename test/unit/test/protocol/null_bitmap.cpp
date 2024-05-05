@@ -7,7 +7,7 @@
 
 #include <boost/mysql/field_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/null_bitmap_traits.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/null_bitmap.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>

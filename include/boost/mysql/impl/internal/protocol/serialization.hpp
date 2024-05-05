@@ -13,7 +13,7 @@
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/null_bitmap_traits.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/null_bitmap.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>

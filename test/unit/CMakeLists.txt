@@ -16,7 +16,7 @@ add_executable(
 
     test/protocol/static_buffer.cpp
     test/protocol/capabilities.cpp
-    test/protocol/null_bitmap_traits.cpp
+    test/protocol/null_bitmap.cpp
     test/protocol/protocol_field_type.cpp
     test/protocol/frame_header.cpp
     test/protocol/serialization_context.cpp

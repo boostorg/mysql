@@ -30,7 +30,7 @@
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/null_bitmap_traits.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/null_bitmap.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/text_protocol.hpp>
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
