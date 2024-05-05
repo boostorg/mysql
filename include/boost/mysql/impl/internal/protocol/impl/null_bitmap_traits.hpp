@@ -43,11 +43,6 @@ public:
         BOOST_ASSERT(field_pos < num_fields_);
         return null_bitmap_begin[byte_pos(field_pos)] & (1 << bit_pos(field_pos));
     }
-    void set_null(std::uint8_t* null_bitmap_begin, std::size_t field_pos) const noexcept
-    {
-        BOOST_ASSERT(field_pos < num_fields_);
-        null_bitmap_begin[byte_pos(field_pos)] |= (1 << bit_pos(field_pos));
-    }
 };
 
 class null_bitmap_generator
