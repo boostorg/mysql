@@ -10,13 +10,10 @@
 #include <boost/mysql/impl/internal/protocol/impl/null_bitmap_traits.hpp>
 
 #include <boost/core/span.hpp>
-#include <boost/test/data/monomorphic/collection.hpp>
-#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <cstdint>
-#include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"
@@ -26,154 +23,121 @@ using namespace boost::unit_test;
 using namespace boost::mysql::test;
 using boost::mysql::field_view;
 
-BOOST_AUTO_TEST_SUITE(test_null_bitmap_traits)
+BOOST_AUTO_TEST_SUITE(test_null_bitmap)
 
-// byte_count
-struct byte_count_sample
-{
-    std::size_t offset;
-    std::size_t num_fields;
-    std::size_t expected_value;
-};
+BOOST_AUTO_TEST_SUITE(parser)
 
-std::ostream& operator<<(std::ostream& os, const byte_count_sample& val)
+BOOST_AUTO_TEST_CASE(byte_count)
 {
-    return os << "(offset=" << val.offset << ", num_fields=" << val.num_fields << ")";
+    struct
+    {
+        std::size_t num_fields;
+        std::size_t expected;
+    } test_cases[] = {
+        {0,  1},
+        {1,  1},
+        {2,  1},
+        {3,  1},
+        {4,  1},
+        {5,  1},
+        {6,  1},
+        {7,  2},
+        {8,  2},
+        {9,  2},
+        {10, 2},
+        {11, 2},
+        {12, 2},
+        {13, 2},
+        {14, 2},
+        {15, 3},
+        {16, 3},
+        {17, 3},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.num_fields)
+        {
+            null_bitmap_parser parser{tc.num_fields};
+            BOOST_TEST(parser.byte_count() == tc.expected);
+        }
+    }
 }
 
-constexpr byte_count_sample all_byte_count_samples[]{
-    {stmt_execute_null_bitmap_offset, 0,  0},
-    {stmt_execute_null_bitmap_offset, 1,  1},
-    {stmt_execute_null_bitmap_offset, 2,  1},
-    {stmt_execute_null_bitmap_offset, 3,  1},
-    {stmt_execute_null_bitmap_offset, 4,  1},
-    {stmt_execute_null_bitmap_offset, 5,  1},
-    {stmt_execute_null_bitmap_offset, 6,  1},
-    {stmt_execute_null_bitmap_offset, 7,  1},
-    {stmt_execute_null_bitmap_offset, 8,  1},
-    {stmt_execute_null_bitmap_offset, 9,  2},
-    {stmt_execute_null_bitmap_offset, 10, 2},
-    {stmt_execute_null_bitmap_offset, 11, 2},
-    {stmt_execute_null_bitmap_offset, 12, 2},
-    {stmt_execute_null_bitmap_offset, 13, 2},
-    {stmt_execute_null_bitmap_offset, 14, 2},
-    {stmt_execute_null_bitmap_offset, 15, 2},
-    {stmt_execute_null_bitmap_offset, 16, 2},
-    {stmt_execute_null_bitmap_offset, 17, 3},
-
-    {binary_row_null_bitmap_offset,   0,  1},
-    {binary_row_null_bitmap_offset,   1,  1},
-    {binary_row_null_bitmap_offset,   2,  1},
-    {binary_row_null_bitmap_offset,   3,  1},
-    {binary_row_null_bitmap_offset,   4,  1},
-    {binary_row_null_bitmap_offset,   5,  1},
-    {binary_row_null_bitmap_offset,   6,  1},
-    {binary_row_null_bitmap_offset,   7,  2},
-    {binary_row_null_bitmap_offset,   8,  2},
-    {binary_row_null_bitmap_offset,   9,  2},
-    {binary_row_null_bitmap_offset,   10, 2},
-    {binary_row_null_bitmap_offset,   11, 2},
-    {binary_row_null_bitmap_offset,   12, 2},
-    {binary_row_null_bitmap_offset,   13, 2},
-    {binary_row_null_bitmap_offset,   14, 2},
-    {binary_row_null_bitmap_offset,   15, 3},
-    {binary_row_null_bitmap_offset,   16, 3},
-    {binary_row_null_bitmap_offset,   17, 3},
-};
-
-BOOST_DATA_TEST_CASE(byte_count, data::make(all_byte_count_samples))
+BOOST_AUTO_TEST_CASE(is_null_coverage)
 {
-    null_bitmap_traits traits(sample.offset, sample.num_fields);
-    BOOST_TEST(traits.byte_count() == sample.expected_value);
-}
-
-// is_null
-struct is_null_sample
-{
-    std::size_t offset;
-    std::size_t pos;
-    bool expected;
-};
-
-std::ostream& operator<<(std::ostream& os, const is_null_sample& value)
-{
-    return os << "(offset=" << value.offset << ", pos=" << value.pos << ")";
-}
-
-constexpr is_null_sample all_is_null_samples[]{
-    {stmt_execute_null_bitmap_offset, 0,  false},
-    {stmt_execute_null_bitmap_offset, 1,  false},
-    {stmt_execute_null_bitmap_offset, 2,  true },
-    {stmt_execute_null_bitmap_offset, 3,  false},
-    {stmt_execute_null_bitmap_offset, 4,  true },
-    {stmt_execute_null_bitmap_offset, 5,  true },
-    {stmt_execute_null_bitmap_offset, 6,  false},
-    {stmt_execute_null_bitmap_offset, 7,  true },
-    {stmt_execute_null_bitmap_offset, 8,  true },
-    {stmt_execute_null_bitmap_offset, 9,  true },
-    {stmt_execute_null_bitmap_offset, 10, true },
-    {stmt_execute_null_bitmap_offset, 11, true },
-    {stmt_execute_null_bitmap_offset, 12, true },
-    {stmt_execute_null_bitmap_offset, 13, true },
-    {stmt_execute_null_bitmap_offset, 14, true },
-    {stmt_execute_null_bitmap_offset, 15, true },
-    {stmt_execute_null_bitmap_offset, 16, false},
-
-    {binary_row_null_bitmap_offset,   0,  true },
-    {binary_row_null_bitmap_offset,   1,  false},
-    {binary_row_null_bitmap_offset,   2,  true },
-    {binary_row_null_bitmap_offset,   3,  true },
-    {binary_row_null_bitmap_offset,   4,  false},
-    {binary_row_null_bitmap_offset,   5,  true },
-    {binary_row_null_bitmap_offset,   6,  true },
-    {binary_row_null_bitmap_offset,   7,  true },
-    {binary_row_null_bitmap_offset,   8,  true },
-    {binary_row_null_bitmap_offset,   9,  true },
-    {binary_row_null_bitmap_offset,   10, true },
-    {binary_row_null_bitmap_offset,   11, true },
-    {binary_row_null_bitmap_offset,   12, true },
-    {binary_row_null_bitmap_offset,   13, true },
-    {binary_row_null_bitmap_offset,   14, false},
-    {binary_row_null_bitmap_offset,   15, false},
-    {binary_row_null_bitmap_offset,   16, false},
-};
-
-BOOST_DATA_TEST_CASE(is_null, data::make(all_is_null_samples))
-{
+    // Given a null bitmap with 17 fields, and the following buffer, vary the field offset
     // 0b10110100, 0b11111111, 0b00000000
-    std::uint8_t content[] = {0xb4, 0xff, 0x00};
-    null_bitmap_traits traits(sample.offset, 17);  // 17 fields
-    bool actual = traits.is_null(content, sample.pos);
-    BOOST_TEST(actual == sample.expected);
+    struct
+    {
+        std::size_t pos;
+        bool expected;
+    } test_cases[] = {
+        {0,  true },
+        {1,  false},
+        {2,  true },
+        {3,  true },
+        {4,  false},
+        {5,  true },
+        {6,  true },
+        {7,  true },
+        {8,  true },
+        {9,  true },
+        {10, true },
+        {11, true },
+        {12, true },
+        {13, true },
+        {14, false},
+        {15, false},
+        {16, false},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.pos)
+        {
+            const std::array<std::uint8_t, 3> buffer{
+                {0xb4, 0xff, 0x00}
+            };
+            null_bitmap_parser parser{17};  // 17 fields
+            bool actual = parser.is_null(buffer.data(), tc.pos);
+            BOOST_TEST(actual == tc.expected);
+        }
+    }
 }
 
-BOOST_AUTO_TEST_CASE(is_null_one_field_stmt_execute_first_bit_zero)
+// spotcheck: we handle the offset correctly, ignoring the first two bits
+BOOST_AUTO_TEST_CASE(is_null_first_bit)
 {
-    std::uint8_t value = 0x00;
-    null_bitmap_traits traits(stmt_execute_null_bitmap_offset, 1);
-    BOOST_TEST(!traits.is_null(&value, 0));
+    struct
+    {
+        std::uint8_t buffer;
+        bool expected;
+    } test_cases[] = {
+        {0x00, false},
+        {0x01, false},
+        {0x02, false},
+        {0x03, false},
+        {0x04, true },
+        {0x05, true },
+        {0x06, true },
+        {0x07, true },
+        {0x08, false},
+        {0x09, false},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.buffer)
+        {
+            null_bitmap_parser parser{1};  // 1 field
+            bool actual = parser.is_null(&tc.buffer, 0);
+            BOOST_TEST(actual == tc.expected);
+        }
+    }
 }
 
-BOOST_AUTO_TEST_CASE(is_null_one_field_stmt_execute_first_bit_one)
-{
-    std::uint8_t value = 0x01;
-    null_bitmap_traits traits(stmt_execute_null_bitmap_offset, 1);
-    BOOST_TEST(traits.is_null(&value, 0));
-}
-
-BOOST_AUTO_TEST_CASE(is_null_one_field_binary_row_third_bit_zero)
-{
-    std::uint8_t value = 0x00;
-    null_bitmap_traits traits(binary_row_null_bitmap_offset, 1);
-    BOOST_TEST(!traits.is_null(&value, 0));
-}
-
-BOOST_AUTO_TEST_CASE(is_null_one_field_binary_row_third_bit_one)
-{
-    std::uint8_t value = 0x04;  // 0b00000100
-    null_bitmap_traits traits(binary_row_null_bitmap_offset, 1);
-    BOOST_TEST(traits.is_null(&value, 0));
-}
+BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(generator)
 

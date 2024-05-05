@@ -23,25 +23,26 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class null_bitmap_traits
+// When parsing binary rows, we need to add this offset to
+// field positions to get the actual field index to use -
+// the first two positions are reserved
+BOOST_INLINE_CONSTEXPR std::size_t binary_row_null_bitmap_offset = 2;
+
+// Helper to parse the null bitmap contained in binary rows
+class null_bitmap_parser
 {
-    std::size_t offset_;
     std::size_t num_fields_;
 
-    constexpr std::size_t byte_pos(std::size_t field_pos) const noexcept { return (field_pos + offset_) / 8; }
-    constexpr std::size_t bit_pos(std::size_t field_pos) const noexcept { return (field_pos + offset_) % 8; }
-
 public:
-    constexpr null_bitmap_traits(std::size_t offset, std::size_t num_fields) noexcept
-        : offset_(offset), num_fields_{num_fields} {};
-    constexpr std::size_t offset() const noexcept { return offset_; }
-    constexpr std::size_t num_fields() const noexcept { return num_fields_; }
-
-    constexpr std::size_t byte_count() const noexcept { return (num_fields_ + 7 + offset_) / 8; }
-    bool is_null(const std::uint8_t* null_bitmap_begin, std::size_t field_pos) const noexcept
+    constexpr null_bitmap_parser(std::size_t num_fields) noexcept : num_fields_{num_fields} {};
+    constexpr std::size_t byte_count() const { return (num_fields_ + 7 + binary_row_null_bitmap_offset) / 8; }
+    bool is_null(const std::uint8_t* first, std::size_t field_pos) const
     {
         BOOST_ASSERT(field_pos < num_fields_);
-        return null_bitmap_begin[byte_pos(field_pos)] & (1 << bit_pos(field_pos));
+
+        std::size_t byte_pos = (field_pos + binary_row_null_bitmap_offset) / 8;
+        std::size_t bit_pos = (field_pos + binary_row_null_bitmap_offset) % 8;
+        return first[byte_pos] & (1 << bit_pos);
     }
 };
 
@@ -77,9 +78,6 @@ public:
         return res;
     }
 };
-
-BOOST_INLINE_CONSTEXPR std::size_t stmt_execute_null_bitmap_offset = 0;
-BOOST_INLINE_CONSTEXPR std::size_t binary_row_null_bitmap_offset = 2;
 
 }  // namespace detail
 }  // namespace mysql

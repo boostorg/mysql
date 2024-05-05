@@ -708,16 +708,17 @@ inline error_code deserialize_binary_row(
     std::size_t num_fields = meta.size();
 
     // Null bitmap
-    null_bitmap_traits null_bitmap(binary_row_null_bitmap_offset, num_fields);
-    const std::uint8_t* null_bitmap_begin = ctx.first();
-    if (!ctx.enough_size(null_bitmap.byte_count()))
+    null_bitmap_parser null_bitmap(num_fields);
+    const std::uint8_t* null_bitmap_first = ctx.first();
+    std::size_t null_bitmap_size = null_bitmap.byte_count();
+    if (!ctx.enough_size(null_bitmap_size))
         return client_errc::incomplete_message;
-    ctx.advance(null_bitmap.byte_count());
+    ctx.advance(null_bitmap_size);
 
     // Actual values
     for (std::vector<field_view>::size_type i = 0; i < num_fields; ++i)
     {
-        if (null_bitmap.is_null(null_bitmap_begin, i))
+        if (null_bitmap.is_null(null_bitmap_first, i))
         {
             output[i] = field_view(nullptr);
         }
