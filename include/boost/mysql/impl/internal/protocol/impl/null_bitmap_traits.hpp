@@ -8,11 +8,16 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_NULL_BITMAP_TRAITS_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_NULL_BITMAP_TRAITS_HPP
 
-#include <boost/assert.hpp>
-#include <boost/config/detail/suffix.hpp>
+#include <boost/mysql/field_view.hpp>
 
+#include <boost/assert.hpp>
+#include <boost/config.hpp>
+#include <boost/core/span.hpp>
+
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 namespace boost {
 namespace mysql {
@@ -42,6 +47,39 @@ public:
     {
         BOOST_ASSERT(field_pos < num_fields_);
         null_bitmap_begin[byte_pos(field_pos)] |= (1 << bit_pos(field_pos));
+    }
+};
+
+class null_bitmap_generator
+{
+    span<const field_view> fields_;
+    std::size_t current_{0};
+
+public:
+    null_bitmap_generator(span<const field_view> fields) noexcept : fields_(fields) {}
+    bool done() const { return current_ == fields_.size(); }
+    std::uint8_t next()
+    {
+        BOOST_ASSERT(current_ < fields_.size());
+
+        std::uint8_t res = 0;
+
+        // Generate
+        const std::size_t max_i = (std::min)(fields_.size(), current_ + 8u);
+        for (std::size_t i = current_; i < max_i; ++i)
+        {
+            if (fields_[i].is_null())
+            {
+                const auto bit_pos = i % 8;
+                res |= (1 << bit_pos);
+            }
+        }
+
+        // Update state
+        current_ = max_i;
+
+        // Return
+        return res;
     }
 };
 

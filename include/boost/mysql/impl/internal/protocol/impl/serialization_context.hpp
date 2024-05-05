@@ -102,16 +102,6 @@ public:
     // Exposed for testing
     std::size_t next_header_offset() const { return next_header_offset_; }
 
-    // To be called by serialize() functions. Adds size bytes at the end of the buffer
-    // and returns the newly allocated space. Bytes are set to zero.
-    // Doesn't take framing into account.
-    span<std::uint8_t> grow_by(std::size_t size)
-    {
-        std::size_t offset = buffer_.size();
-        buffer_.resize(offset + size);
-        return {buffer_.data() + offset, size};
-    }
-
     // To be called by serialize() functions.
     // Appends a single byte to the buffer. Doesn't take framing into account.
     void add(std::uint8_t value) { buffer_.push_back(value); }

@@ -203,15 +203,9 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
     if (num_params > 0)
     {
         // NULL bitmap
-        null_bitmap_traits traits(stmt_execute_null_bitmap_offset, num_params);
-        auto null_bitmap_buff = ctx.grow_by(traits.byte_count());  // already zero-initialized
-        for (std::size_t i = 0; i < num_params; ++i)
-        {
-            if (params[i].is_null())
-            {
-                traits.set_null(null_bitmap_buff.data(), i);
-            }
-        }
+        null_bitmap_generator null_gen(params);
+        while (!null_gen.done())
+            ctx.add(null_gen.next());
 
         // new parameters bind flag
         new_params_bind_flag.serialize(ctx);
