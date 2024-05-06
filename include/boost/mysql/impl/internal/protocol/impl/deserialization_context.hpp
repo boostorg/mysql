@@ -50,12 +50,10 @@ class deserialization_context
     const std::uint8_t* last_;
 
 public:
-    deserialization_context(span<const std::uint8_t> data) noexcept
-        : deserialization_context(data.data(), data.size())
+    explicit deserialization_context(span<const std::uint8_t> data) noexcept
+        : first_(data.data()), last_(first_ + data.size())
     {
     }
-    deserialization_context(const std::uint8_t* first, std::size_t size) noexcept
-        : first_(first), last_(first + size){};
     const std::uint8_t* first() const { return first_; }
     const std::uint8_t* last() const { return last_; }
     std::size_t size() const { return last_ - first_; }
@@ -65,7 +63,6 @@ public:
         BOOST_ASSERT(last_ >= first_);
     }
     void rewind(std::size_t sz) { first_ -= sz; }
-    bool empty() const { return last_ == first_; }
     bool enough_size(std::size_t required_size) const { return size() >= required_size; }
     string_view get_string(std::size_t sz) const
     {
@@ -73,10 +70,10 @@ public:
     }
     error_code check_extra_bytes() const
     {
-        return empty() ? error_code() : error_code(client_errc::extra_bytes);
+        return last_ == first_ ? error_code() : error_code(client_errc::extra_bytes);
     }
 
-    span<const std::uint8_t> to_span() const { return span<const std::uint8_t>(first_, size()); }
+    span<const std::uint8_t> to_span() const { return span<const std::uint8_t>(first_, last_); }
 
     deserialize_errc deserialize() { return deserialize_errc::ok; }
 

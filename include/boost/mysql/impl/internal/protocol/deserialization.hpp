@@ -687,9 +687,7 @@ inline error_code deserialize_text_row(
                 return to_error_code(err);
         }
     }
-    if (!ctx.empty())
-        return client_errc::extra_bytes;
-    return error_code();
+    return ctx.check_extra_bytes();
 }
 
 inline error_code deserialize_binary_row(
@@ -731,10 +729,7 @@ inline error_code deserialize_binary_row(
     }
 
     // Check for remaining bytes
-    if (!ctx.empty())
-        return make_error_code(client_errc::extra_bytes);
-
-    return error_code();
+    return ctx.check_extra_bytes();
 }
 
 }  // namespace detail

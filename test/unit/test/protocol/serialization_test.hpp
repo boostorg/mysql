@@ -84,9 +84,8 @@ template <class T>
 void do_deserialize_test(T value, span<const std::uint8_t> serialized)
 {
     deserialization_buffer buffer(serialized);
-    auto first = buffer.data();
-    auto size = buffer.size();
-    detail::deserialization_context ctx(first, size);
+    auto expected_first = buffer.data() + buffer.size();
+    detail::deserialization_context ctx(buffer);
     T actual{};
     detail::deserialize_errc err = actual.deserialize(ctx);
 
@@ -94,7 +93,7 @@ void do_deserialize_test(T value, span<const std::uint8_t> serialized)
     BOOST_TEST(err == detail::deserialize_errc::ok);
 
     // Iterator advanced
-    BOOST_TEST(ctx.first() == first + size);
+    BOOST_TEST(ctx.first() == expected_first);
 
     // Actual value
     BOOST_TEST(actual == value);
@@ -109,7 +108,7 @@ void do_deserialize_extra_space_test(T value, span<const std::uint8_t> serialize
     buffer.data()[serialized.size()] = 0xff;
 
     // Deserialize
-    detail::deserialization_context ctx(buffer.data(), buffer.size());
+    detail::deserialization_context ctx(buffer);
     T actual{};
     detail::deserialize_errc err = actual.deserialize(ctx);
 
