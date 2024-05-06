@@ -777,14 +777,12 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
     server_hello& output
 )
 {
-    constexpr std::uint8_t server_hello_auth1_length = 8;
-
     struct server_hello_packet
     {
         // int<1>     protocol version     Always 10
         string_null server_version;
         int4 connection_id;
-        string_fixed<server_hello_auth1_length> auth_plugin_data_part_1;
+        string_fixed<8> auth_plugin_data_part_1;
         int1 filler;  // should be 0
         string_fixed<2> capability_flags_low;
         int1 character_set;  // default server a_protocol_character_set, only the lower 8-bits
@@ -824,9 +822,10 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
         return to_error_code(err);
 
     // Auth plugin data, second part
-    auto auth2_length = static_cast<std::uint8_t>(
-        (std::max)(13, pack.auth_plugin_data_len.value - server_hello_auth1_length)
-    );
+    auto auth2_length = static_cast<std::uint8_t>((std::max)(
+        static_cast<std::size_t>(13u),
+        static_cast<std::size_t>(pack.auth_plugin_data_len.value - pack.auth_plugin_data_part_1.value.size())
+    ));
     const void* auth2_data = ctx.first();
     if (!ctx.enough_size(auth2_length))
         return client_errc::incomplete_message;
@@ -844,7 +843,10 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
 
     // Compose auth_plugin_data
     output.auth_plugin_data.clear();
-    output.auth_plugin_data.append(pack.auth_plugin_data_part_1.value.data(), server_hello_auth1_length);
+    output.auth_plugin_data.append(
+        pack.auth_plugin_data_part_1.value.data(),
+        pack.auth_plugin_data_part_1.value.size()
+    );
     output.auth_plugin_data.append(auth2_data,
                                    auth2_length - 1);  // discard an extra trailing NULL byte
 

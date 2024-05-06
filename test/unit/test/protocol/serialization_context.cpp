@@ -163,7 +163,9 @@ BOOST_AUTO_TEST_CASE(add_checked_initial_buffer_empty)
     detail::serialization_context ctx(buff, 8);
 
     // Add payload and set headers
-    const std::array<std::uint8_t, 10> payload{1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    const std::array<std::uint8_t, 10> payload{
+        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+    };
     ctx.add_checked(payload);
 
     // Check

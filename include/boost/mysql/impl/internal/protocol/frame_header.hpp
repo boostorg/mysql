@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_FRAME_HEADER_HPP
 
 #include <boost/config.hpp>
+#include <boost/core/span.hpp>
 #include <boost/endian/conversion.hpp>
 
 #include <cstddef>
