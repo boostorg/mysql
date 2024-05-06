@@ -10,6 +10,7 @@
 
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include <boost/core/span.hpp>
@@ -30,9 +31,8 @@ inline std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, span<const st
     BOOST_ASSERT(body.size() <= 0xffffff);  // it should fit in a single frame
     std::vector<std::uint8_t> res(detail::frame_header_size);
     detail::serialize_frame_header(
-        span<std::uint8_t, detail::frame_header_size>{res.data(), 4u},
-        static_cast<std::uint32_t>(body.size()),
-        seqnum
+        span<std::uint8_t, detail::frame_header_size>{res.data(), detail::frame_header_size},
+        detail::frame_header{static_cast<std::uint32_t>(body.size()), seqnum}
     );
     concat(res, body);
     return res;

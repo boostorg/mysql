@@ -24,18 +24,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Helper
-inline void serialize_frame_header(
-    span<std::uint8_t, frame_header_size> to,
-    std::uint32_t packet_size,
-    std::uint8_t seqnum
-)
-{
-    BOOST_ASSERT(packet_size <= 0xffffff);
-    endian::store_little_u24(to.data(), packet_size);
-    to[3] = seqnum;
-}
-
 // Disables framing in serialization_context
 BOOST_INLINE_CONSTEXPR std::size_t disable_framing = static_cast<std::size_t>(-1);
 
@@ -164,8 +152,7 @@ public:
             BOOST_ASSERT(frame_first <= buffer_.size());
             serialize_frame_header(
                 span<std::uint8_t, frame_header_size>(buffer_.data() + offset, frame_header_size),
-                frame_size,
-                seqnum++
+                frame_header{frame_size, seqnum++}
             );
 
             // Skip to the next frame
