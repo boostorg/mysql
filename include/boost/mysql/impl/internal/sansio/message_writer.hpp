@@ -11,6 +11,7 @@
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/core/ignore_unused.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -70,6 +71,7 @@ public:
     {
         std::size_t remaining = static_cast<std::size_t>(buffer_.size() - offset_);
         BOOST_ASSERT(n <= remaining);
+        ignore_unused(remaining);
         offset_ += n;
     }
 };
