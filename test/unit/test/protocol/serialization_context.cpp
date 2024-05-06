@@ -259,18 +259,21 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
         // clang-format on
     };
 
+    const std::vector<std::uint8_t> initial_buffer{90, 91, 92, 93, 94};
+
     for (const auto& tc : test_cases)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            std::vector<std::uint8_t> buff;
+            std::vector<std::uint8_t> buff{initial_buffer};
             detail::serialization_context ctx(buff, 8);
             ctx.add_checked(tc.payload);
 
             // Call and check
             auto seqnum = ctx.write_frame_headers(42);
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, tc.expected);
+            const auto expected = test::concat_copy(initial_buffer, tc.expected);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
             BOOST_TEST(seqnum == tc.expected_seqnum);
         }
     }
@@ -296,11 +299,28 @@ BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
     BOOST_TEST(seqnum == 1u);
 }
 
-// framing disabled
-//   add (u8)
-//   add (span)
-//   add (span past 0xffffff)
-//   grow_by zeroes
+// Spotcheck: disable framing works
+BOOST_AUTO_TEST_CASE(disable_framing)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, detail::disable_framing);
+
+    // Add data using the several functions available
+    const std::array<std::uint8_t, 5> payload1{
+        {1, 2, 3, 4, 5}
+    };
+    const std::array<std::uint8_t, 4> payload2{
+        {6, 7, 8, 9}
+    };
+    ctx.add(42);
+    ctx.add(payload1);
+    ctx.add_checked(payload2);
+
+    // We didn't add any framing
+    const std::vector<std::uint8_t> expected{42, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
 
 // TODO: serialize_top_level in serialization.cpp
 
