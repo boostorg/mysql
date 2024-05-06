@@ -20,9 +20,7 @@ using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
 using boost::span;
 
-BOOST_AUTO_TEST_SUITE(test_frame_header)
-
-BOOST_AUTO_TEST_CASE(serialize_frame_header_)
+BOOST_AUTO_TEST_CASE(test_frame_header)
 {
     struct
     {
@@ -54,5 +52,3 @@ BOOST_AUTO_TEST_CASE(serialize_frame_header_)
         }
     }
 }
-
-BOOST_AUTO_TEST_SUITE_END()

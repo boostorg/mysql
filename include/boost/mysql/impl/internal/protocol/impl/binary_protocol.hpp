@@ -382,7 +382,7 @@ inline void serialize_binary_time(serialization_context& ctx, const boost::mysql
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_binary_field(
+boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_binary_field(
     deserialization_context& ctx,
     const metadata& meta,
     field_view& output
@@ -424,7 +424,7 @@ inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_
     }
 }
 
-inline void boost::mysql::detail::serialize_binary_field(serialization_context& ctx, field_view input)
+void boost::mysql::detail::serialize_binary_field(serialization_context& ctx, field_view input)
 {
     switch (input.kind())
     {

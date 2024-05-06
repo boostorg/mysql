@@ -386,7 +386,7 @@ inline deserialize_errc deserialize_text_value_time(string_view from, field_view
 }  // namespace mysql
 }  // namespace boost
 
-inline boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_text_field(
+boost::mysql::detail::deserialize_errc boost::mysql::detail::deserialize_text_field(
     string_view from,
     const metadata& meta,
     field_view& output
