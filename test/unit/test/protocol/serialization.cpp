@@ -78,8 +78,17 @@ BOOST_AUTO_TEST_CASE(query)
     const std::uint8_t serialized[] =
         {0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x73};
     do_serialize_test(cmd, serialized);
+}
 
-    // TODO: check that this behaves correctly with framing
+// Query strings may be large. We consider framing when serializing them
+BOOST_AUTO_TEST_CASE(query_framing)
+{
+    query_command cmd{"show databases"};
+    const std::uint8_t serialized[] = {
+        0, 0, 0, 0, 0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61,  // frame 1
+        0, 0, 0, 0, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x73         // frame 2
+    };
+    do_serialize_test(cmd, serialized, 8u);
 }
 
 BOOST_AUTO_TEST_CASE(prepare_statement)
@@ -92,7 +101,6 @@ BOOST_AUTO_TEST_CASE(prepare_statement)
     do_serialize_test(cmd, serialized);
 }
 
-// TODO: check that this behaves correctly with framing
 BOOST_AUTO_TEST_CASE(execute_statement)
 {
     constexpr std::uint8_t blob_buffer[] = {0x70, 0x00, 0x01, 0xff};

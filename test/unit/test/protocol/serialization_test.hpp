@@ -63,11 +63,15 @@ public:
 };
 
 template <class T>
-void do_serialize_test(T value, span<const std::uint8_t> expected)
+void do_serialize_test(
+    T value,
+    span<const std::uint8_t> expected,
+    std::size_t frame_size = detail::disable_framing
+)
 {
     // Setup
     std::vector<std::uint8_t> buffer;
-    detail::serialization_context ctx(buffer, detail::disable_framing);
+    detail::serialization_context ctx(buffer, frame_size);
 
     // Serialize
     value.serialize(ctx);
