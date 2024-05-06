@@ -12,6 +12,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
+#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/null_bitmap.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
@@ -125,10 +126,11 @@ template <class Serializable>
 inline std::uint8_t serialize_top_level(
     const Serializable& input,
     std::vector<std::uint8_t>& to,
-    std::uint8_t seqnum
+    std::uint8_t seqnum,
+    std::size_t frame_size = max_packet_size
 )
 {
-    serialization_context ctx(to);
+    serialization_context ctx(to, frame_size);
     input.serialize(ctx);
     return ctx.write_frame_headers(seqnum);
 }

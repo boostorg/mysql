@@ -15,8 +15,14 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <array>
+#include <cstdint>
+#include <vector>
+
 #include "serialization_test.hpp"
+#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_unit/mock_message.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
@@ -28,6 +34,22 @@ using boost::mysql::field_view;
 using boost::mysql::string_view;
 
 BOOST_AUTO_TEST_SUITE(test_serialization)
+
+// spotcheck: multi-frame messages handled correctly by serialize_top_level
+BOOST_AUTO_TEST_CASE(serialize_top_level_)
+{
+    constexpr std::size_t frame_size = 8u;
+    const std::array<std::uint8_t, 11> payload{
+        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
+    };
+    const std::vector<std::uint8_t> expected{80, 81, 82, 83, 85, 8, 0, 0, 42, 1, 2,  3,
+                                             4,  5,  6,  7,  8,  3, 0, 0, 43, 9, 10, 11};
+
+    std::vector<std::uint8_t> buff{80, 81, 82, 83, 85};
+    std::uint8_t seqnum = serialize_top_level(mock_message{payload}, buff, 42, frame_size);
+    BOOST_TEST(seqnum == 44u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
 
 BOOST_AUTO_TEST_CASE(quit)
 {
