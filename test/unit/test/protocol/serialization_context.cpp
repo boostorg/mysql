@@ -14,6 +14,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
@@ -225,16 +226,81 @@ BOOST_AUTO_TEST_CASE(add_checked_missing_frame_headers_small_payload)
     BOOST_TEST(ctx.next_header_offset() == 36u);
 }
 
+BOOST_AUTO_TEST_CASE(write_frame_headers)
+{
+    struct
+    {
+        string_view name;
+        std::uint8_t expected_seqnum;
+        std::vector<std::uint8_t> payload;
+        std::vector<std::uint8_t> expected;
+    } test_cases[] = {
+        // clang-format off
+        {"0 bytes",     43,   {},                          {0, 0, 0, 42}                                       },
+        {"1 byte",      43,   {1},                         {1, 0, 0, 42, 1}                                    },
+        {"5 bytes",     43,   {1, 2, 3, 4, 5},             {5, 0, 0, 42, 1, 2, 3, 4, 5}                        },
+        {"fs-1 bytes",  43,   {1, 2, 3, 4, 5, 6, 7},       {7, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7}                  },
+        {"fs bytes",    44,   {1, 2, 3, 4, 5, 6, 7, 8},    {8, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 43}   },
+        {"fs+1 bytes",  44,   {1, 2, 3, 4, 5, 6, 7, 8, 9}, {8, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7, 8, 1, 0, 0, 43, 9}},
+        {"2fs bytes",   45,   {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16},
+            {8, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7, 8, 8, 0, 0, 43, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 44}    },
+        {"2fs+1 bytes", 45,   {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17},
+            {8, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7, 8, 8, 0, 0, 43, 9, 10, 11, 12, 13, 14, 15, 16, 1, 0, 0, 44, 17}},
+        {"2fs+5 bytes", 45,   {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21},
+            {8, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7, 8, 8, 0, 0, 43, 9, 10, 11, 12, 13, 14, 15, 16, 5, 0, 0, 44, 17, 18, 19, 20, 21}},
+        {"3fs-1 bytes", 45,   {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23},
+            {8, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7, 8, 8, 0, 0, 43, 9, 10, 11, 12, 13, 14, 15, 16, 7, 0, 0, 44, 17, 18, 19, 20, 21, 22, 23}},
+        {"3fs bytes",   46,   {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24},
+            {8, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7, 8, 8, 0, 0, 43, 9, 10, 11, 12, 13, 14, 15, 16, 8, 0, 0, 44, 17, 18, 19, 20, 21, 22, 23, 24,
+                0, 0, 0, 45}},
+        {"3fs+1 bytes", 46,   {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
+            {8, 0, 0, 42, 1, 2, 3, 4, 5, 6, 7, 8, 8, 0, 0, 43, 9, 10, 11, 12, 13, 14, 15, 16, 8, 0, 0, 44, 17, 18, 19, 20, 21, 22, 23, 24,
+                1, 0, 0, 45, 25}},
+        // clang-format on
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            std::vector<std::uint8_t> buff;
+            detail::serialization_context ctx(buff, 8);
+            ctx.add_checked(tc.payload);
+
+            // Call and check
+            auto seqnum = ctx.write_frame_headers(42);
+            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, tc.expected);
+            BOOST_TEST(seqnum == tc.expected_seqnum);
+        }
+    }
+}
+
+// Spotcheck: we correctly wrap sequence numbers when going over 0xff
+BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 8);
+    for (std::uint8_t i = 1; i <= 20; ++i)
+        ctx.add(i);
+
+    // Call and check
+    const std::vector<std::uint8_t> expected{
+        8, 0, 0, 0xfe, 1,  2,  3,  4,  5,  6,  7,  8,   // frame 1
+        8, 0, 0, 0xff, 9,  10, 11, 12, 13, 14, 15, 16,  // frame 2
+        4, 0, 0, 0,    17, 18, 19, 20                   // frame 3
+    };
+    auto seqnum = ctx.write_frame_headers(0xfe);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(seqnum == 1u);
+}
+
 // framing disabled
 //   add (u8)
 //   add (span)
 //   add (span past 0xffffff)
 //   grow_by zeroes
-// framing enabled
-//  grow_by:  spotcheck: should behave like add(span)
-//  write_frame_headers: with all sizes
-//                     seqnum wrap
-//  frame header with more than 0xff
 
 // TODO: serialize_top_level in serialization.cpp
 
