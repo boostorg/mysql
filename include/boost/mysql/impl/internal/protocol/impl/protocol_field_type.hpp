@@ -49,7 +49,24 @@ enum class protocol_field_type : std::uint8_t
     geometry = 0xff      // GEOMETRY
 };
 
-// Implementation
+inline column_type compute_column_type(
+    protocol_field_type protocol_type,
+    std::uint16_t flags,
+    std::uint16_t collation
+);
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
+//
+// Implementations
+//
+
+namespace boost {
+namespace mysql {
+namespace detail {
+
 BOOST_INLINE_CONSTEXPR std::uint16_t binary_collation = 63;  // used to distinguish blobs from strings
 
 inline column_type compute_field_type_string(std::uint16_t flags, std::uint16_t collation)
@@ -74,8 +91,11 @@ inline column_type compute_field_type_blob(std::uint16_t collation)
     return collation == binary_collation ? column_type::blob : column_type::text;
 }
 
-// Public interface
-inline column_type compute_column_type(
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
+boost::mysql::column_type boost::mysql::detail::compute_column_type(
     protocol_field_type protocol_type,
     std::uint16_t flags,
     std::uint16_t collation
@@ -116,9 +136,5 @@ inline column_type compute_column_type(
     default: return column_type::unknown;
     }
 }
-
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
 
 #endif
