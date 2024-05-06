@@ -8,8 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_OPERATORS_HPP
 #define BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_OPERATORS_HPP
 
+#include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
 #include <cstring>
 #include <ostream>
