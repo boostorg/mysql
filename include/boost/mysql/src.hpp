@@ -38,6 +38,7 @@
 #include <boost/mysql/impl/internal/error/server_error_to_string.ipp>
 #include <boost/mysql/impl/is_fatal_error.ipp>
 #include <boost/mysql/impl/meta_check_context.ipp>
+#include <boost/mysql/impl/pipeline.ipp>
 #include <boost/mysql/impl/results_impl.ipp>
 #include <boost/mysql/impl/resultset.ipp>
 #include <boost/mysql/impl/row_impl.ipp>

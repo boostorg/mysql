@@ -10,38 +10,21 @@
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
-#include <boost/mysql/format_sql.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
 
-#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/compose_set_names.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <boost/asio/coroutine.hpp>
-#include <boost/system/result.hpp>
 
-#include <string>
+#include <cstdint>
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-// Securely compose a SET NAMES statement. This function
-// is also used by the pipelined version of reset_connection
-inline system::result<std::string> compose_set_names(const character_set& charset)
-{
-    // The character set should have a non-empty name
-    BOOST_ASSERT(!charset.name.empty());
-
-    // For security, if the character set has non-ascii characters in it name, reject it.
-    format_context ctx(format_options{ascii_charset, true});
-    ctx.append_raw("SET NAMES ").append_value(charset.name);
-    return std::move(ctx).get();
-}
 
 class set_character_set_algo : public sansio_algorithm, asio::coroutine
 {

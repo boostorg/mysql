@@ -11,6 +11,7 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -137,6 +138,14 @@ struct quit_connection_algo_params
 struct close_connection_algo_params
 {
     diagnostics* diag;
+
+    using result_type = void;
+};
+
+struct run_pipeline_algo_params
+{
+    diagnostics* diag;
+    pipeline* pipe;
 
     using result_type = void;
 };

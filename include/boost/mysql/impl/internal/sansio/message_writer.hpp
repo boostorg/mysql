@@ -23,13 +23,21 @@ namespace detail {
 
 class message_writer
 {
+    // TODO: this is a horrible workaround
+    const std::vector<std::uint8_t>* pipeline_buffer_{};
     std::vector<std::uint8_t> buffer_;
     std::size_t offset_{0};
 
     void reset()
     {
+        pipeline_buffer_ = nullptr;
         buffer_.clear();
         offset_ = 0;
+    }
+
+    const std::vector<std::uint8_t>& get_buffer() const
+    {
+        return pipeline_buffer_ ? *pipeline_buffer_ : buffer_;
     }
 
 public:
@@ -58,18 +66,24 @@ public:
         resume(0);
     }
 
-    bool done() const noexcept { return offset_ == buffer_.size(); }
+    void prepare_pipelined_write(const std::vector<std::uint8_t>& pipeline_buffer)
+    {
+        pipeline_buffer_ = &pipeline_buffer;
+        offset_ = 0u;
+    }
+
+    bool done() const noexcept { return offset_ == get_buffer().size(); }
 
     span<const std::uint8_t> current_chunk() const
     {
         BOOST_ASSERT(!done());
-        BOOST_ASSERT(!buffer_.empty());
-        return span<const std::uint8_t>(buffer_).subspan(offset_);
+        BOOST_ASSERT(!get_buffer().empty());
+        return span<const std::uint8_t>(get_buffer()).subspan(offset_);
     }
 
     void resume(std::size_t n)
     {
-        std::size_t remaining = static_cast<std::size_t>(buffer_.size() - offset_);
+        std::size_t remaining = static_cast<std::size_t>(get_buffer().size() - offset_);
         BOOST_ASSERT(n <= remaining);
         ignore_unused(remaining);
         offset_ += n;
