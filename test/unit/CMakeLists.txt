@@ -10,20 +10,22 @@ add_executable(
 
     # Helpers
     src/test_stream.cpp
-    src/serialization.cpp
 
     # Actual tests
     test/auth/auth.cpp
 
     test/protocol/static_buffer.cpp
     test/protocol/capabilities.cpp
-    test/protocol/null_bitmap_traits.cpp
+    test/protocol/null_bitmap.cpp
     test/protocol/protocol_field_type.cpp
+    test/protocol/frame_header.cpp
+    test/protocol/serialization_context.cpp
+    test/protocol/deserialization_context.cpp
+    test/protocol/protocol_types.cpp
+    test/protocol/text_protocol.cpp
+    test/protocol/binary_protocol.cpp
     test/protocol/serialization.cpp
-    test/protocol/binary_serialization.cpp
-    test/protocol/deserialize_text_field.cpp
-    test/protocol/deserialize_binary_field.cpp
-    test/protocol/protocol.cpp
+    test/protocol/deserialization.cpp
 
     test/sansio/read_buffer.cpp
     test/sansio/message_writer.cpp

@@ -13,7 +13,7 @@
 #include <boost/mysql/detail/execution_processor/static_execution_state_impl.hpp>
 #include <boost/mysql/detail/row_impl.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 #ifdef BOOST_MYSQL_CXX14
 void boost::mysql::detail::static_execution_state_erased_impl::reset_impl() noexcept

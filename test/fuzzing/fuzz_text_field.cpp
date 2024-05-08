@@ -13,8 +13,7 @@
 #include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/flags.hpp>
 
-#include <boost/mysql/impl/internal/protocol/deserialize_text_field.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 #include <boost/endian/conversion.hpp>
 

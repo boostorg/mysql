@@ -36,11 +36,6 @@
 #include <boost/mysql/impl/format_sql.ipp>
 #include <boost/mysql/impl/internal/auth/auth.ipp>
 #include <boost/mysql/impl/internal/error/server_error_to_string.ipp>
-#include <boost/mysql/impl/internal/protocol/binary_serialization.ipp>
-#include <boost/mysql/impl/internal/protocol/deserialize_binary_field.ipp>
-#include <boost/mysql/impl/internal/protocol/deserialize_text_field.ipp>
-#include <boost/mysql/impl/internal/protocol/protocol.ipp>
-#include <boost/mysql/impl/internal/protocol/protocol_field_type.ipp>
 #include <boost/mysql/impl/is_fatal_error.ipp>
 #include <boost/mysql/impl/meta_check_context.ipp>
 #include <boost/mysql/impl/results_impl.ipp>
