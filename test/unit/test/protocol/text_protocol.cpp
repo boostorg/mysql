@@ -12,8 +12,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/deserialize_text_field.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/text_protocol.hpp>
 
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -31,10 +30,10 @@ namespace {
 
 // clang-format off
 
-BOOST_AUTO_TEST_SUITE(test_deserialize_text_field)
+BOOST_AUTO_TEST_SUITE(test_text_protocol)
 
 // Success cases
-BOOST_AUTO_TEST_SUITE(success)
+BOOST_AUTO_TEST_SUITE(deserialize_success)
 
 struct success_sample
 {
@@ -427,7 +426,7 @@ BOOST_AUTO_TEST_SUITE_END()
 // Error cases
 //
 
-BOOST_AUTO_TEST_SUITE(errors)
+BOOST_AUTO_TEST_SUITE(deserialize_error)
 
 struct error_sample
 {

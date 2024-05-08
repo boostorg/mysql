@@ -13,7 +13,7 @@
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/row_impl.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 void boost::mysql::detail::execution_state_impl::on_ok_packet_impl(const ok_view& pack)
 {

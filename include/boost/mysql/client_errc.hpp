@@ -51,7 +51,7 @@ enum class client_errc : int
     /// actual parameters.
     wrong_num_params,
 
-    /// The connection mandatory SSL, but the server doesn't accept SSL connections.
+    /// The connection mandates SSL, but the server doesn't accept SSL connections.
     server_doesnt_support_ssl,
 
     /// The static interface detected a mismatch between your C++ type definitions and what the server

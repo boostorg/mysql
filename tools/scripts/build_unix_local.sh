@@ -8,10 +8,10 @@
 
 set -e
 
-repo_base=$(realpath $(dirname $0)/../..)
+repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
-BK=cmake
-IMAGE=build-cmake3_8
+BK=docs
+IMAGE=build-docs
 SHA=252732b3d7af7f78618e877479b85d4d611a61f4
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA

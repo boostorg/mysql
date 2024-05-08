@@ -5,10 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_DESERIALIZE_TEXT_FIELD_IPP
-#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_DESERIALIZE_TEXT_FIELD_IPP
-
-#pragma once
+#ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_TEXT_PROTOCOL_HPP
+#define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_TEXT_PROTOCOL_HPP
 
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/datetime.hpp>
@@ -16,13 +14,12 @@
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/datetime.hpp>
 
-#include <boost/mysql/impl/internal/protocol/bit_deserialization.hpp>
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/deserialize_text_field.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/bit_deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/span_string.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/charconv/from_chars.hpp>
@@ -37,14 +34,27 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline deserialize_errc deserialize_text_field(string_view from, const metadata& meta, field_view& output);
+
+}
+}  // namespace mysql
+}  // namespace boost
+
+//
+// Implementation
+//
+
+namespace boost {
+namespace mysql {
+namespace detail {
+
 // Constants
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr unsigned max_decimals = 6u;
-BOOST_MYSQL_STATIC_IF_COMPILED constexpr unsigned time_max_hour = 838;
+BOOST_INLINE_CONSTEXPR unsigned max_decimals = 6u;
+BOOST_INLINE_CONSTEXPR unsigned time_max_hour = 838;
 
 // Integers
 template <class T>
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_text_value_int_impl(string_view from, field_view& to) noexcept
+inline deserialize_errc deserialize_text_value_int_impl(string_view from, field_view& to)
 {
     // Iterators
     const char* begin = from.data();
@@ -63,8 +73,7 @@ deserialize_text_value_int_impl(string_view from, field_view& to) noexcept
     return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_text_value_int(string_view from, field_view& to, const metadata& meta) noexcept
+inline deserialize_errc deserialize_text_value_int(string_view from, field_view& to, const metadata& meta)
 {
     return meta.is_unsigned() ? deserialize_text_value_int_impl<std::uint64_t>(from, to)
                               : deserialize_text_value_int_impl<std::int64_t>(from, to);
@@ -72,8 +81,7 @@ deserialize_text_value_int(string_view from, field_view& to, const metadata& met
 
 // Floating points
 template <class T>
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_text_value_float(string_view from, field_view& to) noexcept
+inline deserialize_errc deserialize_text_value_float(string_view from, field_view& to)
 {
     // Iterators
     const char* begin = from.data();
@@ -93,15 +101,13 @@ deserialize_text_value_float(string_view from, field_view& to) noexcept
 }
 
 // Strings
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_text_value_string(string_view from, field_view& to) noexcept
+inline deserialize_errc deserialize_text_value_string(string_view from, field_view& to)
 {
     to = field_view(from);
     return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_text_value_blob(string_view from, field_view& to) noexcept
+inline deserialize_errc deserialize_text_value_blob(string_view from, field_view& to) noexcept
 {
     to = field_view(to_span(from));
     return deserialize_errc::ok;
@@ -109,8 +115,12 @@ deserialize_text_value_blob(string_view from, field_view& to) noexcept
 
 // Date/time types
 template <class IntType>
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_fixed_width_number(const char*& it, const char* end, IntType& to, std::size_t size) noexcept
+inline deserialize_errc deserialize_fixed_width_number(
+    const char*& it,
+    const char* end,
+    IntType& to,
+    std::size_t size
+)
 {
     auto res = charconv::from_chars(it, end, to);
     if (res.ec != std::errc() || res.ptr != it + size)
@@ -119,15 +129,14 @@ deserialize_fixed_width_number(const char*& it, const char* end, IntType& to, st
     return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-check_separator(const char*& it, const char* end, char sep) noexcept
+inline deserialize_errc check_separator(const char*& it, const char* end, char sep)
 {
     if (it == end || *it++ != sep)
         return deserialize_errc::protocol_value_error;
     return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc deserialize_text_ymd(const char*& it, const char* end, date& to)
+inline deserialize_errc deserialize_text_ymd(const char*& it, const char* end, date& to)
 {
     // Year
     std::uint16_t year = 0;
@@ -166,8 +175,12 @@ BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc deserialize_text_ymd(const char*& 
     return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_microsecond(const char*& it, const char* end, std::uint32_t& output, unsigned decimals) noexcept
+inline deserialize_errc deserialize_microsecond(
+    const char*& it,
+    const char* end,
+    std::uint32_t& output,
+    unsigned decimals
+)
 {
     // Sanitize decimals
     decimals = (std::min)(decimals, max_decimals);
@@ -206,8 +219,7 @@ deserialize_microsecond(const char*& it, const char* end, std::uint32_t& output,
     return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_text_value_date(string_view from, field_view& to) noexcept
+inline deserialize_errc deserialize_text_value_date(string_view from, field_view& to)
 {
     // Iterators
     const char* it = from.data();
@@ -228,8 +240,11 @@ deserialize_text_value_date(string_view from, field_view& to) noexcept
     return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_text_value_datetime(string_view from, field_view& to, const metadata& meta) noexcept
+inline deserialize_errc deserialize_text_value_datetime(
+    string_view from,
+    field_view& to,
+    const metadata& meta
+)
 {
     // Iterators
     const char* it = from.data();
@@ -295,8 +310,7 @@ deserialize_text_value_datetime(string_view from, field_view& to, const metadata
     return deserialize_errc::ok;
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE deserialize_errc
-deserialize_text_value_time(string_view from, field_view& to, const metadata& meta) noexcept
+inline deserialize_errc deserialize_text_value_time(string_view from, field_view& to, const metadata& meta)
 {
     // Iterators
     const char* it = from.data();

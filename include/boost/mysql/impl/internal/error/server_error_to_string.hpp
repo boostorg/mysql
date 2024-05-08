@@ -16,14 +16,14 @@ namespace detail {
 
 // Returns NULL if this is not a common error (not a member of common_server_errc)
 BOOST_MYSQL_DECL
-const char* common_error_to_string(int v) noexcept;
+const char* common_error_to_string(int v);
 
 // These return a default string if the error is not known
 BOOST_MYSQL_DECL
-const char* mysql_error_to_string(int v) noexcept;
+const char* mysql_error_to_string(int v);
 
 BOOST_MYSQL_DECL
-const char* mariadb_error_to_string(int v) noexcept;
+const char* mariadb_error_to_string(int v);
 
 }  // namespace detail
 }  // namespace mysql

@@ -39,6 +39,10 @@ functions:
         [[reflink throw_on_error]]
         [A utility function to check an `error_code` and throw an `error_with_diagnostics` if the operation failed.]
     ]
+    [
+        [[reflink is_fatal_error]]
+        [Checks whether an `error_code` is [link mysql.error_handling.fatal fatal] and thus requires re-establishing the connection.]
+    ]
 ]
 
 Every piece of functionality involving network transfers is offered in four versions:
@@ -97,6 +101,21 @@ This library defines the following types of errors:
 
 Note that new codes are added frequently, so server-specific codes
 are represented as integers, instead of enums.
+
+[heading:fatal Fatal vs. non-fatal errors]
+
+When an operation on a established connection (like a query execution)
+results in an error, two situations may happen:
+
+* The connection object is left in a well-known state. You can safely use the object
+  to run further operations without problems. For instance, if a query fails with
+  `common_server_errc::er_no_such_table` because you misspelled a table name,
+  it is safe to run other queries after the failed one. Such errors are called [*non-fatal].
+* The connection object is left un an unknown state. Further operations will fail with
+  unpredictable results. You should close and re-establish the connection.
+  These are [*fatal] errors, and include protocol and network errors.
+
+You can use [reflink is_fatal_error] to distinguish between fatal and non-fatal error codes.
 
 [heading Security notes on diagnostics]
 

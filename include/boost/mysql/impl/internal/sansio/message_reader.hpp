@@ -11,8 +11,8 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 #include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
 
 #include <boost/asio/coroutine.hpp>
@@ -36,7 +36,7 @@ namespace detail {
 class message_reader
 {
 public:
-    message_reader(std::size_t initial_buffer_size, std::size_t max_frame_size = MAX_PACKET_SIZE)
+    message_reader(std::size_t initial_buffer_size, std::size_t max_frame_size = max_packet_size)
         : buffer_(initial_buffer_size), max_frame_size_(max_frame_size)
     {
     }

@@ -9,10 +9,11 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata.hpp>
 
-#include <boost/mysql/impl/internal/protocol/deserialize_binary_field.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -29,9 +30,132 @@ using detail::deserialize_errc;
 
 namespace {
 
-BOOST_AUTO_TEST_SUITE(test_deserialize_binary_field)
+BOOST_AUTO_TEST_SUITE(test_binary_protocol)
 
-BOOST_AUTO_TEST_SUITE(success)
+// Adapt field_view to be Serializable
+struct field_view_adaptor
+{
+    field_view fv;
+
+    void serialize(detail::serialization_context& ctx) { detail::serialize_binary_field(ctx, fv); }
+};
+
+BOOST_AUTO_TEST_CASE(serialize)
+{
+    std::uint8_t blob_buffer[] = {0x70, 0x00, 0x01};
+    struct
+    {
+        const char* name;
+        field_view value;
+        std::vector<std::uint8_t> serialized;
+    } test_cases[]{
+        // Strings and ints: extensive testing already done. Ensure
+        // we call the right function
+        {"string", field_view("abc"), {0x03, 0x61, 0x62, 0x63}},
+        {"blob", field_view(blob_view(blob_buffer)), {0x03, 0x70, 0x00, 0x01}},
+        {"uint64",
+         field_view(std::uint64_t(0xf8f9fafbfcfdfeff)),
+         {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}},
+        {"int64",
+         field_view(std::int64_t(-0x0706050403020101)),
+         {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}},
+
+        {"float_fractional_negative", field_view(-4.2f), {0x66, 0x66, 0x86, 0xc0}},
+        {"float_fractional_positive", field_view(4.2f), {0x66, 0x66, 0x86, 0x40}},
+        {"float_positive_exp_positive_fractional", field_view(3.14e20f), {0x01, 0x2d, 0x88, 0x61}},
+        {"float_zero", field_view(0.0f), {0x00, 0x00, 0x00, 0x00}},
+
+        {"double_fractional_negative", field_view(-4.2), {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0xc0}},
+        {"double_fractional_positive", field_view(4.2), {0xcd, 0xcc, 0xcc, 0xcc, 0xcc, 0xcc, 0x10, 0x40}},
+        {"double_positive_exp_positive_fractional",
+         field_view(3.14e200),
+         {0xce, 0x46, 0x3c, 0x76, 0x9c, 0x68, 0x90, 0x69}},
+        {"double_zero", field_view(0.0), {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+
+        {"date_regular", field_view(date(2010u, 3u, 28u)), {0x04, 0xda, 0x07, 0x03, 0x1c}},
+        {"date_min", field_view(date(1000u, 1u, 1u)), {0x04, 0xe8, 0x03, 0x01, 0x01}},
+        {"date_mysqlmax", field_view(date(9999u, 12u, 31u)), {0x04, 0x0f, 0x27, 0x0c, 0x1f}},
+        {"date_max", field_view(date(0xffff, 0xff, 0xff)), {0x04, 0xff, 0xff, 0xff, 0xff}},
+        {"date_zero", field_view(date()), {0x04, 0x00, 0x00, 0x00, 0x00}},
+
+        {"datetime_regular",
+         field_view(datetime(2010u, 1u, 1u, 23u, 1u, 59u, 967510u)),
+         {0x0b, 0xda, 0x07, 0x01, 0x01, 0x17, 0x01, 0x3b, 0x56, 0xc3, 0x0e, 0x00}},
+        {"datetime_min",
+         field_view(datetime(0, 1, 1)),
+         {0x0b, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+        {"datetime_mysqlmax",
+         field_view(datetime(9999, 12, 31, 23, 59, 59, 999999)),
+         {0x0b, 0x0f, 0x27, 0x0c, 0x1f, 0x17, 0x3b, 0x3b, 0x3f, 0x42, 0x0f, 0x00}},
+        {"datetime_max",
+         field_view(datetime(0xffff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xffffffff)),
+         {0x0b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
+        {"datetime_zero",
+         field_view(datetime()),
+         {0x0b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}},
+
+        {"time_positive_u",
+         field_view(maket(0, 0, 0, 321000)),
+         {0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe8, 0xe5, 0x04, 0x00}},
+        {"time_positive_hmsu",
+         field_view(maket(838, 59, 58, 999000)),
+         {0x0c, 0x00, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0x58, 0x3e, 0x0f, 0x00}},
+        {"time_negative_u",
+         field_view(-maket(0, 0, 0, 321000)),
+         {0x0c, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe8, 0xe5, 0x04, 0x00}},
+        {"time_negative_hmsu",
+         field_view(-maket(838, 59, 58, 999000)),
+         {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0x58, 0x3e, 0x0f, 0x00}},
+
+        // NULL is transmitted as the NULL bitmap, so nothing is expected as output
+        {"null", field_view(), {}},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name) { do_serialize_test(field_view_adaptor{tc.value}, tc.serialized); }
+    }
+}
+
+// String and blob parameters may be large, so we take framing
+// into account when serializing them
+BOOST_AUTO_TEST_CASE(serialize_framing)
+{
+    constexpr std::uint8_t blob_buffer[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+    struct
+    {
+        const char* name;
+        field_view param;
+        std::vector<std::uint8_t> serialized;
+    } test_cases[] = {
+        // clang-format off
+        {
+            "string",
+            field_view("abcdefghijk"),
+            {
+                0, 0, 0, 0, 11,   0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
+                0, 0, 0, 0, 0x6a, 0x6b
+            }
+        },
+        {
+            "blob",
+            field_view(blob_buffer),
+            {
+                0, 0, 0, 0, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                0, 0, 0, 0, 10
+            }
+        },
+        // clang-format on
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name) { do_serialize_test(field_view_adaptor{tc.param}, tc.serialized, 10u); }
+    }
+}
+
+BOOST_AUTO_TEST_SUITE(deserialize_success)
 
 struct success_sample
 {
@@ -560,7 +684,7 @@ BOOST_AUTO_TEST_CASE(success)
 
 BOOST_AUTO_TEST_SUITE_END()
 
-BOOST_AUTO_TEST_SUITE(error)
+BOOST_AUTO_TEST_SUITE(deserialize_error)
 
 struct error_sample
 {
@@ -833,8 +957,8 @@ void add_time_samples(std::vector<error_sample>& output)
         {"invalid_secs",       {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 60}                          },
         {"invalid_secs_max",   {0x08, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0xff}                        },
         {"invalid_micros",     {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0x40, 0x42, 0xf4, 0x00}},
-        {"invalid_micros_max",
-         {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0xff, 0xff, 0xff, 0xff}                      },
+        {"invalid_micros_max", {0x0c, 0x01, 0x22, 0x00, 0x00, 0x00, 0x16, 0x3b, 0x3a, 0xff, 0xff, 0xff, 0xff}
+        },
     };
 
     for (auto& c : out_of_range_cases)
