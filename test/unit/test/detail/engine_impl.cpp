@@ -192,57 +192,22 @@ struct mock_algo
 {
     using call_args = std::pair<error_code, std::size_t>;
 
-    next_action act;
+    std::size_t current_call{0};
+    std::vector<next_action> acts;
     std::vector<call_args> calls;
 
-    mock_algo(next_action act) : act(act) {}
+    mock_algo(next_action act) : acts{act} {}
+    mock_algo(next_action act1, next_action act2) : acts{act1, act2} {}
 
     void check_calls(const std::vector<call_args>& expected) { BOOST_TEST(calls == expected); }
 
     next_action resume(error_code ec, std::size_t bytes_transferred)
     {
         calls.push_back(call_args{ec, bytes_transferred});
-        auto res = act;
-        act = next_action();
-        return res;
+        auto idx = current_call++;
+        return idx < acts.size() ? acts[idx] : next_action();
     }
 };
-
-// Verify that we correctly post for immediate completions,
-// and we don't do extra posts if we've done I/O
-BOOST_AUTO_TEST_CASE(async_completions)
-{
-    struct
-    {
-        const char* name;
-        next_action act;
-    } test_cases[] = {
-        {"no_action",    next_action()               },
-        {"read",         next_action::read({})       },
-        {"write",        next_action::write({})      },
-        {"ssl_hanshake", next_action::ssl_handshake()},
-        {"ssl_shutdown", next_action::ssl_shutdown() },
-        {"connect",      next_action::connect()      },
-        {"close",        next_action::close()        },
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            mock_algo algo(tc.act);
-            asio::io_context ctx;
-            test_engine eng(ctx.get_executor());
-
-            // Run the algo. In all cases, the stream's executor should receive one post,
-            // and the token's executor should receive one dispatch. This all gets
-            // validated by async_fn
-            async_fn(eng, any_resumable_ref(algo)).validate_no_error();
-            BOOST_TEST(algo.calls.size() >= 1u);
-        }
-    }
-}
 
 // returning next_action::read calls the relevant stream function
 BOOST_AUTO_TEST_CASE(next_action_read)
@@ -279,6 +244,7 @@ BOOST_AUTO_TEST_CASE(next_action_read)
                 {error_code(), 0u},
                 {error_code(), 8u}
             });
+            // The testing infrastructure checks that we post correctly in async functions
         }
     }
 }
@@ -318,6 +284,7 @@ BOOST_AUTO_TEST_CASE(next_action_write)
                 {error_code(), 0u},
                 {error_code(), 4u}
             });
+            // The testing infrastructure checks that we post correctly in async functions
         }
     }
 }
@@ -357,6 +324,7 @@ BOOST_AUTO_TEST_CASE(next_action_other)
                 {error_code(), 0u},
                 {error_code(), 0u}
             });
+            // The testing infrastructure checks that we post correctly in async functions
         }
     }
 }
@@ -403,12 +371,13 @@ BOOST_AUTO_TEST_CASE(stream_errors)
                 {error_code(),              0u},
                 {asio::error::already_open, 0u}
             });
+            // The testing infrastructure checks that we post correctly in async functions
         }
     }
 }
 
 // Returning an error or next_action() from resume in the first call works correctly
-BOOST_AUTO_TEST_CASE(immediate_resume_error)
+BOOST_AUTO_TEST_CASE(resume_error_immediate)
 {
     struct
     {
@@ -441,7 +410,40 @@ BOOST_AUTO_TEST_CASE(immediate_resume_error)
     }
 }
 
-// TODO: test cases
-//    an error in resume() interrupts the loop and completes with the correct error_code
+// Returning an error or next_action() from resume in successive calls works correctly
+BOOST_AUTO_TEST_CASE(resume_error_successive_calls)
+{
+    struct
+    {
+        const char* name;
+        signature_t fn;
+        error_code ec;
+    } test_cases[] = {
+        {"success_sync",  sync_fn,  error_code()        },
+        {"success_async", async_fn, error_code()        },
+        {"error_sync",    sync_fn,  asio::error::no_data},
+        {"error_async",   async_fn, asio::error::no_data},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            mock_algo algo(next_action::connect(), next_action(tc.ec));
+            asio::io_context ctx;
+            test_engine eng(ctx.get_executor());
+
+            tc.fn(eng, any_resumable_ref(algo)).validate_error_exact(tc.ec);
+            BOOST_TEST(eng.stream().calls.size() == 1u);
+            BOOST_TEST(eng.stream().calls[0].type() == next_action::type_t::connect);
+            algo.check_calls({
+                {error_code(), 0u},
+                {error_code(), 0u}
+            });
+            // Note: the testing infrastructure checks that we don't do extra posts in the async functions
+        }
+    }
+}
 
 BOOST_AUTO_TEST_SUITE_END()
