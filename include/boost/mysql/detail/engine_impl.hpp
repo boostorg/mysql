@@ -109,7 +109,8 @@ struct run_algo_op : asio::coroutine
 };
 
 // EngineStream is an "extended" stream concept, with the following operations:
-//    asio::any_io_executor get_executor();
+//    using executor_type = asio::any_io_executor;
+//    executor_type get_executor();
 //    bool supports_ssl() const;
 //    void set_endpoint(const void* endpoint);
 //    std::size_t read_some(asio::mutable_buffer, bool use_ssl, error_code&);
