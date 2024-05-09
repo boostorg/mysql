@@ -11,6 +11,7 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/config.hpp>
+#include <boost/mysql/detail/engine_impl.hpp>
 #include <boost/mysql/detail/socket_stream.hpp>
 #include <boost/mysql/detail/void_t.hpp>
 
@@ -105,14 +106,14 @@ void do_close(Stream& stream, error_code& ec)
 }
 
 template <class Stream>
-class stream_adaptor
+class engine_stream_adaptor
 {
     Stream stream_;
     endpoint_storage<Stream> endpoint_;
 
 public:
     template <class... Args>
-    stream_adaptor(Args&&... args) : stream_(std::forward<Args>(args)...)
+    engine_stream_adaptor(Args&&... args) : stream_(std::forward<Args>(args)...)
     {
     }
 
@@ -188,14 +189,14 @@ public:
 };
 
 template <class Stream>
-class stream_adaptor<asio::ssl::stream<Stream>>
+class engine_stream_adaptor<asio::ssl::stream<Stream>>
 {
     asio::ssl::stream<Stream> stream_;
     endpoint_storage<asio::ssl::stream<Stream>> endpoint_;
 
 public:
     template <class... Args>
-    stream_adaptor(Args&&... args) : stream_(std::forward<Args>(args)...)
+    engine_stream_adaptor(Args&&... args) : stream_(std::forward<Args>(args)...)
     {
     }
 
@@ -289,6 +290,33 @@ public:
 
     void close(error_code& ec) { do_close(stream_, ec); }
 };
+
+#ifdef BOOST_MYSQL_SEPARATE_COMPILATION
+extern template class engine_impl<engine_stream_adaptor<asio::ssl::stream<asio::ip::tcp::socket>>>;
+extern template class engine_impl<engine_stream_adaptor<asio::ip::tcp::socket>>;
+#endif
+
+template <class Stream, class... Args>
+std::unique_ptr<engine> make_engine(Args&&... args)
+{
+    return std::unique_ptr<engine>(new engine_impl<engine_stream_adaptor<Stream>>(std::forward<Args>(args)...)
+    );
+}
+
+// Use these only for engines created using make_engine
+template <class Stream>
+Stream& stream_from_engine(engine& eng)
+{
+    using derived_t = engine_impl<engine_stream_adaptor<Stream>>;
+    return static_cast<derived_t&>(eng).stream().stream();
+}
+
+template <class Stream>
+const Stream& stream_from_engine(const engine& eng)
+{
+    using derived_t = engine_impl<engine_stream_adaptor<Stream>>;
+    return static_cast<const derived_t&>(eng).stream().stream();
+}
 
 }  // namespace detail
 }  // namespace mysql

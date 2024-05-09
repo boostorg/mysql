@@ -23,7 +23,7 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/connection_impl.hpp>
-#include <boost/mysql/detail/engine_impl.hpp>
+#include <boost/mysql/detail/engine_stream_adaptor.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/rebind_executor.hpp>
 #include <boost/mysql/detail/socket_stream.hpp>

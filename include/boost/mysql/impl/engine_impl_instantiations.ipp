@@ -10,16 +10,15 @@
 
 #pragma once
 
-#include <boost/mysql/detail/engine_impl.hpp>
-#include <boost/mysql/detail/stream_adaptor.hpp>
+#include <boost/mysql/detail/engine_stream_adaptor.hpp>
 
 // To be included only in src.hpp
 
 #ifdef BOOST_MYSQL_SEPARATE_COMPILATION
 template class boost::mysql::detail::engine_impl<
-    boost::mysql::detail::stream_adaptor<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>>;
+    boost::mysql::detail::engine_stream_adaptor<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>>;
 template class boost::mysql::detail::engine_impl<
-    boost::mysql::detail::stream_adaptor<boost::asio::ip::tcp::socket>>;
+    boost::mysql::detail::engine_stream_adaptor<boost::asio::ip::tcp::socket>>;
 #endif
 
 #endif

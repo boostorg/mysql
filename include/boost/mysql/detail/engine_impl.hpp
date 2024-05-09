@@ -11,10 +11,8 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/any_resumable_ref.hpp>
-#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/next_action.hpp>
-#include <boost/mysql/detail/stream_adaptor.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/buffer.hpp>
@@ -212,32 +210,6 @@ public:
         );
     }
 };
-
-#ifdef BOOST_MYSQL_SEPARATE_COMPILATION
-extern template class engine_impl<stream_adaptor<asio::ssl::stream<asio::ip::tcp::socket>>>;
-extern template class engine_impl<stream_adaptor<asio::ip::tcp::socket>>;
-#endif
-
-template <class Stream, class... Args>
-std::unique_ptr<engine> make_engine(Args&&... args)
-{
-    return std::unique_ptr<engine>(new engine_impl<stream_adaptor<Stream>>(std::forward<Args>(args)...));
-}
-
-// Use these only for engines created using make_engine
-template <class Stream>
-Stream& stream_from_engine(engine& eng)
-{
-    using derived_t = engine_impl<stream_adaptor<Stream>>;
-    return static_cast<derived_t&>(eng).stream().stream();
-}
-
-template <class Stream>
-const Stream& stream_from_engine(const engine& eng)
-{
-    using derived_t = engine_impl<stream_adaptor<Stream>>;
-    return static_cast<const derived_t&>(eng).stream().stream();
-}
 
 }  // namespace detail
 }  // namespace mysql
