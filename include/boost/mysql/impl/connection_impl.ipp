@@ -5,54 +5,53 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_CONNECTION_STATE_API_IPP
-#define BOOST_MYSQL_IMPL_CONNECTION_STATE_API_IPP
+#ifndef BOOST_MYSQL_IMPL_CONNECTION_IMPL_IPP
+#define BOOST_MYSQL_IMPL_CONNECTION_IMPL_IPP
 
 #pragma once
 
-#include <boost/mysql/detail/connection_state_api.hpp>
+#include <boost/mysql/detail/connection_impl.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state.hpp>
+
+void boost::mysql::detail::connection_state_deleter::operator()(connection_state* st) const { delete st; }
 
 std::vector<boost::mysql::field_view>& boost::mysql::detail::get_shared_fields(connection_state& st)
 {
     return st.data().shared_fields;
 }
 
-boost::mysql::detail::connection_state_ptr boost::mysql::detail::create_connection_state(
+boost::mysql::detail::connection_impl::connection_impl(
     std::size_t read_buff_size,
-    bool stream_supports_ssl
+    std::unique_ptr<engine> eng
 )
+    : engine_(std::move(eng)), st_(new connection_state(read_buff_size, engine_->supports_ssl()))
 {
-    return connection_state_ptr{new connection_state(read_buff_size, stream_supports_ssl)};
 }
 
-void boost::mysql::detail::connection_state_deleter::operator()(connection_state* st) const { delete st; }
-
-boost::mysql::metadata_mode boost::mysql::detail::meta_mode(const connection_state& st)
+boost::mysql::metadata_mode boost::mysql::detail::connection_impl::meta_mode() const
 {
-    return st.data().meta_mode;
+    return st_->data().meta_mode;
 }
 
-void boost::mysql::detail::set_meta_mode(connection_state& st, metadata_mode v) { st.data().meta_mode = v; }
+void boost::mysql::detail::connection_impl::set_meta_mode(metadata_mode v) { st_->data().meta_mode = v; }
 
-bool boost::mysql::detail::ssl_active(const connection_state& st) { return st.data().ssl_active(); }
+bool boost::mysql::detail::connection_impl::ssl_active() const { return st_->data().ssl_active(); }
 
-bool boost::mysql::detail::backslash_escapes(const connection_state& st)
+bool boost::mysql::detail::connection_impl::backslash_escapes() const
 {
-    return st.data().backslash_escapes;
+    return st_->data().backslash_escapes;
 }
 
-boost::mysql::diagnostics& boost::mysql::detail::shared_diag(connection_state& st)
+boost::mysql::diagnostics& boost::mysql::detail::connection_impl::shared_diag()
 {
-    return st.data().shared_diag;
+    return st_->data().shared_diag;
 }
 
-boost::system::result<boost::mysql::character_set> boost::mysql::detail::current_character_set(
-    const connection_state& st
-)
+boost::system::result<boost::mysql::character_set> boost::mysql::detail::connection_impl::
+    current_character_set() const
 {
-    const auto* res = st.data().charset_ptr();
+    const auto* res = st_->data().charset_ptr();
     if (res == nullptr)
         return client_errc::unknown_character_set;
     return *res;

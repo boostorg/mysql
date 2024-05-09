@@ -24,10 +24,8 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
-#include <boost/mysql/detail/connection_state_api.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/core/ignore_unused.hpp>
@@ -54,6 +52,23 @@ namespace detail {
 
 // Forward decl
 class connection_state;
+
+//
+// Helpers to interact with connection_state, without including its definition
+//
+struct connection_state_deleter
+{
+    BOOST_MYSQL_DECL void operator()(connection_state*) const;
+};
+
+BOOST_MYSQL_DECL std::vector<field_view>& get_shared_fields(connection_state&);
+
+template <class AlgoParams>
+any_resumable_ref setup(connection_state&, const AlgoParams&);
+
+// Note: AlgoParams should have !is_void_result
+template <class AlgoParams>
+typename AlgoParams::result_type get_result(const connection_state&);
 
 //
 // execution helpers
@@ -168,7 +183,7 @@ struct generic_algo_handler
 class connection_impl
 {
     std::unique_ptr<engine> engine_;
-    connection_state_ptr st_;
+    std::unique_ptr<connection_state, connection_state_deleter> st_;
 
     // Generic algorithm
     template <class AlgoParams>
@@ -324,25 +339,15 @@ class connection_impl
     };
 
 public:
-    connection_impl(std::size_t read_buff_size, std::unique_ptr<engine> eng)
-        : engine_(std::move(eng)), st_(create_connection_state(read_buff_size, engine_->supports_ssl()))
-    {
-    }
+    BOOST_MYSQL_DECL connection_impl(std::size_t read_buff_size, std::unique_ptr<engine> eng);
 
-    metadata_mode meta_mode() const { return boost::mysql::detail::meta_mode(*st_); }
-    void set_meta_mode(metadata_mode m) { boost::mysql::detail::set_meta_mode(*st_, m); }
-    bool ssl_active() const { return boost::mysql::detail::ssl_active(*st_); }
-    bool backslash_escapes() const { return boost::mysql::detail::backslash_escapes(*st_); }
+    BOOST_MYSQL_DECL metadata_mode meta_mode() const;
+    BOOST_MYSQL_DECL void set_meta_mode(metadata_mode m);
+    BOOST_MYSQL_DECL bool ssl_active() const;
+    BOOST_MYSQL_DECL bool backslash_escapes() const;
+    BOOST_MYSQL_DECL system::result<character_set> current_character_set() const;
+    BOOST_MYSQL_DECL diagnostics& shared_diag();  // TODO: get rid of this
 
-    // TODO: get rid of this
-    diagnostics& shared_diag() { return boost::mysql::detail::shared_diag(*st_); }
-
-    system::result<character_set> current_character_set() const
-    {
-        return boost::mysql::detail::current_character_set(*st_);
-    }
-
-    // TODO
     engine& get_engine()
     {
         BOOST_ASSERT(engine_);
