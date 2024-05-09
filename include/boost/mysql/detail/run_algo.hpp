@@ -11,9 +11,8 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
-
-#include <boost/asio/any_completion_handler.hpp>
-#include <boost/asio/async_result.hpp>
+#include <boost/mysql/detail/connection_state_api.hpp>
+#include <boost/mysql/detail/engine.hpp>
 
 #include <type_traits>
 
@@ -21,55 +20,126 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class any_stream;
-class connection_state;
-
-template <class AlgoParams, bool is_void>
-struct completion_signature_impl;
-
-template <class AlgoParams>
-struct completion_signature_impl<AlgoParams, true>
+// Intermediate handler
+template <class AlgoParams, class Handler>
+struct generic_algo_handler
 {
-    // Using typedef to workaround a msvc 14.1 bug
-    typedef void(type)(error_code);
+    static_assert(!has_void_result<AlgoParams>::value, "Internal error: result_type should be non-void");
+
+    using result_t = typename AlgoParams::result_type;
+
+    template <class DeducedHandler>
+    generic_algo_handler(DeducedHandler&& h, connection_state& st)
+        : final_handler(std::forward<DeducedHandler>(h)), st(&st)
+    {
+    }
+
+    void operator()(error_code ec)
+    {
+        std::move(final_handler)(ec, ec ? result_t{} : get_result<AlgoParams>(*st));
+    }
+
+    Handler final_handler;  // needs to be accessed by associator
+    connection_state* st;
 };
 
+// sync
 template <class AlgoParams>
-struct completion_signature_impl<AlgoParams, false>
+typename AlgoParams::result_type run_algo_impl(
+    engine& eng,
+    connection_state& st,
+    AlgoParams params,
+    error_code& ec,
+    std::true_type /* has_void_result */
+)
 {
-    // Using typedef to workaround a msvc 14.1 bug
-    typedef void(type)(error_code, typename AlgoParams::result_type);
-};
+    eng.run(setup(st, params), ec);
+}
 
 template <class AlgoParams>
-using completion_signature_t = typename completion_signature_impl<AlgoParams, has_void_result<AlgoParams>()>::
-    type;
+typename AlgoParams::result_type run_algo_impl(
+    engine& eng,
+    connection_state& st,
+    AlgoParams params,
+    error_code& ec,
+    std::false_type /* has_void_result */
+)
+{
+    eng.run(setup(st, params), ec);
+    return get_result<AlgoParams>(st);
+}
 
-template <class AlgoParams>
-using completion_handler_t = asio::any_completion_handler<completion_signature_t<AlgoParams>>;
+// async
+template <class AlgoParams, class Handler>
+void async_run_algo_impl(
+    engine& eng,
+    connection_state& st,
+    AlgoParams params,
+    Handler&& handler,
+    std::true_type /* has_void_result */
+)
+{
+    eng.async_run(setup(st, params), std::forward<Handler>(handler));
+}
 
+template <class AlgoParams, class Handler>
+void async_run_algo_impl(
+    engine& eng,
+    connection_state& st,
+    AlgoParams params,
+    Handler&& handler,
+    std::false_type /* has_void_result */
+)
+{
+    using intermediate_handler_t = generic_algo_handler<AlgoParams, typename std::decay<Handler>::type>;
+    eng.async_run(setup(st, params), intermediate_handler_t(std::forward<Handler>(handler), st));
+}
+
+// Public API
 template <class AlgoParams>
 typename AlgoParams::result_type run_algo(
-    any_stream& stream,
+    engine& eng,
     connection_state& st,
     AlgoParams params,
     error_code& ec
-);
+)
+{
+    return run_algo_impl(eng, st, params, ec, has_void_result<AlgoParams>{});
+}
 
-template <class AlgoParams>
-void async_run_algo(
-    any_stream& stream,
-    connection_state& st,
-    AlgoParams params,
-    completion_handler_t<AlgoParams> handler
-);
+template <class AlgoParams, class Handler>
+void async_run_algo(engine& eng, connection_state& st, AlgoParams params, Handler&& handler)
+{
+    async_run_algo_impl(eng, st, params, std::forward<Handler>(handler), has_void_result<AlgoParams>{});
+}
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/run_algo.ipp>
-#endif
+// Propagate associated properties
+namespace boost {
+namespace asio {
+
+template <template <class, class> class Associator, class AlgoParams, class Handler, class DefaultCandidate>
+struct associator<Associator, mysql::detail::generic_algo_handler<AlgoParams, Handler>, DefaultCandidate>
+    : Associator<Handler, DefaultCandidate>
+{
+    using mysql_handler = mysql::detail::generic_algo_handler<AlgoParams, Handler>;
+
+    static typename Associator<Handler, DefaultCandidate>::type get(const mysql_handler& h) noexcept
+    {
+        return Associator<Handler, DefaultCandidate>::get(h.final_handler);
+    }
+
+    static auto get(const mysql_handler& h, const DefaultCandidate& c) noexcept
+        -> decltype(Associator<Handler, DefaultCandidate>::get(h.final_handler, c))
+    {
+        return Associator<Handler, DefaultCandidate>::get(h.final_handler, c);
+    }
+};
+
+}  // namespace asio
+}  // namespace boost
 
 #endif

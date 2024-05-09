@@ -106,15 +106,9 @@ public:
     }
 
     template <typename AlgoParams>
-    void result(typename std::enable_if<has_void_result<AlgoParams>()>::type* = nullptr) const noexcept
+    typename AlgoParams::result_type result() const
     {
-    }
-
-    template <typename AlgoParams>
-    typename AlgoParams::result_type result(
-        typename std::enable_if<!has_void_result<AlgoParams>()>::type* = nullptr
-    ) const
-    {
+        static_assert(!has_void_result<AlgoParams>(), "Internal error");
         return variant2::get<top_level_algo<get_algo_t<AlgoParams>>>(algo_).inner_algo().result();
     }
 };

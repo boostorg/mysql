@@ -23,10 +23,10 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
-#include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/connection_impl.hpp>
+#include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
@@ -122,10 +122,7 @@ class any_connection
 #endif
 
     BOOST_MYSQL_DECL
-    static std::unique_ptr<detail::any_stream> create_stream(
-        asio::any_io_executor ex,
-        asio::ssl::context* ctx
-    );
+    static std::unique_ptr<detail::engine> create_engine(asio::any_io_executor ex, asio::ssl::context* ctx);
 
     template <class CompletionToken>
     using async_connect_owning_t = detail::async_connect_t<
@@ -143,7 +140,7 @@ public:
      * an \ref any_connection_params object to this constructor.
      */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
-        : impl_(params.initial_read_buffer_size, create_stream(std::move(ex), params.ssl_context))
+        : impl_(params.initial_read_buffer_size, create_engine(std::move(ex), params.ssl_context))
     {
     }
 
@@ -205,7 +202,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    executor_type get_executor() noexcept { return impl_.stream().get_executor(); }
+    executor_type get_executor() noexcept { return impl_.get_engine().get_executor(); }
 
     /**
      * \brief Returns whether the connection negotiated the use of SSL or not.

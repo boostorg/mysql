@@ -11,7 +11,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 
@@ -31,6 +30,7 @@
 #include <boost/variant2/variant.hpp>
 
 #include <string>
+#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -50,51 +50,49 @@ inline std::experimental::string_view cast_asio_sv_param(string_view input) noex
 inline std::string cast_asio_sv_param(string_view input) { return input; }
 #endif
 
-class variant_stream final : public any_stream
+// Implements the EngineStream concept (see stream_adaptor)
+class variant_stream
 {
-    any_address_view address_;
-
 public:
-    variant_stream(asio::any_io_executor ex, asio::ssl::context* ctx)
-        : any_stream(true), ex_(std::move(ex)), ssl_ctx_(ctx)
-    {
-    }
+    variant_stream(asio::any_io_executor ex, asio::ssl::context* ctx) : ex_(std::move(ex)), ssl_ctx_(ctx) {}
 
-    void set_endpoint(const void* value) override final
-    {
-        address_ = *static_cast<const any_address_view*>(value);
-    }
+    bool supports_ssl() const { return true; }
+
+    void set_endpoint(const void* value) { address_ = *static_cast<const any_address_view*>(value); }
 
     // Executor
-    executor_type get_executor() override final { return ex_; }
+    using executor_type = asio::any_io_executor;
+    executor_type get_executor() { return ex_; }
 
     // SSL
-    void handshake(error_code& ec) override final
+    void handshake(error_code& ec)
     {
         create_ssl_stream();
         ssl_->handshake(asio::ssl::stream_base::client, ec);
     }
 
-    void async_handshake(asio::any_completion_handler<void(error_code)> handler) override final
+    template <class CompletionToken>
+    void async_handshake(CompletionToken&& token)
     {
         create_ssl_stream();
-        ssl_->async_handshake(asio::ssl::stream_base::client, std::move(handler));
+        ssl_->async_handshake(asio::ssl::stream_base::client, std::forward<CompletionToken>(token));
     }
 
-    void shutdown(error_code& ec) override final
+    void shutdown(error_code& ec)
     {
         BOOST_ASSERT(ssl_.has_value());
         ssl_->shutdown(ec);
     }
 
-    void async_shutdown(asio::any_completion_handler<void(error_code)> handler) override final
+    template <class CompletionToken>
+    void async_shutdown(CompletionToken&& token)
     {
         BOOST_ASSERT(ssl_.has_value());
-        ssl_->async_shutdown(std::move(handler));
+        ssl_->async_shutdown(std::forward<CompletionToken>(token));
     }
 
     // Reading
-    std::size_t read_some(asio::mutable_buffer buff, bool use_ssl, error_code& ec) override final
+    std::size_t read_some(asio::mutable_buffer buff, bool use_ssl, error_code& ec)
     {
         if (use_ssl)
         {
@@ -118,25 +116,22 @@ public:
         }
     }
 
-    void async_read_some(
-        asio::mutable_buffer buff,
-        bool use_ssl,
-        asio::any_completion_handler<void(error_code, std::size_t)> handler
-    ) override final
+    template <class CompletionToken>
+    void async_read_some(asio::mutable_buffer buff, bool use_ssl, CompletionToken&& token)
     {
         if (use_ssl)
         {
             BOOST_ASSERT(ssl_.has_value());
-            ssl_->async_read_some(buff, std::move(handler));
+            ssl_->async_read_some(buff, std::forward<CompletionToken>(token));
         }
         else if (auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_))
         {
-            tcp_sock->sock.async_read_some(buff, std::move(handler));
+            tcp_sock->sock.async_read_some(buff, std::forward<CompletionToken>(token));
         }
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
         {
-            unix_sock->async_read_some(buff, std::move(handler));
+            unix_sock->async_read_some(buff, std::forward<CompletionToken>(token));
         }
 #endif
         else
@@ -146,7 +141,7 @@ public:
     }
 
     // Writing
-    std::size_t write_some(boost::asio::const_buffer buff, bool use_ssl, error_code& ec) override final
+    std::size_t write_some(boost::asio::const_buffer buff, bool use_ssl, error_code& ec)
     {
         if (use_ssl)
         {
@@ -170,25 +165,22 @@ public:
         }
     }
 
-    void async_write_some(
-        boost::asio::const_buffer buff,
-        bool use_ssl,
-        asio::any_completion_handler<void(error_code, std::size_t)> handler
-    ) override final
+    template <class CompletionToken>
+    void async_write_some(boost::asio::const_buffer buff, bool use_ssl, CompletionToken&& token)
     {
         if (use_ssl)
         {
             BOOST_ASSERT(ssl_.has_value());
-            return ssl_->async_write_some(buff, std::move(handler));
+            return ssl_->async_write_some(buff, std::forward<CompletionToken>(token));
         }
         else if (auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_))
         {
-            return tcp_sock->sock.async_write_some(buff, std::move(handler));
+            return tcp_sock->sock.async_write_some(buff, std::forward<CompletionToken>(token));
         }
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
         {
-            return unix_sock->async_write_some(buff, std::move(handler));
+            return unix_sock->async_write_some(buff, std::forward<CompletionToken>(token));
         }
 #endif
         else
@@ -198,7 +190,7 @@ public:
     }
 
     // Connect and close
-    void connect(error_code& ec) override final
+    void connect(error_code& ec)
     {
         ec = setup_stream();
         if (ec)
@@ -231,16 +223,13 @@ public:
 #endif
     }
 
-    void async_connect(asio::any_completion_handler<void(error_code)> handler) override final
+    template <class CompletionToken>
+    void async_connect(CompletionToken&& token)
     {
-        asio::async_compose<asio::any_completion_handler<void(error_code)>, void(error_code)>(
-            connect_op(*this),
-            handler,
-            ex_
-        );
+        asio::async_compose<CompletionToken, void(error_code)>(connect_op(*this), token, ex_);
     }
 
-    void close(error_code& ec) override final
+    void close(error_code& ec)
     {
         if (auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_))
         {
@@ -267,6 +256,7 @@ private:
     using unix_socket = asio::local::stream_protocol::socket;
 #endif
 
+    any_address_view address_;
     asio::any_io_executor ex_;
     variant2::variant<
         variant2::monostate,

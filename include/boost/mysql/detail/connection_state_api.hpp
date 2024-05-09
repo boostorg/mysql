@@ -8,7 +8,8 @@
 #ifndef BOOST_MYSQL_DETAIL_CONNECTION_STATE_API_HPP
 #define BOOST_MYSQL_DETAIL_CONNECTION_STATE_API_HPP
 
-// Visible API for connection_state
+// Visible API for connection_state. Having this hides connection_state
+// dependencies from consumers in non-header-only builds
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -30,35 +31,33 @@ namespace detail {
 
 class connection_state;
 
-class connection_state_api
+// Destruction
+struct connection_state_deleter
 {
-    struct pimpl_deleter
-    {
-        BOOST_MYSQL_DECL void operator()(connection_state*) const noexcept;
-    };
-
-    std::unique_ptr<connection_state, pimpl_deleter> st_;
-
-public:
-    BOOST_MYSQL_DECL connection_state_api(std::size_t read_buff_size, bool stream_supports_ssl);
-
-    // Getters/setters
-    BOOST_MYSQL_DECL std::vector<field_view>& get_shared_fields() noexcept;
-    BOOST_MYSQL_DECL diagnostics& shared_diag() noexcept;
-    BOOST_MYSQL_DECL metadata_mode meta_mode() const noexcept;
-    BOOST_MYSQL_DECL void set_meta_mode(metadata_mode) noexcept;
-    BOOST_MYSQL_DECL bool ssl_active() const noexcept;
-    BOOST_MYSQL_DECL bool backslash_escapes() const noexcept;
-    BOOST_MYSQL_DECL system::result<character_set> current_character_set() const noexcept;
-
-    // Running algorithms
-    template <class AlgoParams>
-    any_resumable_ref setup(const AlgoParams&);
-
-    // Note: AlgoParams should have !is_void_result
-    template <class AlgoParams>
-    typename AlgoParams::result_type get_result() const noexcept;
+    BOOST_MYSQL_DECL void operator()(connection_state*) const;
 };
+using connection_state_ptr = std::unique_ptr<connection_state, connection_state_deleter>;
+
+// Construction
+BOOST_MYSQL_DECL connection_state_ptr
+create_connection_state(std::size_t read_buff_size, bool stream_supports_ssl);
+
+// Getters/setters
+BOOST_MYSQL_DECL std::vector<field_view>& get_shared_fields(connection_state&);
+BOOST_MYSQL_DECL diagnostics& shared_diag(connection_state&);
+BOOST_MYSQL_DECL metadata_mode meta_mode(const connection_state&);
+BOOST_MYSQL_DECL void set_meta_mode(connection_state&, metadata_mode);
+BOOST_MYSQL_DECL bool ssl_active(const connection_state&);
+BOOST_MYSQL_DECL bool backslash_escapes(const connection_state&);
+BOOST_MYSQL_DECL system::result<character_set> current_character_set(const connection_state&);
+
+// Running algorithms
+template <class AlgoParams>
+any_resumable_ref setup(connection_state&, const AlgoParams&);
+
+// Note: AlgoParams should have !is_void_result
+template <class AlgoParams>
+typename AlgoParams::result_type get_result(const connection_state&);
 
 }  // namespace detail
 }  // namespace mysql
