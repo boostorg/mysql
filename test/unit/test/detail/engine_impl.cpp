@@ -40,6 +40,7 @@ using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_run_algo_impl)
 
+// Satisfies the EngineStream concept
 class mock_engine_stream
 {
     executor_info stream_executor_info_;
@@ -169,6 +170,8 @@ public:
 
 using test_engine = engine_impl<mock_engine_stream>;
 
+// Helpers to run the sync and async versions uniformly.
+// engine_impl uses any_completion_handler, so it needs a wrapper.
 template <class CompletionToken>
 void do_async_run(test_engine& eng, any_resumable_ref resumable, CompletionToken&& token)
 {
@@ -181,18 +184,21 @@ const auto sync_fn = netfun_maker_mem<void, test_engine, any_resumable_ref>::syn
 const auto async_fn = netfun_maker_fn<void, test_engine&, any_resumable_ref>::async_noerrinfo(&do_async_run);
 using signature_t = decltype(sync_fn);
 
+// A mock for a sans-io algorithm. Can be converted to any_resumable_ref
 struct mock_algo
 {
+    using call_args = std::pair<error_code, std::size_t>;
+
     next_action act;
-    error_code last_ec{boost::mysql::client_errc::cancelled};
-    std::size_t last_bytes{static_cast<std::size_t>(-1)};
+    std::vector<call_args> calls;
 
     mock_algo(next_action act) : act(act) {}
 
+    void check_calls(const std::vector<call_args>& expected) { BOOST_TEST(calls == expected); }
+
     next_action resume(error_code ec, std::size_t bytes_transferred)
     {
-        last_ec = ec;
-        last_bytes = bytes_transferred;
+        calls.push_back(call_args{ec, bytes_transferred});
         auto res = act;
         act = next_action();
         return res;
@@ -230,6 +236,7 @@ BOOST_AUTO_TEST_CASE(async_completions)
             // and the token's executor should receive one dispatch. This all gets
             // validated by async_fn
             async_fn(eng, any_resumable_ref(algo)).validate_no_error();
+            BOOST_TEST(algo.calls.size() >= 1u);
         }
     }
 }
@@ -271,6 +278,10 @@ BOOST_AUTO_TEST_CASE(next_action_read)
             BOOST_TEST(eng.stream().calls[0].read_args().use_ssl == tc.ssl_active);
             BOOST_TEST(eng.stream().calls[0].read_args().buffer.data() == buff.data());
             BOOST_TEST(eng.stream().calls[0].read_args().buffer.size() == buff.size());
+            algo.check_calls({
+                {error_code(), 0u},
+                {error_code(), 8u}
+            });
         }
     }
 }
@@ -306,6 +317,10 @@ BOOST_AUTO_TEST_CASE(next_action_write)
             BOOST_TEST(eng.stream().calls[0].write_args().use_ssl == tc.ssl_active);
             BOOST_TEST(eng.stream().calls[0].write_args().buffer.data() == buff.data());
             BOOST_TEST(eng.stream().calls[0].write_args().buffer.size() == buff.size());
+            algo.check_calls({
+                {error_code(), 0u},
+                {error_code(), 4u}
+            });
         }
     }
 }
@@ -341,6 +356,10 @@ BOOST_AUTO_TEST_CASE(next_action_other)
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(eng.stream().calls.size() == 1u);
             BOOST_TEST(eng.stream().calls[0].type() == tc.act.type());
+            algo.check_calls({
+                {error_code(), 0u},
+                {error_code(), 0u}
+            });
         }
     }
 }
