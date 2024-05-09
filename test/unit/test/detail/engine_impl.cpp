@@ -12,9 +12,6 @@
 #include <boost/mysql/detail/engine_impl.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
@@ -247,11 +244,6 @@ BOOST_AUTO_TEST_CASE(async_completions)
     }
 }
 
-// TODO: test cases
-//    an error in resume() interrupts the loop and completes with the correct error_code
-//    same, but with an immediate error
-//    error_code, size_t returned by stream gets passed to resume() correctly
-
 // returning next_action::read calls the relevant stream function
 BOOST_AUTO_TEST_CASE(next_action_read)
 {
@@ -414,5 +406,42 @@ BOOST_AUTO_TEST_CASE(stream_errors)
         }
     }
 }
+
+// Returning an error or next_action() from resume in the first call works correctly
+BOOST_AUTO_TEST_CASE(immediate_resume_error)
+{
+    struct
+    {
+        const char* name;
+        signature_t fn;
+        error_code ec;
+    } test_cases[] = {
+        {"success_sync",  sync_fn,  error_code()        },
+        {"success_async", async_fn, error_code()        },
+        {"error_sync",    sync_fn,  asio::error::no_data},
+        {"error_async",   async_fn, asio::error::no_data},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            mock_algo algo(next_action(tc.ec));
+            asio::io_context ctx;
+            test_engine eng(ctx.get_executor());
+
+            tc.fn(eng, any_resumable_ref(algo)).validate_error_exact(tc.ec);
+            BOOST_TEST(eng.stream().calls.size() == 0u);
+            algo.check_calls({
+                {error_code(), 0u}
+            });
+            // Note: the testing infrastructure already checks that we post correctly in the async versions
+        }
+    }
+}
+
+// TODO: test cases
+//    an error in resume() interrupts the loop and completes with the correct error_code
 
 BOOST_AUTO_TEST_SUITE_END()
