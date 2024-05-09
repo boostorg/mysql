@@ -65,27 +65,27 @@ public:
     executor_type get_executor() { return ex_; }
 
     // SSL
-    void handshake(error_code& ec)
+    void ssl_handshake(error_code& ec)
     {
         create_ssl_stream();
         ssl_->handshake(asio::ssl::stream_base::client, ec);
     }
 
     template <class CompletionToken>
-    void async_handshake(CompletionToken&& token)
+    void async_ssl_handshake(CompletionToken&& token)
     {
         create_ssl_stream();
         ssl_->async_handshake(asio::ssl::stream_base::client, std::forward<CompletionToken>(token));
     }
 
-    void shutdown(error_code& ec)
+    void ssl_shutdown(error_code& ec)
     {
         BOOST_ASSERT(ssl_.has_value());
         ssl_->shutdown(ec);
     }
 
     template <class CompletionToken>
-    void async_shutdown(CompletionToken&& token)
+    void async_ssl_shutdown(CompletionToken&& token)
     {
         BOOST_ASSERT(ssl_.has_value());
         ssl_->async_shutdown(std::forward<CompletionToken>(token));

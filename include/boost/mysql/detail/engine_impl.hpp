@@ -87,12 +87,12 @@ struct run_algo_op : asio::coroutine
                 }
                 else if (act.type() == next_action::type_t::ssl_handshake)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.async_handshake(std::move(self));
+                    BOOST_ASIO_CORO_YIELD stream_.async_ssl_handshake(std::move(self));
                     has_done_io_ = true;
                 }
                 else if (act.type() == next_action::type_t::ssl_shutdown)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.async_shutdown(std::move(self));
+                    BOOST_ASIO_CORO_YIELD stream_.async_ssl_shutdown(std::move(self));
                     has_done_io_ = true;
                 }
                 else if (act.type() == next_action::type_t::connect)
@@ -110,7 +110,23 @@ struct run_algo_op : asio::coroutine
     }
 };
 
-// stream_adaptor can be used to adapt a traditional Asio stream to an EngineStream
+// EngineStream is an "extended" stream concept, with the following operations:
+//    asio::any_io_executor get_executor();
+//    bool supports_ssl() const;
+//    void set_endpoint(const void* endpoint);
+//    std::size_t read_some(asio::mutable_buffer, bool use_ssl, error_code&);
+//    void async_read_some(asio::mutable_buffer, bool use_ssl, CompletinToken&&);
+//    std::size_t write_some(asio::const_buffer, bool use_ssl, error_code&);
+//    void async_write_some(asio::const_buffer, bool use_ssl, CompletinToken&&);
+//    void ssl_handshake(error_code&);
+//    void async_ssl_handshake(CompletionToken&&);
+//    void ssl_shutdown(error_code&);
+//    void async_ssl_shutdown(CompletionToken&&);
+//    void connect(error_code&);
+//    void async_connect(CompletionToken&&);
+//    void close(error_code&);
+// Async operations are only required to support callback types
+// See stream_adaptor for an implementation
 template <class EngineStream>
 class engine_impl final : public engine
 {
@@ -168,11 +184,11 @@ public:
             }
             else if (act.type() == next_action::type_t::ssl_handshake)
             {
-                stream_.handshake(io_ec);
+                stream_.ssl_handshake(io_ec);
             }
             else if (act.type() == next_action::type_t::ssl_shutdown)
             {
-                stream_.shutdown(io_ec);
+                stream_.ssl_shutdown(io_ec);
             }
             else if (act.type() == next_action::type_t::connect)
             {

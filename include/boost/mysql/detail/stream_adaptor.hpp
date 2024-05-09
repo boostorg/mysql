@@ -127,18 +127,18 @@ public:
     executor_type get_executor() { return stream_.get_executor(); }
 
     // SSL
-    void handshake(error_code&) { BOOST_ASSERT(false); }
+    void ssl_handshake(error_code&) { BOOST_ASSERT(false); }
 
     template <class CompletinToken>
-    void async_handshake(CompletinToken&&)
+    void async_ssl_handshake(CompletinToken&&)
     {
         BOOST_ASSERT(false);
     }
 
-    void shutdown(error_code&) { BOOST_ASSERT(false); }
+    void ssl_shutdown(error_code&) { BOOST_ASSERT(false); }
 
     template <class CompletionToken>
-    void async_shutdown(CompletionToken&&)
+    void async_ssl_shutdown(CompletionToken&&)
     {
         BOOST_ASSERT(false);
     }
@@ -210,18 +210,18 @@ public:
     executor_type get_executor() { return stream_.get_executor(); }
 
     // SSL
-    void handshake(error_code& ec) { stream_.handshake(asio::ssl::stream_base::client, ec); }
+    void ssl_handshake(error_code& ec) { stream_.handshake(asio::ssl::stream_base::client, ec); }
 
     template <class CompletionToken>
-    void async_handshake(CompletionToken&& token)
+    void async_ssl_handshake(CompletionToken&& token)
     {
         stream_.async_handshake(asio::ssl::stream_base::client, std::forward<CompletionToken>(token));
     }
 
-    void shutdown(error_code& ec) { stream_.shutdown(ec); }
+    void ssl_shutdown(error_code& ec) { stream_.shutdown(ec); }
 
     template <class CompletionToken>
-    void async_shutdown(CompletionToken&& token)
+    void async_ssl_shutdown(CompletionToken&& token)
     {
         stream_.async_shutdown(std::forward<CompletionToken>(token));
     }
