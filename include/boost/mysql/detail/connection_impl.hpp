@@ -680,4 +680,8 @@ struct associator<Associator, mysql::detail::generic_algo_handler<AlgoParams, Ha
 }  // namespace asio
 }  // namespace boost
 
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/connection_impl.ipp>
+#endif
+
 #endif
