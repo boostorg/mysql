@@ -44,7 +44,10 @@ BOOST_AUTO_TEST_SUITE(test_run_algo_impl)
 class mock_engine_stream
 {
     executor_info stream_executor_info_;
-    asio::any_io_executor ex;
+    asio::any_io_executor ex_;
+    error_code op_error_;  // Operations complete with this error code
+
+    std::size_t size_or_zero(std::size_t sz) const { return op_error_ ? 0u : sz; }
 
     void record_read_call(asio::mutable_buffer buff, bool use_ssl)
     {
@@ -63,28 +66,31 @@ class mock_engine_stream
     }
 
     template <class CompletionToken>
-    void complete_immediate(CompletionToken&& token, error_code ec)
+    void complete_immediate(CompletionToken&& token)
     {
-        asio::post(ex, asio::deferred([ec]() {
-                       return asio::deferred.values(ec);
+        asio::post(ex_, asio::deferred([this]() {
+                       return asio::deferred.values(op_error_);
                    }))(std::forward<CompletionToken>(token));
     }
 
     template <class CompletionToken>
-    void complete_immediate(CompletionToken&& token, error_code ec, std::size_t bytes)
+    void complete_immediate(CompletionToken&& token, std::size_t bytes)
     {
-        asio::post(ex, asio::deferred([ec, bytes]() {
-                       return asio::deferred.values(ec, bytes);
+        asio::post(ex_, asio::deferred([this, bytes]() {
+                       return asio::deferred.values(op_error_, size_or_zero(bytes));
                    }))(std::forward<CompletionToken>(token));
     }
 
 public:
     std::vector<next_action> calls;
 
-    mock_engine_stream(asio::any_io_executor ex) : ex(create_tracker_executor(ex, &stream_executor_info_)) {}
+    mock_engine_stream(asio::any_io_executor ex, error_code op_error = error_code())
+        : ex_(create_tracker_executor(ex, &stream_executor_info_)), op_error_(op_error)
+    {
+    }
 
     using executor_type = asio::any_io_executor;
-    executor_type get_executor() { return ex; }
+    executor_type get_executor() { return ex_; }
 
     bool supports_ssl() const { return true; }
 
@@ -94,77 +100,77 @@ public:
     std::size_t read_some(asio::mutable_buffer buff, bool use_ssl, error_code& ec)
     {
         record_read_call(buff, use_ssl);
-        ec = error_code();
-        return buff.size();
+        ec = op_error_;
+        return size_or_zero(buff.size());
     }
 
     template <class CompletionToken>
     void async_read_some(asio::mutable_buffer buff, bool use_ssl, CompletionToken&& token)
     {
         record_read_call(buff, use_ssl);
-        complete_immediate(std::forward<CompletionToken>(token), error_code(), buff.size());
+        complete_immediate(std::forward<CompletionToken>(token), buff.size());
     }
 
     // Writing
     std::size_t write_some(asio::const_buffer buff, bool use_ssl, error_code& ec)
     {
         record_write_call(buff, use_ssl);
-        ec = {};
-        return buff.size();
+        ec = op_error_;
+        return size_or_zero(buff.size());
     }
 
     template <class CompletionToken>
     void async_write_some(asio::const_buffer buff, bool use_ssl, CompletionToken&& token)
     {
         record_write_call(buff, use_ssl);
-        complete_immediate(std::forward<CompletionToken>(token), error_code(), buff.size());
+        complete_immediate(std::forward<CompletionToken>(token), buff.size());
     }
 
     // SSL
     void ssl_handshake(error_code& ec)
     {
         calls.push_back(next_action::ssl_handshake());
-        ec = error_code();
+        ec = op_error_;
     }
 
     template <class CompletionToken>
     void async_ssl_handshake(CompletionToken&& token)
     {
         calls.push_back(next_action::ssl_handshake());
-        complete_immediate(std::forward<CompletionToken>(token), error_code());
+        complete_immediate(std::forward<CompletionToken>(token));
     }
 
     void ssl_shutdown(error_code& ec)
     {
         calls.push_back(next_action::ssl_shutdown());
-        ec = error_code();
+        ec = op_error_;
     }
 
     template <class CompletionToken>
     void async_ssl_shutdown(CompletionToken&& token)
     {
         calls.push_back(next_action::ssl_shutdown());
-        complete_immediate(std::forward<CompletionToken>(token), error_code());
+        complete_immediate(std::forward<CompletionToken>(token));
     }
 
     // Connect and close
     void connect(error_code& ec)
     {
         calls.push_back(next_action::connect());
-        ec = error_code();
+        ec = op_error_;
     }
 
     template <class CompletionToken>
     void async_connect(CompletionToken&& token)
     {
         calls.push_back(next_action::connect());
-        complete_immediate(std::forward<CompletionToken>(token), error_code());
+        complete_immediate(std::forward<CompletionToken>(token));
     }
 
     void close(error_code& ec)
     {
         calls.push_back(next_action::close());
-        ec = error_code();
+        ec = op_error_;
     }
 };
 
@@ -245,7 +251,6 @@ BOOST_AUTO_TEST_CASE(async_completions)
 //    an error in resume() interrupts the loop and completes with the correct error_code
 //    same, but with an immediate error
 //    error_code, size_t returned by stream gets passed to resume() correctly
-//    next_action gets translated to adequate stream calls
 
 // returning next_action::read calls the relevant stream function
 BOOST_AUTO_TEST_CASE(next_action_read)
@@ -359,6 +364,52 @@ BOOST_AUTO_TEST_CASE(next_action_other)
             algo.check_calls({
                 {error_code(), 0u},
                 {error_code(), 0u}
+            });
+        }
+    }
+}
+
+// Stream errors get propagated to the algorithm and don't exit the loop
+BOOST_AUTO_TEST_CASE(stream_errors)
+{
+    std::array<std::uint8_t, 8> buff{};
+    const std::array<std::uint8_t, 4> cbuff{};
+
+    struct
+    {
+        const char* name;
+        signature_t fn;
+        next_action act;
+    } test_cases[] = {
+        {"read_sync",           sync_fn,  next_action::read({buff, false})  },
+        {"read_async",          async_fn, next_action::read({buff, false})  },
+        {"write_sync",          sync_fn,  next_action::write({cbuff, false})},
+        {"write_async",         async_fn, next_action::write({cbuff, false})},
+        {"connect_sync",        sync_fn,  next_action::connect()            },
+        {"connect_async",       async_fn, next_action::connect()            },
+        {"ssl_handshake_sync",  sync_fn,  next_action::ssl_handshake()      },
+        {"ssl_handshake_async", async_fn, next_action::ssl_handshake()      },
+        {"ssl_shutdown_sync",   sync_fn,  next_action::ssl_shutdown()       },
+        {"ssl_shutdown_async",  async_fn, next_action::ssl_shutdown()       },
+        {"close_sync",          sync_fn,  next_action::close()              },
+        {"close_async",         async_fn, next_action::close()              },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            mock_algo algo(tc.act);
+            asio::io_context ctx;
+            test_engine eng(ctx.get_executor(), asio::error::already_open);
+
+            tc.fn(eng, any_resumable_ref(algo)).validate_no_error();  // Error gets swallowed by the algo
+            BOOST_TEST(eng.stream().calls.size() == 1u);
+            BOOST_TEST(eng.stream().calls[0].type() == tc.act.type());
+            algo.check_calls({
+                {error_code(),              0u},
+                {asio::error::already_open, 0u}
             });
         }
     }
