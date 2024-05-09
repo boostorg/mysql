@@ -310,6 +310,39 @@ BOOST_AUTO_TEST_CASE(next_action_write)
     }
 }
 
-// TODO: connect, close, handshake, shutdown
+// returning next_action::connect/ssl_handshake/ssl_shutdown/close calls the relevant stream function
+BOOST_AUTO_TEST_CASE(next_action_other)
+{
+    struct
+    {
+        const char* name;
+        signature_t fn;
+        next_action act;
+    } test_cases[] = {
+        {"connect_sync",        sync_fn,  next_action::connect()      },
+        {"connect_async",       async_fn, next_action::connect()      },
+        {"ssl_handshake_sync",  sync_fn,  next_action::ssl_handshake()},
+        {"ssl_handshake_async", async_fn, next_action::ssl_handshake()},
+        {"ssl_shutdown_sync",   sync_fn,  next_action::ssl_shutdown() },
+        {"ssl_shutdown_async",  async_fn, next_action::ssl_shutdown() },
+        {"close_sync",          sync_fn,  next_action::close()        },
+        {"close_async",         async_fn, next_action::close()        },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            mock_algo algo(tc.act);
+            asio::io_context ctx;
+            test_engine eng(ctx.get_executor());
+
+            tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
+            BOOST_TEST(eng.stream().calls.size() == 1u);
+            BOOST_TEST(eng.stream().calls[0].type() == tc.act.type());
+        }
+    }
+}
 
 BOOST_AUTO_TEST_SUITE_END()
