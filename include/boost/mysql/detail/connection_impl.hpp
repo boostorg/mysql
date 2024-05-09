@@ -28,7 +28,6 @@
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
-#include <boost/mysql/detail/run_algo.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/core/ignore_unused.hpp>
@@ -40,7 +39,6 @@
 #include <cstring>
 #include <memory>
 #include <tuple>
-#include <type_traits>
 #include <utility>
 
 namespace boost {
@@ -56,29 +54,6 @@ namespace detail {
 
 // Forward decl
 class connection_state;
-
-// Helper typedefs
-template <class AlgoParams, bool is_void>
-struct completion_signature_impl;
-
-template <class AlgoParams>
-struct completion_signature_impl<AlgoParams, true>
-{
-    // Using typedef to workaround a msvc 14.1 bug
-    typedef void(type)(error_code);
-};
-
-template <class AlgoParams>
-struct completion_signature_impl<AlgoParams, false>
-{
-    // Using typedef to workaround a msvc 14.1 bug
-    typedef void(type)(error_code, typename AlgoParams::result_type);
-};
-
-template <class AlgoParams>
-using completion_signature_t = typename completion_signature_impl<
-    AlgoParams,
-    has_void_result<AlgoParams>::value>::type;
 
 //
 // execution helpers
@@ -141,18 +116,119 @@ make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, std::v
     return {impl.stmt, tuple_to_array(impl.params)};
 }
 
+//
+// helpers to run algos
+//
+
+template <class AlgoParams, bool is_void>
+struct completion_signature_impl;
+
+template <class AlgoParams>
+struct completion_signature_impl<AlgoParams, true>
+{
+    // Using typedef to workaround a msvc 14.1 bug
+    typedef void(type)(error_code);
+};
+
+template <class AlgoParams>
+struct completion_signature_impl<AlgoParams, false>
+{
+    // Using typedef to workaround a msvc 14.1 bug
+    typedef void(type)(error_code, typename AlgoParams::result_type);
+};
+
+template <class AlgoParams>
+using completion_signature_t = typename completion_signature_impl<
+    AlgoParams,
+    has_void_result<AlgoParams>::value>::type;
+
+// Intermediate handler
+template <class AlgoParams, class Handler>
+struct generic_algo_handler
+{
+    static_assert(!has_void_result<AlgoParams>::value, "Internal error: result_type should be non-void");
+
+    using result_t = typename AlgoParams::result_type;
+
+    template <class DeducedHandler>
+    generic_algo_handler(DeducedHandler&& h, connection_state& st)
+        : final_handler(std::forward<DeducedHandler>(h)), st(&st)
+    {
+    }
+
+    void operator()(error_code ec)
+    {
+        std::move(final_handler)(ec, ec ? result_t{} : get_result<AlgoParams>(*st));
+    }
+
+    Handler final_handler;  // needs to be accessed by associator
+    connection_state* st;
+};
+
 class connection_impl
 {
     std::unique_ptr<engine> engine_;
     connection_state_ptr st_;
 
     // Generic algorithm
+    template <class AlgoParams>
+    typename AlgoParams::result_type run_impl(
+        AlgoParams params,
+        error_code& ec,
+        std::true_type /* has_void_result */
+    )
+    {
+        engine_->run(setup(*st_, params), ec);
+    }
+
+    template <class AlgoParams>
+    typename AlgoParams::result_type run_impl(
+        AlgoParams params,
+        error_code& ec,
+        std::false_type /* has_void_result */
+    )
+    {
+        engine_->run(setup(*st_, params), ec);
+        return get_result<AlgoParams>(*st_);
+    }
+
+    template <class AlgoParams, class Handler>
+    static void async_run_impl(
+        engine& eng,
+        connection_state& st,
+        AlgoParams params,
+        Handler&& handler,
+        std::true_type /* has_void_result */
+    )
+    {
+        eng.async_run(setup(st, params), std::forward<Handler>(handler));
+    }
+
+    template <class AlgoParams, class Handler>
+    static void async_run_impl(
+        engine& eng,
+        connection_state& st,
+        AlgoParams params,
+        Handler&& handler,
+        std::false_type /* has_void_result */
+    )
+    {
+        using intermediate_handler_t = generic_algo_handler<AlgoParams, typename std::decay<Handler>::type>;
+        eng.async_run(setup(st, params), intermediate_handler_t(std::forward<Handler>(handler), st));
+    }
+
+    template <class AlgoParams, class Handler>
+    static void async_run_impl(engine& eng, connection_state& st, AlgoParams params, Handler&& handler)
+    {
+        async_run_impl(eng, st, params, std::forward<Handler>(handler), has_void_result<AlgoParams>{});
+    }
+
     struct run_algo_initiation
     {
         template <class Handler, class AlgoParams>
         void operator()(Handler&& handler, engine* eng, connection_state* st, AlgoParams params)
         {
-            async_run_algo(*eng, *st, params, std::forward<Handler>(handler));
+            async_run_impl(*eng, *st, params, std::forward<Handler>(handler));
         }
     };
 
@@ -192,7 +268,7 @@ class connection_impl
         )
         {
             eng->set_endpoint(&endpoint);
-            async_run_algo(
+            async_run_impl(
                 *eng,
                 *st,
                 make_params_connect(*diag, params, is_secure_channel(endpoint)),
@@ -215,7 +291,7 @@ class connection_impl
         )
         {
             auto getter = make_request_getter(req, get_shared_fields(*st));
-            async_run_algo(
+            async_run_impl(
                 *eng,
                 *st,
                 execute_algo_params{diag, getter.get(), proc},
@@ -238,7 +314,7 @@ class connection_impl
         )
         {
             auto getter = make_request_getter(req, get_shared_fields(*st));
-            async_run_algo(
+            async_run_impl(
                 *eng,
                 *st,
                 start_execution_algo_params{diag, getter.get(), proc},
@@ -280,6 +356,12 @@ public:
     }
 
     // Generic algorithm
+    template <class AlgoParams>
+    typename AlgoParams::result_type run(AlgoParams params, error_code& ec)
+    {
+        return run_impl(params, ec, has_void_result<AlgoParams>{});
+    }
+
     template <class AlgoParams, class CompletionToken>
     auto async_run(AlgoParams params, CompletionToken&& token)
         -> decltype(asio::async_initiate<CompletionToken, completion_signature_t<AlgoParams>>(
@@ -299,12 +381,6 @@ public:
         );
     }
 
-    template <class AlgoParams>
-    typename AlgoParams::result_type run(AlgoParams params, error_code& ec)
-    {
-        return run_algo(*engine_, *st_, params, ec);
-    }
-
     // Connect
     template <class EndpointType>
     void connect(
@@ -315,7 +391,7 @@ public:
     )
     {
         engine_->set_endpoint(&endpoint);
-        run_algo(*engine_, *st_, make_params_connect(diag, params, is_secure_channel(endpoint)), err);
+        run(make_params_connect(diag, params, is_secure_channel(endpoint)), err);
     }
 
     template <class EndpointType, class CompletionToken>
@@ -357,12 +433,7 @@ public:
     void execute(const ExecutionRequest& req, ResultsType& result, error_code& err, diagnostics& diag)
     {
         auto getter = make_request_getter(req, get_shared_fields(*st_));
-        run_algo(
-            *engine_,
-            *st_,
-            execute_algo_params{&diag, getter.get(), &access::get_impl(result).get_interface()},
-            err
-        );
+        run(execute_algo_params{&diag, getter.get(), &access::get_impl(result).get_interface()}, err);
     }
 
     template <class ExecutionRequest, class ResultsType, class CompletionToken>
@@ -403,12 +474,8 @@ public:
     )
     {
         auto getter = make_request_getter(req, get_shared_fields(*st_));
-        run_algo(
-            *engine_,
-            *st_,
-            start_execution_algo_params{&diag, getter.get(), &access::get_impl(exec_st).get_interface()},
-            err
-        );
+        run(start_execution_algo_params{&diag, getter.get(), &access::get_impl(exec_st).get_interface()},
+            err);
     }
 
     template <class ExecutionRequest, class ExecutionStateType, class CompletionToken>
@@ -583,8 +650,29 @@ using async_close_connection_t = async_run_t<close_connection_algo_params, Compl
 }  // namespace mysql
 }  // namespace boost
 
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/connection_impl.ipp>
-#endif
+// Propagate associated properties
+namespace boost {
+namespace asio {
+
+template <template <class, class> class Associator, class AlgoParams, class Handler, class DefaultCandidate>
+struct associator<Associator, mysql::detail::generic_algo_handler<AlgoParams, Handler>, DefaultCandidate>
+    : Associator<Handler, DefaultCandidate>
+{
+    using mysql_handler = mysql::detail::generic_algo_handler<AlgoParams, Handler>;
+
+    static typename Associator<Handler, DefaultCandidate>::type get(const mysql_handler& h)
+    {
+        return Associator<Handler, DefaultCandidate>::get(h.final_handler);
+    }
+
+    static auto get(const mysql_handler& h, const DefaultCandidate& c)
+        -> decltype(Associator<Handler, DefaultCandidate>::get(h.final_handler, c))
+    {
+        return Associator<Handler, DefaultCandidate>::get(h.final_handler, c);
+    }
+};
+
+}  // namespace asio
+}  // namespace boost
 
 #endif
