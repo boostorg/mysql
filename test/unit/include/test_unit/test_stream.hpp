@@ -10,8 +10,7 @@
 
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/any_stream_impl.hpp>
-
+#include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/core/span.hpp>
 
@@ -90,12 +89,8 @@ private:
     struct write_op;
 };
 
-using test_any_stream = detail::any_stream_impl<test_stream>;
-
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
-
-extern template class boost::mysql::detail::any_stream_impl<boost::mysql::test::test_stream>;
 
 #endif
