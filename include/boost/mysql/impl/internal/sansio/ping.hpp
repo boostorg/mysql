@@ -13,10 +13,9 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 #include <cstdint>
 
@@ -24,8 +23,9 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class ping_algo : public sansio_algorithm, asio::coroutine
+class ping_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     diagnostics* diag_;
     std::uint8_t seqnum_{0};
 
@@ -40,16 +40,18 @@ public:
         if (ec)
             return ec;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             diag_->clear();
 
             // Send the request
-            BOOST_ASIO_CORO_YIELD return write(ping_command(), seqnum_);
+            BOOST_MYSQL_YIELD(resume_point_, 1, write(ping_command(), seqnum_))
 
             // Read the response
-            BOOST_ASIO_CORO_YIELD return read(seqnum_);
+            BOOST_MYSQL_YIELD(resume_point_, 2, read(seqnum_))
 
             // Process the OK packet
             return st_->deserialize_ok(*diag_);

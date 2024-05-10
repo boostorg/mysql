@@ -14,12 +14,12 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/ssl_context_with_default.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/connect.hpp>
-#include <boost/asio/coroutine.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
@@ -300,8 +300,9 @@ private:
         ssl_.emplace(variant2::unsafe_get<1>(sock_).sock, ssl_ctx_.get());
     }
 
-    struct connect_op : boost::asio::coroutine
+    struct connect_op
     {
+        int resume_point_{0};
         variant_stream& this_obj_;
         error_code stored_ec_;
 
@@ -316,13 +317,15 @@ private:
                 return;
             }
 
-            BOOST_ASIO_CORO_REENTER(*this)
+            switch (resume_point_)
             {
+            case 0:
+
                 // Setup stream
                 stored_ec_ = this_obj_.setup_stream();
                 if (stored_ec_)
                 {
-                    BOOST_ASIO_CORO_YIELD asio::post(this_obj_.ex_, std::move(self));
+                    BOOST_MYSQL_YIELD(resume_point_, 1, asio::post(this_obj_.ex_, std::move(self)))
                     self.complete(stored_ec_);
                     return;
                 }
@@ -330,21 +333,27 @@ private:
                 if (this_obj_.address_.type == address_type::host_and_port)
                 {
                     // Resolve endpoints
-                    BOOST_ASIO_CORO_YIELD
-                    variant2::unsafe_get<1>(this_obj_.sock_)
-                        .resolv.async_resolve(
-                            cast_asio_sv_param(this_obj_.address_.address),
-                            std::to_string(this_obj_.address_.port),
-                            std::move(self)
-                        );
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        2,
+                        variant2::unsafe_get<1>(this_obj_.sock_)
+                            .resolv.async_resolve(
+                                cast_asio_sv_param(this_obj_.address_.address),
+                                std::to_string(this_obj_.address_.port),
+                                std::move(self)
+                            )
+                    )
 
                     // Connect stream
-                    BOOST_ASIO_CORO_YIELD
-                    asio::async_connect(
-                        variant2::unsafe_get<1>(this_obj_.sock_).sock,
-                        std::move(endpoints),
-                        std::move(self)
-                    );
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        3,
+                        asio::async_connect(
+                            variant2::unsafe_get<1>(this_obj_.sock_).sock,
+                            std::move(endpoints),
+                            std::move(self)
+                        )
+                    )
 
                     // The final handler requires a void(error_code, tcp::endpoint signature),
                     // which this function can't implement. See operator() overload below.
@@ -355,9 +364,12 @@ private:
                     BOOST_ASSERT(this_obj_.address_.type == address_type::unix_path);
 
                     // Just connect the stream
-                    BOOST_ASIO_CORO_YIELD
-                    variant2::unsafe_get<2>(this_obj_.sock_)
-                        .async_connect(cast_asio_sv_param(this_obj_.address_.address), std::move(self));
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        4,
+                        variant2::unsafe_get<2>(this_obj_.sock_)
+                            .async_connect(cast_asio_sv_param(this_obj_.address_.address), std::move(self))
+                    )
 
                     self.complete(error_code());
                 }

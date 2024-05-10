@@ -14,18 +14,18 @@
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/handshake.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class connect_algo : public sansio_algorithm, asio::coroutine
+class connect_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     handshake_algo handshake_;
     error_code stored_ec_;
 
@@ -39,26 +39,28 @@ public:
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             handshake_.diag().clear();
 
             // Physical connect
-            BOOST_ASIO_CORO_YIELD return next_action::connect();
+            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::connect())
             if (ec)
                 return ec;
 
             // Handshake
             while (!(act = handshake_.resume(ec)).is_done())
-                BOOST_ASIO_CORO_YIELD return act;
+                BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
             // If handshake failed, close the stream ignoring the result
             // and return handshake's error code
             if (act.error())
             {
                 stored_ec_ = act.error();
-                BOOST_ASIO_CORO_YIELD return next_action::close();
+                BOOST_MYSQL_YIELD(resume_point_, 3, next_action::close())
                 return stored_ec_;
             }
 

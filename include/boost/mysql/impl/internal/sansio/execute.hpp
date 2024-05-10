@@ -15,22 +15,20 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 #include <boost/mysql/impl/internal/sansio/read_some_rows.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
 
-#include <boost/asio/coroutine.hpp>
-
-#include <cstddef>
-
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class execute_algo : public sansio_algorithm, asio::coroutine
+class execute_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     start_execution_algo start_execution_st_;
     read_resultset_head_algo read_head_st_;
     read_some_rows_algo read_some_rows_st_;
@@ -51,11 +49,13 @@ public:
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Send request and read the first response
             while (!(act = start_execution_st_.resume(ec)).is_done())
-                BOOST_ASIO_CORO_YIELD return act;
+                BOOST_MYSQL_YIELD(resume_point_, 1, act)
             if (act.error())
                 return act;
 
@@ -66,7 +66,7 @@ public:
                 {
                     read_head_st_ = read_resultset_head_algo(*st_, read_head_st_.params());
                     while (!(act = read_head_st_.resume(ec)).is_done())
-                        BOOST_ASIO_CORO_YIELD return act;
+                        BOOST_MYSQL_YIELD(resume_point_, 2, act)
                     if (act.error())
                         return act;
                 }
@@ -74,7 +74,7 @@ public:
                 {
                     read_some_rows_st_ = read_some_rows_algo(*st_, read_some_rows_st_.params());
                     while (!(act = read_some_rows_st_.resume(ec)).is_done())
-                        BOOST_ASIO_CORO_YIELD return act;
+                        BOOST_MYSQL_YIELD(resume_point_, 3, act)
                     if (act.error())
                         return act;
                 }

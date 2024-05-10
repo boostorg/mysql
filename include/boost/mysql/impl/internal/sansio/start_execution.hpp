@@ -14,13 +14,13 @@
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
@@ -39,14 +39,27 @@ inline resultset_encoding get_encoding(const any_execution_request& req)
     return req.is_query ? resultset_encoding::text : resultset_encoding::binary;
 }
 
-class start_execution_algo : public sansio_algorithm, asio::coroutine
+class start_execution_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     read_resultset_head_algo read_head_st_;
     any_execution_request req_;
 
-    std::uint8_t& seqnum() noexcept { return processor().sequence_number(); }
-    execution_processor& processor() noexcept { return *read_head_st_.params().proc; }
-    diagnostics& diag() noexcept { return *read_head_st_.params().diag; }
+    std::uint8_t& seqnum() { return processor().sequence_number(); }
+    execution_processor& processor() { return *read_head_st_.params().proc; }
+    diagnostics& diag() { return *read_head_st_.params().diag; }
+
+    next_action compose_request()
+    {
+        if (req_.is_query)
+        {
+            return write(query_command{req_.data.query}, seqnum());
+        }
+        else
+        {
+            return write(execute_stmt_command{req_.data.stmt.stmt.id(), req_.data.stmt.params}, seqnum());
+        }
+    }
 
 public:
     start_execution_algo(connection_state_data& st, start_execution_algo_params params) noexcept
@@ -60,8 +73,10 @@ public:
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             diag().clear();
 
@@ -74,24 +89,14 @@ public:
             processor().reset(get_encoding(req_), st_->meta_mode);
 
             // Send the execution request
-            if (req_.is_query)
-            {
-                BOOST_ASIO_CORO_YIELD return write(query_command{req_.data.query}, seqnum());
-            }
-            else
-            {
-                BOOST_ASIO_CORO_YIELD return write(
-                    execute_stmt_command{req_.data.stmt.stmt.id(), req_.data.stmt.params},
-                    seqnum()
-                );
-            }
+            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request())
 
             if (ec)
                 return ec;
 
             // Read the first resultset's head and return its result
             while (!(act = read_head_st_.resume(ec)).is_done())
-                BOOST_ASIO_CORO_YIELD return act;
+                BOOST_MYSQL_YIELD(resume_point_, 2, act)
             return act;
         }
 

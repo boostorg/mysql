@@ -14,11 +14,11 @@
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
+
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
-#include <boost/asio/coroutine.hpp>
-#include <boost/asio/detail/assert.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/assert.hpp>
 
@@ -35,8 +35,9 @@ inline asio::mutable_buffer to_buffer(span<std::uint8_t> buff) noexcept
 }
 
 template <class EngineStream>
-struct run_algo_op : asio::coroutine
+struct run_algo_op
 {
+    int resume_point_{0};
     EngineStream& stream_;
     any_resumable_ref resumable_;
     bool has_done_io_{false};
@@ -49,8 +50,10 @@ struct run_algo_op : asio::coroutine
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             while (true)
             {
                 // Run the op
@@ -60,42 +63,54 @@ struct run_algo_op : asio::coroutine
                     stored_ec_ = act.error();
                     if (!has_done_io_)
                     {
-                        BOOST_ASIO_CORO_YIELD asio::post(stream_.get_executor(), std::move(self));
+                        BOOST_MYSQL_YIELD(
+                            resume_point_,
+                            1,
+                            asio::post(stream_.get_executor(), std::move(self))
+                        )
                     }
                     self.complete(stored_ec_);
-                    BOOST_ASIO_CORO_YIELD break;
+                    return;
                 }
                 else if (act.type() == next_action::type_t::read)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.async_read_some(
-                        to_buffer(act.read_args().buffer),
-                        act.read_args().use_ssl,
-                        std::move(self)
-                    );
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        2,
+                        stream_.async_read_some(
+                            to_buffer(act.read_args().buffer),
+                            act.read_args().use_ssl,
+                            std::move(self)
+                        )
+                    )
                     has_done_io_ = true;
                 }
                 else if (act.type() == next_action::type_t::write)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.async_write_some(
-                        asio::buffer(act.write_args().buffer),
-                        act.write_args().use_ssl,
-                        std::move(self)
-                    );
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        3,
+                        stream_.async_write_some(
+                            asio::buffer(act.write_args().buffer),
+                            act.write_args().use_ssl,
+                            std::move(self)
+                        )
+                    )
                     has_done_io_ = true;
                 }
                 else if (act.type() == next_action::type_t::ssl_handshake)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.async_ssl_handshake(std::move(self));
+                    BOOST_MYSQL_YIELD(resume_point_, 4, stream_.async_ssl_handshake(std::move(self)))
                     has_done_io_ = true;
                 }
                 else if (act.type() == next_action::type_t::ssl_shutdown)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.async_ssl_shutdown(std::move(self));
+                    BOOST_MYSQL_YIELD(resume_point_, 5, stream_.async_ssl_shutdown(std::move(self)))
                     has_done_io_ = true;
                 }
                 else if (act.type() == next_action::type_t::connect)
                 {
-                    BOOST_ASIO_CORO_YIELD stream_.async_connect(std::move(self));
+                    BOOST_MYSQL_YIELD(resume_point_, 6, stream_.async_connect(std::move(self)))
                     has_done_io_ = true;
                 }
                 else

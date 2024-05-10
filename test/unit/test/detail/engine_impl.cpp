@@ -35,7 +35,7 @@ using namespace boost::mysql::detail;
 namespace asio = boost::asio;
 using boost::mysql::error_code;
 
-BOOST_AUTO_TEST_SUITE(test_run_algo_impl)
+BOOST_AUTO_TEST_SUITE(test_engine_impl)
 
 // Satisfies the EngineStream concept
 class mock_engine_stream

@@ -14,18 +14,18 @@
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class quit_connection_algo : public sansio_algorithm, asio::coroutine
+class quit_connection_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     diagnostics* diag_;
     std::uint8_t sequence_number_{0};
 
@@ -35,17 +35,19 @@ public:
     {
     }
 
-    diagnostics& diag() noexcept { return *diag_; }
+    diagnostics& diag() { return *diag_; }
 
     next_action resume(error_code ec)
     {
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             diag_->clear();
 
             // Send quit message
-            BOOST_ASIO_CORO_YIELD return write(quit_command(), sequence_number_);
+            BOOST_MYSQL_YIELD(resume_point_, 1, write(quit_command(), sequence_number_))
 
             // Mark the session as finished, regardless of the write result
             st_->is_connected = false;
@@ -57,7 +59,7 @@ public:
             // Shutdown SSL. MySQL doesn't always shut down SSL correctly, so we ignore this error.
             if (st_->ssl == ssl_state::active)
             {
-                BOOST_ASIO_CORO_YIELD return next_action::ssl_shutdown();
+                BOOST_MYSQL_YIELD(resume_point_, 2, next_action::ssl_shutdown())
                 st_->ssl = ssl_state::torn_down;
             }
 

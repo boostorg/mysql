@@ -12,10 +12,9 @@
 
 #include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 #include <cstddef>
 
@@ -38,8 +37,9 @@ inline void valgrind_make_mem_defined(const void*, std::size_t) noexcept {}
 #endif
 
 template <class InnerAlgo>
-class top_level_algo : asio::coroutine
+class top_level_algo
 {
+    int resume_point_{0};
     InnerAlgo algo_;
 
     connection_state_data& conn_state() noexcept { return algo_.conn_state(); }
@@ -57,8 +57,10 @@ public:
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Run until completion
             while (true)
             {
@@ -77,9 +79,11 @@ public:
                     while (!conn_state().reader.done() && !ec)
                     {
                         conn_state().reader.prepare_buffer();
-                        BOOST_ASIO_CORO_YIELD return next_action::read(
-                            {conn_state().reader.buffer(), conn_state().ssl_active()}
-                        );
+                        BOOST_MYSQL_YIELD(
+                            resume_point_,
+                            1,
+                            next_action::read({conn_state().reader.buffer(), conn_state().ssl_active()})
+                        )
                         valgrind_make_mem_defined(conn_state().reader.buffer().data(), bytes_transferred);
                         conn_state().reader.resume(bytes_transferred);
                     }
@@ -95,9 +99,13 @@ public:
                     // Write until a complete message was written
                     while (!conn_state().writer.done() && !ec)
                     {
-                        BOOST_ASIO_CORO_YIELD return next_action::write(
-                            {conn_state().writer.current_chunk(), conn_state().ssl_active()}
-                        );
+                        BOOST_MYSQL_YIELD(
+                            resume_point_,
+                            2,
+                            next_action::write(
+                                {conn_state().writer.current_chunk(), conn_state().ssl_active()}
+                            )
+                        )
                         conn_state().writer.resume(bytes_transferred);
                     }
 
@@ -106,7 +114,7 @@ public:
                 else
                 {
                     // Other ops always require I/O
-                    BOOST_ASIO_CORO_YIELD return act;
+                    BOOST_MYSQL_YIELD(resume_point_, 3, act)
                 }
             }
         }
