@@ -22,7 +22,6 @@
 #include <boost/mysql/impl/internal/sansio/read_execute_response.hpp>
 #include <boost/mysql/impl/internal/sansio/read_ok_response.hpp>
 #include <boost/mysql/impl/internal/sansio/read_prepare_statement_response.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <boost/variant2/variant.hpp>
 
@@ -48,7 +47,7 @@ struct pipeline_read_resumer
     }
 };
 
-class run_pipeline_algo : public sansio_algorithm
+class run_pipeline_algo
 {
     using any_read_algo = variant2::variant<
         no_response_algo,
@@ -56,6 +55,7 @@ class run_pipeline_algo : public sansio_algorithm
         read_prepare_statement_response_algo,
         read_ok_response_algo>;
 
+    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     pipeline* pipe_;
@@ -119,9 +119,11 @@ class run_pipeline_algo : public sansio_algorithm
 
 public:
     run_pipeline_algo(connection_state_data& st, run_pipeline_algo_params params) noexcept
-        : sansio_algorithm(st), diag_(params.diag), pipe_(params.pipe)
+        : st_(&st), diag_(params.diag), pipe_(params.pipe)
     {
     }
+
+    connection_state_data& conn_state() { return *st_; }
 
     next_action resume(error_code ec)
     {

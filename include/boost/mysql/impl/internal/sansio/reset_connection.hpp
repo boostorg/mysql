@@ -19,14 +19,14 @@
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class reset_connection_algo : public sansio_algorithm
+class reset_connection_algo
 {
+    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     character_set charset_;
@@ -60,15 +60,17 @@ class reset_connection_algo : public sansio_algorithm
         else
         {
             // Just compose the reset connection request
-            return write(reset_connection_command{}, reset_seqnum_);
+            return st_->write(reset_connection_command{}, reset_seqnum_);
         }
     }
 
 public:
     reset_connection_algo(connection_state_data& st, reset_connection_algo_params params) noexcept
-        : sansio_algorithm(st), diag_(params.diag), charset_(params.charset)
+        : st_(&st), diag_(params.diag), charset_(params.charset)
     {
     }
+
+    connection_state_data& conn_state() { return *st_; }
 
     next_action resume(error_code ec)
     {
@@ -86,7 +88,7 @@ public:
             BOOST_MYSQL_YIELD(resume_point_, 1, compose_request())
 
             // Read the reset response
-            BOOST_MYSQL_YIELD(resume_point_, 2, read(reset_seqnum_))
+            BOOST_MYSQL_YIELD(resume_point_, 2, st_->read(reset_seqnum_))
 
             // Verify it's what we expected
             stored_ec_ = st_->deserialize_ok(*diag_);
@@ -102,7 +104,7 @@ public:
             if (has_charset())
             {
                 // We issued a SET NAMES too, read its response
-                BOOST_MYSQL_YIELD(resume_point_, 3, read(set_names_seqnum_))
+                BOOST_MYSQL_YIELD(resume_point_, 3, st_->read(set_names_seqnum_))
 
                 // Verify it's what we expected. Don't overwrite diagnostics if reset failed
                 ec = st_->deserialize_ok(stored_ec_ ? st_->shared_diag : *diag_);

@@ -25,7 +25,6 @@
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <cstdint>
 
@@ -65,8 +64,9 @@ inline error_code process_capabilities(
     return error_code();
 }
 
-class handshake_algo : public sansio_algorithm
+class handshake_algo
 {
+    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     handshake_params hparams_;
@@ -77,7 +77,7 @@ class handshake_algo : public sansio_algorithm
     // Attempts to map the collection_id to a character set. We try to be conservative
     // here, since servers will happily accept unknown collation IDs, silently defaulting
     // to the server's default character set (often latin1, which is not Unicode).
-    static character_set collation_id_to_charset(std::uint16_t collation_id) noexcept
+    static character_set collation_id_to_charset(std::uint16_t collation_id)
     {
         switch (collation_id)
         {
@@ -90,7 +90,7 @@ class handshake_algo : public sansio_algorithm
     }
 
     // Once the handshake is processed, the capabilities are stored in the connection state
-    bool use_ssl() const noexcept { return st_->current_capabilities.has(CLIENT_SSL); }
+    bool use_ssl() const { return st_->current_capabilities.has(CLIENT_SSL); }
 
     error_code process_handshake(span<const std::uint8_t> buffer)
     {
@@ -170,7 +170,7 @@ class handshake_algo : public sansio_algorithm
     }
 
     // Composes an auth_switch_response message with the contents of auth_resp_
-    auth_switch_response compose_auth_switch_response() const noexcept
+    auth_switch_response compose_auth_switch_response() const
     {
         return auth_switch_response{auth_resp_.data};
     }
@@ -192,7 +192,7 @@ class handshake_algo : public sansio_algorithm
         return error_code();
     }
 
-    static handshake_params fix_ssl_mode(const handshake_params& input, bool transport_supports_ssl) noexcept
+    static handshake_params fix_ssl_mode(const handshake_params& input, bool transport_supports_ssl)
     {
         handshake_params res(input);
         if (!transport_supports_ssl)
@@ -202,14 +202,15 @@ class handshake_algo : public sansio_algorithm
 
 public:
     handshake_algo(connection_state_data& st, handshake_algo_params params) noexcept
-        : sansio_algorithm(st),
+        : st_(&st),
           diag_(params.diag),
           hparams_(fix_ssl_mode(params.hparams, st.supports_ssl())),
           secure_channel_(params.secure_channel)
     {
     }
 
-    diagnostics& diag() noexcept { return *diag_; }
+    connection_state_data& conn_state() { return *st_; }
+    diagnostics& diag() { return *diag_; }
 
     next_action resume(error_code ec)
     {
@@ -227,7 +228,7 @@ public:
             st_->reset();
 
             // Read server greeting
-            BOOST_MYSQL_YIELD(resume_point_, 1, read(sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 1, st_->read(sequence_number_))
 
             // Process server greeting
             ec = process_handshake(st_->reader.message());
@@ -238,7 +239,7 @@ public:
             if (use_ssl())
             {
                 // Send SSL request
-                BOOST_MYSQL_YIELD(resume_point_, 2, write(compose_ssl_request(), sequence_number_))
+                BOOST_MYSQL_YIELD(resume_point_, 2, st_->write(compose_ssl_request(), sequence_number_))
 
                 // SSL handshake
                 BOOST_MYSQL_YIELD(resume_point_, 3, next_action::ssl_handshake())
@@ -248,13 +249,13 @@ public:
             }
 
             // Compose and send handshake response
-            BOOST_MYSQL_YIELD(resume_point_, 4, write(compose_login_request(), sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 4, st_->write(compose_login_request(), sequence_number_))
 
             // Auth message exchange
             while (true)
             {
                 // Receive response
-                BOOST_MYSQL_YIELD(resume_point_, 5, read(sequence_number_))
+                BOOST_MYSQL_YIELD(resume_point_, 5, st_->read(sequence_number_))
 
                 // Process it
                 resp = deserialize_handshake_server_response(st_->reader.message(), st_->flavor, *diag_);
@@ -279,13 +280,13 @@ public:
                     BOOST_MYSQL_YIELD(
                         resume_point_,
                         6,
-                        write(compose_auth_switch_response(), sequence_number_)
+                        st_->write(compose_auth_switch_response(), sequence_number_)
                     )
                 }
                 else if (resp.type == handhake_server_response::type_t::ok_follows)
                 {
                     // The next packet must be an OK packet. Read it
-                    BOOST_MYSQL_YIELD(resume_point_, 7, read(sequence_number_))
+                    BOOST_MYSQL_YIELD(resume_point_, 7, st_->read(sequence_number_))
 
                     // Process it
                     // Regardless of whether we succeeded or not, we're done
@@ -304,7 +305,7 @@ public:
                     BOOST_MYSQL_YIELD(
                         resume_point_,
                         8,
-                        write(compose_auth_switch_response(), sequence_number_)
+                        st_->write(compose_auth_switch_response(), sequence_number_)
                     )
                 }
             }

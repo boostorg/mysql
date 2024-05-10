@@ -12,14 +12,14 @@
 #include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/quit_connection.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class close_connection_algo : public sansio_algorithm
+class close_connection_algo
 {
     int resume_point_{0};
     quit_connection_algo quit_;
@@ -27,9 +27,11 @@ class close_connection_algo : public sansio_algorithm
 
 public:
     close_connection_algo(connection_state_data& st, close_connection_algo_params params) noexcept
-        : sansio_algorithm(st), quit_(st, {params.diag})
+        : quit_(st, {params.diag})
     {
     }
+
+    connection_state_data& conn_state() { return quit_.conn_state(); }
 
     next_action resume(error_code ec)
     {
@@ -43,7 +45,7 @@ public:
             quit_.diag().clear();
 
             // If we're not connected, we're done
-            if (!st_->is_connected)
+            if (!conn_state().is_connected)
                 return next_action();
 
             // Attempt quit

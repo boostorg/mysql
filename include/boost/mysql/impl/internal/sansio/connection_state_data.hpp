@@ -13,6 +13,8 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
+#include <boost/mysql/detail/next_action.hpp>
+
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
@@ -67,10 +69,10 @@ struct connection_state_data
     message_reader reader;
     message_writer writer;
 
-    bool ssl_active() const noexcept { return ssl == ssl_state::active; }
-    bool supports_ssl() const noexcept { return ssl != ssl_state::unsupported; }
+    bool ssl_active() const { return ssl == ssl_state::active; }
+    bool supports_ssl() const { return ssl != ssl_state::unsupported; }
 
-    const character_set* charset_ptr() const noexcept
+    const character_set* charset_ptr() const
     {
         return current_charset.name.empty() ? nullptr : &current_charset;
     }
@@ -95,9 +97,25 @@ struct connection_state_data
     }
 
     // Reads an OK packet from the reader. This operation is repeated in several places.
-    error_code deserialize_ok(diagnostics& diag) noexcept
+    error_code deserialize_ok(diagnostics& diag)
     {
         return deserialize_ok_response(reader.message(), flavor, diag, backslash_escapes);
+    }
+
+    // Helpers for sans-io algorithms
+    next_action read(std::uint8_t& seqnum, bool keep_parsing_state = false)
+    {
+        // buffer is attached by top_level_algo
+        reader.prepare_read(seqnum, keep_parsing_state);
+        return next_action::read({});
+    }
+
+    template <class Serializable>
+    next_action write(const Serializable& msg, std::uint8_t& seqnum)
+    {
+        // buffer is attached by top_level_algo
+        writer.prepare_write(msg, seqnum);
+        return next_action::write({});
     }
 };
 

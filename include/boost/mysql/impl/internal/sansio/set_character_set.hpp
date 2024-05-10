@@ -19,7 +19,6 @@
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <boost/system/result.hpp>
 
@@ -29,8 +28,9 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class set_character_set_algo : public sansio_algorithm
+class set_character_set_algo
 {
+    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     character_set charset_;
@@ -41,14 +41,16 @@ class set_character_set_algo : public sansio_algorithm
         auto q = compose_set_names(charset_);
         if (q.has_error())
             return q.error();
-        return write(query_command{q.value()}, seqnum_);
+        return st_->write(query_command{q.value()}, seqnum_);
     }
 
 public:
     set_character_set_algo(connection_state_data& st, set_character_set_algo_params params) noexcept
-        : sansio_algorithm(st), diag_(params.diag), charset_(params.charset)
+        : st_(&st), diag_(params.diag), charset_(params.charset)
     {
     }
+
+    connection_state_data& conn_state() { return *st_; }
 
     next_action resume(error_code ec)
     {
@@ -68,7 +70,7 @@ public:
             BOOST_MYSQL_YIELD(resume_point_, 1, compose_request())
 
             // Read the response
-            BOOST_MYSQL_YIELD(resume_point_, 2, read(seqnum_))
+            BOOST_MYSQL_YIELD(resume_point_, 2, st_->read(seqnum_))
 
             // Verify it's what we expected
             ec = st_->deserialize_ok(*diag_);

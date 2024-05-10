@@ -95,8 +95,8 @@ public:
     {
     }
 
-    const connection_state_data& data() const noexcept { return st_data_; }
-    connection_state_data& data() noexcept { return st_data_; }
+    const connection_state_data& data() const { return st_data_; }
+    connection_state_data& data() { return st_data_; }
 
     template <class AlgoParams>
     any_resumable_ref setup(AlgoParams params)

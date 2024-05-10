@@ -13,22 +13,23 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/read_ok_response.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class ping_algo : public sansio_algorithm
+class ping_algo
 {
     int resume_point_{0};
     read_ok_response_algo read_response_st_;
 
 public:
     ping_algo(connection_state_data& st, ping_algo_params params) noexcept
-        : sansio_algorithm(st), read_response_st_(st, params.diag)
+        : read_response_st_(st, params.diag)
     {
     }
+
+    connection_state_data& conn_state() { return read_response_st_.conn_state(); }
 
     next_action resume(error_code ec)
     {
@@ -42,7 +43,11 @@ public:
             read_response_st_.diag().clear();
 
             // Send the request
-            BOOST_MYSQL_YIELD(resume_point_, 1, write(ping_command(), read_response_st_.sequence_number()))
+            BOOST_MYSQL_YIELD(
+                resume_point_,
+                1,
+                conn_state().write(ping_command(), read_response_st_.sequence_number())
+            )
             if (ec)
                 return ec;
 

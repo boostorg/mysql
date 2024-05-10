@@ -14,7 +14,6 @@
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <cstddef>
 
@@ -36,6 +35,11 @@ inline void valgrind_make_mem_defined(const void* data, std::size_t size)
 inline void valgrind_make_mem_defined(const void*, std::size_t) noexcept {}
 #endif
 
+// InnerAlgo should have
+//   Constructible from connection_state_data& and any other args forwarded by the ctor.
+//   connection_state_data& conn_state();
+//   next_action resume(error_code);
+//   AlgoParams::result_type result() const; // if AlgoParams::result_type is not void
 template <class InnerAlgo>
 class top_level_algo
 {

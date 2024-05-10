@@ -13,14 +13,15 @@
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class read_prepare_statement_response_algo : public sansio_algorithm
+class read_prepare_statement_response_algo
 {
+    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     std::uint8_t sequence_number_{0};
@@ -40,10 +41,11 @@ class read_prepare_statement_response_algo : public sansio_algorithm
 
 public:
     read_prepare_statement_response_algo(connection_state_data& st, diagnostics* diag) noexcept
-        : sansio_algorithm(st), diag_(diag)
+        : st_(&st), diag_(diag)
     {
     }
 
+    connection_state_data& conn_state() { return *st_; }
     std::uint8_t& sequence_number() { return sequence_number_; }
     diagnostics& diag() { return *diag_; }
 
@@ -59,7 +61,7 @@ public:
             // Note: diagnostics should have been cleaned by other algos
 
             // Read response
-            BOOST_MYSQL_YIELD(resume_point_, 1, read(sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 1, st_->read(sequence_number_))
 
             // Process response
             ec = process_response();
@@ -69,7 +71,7 @@ public:
             // Server sends now one packet per parameter and field.
             // We ignore these for now.
             for (; remaining_meta_ > 0u; --remaining_meta_)
-                BOOST_MYSQL_YIELD(resume_point_, 2, read(sequence_number_))
+                BOOST_MYSQL_YIELD(resume_point_, 2, st_->read(sequence_number_))
         }
 
         return next_action();

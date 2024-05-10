@@ -17,24 +17,25 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class quit_connection_algo : public sansio_algorithm
+class quit_connection_algo
 {
+    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     std::uint8_t sequence_number_{0};
 
 public:
     quit_connection_algo(connection_state_data& st, quit_connection_algo_params params) noexcept
-        : sansio_algorithm(st), diag_(params.diag)
+        : st_(&st), diag_(params.diag)
     {
     }
 
+    connection_state_data& conn_state() { return *st_; }
     diagnostics& diag() { return *diag_; }
 
     next_action resume(error_code ec)
@@ -47,7 +48,7 @@ public:
             diag_->clear();
 
             // Send quit message
-            BOOST_MYSQL_YIELD(resume_point_, 1, write(quit_command(), sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 1, st_->write(quit_command(), sequence_number_))
 
             // Mark the session as finished, regardless of the write result
             st_->is_connected = false;

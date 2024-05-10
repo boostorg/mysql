@@ -72,7 +72,7 @@ public:
         offset_ = 0u;
     }
 
-    bool done() const noexcept { return offset_ == get_buffer().size(); }
+    bool done() const { return offset_ == get_buffer().size(); }
 
     span<const std::uint8_t> current_chunk() const
     {

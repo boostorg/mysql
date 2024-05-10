@@ -14,23 +14,24 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/read_prepare_statement_response.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class prepare_statement_algo : public sansio_algorithm
+class prepare_statement_algo
 {
     int resume_point_{0};
-    string_view stmt_sql_;
     read_prepare_statement_response_algo read_response_st_;
+    string_view stmt_sql_;
 
 public:
     prepare_statement_algo(connection_state_data& st, prepare_statement_algo_params params) noexcept
-        : sansio_algorithm(st), stmt_sql_(params.stmt_sql), read_response_st_(st, params.diag)
+        : read_response_st_(st, params.diag), stmt_sql_(params.stmt_sql)
     {
     }
+
+    connection_state_data& conn_state() { return read_response_st_.conn_state(); }
 
     next_action resume(error_code ec)
     {
@@ -47,7 +48,7 @@ public:
             BOOST_MYSQL_YIELD(
                 resume_point_,
                 1,
-                write(prepare_stmt_command{stmt_sql_}, read_response_st_.sequence_number())
+                conn_state().write(prepare_stmt_command{stmt_sql_}, read_response_st_.sequence_number())
             )
             if (ec)
                 return ec;

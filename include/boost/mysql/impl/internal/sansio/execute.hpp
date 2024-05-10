@@ -18,14 +18,13 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/read_execute_response.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class execute_algo : public sansio_algorithm
+class execute_algo
 {
     int resume_point_{0};
     start_execution_algo start_execution_st_;
@@ -36,11 +35,12 @@ class execute_algo : public sansio_algorithm
 
 public:
     execute_algo(connection_state_data& st, execute_algo_params params) noexcept
-        : sansio_algorithm(st),
-          start_execution_st_(st, start_execution_algo_params{params.diag, params.req, params.proc}),
+        : start_execution_st_(st, start_execution_algo_params{params.diag, params.req, params.proc}),
           read_response_st_(st, params.diag, params.proc)
     {
     }
+
+    connection_state_data& conn_state() { return start_execution_st_.conn_state(); }
 
     next_action resume(error_code ec)
     {

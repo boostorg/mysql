@@ -37,8 +37,8 @@ public:
     rows_view result() const
     {
         std::size_t num_rows = read_some_rows_algo::result();
-        std::size_t num_cols = static_cast<const execution_state_impl&>(*params().proc).meta().size();
-        return access::construct<rows_view>(st_->shared_fields.data(), num_rows * num_cols, num_cols);
+        std::size_t num_cols = static_cast<const execution_state_impl&>(processor()).meta().size();
+        return access::construct<rows_view>(conn_state().shared_fields.data(), num_rows * num_cols, num_cols);
     }
 };
 

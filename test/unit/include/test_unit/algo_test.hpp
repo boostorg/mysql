@@ -14,7 +14,6 @@
 #include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <boost/asio/error.hpp>
 #include <boost/config.hpp>
@@ -38,26 +37,24 @@ namespace test {
 class any_algo_ref
 {
     template <class Algo>
-    static detail::next_action do_resume(detail::sansio_algorithm* self, error_code ec)
+    static detail::next_action do_resume(void* self, error_code ec)
     {
         return static_cast<Algo*>(self)->resume(ec);
     }
 
-    using fn_t = detail::next_action (*)(detail::sansio_algorithm*, error_code);
+    using fn_t = detail::next_action (*)(void*, error_code);
 
-    detail::sansio_algorithm* algo_{};
+    void* algo_{};
     fn_t fn_{};
+    detail::connection_state_data* st_;
 
 public:
-    template <
-        class Algo,
-        class = typename std::enable_if<std::is_base_of<detail::sansio_algorithm, Algo>::value>::type>
-    any_algo_ref(Algo& op) noexcept : algo_(&op), fn_(&do_resume<Algo>)
+    template <class Algo, class = typename std::enable_if<!std::is_same<Algo, any_algo_ref>::value>::type>
+    any_algo_ref(Algo& algo) noexcept : algo_(&algo), fn_(&do_resume<Algo>), st_(&algo.conn_state())
     {
     }
 
-    detail::sansio_algorithm& get() noexcept { return *algo_; }
-    const detail::sansio_algorithm& get() const noexcept { return *algo_; }
+    detail::connection_state_data& conn_state() { return *st_; }
     detail::next_action resume(error_code ec) { return fn_(algo_, ec); }
 };
 
@@ -118,9 +115,9 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
                 const auto& step = steps_[i];
                 BOOST_TEST_REQUIRE(act.type() == step.type);
                 if (step.type == detail::next_action::type_t::read)
-                    handle_read(step, algo.get().conn_state());
+                    handle_read(step, algo.conn_state());
                 else if (step.type == detail::next_action::type_t::write)
-                    handle_write(step, algo.get().conn_state());
+                    handle_write(step, algo.conn_state());
                 // Other actions don't need any handling
 
                 act = algo.resume(step.result);

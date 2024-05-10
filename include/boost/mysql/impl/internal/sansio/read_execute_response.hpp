@@ -39,8 +39,8 @@ public:
     {
     }
 
-    diagnostics& diag() { return *read_head_st_.params().diag; }
-    execution_processor& processor() { return *read_head_st_.params().proc; }
+    diagnostics& diag() { return read_head_st_.diag(); }
+    execution_processor& processor() { return read_head_st_.processor(); }
 
     next_action resume(error_code ec)
     {
@@ -54,7 +54,7 @@ public:
             {
                 if (processor().is_reading_head())
                 {
-                    read_head_st_ = read_resultset_head_algo(conn_state(), read_head_st_.params());
+                    read_head_st_.reset();
                     while (!(act = read_head_st_.resume(ec)).is_done())
                         BOOST_MYSQL_YIELD(resume_point_, 1, act)
                     if (act.error())
@@ -62,7 +62,7 @@ public:
                 }
                 else if (processor().is_reading_rows())
                 {
-                    read_some_rows_st_ = read_some_rows_algo(conn_state(), read_some_rows_st_.params());
+                    read_some_rows_st_.reset();
                     while (!(act = read_some_rows_st_.resume(ec)).is_done())
                         BOOST_MYSQL_YIELD(resume_point_, 2, act)
                     if (act.error())
