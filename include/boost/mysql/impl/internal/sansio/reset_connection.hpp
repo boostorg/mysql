@@ -14,20 +14,20 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/compose_set_names.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
-#include <boost/asio/coroutine.hpp>
-
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class reset_connection_algo : public sansio_algorithm, asio::coroutine
+class reset_connection_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     diagnostics* diag_;
     character_set charset_;
     std::uint8_t reset_seqnum_{0};
@@ -35,7 +35,7 @@ class reset_connection_algo : public sansio_algorithm, asio::coroutine
     error_code stored_ec_;
 
     // true if we need to pipeline a SET NAMES with the reset request
-    bool has_charset() const noexcept { return !charset_.name.empty(); }
+    bool has_charset() const { return !charset_.name.empty(); }
 
     next_action compose_request()
     {
@@ -75,16 +75,18 @@ public:
         if (ec)
             return ec;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             diag_->clear();
 
             // Send the request
-            BOOST_ASIO_CORO_YIELD return compose_request();
+            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request())
 
             // Read the reset response
-            BOOST_ASIO_CORO_YIELD return read(reset_seqnum_);
+            BOOST_MYSQL_YIELD(resume_point_, 2, read(reset_seqnum_))
 
             // Verify it's what we expected
             stored_ec_ = st_->deserialize_ok(*diag_);
@@ -100,7 +102,7 @@ public:
             if (has_charset())
             {
                 // We issued a SET NAMES too, read its response
-                BOOST_ASIO_CORO_YIELD return read(set_names_seqnum_);
+                BOOST_MYSQL_YIELD(resume_point_, 3, read(set_names_seqnum_))
 
                 // Verify it's what we expected. Don't overwrite diagnostics if reset failed
                 ec = st_->deserialize_ok(stored_ec_ ? st_->shared_diag : *diag_);

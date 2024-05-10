@@ -14,10 +14,9 @@
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
@@ -60,8 +59,9 @@ inline error_code process_field_definition(
     return proc.on_meta(coldef, diag);
 }
 
-class read_resultset_head_algo : public sansio_algorithm, asio::coroutine
+class read_resultset_head_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     read_resultset_head_algo_params params_;
 
 public:
@@ -70,15 +70,17 @@ public:
     {
     }
 
-    read_resultset_head_algo_params params() const noexcept { return params_; }
+    read_resultset_head_algo_params params() const { return params_; }
 
     next_action resume(error_code ec)
     {
         if (ec)
             return ec;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             params_.diag->clear();
 
@@ -87,7 +89,7 @@ public:
                 return next_action();
 
             // Read the response
-            BOOST_ASIO_CORO_YIELD return read(params_.proc->sequence_number());
+            BOOST_MYSQL_YIELD(resume_point_, 1, read(params_.proc->sequence_number()))
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
@@ -99,7 +101,7 @@ public:
             while (params_.proc->is_reading_meta())
             {
                 // Read a message
-                BOOST_ASIO_CORO_YIELD return read(params_.proc->sequence_number());
+                BOOST_MYSQL_YIELD(resume_point_, 2, read(params_.proc->sequence_number()))
 
                 // Process the metadata packet
                 ec = process_field_definition(*params_.proc, st_->reader.message(), *params_.diag);

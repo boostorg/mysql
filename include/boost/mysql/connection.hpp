@@ -22,9 +22,8 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
-#include <boost/mysql/detail/any_stream.hpp>
-#include <boost/mysql/detail/any_stream_impl.hpp>
 #include <boost/mysql/detail/connection_impl.hpp>
+#include <boost/mysql/detail/engine_stream_adaptor.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/rebind_executor.hpp>
 #include <boost/mysql/detail/socket_stream.hpp>
@@ -33,7 +32,6 @@
 
 #include <boost/assert.hpp>
 
-#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -102,7 +100,7 @@ public:
         class... Args,
         class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
     connection(const buffer_params& buff_params, Args&&... args)
-        : impl_(buff_params.initial_read_size(), detail::make_stream<Stream>(std::forward<Args>(args)...))
+        : impl_(buff_params.initial_read_size(), detail::make_engine<Stream>(std::forward<Args>(args)...))
     {
     }
 
@@ -137,7 +135,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    Stream& stream() noexcept { return detail::cast<Stream>(impl_.stream()); }
+    Stream& stream() noexcept { return detail::stream_from_engine<Stream>(impl_.get_engine()); }
 
     /**
      * \brief Retrieves the underlying Stream object.
@@ -146,7 +144,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    const Stream& stream() const noexcept { return detail::cast<Stream>(impl_.stream()); }
+    const Stream& stream() const noexcept { return detail::stream_from_engine<Stream>(impl_.get_engine()); }
 
     /**
      * \brief Returns whether the connection negotiated the use of SSL or not.

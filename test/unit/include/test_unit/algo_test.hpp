@@ -11,8 +11,9 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/mysql/detail/next_action.hpp>
+
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 #include <boost/asio/error.hpp>
@@ -32,6 +33,33 @@
 namespace boost {
 namespace mysql {
 namespace test {
+
+// A type-erased reference to an algorithm
+class any_algo_ref
+{
+    template <class Algo>
+    static detail::next_action do_resume(detail::sansio_algorithm* self, error_code ec)
+    {
+        return static_cast<Algo*>(self)->resume(ec);
+    }
+
+    using fn_t = detail::next_action (*)(detail::sansio_algorithm*, error_code);
+
+    detail::sansio_algorithm* algo_{};
+    fn_t fn_{};
+
+public:
+    template <
+        class Algo,
+        class = typename std::enable_if<std::is_base_of<detail::sansio_algorithm, Algo>::value>::type>
+    any_algo_ref(Algo& op) noexcept : algo_(&op), fn_(&do_resume<Algo>)
+    {
+    }
+
+    detail::sansio_algorithm& get() noexcept { return *algo_; }
+    const detail::sansio_algorithm& get() const noexcept { return *algo_; }
+    detail::next_action resume(error_code ec) { return fn_(algo_, ec); }
+};
 
 class BOOST_ATTRIBUTE_NODISCARD algo_test
 {
@@ -75,7 +103,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         return *this;
     }
 
-    detail::next_action run_algo_until_step(detail::any_algo_ref algo, std::size_t num_steps_to_run)
+    detail::next_action run_algo_until_step(any_algo_ref algo, std::size_t num_steps_to_run)
     {
         assert(num_steps_to_run <= num_steps());
 
@@ -104,7 +132,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
 
     std::size_t num_steps() const noexcept { return steps_.size(); }
 
-    void check_impl(detail::any_algo_ref algo, error_code expected_ec = {})
+    void check_impl(any_algo_ref algo, error_code expected_ec = {})
     {
         // Run the op until completion
         auto act = run_algo_until_step(algo, steps_.size());
@@ -114,7 +142,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         BOOST_TEST(act.error() == expected_ec);
     }
 
-    void check_network_errors_impl(detail::any_algo_ref algo, std::size_t step_number)
+    void check_network_errors_impl(any_algo_ref algo, std::size_t step_number)
     {
         assert(step_number < num_steps());
 

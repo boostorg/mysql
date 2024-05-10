@@ -30,7 +30,7 @@ add_executable(
     test/sansio/read_buffer.cpp
     test/sansio/message_writer.cpp
     test/sansio/message_reader.cpp
-    test/sansio/algo_runner.cpp
+    test/sansio/top_level_algo.cpp
 
     test/sansio/read_resultset_head.cpp
     test/sansio/start_execution.cpp
@@ -41,7 +41,6 @@ add_executable(
     test/sansio/set_character_set.cpp
     test/sansio/ping.cpp
     test/sansio/reset_connection.cpp
-    test/network_algorithms/run_algo_impl.cpp
 
     test/execution_processor/execution_processor.cpp
     test/execution_processor/execution_state_impl.cpp
@@ -63,6 +62,7 @@ add_executable(
     test/detail/socket_stream.cpp
     test/detail/connect_params_helpers.cpp
     test/detail/output_string.cpp
+    test/detail/engine_impl.cpp
 
     test/detail/typing/meta_check_context.cpp
     test/detail/typing/pos_map.cpp

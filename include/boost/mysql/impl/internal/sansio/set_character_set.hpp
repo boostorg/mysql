@@ -12,13 +12,16 @@
 #include <boost/mysql/diagnostics.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/compose_set_names.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
-#include <boost/asio/coroutine.hpp>
+#include <boost/system/result.hpp>
 
 #include <cstdint>
 
@@ -26,8 +29,9 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class set_character_set_algo : public sansio_algorithm, asio::coroutine
+class set_character_set_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     diagnostics* diag_;
     character_set charset_;
     std::uint8_t seqnum_{0};
@@ -53,16 +57,18 @@ public:
 
         // SET NAMES never returns rows. Using execute requires us to allocate
         // a results object, which we can avoid by simply sending the query and reading the OK response.
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Setup
             diag_->clear();
 
             // Send the execution request
-            BOOST_ASIO_CORO_YIELD return compose_request();
+            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request())
 
             // Read the response
-            BOOST_ASIO_CORO_YIELD return read(seqnum_);
+            BOOST_MYSQL_YIELD(resume_point_, 2, read(seqnum_))
 
             // Verify it's what we expected
             ec = st_->deserialize_ok(*diag_);

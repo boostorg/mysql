@@ -5,14 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_NEXT_ACTION_HPP
-#define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_NEXT_ACTION_HPP
+#ifndef BOOST_MYSQL_DETAIL_NEXT_ACTION_HPP
+#define BOOST_MYSQL_DETAIL_NEXT_ACTION_HPP
 
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
+#include <boost/assert.hpp>
+#include <boost/core/span.hpp>
 
-#include <cstddef>
 #include <cstdint>
 
 namespace boost {
