@@ -9,19 +9,19 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CLOSE_CONNECTION_HPP
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/quit_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class close_connection_algo : public sansio_algorithm, asio::coroutine
+class close_connection_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     quit_connection_algo quit_;
     error_code stored_ec_;
 
@@ -35,8 +35,10 @@ public:
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             quit_.diag().clear();
 
@@ -46,11 +48,11 @@ public:
 
             // Attempt quit
             while (!(act = quit_.resume(ec)).is_done())
-                BOOST_ASIO_CORO_YIELD return act;
+                BOOST_MYSQL_YIELD(resume_point_, 1, act)
             stored_ec_ = act.error();
 
             // Close the transport
-            BOOST_ASIO_CORO_YIELD return next_action::close();
+            BOOST_MYSQL_YIELD(resume_point_, 2, next_action::close())
 
             // If quit resulted in an error, keep that error.
             // Otherwise, return any error derived from close

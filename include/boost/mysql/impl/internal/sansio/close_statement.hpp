@@ -13,21 +13,21 @@
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class close_statement_algo : public sansio_algorithm, asio::coroutine
+class close_statement_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     diagnostics* diag_;
     std::uint32_t stmt_id_;
     std::uint8_t close_seqnum_{0};
@@ -44,8 +44,10 @@ public:
         if (ec)
             return ec;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             diag_->clear();
 
@@ -59,10 +61,10 @@ public:
                 ping_command{},
                 ping_seqnum_
             );
-            BOOST_ASIO_CORO_YIELD return next_action::write({});
+            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
 
             // Read ping response
-            BOOST_ASIO_CORO_YIELD return read(ping_seqnum_);
+            BOOST_MYSQL_YIELD(resume_point_, 2, read(ping_seqnum_))
 
             // Process the OK packet
             return st_->deserialize_ok(*diag_);

@@ -14,8 +14,8 @@
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/any_resumable_ref.hpp>
 
-#include <boost/mysql/impl/internal/sansio/algo_runner.hpp>
 #include <boost/mysql/impl/internal/sansio/close_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/close_statement.hpp>
 #include <boost/mysql/impl/internal/sansio/connect.hpp>
@@ -31,6 +31,7 @@
 #include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
+#include <boost/mysql/impl/internal/sansio/top_level_algo.hpp>
 
 #include <boost/asio/coroutine.hpp>
 #include <boost/variant2/variant.hpp>
@@ -62,7 +63,11 @@ template <class AlgoParams> using get_algo_t = typename get_algo<AlgoParams>::ty
 
 class connection_state
 {
-    using any_algo = variant2::variant<
+    // Helper
+    template <class... Algos>
+    using make_any_algo_type = variant2::variant<top_level_algo<Algos>...>;
+
+    using any_algo = make_any_algo_type<
         connect_algo,
         handshake_algo,
         execute_algo,
@@ -87,7 +92,7 @@ public:
     // the need for a special null algo
     connection_state(std::size_t read_buffer_size, bool transport_supports_ssl)
         : st_data_(read_buffer_size, transport_supports_ssl),
-          algo_(ping_algo(st_data_, {&st_data_.shared_diag}))
+          algo_(top_level_algo<ping_algo>(st_data_, ping_algo_params{&st_data_.shared_diag}))
     {
     }
 
@@ -95,22 +100,16 @@ public:
     connection_state_data& data() noexcept { return st_data_; }
 
     template <class AlgoParams>
-    any_algo_ref setup(AlgoParams params)
+    any_resumable_ref setup(AlgoParams params)
     {
-        return algo_.emplace<get_algo_t<AlgoParams>>(st_data_, params);
+        return any_resumable_ref(algo_.emplace<top_level_algo<get_algo_t<AlgoParams>>>(st_data_, params));
     }
 
     template <typename AlgoParams>
-    void result(typename std::enable_if<has_void_result<AlgoParams>()>::type* = nullptr) const noexcept
+    typename AlgoParams::result_type result() const
     {
-    }
-
-    template <typename AlgoParams>
-    typename AlgoParams::result_type result(
-        typename std::enable_if<!has_void_result<AlgoParams>()>::type* = nullptr
-    ) const
-    {
-        return variant2::get<get_algo_t<AlgoParams>>(algo_).result();
+        static_assert(!has_void_result<AlgoParams>(), "Internal error");
+        return variant2::get<top_level_algo<get_algo_t<AlgoParams>>>(algo_).inner_algo().result();
     }
 };
 

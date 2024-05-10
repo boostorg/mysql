@@ -10,13 +10,13 @@
 
 #include <boost/mysql/any_address.hpp>
 
+#include <boost/mysql/detail/next_action.hpp>
 #include <boost/mysql/detail/results_iterator.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/rows_iterator.hpp>
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 
 #include <boost/test/unit_test.hpp>
 
