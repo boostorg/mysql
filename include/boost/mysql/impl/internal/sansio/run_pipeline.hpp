@@ -16,15 +16,14 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 #include <boost/mysql/impl/internal/sansio/read_execute_response.hpp>
 #include <boost/mysql/impl/internal/sansio/read_ok_response.hpp>
 #include <boost/mysql/impl/internal/sansio/read_prepare_statement_response.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
-#include <boost/asio/coroutine.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>
@@ -49,7 +48,7 @@ struct pipeline_read_resumer
     }
 };
 
-class run_pipeline_algo : public sansio_algorithm, asio::coroutine
+class run_pipeline_algo : public sansio_algorithm
 {
     using any_read_algo = variant2::variant<
         no_response_algo,
@@ -57,6 +56,7 @@ class run_pipeline_algo : public sansio_algorithm, asio::coroutine
         read_prepare_statement_response_algo,
         read_ok_response_algo>;
 
+    int resume_point_{0};
     diagnostics* diag_;
     pipeline* pipe_;
     std::size_t current_step_index_{0};
@@ -128,15 +128,17 @@ public:
         auto& pipe_impl = access::get_impl(*pipe_);
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear previous state
             diag_->clear();
             pipe_impl.reset_results();
 
             // Write the request
             st_->writer.prepare_pipelined_write(pipe_impl.buffer_);
-            BOOST_ASIO_CORO_YIELD return next_action::write({});
+            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
 
             // If writing the request failed, fail all the steps and return
             if (ec)
@@ -154,7 +156,7 @@ public:
                 // Run it until completion
                 ec.clear();
                 while (!(act = resume_read_algo(ec)).is_done())
-                    BOOST_ASIO_CORO_YIELD return act;
+                    BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
                 // TODO: ec_ is a little bit bug-prone
                 if (act.error())

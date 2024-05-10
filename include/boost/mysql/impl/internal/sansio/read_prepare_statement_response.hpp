@@ -19,8 +19,9 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class read_prepare_statement_response_algo : public sansio_algorithm, asio::coroutine
+class read_prepare_statement_response_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     diagnostics* diag_;
     std::uint8_t sequence_number_{0};
     unsigned remaining_meta_{0};
@@ -51,12 +52,14 @@ public:
         if (ec)
             return ec;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Note: diagnostics should have been cleaned by other algos
 
             // Read response
-            BOOST_ASIO_CORO_YIELD return read(sequence_number_);
+            BOOST_MYSQL_YIELD(resume_point_, 1, read(sequence_number_))
 
             // Process response
             ec = process_response();
@@ -66,13 +69,13 @@ public:
             // Server sends now one packet per parameter and field.
             // We ignore these for now.
             for (; remaining_meta_ > 0u; --remaining_meta_)
-                BOOST_ASIO_CORO_YIELD return read(sequence_number_);
+                BOOST_MYSQL_YIELD(resume_point_, 2, read(sequence_number_))
         }
 
         return next_action();
     }
 
-    statement result() const noexcept { return res_; }
+    statement result() const { return res_; }
 };
 
 }  // namespace detail

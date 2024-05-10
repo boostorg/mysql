@@ -33,7 +33,6 @@
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
 #include <boost/mysql/impl/internal/sansio/top_level_algo.hpp>
 
-#include <boost/asio/coroutine.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>

@@ -34,7 +34,7 @@ public:
     {
     }
 
-    rows_view result() const noexcept
+    rows_view result() const
     {
         std::size_t num_rows = read_some_rows_algo::result();
         std::size_t num_cols = static_cast<const execution_state_impl&>(*params().proc).meta().size();

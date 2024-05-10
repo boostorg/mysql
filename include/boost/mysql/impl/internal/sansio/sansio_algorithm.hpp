@@ -41,8 +41,8 @@ protected:
     sansio_algorithm(connection_state_data& st) noexcept : st_(&st) {}
 
 public:
-    const connection_state_data& conn_state() const noexcept { return *st_; }
-    connection_state_data& conn_state() noexcept { return *st_; }
+    const connection_state_data& conn_state() const { return *st_; }
+    connection_state_data& conn_state() { return *st_; }
 };
 
 }  // namespace detail

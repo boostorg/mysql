@@ -16,14 +16,13 @@
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 #include <boost/mysql/impl/internal/sansio/read_some_rows.hpp>
 
-#include <boost/asio/coroutine.hpp>
-
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class read_execute_response_algo : asio::coroutine
+class read_execute_response_algo
 {
+    int resume_point_{0};
     read_resultset_head_algo read_head_st_;
     read_some_rows_algo read_some_rows_st_;
 
@@ -40,22 +39,24 @@ public:
     {
     }
 
-    diagnostics& diag() noexcept { return *read_head_st_.params().diag; }
-    execution_processor& processor() noexcept { return *read_head_st_.params().proc; }
+    diagnostics& diag() { return *read_head_st_.params().diag; }
+    execution_processor& processor() { return *read_head_st_.params().proc; }
 
     next_action resume(error_code ec)
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             while (!processor().is_complete())
             {
                 if (processor().is_reading_head())
                 {
                     read_head_st_ = read_resultset_head_algo(conn_state(), read_head_st_.params());
                     while (!(act = read_head_st_.resume(ec)).is_done())
-                        BOOST_ASIO_CORO_YIELD return act;
+                        BOOST_MYSQL_YIELD(resume_point_, 1, act)
                     if (act.error())
                         return act;
                 }
@@ -63,7 +64,7 @@ public:
                 {
                     read_some_rows_st_ = read_some_rows_algo(conn_state(), read_some_rows_st_.params());
                     while (!(act = read_some_rows_st_.resume(ec)).is_done())
-                        BOOST_ASIO_CORO_YIELD return act;
+                        BOOST_MYSQL_YIELD(resume_point_, 2, act)
                     if (act.error())
                         return act;
                 }

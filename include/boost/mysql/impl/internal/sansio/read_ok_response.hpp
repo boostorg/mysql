@@ -10,6 +10,8 @@
 
 #include <boost/mysql/diagnostics.hpp>
 
+#include <boost/mysql/detail/next_action.hpp>
+
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
@@ -19,9 +21,9 @@ namespace detail {
 
 class read_ok_response_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     diagnostics* diag_;
     std::uint8_t seqnum_{0};
-    bool started_{false};
 
 public:
     read_ok_response_algo(connection_state_data& st, diagnostics* diag) noexcept
@@ -34,20 +36,19 @@ public:
 
     next_action resume(error_code ec)
     {
-        if (!started_)
+        switch (resume_point_)
         {
-            started_ = true;
+        case 0:
 
             // Issue a read
-            return read(seqnum_);
-        }
-        else
-        {
-            // Process the OK packet
+            BOOST_MYSQL_YIELD(resume_point_, 1, read(seqnum_))
             if (ec)
                 return ec;
+
+            // Process the OK packet
             return st_->deserialize_ok(*diag_);
         }
+        return next_action();
     }
 };
 
