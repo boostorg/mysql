@@ -142,10 +142,7 @@ struct close_connection_algo_params
 };
 
 template <class AlgoParams>
-constexpr bool has_void_result() noexcept
-{
-    return std::is_same<typename AlgoParams::result_type, void>::value;
-}
+using has_void_result = std::is_same<typename AlgoParams::result_type, void>;
 
 }  // namespace detail
 }  // namespace mysql

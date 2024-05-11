@@ -8,17 +8,17 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/sansio/algo_runner.hpp>
+#include <boost/mysql/detail/next_action.hpp>
+
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
+#include <boost/mysql/impl/internal/sansio/top_level_algo.hpp>
 
 #include <boost/asio/coroutine.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <cstddef>
 #include <cstdint>
 #include <cstring>
 
@@ -79,11 +79,10 @@ BOOST_AUTO_TEST_CASE(read_cached)
     };
 
     connection_state_data st(512);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::read);
     BOOST_TEST(act.read_args().buffer.data() == st.reader.buffer().data());
     BOOST_TEST(act.read_args().buffer.size() == st.reader.buffer().size());
@@ -92,7 +91,7 @@ BOOST_AUTO_TEST_CASE(read_cached)
     // Acknowledge the read request
     auto bytes = concat_copy(create_frame(0, msg1), create_frame(1, msg2));
     transfer(act.read_args().buffer, bytes);
-    act = runner.resume(error_code(), bytes.size());
+    act = algo.resume(error_code(), bytes.size());
 
     // The second read request is acknowledged directly, since it has cached data
     BOOST_TEST(act.success());
@@ -122,11 +121,10 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a read request and resizes the buffer aprorpiately
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::read);
     BOOST_TEST(act.read_args().buffer.data() == st.reader.buffer().data());
     BOOST_TEST(act.read_args().buffer.size() == st.reader.buffer().size());
@@ -135,19 +133,19 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
     // Acknowledge the read request. There is space for the header, at least
     auto bytes = create_frame(0, msg2);
     transfer(act.read_args().buffer, span<const std::uint8_t>(bytes.data(), 4));
-    act = runner.resume(error_code(), 4);
+    act = algo.resume(error_code(), 4);
 
     // The read request wasn't completely satisified, so more bytes are asked for
     BOOST_TEST(act.type() == next_action::type_t::read);
 
     // Read part of the body
     transfer(act.read_args().buffer, span<const std::uint8_t>(bytes.data() + 4, 10));
-    act = runner.resume(error_code(), 10);
+    act = algo.resume(error_code(), 10);
     BOOST_TEST(act.type() == next_action::type_t::read);
 
     // Complete
     transfer(act.read_args().buffer, span<const std::uint8_t>(bytes.data() + 14, bytes.size() - 14));
-    act = runner.resume(error_code(), bytes.size() - 14);
+    act = algo.resume(error_code(), bytes.size() - 14);
     BOOST_TEST(act.success());
 }
 
@@ -173,17 +171,16 @@ BOOST_AUTO_TEST_CASE(read_parsing_error)
     };
 
     connection_state_data st(512);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::read);
 
     // Acknowledge the read request. This causes a seqnum mismatch that is transmitted to the op
     auto bytes = create_frame(0, msg1);
     transfer(act.read_args().buffer, bytes);
-    act = runner.resume(error_code(), bytes.size());
+    act = algo.resume(error_code(), bytes.size());
 
     // Op done
     BOOST_TEST(act.success());
@@ -211,15 +208,14 @@ BOOST_AUTO_TEST_CASE(read_io_error)
     };
 
     connection_state_data st(512);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::read);
 
     // Read request fails with an error
-    act = runner.resume(client_errc::wrong_num_params, 0);
+    act = algo.resume(client_errc::wrong_num_params, 0);
 
     // Op done
     BOOST_TEST(act.success());
@@ -241,12 +237,11 @@ BOOST_AUTO_TEST_CASE(read_ssl_active)
     };
 
     connection_state_data st(512);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
     st.ssl = ssl_state::active;
 
     // Yielding a read with ssl active sets the use_ssl flag
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::read);
     BOOST_TEST(act.read_args().buffer.data() == st.reader.buffer().data());
     BOOST_TEST(act.read_args().buffer.size() == st.reader.buffer().size());
@@ -276,22 +271,21 @@ BOOST_AUTO_TEST_CASE(write_short)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a write request
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::write);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, create_frame(0, msg1));
     BOOST_TEST(!act.write_args().use_ssl);
 
     // Acknowledge part of the write. This will ask for more bytes to be written
-    act = runner.resume(error_code(), 4);
+    act = algo.resume(error_code(), 4);
     BOOST_TEST(act.type() == next_action::type_t::write);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, msg1);
 
     // Complete
-    act = runner.resume(error_code(), 3);
+    act = algo.resume(error_code(), 3);
     BOOST_TEST(act.success());
 }
 
@@ -317,13 +311,12 @@ BOOST_AUTO_TEST_CASE(write_io_error)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a write request. Fail it
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::write);
-    act = runner.resume(client_errc::wrong_num_params, 0);
+    act = algo.resume(client_errc::wrong_num_params, 0);
 
     // Done
     BOOST_TEST(act.success());
@@ -345,12 +338,11 @@ BOOST_AUTO_TEST_CASE(write_ssl_active)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
     st.ssl = ssl_state::active;
 
     // Yielding a write request when ssl_active() returns an action with the flag set
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::write);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, create_frame(0, msg1));
     BOOST_TEST(act.write_args().use_ssl);
@@ -377,15 +369,14 @@ BOOST_AUTO_TEST_CASE(ssl_handshake)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a SSL handshake request. These are always returned
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::ssl_handshake);
 
     // Fail the op
-    act = runner.resume(client_errc::wrong_num_params, 0);
+    act = algo.resume(client_errc::wrong_num_params, 0);
 
     // Done
     BOOST_TEST(act.success());
@@ -412,15 +403,14 @@ BOOST_AUTO_TEST_CASE(ssl_shutdown)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a SSL handshake request. These are always returned
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::ssl_shutdown);
 
     // Fail the op
-    act = runner.resume(client_errc::wrong_num_params, 0);
+    act = algo.resume(client_errc::wrong_num_params, 0);
 
     // Done
     BOOST_TEST(act.success());
@@ -447,15 +437,14 @@ BOOST_AUTO_TEST_CASE(connect)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a connect request. These are always returned
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::connect);
 
     // Fail the op
-    act = runner.resume(client_errc::wrong_num_params, 0);
+    act = algo.resume(client_errc::wrong_num_params, 0);
 
     // Done
     BOOST_TEST(act.success());
@@ -482,15 +471,14 @@ BOOST_AUTO_TEST_CASE(close)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields a close request. These are always returned
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action::type_t::close);
 
     // Fail the op
-    act = runner.resume(client_errc::wrong_num_params, 0);
+    act = algo.resume(client_errc::wrong_num_params, 0);
 
     // Done
     BOOST_TEST(act.success());
@@ -517,11 +505,10 @@ BOOST_AUTO_TEST_CASE(immediate_completion)
     };
 
     connection_state_data st(0);
-    mock_algo algo(st);
-    algo_runner runner(algo);
+    top_level_algo<mock_algo> algo(st);
 
     // Initial run yields completion
-    auto act = runner.resume(error_code(), 0);
+    auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.success());
 }
 

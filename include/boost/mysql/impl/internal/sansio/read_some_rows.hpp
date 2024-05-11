@@ -15,10 +15,10 @@
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 #include <cstddef>
 
@@ -26,8 +26,9 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class read_some_rows_algo : public sansio_algorithm, asio::coroutine
+class read_some_rows_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     read_some_rows_algo_params params_;
     std::size_t rows_read_{0};
 
@@ -87,7 +88,7 @@ class read_some_rows_algo : public sansio_algorithm, asio::coroutine
         return {error_code(), read_rows};
     }
 
-    execution_processor& processor() noexcept { return *params_.proc; }
+    execution_processor& processor() { return *params_.proc; }
 
 public:
     read_some_rows_algo(connection_state_data& st, read_some_rows_algo_params params) noexcept
@@ -95,15 +96,17 @@ public:
     {
     }
 
-    read_some_rows_algo_params params() const noexcept { return params_; }
+    read_some_rows_algo_params params() const { return params_; }
 
     next_action resume(error_code ec)
     {
         if (ec)
             return ec;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             params_.diag->clear();
 
@@ -117,7 +120,7 @@ public:
 
             // Read at least one message. Keep parsing state, in case a previous message
             // was parsed partially
-            BOOST_ASIO_CORO_YIELD return read(processor().sequence_number(), true);
+            BOOST_MYSQL_YIELD(resume_point_, 1, read(processor().sequence_number(), true))
 
             // Process messages
             std::tie(ec, rows_read_) = process_some_rows(*st_, processor(), params_.output, *params_.diag);

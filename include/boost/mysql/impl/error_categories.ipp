@@ -22,8 +22,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_MYSQL_STATIC_OR_INLINE
-const char* error_to_string(client_errc error) noexcept
+inline const char* error_to_string(client_errc error)
 {
     switch (error)
     {
@@ -84,8 +83,7 @@ const char* error_to_string(client_errc error) noexcept
     }
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-const char* error_to_string(common_server_errc v) noexcept
+inline const char* error_to_string(common_server_errc v)
 {
     const char* res = detail::common_error_to_string(static_cast<int>(v));
     return res ? res : "<unknown server error>";

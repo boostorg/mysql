@@ -12,14 +12,18 @@
 
 #include <boost/mysql/any_connection.hpp>
 
+#include <boost/mysql/detail/engine.hpp>
+#include <boost/mysql/detail/engine_impl.hpp>
+
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
-std::unique_ptr<boost::mysql::detail::any_stream> boost::mysql::any_connection::create_stream(
+std::unique_ptr<boost::mysql::detail::engine> boost::mysql::any_connection::create_engine(
     asio::any_io_executor ex,
     asio::ssl::context* ctx
 )
 {
-    return std::unique_ptr<boost::mysql::detail::any_stream>(new detail::variant_stream(std::move(ex), ctx));
+    return std::unique_ptr<detail::engine>(new detail::engine_impl<detail::variant_stream>(std::move(ex), ctx)
+    );
 }
 
 #endif

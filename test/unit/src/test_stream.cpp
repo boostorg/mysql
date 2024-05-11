@@ -9,8 +9,6 @@
 
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/any_stream.hpp>
-
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
@@ -192,5 +190,3 @@ test_stream& boost::mysql::test::test_stream::add_break(std::size_t byte_num)
     read_break_offsets_.insert(byte_num);
     return *this;
 }
-
-template class boost::mysql::detail::any_stream_impl<boost::mysql::test::test_stream>;

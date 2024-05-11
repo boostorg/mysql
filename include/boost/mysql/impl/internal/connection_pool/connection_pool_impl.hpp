@@ -20,12 +20,12 @@
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
 #include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
+#include <boost/mysql/impl/internal/coroutine.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/compose.hpp>
-#include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
@@ -98,8 +98,9 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         }
     }
 
-    struct run_op : asio::coroutine
+    struct run_op
     {
+        int resume_point_{0};
         std::shared_ptr<this_type> obj_;
 
         run_op(std::shared_ptr<this_type> obj) noexcept : obj_(std::move(obj)) {}
@@ -109,11 +110,12 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         {
             // TODO: per-operation cancellation here doesn't do the right thing
             boost::ignore_unused(ec);
-            BOOST_ASIO_CORO_REENTER(*this)
+            switch (resume_point_)
             {
+            case 0:
+
                 // Ensure we run within the pool executor (possibly a strand)
-                BOOST_ASIO_CORO_YIELD
-                asio::dispatch(obj_->ex_, std::move(self));
+                BOOST_MYSQL_YIELD(resume_point_, 1, asio::dispatch(obj_->ex_, std::move(self)))
 
                 // Check that we're not running and set the state adequately
                 BOOST_ASSERT(obj_->state_ == state_t::initial);
@@ -124,14 +126,12 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                     obj_->create_connection();
 
                 // Wait for the cancel notification to arrive.
-                BOOST_ASIO_CORO_YIELD
-                obj_->cancel_timer_.async_wait(std::move(self));
+                BOOST_MYSQL_YIELD(resume_point_, 2, obj_->cancel_timer_.async_wait(std::move(self)))
 
                 // If the token passed to async_run had a bound executor,
                 // the handler will be invoked within that executor.
                 // Dispatch so we run within the pool's executor.
-                BOOST_ASIO_CORO_YIELD
-                asio::dispatch(obj_->ex_, std::move(self));
+                BOOST_MYSQL_YIELD(resume_point_, 3, asio::dispatch(obj_->ex_, std::move(self)))
 
                 // Deliver the cancel notification to all other tasks
                 obj_->state_ = state_t::cancelled;
@@ -140,8 +140,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 obj_->shared_st_.pending_requests.notify_all();
 
                 // Wait for all connection tasks to exit
-                BOOST_ASIO_CORO_YIELD
-                obj_->wait_gp_.async_wait(std::move(self));
+                BOOST_MYSQL_YIELD(resume_point_, 4, obj_->wait_gp_.async_wait(std::move(self)))
 
                 // Done
                 obj_.reset();
@@ -150,8 +149,9 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         }
     };
 
-    struct get_connection_op : asio::coroutine
+    struct get_connection_op
     {
+        int resume_point_{0};
         std::shared_ptr<this_type> obj_;
         std::chrono::steady_clock::time_point timeout_;
         diagnostics* diag_;
@@ -186,15 +186,16 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
-            BOOST_ASIO_CORO_REENTER(*this)
+            switch (resume_point_)
             {
+            case 0:
+
                 // Clear diagnostics
                 if (diag_)
                     diag_->clear();
 
                 // Ensure we run within the pool's executor (or the handler's) (possibly a strand)
-                BOOST_ASIO_CORO_YIELD
-                asio::post(obj_->ex_, std::move(self));
+                BOOST_MYSQL_YIELD(resume_point_, 1, asio::post(obj_->ex_, std::move(self)))
 
                 // This loop guards us against possible race conditions
                 // between waiting on the pending request timer and getting the connection
@@ -239,13 +240,13 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
 
                     // Wait to be notified, or until a timeout happens
                     timer_->timer.expires_at(timeout_);
-                    BOOST_ASIO_CORO_YIELD timer_->timer.async_wait(std::move(self));
+                    BOOST_MYSQL_YIELD(resume_point_, 2, timer_->timer.async_wait(std::move(self)))
                     stored_ec_ = ec;
 
                     // If the token passed to async_run had a bound executor,
                     // the handler will be invoked within that executor.
                     // Dispatch so we run within the pool's executor.
-                    BOOST_ASIO_CORO_YIELD asio::dispatch(obj_->ex_, std::move(self));
+                    BOOST_MYSQL_YIELD(resume_point_, 3, asio::dispatch(obj_->ex_, std::move(self)))
 
                     if (!stored_ec_)
                     {

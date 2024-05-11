@@ -15,18 +15,18 @@
 #include <boost/mysql/mysql_collations.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 #include <boost/mysql/detail/ok_view.hpp>
 
 #include <boost/mysql/impl/internal/auth/auth.hpp>
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
 #include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
-#include <boost/asio/coroutine.hpp>
-
-#include <cstddef>
 #include <cstdint>
 
 namespace boost {
@@ -65,8 +65,9 @@ inline error_code process_capabilities(
     return error_code();
 }
 
-class handshake_algo : public sansio_algorithm, asio::coroutine
+class handshake_algo : public sansio_algorithm
 {
+    int resume_point_{0};
     diagnostics* diag_;
     handshake_params hparams_;
     auth_response auth_resp_;
@@ -127,7 +128,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
     {
         return ssl_request{
             st_->current_capabilities,
-            static_cast<std::uint32_t>(MAX_PACKET_SIZE),
+            static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
         };
     }
@@ -136,7 +137,7 @@ class handshake_algo : public sansio_algorithm, asio::coroutine
     {
         return login_request{
             st_->current_capabilities,
-            static_cast<std::uint32_t>(MAX_PACKET_SIZE),
+            static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
             hparams_.username(),
             auth_resp_.data,
@@ -217,14 +218,16 @@ public:
 
         handhake_server_response resp(error_code{});
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Setup
             diag_->clear();
             st_->reset();
 
             // Read server greeting
-            BOOST_ASIO_CORO_YIELD return read(sequence_number_);
+            BOOST_MYSQL_YIELD(resume_point_, 1, read(sequence_number_))
 
             // Process server greeting
             ec = process_handshake(st_->reader.message());
@@ -235,23 +238,23 @@ public:
             if (use_ssl())
             {
                 // Send SSL request
-                BOOST_ASIO_CORO_YIELD return write(compose_ssl_request(), sequence_number_);
+                BOOST_MYSQL_YIELD(resume_point_, 2, write(compose_ssl_request(), sequence_number_))
 
                 // SSL handshake
-                BOOST_ASIO_CORO_YIELD return next_action::ssl_handshake();
+                BOOST_MYSQL_YIELD(resume_point_, 3, next_action::ssl_handshake())
 
                 // Mark the connection as using ssl
                 st_->ssl = ssl_state::active;
             }
 
             // Compose and send handshake response
-            BOOST_ASIO_CORO_YIELD return write(compose_login_request(), sequence_number_);
+            BOOST_MYSQL_YIELD(resume_point_, 4, write(compose_login_request(), sequence_number_))
 
             // Auth message exchange
             while (true)
             {
                 // Receive response
-                BOOST_ASIO_CORO_YIELD return read(sequence_number_);
+                BOOST_MYSQL_YIELD(resume_point_, 5, read(sequence_number_))
 
                 // Process it
                 resp = deserialize_handshake_server_response(st_->reader.message(), st_->flavor, *diag_);
@@ -273,12 +276,16 @@ public:
                     if (ec)
                         return ec;
 
-                    BOOST_ASIO_CORO_YIELD return write(compose_auth_switch_response(), sequence_number_);
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        6,
+                        write(compose_auth_switch_response(), sequence_number_)
+                    )
                 }
                 else if (resp.type == handhake_server_response::type_t::ok_follows)
                 {
                     // The next packet must be an OK packet. Read it
-                    BOOST_ASIO_CORO_YIELD return read(sequence_number_);
+                    BOOST_MYSQL_YIELD(resume_point_, 7, read(sequence_number_))
 
                     // Process it
                     // Regardless of whether we succeeded or not, we're done
@@ -294,7 +301,11 @@ public:
                         return ec;
 
                     // Write response
-                    BOOST_ASIO_CORO_YIELD return write(compose_auth_switch_response(), sequence_number_);
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        8,
+                        write(compose_auth_switch_response(), sequence_number_)
+                    )
                 }
             }
         }

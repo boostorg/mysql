@@ -10,33 +10,26 @@
 
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/config.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/span_string.hpp>
 
 #include <cstdint>
 #include <vector>
 
-#include "test_common/buffer_concat.hpp"
 #include "test_unit/create_frame.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-// GCC raises a spurious warning here
-#if BOOST_GCC >= 110000
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-overread"
-#endif
 inline std::vector<std::uint8_t> create_query_body(string_view sql)
 {
-    return buffer_builder()
-        .add({0x03})
-        .add({reinterpret_cast<const std::uint8_t*>(sql.data()), sql.size()})
-        .build();
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, detail::disable_framing);
+    ctx.add(0x03);
+    ctx.add(detail::to_span(sql));
+    return buff;
 }
-#if BOOST_GCC >= 110000
-#pragma GCC diagnostic pop
-#endif
 
 inline std::vector<std::uint8_t> create_query_frame(std::uint8_t seqnum, string_view sql)
 {

@@ -13,7 +13,7 @@
 #include <boost/mysql/detail/flags.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/endian/conversion.hpp>

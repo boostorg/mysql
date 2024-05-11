@@ -8,12 +8,11 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_MOCK_MESSAGE_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_MOCK_MESSAGE_HPP
 
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+
 #include <boost/core/span.hpp>
 
-#include <cassert>
 #include <cstdint>
-#include <cstring>
-#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -23,13 +22,7 @@ struct mock_message
 {
     span<const std::uint8_t> data;
 
-    std::size_t get_size() const noexcept { return data.size(); }
-    void serialize(span<std::uint8_t> to) const noexcept
-    {
-        assert(to.size() >= data.size());
-        if (!data.empty())
-            std::memcpy(to.data(), data.data(), data.size());
-    }
+    void serialize(detail::serialization_context& ctx) const { ctx.add(data); }
 };
 
 }  // namespace test

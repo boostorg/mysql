@@ -11,11 +11,11 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/impl/internal/protocol/constants.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/coroutine.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 #include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
 
-#include <boost/asio/coroutine.hpp>
 #include <boost/assert.hpp>
 
 #include <cstddef>
@@ -36,7 +36,7 @@ namespace detail {
 class message_reader
 {
 public:
-    message_reader(std::size_t initial_buffer_size, std::size_t max_frame_size = MAX_PACKET_SIZE)
+    message_reader(std::size_t initial_buffer_size, std::size_t max_frame_size = max_packet_size)
         : buffer_(initial_buffer_size), max_frame_size_(max_frame_size)
     {
     }
@@ -60,7 +60,7 @@ public:
     }
 
     // Is parsing the current message done?
-    bool done() const noexcept { return state_.coro.is_complete(); }
+    bool done() const { return state_.resume_point == -1; }
 
     // Returns any errors generated during parsing. Requires this->done()
     error_code error() const noexcept
@@ -97,8 +97,10 @@ public:
         frame_header header{};
         buffer_.move_to_pending(bytes_read);
 
-        BOOST_ASIO_CORO_REENTER(state_.coro)
+        switch (state_.resume_point)
         {
+        case 0:
+
             // Move the previously parsed message to the reserved area, if any
             buffer_.move_to_reserved(buffer_.current_message_size());
 
@@ -107,7 +109,7 @@ public:
                 // Read the header
                 set_required_size(frame_header_size);
                 while (buffer_.pending_size() < frame_header_size)
-                    BOOST_ASIO_CORO_YIELD;
+                    BOOST_MYSQL_YIELD_VOID(state_.resume_point, 1)
 
                 // Mark the header as belonging to the current message
                 buffer_.move_to_current_message(frame_header_size);
@@ -122,7 +124,8 @@ public:
                 if (*state_.sequence_number != header.sequence_number)
                 {
                     state_.ec = client_errc::sequence_number_mismatch;
-                    BOOST_ASIO_CORO_YIELD break;
+                    state_.resume_point = -1;
+                    return;
                 }
                 ++*state_.sequence_number;
 
@@ -146,14 +149,15 @@ public:
                 // Read the body
                 set_required_size(state_.body_bytes);
                 while (buffer_.pending_size() < state_.body_bytes)
-                    BOOST_ASIO_CORO_YIELD;
+                    BOOST_MYSQL_YIELD_VOID(state_.resume_point, 2)
 
                 buffer_.move_to_current_message(state_.body_bytes);
 
                 // Check if we're done
                 if (!state_.more_frames_follow)
                 {
-                    BOOST_ASIO_CORO_YIELD break;
+                    state_.resume_point = -1;
+                    return;
                 }
             }
         }
@@ -168,7 +172,7 @@ private:
 
     struct parse_state
     {
-        asio::coroutine coro;
+        int resume_point{0};
         std::uint8_t* sequence_number{};
         bool is_first_frame{true};
         std::size_t body_bytes{0};
