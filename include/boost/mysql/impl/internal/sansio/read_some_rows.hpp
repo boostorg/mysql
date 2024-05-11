@@ -28,11 +28,15 @@ namespace detail {
 class read_some_rows_algo
 {
     connection_state_data* st_;
-    int resume_point_{0};
     diagnostics* diag_;
     execution_processor* proc_;
     output_ref output_;
-    std::size_t rows_read_{0};
+
+    struct state_t
+    {
+        int resume_point{0};
+        std::size_t rows_read{0};
+    } state_;
 
     BOOST_ATTRIBUTE_NODISCARD static std::pair<error_code, std::size_t> process_some_rows(
         connection_state_data& st,
@@ -96,11 +100,7 @@ public:
     {
     }
 
-    void reset()
-    {
-        resume_point_ = 0;
-        rows_read_ = 0;
-    }
+    void reset() { state_ = state_t{}; }  // TODO: unit test
 
     const connection_state_data& conn_state() const { return *st_; }
     connection_state_data& conn_state() { return *st_; }
@@ -113,7 +113,7 @@ public:
         if (ec)
             return ec;
 
-        switch (resume_point_)
+        switch (state_.resume_point)
         {
         case 0:
 
@@ -130,17 +130,17 @@ public:
 
             // Read at least one message. Keep parsing state, in case a previous message
             // was parsed partially
-            BOOST_MYSQL_YIELD(resume_point_, 1, st_->read(proc_->sequence_number(), true))
+            BOOST_MYSQL_YIELD(state_.resume_point, 1, st_->read(proc_->sequence_number(), true))
 
             // Process messages
-            std::tie(ec, rows_read_) = process_some_rows(*st_, *proc_, output_, *diag_);
+            std::tie(ec, state_.rows_read) = process_some_rows(*st_, *proc_, output_, *diag_);
             return ec;
         }
 
         return next_action();
     }
 
-    std::size_t result() const { return rows_read_; }
+    std::size_t result() const { return state_.rows_read; }
 };
 
 }  // namespace detail

@@ -61,9 +61,13 @@ inline error_code process_field_definition(
 class read_resultset_head_algo
 {
     connection_state_data* st_;
-    int resume_point_{0};
     diagnostics* diag_;
     execution_processor* proc_;
+
+    struct state_t
+    {
+        int resume_point{0};
+    } state_;
 
 public:
     read_resultset_head_algo(connection_state_data& st, read_resultset_head_algo_params params) noexcept
@@ -71,7 +75,7 @@ public:
     {
     }
 
-    void reset() { resume_point_ = 0; }
+    void reset() { state_ = state_t{}; }  // TODO: unit test
 
     connection_state_data& conn_state() { return *st_; }
     diagnostics& diag() { return *diag_; }
@@ -82,7 +86,7 @@ public:
         if (ec)
             return ec;
 
-        switch (resume_point_)
+        switch (state_.resume_point)
         {
         case 0:
 
@@ -94,7 +98,7 @@ public:
                 return next_action();
 
             // Read the response
-            BOOST_MYSQL_YIELD(resume_point_, 1, st_->read(proc_->sequence_number()))
+            BOOST_MYSQL_YIELD(state_.resume_point, 1, st_->read(proc_->sequence_number()))
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
@@ -106,7 +110,7 @@ public:
             while (proc_->is_reading_meta())
             {
                 // Read a message
-                BOOST_MYSQL_YIELD(resume_point_, 2, st_->read(proc_->sequence_number()))
+                BOOST_MYSQL_YIELD(state_.resume_point, 2, st_->read(proc_->sequence_number()))
 
                 // Process the metadata packet
                 ec = process_field_definition(*proc_, st_->reader.message(), *diag_);
