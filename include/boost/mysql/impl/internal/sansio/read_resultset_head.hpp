@@ -75,7 +75,7 @@ public:
     {
     }
 
-    void reset() { state_ = state_t{}; }  // TODO: unit test
+    void reset() { state_ = state_t{}; }
 
     connection_state_data& conn_state() { return *st_; }
     diagnostics& diag() { return *diag_; }

@@ -376,4 +376,43 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
     fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_batch_start(1).validate();
 }
 
+BOOST_AUTO_TEST_CASE(reset)
+{
+    // Setup
+    fixture fix;
+
+    // Run the algo. Read a row
+    algo_test().expect_read(create_text_row_message(42, "abc")).check(fix);
+
+    // Validate
+    BOOST_TEST(fix.algo.result() == 1u);  // num read rows
+    BOOST_TEST(fix.proc.is_reading_rows());
+    fix.validate_refs(1);
+    fix.proc.num_calls()
+        .on_num_meta(1)
+        .on_meta(1)
+        .on_row_batch_start(1)
+        .on_row(1)
+        .on_row_batch_finish(1)
+        .validate();
+
+    // Reset
+    fix.algo.reset();
+
+    // Run the algo again. Read an OK packet
+    algo_test().expect_read(create_eof_frame(43, ok_builder().build())).check(fix);
+
+    // Check
+    BOOST_TEST(fix.algo.result() == 0u);  // num read rows
+    BOOST_TEST(fix.proc.is_complete());
+    fix.proc.num_calls()
+        .on_num_meta(1)
+        .on_meta(1)
+        .on_row_batch_start(2)
+        .on_row(1)
+        .on_row_batch_finish(2)
+        .on_row_ok_packet(1)
+        .validate();
+}
+
 BOOST_AUTO_TEST_SUITE_END()

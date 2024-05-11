@@ -100,7 +100,7 @@ public:
     {
     }
 
-    void reset() { state_ = state_t{}; }  // TODO: unit test
+    void reset() { state_ = state_t{}; }
 
     const connection_state_data& conn_state() const { return *st_; }
     connection_state_data& conn_state() { return *st_; }
