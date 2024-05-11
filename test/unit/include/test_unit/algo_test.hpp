@@ -69,7 +69,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
 
     std::vector<step_t> steps_;
 
-    void handle_read(const step_t& op, detail::connection_state_data& st)
+    static void handle_read(const step_t& op, detail::connection_state_data& st)
     {
         if (!op.result)
         {
@@ -88,7 +88,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         }
     }
 
-    void handle_write(const step_t& op, detail::connection_state_data& st)
+    static void handle_write(const step_t& op, detail::connection_state_data& st)
     {
         // Multi-frame messages are not supported by these tests (they don't add anything)
         BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st.writer.current_chunk(), op.bytes);
@@ -100,7 +100,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         return *this;
     }
 
-    detail::next_action run_algo_until_step(any_algo_ref algo, std::size_t num_steps_to_run)
+    detail::next_action run_algo_until_step(any_algo_ref algo, std::size_t num_steps_to_run) const
     {
         assert(num_steps_to_run <= num_steps());
 
@@ -127,9 +127,9 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         return act;
     }
 
-    std::size_t num_steps() const noexcept { return steps_.size(); }
+    std::size_t num_steps() const { return steps_.size(); }
 
-    void check_impl(any_algo_ref algo, error_code expected_ec = {})
+    void check_impl(any_algo_ref algo, error_code expected_ec = {}) const
     {
         // Run the op until completion
         auto act = run_algo_until_step(algo, steps_.size());
@@ -139,7 +139,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         BOOST_TEST(act.error() == expected_ec);
     }
 
-    void check_network_errors_impl(any_algo_ref algo, std::size_t step_number)
+    void check_network_errors_impl(any_algo_ref algo, std::size_t step_number) const
     {
         assert(step_number < num_steps());
 
@@ -195,14 +195,14 @@ public:
     }
 
     template <class AlgoFixture>
-    void check(AlgoFixture& fix, error_code expected_ec = {}, const diagnostics& expected_diag = {})
+    void check(AlgoFixture& fix, error_code expected_ec = {}, const diagnostics& expected_diag = {}) const
     {
         check_impl(fix.algo, expected_ec);
         BOOST_TEST(fix.diag == expected_diag);
     }
 
     template <class AlgoFixture>
-    void check_network_errors()
+    void check_network_errors() const
     {
         for (std::size_t i = 0; i < num_steps(); ++i)
         {
