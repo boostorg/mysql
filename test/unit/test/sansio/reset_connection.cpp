@@ -34,7 +34,7 @@ struct fixture : algo_fixture_base
 {
     detail::reset_connection_algo algo;
 
-    fixture(character_set charset = {}) : algo(st, {&diag, charset}) {}
+    fixture(character_set charset = {}) : algo({&diag, charset}) {}
 };
 
 BOOST_AUTO_TEST_CASE(success)

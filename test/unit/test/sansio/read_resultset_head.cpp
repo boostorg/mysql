@@ -39,7 +39,6 @@ struct fixture : algo_fixture_base
 {
     mock_execution_processor proc;
     detail::read_resultset_head_algo algo{
-        st,
         {&diag, &proc}
     };
 

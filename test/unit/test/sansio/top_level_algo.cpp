@@ -54,27 +54,22 @@ BOOST_AUTO_TEST_CASE(read_cached)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         coroutine coro;
         std::uint8_t seqnum{};
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data& st, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return st_->read(seqnum);
+                BOOST_ASIO_CORO_YIELD return st.read(seqnum);
                 BOOST_TEST(ec == error_code());
                 BOOST_TEST(seqnum == 1u);
-                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st_->reader.message(), msg1);
-                BOOST_ASIO_CORO_YIELD return st_->read(seqnum);
+                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st.reader.message(), msg1);
+                BOOST_ASIO_CORO_YIELD return st.read(seqnum);
                 BOOST_TEST(ec == error_code());
                 BOOST_TEST(seqnum == 2u);
-                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st_->reader.message(), msg2);
+                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st.reader.message(), msg2);
             }
             return next_action();
         }
@@ -103,23 +98,18 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         coroutine coro;
         std::uint8_t seqnum{};
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data& st, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return st_->read(seqnum);
+                BOOST_ASIO_CORO_YIELD return st.read(seqnum);
                 BOOST_TEST(ec == error_code());
                 BOOST_TEST(seqnum == 1u);
-                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st_->reader.message(), msg2);
+                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st.reader.message(), msg2);
             }
             return next_action();
         }
@@ -158,20 +148,15 @@ BOOST_AUTO_TEST_CASE(read_parsing_error)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         coroutine coro;
         std::uint8_t seqnum{42u};
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data& st, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return st_->read(seqnum);
+                BOOST_ASIO_CORO_YIELD return st.read(seqnum);
                 BOOST_TEST(ec == error_code(client_errc::sequence_number_mismatch));
             }
             return next_action();
@@ -198,20 +183,15 @@ BOOST_AUTO_TEST_CASE(read_io_error)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         coroutine coro;
         std::uint8_t seqnum{};
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data& st, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return st_->read(seqnum);
+                BOOST_ASIO_CORO_YIELD return st.read(seqnum);
                 BOOST_TEST(ec == error_code(client_errc::wrong_num_params));
             }
             return next_action();
@@ -236,17 +216,12 @@ BOOST_AUTO_TEST_CASE(read_ssl_active)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         std::uint8_t seqnum{};
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data& st, error_code ec)
         {
             BOOST_TEST(ec == error_code());
-            return st_->read(seqnum);
+            return st.read(seqnum);
         }
     };
 
@@ -266,20 +241,15 @@ BOOST_AUTO_TEST_CASE(write_short)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         coroutine coro;
         std::uint8_t seqnum{};
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data& st, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return st_->write(mock_message{msg1}, seqnum);
+                BOOST_ASIO_CORO_YIELD return st.write(mock_message{msg1}, seqnum);
                 BOOST_TEST(ec == error_code());
                 BOOST_TEST(seqnum == 1u);
             }
@@ -310,20 +280,15 @@ BOOST_AUTO_TEST_CASE(write_io_error)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         coroutine coro;
         std::uint8_t seqnum{};
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data& st, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return st_->write(mock_message{msg1}, seqnum);
+                BOOST_ASIO_CORO_YIELD return st.write(mock_message{msg1}, seqnum);
                 BOOST_TEST(ec == error_code(client_errc::wrong_num_params));
             }
             return next_action();
@@ -346,17 +311,12 @@ BOOST_AUTO_TEST_CASE(write_ssl_active)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         std::uint8_t seqnum{};
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data& st, error_code ec)
         {
             BOOST_TEST(ec == error_code());
-            return st_->write(mock_message{msg1}, seqnum);
+            return st.write(mock_message{msg1}, seqnum);
         }
     };
 
@@ -375,14 +335,9 @@ BOOST_AUTO_TEST_CASE(ssl_handshake)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         boost::asio::coroutine coro;
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -412,14 +367,9 @@ BOOST_AUTO_TEST_CASE(ssl_shutdown)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         coroutine coro;
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -449,14 +399,9 @@ BOOST_AUTO_TEST_CASE(connect)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         boost::asio::coroutine coro;
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -486,14 +431,9 @@ BOOST_AUTO_TEST_CASE(close)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         boost::asio::coroutine coro;
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -523,14 +463,9 @@ BOOST_AUTO_TEST_CASE(immediate_completion)
 {
     struct mock_algo
     {
-        connection_state_data* st_;
         boost::asio::coroutine coro;
 
-        mock_algo(connection_state_data& st) : st_(&st) {}
-
-        connection_state_data& conn_state() { return *st_; }
-
-        next_action resume(error_code ec)
+        next_action resume(connection_state_data&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {

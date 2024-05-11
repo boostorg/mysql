@@ -36,7 +36,7 @@ struct fixture : algo_fixture_base
 {
     detail::set_character_set_algo algo;
 
-    fixture(const character_set& charset = utf8mb4_charset) : algo(st, {&diag, charset}) {}
+    fixture(const character_set& charset = utf8mb4_charset) : algo({&diag, charset}) {}
 };
 
 BOOST_AUTO_TEST_CASE(success)

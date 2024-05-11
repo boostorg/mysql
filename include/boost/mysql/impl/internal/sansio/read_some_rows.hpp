@@ -27,7 +27,6 @@ namespace detail {
 
 class read_some_rows_algo
 {
-    connection_state_data* st_;
     diagnostics* diag_;
     execution_processor* proc_;
     output_ref output_;
@@ -95,20 +94,17 @@ class read_some_rows_algo
     }
 
 public:
-    read_some_rows_algo(connection_state_data& st, read_some_rows_algo_params params) noexcept
-        : st_(&st), diag_(params.diag), proc_(params.proc), output_(params.output)
+    read_some_rows_algo(read_some_rows_algo_params params) noexcept
+        : diag_(params.diag), proc_(params.proc), output_(params.output)
     {
     }
 
     void reset() { state_ = state_t{}; }
 
-    const connection_state_data& conn_state() const { return *st_; }
-    connection_state_data& conn_state() { return *st_; }
-
     const execution_processor& processor() const { return *proc_; }
     execution_processor& processor() { return *proc_; }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         if (ec)
             return ec;
@@ -122,7 +118,7 @@ public:
 
             // Clear any previous use of shared fields.
             // Required for the dynamic version to work.
-            st_->shared_fields.clear();
+            st.shared_fields.clear();
 
             // If we are not reading rows, return
             if (!processor().is_reading_rows())
@@ -130,17 +126,17 @@ public:
 
             // Read at least one message. Keep parsing state, in case a previous message
             // was parsed partially
-            BOOST_MYSQL_YIELD(state_.resume_point, 1, st_->read(proc_->sequence_number(), true))
+            BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number(), true))
 
             // Process messages
-            std::tie(ec, state_.rows_read) = process_some_rows(*st_, *proc_, output_, *diag_);
+            std::tie(ec, state_.rows_read) = process_some_rows(st, *proc_, output_, *diag_);
             return ec;
         }
 
         return next_action();
     }
 
-    std::size_t result() const { return state_.rows_read; }
+    std::size_t result(const connection_state_data&) const { return state_.rows_read; }
 };
 
 }  // namespace detail

@@ -29,14 +29,12 @@ class connect_algo
     error_code stored_ec_;
 
 public:
-    connect_algo(connection_state_data& st, connect_algo_params params) noexcept
-        : handshake_(st, {params.diag, params.hparams, params.secure_channel})
+    connect_algo(connect_algo_params params) noexcept
+        : handshake_({params.diag, params.hparams, params.secure_channel})
     {
     }
 
-    connection_state_data& conn_state() { return handshake_.conn_state(); }
-
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         next_action act;
 
@@ -53,7 +51,7 @@ public:
                 return ec;
 
             // Handshake
-            while (!(act = handshake_.resume(ec)).is_done())
+            while (!(act = handshake_.resume(st, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
             // If handshake failed, close the stream ignoring the result

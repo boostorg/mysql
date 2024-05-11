@@ -26,14 +26,9 @@ class close_connection_algo
     error_code stored_ec_;
 
 public:
-    close_connection_algo(connection_state_data& st, close_connection_algo_params params) noexcept
-        : quit_(st, {params.diag})
-    {
-    }
+    close_connection_algo(close_connection_algo_params params) noexcept : quit_({params.diag}) {}
 
-    connection_state_data& conn_state() { return quit_.conn_state(); }
-
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         next_action act;
 
@@ -45,11 +40,11 @@ public:
             quit_.diag().clear();
 
             // If we're not connected, we're done
-            if (!conn_state().is_connected)
+            if (!st.is_connected)
                 return next_action();
 
             // Attempt quit
-            while (!(act = quit_.resume(ec)).is_done())
+            while (!(act = quit_.resume(st, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 1, act)
             stored_ec_ = act.error();
 

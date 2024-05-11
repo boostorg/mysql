@@ -33,17 +33,18 @@ namespace detail {
 
 struct no_response_algo
 {
-    next_action resume(error_code ec) { return ec; }
+    next_action resume(connection_state_data&, error_code ec) { return ec; }
 };
 
 struct pipeline_read_resumer
 {
+    connection_state_data& st;
     error_code ec;
 
     template <class Algo>
     next_action operator()(Algo& algo) const
     {
-        return algo.resume(ec);
+        return algo.resume(st, ec);
     }
 };
 
@@ -55,7 +56,6 @@ class run_pipeline_algo
         read_prepare_statement_response_algo,
         read_ok_response_algo>;
 
-    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     pipeline* pipe_;
@@ -77,10 +77,10 @@ class run_pipeline_algo
         switch (step.kind)
         {
         case pipeline_step_kind::execute:
-            read_response_.emplace<read_execute_response_algo>(*st_, &step.diag, &step.get_processor());
+            read_response_.emplace<read_execute_response_algo>(&step.diag, &step.get_processor());
             break;
         case pipeline_step_kind::prepare_statement:
-            read_response_.emplace<read_prepare_statement_response_algo>(*st_, &step.diag)
+            read_response_.emplace<read_prepare_statement_response_algo>(&step.diag)
                 .sequence_number() = step.seqnum;
             break;
         case pipeline_step_kind::close_statement:
@@ -91,41 +91,36 @@ class run_pipeline_algo
             break;
         case pipeline_step_kind::set_character_set:
         case pipeline_step_kind::reset_connection:
-        case pipeline_step_kind::ping: read_response_.emplace<read_ok_response_algo>(*st_, &step.diag); break;
+        case pipeline_step_kind::ping: read_response_.emplace<read_ok_response_algo>(&step.diag); break;
         default: BOOST_ASSERT(false);
         }
     }
 
-    void propagate_step_results()
+    void propagate_step_results(connection_state_data& st)
     {
         auto& step = access::get_impl(access::get_impl(*pipe_).steps_[current_step_index_]);
         switch (step.kind)
         {
         case pipeline_step_kind::prepare_statement:
-            step.result = variant2::get<read_prepare_statement_response_algo>(read_response_).result();
+            step.result = variant2::get<read_prepare_statement_response_algo>(read_response_).result(st);
             break;
         case pipeline_step_kind::set_character_set:
             // TODO: having this duplicated here and in set_character_set is error prone
-            conn_state().current_charset = variant2::get<character_set>(step.result);
+            st.current_charset = variant2::get<character_set>(step.result);
             break;
         default: break;
         }
     }
 
-    next_action resume_read_algo(error_code ec)
+    next_action resume_read_algo(connection_state_data& st, error_code ec)
     {
-        return variant2::visit(pipeline_read_resumer{ec}, read_response_);
+        return variant2::visit(pipeline_read_resumer{st, ec}, read_response_);
     }
 
 public:
-    run_pipeline_algo(connection_state_data& st, run_pipeline_algo_params params) noexcept
-        : st_(&st), diag_(params.diag), pipe_(params.pipe)
-    {
-    }
+    run_pipeline_algo(run_pipeline_algo_params params) noexcept : diag_(params.diag), pipe_(params.pipe) {}
 
-    connection_state_data& conn_state() { return *st_; }
-
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         auto& pipe_impl = access::get_impl(*pipe_);
         next_action act;
@@ -139,7 +134,7 @@ public:
             pipe_impl.reset_results();
 
             // Write the request
-            st_->writer.prepare_pipelined_write(pipe_impl.buffer_);
+            st.writer.prepare_pipelined_write(pipe_impl.buffer_);
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
 
             // If writing the request failed, fail all the steps and return
@@ -157,7 +152,7 @@ public:
 
                 // Run it until completion
                 ec.clear();
-                while (!(act = resume_read_algo(ec)).is_done())
+                while (!(act = resume_read_algo(st, ec)).is_done())
                     BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
                 // TODO: ec_ is a little bit bug-prone
@@ -179,7 +174,7 @@ public:
                 }
                 else
                 {
-                    propagate_step_results();
+                    propagate_step_results(st);
                 }
             }
 

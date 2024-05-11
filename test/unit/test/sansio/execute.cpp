@@ -44,7 +44,7 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     detail::execute_algo algo;
 
-    fixture(any_execution_request req = {"SELECT 1"}) : algo(st, {&diag, req, &proc}) {}
+    fixture(any_execution_request req = {"SELECT 1"}) : algo({&diag, req, &proc}) {}
 };
 
 // The serialized form of a SELECT 1 query request

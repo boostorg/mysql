@@ -37,25 +37,26 @@ namespace test {
 class any_algo_ref
 {
     template <class Algo>
-    static detail::next_action do_resume(void* self, error_code ec)
+    static detail::next_action do_resume(void* self, detail::connection_state_data& st, error_code ec)
     {
-        return static_cast<Algo*>(self)->resume(ec);
+        return static_cast<Algo*>(self)->resume(st, ec);
     }
 
-    using fn_t = detail::next_action (*)(void*, error_code);
+    using fn_t = detail::next_action (*)(void*, detail::connection_state_data&, error_code);
 
     void* algo_{};
     fn_t fn_{};
-    detail::connection_state_data* st_;
 
 public:
     template <class Algo, class = typename std::enable_if<!std::is_same<Algo, any_algo_ref>::value>::type>
-    any_algo_ref(Algo& algo) noexcept : algo_(&algo), fn_(&do_resume<Algo>), st_(&algo.conn_state())
+    any_algo_ref(Algo& algo) noexcept : algo_(&algo), fn_(&do_resume<Algo>)
     {
     }
 
-    detail::connection_state_data& conn_state() { return *st_; }
-    detail::next_action resume(error_code ec) { return fn_(algo_, ec); }
+    detail::next_action resume(detail::connection_state_data& st, error_code ec)
+    {
+        return fn_(algo_, st, ec);
+    }
 };
 
 class BOOST_ATTRIBUTE_NODISCARD algo_test
@@ -69,7 +70,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
 
     std::vector<step_t> steps_;
 
-    static void handle_read(const step_t& op, detail::connection_state_data& st)
+    static void handle_read(detail::connection_state_data& st, const step_t& op)
     {
         if (!op.result)
         {
@@ -88,7 +89,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         }
     }
 
-    static void handle_write(const step_t& op, detail::connection_state_data& st)
+    static void handle_write(detail::connection_state_data& st, const step_t& op)
     {
         // Multi-frame messages are not supported by these tests (they don't add anything)
         BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st.writer.current_chunk(), op.bytes);
@@ -100,12 +101,16 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         return *this;
     }
 
-    detail::next_action run_algo_until_step(any_algo_ref algo, std::size_t num_steps_to_run) const
+    detail::next_action run_algo_until_step(
+        detail::connection_state_data& st,
+        any_algo_ref algo,
+        std::size_t num_steps_to_run
+    ) const
     {
         assert(num_steps_to_run <= num_steps());
 
         // Start the op
-        auto act = algo.resume(error_code());
+        auto act = algo.resume(st, error_code());
 
         // Go through the requested steps
         for (std::size_t i = 0; i < num_steps_to_run; ++i)
@@ -115,12 +120,12 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
                 const auto& step = steps_[i];
                 BOOST_TEST_REQUIRE(act.type() == step.type);
                 if (step.type == detail::next_action::type_t::read)
-                    handle_read(step, algo.conn_state());
+                    handle_read(st, step);
                 else if (step.type == detail::next_action::type_t::write)
-                    handle_write(step, algo.conn_state());
+                    handle_write(st, step);
                 // Other actions don't need any handling
 
-                act = algo.resume(step.result);
+                act = algo.resume(st, step.result);
             }
         }
 
@@ -129,26 +134,30 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
 
     std::size_t num_steps() const { return steps_.size(); }
 
-    void check_impl(any_algo_ref algo, error_code expected_ec = {}) const
+    void check_impl(detail::connection_state_data& st, any_algo_ref algo, error_code expected_ec = {}) const
     {
         // Run the op until completion
-        auto act = run_algo_until_step(algo, steps_.size());
+        auto act = run_algo_until_step(st, algo, steps_.size());
 
         // Check that we've finished
         BOOST_TEST_REQUIRE(act.type() == detail::next_action::type_t::none);
         BOOST_TEST(act.error() == expected_ec);
     }
 
-    void check_network_errors_impl(any_algo_ref algo, std::size_t step_number) const
+    void check_network_errors_impl(
+        detail::connection_state_data& st,
+        any_algo_ref algo,
+        std::size_t step_number
+    ) const
     {
         assert(step_number < num_steps());
 
         // Run all the steps that shouldn't cause an error
-        auto act = run_algo_until_step(algo, step_number);
+        auto act = run_algo_until_step(st, algo, step_number);
         BOOST_TEST_REQUIRE(act.type() == steps_[step_number].type);
 
         // Trigger an error in the requested step
-        act = algo.resume(asio::error::bad_descriptor);
+        act = algo.resume(st, asio::error::bad_descriptor);
 
         // The operation finished and returned the network error
         BOOST_TEST_REQUIRE(act.type() == detail::next_action::type_t::none);
@@ -197,7 +206,7 @@ public:
     template <class AlgoFixture>
     void check(AlgoFixture& fix, error_code expected_ec = {}, const diagnostics& expected_diag = {}) const
     {
-        check_impl(fix.algo, expected_ec);
+        check_impl(fix.st, fix.algo, expected_ec);
         BOOST_TEST(fix.diag == expected_diag);
     }
 
@@ -209,7 +218,7 @@ public:
             BOOST_TEST_CONTEXT("check_network_errors erroring at step " << i)
             {
                 AlgoFixture fix;
-                check_network_errors_impl(fix.algo, i);
+                check_network_errors_impl(fix.st, fix.algo, i);
                 BOOST_TEST(fix.diag == diagnostics());
             }
         }

@@ -37,7 +37,6 @@ static std::vector<std::uint8_t> expected_request()
 struct fixture : algo_fixture_base
 {
     detail::close_statement_algo algo{
-        st,
         {&diag, 3}
     };
 };

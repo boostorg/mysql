@@ -24,21 +24,16 @@ namespace detail {
 
 class quit_connection_algo
 {
-    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     std::uint8_t sequence_number_{0};
 
 public:
-    quit_connection_algo(connection_state_data& st, quit_connection_algo_params params) noexcept
-        : st_(&st), diag_(params.diag)
-    {
-    }
+    quit_connection_algo(quit_connection_algo_params params) noexcept : diag_(params.diag) {}
 
-    connection_state_data& conn_state() { return *st_; }
     diagnostics& diag() { return *diag_; }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         switch (resume_point_)
         {
@@ -48,20 +43,20 @@ public:
             diag_->clear();
 
             // Send quit message
-            BOOST_MYSQL_YIELD(resume_point_, 1, st_->write(quit_command(), sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 1, st.write(quit_command(), sequence_number_))
 
             // Mark the session as finished, regardless of the write result
-            st_->is_connected = false;
+            st.is_connected = false;
 
             // If write resulted in an error, return
             if (ec)
                 return ec;
 
             // Shutdown SSL. MySQL doesn't always shut down SSL correctly, so we ignore this error.
-            if (st_->ssl == ssl_state::active)
+            if (st.ssl == ssl_state::active)
             {
                 BOOST_MYSQL_YIELD(resume_point_, 2, next_action::ssl_shutdown())
-                st_->ssl = ssl_state::torn_down;
+                st.ssl = ssl_state::torn_down;
             }
 
             // Done

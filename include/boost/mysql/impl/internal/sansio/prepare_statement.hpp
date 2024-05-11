@@ -26,14 +26,12 @@ class prepare_statement_algo
     string_view stmt_sql_;
 
 public:
-    prepare_statement_algo(connection_state_data& st, prepare_statement_algo_params params) noexcept
-        : read_response_st_(st, params.diag), stmt_sql_(params.stmt_sql)
+    prepare_statement_algo(prepare_statement_algo_params params) noexcept
+        : read_response_st_(params.diag), stmt_sql_(params.stmt_sql)
     {
     }
 
-    connection_state_data& conn_state() { return read_response_st_.conn_state(); }
-
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         next_action act;
 
@@ -48,13 +46,13 @@ public:
             BOOST_MYSQL_YIELD(
                 resume_point_,
                 1,
-                conn_state().write(prepare_stmt_command{stmt_sql_}, read_response_st_.sequence_number())
+                st.write(prepare_stmt_command{stmt_sql_}, read_response_st_.sequence_number())
             )
             if (ec)
                 return ec;
 
             // Read response
-            while (!(act = read_response_st_.resume(ec)).is_done())
+            while (!(act = read_response_st_.resume(st, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
             return act;
         }
@@ -62,7 +60,7 @@ public:
         return next_action();
     }
 
-    statement result() const { return read_response_st_.result(); }
+    statement result(const connection_state_data& st) const { return read_response_st_.result(st); }
 };
 
 }  // namespace detail

@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_SUITE(test_ping)
 
 struct fixture : algo_fixture_base
 {
-    detail::ping_algo algo{st, {&diag}};
+    detail::ping_algo algo{{&diag}};
 };
 
 BOOST_AUTO_TEST_CASE(success)

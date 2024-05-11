@@ -7,6 +7,7 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/rows_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
@@ -34,7 +35,6 @@ struct fixture : algo_fixture_base
 {
     execution_state_impl exec_st;
     detail::read_some_rows_dynamic_algo algo{
-        st,
         {&diag, &exec_st}
     };
 
@@ -47,6 +47,8 @@ struct fixture : algo_fixture_base
         // Put something in shared_fields, simulating a previous read
         st.shared_fields.push_back(field_view("prev"));
     }
+
+    rows_view result() const { return algo.result(st); }
 };
 
 BOOST_AUTO_TEST_CASE(eof)
@@ -59,7 +61,7 @@ BOOST_AUTO_TEST_CASE(eof)
         .expect_read(create_eof_frame(42, ok_builder().affected_rows(1).info("1st").build()))
         .check(fix);
 
-    BOOST_TEST(fix.algo.result() == makerows(1));
+    BOOST_TEST(fix.result() == makerows(1));
     BOOST_TEST_REQUIRE(fix.exec_st.is_complete());
     BOOST_TEST(fix.exec_st.get_affected_rows() == 1u);
     BOOST_TEST(fix.exec_st.get_info() == "1st");
@@ -79,7 +81,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows)
         .check(fix);
 
     // Check
-    BOOST_TEST(fix.algo.result() == makerows(1, "abc", "von"));
+    BOOST_TEST(fix.result() == makerows(1, "abc", "von"));
     BOOST_TEST(fix.exec_st.is_reading_rows());
 }
 
@@ -98,7 +100,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
         .check(fix);
 
     // Check
-    BOOST_TEST(fix.algo.result() == makerows(1, "abc", "von"));
+    BOOST_TEST(fix.result() == makerows(1, "abc", "von"));
     BOOST_TEST_REQUIRE(fix.exec_st.is_complete());
     BOOST_TEST(fix.exec_st.get_affected_rows() == 1u);
     BOOST_TEST(fix.exec_st.get_info() == "1st");

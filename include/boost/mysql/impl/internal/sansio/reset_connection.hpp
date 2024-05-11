@@ -26,7 +26,6 @@ namespace detail {
 
 class reset_connection_algo
 {
-    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     character_set charset_;
@@ -37,7 +36,7 @@ class reset_connection_algo
     // true if we need to pipeline a SET NAMES with the reset request
     bool has_charset() const { return !charset_.name.empty(); }
 
-    next_action compose_request()
+    next_action compose_request(connection_state_data& st)
     {
         if (has_charset())
         {
@@ -47,7 +46,7 @@ class reset_connection_algo
                 return query.error();
 
             // Compose the pipeline
-            st_->writer.prepare_pipelined_write(
+            st.writer.prepare_pipelined_write(
                 reset_connection_command{},
                 reset_seqnum_,
                 query_command{query.value()},
@@ -60,19 +59,17 @@ class reset_connection_algo
         else
         {
             // Just compose the reset connection request
-            return st_->write(reset_connection_command{}, reset_seqnum_);
+            return st.write(reset_connection_command{}, reset_seqnum_);
         }
     }
 
 public:
-    reset_connection_algo(connection_state_data& st, reset_connection_algo_params params) noexcept
-        : st_(&st), diag_(params.diag), charset_(params.charset)
+    reset_connection_algo(reset_connection_algo_params params) noexcept
+        : diag_(params.diag), charset_(params.charset)
     {
     }
 
-    connection_state_data& conn_state() { return *st_; }
-
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         if (ec)
             return ec;
@@ -85,33 +82,33 @@ public:
             diag_->clear();
 
             // Send the request
-            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request())
+            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request(st))
 
             // Read the reset response
-            BOOST_MYSQL_YIELD(resume_point_, 2, st_->read(reset_seqnum_))
+            BOOST_MYSQL_YIELD(resume_point_, 2, st.read(reset_seqnum_))
 
             // Verify it's what we expected
-            stored_ec_ = st_->deserialize_ok(*diag_);
+            stored_ec_ = st.deserialize_ok(*diag_);
 
             if (!stored_ec_)
             {
                 // Reset was successful. Resetting changes the connection's character set
                 // to the server's default, which is an unknown value that doesn't have to match
                 // what was specified in handshake. As a safety measure, clear the current charset
-                st_->current_charset = character_set{};
+                st.current_charset = character_set{};
             }
 
             if (has_charset())
             {
                 // We issued a SET NAMES too, read its response
-                BOOST_MYSQL_YIELD(resume_point_, 3, st_->read(set_names_seqnum_))
+                BOOST_MYSQL_YIELD(resume_point_, 3, st.read(set_names_seqnum_))
 
                 // Verify it's what we expected. Don't overwrite diagnostics if reset failed
-                ec = st_->deserialize_ok(stored_ec_ ? st_->shared_diag : *diag_);
+                ec = st.deserialize_ok(stored_ec_ ? st.shared_diag : *diag_);
                 if (!ec)
                 {
                     // Set the character set to the new known value
-                    st_->current_charset = charset_;
+                    st.current_charset = charset_;
                 }
 
                 // Set the return value if there is no error code already stored

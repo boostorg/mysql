@@ -40,10 +40,11 @@ inline capabilities conditional_capability(bool condition, std::uint32_t cap)
 inline error_code process_capabilities(
     const handshake_params& params,
     const server_hello& hello,
-    capabilities& negotiated_caps
+    capabilities& negotiated_caps,
+    bool transport_supports_ssl
 )
 {
-    auto ssl = params.ssl();
+    auto ssl = transport_supports_ssl ? params.ssl() : ssl_mode::disable;
     capabilities server_caps = hello.server_capabilities;
     capabilities required_caps = mandatory_capabilities |
                                  conditional_capability(!params.database().empty(), CLIENT_CONNECT_WITH_DB) |
@@ -66,7 +67,6 @@ inline error_code process_capabilities(
 
 class handshake_algo
 {
-    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     handshake_params hparams_;
@@ -90,9 +90,9 @@ class handshake_algo
     }
 
     // Once the handshake is processed, the capabilities are stored in the connection state
-    bool use_ssl() const { return st_->current_capabilities.has(CLIENT_SSL); }
+    bool use_ssl(const connection_state_data& st) const { return st.current_capabilities.has(CLIENT_SSL); }
 
-    error_code process_handshake(span<const std::uint8_t> buffer)
+    error_code process_handshake(connection_state_data& st, span<const std::uint8_t> buffer)
     {
         // Deserialize server hello
         server_hello hello{};
@@ -102,16 +102,16 @@ class handshake_algo
 
         // Check capabilities
         capabilities negotiated_caps;
-        err = process_capabilities(hparams_, hello, negotiated_caps);
+        err = process_capabilities(hparams_, hello, negotiated_caps, st.supports_ssl());
         if (err)
             return err;
 
         // Set capabilities & db flavor
-        st_->current_capabilities = negotiated_caps;
-        st_->flavor = hello.server;
+        st.current_capabilities = negotiated_caps;
+        st.flavor = hello.server;
 
         // If we're using SSL, mark the channel as secure
-        secure_channel_ = secure_channel_ || use_ssl();
+        secure_channel_ = secure_channel_ || use_ssl(st);
 
         // Compute auth response
         return compute_auth_response(
@@ -124,19 +124,19 @@ class handshake_algo
     }
 
     // Response to that initial greeting
-    ssl_request compose_ssl_request()
+    ssl_request compose_ssl_request(const connection_state_data& st)
     {
         return ssl_request{
-            st_->current_capabilities,
+            st.current_capabilities,
             static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
         };
     }
 
-    login_request compose_login_request()
+    login_request compose_login_request(const connection_state_data& st)
     {
         return login_request{
-            st_->current_capabilities,
+            st.current_capabilities,
             static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
             hparams_.username(),
@@ -175,44 +175,32 @@ class handshake_algo
         return auth_switch_response{auth_resp_.data};
     }
 
-    void on_success(const ok_view& ok)
+    void on_success(connection_state_data& st, const ok_view& ok)
     {
-        st_->is_connected = true;
-        st_->backslash_escapes = ok.backslash_escapes();
-        st_->current_charset = collation_id_to_charset(hparams_.connection_collation());
+        st.is_connected = true;
+        st.backslash_escapes = ok.backslash_escapes();
+        st.current_charset = collation_id_to_charset(hparams_.connection_collation());
     }
 
-    error_code process_ok()
+    error_code process_ok(connection_state_data& st)
     {
         ok_view res{};
-        auto ec = deserialize_ok_packet(st_->reader.message(), res);
+        auto ec = deserialize_ok_packet(st.reader.message(), res);
         if (ec)
             return ec;
-        on_success(res);
+        on_success(st, res);
         return error_code();
     }
 
-    static handshake_params fix_ssl_mode(const handshake_params& input, bool transport_supports_ssl)
-    {
-        handshake_params res(input);
-        if (!transport_supports_ssl)
-            res.set_ssl(ssl_mode::disable);
-        return res;
-    }
-
 public:
-    handshake_algo(connection_state_data& st, handshake_algo_params params) noexcept
-        : st_(&st),
-          diag_(params.diag),
-          hparams_(fix_ssl_mode(params.hparams, st.supports_ssl())),
-          secure_channel_(params.secure_channel)
+    handshake_algo(handshake_algo_params params) noexcept
+        : diag_(params.diag), hparams_(params.hparams), secure_channel_(params.secure_channel)
     {
     }
 
-    connection_state_data& conn_state() { return *st_; }
     diagnostics& diag() { return *diag_; }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         if (ec)
             return ec;
@@ -225,44 +213,44 @@ public:
 
             // Setup
             diag_->clear();
-            st_->reset();
+            st.reset();
 
             // Read server greeting
-            BOOST_MYSQL_YIELD(resume_point_, 1, st_->read(sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 1, st.read(sequence_number_))
 
             // Process server greeting
-            ec = process_handshake(st_->reader.message());
+            ec = process_handshake(st, st.reader.message());
             if (ec)
                 return ec;
 
             // SSL
-            if (use_ssl())
+            if (use_ssl(st))
             {
                 // Send SSL request
-                BOOST_MYSQL_YIELD(resume_point_, 2, st_->write(compose_ssl_request(), sequence_number_))
+                BOOST_MYSQL_YIELD(resume_point_, 2, st.write(compose_ssl_request(st), sequence_number_))
 
                 // SSL handshake
                 BOOST_MYSQL_YIELD(resume_point_, 3, next_action::ssl_handshake())
 
                 // Mark the connection as using ssl
-                st_->ssl = ssl_state::active;
+                st.ssl = ssl_state::active;
             }
 
             // Compose and send handshake response
-            BOOST_MYSQL_YIELD(resume_point_, 4, st_->write(compose_login_request(), sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 4, st.write(compose_login_request(st), sequence_number_))
 
             // Auth message exchange
             while (true)
             {
                 // Receive response
-                BOOST_MYSQL_YIELD(resume_point_, 5, st_->read(sequence_number_))
+                BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
 
                 // Process it
-                resp = deserialize_handshake_server_response(st_->reader.message(), st_->flavor, *diag_);
+                resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, *diag_);
                 if (resp.type == handhake_server_response::type_t::ok)
                 {
                     // Auth success, quit
-                    on_success(resp.data.ok);
+                    on_success(st, resp.data.ok);
                     return next_action();
                 }
                 else if (resp.type == handhake_server_response::type_t::error)
@@ -280,17 +268,17 @@ public:
                     BOOST_MYSQL_YIELD(
                         resume_point_,
                         6,
-                        st_->write(compose_auth_switch_response(), sequence_number_)
+                        st.write(compose_auth_switch_response(), sequence_number_)
                     )
                 }
                 else if (resp.type == handhake_server_response::type_t::ok_follows)
                 {
                     // The next packet must be an OK packet. Read it
-                    BOOST_MYSQL_YIELD(resume_point_, 7, st_->read(sequence_number_))
+                    BOOST_MYSQL_YIELD(resume_point_, 7, st.read(sequence_number_))
 
                     // Process it
                     // Regardless of whether we succeeded or not, we're done
-                    return process_ok();
+                    return process_ok(st);
                 }
                 else
                 {
@@ -305,7 +293,7 @@ public:
                     BOOST_MYSQL_YIELD(
                         resume_point_,
                         8,
-                        st_->write(compose_auth_switch_response(), sequence_number_)
+                        st.write(compose_auth_switch_response(), sequence_number_)
                     )
                 }
             }

@@ -26,23 +26,17 @@ class read_execute_response_algo
     read_resultset_head_algo read_head_st_;
     read_some_rows_algo read_some_rows_st_;
 
-    connection_state_data& conn_state() { return read_head_st_.conn_state(); }
-
 public:
-    read_execute_response_algo(
-        connection_state_data& st,
-        diagnostics* diag,
-        execution_processor* proc
-    ) noexcept
-        : read_head_st_(st, read_resultset_head_algo_params{diag, proc}),
-          read_some_rows_st_(st, read_some_rows_algo_params{diag, proc, output_ref()})
+    read_execute_response_algo(diagnostics* diag, execution_processor* proc) noexcept
+        : read_head_st_(read_resultset_head_algo_params{diag, proc}),
+          read_some_rows_st_(read_some_rows_algo_params{diag, proc, output_ref()})
     {
     }
 
     diagnostics& diag() { return read_head_st_.diag(); }
     execution_processor& processor() { return read_head_st_.processor(); }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         next_action act;
 
@@ -55,7 +49,7 @@ public:
                 if (processor().is_reading_head())
                 {
                     read_head_st_.reset();
-                    while (!(act = read_head_st_.resume(ec)).is_done())
+                    while (!(act = read_head_st_.resume(st, ec)).is_done())
                         BOOST_MYSQL_YIELD(resume_point_, 1, act)
                     if (act.error())
                         return act;
@@ -63,7 +57,7 @@ public:
                 else if (processor().is_reading_rows())
                 {
                     read_some_rows_st_.reset();
-                    while (!(act = read_some_rows_st_.resume(ec)).is_done())
+                    while (!(act = read_some_rows_st_.resume(st, ec)).is_done())
                         BOOST_MYSQL_YIELD(resume_point_, 2, act)
                     if (act.error())
                         return act;

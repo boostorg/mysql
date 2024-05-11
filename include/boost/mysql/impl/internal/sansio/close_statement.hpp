@@ -26,7 +26,6 @@ namespace detail {
 
 class close_statement_algo
 {
-    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     std::uint32_t stmt_id_;
@@ -34,14 +33,12 @@ class close_statement_algo
     std::uint8_t ping_seqnum_{0};
 
 public:
-    close_statement_algo(connection_state_data& st, close_statement_algo_params params) noexcept
-        : st_(&st), diag_(params.diag), stmt_id_(params.stmt_id)
+    close_statement_algo(close_statement_algo_params params) noexcept
+        : diag_(params.diag), stmt_id_(params.stmt_id)
     {
     }
 
-    connection_state_data& conn_state() { return *st_; }
-
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         if (ec)
             return ec;
@@ -57,7 +54,7 @@ public:
             // to force the server send a response. Otherwise, the client ends up waiting
             // for the next TCP ACK, which takes some milliseconds to be sent
             // (see https://github.com/boostorg/mysql/issues/181)
-            st_->writer.prepare_pipelined_write(
+            st.writer.prepare_pipelined_write(
                 close_stmt_command{stmt_id_},
                 close_seqnum_,
                 ping_command{},
@@ -66,10 +63,10 @@ public:
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
 
             // Read ping response
-            BOOST_MYSQL_YIELD(resume_point_, 2, st_->read(ping_seqnum_))
+            BOOST_MYSQL_YIELD(resume_point_, 2, st.read(ping_seqnum_))
 
             // Process the OK packet
-            return st_->deserialize_ok(*diag_);
+            return st.deserialize_ok(*diag_);
         }
 
         return next_action();

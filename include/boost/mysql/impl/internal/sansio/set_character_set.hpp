@@ -30,29 +30,26 @@ namespace detail {
 
 class set_character_set_algo
 {
-    connection_state_data* st_;
     int resume_point_{0};
     diagnostics* diag_;
     character_set charset_;
     std::uint8_t seqnum_{0};
 
-    next_action compose_request()
+    next_action compose_request(connection_state_data& st)
     {
         auto q = compose_set_names(charset_);
         if (q.has_error())
             return q.error();
-        return st_->write(query_command{q.value()}, seqnum_);
+        return st.write(query_command{q.value()}, seqnum_);
     }
 
 public:
-    set_character_set_algo(connection_state_data& st, set_character_set_algo_params params) noexcept
-        : st_(&st), diag_(params.diag), charset_(params.charset)
+    set_character_set_algo(set_character_set_algo_params params) noexcept
+        : diag_(params.diag), charset_(params.charset)
     {
     }
 
-    connection_state_data& conn_state() { return *st_; }
-
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         if (ec)
             return ec;
@@ -67,18 +64,18 @@ public:
             diag_->clear();
 
             // Send the execution request
-            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request())
+            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request(st))
 
             // Read the response
-            BOOST_MYSQL_YIELD(resume_point_, 2, st_->read(seqnum_))
+            BOOST_MYSQL_YIELD(resume_point_, 2, st.read(seqnum_))
 
             // Verify it's what we expected
-            ec = st_->deserialize_ok(*diag_);
+            ec = st.deserialize_ok(*diag_);
             if (ec)
                 return ec;
 
             // If we were successful, update the character set
-            st_->current_charset = charset_;
+            st.current_charset = charset_;
         }
 
         return next_action();

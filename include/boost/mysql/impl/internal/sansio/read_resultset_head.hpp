@@ -60,7 +60,6 @@ inline error_code process_field_definition(
 
 class read_resultset_head_algo
 {
-    connection_state_data* st_;
     diagnostics* diag_;
     execution_processor* proc_;
 
@@ -70,18 +69,17 @@ class read_resultset_head_algo
     } state_;
 
 public:
-    read_resultset_head_algo(connection_state_data& st, read_resultset_head_algo_params params) noexcept
-        : st_(&st), diag_(params.diag), proc_(params.proc)
+    read_resultset_head_algo(read_resultset_head_algo_params params) noexcept
+        : diag_(params.diag), proc_(params.proc)
     {
     }
 
     void reset() { state_ = state_t{}; }
 
-    connection_state_data& conn_state() { return *st_; }
     diagnostics& diag() { return *diag_; }
     execution_processor& processor() { return *proc_; }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         if (ec)
             return ec;
@@ -98,11 +96,11 @@ public:
                 return next_action();
 
             // Read the response
-            BOOST_MYSQL_YIELD(state_.resume_point, 1, st_->read(proc_->sequence_number()))
+            BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number()))
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
-            ec = process_execution_response(*st_, *proc_, st_->reader.message(), *diag_);
+            ec = process_execution_response(st, *proc_, st.reader.message(), *diag_);
             if (ec)
                 return ec;
 
@@ -110,10 +108,10 @@ public:
             while (proc_->is_reading_meta())
             {
                 // Read a message
-                BOOST_MYSQL_YIELD(state_.resume_point, 2, st_->read(proc_->sequence_number()))
+                BOOST_MYSQL_YIELD(state_.resume_point, 2, st.read(proc_->sequence_number()))
 
                 // Process the metadata packet
-                ec = process_field_definition(*proc_, st_->reader.message(), *diag_);
+                ec = process_field_definition(*proc_, st.reader.message(), *diag_);
                 if (ec)
                     return ec;
             }
