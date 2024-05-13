@@ -15,6 +15,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -26,6 +27,7 @@
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/core/ignore_unused.hpp>
@@ -588,6 +590,13 @@ public:
 
     // Close connection
     close_connection_algo_params make_params_close(diagnostics& diag) const { return {&diag}; }
+
+    // Run pipeline
+    static run_pipeline_algo_params make_params_pipeline(pipeline& pipe, diagnostics& diag)
+    {
+        auto& pipe_impl = access::get_impl(pipe);
+        return {&diag, pipeline_step_generator(pipe_impl), &pipe_impl.buffer_};
+    }
 };
 
 // To use some completion tokens, like deferred, in C++11, the old macros
@@ -650,6 +659,9 @@ using async_quit_connection_t = async_run_t<quit_connection_algo_params, Complet
 
 template <class CompletionToken>
 using async_close_connection_t = async_run_t<close_connection_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_run_pipeline_t = async_run_t<run_pipeline_algo_params, CompletionToken>;
 
 }  // namespace detail
 }  // namespace mysql

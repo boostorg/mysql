@@ -29,6 +29,7 @@
 #include <boost/mysql/impl/internal/sansio/read_some_rows.hpp>
 #include <boost/mysql/impl/internal/sansio/read_some_rows_dynamic.hpp>
 #include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
+#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
 #include <boost/mysql/impl/internal/sansio/top_level_algo.hpp>
@@ -57,6 +58,7 @@ template <> struct get_algo<ping_algo_params> { using type = ping_algo; };
 template <> struct get_algo<reset_connection_algo_params> { using type = reset_connection_algo; };
 template <> struct get_algo<quit_connection_algo_params> { using type = quit_connection_algo; };
 template <> struct get_algo<close_connection_algo_params> { using type = close_connection_algo; };
+template <> struct get_algo<run_pipeline_algo_params> { using type = run_pipeline_algo; };
 template <class AlgoParams> using get_algo_t = typename get_algo<AlgoParams>::type;
 // clang-format on
 
@@ -80,7 +82,8 @@ class connection_state
         ping_algo,
         reset_connection_algo,
         quit_connection_algo,
-        close_connection_algo>;
+        close_connection_algo,
+        run_pipeline_algo>;
 
     connection_state_data st_data_;
     any_algo algo_;

@@ -19,9 +19,13 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
+
+#include <boost/core/span.hpp>
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -145,7 +149,8 @@ struct close_connection_algo_params
 struct run_pipeline_algo_params
 {
     diagnostics* diag;
-    pipeline* pipe;
+    pipeline_step_generator step_gen;
+    const std::vector<std::uint8_t>* buffer;  // TODO: change this
 
     using result_type = void;
 };

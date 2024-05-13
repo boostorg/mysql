@@ -16,6 +16,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
@@ -1076,6 +1077,38 @@ public:
     {
         return this->impl_.async_run(
             this->impl_.make_params_close(diag),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    // TODO: document
+    void run_pipeline(pipeline& pipe, error_code& err, diagnostics& diag)
+    {
+        impl_.run(impl_.make_params_pipeline(pipe, diag), err);
+    }
+
+    void run_pipeline(pipeline& pipe)
+    {
+        error_code err;
+        diagnostics diag;
+        run_pipeline(pipe, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
+    }
+
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    auto async_run_pipeline(pipeline& pipe, CompletionToken&& token)
+        BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
+    {
+        return async_run_pipeline(pipe, impl_.shared_diag(), std::forward<CompletionToken>(token));
+    }
+
+    /// \copydoc async_close
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    auto async_run_pipeline(pipeline& pipe, diagnostics& diag, CompletionToken&& token)
+        BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
+    {
+        return this->impl_.async_run(
+            impl_.make_params_pipeline(pipe, diag),
             std::forward<CompletionToken>(token)
         );
     }
