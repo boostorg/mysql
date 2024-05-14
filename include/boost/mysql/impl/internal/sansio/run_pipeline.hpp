@@ -58,7 +58,7 @@ class run_pipeline_algo
     pipeline_step_descriptor current_step_{};
     std::size_t current_step_index_{0};
     error_code pipeline_ec_;  // Result of the entire operation
-    bool has_hatal_error_;    // If true, fail further steps with client_errc::cancelled
+    bool has_hatal_error_{};  // If true, fail further steps with client_errc::cancelled
     any_read_algo read_response_algo_;
 
     void setup_current_step(const connection_state_data& st)

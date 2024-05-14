@@ -102,7 +102,7 @@ public:
     }
     statement prepare_statement_result() const
     {
-        BOOST_ASSERT(impl_.kind == pipeline_step_kind::execute);
+        BOOST_ASSERT(impl_.kind == pipeline_step_kind::prepare_statement);
         return variant2::get<statement>(impl_.result);
     }
 };
@@ -150,10 +150,10 @@ public:
     void add_execute(statement stmt, const Params&... params)
     {
         std::array<field_view, sizeof...(Params)> params_array{{detail::to_field(params)...}};
-        add_execute(stmt, params_array);
+        add_execute_range(stmt, params_array);
     }
 
-    void add_execute(statement stmt, span<const field_view> params)
+    void add_execute_range(statement stmt, span<const field_view> params)
     {
         impl_.steps_.emplace_back(
             detail::resultset_encoding::binary,
