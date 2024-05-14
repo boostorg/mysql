@@ -58,19 +58,18 @@ class run_pipeline_algo
     bool fatal_error_{false};  // If true, don't process further steps
     any_read_algo read_response_algo_;
 
-    void setup_current_step()
+    void setup_current_step(const connection_state_data& st)
     {
         // Reset previous data
-        current_step_.err->ec.clear();
-        current_step_.err->diag.clear();
+        current_step_.err->clear();
 
         // Setup read algo
         switch (current_step_.kind)
         {
         case pipeline_step_kind::execute:
             current_step_.step_specific.execute.processor->reset(
-                current_step_.step_specific.execute.encoding,
-                current_step_.step_specific.execute.meta
+                current_step_.step_specific.execute.processor->encoding(),
+                st.meta_mode
             );
             current_step_.step_specific.execute.processor->sequence_number() = current_step_.seqnum;
             read_response_algo_.emplace<read_execute_response_algo>(
@@ -199,7 +198,7 @@ public:
                 }
 
                 // Setup the step
-                setup_current_step();
+                setup_current_step(st);
 
                 // Run it until completion
                 ec.clear();

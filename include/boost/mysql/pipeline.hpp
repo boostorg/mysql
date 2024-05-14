@@ -38,21 +38,6 @@
 
 namespace boost {
 namespace mysql {
-namespace detail {
-
-BOOST_MYSQL_DECL void serialize_query(std::vector<std::uint8_t>& buffer, string_view query);
-BOOST_MYSQL_DECL void serialize_execute_statement(
-    std::vector<std::uint8_t>& buffer,
-    statement stmt,
-    span<const field_view> params
-);
-BOOST_MYSQL_DECL void serialize_prepare_statement(std::vector<std::uint8_t>& buffer, string_view stmt_sql);
-BOOST_MYSQL_DECL void serialize_close_statement(std::vector<std::uint8_t>& buffer, statement stmt);
-BOOST_MYSQL_DECL void serialize_set_character_set(std::vector<std::uint8_t>& buffer, character_set charset);
-BOOST_MYSQL_DECL void serialize_reset_connection(std::vector<std::uint8_t>& buffer);
-BOOST_MYSQL_DECL void serialize_ping(std::vector<std::uint8_t>& buffer);
-
-}  // namespace detail
 
 class pipeline_step
 {
@@ -61,9 +46,7 @@ class pipeline_step
         detail::pipeline_step_descriptor::step_specific_t operator()(variant2::monostate) const { return {}; }
         detail::pipeline_step_descriptor::step_specific_t operator()(results& r) const
         {
-            // TODO: this is a little bit weird
-            auto& proc = detail::access::get_impl(r);
-            return detail::pipeline_step_descriptor::execute_t{proc.encoding(), proc.meta_mode(), &proc};
+            return detail::pipeline_step_descriptor::execute_t{&detail::access::get_impl(r)};
         }
         detail::pipeline_step_descriptor::step_specific_t operator()(statement& s) const
         {
@@ -99,10 +82,10 @@ public:
         if (k == pipeline_step_kind::prepare_statement)
             impl_.result.emplace<statement>();
     }
-    pipeline_step(detail::resultset_encoding enc, metadata_mode meta, std::uint8_t seqnum) noexcept
+    pipeline_step(detail::resultset_encoding enc, std::uint8_t seqnum) noexcept
         : impl_{pipeline_step_kind::execute, {}, seqnum, results{}}  // TODO: construct that in place
     {
-        detail::access::get_impl(variant2::unsafe_get<1>(impl_.result)).reset(enc, meta);
+        detail::access::get_impl(variant2::unsafe_get<1>(impl_.result)).reset(enc, metadata_mode::minimal);
     }
     pipeline_step(character_set charset, std::uint8_t seqnum) noexcept
         : impl_{pipeline_step_kind::set_character_set, {}, seqnum, charset}
@@ -149,67 +132,68 @@ class pipeline
     friend struct detail::access;
 #endif
 
-    BOOST_MYSQL_DECL void add_query_step(string_view sql, metadata_mode meta);
-
-    template <class... Params>
-    void add_statement_execute_step(statement stmt, metadata_mode meta, const Params&... params)
-    {
-        std::array<field_view, sizeof...(Params)> params_array{{detail::to_field(params)...}};
-        add_statement_execute_step_range(stmt, params_array, meta);
-    }
-
-    BOOST_MYSQL_DECL void add_statement_execute_step_range(
-        statement stmt,
-        span<const field_view> params,
-        metadata_mode meta
-    );
-
 public:
     pipeline() = default;
     void clear() noexcept { impl_.clear(); }
 
     // Adding steps
     // TODO: would execution requests be less confusing?
-    void add_execute(string_view query, metadata_mode meta = metadata_mode::minimal)
+    void add_execute(string_view query)
     {
-        add_query_step(query, meta);
+        impl_.steps_.emplace_back(
+            detail::resultset_encoding::text,
+            detail::serialize_query(impl_.buffer_, query)
+        );
     }
 
     template <class... Params>
     void add_execute(statement stmt, const Params&... params)
     {
-        add_statement_execute_step(stmt, metadata_mode::minimal, params...);
+        std::array<field_view, sizeof...(Params)> params_array{{detail::to_field(params)...}};
+        add_execute(stmt, params_array);
     }
 
-    template <class... Params>
-    void add_execute(statement stmt, metadata_mode meta, const Params&... params)
+    void add_execute(statement stmt, span<const field_view> params)
     {
-        add_statement_execute_step(stmt, meta, params...);
+        impl_.steps_.emplace_back(
+            detail::resultset_encoding::binary,
+            detail::serialize_execute_statement(impl_.buffer_, stmt, params)
+        );
     }
 
-    void add_execute(
-        statement stmt,
-        span<const field_view> params,
-        metadata_mode meta = metadata_mode::minimal
-    )
+    void add_prepare_statement(string_view statement_sql)
     {
-        add_statement_execute_step_range(stmt, params, meta);
+        impl_.steps_.emplace_back(
+            pipeline_step_kind::prepare_statement,
+            detail::serialize_prepare_statement(impl_.buffer_, statement_sql)
+        );
     }
 
-    BOOST_MYSQL_DECL
-    void add_prepare_statement(string_view statement_sql);
+    void add_close_statement(statement stmt)
+    {
+        impl_.steps_.emplace_back(
+            pipeline_step_kind::close_statement,
+            detail::serialize_close_statement(impl_.buffer_, stmt)
+        );
+    }
 
-    BOOST_MYSQL_DECL
-    void add_close_statement(statement stmt);
+    void add_set_character_set(character_set charset)
+    {
+        impl_.steps_.emplace_back(charset, detail::serialize_set_character_set(impl_.buffer_, charset));
+    }
 
-    BOOST_MYSQL_DECL
-    void add_set_character_set(character_set charset);
+    void add_reset_connection()
+    {
+        impl_.steps_.emplace_back(
+            pipeline_step_kind::reset_connection,
+            detail::serialize_reset_connection(impl_.buffer_)
+        );
+    }
 
-    BOOST_MYSQL_DECL
-    void add_reset_connection();
-
-    BOOST_MYSQL_DECL
-    void add_ping();
+    void add_ping()
+    {
+        impl_.steps_.emplace_back(pipeline_step_kind::ping, detail::serialize_ping(impl_.buffer_));
+    }
 
     // Retrieving results
     span<const pipeline_step> steps() const noexcept { return impl_.steps_; }
@@ -217,9 +201,5 @@ public:
 
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/pipeline.ipp>
-#endif
 
 #endif

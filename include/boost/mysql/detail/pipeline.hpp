@@ -18,6 +18,7 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 
@@ -31,14 +32,18 @@ struct pipeline_step_error
 {
     error_code ec;
     diagnostics diag;
+
+    void clear()
+    {
+        ec.clear();
+        diag.clear();
+    }
 };
 
 struct pipeline_step_descriptor
 {
     struct execute_t
     {
-        resultset_encoding encoding;
-        metadata_mode meta;
         execution_processor* processor;
     };
     struct prepare_statement_t
@@ -55,11 +60,12 @@ struct pipeline_step_descriptor
     std::uint8_t seqnum;
     union step_specific_t
     {
+        std::nullptr_t nothing;
         execute_t execute;
         prepare_statement_t prepare_statement;
         set_character_set_t set_character_set;
 
-        step_specific_t() noexcept : prepare_statement() {}
+        step_specific_t() noexcept : nothing() {}
         step_specific_t(execute_t v) noexcept : execute(v) {}
         step_specific_t(prepare_statement_t v) noexcept : prepare_statement(v) {}
         step_specific_t(set_character_set_t v) noexcept : set_character_set(v) {}
@@ -90,8 +96,30 @@ public:
     pipeline_step_descriptor step_descriptor_at(std::size_t index) { return pfn(obj_, index); }
 };
 
+BOOST_MYSQL_DECL std::uint8_t serialize_query(std::vector<std::uint8_t>& buffer, string_view query);
+BOOST_MYSQL_DECL std::uint8_t serialize_execute_statement(
+    std::vector<std::uint8_t>& buffer,
+    statement stmt,
+    span<const field_view> params
+);
+BOOST_MYSQL_DECL std::uint8_t serialize_prepare_statement(
+    std::vector<std::uint8_t>& buffer,
+    string_view stmt_sql
+);
+BOOST_MYSQL_DECL std::uint8_t serialize_close_statement(std::vector<std::uint8_t>& buffer, statement stmt);
+BOOST_MYSQL_DECL std::uint8_t serialize_set_character_set(
+    std::vector<std::uint8_t>& buffer,
+    character_set charset
+);
+BOOST_MYSQL_DECL std::uint8_t serialize_reset_connection(std::vector<std::uint8_t>& buffer);
+BOOST_MYSQL_DECL std::uint8_t serialize_ping(std::vector<std::uint8_t>& buffer);
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/pipeline.ipp>
+#endif
 
 #endif
