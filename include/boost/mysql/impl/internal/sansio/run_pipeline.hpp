@@ -24,6 +24,7 @@
 #include <boost/mysql/impl/internal/sansio/read_execute_response.hpp>
 #include <boost/mysql/impl/internal/sansio/read_ok_response.hpp>
 #include <boost/mysql/impl/internal/sansio/read_prepare_statement_response.hpp>
+#include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 
 #include <boost/variant2/variant.hpp>
 
@@ -42,10 +43,12 @@ class run_pipeline_algo
     };
 
     using any_read_algo = variant2::variant<
-        no_response_algo,
-        read_execute_response_algo,
-        read_prepare_statement_response_algo,
-        read_ok_response_algo>;
+        no_response_algo,                      // close statement
+        read_execute_response_algo,            // execute
+        read_prepare_statement_response_algo,  // prepare statement
+        read_ok_response_algo,                 // reset connection, ping
+        read_set_character_set_response_algo   // set character set
+        >;
 
     diagnostics* diag_;
     pipeline_step_generator step_gen_;
@@ -54,8 +57,8 @@ class run_pipeline_algo
     int resume_point_{0};
     pipeline_step_descriptor current_step_{};
     std::size_t current_step_index_{0};
-    error_code pipeline_ec_;   // Result of the entire operation
-    bool fatal_error_{false};  // If true, don't process further steps
+    error_code pipeline_ec_;  // Result of the entire operation
+    bool has_hatal_error_;    // If true, fail further steps with client_errc::cancelled
     any_read_algo read_response_algo_;
 
     void setup_current_step(const connection_state_data& st)
@@ -88,6 +91,13 @@ class run_pipeline_algo
             read_response_algo_.emplace<no_response_algo>();
             break;
         case pipeline_step_kind::set_character_set:
+            read_response_algo_
+                .emplace<read_set_character_set_response_algo>(
+                    &current_step_.err->diag,
+                    current_step_.step_specific.set_character_set.charset
+                )
+                .sequence_number() = current_step_.seqnum;
+            break;
         case pipeline_step_kind::reset_connection:
         case pipeline_step_kind::ping:
             read_response_algo_.emplace<read_ok_response_algo>(&current_step_.err->diag)
@@ -97,23 +107,7 @@ class run_pipeline_algo
         }
     }
 
-    void propagate_step_results(connection_state_data& st)
-    {
-        switch (current_step_.kind)
-        {
-        case pipeline_step_kind::prepare_statement:
-            *current_step_.step_specific.prepare_statement
-                 .stmt = variant2::get<read_prepare_statement_response_algo>(read_response_algo_).result(st);
-            break;
-        case pipeline_step_kind::set_character_set:
-            // TODO: having this duplicated here and in set_character_set is error prone
-            st.current_charset = current_step_.step_specific.set_character_set.charset;
-            break;
-        default: break;
-        }
-    }
-
-    void on_step_finished(connection_state_data& st, error_code step_ec)
+    void on_step_finished(const connection_state_data& st, error_code step_ec)
     {
         if (step_ec)
         {
@@ -124,15 +118,21 @@ class run_pipeline_algo
                 *diag_ = current_step_.err->diag;
             }
 
-            // If the error was fatal, record it so we don't attempt further steps
+            // If the error was fatal, fail successive steps with a cancelled error
             if (is_fatal_error(step_ec))
             {
-                fatal_error_ = true;
+                has_hatal_error_ = true;
             }
         }
         else
         {
-            propagate_step_results(st);
+            if (current_step_.kind == pipeline_step_kind::prepare_statement)
+            {
+                // Propagate results
+                *current_step_.step_specific.prepare_statement
+                     .stmt = variant2::get<read_prepare_statement_response_algo>(read_response_algo_)
+                                 .result(st);
+            }
         }
     }
 
@@ -174,11 +174,11 @@ public:
             st.writer.prepare_pipelined_write(*buffer_);
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
 
-            // If writing the request failed, fail all the steps and return
+            // If writing the request failed, fail all the steps with the given error code
             if (ec)
             {
                 pipeline_ec_ = ec;
-                fatal_error_ = true;
+                has_hatal_error_ = true;
             }
 
             // For each step
@@ -190,9 +190,9 @@ public:
                     break;
 
                 // If there was a fatal error, just set the error and move forward
-                if (fatal_error_)
+                if (has_hatal_error_)
                 {
-                    current_step_.err->ec = client_errc::cancelled;  // TODO: we need a new error code here?
+                    current_step_.err->ec = client_errc::cancelled;
                     current_step_.err->diag.clear();
                     continue;
                 }
