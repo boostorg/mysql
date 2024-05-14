@@ -75,19 +75,6 @@ typename AlgoParams::result_type get_result(const connection_state&);
 //
 // execution helpers
 //
-template <class... T, std::size_t... I>
-std::array<field_view, sizeof...(T)> tuple_to_array_impl(const std::tuple<T...>& t, mp11::index_sequence<I...>) noexcept
-{
-    boost::ignore_unused(t);  // MSVC gets confused if sizeof...(T) == 0
-    return std::array<field_view, sizeof...(T)>{{to_field(std::get<I>(t))...}};
-}
-
-template <class... T>
-std::array<field_view, sizeof...(T)> tuple_to_array(const std::tuple<T...>& t) noexcept
-{
-    return tuple_to_array_impl(t, mp11::make_index_sequence<sizeof...(T)>());
-}
-
 struct query_request_getter
 {
     any_execution_request value;
@@ -130,7 +117,7 @@ stmt_tuple_request_getter<std::tuple_size<WritableFieldTuple>::value>
 make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, std::vector<field_view>&)
 {
     auto& impl = access::get_impl(req);
-    return {impl.stmt, tuple_to_array(impl.params)};
+    return {impl.stmt, writable_field_tuple_to_array(impl.params)};
 }
 
 //
