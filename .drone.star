@@ -215,6 +215,14 @@ def linux_cmake_noopenssl(name):
     return _pipeline(name=name, image=_image('build-noopenssl'), os='linux', command=command, db=None)
 
 
+def linux_cmake_nointeg(name):
+    command = 'python tools/ci/main.py ' + \
+                '--source-dir=$(pwd) ' + \
+                'cmake-nointeg ' + \
+                '--generator=Ninja '
+    return _pipeline(name=name, image=_image('build-clang18'), os='linux', command=command, db=None)
+
+
 def windows_cmake(
     name,
     build_shared_libs=0

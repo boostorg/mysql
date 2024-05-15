@@ -168,6 +168,37 @@ def cmake_noopenssl_build(
     runner.build(target='install')
 
 
+# Check that disabling integration tests works
+def cmake_nointeg_build(
+    source_dir: Path,
+    boost_branch: str,
+    generator: str
+):
+    # Config
+    runner = _CMakeRunner(generator=generator, build_type='Release')
+
+    # Get Boost
+    install_boost(
+        source_dir=source_dir,
+        boost_branch=boost_branch,
+    )
+
+    # Build the library and run the tests, as the Boost superproject does
+    bin_dir = BOOST_ROOT.joinpath('__build')
+    runner.configure(
+        source_dir=BOOST_ROOT,
+        binary_dir=bin_dir,
+        variables={
+            'CMAKE_PREFIX_PATH': _cmake_prefix_path(),
+            'BOOST_INCLUDE_LIBRARIES': 'mysql',
+            'BUILD_TESTING': 'ON'
+        }
+    )
+    runner.build(target='tests')
+    runner.ctest()
+    runner.build(target='install')
+
+
 # Check that CMake can consume a Boost distribution created by b2
 def find_package_b2_test(
     source_dir: Path,
