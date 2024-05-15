@@ -579,7 +579,8 @@ public:
     close_connection_algo_params make_params_close(diagnostics& diag) const { return {&diag}; }
 
     // Run pipeline
-    static run_pipeline_algo_params make_params_pipeline(pipeline& pipe, diagnostics& diag)
+    template <class PipelineType>
+    static run_pipeline_algo_params make_params_pipeline(PipelineType& pipe, diagnostics& diag)
     {
         auto& pipe_impl = access::get_impl(pipe);
         return {&diag, pipeline_step_generator(pipe_impl), &pipe_impl.buffer_};

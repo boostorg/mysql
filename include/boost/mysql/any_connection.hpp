@@ -1082,12 +1082,15 @@ public:
     }
 
     // TODO: document
-    void run_pipeline(pipeline& pipe, error_code& err, diagnostics& diag)
+    // TODO: concept
+    template <class PipelineType>
+    void run_pipeline(PipelineType& pipe, error_code& err, diagnostics& diag)
     {
         impl_.run(impl_.make_params_pipeline(pipe, diag), err);
     }
 
-    void run_pipeline(pipeline& pipe)
+    template <class PipelineType>
+    void run_pipeline(PipelineType& pipe)
     {
         error_code err;
         diagnostics diag;
@@ -1095,16 +1098,16 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
-    auto async_run_pipeline(pipeline& pipe, CompletionToken&& token)
+    template <class PipelineType, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    auto async_run_pipeline(PipelineType& pipe, CompletionToken&& token)
         BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
     {
         return async_run_pipeline(pipe, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_close
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
-    auto async_run_pipeline(pipeline& pipe, diagnostics& diag, CompletionToken&& token)
+    template <class PipelineType, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    auto async_run_pipeline(PipelineType& pipe, diagnostics& diag, CompletionToken&& token)
         BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
     {
         return this->impl_.async_run(
