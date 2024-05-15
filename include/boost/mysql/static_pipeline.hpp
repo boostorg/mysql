@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_STATIC_PIPELINE_HPP
 #define BOOST_MYSQL_STATIC_PIPELINE_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
@@ -283,6 +284,44 @@ public:
     const diagnostics& diag() const { return impl_.err_.diag; }
 
     using args_type = no_arg_t;
+};
+
+class set_character_set_step
+{
+    struct
+    {
+        detail::pipeline_step_error err_;
+        character_set charset_;
+        std::uint8_t seqnum;
+
+        detail::pipeline_step_descriptor to_descriptor()
+        {
+            return {
+                pipeline_step_kind::set_character_set,
+                &err_,
+                seqnum,
+                detail::pipeline_step_descriptor::set_character_set_t{charset_}
+            };
+        }
+
+        void reset(std::vector<std::uint8_t>& buffer, character_set charset)
+        {
+            err_.clear();
+            charset_ = charset;
+            seqnum = detail::serialize_set_character_set(buffer, charset);
+        }
+    } impl_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
+public:
+    set_character_set_step() = default;
+    error_code error() const { return impl_.err_.ec; }
+    const diagnostics& diag() const { return impl_.err_.diag; }
+
+    using args_type = character_set;
 };
 
 // TODO: hide these
