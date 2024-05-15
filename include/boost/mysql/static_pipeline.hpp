@@ -100,7 +100,7 @@ class execute_step_args
 
 public:
     template <class T, class = std::enable_if<std::is_convertible<T, string_view>::value>::type>
-    execute_step_args(const T& query) : impl_{execute_step_args_impl::type_t::query, query}
+    execute_step_args(const T& query) : impl_{execute_step_args_impl::type_t::query, string_view(query)}
     {
     }
 
@@ -134,7 +134,8 @@ class basic_execute_step
                 pipeline_step_kind::execute,
                 &err_,
                 seqnum,
-                detail::pipeline_step_descriptor::execute_t{&detail::access::get_impl(result_).get_inteface()}
+                detail::pipeline_step_descriptor::execute_t{&detail::access::get_impl(result_).get_interface()
+                }
             };
         }
 
@@ -329,10 +330,10 @@ template <std::size_t I>
 struct tuple_visitor
 {
     template <class... StepType>
-    detail::pipeline_step_descriptor invoke(std::tuple<StepType...>& t, std::size_t i)
+    static detail::pipeline_step_descriptor invoke(std::tuple<StepType...>& t, std::size_t i)
     {
         return i == I - 1 ? detail::access::get_impl(std::get<I - 1>(t)).to_descriptor()
-                          : tuple_visitor<I - 2>::invoke(t, i);
+                          : tuple_visitor<I - 1>::invoke(t, i);
     }
 };
 
@@ -340,7 +341,7 @@ template <>
 struct tuple_visitor<0u>
 {
     template <class... StepType>
-    detail::pipeline_step_descriptor invoke(std::tuple<StepType...>&, std::size_t)
+    static detail::pipeline_step_descriptor invoke(std::tuple<StepType...>&, std::size_t)
     {
         return detail::pipeline_step_descriptor{};
     }
@@ -362,6 +363,10 @@ class static_pipeline
         }
 
     } impl_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
 
     template <std::size_t... I>
     void reset_impl(mp11::index_sequence<I...>, const typename StepType::args_type&... args)
