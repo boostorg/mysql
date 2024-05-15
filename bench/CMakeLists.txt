@@ -16,3 +16,5 @@ target_link_libraries(
     PUBLIC
     boost_mysql_compiled
 )
+
+boost_mysql_common_target_settings(boost_mysql_bench_connection_pool)

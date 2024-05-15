@@ -98,22 +98,13 @@ def cmake_build(
             'CMAKE_INSTALL_PREFIX': str(cmake_distro),
             'BUILD_TESTING': 'ON',
             'CMAKE_INSTALL_MESSAGE': 'NEVER',
-            'BOOST_MYSQL_INTEGRATION_TESTS': 'OFF', # Explicitly state this to make rebuilds work
+            'BOOST_MYSQL_INTEGRATION_TESTS': 'ON',
             **({ 'CMAKE_CXX_STANDARD': cxxstd } if cxxstd else {})
         }
     )
     runner.build(target='tests')
     runner.ctest()
     runner.build(target='install')
-
-    # Step 2
-    runner.configure(
-        source_dir=BOOST_ROOT,
-        binary_dir=bin_dir,
-        variables={'BOOST_MYSQL_INTEGRATION_TESTS': 'ON'}
-    )
-    runner.build_all()
-    runner.ctest()
 
     # The library can be consumed using add_subdirectory
     runner.configure(
