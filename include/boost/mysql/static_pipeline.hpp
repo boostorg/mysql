@@ -17,6 +17,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/any_execution_request.hpp>
+#include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
@@ -33,11 +34,89 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 namespace boost {
 namespace mysql {
+
+struct writable_field_ref
+{
+    field_view fv;
+
+    template <class T, class = typename std::enable_if<detail::is_writable_field<T>::value>::type>
+    writable_field_ref(const T& t) noexcept : fv(detail::to_field(t))
+    {
+    }
+};
+
+// TODO: hide this and unify with any_execution_request
+struct execute_step_args_impl
+{
+    enum class type_t
+    {
+        query,
+        stmt_tuple,
+        stmt_range
+    };
+
+    struct stmt_tuple_t
+    {
+        statement stmt;
+        span<const field_view> params;
+    };
+
+    struct stmt_range_t
+    {
+        statement stmt;
+        std::initializer_list<writable_field_ref> params;
+    };
+
+    union data_t
+    {
+        string_view query;
+        stmt_tuple_t stmt_tuple;
+        stmt_range_t stmt_range;
+
+        data_t(string_view v) : query(v) {}
+        data_t(stmt_tuple_t v) : stmt_tuple(v) {}
+        data_t(stmt_range_t v) : stmt_range(v) {}
+    };
+
+    type_t type;
+    data_t data;
+};
+
+class execute_step_args
+{
+    execute_step_args_impl impl_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
+public:
+    template <class T, class = std::enable_if<std::is_convertible<T, string_view>::value>::type>
+    execute_step_args(const T& query) : impl_{execute_step_args_impl::type_t::query, query}
+    {
+    }
+
+    execute_step_args(statement stmt, std::initializer_list<writable_field_ref> params)
+        : impl_{execute_step_args_impl::type_t::stmt_tuple, {{stmt, params}}}
+    {
+    }
+    execute_step_args(statement stmt, span<const field_view> params)
+        : impl_{execute_step_args_impl::type_t::stmt_range, {{stmt, params}}}
+    {
+    }
+};
+
+BOOST_MYSQL_DECL std::uint8_t serialize_execute(
+    std::vector<std::uint8_t>& buffer,
+    execute_step_args_impl args
+);
 
 template <class ResultType>
 class basic_execute_step
@@ -47,13 +126,6 @@ class basic_execute_step
         detail::pipeline_step_error err_;
         ResultType result_;
         std::uint8_t seqnum;
-
-        void reset_impl(detail::resultset_encoding enc, std::uint8_t s)
-        {
-            err_.clear();
-            detail::access::get_impl(result_).get_interface().reset(enc, metadata_mode::minimal);
-            seqnum = s;
-        }
 
         detail::pipeline_step_descriptor to_descriptor()
         {
@@ -65,25 +137,17 @@ class basic_execute_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, string_view arg)
+        void reset(std::vector<std::uint8_t>& buffer, execute_step_args args)
         {
-            reset_impl(detail::resultset_encoding::text, detail::serialize_query(buffer, arg));
+            auto args_impl = detail::access::get_impl(args);
+            auto enc = args_impl.type == execute_step_args_impl::type_t::query
+                           ? detail::resultset_encoding::text
+                           : detail::resultset_encoding::binary;
+
+            seqnum = serialize_execute(buffer, args_impl);
+            err_.clear();
+            detail::access::get_impl(result_).get_interface().reset(enc, metadata_mode::minimal);
         }
-
-        template <class T>
-        void reset(std::vector<std::uint8_t>& buffer, const bound_statement_tuple<T>& arg)
-        {
-            const auto& impl = detail::access::get_impl(arg);
-
-            // Convert to field_view
-            auto fields = detail::writable_field_tuple_to_array(impl.params);
-
-            // Serialize the request
-            std::uint8_t seqnum = detail::serialize_execute_statement(buffer, impl.stmt, fields);
-
-            reset_impl(detail::resultset_encoding::binary, seqnum);
-        }
-        // TODO: bound statement range
     } impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -95,6 +159,8 @@ public:
     error_code error() const { return impl_.err_.ec; }
     const diagnostics& diag() const { return impl_.err_.diag; }
     const ResultType& result() const { return impl_.result_; }
+
+    using args_type = execute_step_args;
 };
 
 using execute_step = basic_execute_step<results>;
@@ -137,6 +203,44 @@ public:
     error_code error() const { return impl_.err_.ec; }
     const diagnostics& diag() const { return impl_.err_.diag; }
     statement result() const { return impl_.result_; }
+
+    using args_type = string_view;
+};
+
+class close_statement_step
+{
+    struct
+    {
+        detail::pipeline_step_error err_;
+        std::uint8_t seqnum;
+
+        detail::pipeline_step_descriptor to_descriptor()
+        {
+            return {
+                pipeline_step_kind::close_statement,
+                &err_,
+                seqnum,
+                detail::pipeline_step_descriptor::step_specific_t{}
+            };
+        }
+
+        void reset(std::vector<std::uint8_t>& buffer, statement stmt)
+        {
+            err_.clear();
+            seqnum = detail::serialize_close_statement(buffer, stmt);
+        }
+    } impl_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
+public:
+    close_statement_step() = default;
+    error_code error() const { return impl_.err_.ec; }
+    const diagnostics& diag() const { return impl_.err_.diag; }
+
+    using args_type = statement;
 };
 
 struct no_arg_t
@@ -177,6 +281,8 @@ public:
     reset_connection_step() = default;
     error_code error() const { return impl_.err_.ec; }
     const diagnostics& diag() const { return impl_.err_.diag; }
+
+    using args_type = no_arg_t;
 };
 
 // TODO: hide these
@@ -204,6 +310,8 @@ struct tuple_visitor<0u>
 template <class... StepType>
 class static_pipeline
 {
+    static_assert(sizeof...(StepType) > 0u, "A pipeline should have one step, at least");
+
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
@@ -214,46 +322,27 @@ class static_pipeline
             return tuple_visitor<sizeof...(StepType)>::invoke(steps_, idx);
         }
 
-        template <std::size_t I, class Arg>
-        void reset_step_at(const Arg& arg)
-        {
-            detail::access::get_impl(std::get<I>(steps_)).reset(buffer_, arg);
-        }
     } impl_;
 
-    template <class... Args, std::size_t... I>
-    void reset_impl_tuple(std::tuple<const Args&...> args, mp11::index_sequence<I...>)
+    template <std::size_t... I>
+    void reset_impl(mp11::index_sequence<I...>, const typename StepType::args_type&... args)
     {
-        int dummy[]{(impl_.reset_step_at<I>(std::get<I>(args)), 0)...};
+        int dummy[]{(detail::access::get_impl(std::get<I>(impl_.steps_)).reset(impl_.buffer_, args), 0)...};
         ignore_unused(dummy);
     }
 
-    template <class... Args>
-    void reset_impl(const Args&... args)
+    void reset_impl(const typename StepType::args_type&... args)
     {
-        reset_impl_tuple(std::tuple<const Args&...>{args...}, mp11::make_index_sequence<sizeof...(Args)>{});
+        reset_impl(mp11::make_index_sequence<sizeof...(StepType)>{}, args...);
     }
 
 public:
-    template <class... Args>
-    static_pipeline(const Args&... params)
-    {
-        static_assert(
-            sizeof...(Args) == sizeof...(StepType),
-            "static_pipeline's constructor requires as many arguments as steps in the pipeline"
-        );
-        reset_impl(params...);
-    }
+    static_pipeline(const typename StepType::args_type&... args) { reset_impl(args...); }
 
-    template <class... Args>
-    void reset(const Args&... params)
+    void reset(const typename StepType::args_type&... args)
     {
-        static_assert(
-            sizeof...(Args) == sizeof...(StepType),
-            "reset requires as many arguments as steps in the pipeline"
-        );
         impl_.buffer_.clear();
-        reset_impl(params...);
+        reset_impl(args...);
     }
 
     const std::tuple<StepType...>& steps() const { return impl_.steps_; }
