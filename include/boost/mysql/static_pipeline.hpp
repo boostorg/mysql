@@ -35,7 +35,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <initializer_list>
 #include <tuple>
 #include <type_traits>
 #include <vector>
@@ -43,65 +42,15 @@
 namespace boost {
 namespace mysql {
 
-// TODO: sort this out
-class any_bound_statement
+template <class... Types>
+BOOST_CXX14_CONSTEXPR std::array<field_view, sizeof...(Types)> make_stmt_params(const Types&... args)
 {
-    const void* self_;
-    std::uint8_t (*pfn_)(const void* self, std::vector<std::uint8_t>& buffer);
-
-    template <class WritableFieldTuple>
-    static std::uint8_t do_serialize(const void* self, std::vector<std::uint8_t>& buffer)
-    {
-        const auto& stmt = *static_cast<const bound_statement_tuple<WritableFieldTuple>*>(self);
-        const auto& impl = detail::access::get_impl(stmt);
-        auto params = detail::writable_field_tuple_to_array(impl.params);
-        return detail::serialize_execute_statement(buffer, impl.stmt, params);
-    }
-
-public:
-    template <class WritableFieldTuple>
-    any_bound_statement(const bound_statement_tuple<WritableFieldTuple>& arg)
-        : self_(&arg), pfn_(&do_serialize<WritableFieldTuple>)
-    {
-    }
-
-    std::uint8_t serialize(std::vector<std::uint8_t>& buffer) { return pfn_(self_, buffer); }
-};
-
-// TODO: hide this and unify with any_execution_request
-struct execute_step_args_impl
-{
-    enum class type_t
-    {
-        query,
-        stmt_tuple,
-        stmt_range
-    };
-
-    struct stmt_range_t
-    {
-        statement stmt;
-        span<const field_view> params;
-    };
-
-    union data_t
-    {
-        string_view query;
-        any_bound_statement stmt_tuple;
-        stmt_range_t stmt_range;
-
-        data_t(string_view v) : query(v) {}
-        data_t(any_bound_statement v) : stmt_tuple(v) {}
-        data_t(stmt_range_t v) : stmt_range(v) {}
-    };
-
-    type_t type;
-    data_t data;
-};
+    return std::array<field_view, sizeof...(Types)>{{detail::to_field(args)...}};
+}
 
 class execute_step_args
 {
-    execute_step_args_impl impl_;
+    detail::any_execution_request impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
@@ -109,25 +58,12 @@ class execute_step_args
 
 public:
     template <class T, class = std::enable_if<std::is_convertible<T, string_view>::value>::type>
-    execute_step_args(const T& query) : impl_{execute_step_args_impl::type_t::query, string_view(query)}
+    execute_step_args(const T& query) : impl_(string_view(query))
     {
     }
 
-    template <class WritableFieldTuple>
-    execute_step_args(const bound_statement_tuple<WritableFieldTuple>& stmt)
-        : impl_{execute_step_args_impl::type_t::stmt_tuple, any_bound_statement(stmt)}
-    {
-    }
-    execute_step_args(statement stmt, span<const field_view> params)
-        : impl_{execute_step_args_impl::type_t::stmt_range, {{stmt, params}}}
-    {
-    }
+    execute_step_args(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
 };
-
-BOOST_MYSQL_DECL std::uint8_t serialize_execute(
-    std::vector<std::uint8_t>& buffer,
-    execute_step_args_impl args
-);
 
 template <class ResultType>
 class basic_execute_step
@@ -152,11 +88,15 @@ class basic_execute_step
         void reset(std::vector<std::uint8_t>& buffer, execute_step_args args)
         {
             auto args_impl = detail::access::get_impl(args);
-            auto enc = args_impl.type == execute_step_args_impl::type_t::query
-                           ? detail::resultset_encoding::text
-                           : detail::resultset_encoding::binary;
+            auto enc = args_impl.is_query ? detail::resultset_encoding::text
+                                          : detail::resultset_encoding::binary;
 
-            seqnum = serialize_execute(buffer, args_impl);
+            seqnum = args_impl.is_query ? detail::serialize_query(buffer, args_impl.data.query)
+                                        : detail::serialize_execute_statement(
+                                              buffer,
+                                              args_impl.data.stmt.stmt,
+                                              args_impl.data.stmt.params
+                                          );
             err_.clear();
             detail::access::get_impl(result_).get_interface().reset(enc, metadata_mode::minimal);
         }

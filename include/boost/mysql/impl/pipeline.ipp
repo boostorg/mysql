@@ -10,8 +10,6 @@
 
 #pragma once
 
-#include <boost/mysql/static_pipeline.hpp>
-
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 
@@ -69,22 +67,6 @@ std::uint8_t boost::mysql::detail::serialize_reset_connection(std::vector<std::u
 std::uint8_t boost::mysql::detail::serialize_ping(std::vector<std::uint8_t>& buffer)
 {
     return detail::serialize_top_level(detail::ping_command{}, buffer, 0);
-}
-
-std::uint8_t boost::mysql::serialize_execute(std::vector<std::uint8_t>& buffer, execute_step_args_impl args)
-{
-    switch (args.type)
-    {
-    case execute_step_args_impl::type_t::query: return detail::serialize_query(buffer, args.data.query);
-    case execute_step_args_impl::type_t::stmt_range:
-        return detail::serialize_execute_statement(
-            buffer,
-            args.data.stmt_range.stmt,
-            args.data.stmt_range.params
-        );
-    case execute_step_args_impl::type_t::stmt_tuple: return args.data.stmt_tuple.serialize(buffer);
-    default: BOOST_ASSERT(false); return 0;
-    }
 }
 
 #endif
