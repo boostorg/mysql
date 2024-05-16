@@ -140,4 +140,3 @@ add_test(
     NAME boost_mysql_unittests
     COMMAND boost_mysql_unittests
 )
-add_dependencies(tests boost_mysql_unittests)

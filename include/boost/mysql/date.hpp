@@ -27,12 +27,14 @@ namespace mysql {
 
 /**
  * \brief Type representing MySQL `DATE` data type.
- * \details Represents a broken date by its year, month and day components.
+ * \details Represents a Gregorian date broken by its year, month and day components.
+ * \n
  * This type is close to the protocol and should not be used as a vocabulary type.
  * Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point
  * or \ref get_time_point.
  * \n
- * As opposed to `time_point`, this type allows representing invalid and zero dates.
+ * As opposed to `time_point`, this type allows representing MySQL invalid and zero dates.
+ * These values are allowed by MySQL but don't represent real dates.
  */
 class date
 {
@@ -44,6 +46,7 @@ public:
      * \brief Constructs a zero date.
      * \details
      * Results in a date with all of its components set to zero.
+     * The resulting object has `this->valid() == false`.
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -52,6 +55,10 @@ public:
 
     /**
      * \brief Constructs a date from its year, month and date components.
+     * \details
+     * Component values that yield invalid dates (like zero or out-of-range
+     * values) are allowed, resulting in an object with `this->valid() == false`.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -76,20 +83,33 @@ public:
 
     /**
      * \brief Retrieves the year component.
+     * \details
+     * Represents the year number in the Gregorian calendar.
+     * If `this->valid() == true`, this value is within the `[0, 9999]` range.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
     constexpr std::uint16_t year() const noexcept { return year_; }
 
     /**
-     * \brief Retrieves the month component.
+     * \brief Retrieves the month component (1-based).
+     * \details
+     * A value of 1 represents January.
+     * If `this->valid() == true`, this value is within the `[1, 12]` range.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
     constexpr std::uint8_t month() const noexcept { return month_; }
 
     /**
-     * \brief Retrieves the day component.
+     * \brief Retrieves the day component (1-based).
+     * \details
+     * A value of 1 represents the first day of the month.
+     * If `this->valid() == true`, this value is within the `[1, last_month_day]` range
+     * (where `last_month_day` is the last day of the month).
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
