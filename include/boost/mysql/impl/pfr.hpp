@@ -86,7 +86,7 @@ constexpr std::array<string_view, 0u> to_name_table_storage(std::array<std::null
 }
 
 template <class T>
-constexpr auto pfr_names_storage = to_name_table_storage(pfr::names_as_array<T>());
+constexpr inline auto pfr_names_storage = to_name_table_storage(pfr::names_as_array<T>());
 
 template <class T>
 class row_traits<pfr_by_name<T>, false>

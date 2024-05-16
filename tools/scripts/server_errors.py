@@ -119,12 +119,14 @@ def render_common_server_errc(df_common: pd.DataFrame) -> str:
 
 SPECIFIC_SERVER_ERRC_ENTRY = '''
 /// Server error specific to {flavor}. Error number: {number}, symbol: {symbol_upper}.
-constexpr int {symbol_lower} = {number};
+BOOST_INLINE_CONSTEXPR int {symbol_lower} = {number};
 '''
 
 SPECIFIC_SERVER_ERRC_TEMPLATE = '''
 #ifndef BOOST_MYSQL_{flavor}_SERVER_ERRC_HPP
 #define BOOST_MYSQL_{flavor}_SERVER_ERRC_HPP
+
+#include <boost/config.hpp>
 
 namespace boost {{
 namespace mysql {{

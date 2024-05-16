@@ -258,7 +258,7 @@ struct results_fns
 };
 
 template <class... StaticRow>
-constexpr std::array<results_resultset_descriptor, sizeof...(StaticRow)>
+BOOST_INLINE_CONSTEXPR std::array<results_resultset_descriptor, sizeof...(StaticRow)>
     results_resultset_descriptor_table = results_fns<StaticRow...>::create_descriptors(
         mp11::make_index_sequence<sizeof...(StaticRow)>()
     );
