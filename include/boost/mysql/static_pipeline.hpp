@@ -43,14 +43,29 @@
 namespace boost {
 namespace mysql {
 
-struct writable_field_ref
+// TODO: sort this out
+class any_bound_statement
 {
-    field_view fv;
+    const void* self_;
+    std::uint8_t (*pfn_)(const void* self, std::vector<std::uint8_t>& buffer);
 
-    template <class T, class = typename std::enable_if<detail::is_writable_field<T>::value>::type>
-    writable_field_ref(const T& t) noexcept : fv(detail::to_field(t))
+    template <class WritableFieldTuple>
+    static std::uint8_t do_serialize(const void* self, std::vector<std::uint8_t>& buffer)
+    {
+        const auto& stmt = *static_cast<const bound_statement_tuple<WritableFieldTuple>*>(self);
+        const auto& impl = detail::access::get_impl(stmt);
+        auto params = detail::writable_field_tuple_to_array(impl.params);
+        return detail::serialize_execute_statement(buffer, impl.stmt, params);
+    }
+
+public:
+    template <class WritableFieldTuple>
+    any_bound_statement(const bound_statement_tuple<WritableFieldTuple>& arg)
+        : self_(&arg), pfn_(&do_serialize<WritableFieldTuple>)
     {
     }
+
+    std::uint8_t serialize(std::vector<std::uint8_t>& buffer) { return pfn_(self_, buffer); }
 };
 
 // TODO: hide this and unify with any_execution_request
@@ -63,26 +78,20 @@ struct execute_step_args_impl
         stmt_range
     };
 
-    struct stmt_tuple_t
+    struct stmt_range_t
     {
         statement stmt;
         span<const field_view> params;
     };
 
-    struct stmt_range_t
-    {
-        statement stmt;
-        std::initializer_list<writable_field_ref> params;
-    };
-
     union data_t
     {
         string_view query;
-        stmt_tuple_t stmt_tuple;
+        any_bound_statement stmt_tuple;
         stmt_range_t stmt_range;
 
         data_t(string_view v) : query(v) {}
-        data_t(stmt_tuple_t v) : stmt_tuple(v) {}
+        data_t(any_bound_statement v) : stmt_tuple(v) {}
         data_t(stmt_range_t v) : stmt_range(v) {}
     };
 
@@ -104,8 +113,9 @@ public:
     {
     }
 
-    execute_step_args(statement stmt, std::initializer_list<writable_field_ref> params)
-        : impl_{execute_step_args_impl::type_t::stmt_tuple, {{stmt, params}}}
+    template <class WritableFieldTuple>
+    execute_step_args(const bound_statement_tuple<WritableFieldTuple>& stmt)
+        : impl_{execute_step_args_impl::type_t::stmt_tuple, any_bound_statement(stmt)}
     {
     }
     execute_step_args(statement stmt, span<const field_view> params)
