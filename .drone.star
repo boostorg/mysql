@@ -215,6 +215,14 @@ def linux_cmake_noopenssl(name):
     return _pipeline(name=name, image=_image('build-noopenssl'), os='linux', command=command, db=None)
 
 
+def linux_cmake_nointeg(name):
+    command = 'python tools/ci/main.py ' + \
+                '--source-dir=$(pwd) ' + \
+                'cmake-nointeg ' + \
+                '--generator=Ninja '
+    return _pipeline(name=name, image=_image('build-gcc13'), os='linux', command=command, db=None)
+
+
 def windows_cmake(
     name,
     build_shared_libs=0
@@ -264,6 +272,7 @@ def main(ctx):
         linux_cmake('Linux CMake gcc Release',    _image('build-gcc11'), cmake_build_type='Release'),
         linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc13'), cmake_build_type='MinSizeRel'),
         linux_cmake_noopenssl('Linux CMake no OpenSSL'),
+        linux_cmake_nointeg('Linux CMake without integration tests'),
 
         # CMake Windows
         windows_cmake('Windows CMake static', build_shared_libs=0),

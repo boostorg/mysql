@@ -47,4 +47,9 @@ function(boost_mysql_common_target_settings TARGET_NAME)
     endif()
 
     set_target_properties(${TARGET_NAME} PROPERTIES CXX_EXTENSIONS OFF) # disable extensions
+
+    # Follow the Boost convention: don't build test targets by default,
+    # and only when explicitly requested by building target tests
+    set_target_properties(${TARGET_NAME} PROPERTIES EXCLUDE_FROM_ALL ON)
+    add_dependencies(tests ${TARGET_NAME})
 endfunction()

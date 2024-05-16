@@ -53,6 +53,7 @@ docca.reference reference.qbk
             \"BOOST_MYSQL_RETURN_TYPE(...)=\" \\
             \"protected=private\" \\
             \"BOOST_CXX14_CONSTEXPR=constexpr\" \\
+            \"BOOST_INLINE_CONSTEXPR=inline constexpr\" \\
             \"BOOST_MYSQL_CONSTEVAL=consteval\" \\
             \"BOOST_MYSQL_CXX14\" \\
             \"BOOST_MYSQL_WRITABLE_FIELD_TUPLE=class\" \\
