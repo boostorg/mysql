@@ -238,10 +238,10 @@ BOOST_MYSQL_DECL
 std::ostream& operator<<(std::ostream& os, const datetime& v);
 
 /// The minimum allowed value for \ref datetime.
-constexpr datetime min_datetime(0u, 1u, 1u);
+BOOST_INLINE_CONSTEXPR datetime min_datetime(0u, 1u, 1u);
 
 /// The maximum allowed value for \ref datetime.
-constexpr datetime max_datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999999u);
+BOOST_INLINE_CONSTEXPR datetime max_datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999999u);
 
 }  // namespace mysql
 }  // namespace boost

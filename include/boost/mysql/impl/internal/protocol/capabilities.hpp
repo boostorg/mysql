@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_CAPABILITIES_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_CAPABILITIES_HPP
 
+#include <boost/config.hpp>
+
 #include <cstdint>
 
 namespace boost {
@@ -16,34 +18,34 @@ namespace detail {
 
 // Server/client capabilities
 // clang-format off
-constexpr std::uint32_t CLIENT_LONG_PASSWORD = 1; // Use the improved version of Old Password Authentication
-constexpr std::uint32_t CLIENT_FOUND_ROWS = 2; // Send found rows instead of affected rows in EOF_Packet
-constexpr std::uint32_t CLIENT_LONG_FLAG = 4; // Get all column flags
-constexpr std::uint32_t CLIENT_CONNECT_WITH_DB = 8; // Database (schema) name can be specified on connect in Handshake Response Packet
-constexpr std::uint32_t CLIENT_NO_SCHEMA = 16; // Don't allow database.table.column
-constexpr std::uint32_t CLIENT_COMPRESS = 32; // Compression protocol supported
-constexpr std::uint32_t CLIENT_ODBC = 64; // Special handling of ODBC behavior
-constexpr std::uint32_t CLIENT_LOCAL_FILES = 128; // Can use LOAD DATA LOCAL
-constexpr std::uint32_t CLIENT_IGNORE_SPACE = 256; // Ignore spaces before '('
-constexpr std::uint32_t CLIENT_PROTOCOL_41 = 512; // New 4.1 protocol
-constexpr std::uint32_t CLIENT_INTERACTIVE = 1024; // This is an interactive client
-constexpr std::uint32_t CLIENT_SSL = 2048; // Use SSL encryption for the session
-constexpr std::uint32_t CLIENT_IGNORE_SIGPIPE = 4096; // Client only flag
-constexpr std::uint32_t CLIENT_TRANSACTIONS = 8192; // Client knows about transactions
-constexpr std::uint32_t CLIENT_RESERVED = 16384; // DEPRECATED: Old flag for 4.1 protocol
-constexpr std::uint32_t CLIENT_SECURE_CONNECTION = 32768; // DEPRECATED: Old flag for 4.1 authentication, required by MariaDB
-constexpr std::uint32_t CLIENT_MULTI_STATEMENTS = (1UL << 16); // Enable/disable multi-stmt support
-constexpr std::uint32_t CLIENT_MULTI_RESULTS = (1UL << 17); // Enable/disable multi-results
-constexpr std::uint32_t CLIENT_PS_MULTI_RESULTS = (1UL << 18); // Multi-results and OUT parameters in PS-protocol
-constexpr std::uint32_t CLIENT_PLUGIN_AUTH = (1UL << 19); // Client supports plugin authentication
-constexpr std::uint32_t CLIENT_CONNECT_ATTRS = (1UL << 20); // Client supports connection attributes
-constexpr std::uint32_t CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA = (1UL << 21); // Enable authentication response packet to be larger than 255 bytes
-constexpr std::uint32_t CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS = (1UL << 22); // Don't close the connection for a user account with expired password
-constexpr std::uint32_t CLIENT_SESSION_TRACK = (1UL << 23); // Capable of handling server state change information
-constexpr std::uint32_t CLIENT_DEPRECATE_EOF = (1UL << 24); // Client no longer needs EOF_Packet and will use OK_Packet instead
-constexpr std::uint32_t CLIENT_SSL_VERIFY_SERVER_CERT = (1UL << 30); // Verify server certificate
-constexpr std::uint32_t CLIENT_OPTIONAL_RESULTSET_METADATA = (1UL << 25); // The client can handle optional metadata information in the resultset
-constexpr std::uint32_t CLIENT_REMEMBER_OPTIONS = (1UL << 31); // Don't reset the options after an unsuccessful connect
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_LONG_PASSWORD = 1; // Use the improved version of Old Password Authentication
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_FOUND_ROWS = 2; // Send found rows instead of affected rows in EOF_Packet
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_LONG_FLAG = 4; // Get all column flags
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_CONNECT_WITH_DB = 8; // Database (schema) name can be specified on connect in Handshake Response Packet
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_NO_SCHEMA = 16; // Don't allow database.table.column
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_COMPRESS = 32; // Compression protocol supported
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_ODBC = 64; // Special handling of ODBC behavior
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_LOCAL_FILES = 128; // Can use LOAD DATA LOCAL
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_IGNORE_SPACE = 256; // Ignore spaces before '('
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_PROTOCOL_41 = 512; // New 4.1 protocol
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_INTERACTIVE = 1024; // This is an interactive client
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_SSL = 2048; // Use SSL encryption for the session
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_IGNORE_SIGPIPE = 4096; // Client only flag
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_TRANSACTIONS = 8192; // Client knows about transactions
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_RESERVED = 16384; // DEPRECATED: Old flag for 4.1 protocol
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_SECURE_CONNECTION = 32768; // DEPRECATED: Old flag for 4.1 authentication, required by MariaDB
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_MULTI_STATEMENTS = (1UL << 16); // Enable/disable multi-stmt support
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_MULTI_RESULTS = (1UL << 17); // Enable/disable multi-results
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_PS_MULTI_RESULTS = (1UL << 18); // Multi-results and OUT parameters in PS-protocol
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_PLUGIN_AUTH = (1UL << 19); // Client supports plugin authentication
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_CONNECT_ATTRS = (1UL << 20); // Client supports connection attributes
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA = (1UL << 21); // Enable authentication response packet to be larger than 255 bytes
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS = (1UL << 22); // Don't close the connection for a user account with expired password
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_SESSION_TRACK = (1UL << 23); // Capable of handling server state change information
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_DEPRECATE_EOF = (1UL << 24); // Client no longer needs EOF_Packet and will use OK_Packet instead
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_SSL_VERIFY_SERVER_CERT = (1UL << 30); // Verify server certificate
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_OPTIONAL_RESULTSET_METADATA = (1UL << 25); // The client can handle optional metadata information in the resultset
+BOOST_INLINE_CONSTEXPR std::uint32_t CLIENT_REMEMBER_OPTIONS = (1UL << 31); // Don't reset the options after an unsuccessful connect
 // clang-format on
 
 class capabilities
@@ -112,7 +114,7 @@ public:
  */
 
 // clang-format off
-constexpr capabilities mandatory_capabilities{
+BOOST_INLINE_CONSTEXPR capabilities mandatory_capabilities{
     CLIENT_PROTOCOL_41 |
     CLIENT_PLUGIN_AUTH |
     CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
@@ -121,7 +123,7 @@ constexpr capabilities mandatory_capabilities{
 };
 // clang-format on
 
-constexpr capabilities optional_capabilities{CLIENT_MULTI_RESULTS | CLIENT_PS_MULTI_RESULTS};
+BOOST_INLINE_CONSTEXPR capabilities optional_capabilities{CLIENT_MULTI_RESULTS | CLIENT_PS_MULTI_RESULTS};
 
 }  // namespace detail
 }  // namespace mysql

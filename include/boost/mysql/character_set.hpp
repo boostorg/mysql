@@ -61,14 +61,14 @@ struct character_set
 };
 
 /// (EXPERIMENTAL) The utf8mb4 character set (the one you should use by default).
-constexpr character_set utf8mb4_charset
+BOOST_INLINE_CONSTEXPR character_set utf8mb4_charset
 #ifndef BOOST_MYSQL_DOXYGEN
     {detail::make_string_view("utf8mb4"), detail::next_char_utf8mb4}
 #endif
 ;
 
 /// (EXPERIMENTAL) The ascii character set.
-constexpr character_set ascii_charset
+BOOST_INLINE_CONSTEXPR character_set ascii_charset
 #ifndef BOOST_MYSQL_DOXYGEN
     {detail::make_string_view("ascii"), detail::next_char_ascii};
 #endif
