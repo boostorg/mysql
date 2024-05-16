@@ -98,22 +98,13 @@ def cmake_build(
             'CMAKE_INSTALL_PREFIX': str(cmake_distro),
             'BUILD_TESTING': 'ON',
             'CMAKE_INSTALL_MESSAGE': 'NEVER',
-            'BOOST_MYSQL_INTEGRATION_TESTS': 'OFF', # Explicitly state this to make rebuilds work
+            'BOOST_MYSQL_INTEGRATION_TESTS': 'ON',
             **({ 'CMAKE_CXX_STANDARD': cxxstd } if cxxstd else {})
         }
     )
     runner.build(target='tests')
     runner.ctest()
     runner.build(target='install')
-
-    # Step 2
-    runner.configure(
-        source_dir=BOOST_ROOT,
-        binary_dir=bin_dir,
-        variables={'BOOST_MYSQL_INTEGRATION_TESTS': 'ON'}
-    )
-    runner.build_all()
-    runner.ctest()
 
     # The library can be consumed using add_subdirectory
     runner.configure(
@@ -174,6 +165,37 @@ def cmake_noopenssl_build(
     )
     runner.build(target='tests')
     runner.ctest(no_tests_error=False)
+    runner.build(target='install')
+
+
+# Check that disabling integration tests works
+def cmake_nointeg_build(
+    source_dir: Path,
+    boost_branch: str,
+    generator: str
+):
+    # Config
+    runner = _CMakeRunner(generator=generator, build_type='Release')
+
+    # Get Boost
+    install_boost(
+        source_dir=source_dir,
+        boost_branch=boost_branch,
+    )
+
+    # Build the library and run the tests, as the Boost superproject does
+    bin_dir = BOOST_ROOT.joinpath('__build')
+    runner.configure(
+        source_dir=BOOST_ROOT,
+        binary_dir=bin_dir,
+        variables={
+            'CMAKE_PREFIX_PATH': _cmake_prefix_path(),
+            'BOOST_INCLUDE_LIBRARIES': 'mysql',
+            'BUILD_TESTING': 'ON'
+        }
+    )
+    runner.build(target='tests')
+    runner.ctest()
     runner.build(target='install')
 
 

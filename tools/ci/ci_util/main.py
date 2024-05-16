@@ -11,7 +11,7 @@ from typing import Union
 import os
 import argparse
 from .common import IS_WINDOWS, BOOST_ROOT
-from .cmake import cmake_build, cmake_noopenssl_build, find_package_b2_test
+from .cmake import cmake_build, cmake_noopenssl_build, cmake_nointeg_build, find_package_b2_test
 from .b2 import b2_build
 from .docs import docs_build
 
@@ -103,6 +103,11 @@ def main():
     subp = subparsers.add_parser('cmake-noopenssl', help='CMake build without OpenSSL')
     subp.add_argument('--generator', default='Ninja')
     subp.set_defaults(func=cmake_noopenssl_build)
+
+    # cmake without integratin tests
+    subp = subparsers.add_parser('cmake-nointeg', help='CMake build without integration tests')
+    subp.add_argument('--generator', default='Ninja')
+    subp.set_defaults(func=cmake_nointeg_build)
 
     # find_package with b2 distribution
     subp = subparsers.add_parser('find-package-b2', help='find_package with b2 distribution test')
