@@ -220,7 +220,7 @@ def linux_cmake_nointeg(name):
                 '--source-dir=$(pwd) ' + \
                 'cmake-nointeg ' + \
                 '--generator=Ninja '
-    return _pipeline(name=name, image=_image('build-clang18'), os='linux', command=command, db=None)
+    return _pipeline(name=name, image=_image('build-gcc13'), os='linux', command=command, db=None)
 
 
 def windows_cmake(
