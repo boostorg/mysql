@@ -28,12 +28,15 @@ namespace mysql {
 
 /**
  * \brief Type representing MySQL `DATETIME` and `TIMESTAMP` data types.
- * \details Represents a broken datetime by its year, month, day, hour, minute, second and
- * microsecond components. This type is close to the protocol and should not be used as a vocabulary
+ * \details Represents a Gregorian date and time broken by its year, month, day, hour, minute, second and
+ * microsecond components.
+ * \n
+ * This type is close to the protocol and should not be used as a vocabulary
  * type. Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point or \ref
  * get_time_point.
  * \n
- * As opposed to `time_point`, this type allows representing invalid and zero datetimes.
+ * As opposed to `time_point`, this type allows representing MySQL invalid and zero datetimes.
+ * These values are allowed by MySQL but don't represent real time points.
  */
 class datetime
 {
@@ -48,6 +51,7 @@ public:
     /**
      * \brief Constructs a zero datetime.
      * \details Results in a datetime with all of its components set to zero.
+     * The resulting object has `this->valid() == false`.
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -55,6 +59,9 @@ public:
 
     /**
      * \brief Constructs a datetime from its individual components.
+     * \details
+     * Component values that yield invalid datetimes (like zero or out-of-range
+     * values) are allowed, resulting in an object with `this->valid() == false`.
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -88,20 +95,33 @@ public:
 
     /**
      * \brief Retrieves the year component.
+     * \details
+     * Represents the year number in the Gregorian calendar.
+     * If `this->valid() == true`, this value is within the `[0, 9999]` range.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
     constexpr std::uint16_t year() const noexcept { return year_; }
 
     /**
-     * \brief Retrieves the month component.
+     * \brief Retrieves the month component (1-based).
+     * \details
+     * A value of 1 represents January.
+     * If `this->valid() == true`, this value is within the `[1, 12]` range.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
     constexpr std::uint8_t month() const noexcept { return month_; }
 
     /**
-     * \brief Retrieves the day component.
+     * \brief Retrieves the day component (1-based).
+     * \details
+     * A value of 1 represents the first day of the month.
+     * If `this->valid() == true`, this value is within the `[1, last_month_day]` range
+     * (where `last_month_day` is the last day of the month).
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -109,6 +129,7 @@ public:
 
     /**
      * \brief Retrieves the hour component.
+     * \details If `this->valid() == true`, this value is within the `[0, 23]` range.
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -116,6 +137,7 @@ public:
 
     /**
      * \brief Retrieves the minute component.
+     * \details If `this->valid() == true`, this value is within the `[0, 59]` range.
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -123,6 +145,7 @@ public:
 
     /**
      * \brief Retrieves the second component.
+     * \details If `this->valid() == true`, this value is within the `[0, 59]` range.
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -130,6 +153,7 @@ public:
 
     /**
      * \brief Retrieves the microsecond component.
+     * \details If `this->valid() == true`, this value is within the `[0, 999999]` range.
      * \par Exception safety
      * No-throw guarantee.
      */
