@@ -50,7 +50,7 @@ class close_statement_step;
 class reset_connection_step;
 class set_character_set_step;
 
-class execute_args_t
+class execute_args
 {
     detail::any_execution_request impl_;
 
@@ -59,8 +59,8 @@ class execute_args_t
 #endif
 
 public:
-    execute_args_t(string_view query) : impl_(query) {}
-    execute_args_t(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
+    execute_args(string_view query) : impl_(query) {}
+    execute_args(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
     using step_type = basic_execute_step<results>;
 };
 
@@ -72,15 +72,18 @@ struct execute_args_store
     std::array<field_view, N> params;
 #endif
 
-    operator execute_args_t() const { return {stmt, params}; }
+    operator execute_args() const { return {stmt, params}; }
     using step_type = basic_execute_step<results>;
 };
 
-inline execute_args_t execute_args(string_view v) { return {string_view(v)}; }
-inline execute_args_t execute_args(statement stmt, span<const field_view> params) { return {stmt, params}; }
+inline execute_args make_execute_args(string_view v) { return {string_view(v)}; }
+inline execute_args make_execute_args(statement stmt, span<const field_view> params)
+{
+    return {stmt, params};
+}
 
 template <class... Args>
-execute_args_store<sizeof...(Args)> execute_args(statement stmt, const Args&... params)
+execute_args_store<sizeof...(Args)> make_execute_args(statement stmt, const Args&... params)
 {
     return {stmt, {detail::to_field(params)...}};
 }
@@ -105,7 +108,7 @@ class basic_execute_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, execute_args_t args)
+        void reset(std::vector<std::uint8_t>& buffer, execute_args args)
         {
             auto args_impl = detail::access::get_impl(args);
             auto enc = args_impl.is_query ? detail::resultset_encoding::text
@@ -132,7 +135,7 @@ public:
     const diagnostics& diag() const { return impl_.err_.diag; }
     const ResultType& result() const { return impl_.result_; }
 
-    using args_type = execute_args_t;
+    using args_type = execute_args;
 };
 
 using execute_step = basic_execute_step<results>;
@@ -140,13 +143,19 @@ using execute_step = basic_execute_step<results>;
 template <class... StaticRow>
 using static_execute_step = basic_execute_step<static_results<StaticRow...>>;
 
-struct prepare_statement_args_t
+class prepare_statement_args
 {
-    string_view stmt_sql;
+    string_view impl_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
+public:
+    prepare_statement_args(string_view stmt_sql) : impl_{stmt_sql} {}
 
     using step_type = prepare_statement_step;
 };
-inline prepare_statement_args_t prepare_statement_args(string_view sql) { return {sql}; }
 
 class prepare_statement_step
 {
@@ -166,11 +175,11 @@ class prepare_statement_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, prepare_statement_args_t args)
+        void reset(std::vector<std::uint8_t>& buffer, prepare_statement_args args)
         {
             err_.clear();
             result_ = statement();
-            seqnum = detail::serialize_prepare_statement(buffer, args.stmt_sql);
+            seqnum = detail::serialize_prepare_statement(buffer, detail::access::get_impl(args));
         }
     } impl_;
 
@@ -184,16 +193,20 @@ public:
     const diagnostics& diag() const { return impl_.err_.diag; }
     statement result() const { return impl_.result_; }
 
-    using args_type = prepare_statement_args_t;
+    using args_type = prepare_statement_args;
 };
 
-struct close_statement_args_t
+class close_statement_args
 {
-    statement stmt;
+    statement impl_;
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
 
+public:
+    close_statement_args(statement stmt) : impl_(stmt) {}
     using step_type = close_statement_step;
 };
-inline close_statement_args_t close_statement_args(statement stmt) { return {stmt}; }
 
 class close_statement_step
 {
@@ -212,10 +225,10 @@ class close_statement_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, close_statement_args_t stmt)
+        void reset(std::vector<std::uint8_t>& buffer, close_statement_args stmt)
         {
             err_.clear();
-            seqnum = detail::serialize_close_statement(buffer, stmt.stmt);
+            seqnum = detail::serialize_close_statement(buffer, detail::access::get_impl(stmt));
         }
     } impl_;
 
@@ -228,14 +241,13 @@ public:
     error_code error() const { return impl_.err_.ec; }
     const diagnostics& diag() const { return impl_.err_.diag; }
 
-    using args_type = close_statement_args_t;
+    using args_type = close_statement_args;
 };
 
-struct no_arg_t
+struct reset_connection_args
 {
+    using step_type = reset_connection_step;
 };
-
-BOOST_INLINE_CONSTEXPR no_arg_t no_arg{};
 
 class reset_connection_step
 {
@@ -254,7 +266,7 @@ class reset_connection_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, no_arg_t)
+        void reset(std::vector<std::uint8_t>& buffer, reset_connection_args)
         {
             err_.clear();
             seqnum = detail::serialize_reset_connection(buffer);
@@ -270,7 +282,19 @@ public:
     error_code error() const { return impl_.err_.ec; }
     const diagnostics& diag() const { return impl_.err_.diag; }
 
-    using args_type = no_arg_t;
+    using args_type = reset_connection_args;
+};
+
+class set_character_set_args
+{
+    character_set impl_;
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
+public:
+    set_character_set_args(character_set charset) : impl_(charset) {}
+    using step_type = set_character_set_step;
 };
 
 class set_character_set_step
@@ -291,11 +315,11 @@ class set_character_set_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, character_set charset)
+        void reset(std::vector<std::uint8_t>& buffer, set_character_set_args args)
         {
             err_.clear();
-            charset_ = charset;
-            seqnum = detail::serialize_set_character_set(buffer, charset);
+            charset_ = detail::access::get_impl(args);
+            seqnum = detail::serialize_set_character_set(buffer, charset_);
         }
     } impl_;
 
@@ -308,7 +332,7 @@ public:
     error_code error() const { return impl_.err_.ec; }
     const diagnostics& diag() const { return impl_.err_.diag; }
 
-    using args_type = character_set;
+    using args_type = set_character_set_args;
 };
 
 // TODO: hide these

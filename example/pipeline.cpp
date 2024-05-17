@@ -144,11 +144,11 @@ void main_impl(int argc, char** argv)
             // If any of these steps fail, we shouldn't run COMMIT. This is a dependency,
             // and requires running it once the server responds
             mysql::static_pipeline pipe(
-                mysql::execute_args("START TRANSACTION"),
-                mysql::execute_args(stmts.at(0), company_id, "Juan", "Lopez"),
-                mysql::execute_args(stmts.at(0), company_id, "Pepito", "Rodriguez"),
-                mysql::execute_args(stmts.at(0), company_id, "Someone", "Random"),
-                mysql::execute_args(stmts.at(1), "Inserted 3 new emplyees")
+                mysql::make_execute_args("START TRANSACTION"),
+                mysql::make_execute_args(stmts.at(0), company_id, "Juan", "Lopez"),
+                mysql::make_execute_args(stmts.at(0), company_id, "Pepito", "Rodriguez"),
+                mysql::make_execute_args(stmts.at(0), company_id, "Someone", "Random"),
+                mysql::make_execute_args(stmts.at(1), "Inserted 3 new emplyees")
             );
 
             std::tie(ec) = co_await conn.async_run_pipeline(pipe, diag, tok);
@@ -163,7 +163,7 @@ void main_impl(int argc, char** argv)
             mysql::static_pipeline pipe2{
                 mysql::close_statement_args(stmts.at(0)),
                 mysql::close_statement_args(stmts.at(1)),
-                mysql::execute_args("COMMIT")
+                mysql::make_execute_args("COMMIT")
             };
 
             std::tie(ec) = co_await conn.async_run_pipeline(pipe, diag, tok);
