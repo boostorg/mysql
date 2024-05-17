@@ -33,6 +33,7 @@
 #include <boost/mp11/integer_sequence.hpp>
 #include <boost/mp11/tuple.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <tuple>
@@ -42,13 +43,29 @@
 namespace boost {
 namespace mysql {
 
+template <class ResultType>
+class basic_execute_step;
+class prepare_statement_step;
+class close_statement_step;
+class reset_connection_step;
+
 template <class... Types>
 BOOST_CXX14_CONSTEXPR std::array<field_view, sizeof...(Types)> make_stmt_params(const Types&... args)
 {
     return std::array<field_view, sizeof...(Types)>{{detail::to_field(args)...}};
 }
 
-class execute_step_args
+template <std::size_t N, class ResultType>
+struct execute_args_2
+{
+    statement stmt;
+    std::array<field_view, N> params;
+
+    using step_type = basic_execute_step<ResultType>;
+};
+
+template <class ResultType>
+class execute_args_t
 {
     detail::any_execution_request impl_;
 
@@ -57,13 +74,43 @@ class execute_step_args
 #endif
 
 public:
-    template <class T, class = std::enable_if<std::is_convertible<T, string_view>::value>::type>
-    execute_step_args(const T& query) : impl_(string_view(query))
+    execute_args_t(string_view query) : impl_(query) {}
+
+    execute_args_t(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
+
+    template <std::size_t N, class OtherResultType>
+    execute_args_t(const execute_args_2<N, OtherResultType>& a) : execute_args_t(a.stmt, a.params)
     {
     }
 
-    execute_step_args(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
+    template <class OtherResultType>
+    execute_args_t(execute_args_t<OtherResultType> a) : impl_(a.impl_)
+    {
+    }
+
+    using step_type = basic_execute_step<ResultType>;
 };
+
+template <
+    class T,
+    class ResultType = results,
+    class = typename std::enable_if<std::is_convertible<T, string_view>::value>::type>
+execute_args_t<ResultType> execute_args(const T& v)
+{
+    return {string_view(v)};
+}
+
+template <class ResultType = results>
+inline execute_args_t<ResultType> execute_args(statement stmt, span<const field_view> params)
+{
+    return {stmt, params};
+}
+
+template <class ResultType = results, class... Args>
+execute_args_2<sizeof...(Args), ResultType> execute_args(statement stmt, const Args&... params)
+{
+    return {stmt, make_stmt_params(params...)};
+}
 
 template <class ResultType>
 class basic_execute_step
@@ -85,7 +132,7 @@ class basic_execute_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, execute_step_args args)
+        void reset(std::vector<std::uint8_t>& buffer, execute_args_t<ResultType> args)
         {
             auto args_impl = detail::access::get_impl(args);
             auto enc = args_impl.is_query ? detail::resultset_encoding::text
@@ -112,13 +159,21 @@ public:
     const diagnostics& diag() const { return impl_.err_.diag; }
     const ResultType& result() const { return impl_.result_; }
 
-    using args_type = execute_step_args;
+    using args_type = execute_args_t<ResultType>;
 };
 
 using execute_step = basic_execute_step<results>;
 
 template <class... StaticRow>
 using static_execute_step = basic_execute_step<static_results<StaticRow...>>;
+
+struct prepare_statement_args_t
+{
+    string_view stmt_sql;
+
+    using step_type = prepare_statement_step;
+};
+inline prepare_statement_args_t prepare_statement_args(string_view sql) { return {sql}; }
 
 class prepare_statement_step
 {
@@ -138,11 +193,11 @@ class prepare_statement_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, string_view stmt_sql)
+        void reset(std::vector<std::uint8_t>& buffer, prepare_statement_args_t args)
         {
             err_.clear();
             result_ = statement();
-            seqnum = detail::serialize_prepare_statement(buffer, stmt_sql);
+            seqnum = detail::serialize_prepare_statement(buffer, args.stmt_sql);
         }
     } impl_;
 
@@ -156,8 +211,16 @@ public:
     const diagnostics& diag() const { return impl_.err_.diag; }
     statement result() const { return impl_.result_; }
 
-    using args_type = string_view;
+    using args_type = prepare_statement_args_t;
 };
+
+struct close_statement_args_t
+{
+    statement stmt;
+
+    using step_type = close_statement_step;
+};
+inline close_statement_args_t close_statement_args(statement stmt) { return {stmt}; }
 
 class close_statement_step
 {
@@ -176,10 +239,10 @@ class close_statement_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, statement stmt)
+        void reset(std::vector<std::uint8_t>& buffer, close_statement_args_t stmt)
         {
             err_.clear();
-            seqnum = detail::serialize_close_statement(buffer, stmt);
+            seqnum = detail::serialize_close_statement(buffer, stmt.stmt);
         }
     } impl_;
 
@@ -192,7 +255,7 @@ public:
     error_code error() const { return impl_.err_.ec; }
     const diagnostics& diag() const { return impl_.err_.diag; }
 
-    using args_type = statement;
+    using args_type = close_statement_args_t;
 };
 
 struct no_arg_t
@@ -341,6 +404,15 @@ public:
 
     const std::tuple<StepType...>& steps() const { return impl_.steps_; }
 };
+
+template <class... Args>
+static_pipeline<typename Args::step_type...> make_static_pipeline(const Args&... args)
+{
+    return {args...};
+}
+
+template <class... Args>
+static_pipeline(const Args&... args) -> static_pipeline<typename Args::step_type...>;
 
 }  // namespace mysql
 }  // namespace boost

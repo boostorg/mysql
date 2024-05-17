@@ -143,19 +143,13 @@ void main_impl(int argc, char** argv)
             // Execute them. We must not include the COMMIT statement here.
             // If any of these steps fail, we shouldn't run COMMIT. This is a dependency,
             // and requires running it once the server responds
-            mysql::static_pipeline<
-                mysql::execute_step,
-                mysql::execute_step,
-                mysql::execute_step,
-                mysql::execute_step,
-                mysql::execute_step>
-                pipe{
-                    "START TRANSACTION",
-                    {stmts.at(0), mysql::make_stmt_params(company_id, "Juan", "Lopez")},
-                    {stmts.at(0), mysql::make_stmt_params(company_id, "Pepito", "Rodriguez")},
-                    {stmts.at(0), mysql::make_stmt_params(company_id, "Someone", "Random")},
-                    {stmts.at(1), mysql::make_stmt_params("Inserted 3 new emplyees")}
-            };
+            mysql::static_pipeline pipe(
+                mysql::execute_args("START TRANSACTION"),
+                mysql::execute_args(stmts.at(0), company_id, "Juan", "Lopez"),
+                mysql::execute_args(stmts.at(0), company_id, "Pepito", "Rodriguez"),
+                mysql::execute_args(stmts.at(0), company_id, "Someone", "Random"),
+                mysql::execute_args(stmts.at(1), "Inserted 3 new emplyees")
+            );
 
             std::tie(ec) = co_await conn.async_run_pipeline(pipe, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
@@ -166,9 +160,11 @@ void main_impl(int argc, char** argv)
 
             // If the above statement were successful, we can close the statements
             // and run the COMMIT statement
-            mysql::
-                static_pipeline<mysql::close_statement_step, mysql::close_statement_step, mysql::execute_step>
-                    pipe2{stmts.at(0), stmts.at(1), "COMMIT"};
+            mysql::static_pipeline pipe2{
+                mysql::close_statement_args(stmts.at(0)),
+                mysql::close_statement_args(stmts.at(1)),
+                mysql::execute_args("COMMIT")
+            };
 
             std::tie(ec) = co_await conn.async_run_pipeline(pipe, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
