@@ -110,7 +110,7 @@ constexpr array_wrapper<string_view, sizeof...(MemberDescriptor)> get_describe_n
 }
 
 template <class DescribeStruct>
-constexpr auto describe_names_storage = get_describe_names(row_members<DescribeStruct>{});
+BOOST_INLINE_CONSTEXPR auto describe_names_storage = get_describe_names(row_members<DescribeStruct>{});
 
 template <class DescribeStruct>
 class row_traits<DescribeStruct, true>
@@ -261,7 +261,8 @@ struct parse_functor
 // directly, but the functions below, instead.
 //
 template <class T>
-constexpr bool is_static_row = !std::is_base_of<row_traits_is_unspecialized, row_traits<T>>::value;
+BOOST_INLINE_CONSTEXPR bool
+    is_static_row = !std::is_base_of<row_traits_is_unspecialized, row_traits<T>>::value;
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
@@ -319,9 +320,9 @@ using meta_check_fn_t =
 
 // For multi-resultset
 template <class... StaticRow>
-constexpr std::size_t max_num_columns = (std::max)({get_row_size<StaticRow>()...});
+BOOST_INLINE_CONSTEXPR std::size_t max_num_columns = (std::max)({get_row_size<StaticRow>()...});
 
-constexpr std::size_t index_not_found = static_cast<std::size_t>(-1);
+BOOST_INLINE_CONSTEXPR std::size_t index_not_found = static_cast<std::size_t>(-1);
 
 template <class UnderlyingRowType, class... RowType>
 constexpr std::size_t get_type_index() noexcept

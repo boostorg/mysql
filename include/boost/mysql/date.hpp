@@ -205,10 +205,10 @@ BOOST_MYSQL_DECL
 std::ostream& operator<<(std::ostream& os, const date& v);
 
 /// The minimum allowed value for \ref date.
-constexpr date min_date{0u, 1u, 1u};
+BOOST_INLINE_CONSTEXPR date min_date{0u, 1u, 1u};
 
 /// The maximum allowed value for \ref date.
-constexpr date max_date{9999u, 12u, 31u};
+BOOST_INLINE_CONSTEXPR date max_date{9999u, 12u, 31u};
 
 }  // namespace mysql
 }  // namespace boost

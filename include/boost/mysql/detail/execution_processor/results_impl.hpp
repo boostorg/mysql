@@ -171,7 +171,7 @@ private:
     std::size_t num_fields_at_batch_start_{no_batch};
 
     // Auxiliar
-    static constexpr std::size_t no_batch = std::size_t(-1);
+    static BOOST_INLINE_CONSTEXPR std::size_t no_batch = std::size_t(-1);
 
     bool has_active_batch() const noexcept { return num_fields_at_batch_start_ != no_batch; }
 

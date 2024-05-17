@@ -8,17 +8,19 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_BYTE_TO_HEX_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_BYTE_TO_HEX_HPP
 
+#include <boost/config.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
 
 // We implement the translation to hex ourselves, since it's easy enough.
 // We use a table to look up characters
-constexpr char byte_to_hex_table[16] =
+BOOST_INLINE_CONSTEXPR char byte_to_hex_table[16] =
     {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 // it should point to a buffer of size 2, at least
-inline char* byte_to_hex(unsigned char byte, char* it) noexcept
+inline char* byte_to_hex(unsigned char byte, char* it)
 {
     *it++ = byte_to_hex_table[(byte & ~15) >> 4];
     *it++ = byte_to_hex_table[byte & 15];
