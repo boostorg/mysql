@@ -44,6 +44,17 @@
 #define BOOST_MYSQL_RETURN_TYPE(...)
 #endif
 
+// Chrono calendar types and functions
+#if __cpp_lib_chrono >= 201907L
+#define BOOST_MYSQL_HAS_LOCAL_TIME
+// libstdc++ has support for local times since v10, but __cpp_lib_chrono is not
+// defined because of missing formatting support. Manual detection allows using
+// local time features on systems with libstdc++ >= 10 (e.g. gcc >= 10, clang >= 11)
+#elif defined(BOOST_LIBSTDCXX_VERSION) && BOOST_LIBSTDCXX_VERSION >= 100000 && __cplusplus >= 202002L
+#define BOOST_MYSQL_HAS_LOCAL_TIME
+// TODO: libc++
+#endif
+
 // clang-format on
 
 #endif

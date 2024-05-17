@@ -48,6 +48,10 @@ public:
     using time_point = std::chrono::
         time_point<std::chrono::system_clock, std::chrono::duration<std::int64_t, std::micro>>;
 
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    using local_time_point = std::chrono::local_time<std::chrono::duration<std::int64_t, std::micro>>;
+#endif
+
     /**
      * \brief Constructs a zero datetime.
      * \details Results in a datetime with all of its components set to zero.
@@ -92,6 +96,10 @@ public:
      * out of the [\ref min_datetime, \ref max_datetime] range.
      */
     BOOST_CXX14_CONSTEXPR inline explicit datetime(time_point tp);
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    constexpr explicit datetime(local_time_point tp) : datetime(time_point(tp.time_since_epoch())) {}
+#endif
 
     /**
      * \brief Retrieves the year component.
@@ -186,7 +194,7 @@ public:
     BOOST_CXX14_CONSTEXPR time_point get_time_point() const noexcept
     {
         BOOST_ASSERT(valid());
-        return unch_get_time_point();
+        return time_point(unch_get_micros());
     }
 
     /**
@@ -199,8 +207,23 @@ public:
     {
         if (!valid())
             BOOST_THROW_EXCEPTION(std::invalid_argument("datetime::as_time_point: invalid datetime"));
-        return unch_get_time_point();
+        return time_point(unch_get_micros());
     }
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    constexpr local_time_point get_local_time_point() const noexcept
+    {
+        BOOST_ASSERT(valid());
+        return local_time_point(unch_get_micros());
+    }
+
+    constexpr local_time_point as_local_time_point() const
+    {
+        if (!valid())
+            BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_local_time_point: invalid date"));
+        return local_time_point(unch_get_micros());
+    }
+#endif
 
     /**
      * \brief Tests for equality.
@@ -243,13 +266,13 @@ private:
     std::uint8_t second_{};
     std::uint32_t microsecond_{};
 
-    BOOST_CXX14_CONSTEXPR inline time_point unch_get_time_point() const noexcept
+    BOOST_CXX14_CONSTEXPR inline time_point::duration unch_get_micros() const
     {
         // Doing time of day independently to prevent overflow
         days d(detail::ymd_to_days(year_, month_, day_));
         auto time_of_day = std::chrono::hours(hour_) + std::chrono::minutes(minute_) +
                            std::chrono::seconds(second_) + std::chrono::microseconds(microsecond_);
-        return time_point(d) + time_of_day;
+        return time_point::duration(d) + time_of_day;
     }
 };
 

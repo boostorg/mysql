@@ -81,6 +81,10 @@ public:
             BOOST_THROW_EXCEPTION(std::out_of_range("date::date: time_point was out of range"));
     }
 
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    constexpr explicit date(std::chrono::local_days tp) : date(time_point(tp.time_since_epoch())) {}
+#endif
+
     /**
      * \brief Retrieves the year component.
      * \details
@@ -137,7 +141,7 @@ public:
     BOOST_CXX14_CONSTEXPR time_point get_time_point() const noexcept
     {
         BOOST_ASSERT(valid());
-        return unch_get_time_point();
+        return time_point(unch_get_days());
     }
 
     /**
@@ -150,8 +154,23 @@ public:
     {
         if (!valid())
             BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_time_point: invalid date"));
-        return unch_get_time_point();
+        return time_point(unch_get_days());
     }
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    constexpr std::chrono::local_days get_local_time_point() const noexcept
+    {
+        BOOST_ASSERT(valid());
+        return std::chrono::local_days(unch_get_days());
+    }
+
+    constexpr std::chrono::local_days as_local_time_point() const
+    {
+        if (!valid())
+            BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_local_time_point: invalid date"));
+        return std::chrono::local_days(unch_get_days());
+    }
+#endif
 
     /**
      * \brief Tests for equality.
@@ -190,9 +209,9 @@ private:
     std::uint8_t month_{};
     std::uint8_t day_{};
 
-    BOOST_CXX14_CONSTEXPR time_point unch_get_time_point() const noexcept
+    BOOST_CXX14_CONSTEXPR days unch_get_days() const
     {
-        return time_point(days(detail::ymd_to_days(year_, month_, day_)));
+        return days(detail::ymd_to_days(year_, month_, day_));
     }
 };
 
