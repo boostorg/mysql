@@ -138,61 +138,69 @@ public:
 
     // Adding steps
     // TODO: would execution requests be less confusing?
-    void add_execute(string_view query)
+    pipeline& add_execute(string_view query)
     {
         impl_.steps_.emplace_back(
             detail::resultset_encoding::text,
             detail::serialize_query(impl_.buffer_, query)
         );
+        return *this;
     }
 
     template <class... Params>
-    void add_execute(statement stmt, const Params&... params)
+    pipeline& add_execute(statement stmt, const Params&... params)
     {
         std::array<field_view, sizeof...(Params)> params_array{{detail::to_field(params)...}};
         add_execute_range(stmt, params_array);
+        return *this;
     }
 
-    void add_execute_range(statement stmt, span<const field_view> params)
+    pipeline& add_execute_range(statement stmt, span<const field_view> params)
     {
         impl_.steps_.emplace_back(
             detail::resultset_encoding::binary,
             detail::serialize_execute_statement(impl_.buffer_, stmt, params)
         );
+        return *this;
     }
 
-    void add_prepare_statement(string_view statement_sql)
+    pipeline& add_prepare_statement(string_view statement_sql)
     {
         impl_.steps_.emplace_back(
             pipeline_step_kind::prepare_statement,
             detail::serialize_prepare_statement(impl_.buffer_, statement_sql)
         );
+        return *this;
     }
 
-    void add_close_statement(statement stmt)
+    pipeline& add_close_statement(statement stmt)
     {
         impl_.steps_.emplace_back(
             pipeline_step_kind::close_statement,
             detail::serialize_close_statement(impl_.buffer_, stmt)
         );
+        return *this;
     }
 
-    void add_set_character_set(character_set charset)
+    pipeline& add_set_character_set(character_set charset)
     {
         impl_.steps_.emplace_back(charset, detail::serialize_set_character_set(impl_.buffer_, charset));
+        return *this;
     }
 
-    void add_reset_connection()
+    pipeline& add_reset_connection()
     {
         impl_.steps_.emplace_back(
             pipeline_step_kind::reset_connection,
             detail::serialize_reset_connection(impl_.buffer_)
         );
+        return *this;
     }
 
-    void add_ping()
+    pipeline& add_ping()
     {
         impl_.steps_.emplace_back(pipeline_step_kind::ping, detail::serialize_ping(impl_.buffer_));
+        return *this;
     }
 
     // Retrieving results
