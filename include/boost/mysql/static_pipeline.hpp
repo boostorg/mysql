@@ -48,23 +48,17 @@ class basic_execute_step;
 class prepare_statement_step;
 class close_statement_step;
 class reset_connection_step;
+class set_character_set_step;
 
-template <class... Types>
-BOOST_CXX14_CONSTEXPR std::array<field_view, sizeof...(Types)> make_stmt_params(const Types&... args)
-{
-    return std::array<field_view, sizeof...(Types)>{{detail::to_field(args)...}};
-}
-
-template <std::size_t N, class ResultType>
+template <std::size_t N>
 struct execute_args_2
 {
     statement stmt;
     std::array<field_view, N> params;
 
-    using step_type = basic_execute_step<ResultType>;
+    using step_type = basic_execute_step<results>;
 };
 
-template <class ResultType>
 class execute_args_t
 {
     detail::any_execution_request impl_;
@@ -78,38 +72,26 @@ public:
 
     execute_args_t(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
 
-    template <std::size_t N, class OtherResultType>
-    execute_args_t(const execute_args_2<N, OtherResultType>& a) : execute_args_t(a.stmt, a.params)
+    template <std::size_t N>
+    execute_args_t(const execute_args_2<N>& a) : execute_args_t(a.stmt, a.params)
     {
     }
 
-    template <class OtherResultType>
-    execute_args_t(execute_args_t<OtherResultType> a) : impl_(a.impl_)
-    {
-    }
-
-    using step_type = basic_execute_step<ResultType>;
+    using step_type = basic_execute_step<results>;
 };
 
-template <
-    class T,
-    class ResultType = results,
-    class = typename std::enable_if<std::is_convertible<T, string_view>::value>::type>
-execute_args_t<ResultType> execute_args(const T& v)
+template <class T, class = typename std::enable_if<std::is_convertible<T, string_view>::value>::type>
+execute_args_t execute_args(const T& v)
 {
     return {string_view(v)};
 }
 
-template <class ResultType = results>
-inline execute_args_t<ResultType> execute_args(statement stmt, span<const field_view> params)
-{
-    return {stmt, params};
-}
+inline execute_args_t execute_args(statement stmt, span<const field_view> params) { return {stmt, params}; }
 
-template <class ResultType = results, class... Args>
-execute_args_2<sizeof...(Args), ResultType> execute_args(statement stmt, const Args&... params)
+template <class... Args>
+execute_args_2<sizeof...(Args)> execute_args(statement stmt, const Args&... params)
 {
-    return {stmt, make_stmt_params(params...)};
+    return {stmt, {detail::to_field(params)...}};
 }
 
 template <class ResultType>
@@ -132,7 +114,7 @@ class basic_execute_step
             };
         }
 
-        void reset(std::vector<std::uint8_t>& buffer, execute_args_t<ResultType> args)
+        void reset(std::vector<std::uint8_t>& buffer, execute_args_t args)
         {
             auto args_impl = detail::access::get_impl(args);
             auto enc = args_impl.is_query ? detail::resultset_encoding::text
@@ -159,7 +141,7 @@ public:
     const diagnostics& diag() const { return impl_.err_.diag; }
     const ResultType& result() const { return impl_.result_; }
 
-    using args_type = execute_args_t<ResultType>;
+    using args_type = execute_args_t;
 };
 
 using execute_step = basic_execute_step<results>;
