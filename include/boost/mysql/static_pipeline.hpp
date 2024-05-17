@@ -50,15 +50,6 @@ class close_statement_step;
 class reset_connection_step;
 class set_character_set_step;
 
-template <std::size_t N>
-struct execute_args_2
-{
-    statement stmt;
-    std::array<field_view, N> params;
-
-    using step_type = basic_execute_step<results>;
-};
-
 class execute_args_t
 {
     detail::any_execution_request impl_;
@@ -69,27 +60,27 @@ class execute_args_t
 
 public:
     execute_args_t(string_view query) : impl_(query) {}
-
     execute_args_t(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
-
-    template <std::size_t N>
-    execute_args_t(const execute_args_2<N>& a) : execute_args_t(a.stmt, a.params)
-    {
-    }
-
     using step_type = basic_execute_step<results>;
 };
 
-template <class T, class = typename std::enable_if<std::is_convertible<T, string_view>::value>::type>
-execute_args_t execute_args(const T& v)
+template <std::size_t N>
+struct execute_args_store
 {
-    return {string_view(v)};
-}
+#ifndef BOOST_MYSQL_DOXYGEN
+    statement stmt;
+    std::array<field_view, N> params;
+#endif
 
+    operator execute_args_t() const { return {stmt, params}; }
+    using step_type = basic_execute_step<results>;
+};
+
+inline execute_args_t execute_args(string_view v) { return {string_view(v)}; }
 inline execute_args_t execute_args(statement stmt, span<const field_view> params) { return {stmt, params}; }
 
 template <class... Args>
-execute_args_2<sizeof...(Args)> execute_args(statement stmt, const Args&... params)
+execute_args_store<sizeof...(Args)> execute_args(statement stmt, const Args&... params)
 {
     return {stmt, {detail::to_field(params)...}};
 }
