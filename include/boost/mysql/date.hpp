@@ -27,11 +27,21 @@ namespace mysql {
 
 /**
  * \brief Type representing MySQL `DATE` data type.
- * \details Represents a Gregorian date broken by its year, month and day components.
+ * \details
+ * Represents a Gregorian date broken by its year, month and day components, without a time zone.
  * \n
  * This type is close to the protocol and should not be used as a vocabulary type.
  * Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point
- * or \ref get_time_point.
+ * or \ref get_time_point. If your compiler supports C++20 local times, use
+ * \ref as_local_time_point or \ref get_local_time_point.
+ * \n
+ * Dates retrieved from MySQL don't include any time zone information. Determining the time zone
+ * is left to the application. Thus, any time point obtained from this class should be
+ * interpreted as a local time in an unspecified time zone, like `std::chrono::local_time`.
+ * For compatibility with older compilers, \ref as_time_point and \ref get_time_point return
+ * `system_clock` time points. These should be interpreted as local times rather
+ * than UTC. Prefer using \ref as_local_time_point or \ref get_local_time_point
+ * if your compiler supports them, as they provide more accurate semantics.
  * \n
  * As opposed to `time_point`, this type allows representing MySQL invalid and zero dates.
  * These values are allowed by MySQL but don't represent real dates.
@@ -39,8 +49,22 @@ namespace mysql {
 class date
 {
 public:
-    /// A `std::chrono::time_point` that can represent any valid `date`.
+    /**
+     * \brief A `std::chrono::time_point` that can represent any valid `date`.
+     * \details
+     * Time points returned by this class are always local times, even if defined
+     * to use the system clock. Prefer using \ref local_time_point, if your compiler
+     * supports it.
+     */
     using time_point = std::chrono::time_point<std::chrono::system_clock, days>;
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    /**
+     * \brief A `std::chrono::local_time` time point that can represent any valid `date`.
+     * \details Requires C++20 calendar types.
+     */
+    using local_time_point = std::chrono::local_days;
+#endif
 
     /**
      * \brief Constructs a zero date.
@@ -69,6 +93,9 @@ public:
 
     /**
      * \brief Constructs a date from a `time_point`.
+     * \details
+     * The time point is interpreted as a local time. No time zone conversion is performed.
+     *
      * \par Exception safety
      * Strong guarantee. Throws on invalid input.
      * \throws std::out_of_range If the resulting `date` would be
@@ -82,7 +109,20 @@ public:
     }
 
 #ifdef BOOST_MYSQL_HAS_LOCAL_TIME
-    constexpr explicit date(std::chrono::local_days tp) : date(time_point(tp.time_since_epoch())) {}
+    /**
+     * \brief Constructs a date from a `local_time_point`.
+     * \details
+     * Equivalent to constructing a `date` from a `time_point` with the same
+     * `time_since_epoch()` as `tp`.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Exception safety
+     * Strong guarantee. Throws on invalid input.
+     * \throws std::out_of_range If the resulting `date` would be
+     * out of the [\ref min_date, \ref max_date] range.
+     */
+    constexpr explicit date(local_time_point tp) : date(time_point(tp.time_since_epoch())) {}
 #endif
 
     /**
@@ -132,6 +172,10 @@ public:
 
     /**
      * \brief Converts `*this` into a `time_point` (unchecked access).
+     * \details
+     * If your compiler supports it, prefer using \ref get_local_time_point,
+     * as it provides more accurate semantics.
+     *
      * \par Preconditions
      * `this->valid() == true` (if violated, results in undefined behavior).
      *
@@ -146,6 +190,10 @@ public:
 
     /**
      * \brief Converts `*this` into a `time_point` (checked access).
+     * \details
+     * If your compiler supports it, prefer using \ref as_local_time_point,
+     * as it provides more accurate semantics.
+     *
      * \par Exception safety
      * Strong guarantee.
      * \throws std::invalid_argument If `!this->valid()`.
@@ -158,17 +206,45 @@ public:
     }
 
 #ifdef BOOST_MYSQL_HAS_LOCAL_TIME
-    constexpr std::chrono::local_days get_local_time_point() const noexcept
+    /**
+     * \brief Converts `*this` into a `local_time_point` (unchecked access).
+     * \details
+     * The returned object has the same `time_since_epoch()` as `this->get_time_point()`,
+     * but uses the `std::chrono::local_t` pseudo-clock to better represent
+     * the absence of time zone information.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Preconditions
+     * `this->valid() == true` (if violated, results in undefined behavior).
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    constexpr local_time_point get_local_time_point() const noexcept
     {
         BOOST_ASSERT(valid());
-        return std::chrono::local_days(unch_get_days());
+        return local_time_point(unch_get_days());
     }
 
-    constexpr std::chrono::local_days as_local_time_point() const
+    /**
+     * \brief Converts `*this` into a `local_time_point` (checked access).
+     * \details
+     * The returned object has the same `time_since_epoch()` as `this->as_time_point()`,
+     * but uses the `std::chrono::local_t` pseudo-clock to better represent
+     * the absence of time zone information.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Exception safety
+     * Strong guarantee.
+     * \throws std::invalid_argument If `!this->valid()`.
+     */
+    constexpr local_time_point as_local_time_point() const
     {
         if (!valid())
             BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_local_time_point: invalid date"));
-        return std::chrono::local_days(unch_get_days());
+        return local_time_point(unch_get_days());
     }
 #endif
 
