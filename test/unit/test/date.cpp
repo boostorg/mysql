@@ -60,6 +60,14 @@ BOOST_AUTO_TEST_CASE(ctor_from_time_point_valid)
             BOOST_TEST(d.year() == tc.year);
             BOOST_TEST(d.month() == tc.month);
             BOOST_TEST(d.day() == tc.day);
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+            date d2(std::chrono::local_days(std::chrono::days(tc.days_since_epoch)));
+            BOOST_TEST(d2.valid());
+            BOOST_TEST(d2.year() == tc.year);
+            BOOST_TEST(d2.month() == tc.month);
+            BOOST_TEST(d2.day() == tc.day);
+#endif
         }
     }
 }
@@ -73,34 +81,6 @@ BOOST_AUTO_TEST_CASE(ctor_from_time_point_invalid)
 }
 
 #ifdef BOOST_MYSQL_HAS_LOCAL_TIME
-BOOST_AUTO_TEST_CASE(ctor_from_local_days_valid)
-{
-    struct
-    {
-        int days_since_epoch;
-        std::uint16_t year;
-        std::uint8_t month;
-        std::uint8_t day;
-    } test_cases[] = {
-        {2932896, 9999, 12, 31},
-        {0,       1970, 1,  1 },
-        {-719528, 0,    1,  1 },
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.days_since_epoch)
-        {
-            std::chrono::local_days tp(std::chrono::days(tc.days_since_epoch));
-            date d(tp);
-            BOOST_TEST(d.valid());
-            BOOST_TEST(d.year() == tc.year);
-            BOOST_TEST(d.month() == tc.month);
-            BOOST_TEST(d.day() == tc.day);
-        }
-    }
-}
-
 BOOST_AUTO_TEST_CASE(ctor_from_local_days_invalid)
 {
     BOOST_CHECK_THROW(date(std::chrono::local_days(std::chrono::days(2932897))), std::out_of_range);

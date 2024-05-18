@@ -11,6 +11,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
 #include <iostream>
 
 #include "test_integration/snippets/get_connection.hpp"
@@ -24,14 +25,16 @@ BOOST_AUTO_TEST_CASE(section_time_types)
 {
     auto& conn = get_connection();
 
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
     {
-        //[time_types_date_as_time_point
-        date d(2020, 2, 19);                      // d holds "2020-02-19"
-        date::time_point tp = d.as_time_point();  // now use tp normally
+        //[time_types_date_as_local_time_point
+        date d(2020, 2, 19);                                   // d holds "2020-02-19"
+        std::chrono::local_days tp = d.as_local_time_point();  // now use tp normally
 
         //]
         BOOST_TEST(date(tp) == d);
     }
+#endif
     {
         //[time_types_date_valid
         date d1(2020, 2, 19);  // regular date
@@ -43,15 +46,16 @@ BOOST_AUTO_TEST_CASE(section_time_types)
         BOOST_TEST(v1);
         BOOST_TEST(!v2);
     }
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
     {
-        //[time_types_date_get_time_point
+        //[time_types_date_get_local_time_point
         date d = /* obtain a date somehow */ date(2020, 2, 29);
         if (d.valid())
         {
             // Same as as_time_point, but doesn't check for validity
             // Caution: be sure to check for validity.
             // If d is not valid, get_time_point results in undefined behavior
-            date::time_point tp = d.get_time_point();
+            std::chrono::local_days tp = d.get_local_time_point();
 
             // Use tp as required
             std::cout << tp.time_since_epoch().count() << std::endl;
@@ -63,6 +67,23 @@ BOOST_AUTO_TEST_CASE(section_time_types)
         }
         //]
     }
+#endif
+    {
+        //[time_types_date_as_time_point
+        date d(2020, 2, 19);  // d holds "2020-02-19"
+
+        // date::time_point is a std::chrono::time_point that uses std::chrono::system_clock
+        // tp is a local time, rather than UTC
+        // tp holds the same time_since_epoch() than d.as_local_time_point()
+        date::time_point tp = d.as_time_point();
+
+        //]
+        BOOST_TEST(date(tp) == d);
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+        BOOST_TEST(tp.time_since_epoch() == d.as_local_time_point().time_since_epoch());
+#endif
+    }
+
     {
         //[time_types_datetime
         datetime dt1(2020, 10, 11, 10, 20, 59, 123456);  // regular datetime 2020-10-11 10:20:59.123456

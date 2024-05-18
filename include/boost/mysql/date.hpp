@@ -58,14 +58,6 @@ public:
      */
     using time_point = std::chrono::time_point<std::chrono::system_clock, days>;
 
-#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
-    /**
-     * \brief A `std::chrono::local_time` time point that can represent any valid `date`.
-     * \details Requires C++20 calendar types.
-     */
-    using local_time_point = std::chrono::local_days;
-#endif
-
     /**
      * \brief Constructs a zero date.
      * \details
@@ -110,7 +102,7 @@ public:
 
 #ifdef BOOST_MYSQL_HAS_LOCAL_TIME
     /**
-     * \brief Constructs a date from a `local_time_point`.
+     * \brief Constructs a date from a local time point.
      * \details
      * Equivalent to constructing a `date` from a `time_point` with the same
      * `time_since_epoch()` as `tp`.
@@ -122,7 +114,7 @@ public:
      * \throws std::out_of_range If the resulting `date` would be
      * out of the [\ref min_date, \ref max_date] range.
      */
-    constexpr explicit date(local_time_point tp) : date(time_point(tp.time_since_epoch())) {}
+    constexpr explicit date(std::chrono::local_days tp) : date(time_point(tp.time_since_epoch())) {}
 #endif
 
     /**
@@ -207,7 +199,7 @@ public:
 
 #ifdef BOOST_MYSQL_HAS_LOCAL_TIME
     /**
-     * \brief Converts `*this` into a `local_time_point` (unchecked access).
+     * \brief Converts `*this` into a local time point (unchecked access).
      * \details
      * The returned object has the same `time_since_epoch()` as `this->get_time_point()`,
      * but uses the `std::chrono::local_t` pseudo-clock to better represent
@@ -221,14 +213,14 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    constexpr local_time_point get_local_time_point() const noexcept
+    constexpr std::chrono::local_days get_local_time_point() const noexcept
     {
         BOOST_ASSERT(valid());
-        return local_time_point(unch_get_days());
+        return std::chrono::local_days(unch_get_days());
     }
 
     /**
-     * \brief Converts `*this` into a `local_time_point` (checked access).
+     * \brief Converts `*this` into a local time point (checked access).
      * \details
      * The returned object has the same `time_since_epoch()` as `this->as_time_point()`,
      * but uses the `std::chrono::local_t` pseudo-clock to better represent
@@ -240,11 +232,11 @@ public:
      * Strong guarantee.
      * \throws std::invalid_argument If `!this->valid()`.
      */
-    constexpr local_time_point as_local_time_point() const
+    constexpr std::chrono::local_days as_local_time_point() const
     {
         if (!valid())
             BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_local_time_point: invalid date"));
-        return local_time_point(unch_get_days());
+        return std::chrono::local_days(unch_get_days());
     }
 #endif
 
