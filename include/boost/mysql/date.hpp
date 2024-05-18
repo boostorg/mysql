@@ -31,9 +31,8 @@ namespace mysql {
  * Represents a Gregorian date broken by its year, month and day components, without a time zone.
  * \n
  * This type is close to the protocol and should not be used as a vocabulary type.
- * Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point
- * or \ref get_time_point. If your compiler supports C++20 local times, use
- * \ref as_local_time_point or \ref get_local_time_point.
+ * Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point,
+ * \ref get_time_point, \ref as_local_time_point or \ref get_local_time_point.
  * \n
  * Dates retrieved from MySQL don't include any time zone information. Determining the time zone
  * is left to the application. Thus, any time point obtained from this class should be
@@ -52,9 +51,8 @@ public:
     /**
      * \brief A `std::chrono::time_point` that can represent any valid `date`.
      * \details
-     * Time points returned by this class are always local times, even if defined
-     * to use the system clock. Prefer using \ref local_time_point, if your compiler
-     * supports it.
+     * Time points used by this class are always local times, even if defined
+     * to use the system clock.
      */
     using time_point = std::chrono::time_point<std::chrono::system_clock, days>;
 

@@ -52,12 +52,7 @@ as local times, rather than UTC:
 [heading The datetime type]
 
 [reflink datetime] represents MySQL __DATETIME__ and __TIMESTAMP__ in C++. `datetime` represents a broken time point,
-having year, month, day, hour, minute, second and microseconds.
-
-MySQL also accepts invalid datetimes (like `2020-00-10 10:20:59.000000`). The same considerations for
-`date` apply:
-
-[time_types_datetime]
+having year, month, day, hour, minute, second and microsecond.
 
 The `datetime` object doesn't carry any time zone information with it. The time zone semantics
 depend on the actual MySQL type:
@@ -71,7 +66,19 @@ depend on the actual MySQL type:
   __time_zone__ variable. As this variable can be changed programmatically from SQL, without
   the library knowing it, we represent `TIMESTAMP`'s using the `datetime` object, which doesn't include time zone information.
 
-When using `TIMESTAMP`, we recommend setting the __time_zone__ to a known value. To illustrate this,
+MySQL also accepts invalid datetimes (like `2020-00-10 10:20:59.000000`).
+
+As with `date`, you can use [refmem datetime as_local_time_point], [refmemunq datetime get_local_time_point]
+and [refmemunq datetime valid] (or [refmemunq datetime as_time_point] and [refmemunq datetime get_time_point],
+if your compiler doesn't support C++20 calendar types):
+
+[time_types_datetime]
+
+
+
+[heading TIMESTAMP considerations]
+
+When using `TIMESTAMP`, we recommend setting the __time_zone__ session variable to a known value. To illustrate this,
 consider an event-logging system with the following table definition:
 
 [time_types_timestamp_setup]

@@ -91,12 +91,29 @@ BOOST_AUTO_TEST_CASE(section_time_types)
         datetime dt2(2020, 0, 11, 10, 20, 59);           // invalid datetime 2020-00-10 10:20:59.000000
         bool v2 = dt2.valid();                           // false
 
-        datetime::time_point tp = dt1.as_time_point();  // convert to time_point
+//<-
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+        //->
+
+        // local_time_point is a std::chrono::local_time with microsecond resolution
+        // Only available if your compiler supports C++20 calendar types
+        datetime::local_time_point tp = dt1.as_local_time_point();
+//<-
+#endif
+        //->
+
+        // If you're using an older compiler, use as_time_point.
+        // tp2 uses std::chrono::system_clock and microsecond resolution.
+        // tp2 should be interpreted as a local time, rather than UTC
+        datetime::time_point tp2 = dt1.as_time_point();
 
         //]
         BOOST_TEST(v1);
         BOOST_TEST(!v2);
-        BOOST_TEST(datetime(tp) == dt1);
+        BOOST_TEST(datetime(tp2) == dt1);
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+        BOOST_TEST(tp2.time_since_epoch() == tp.time_since_epoch());
+#endif
     }
     {
         //[time_types_timestamp_setup
@@ -138,7 +155,7 @@ BOOST_AUTO_TEST_CASE(section_time_types)
 
         //[time_types_timestamp_select
         // Get the timestamp threshold from the user. We will use a constant for the sake of example
-        datetime threshold = datetime(2022, 1, 1);  // get events that happened after 2022-01-01
+        datetime threshold = datetime(2022, 1, 1);  // get events that happened after 2022-01-01 UTC
 
         // threshold will be interpreted as UTC. The retrieved events will have their
         // `t` column in UTC
