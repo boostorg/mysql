@@ -14,6 +14,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -24,7 +25,7 @@ namespace detail {
 
 // These functions map C++ type positions to positions to positions in the DB query
 
-constexpr std::size_t pos_absent = static_cast<std::size_t>(-1);
+BOOST_INLINE_CONSTEXPR std::size_t pos_absent = static_cast<std::size_t>(-1);
 using name_table_t = boost::span<const string_view>;
 
 inline bool has_field_names(name_table_t name_table) noexcept { return !name_table.empty(); }

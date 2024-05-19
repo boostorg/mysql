@@ -29,11 +29,19 @@ namespace mysql {
 /**
  * \brief Type representing MySQL `DATETIME` and `TIMESTAMP` data types.
  * \details Represents a Gregorian date and time broken by its year, month, day, hour, minute, second and
- * microsecond components.
+ * microsecond components, without a time zone.
  * \n
- * This type is close to the protocol and should not be used as a vocabulary
- * type. Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point or \ref
- * get_time_point.
+ * This type is close to the protocol and should not be used as a vocabulary type.
+ * Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point,
+ * \ref get_time_point, \ref as_local_time_point or \ref get_local_time_point.
+ * \n
+ * Datetimes retrieved from MySQL don't include any time zone information. Determining the time zone
+ * is left to the application. Thus, any time point obtained from this class should be
+ * interpreted as a local time in an unspecified time zone, like `std::chrono::local_time`.
+ * For compatibility with older compilers, \ref as_time_point and \ref get_time_point return
+ * `system_clock` time points. These should be interpreted as local times rather
+ * than UTC. Prefer using \ref as_local_time_point or \ref get_local_time_point
+ * if your compiler supports them, as they provide more accurate semantics.
  * \n
  * As opposed to `time_point`, this type allows representing MySQL invalid and zero datetimes.
  * These values are allowed by MySQL but don't represent real time points.
@@ -42,11 +50,23 @@ class datetime
 {
 public:
     /**
-     * \brief A `std::chrono::time_point` that can represent any valid datetime.
-     * \details Represents microseconds since the UNIX epoch, with the same precision for all architectures.
+     * \brief A `std::chrono::time_point` that can represent any valid datetime, with microsecond resolution.
+     * \details
+     * Time points used by this class are always local times, even if defined
+     * to use the system clock. Prefer using \ref local_time_point, if your compiler
+     * supports it.
      */
     using time_point = std::chrono::
         time_point<std::chrono::system_clock, std::chrono::duration<std::int64_t, std::micro>>;
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+
+    /**
+     * \brief A `std::chrono::local_time` that can represent any valid datetime, with microsecond resolution.
+     * \details Requires C++20 calendar types.
+     */
+    using local_time_point = std::chrono::local_time<std::chrono::duration<std::int64_t, std::micro>>;
+#endif
 
     /**
      * \brief Constructs a zero datetime.
@@ -92,6 +112,23 @@ public:
      * out of the [\ref min_datetime, \ref max_datetime] range.
      */
     BOOST_CXX14_CONSTEXPR inline explicit datetime(time_point tp);
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    /**
+     * \brief Constructs a datetime from a `local_time_point`.
+     * \details
+     * Equivalent to constructing a `date` from a `time_point` with the same
+     * `time_since_epoch()` as `tp`.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Exception safety
+     * Strong guarantee. Throws on invalid input.
+     * \throws std::out_of_range If the resulting `datetime` object would be
+     * out of the [\ref min_datetime, \ref max_datetime] range.
+     */
+    constexpr explicit datetime(local_time_point tp) : datetime(time_point(tp.time_since_epoch())) {}
+#endif
 
     /**
      * \brief Retrieves the year component.
@@ -177,6 +214,10 @@ public:
 
     /**
      * \brief Converts `*this` into a `time_point` (unchecked access).
+     * \details
+     * If your compiler supports it, prefer using \ref get_local_time_point,
+     * as it provides more accurate semantics.
+     *
      * \par Preconditions
      * `this->valid() == true` (if violated, results in undefined behavior).
      *
@@ -186,11 +227,15 @@ public:
     BOOST_CXX14_CONSTEXPR time_point get_time_point() const noexcept
     {
         BOOST_ASSERT(valid());
-        return unch_get_time_point();
+        return time_point(unch_get_micros());
     }
 
     /**
      * \brief Converts `*this` into a `time_point` (checked access).
+     * \details
+     * If your compiler supports it, prefer using \ref as_local_time_point,
+     * as it provides more accurate semantics.
+     *
      * \par Exception safety
      * Strong guarantee.
      * \throws std::invalid_argument If `!this->valid()`.
@@ -199,8 +244,51 @@ public:
     {
         if (!valid())
             BOOST_THROW_EXCEPTION(std::invalid_argument("datetime::as_time_point: invalid datetime"));
-        return unch_get_time_point();
+        return time_point(unch_get_micros());
     }
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    /**
+     * \brief Converts `*this` into a `local_time_point` (unchecked access).
+     * \details
+     * The returned object has the same `time_since_epoch()` as `this->get_time_point()`,
+     * but uses the `std::chrono::local_t` pseudo-clock to better represent
+     * the absence of time zone information.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Preconditions
+     * `this->valid() == true` (if violated, results in undefined behavior).
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    constexpr local_time_point get_local_time_point() const noexcept
+    {
+        BOOST_ASSERT(valid());
+        return local_time_point(unch_get_micros());
+    }
+
+    /**
+     * \brief Converts `*this` into a local time point (checked access).
+     * \details
+     * The returned object has the same `time_since_epoch()` as `this->as_time_point()`,
+     * but uses the `std::chrono::local_t` pseudo-clock to better represent
+     * the absence of time zone information.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Exception safety
+     * Strong guarantee.
+     * \throws std::invalid_argument If `!this->valid()`.
+     */
+    constexpr local_time_point as_local_time_point() const
+    {
+        if (!valid())
+            BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_local_time_point: invalid date"));
+        return local_time_point(unch_get_micros());
+    }
+#endif
 
     /**
      * \brief Tests for equality.
@@ -243,13 +331,13 @@ private:
     std::uint8_t second_{};
     std::uint32_t microsecond_{};
 
-    BOOST_CXX14_CONSTEXPR inline time_point unch_get_time_point() const noexcept
+    BOOST_CXX14_CONSTEXPR inline time_point::duration unch_get_micros() const
     {
         // Doing time of day independently to prevent overflow
         days d(detail::ymd_to_days(year_, month_, day_));
         auto time_of_day = std::chrono::hours(hour_) + std::chrono::minutes(minute_) +
                            std::chrono::seconds(second_) + std::chrono::microseconds(microsecond_);
-        return time_point(d) + time_of_day;
+        return time_point::duration(d) + time_of_day;
     }
 };
 
@@ -262,10 +350,10 @@ BOOST_MYSQL_DECL
 std::ostream& operator<<(std::ostream& os, const datetime& v);
 
 /// The minimum allowed value for \ref datetime.
-constexpr datetime min_datetime(0u, 1u, 1u);
+BOOST_INLINE_CONSTEXPR datetime min_datetime(0u, 1u, 1u);
 
 /// The maximum allowed value for \ref datetime.
-constexpr datetime max_datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999999u);
+BOOST_INLINE_CONSTEXPR datetime max_datetime(9999u, 12u, 31u, 23u, 59u, 59u, 999999u);
 
 }  // namespace mysql
 }  // namespace boost

@@ -44,6 +44,11 @@
 #define BOOST_MYSQL_RETURN_TYPE(...)
 #endif
 
+// Chrono calendar types and functions
+#if __cpp_lib_chrono >= 201907L
+#define BOOST_MYSQL_HAS_LOCAL_TIME
+#endif
+
 // clang-format on
 
 #endif
