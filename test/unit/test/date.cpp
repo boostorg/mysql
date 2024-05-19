@@ -14,6 +14,7 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
 #include <stdexcept>
 
 #include "test_common/stringize.hpp"
@@ -35,8 +36,7 @@ BOOST_AUTO_TEST_CASE(default_constructor)
     BOOST_TEST(!d.valid());
 }
 
-BOOST_AUTO_TEST_SUITE(ctor_from_time_point)
-BOOST_AUTO_TEST_CASE(valid)
+BOOST_AUTO_TEST_CASE(ctor_from_time_point_valid)
 {
     struct
     {
@@ -60,18 +60,35 @@ BOOST_AUTO_TEST_CASE(valid)
             BOOST_TEST(d.year() == tc.year);
             BOOST_TEST(d.month() == tc.month);
             BOOST_TEST(d.day() == tc.day);
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+            date d2(std::chrono::local_days(std::chrono::days(tc.days_since_epoch)));
+            BOOST_TEST(d2.valid());
+            BOOST_TEST(d2.year() == tc.year);
+            BOOST_TEST(d2.month() == tc.month);
+            BOOST_TEST(d2.day() == tc.day);
+#endif
         }
     }
 }
 
-BOOST_AUTO_TEST_CASE(invalid)
+BOOST_AUTO_TEST_CASE(ctor_from_time_point_invalid)
 {
     BOOST_CHECK_THROW(date(date::time_point(days(2932897))), std::out_of_range);
     BOOST_CHECK_THROW(date(date::time_point(days(-719529))), std::out_of_range);
     BOOST_CHECK_THROW(date(date::time_point(days(INT_MAX))), std::out_of_range);
     BOOST_CHECK_THROW(date(date::time_point(days(INT_MIN))), std::out_of_range);
 }
-BOOST_AUTO_TEST_SUITE_END()  // ctor_from_time_point
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+BOOST_AUTO_TEST_CASE(ctor_from_local_days_invalid)
+{
+    BOOST_CHECK_THROW(date(std::chrono::local_days(std::chrono::days(2932897))), std::out_of_range);
+    BOOST_CHECK_THROW(date(std::chrono::local_days(std::chrono::days(-719529))), std::out_of_range);
+    BOOST_CHECK_THROW(date(std::chrono::local_days(std::chrono::days(INT_MAX))), std::out_of_range);
+    BOOST_CHECK_THROW(date(std::chrono::local_days(std::chrono::days(INT_MIN))), std::out_of_range);
+}
+#endif
 
 BOOST_AUTO_TEST_CASE(valid)
 {
@@ -84,6 +101,7 @@ BOOST_AUTO_TEST_CASE(valid)
 BOOST_AUTO_TEST_CASE(get_time_point)
 {
     BOOST_TEST(date(9999, 12, 31).get_time_point().time_since_epoch().count() == 2932896);
+    BOOST_TEST(date(2024, 5, 17).get_time_point().time_since_epoch().count() == 19860);
     BOOST_TEST(date(0, 1, 1).get_time_point().time_since_epoch().count() == -719528);
 }
 
@@ -91,9 +109,28 @@ BOOST_AUTO_TEST_CASE(as_time_point)
 {
     BOOST_TEST(date(9999, 12, 31).as_time_point().time_since_epoch().count() == 2932896);
     BOOST_TEST(date(0, 1, 1).as_time_point().time_since_epoch().count() == -719528);
+    BOOST_TEST(date(2024, 5, 17).as_time_point().time_since_epoch().count() == 19860);
     BOOST_CHECK_THROW(date().as_time_point(), std::invalid_argument);
     BOOST_CHECK_THROW(date(2019, 2, 29).as_time_point(), std::invalid_argument);
 }
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+BOOST_AUTO_TEST_CASE(get_local_time_point)
+{
+    BOOST_TEST(date(9999, 12, 31).get_local_time_point().time_since_epoch().count() == 2932896);
+    BOOST_TEST(date(2024, 5, 17).as_local_time_point().time_since_epoch().count() == 19860);
+    BOOST_TEST(date(0, 1, 1).get_local_time_point().time_since_epoch().count() == -719528);
+}
+
+BOOST_AUTO_TEST_CASE(as_local_time_point)
+{
+    BOOST_TEST(date(9999, 12, 31).as_local_time_point().time_since_epoch().count() == 2932896);
+    BOOST_TEST(date(0, 1, 1).as_local_time_point().time_since_epoch().count() == -719528);
+    BOOST_TEST(date(2024, 5, 17).as_local_time_point().time_since_epoch().count() == 19860);
+    BOOST_CHECK_THROW(date().as_local_time_point(), std::invalid_argument);
+    BOOST_CHECK_THROW(date(2019, 2, 29).as_local_time_point(), std::invalid_argument);
+}
+#endif
 
 BOOST_AUTO_TEST_CASE(operator_equals)
 {
