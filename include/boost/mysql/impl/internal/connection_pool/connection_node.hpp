@@ -58,6 +58,10 @@ struct conn_shared_state
     diagnostics last_diag;
 };
 
+// Helper to create the reset pipeline (reset + set names utf8mb4)
+using reset_pipeline_req_t = static_pipeline_request<reset_connection_step, set_character_set_step>;
+inline reset_pipeline_req_t make_reset_pipeline() { return reset_pipeline_req_t({}, {utf8mb4_charset}); }
+
 // The templated type is never exposed to the user. We template
 // so tests can inject mocks.
 template <class IoTraits>
@@ -76,9 +80,8 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     diagnostics connect_diag_;
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
-    static_pipeline_request<reset_connection_step, set_character_set_step>
-        reset_pipeline_req_;  // TODO: we could make this shared between all connections
-    decltype(reset_pipeline_req_)::response_type reset_pipeline_res_;
+    const reset_pipeline_req_t* reset_pipeline_req_;
+    reset_pipeline_req_t::response_type reset_pipeline_res_;
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -152,7 +155,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
             case next_connection_action::reset:
                 run_with_timeout(
                     node_.conn_.async_run_pipeline(
-                        node_.reset_pipeline_req_,
+                        *node_.reset_pipeline_req_,
                         node_.reset_pipeline_res_,
                         asio::deferred
                     ),
@@ -180,14 +183,15 @@ public:
         internal_pool_params& params,
         boost::asio::any_io_executor ex,
         boost::asio::any_io_executor conn_ex,
-        conn_shared_state<IoTraits>& shared_st
+        conn_shared_state<IoTraits>& shared_st,
+        const reset_pipeline_req_t* reset_pipeline_req
     )
         : params_(&params),
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
           timer_(ex),
           collection_timer_(ex, (std::chrono::steady_clock::time_point::max)()),
-          reset_pipeline_req_({}, {utf8mb4_charset})
+          reset_pipeline_req_(reset_pipeline_req)
     {
     }
 

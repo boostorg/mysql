@@ -67,6 +67,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     shared_state_type shared_st_;
     wait_group wait_gp_;
     timer_type cancel_timer_;
+    const reset_pipeline_req_t reset_pipeline_req_{make_reset_pipeline()};
 
     std::shared_ptr<this_type> shared_from_this_wrapper()
     {
@@ -76,7 +77,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
 
     void create_connection()
     {
-        all_conns_.emplace_back(params_, ex_, conn_ex_, shared_st_);
+        all_conns_.emplace_back(params_, ex_, conn_ex_, shared_st_, &reset_pipeline_req_);
         wait_gp_.run_task(all_conns_.back().async_run(asio::deferred));
     }
 
