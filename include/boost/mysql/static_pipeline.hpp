@@ -390,13 +390,13 @@ struct tuple_index_visitor
     template <class... T, class Fn, class... Args>
     static R invoke(std::tuple<T...>& t, std::size_t i, Fn f, Args&&... args)
     {
-        return i == I - 1 ? f(std::get<I - 1>(t), std::forward<Args>(args)...)
-                          : tuple_index_visitor<I - 1, R>::invoke(t, i, f, std::forward<Args>(args)...);
+        return i == I ? f(std::get<I>(t), std::forward<Args>(args)...)
+                      : tuple_index_visitor<I - 1, R>::invoke(t, i, f, std::forward<Args>(args)...);
     }
 };
 
 template <class R>
-struct tuple_index_visitor<1u, R>
+struct tuple_index_visitor<0u, R>
 {
     template <class... T, class Fn, class... Args>
     static R invoke(std::tuple<T...>& t, std::size_t i, Fn f, Args&&... args)
@@ -414,7 +414,7 @@ auto tuple_index(std::tuple<T...>& t, std::size_t i, Fn f, Args&&... args)
     static_assert(sizeof...(T) > 0u, "Empty tuples not allowed");
     BOOST_ASSERT(i < sizeof...(T));
     using result_type = decltype(f(std::get<0u>(t), std::forward<Args>(args)...));
-    return tuple_index_visitor<sizeof...(T), result_type>::invoke(t, i, f, std::forward<Args>(args)...);
+    return tuple_index_visitor<sizeof...(T) - 1, result_type>::invoke(t, i, f, std::forward<Args>(args)...);
 }
 
 // Concrete visitors
