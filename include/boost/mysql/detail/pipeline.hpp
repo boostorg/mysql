@@ -12,7 +12,6 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/pipeline_step_kind.hpp>
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -30,6 +29,16 @@
 namespace boost {
 namespace mysql {
 namespace detail {
+
+enum class pipeline_step_kind
+{
+    execute,
+    prepare_statement,
+    close_statement,
+    reset_connection,
+    set_character_set,
+    ping,
+};
 
 struct err_block
 {

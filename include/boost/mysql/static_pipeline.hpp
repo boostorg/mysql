@@ -12,11 +12,8 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/pipeline_step_kind.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
-#include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -27,14 +24,8 @@
 #include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
-#include <boost/mysql/impl/statement.hpp>
-
-#include <boost/config/detail/suffix.hpp>
-#include <boost/core/detail/string_view.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/core/span.hpp>
-#include <boost/mp11/algorithm.hpp>
-#include <boost/mp11/integer_sequence.hpp>
 #include <boost/mp11/tuple.hpp>
 #include <boost/variant2/variant.hpp>
 
@@ -49,14 +40,49 @@ namespace boost {
 namespace mysql {
 
 class execute_step;
-class execute_step_response;
-
 class prepare_statement_step;
 class close_statement_step;
 class reset_connection_step;
 class set_character_set_step;
 
 // Execute
+class execute_step_response
+{
+    struct impl_t
+    {
+        variant2::variant<results, detail::err_block> result;
+
+        void reset() { result.emplace<results>(); }
+        detail::execution_processor* get_processor()
+        {
+            return &detail::access::get_impl(variant2::unsafe_get<0>(result));
+        }
+        void set_result(statement) { BOOST_ASSERT(false); }
+        void set_error(detail::err_block&& err) { result = std::move(err); }
+
+    } impl_;
+
+    bool has_error() const { return impl_.result.index() == 1u; }
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
+public:
+    execute_step_response() = default;
+    error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_.result).ec : error_code(); }
+    diagnostics diag() const&
+    {
+        return has_error() ? variant2::unsafe_get<1>(impl_.result).diag : diagnostics();
+    }
+    diagnostics diag() &&
+    {
+        return has_error() ? variant2::unsafe_get<1>(std::move(impl_.result)).diag : diagnostics();
+    }
+    const results& result() const& { return variant2::unsafe_get<0>(impl_.result); }
+    results&& result() && { return variant2::unsafe_get<0>(std::move(impl_.result)); }
+};
+
 class execute_args
 {
     detail::any_execution_request impl_;
@@ -113,45 +139,8 @@ public:
                                                        args_impl.data.stmt.stmt,
                                                        args_impl.data.stmt.params
                                                    );
-        return {pipeline_step_kind::execute, seqnum, enc};
+        return {detail::pipeline_step_kind::execute, seqnum, enc};
     }
-};
-
-class execute_step_response
-{
-    struct impl_t
-    {
-        variant2::variant<results, detail::err_block> result;
-
-        void reset() { result.emplace<results>(); }
-        detail::execution_processor* get_processor()
-        {
-            return &detail::access::get_impl(variant2::unsafe_get<0>(result));
-        }
-        void set_result(statement) { BOOST_ASSERT(false); }
-        void set_error(detail::err_block&& err) { result = std::move(err); }
-
-    } impl_;
-
-    bool has_error() const { return impl_.result.index() == 1u; }
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
-
-public:
-    execute_step_response() = default;
-    error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_.result).ec : error_code(); }
-    diagnostics diag() const&
-    {
-        return has_error() ? variant2::unsafe_get<1>(impl_.result).diag : diagnostics();
-    }
-    diagnostics diag() &&
-    {
-        return has_error() ? variant2::unsafe_get<1>(std::move(impl_.result)).diag : diagnostics();
-    }
-    const results& result() const& { return variant2::unsafe_get<0>(impl_.result); }
-    results&& result() && { return variant2::unsafe_get<0>(std::move(impl_.result)); }
 };
 
 // Prepare statement
@@ -219,7 +208,7 @@ public:
     )
     {
         std::uint8_t seqnum = detail::serialize_prepare_statement(buffer, detail::access::get_impl(args));
-        return {pipeline_step_kind::prepare_statement, seqnum, {}};
+        return {detail::pipeline_step_kind::prepare_statement, seqnum, {}};
     }
 };
 
@@ -279,7 +268,7 @@ public:
     static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, close_statement_args args)
     {
         std::uint8_t seqnum = detail::serialize_close_statement(buffer, detail::access::get_impl(args));
-        return {pipeline_step_kind::close_statement, seqnum, {}};
+        return {detail::pipeline_step_kind::close_statement, seqnum, {}};
     }
 };
 
@@ -299,7 +288,7 @@ public:
     static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, reset_connection_args)
     {
         std::uint8_t seqnum = detail::serialize_reset_connection(buffer);
-        return {pipeline_step_kind::reset_connection, seqnum, {}};
+        return {detail::pipeline_step_kind::reset_connection, seqnum, {}};
     }
 };
 
@@ -330,7 +319,7 @@ public:
     {
         character_set charset = detail::access::get_impl(args);
         std::uint8_t seqnum = detail::serialize_set_character_set(buffer, charset);
-        return {pipeline_step_kind::set_character_set, seqnum, charset};
+        return {detail::pipeline_step_kind::set_character_set, seqnum, charset};
     }
 };
 

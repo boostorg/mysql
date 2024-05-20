@@ -46,7 +46,6 @@
 #include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/mysql_server_errc.hpp>
 #include <boost/mysql/pipeline.hpp>
-#include <boost/mysql/pipeline_step_kind.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset.hpp>

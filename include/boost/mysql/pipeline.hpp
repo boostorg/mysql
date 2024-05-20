@@ -12,15 +12,12 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/pipeline_step_kind.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
@@ -92,7 +89,7 @@ public:
     pipeline_request& add_execute(string_view query)
     {
         impl_.steps_.push_back({
-            pipeline_step_kind::execute,
+            detail::pipeline_step_kind::execute,
             detail::serialize_query(impl_.buffer_, query),
             detail::resultset_encoding::text,
         });
@@ -110,7 +107,7 @@ public:
     pipeline_request& add_execute_range(statement stmt, span<const field_view> params)
     {
         impl_.steps_.push_back({
-            pipeline_step_kind::execute,
+            detail::pipeline_step_kind::execute,
             detail::serialize_execute_statement(impl_.buffer_, stmt, params),
             detail::resultset_encoding::binary,
         });
@@ -120,7 +117,7 @@ public:
     pipeline_request& add_prepare_statement(string_view statement_sql)
     {
         impl_.steps_.push_back({
-            pipeline_step_kind::prepare_statement,
+            detail::pipeline_step_kind::prepare_statement,
             detail::serialize_prepare_statement(impl_.buffer_, statement_sql),
             {},
         });
@@ -130,7 +127,7 @@ public:
     pipeline_request& add_close_statement(statement stmt)
     {
         impl_.steps_.push_back({
-            pipeline_step_kind::close_statement,
+            detail::pipeline_step_kind::close_statement,
             detail::serialize_close_statement(impl_.buffer_, stmt),
             {},
         });
@@ -140,7 +137,7 @@ public:
     pipeline_request& add_set_character_set(character_set charset)
     {
         impl_.steps_.push_back({
-            pipeline_step_kind::set_character_set,
+            detail::pipeline_step_kind::set_character_set,
             detail::serialize_set_character_set(impl_.buffer_, charset),
             charset,
         });
@@ -150,7 +147,7 @@ public:
     pipeline_request& add_reset_connection()
     {
         impl_.steps_.push_back({
-            pipeline_step_kind::reset_connection,
+            detail::pipeline_step_kind::reset_connection,
             detail::serialize_reset_connection(impl_.buffer_),
             {},
         });
