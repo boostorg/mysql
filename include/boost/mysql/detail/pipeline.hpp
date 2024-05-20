@@ -18,6 +18,8 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
@@ -56,47 +58,68 @@ struct pipeline_response_traits;
 
 class pipeline_response_ref
 {
+    // get_processor, set_result and set_error are pretty similar in signature,
+    // so we multiplex the call to store a single function pointer for the three of them
+    enum class index_step_op
+    {
+        get_processor,
+        set_result,
+        set_error
+    };
+
     void* obj_;
-    void (*clear_fn_)(void*);
-    execution_processor* (*setup_step_fn_)(void*, pipeline_step_kind, std::size_t);
-    void (*set_step_result_fn_)(void*, err_block&&, statement, std::size_t);
+    void (*setup_fn_)(void*, span<const pipeline_request_step>);
+    void (*index_step_fn_)(void*, index_step_op, std::size_t, void*);
 
     template <class T>
-    static void do_clear(void* obj)
+    static void do_setup(void* obj, span<const pipeline_request_step> request_steps)
     {
-        pipeline_response_traits<T>::clear(*static_cast<T*>(obj));
+        pipeline_response_traits<T>::setup(*static_cast<T*>(obj), request_steps);
     }
 
     template <class T>
-    static execution_processor* do_setup_step(void* obj, pipeline_step_kind kind, std::size_t idx)
+    static void do_index_step(void* obj, index_step_op op, std::size_t step_idx, void* arg)
     {
-        return pipeline_response_traits<T>::setup_step(*static_cast<T*>(obj), kind, idx);
-    }
-
-    template <class T>
-    static void do_set_step_result(void* obj, err_block&& err, statement stmt, std::size_t idx)
-    {
-        pipeline_response_traits<T>::set_step_result(*static_cast<T*>(obj), std::move(err), stmt, idx);
+        auto& self = *static_cast<T*>(obj);
+        if (op == index_step_op::get_processor)
+        {
+            *static_cast<execution_processor**>(arg
+            ) = &pipeline_response_traits<T>::get_processor(self, step_idx);
+        }
+        else if (op == index_step_op::set_result)
+        {
+            pipeline_response_traits<T>::set_result(self, step_idx, *static_cast<const statement*>(arg));
+        }
+        else
+        {
+            BOOST_ASSERT(op == index_step_op::set_error);
+            pipeline_response_traits<T>::set_error(self, step_idx, std::move(*static_cast<err_block*>(arg)));
+        }
     }
 
 public:
     template <class T, class = typename std::enable_if<!std::is_same<T, pipeline_response_ref>::value>::type>
-    pipeline_response_ref(T& obj)
-        : obj_(&obj),
-          clear_fn_(&do_clear<T>),
-          setup_step_fn_(&do_setup_step<T>),
-          set_step_result_fn_(&do_set_step_result<T>)
+    pipeline_response_ref(T& obj) : obj_(&obj), setup_fn_(&do_setup<T>), index_step_fn_(&do_index_step<T>)
     {
     }
 
-    void clear() { clear_fn_(obj_); }
-    execution_processor* setup_step(pipeline_step_kind kind, std::size_t idx)
+    void setup(span<const pipeline_request_step> request_steps) { setup_fn_(obj_, request_steps); }
+
+    execution_processor& get_processor(std::size_t step_idx)
     {
-        return setup_step_fn_(obj_, kind, idx);
+        execution_processor* res{};
+        index_step_fn_(obj_, index_step_op::get_processor, step_idx, &res);
+        return *res;
     }
-    void set_step_result(err_block&& err, statement stmt, std::size_t idx)
+
+    void set_result(std::size_t step_idx, statement result)
     {
-        set_step_result_fn_(obj_, std::move(err), stmt, idx);
+        index_step_fn_(obj_, index_step_op::set_result, step_idx, &result);
+    }
+
+    void set_error(std::size_t step_idx, err_block&& result)
+    {
+        index_step_fn_(obj_, index_step_op::set_error, step_idx, &result);
     }
 };
 

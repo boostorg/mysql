@@ -42,6 +42,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 namespace boost {
@@ -122,12 +123,13 @@ class execute_step_response
     {
         variant2::variant<results, detail::err_block> result;
 
-        detail::execution_processor* setup()
+        void reset() { result.emplace<results>(); }
+        detail::execution_processor* get_processor()
         {
-            result.emplace<results>();
             return &detail::access::get_impl(variant2::unsafe_get<0>(result));
         }
-        void set_result(detail::err_block&& err, statement) { result = std::move(err); }
+        void set_result(statement) { BOOST_ASSERT(false); }
+        void set_error(detail::err_block&& err) { result = std::move(err); }
 
     } impl_;
 
@@ -173,18 +175,14 @@ class prepare_statement_step_response
     {
         variant2::variant<statement, detail::err_block> result;
 
-        detail::execution_processor* setup()
+        void reset() { result.emplace<statement>(); }
+        detail::execution_processor* get_processor()
         {
-            result.emplace<statement>();
+            BOOST_ASSERT(false);
             return nullptr;
         }
-        void set_result(detail::err_block&& err, statement stmt)
-        {
-            if (stmt.valid())
-                result = stmt;
-            else
-                result = std::move(err);
-        }
+        void set_result(statement stmt) { result = stmt; }
+        void set_error(detail::err_block&& err) { result = std::move(err); }
 
     } impl_;
 
@@ -232,13 +230,18 @@ class no_result_step_response
     {
         detail::err_block result;
 
-        detail::execution_processor* setup()
+        void reset()
         {
             result.ec.clear();
             result.diag.clear();
+        }
+        detail::execution_processor* get_processor()
+        {
+            BOOST_ASSERT(false);
             return nullptr;
         }
-        void set_result(detail::err_block&& err, statement) { result = std::move(err); }
+        void set_result(statement) { BOOST_ASSERT(false); }
+        void set_error(detail::err_block&& err) { result = std::move(err); }
 
     } impl_;
 
@@ -380,45 +383,74 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <std::size_t I>
-struct tuple_setup_visitor
+// Index a tuple at runtime
+template <std::size_t I, class R>
+struct tuple_index_visitor
 {
-    template <class... StepType>
-    static detail::execution_processor* invoke(std::tuple<StepType...>& t, std::size_t i)
+    template <class... T, class Fn, class... Args>
+    static R invoke(std::tuple<T...>& t, std::size_t i, Fn f, Args&&... args)
     {
-        return i == I - 1 ? detail::access::get_impl(std::get<I - 1>(t)).setup()
-                          : tuple_setup_visitor<I - 1>::invoke(t, i);
+        return i == I - 1 ? f(std::get<I - 1>(t), std::forward<Args>(args)...)
+                          : tuple_index_visitor<I - 1, R>::invoke(t, i, f, std::forward<Args>(args)...);
     }
 };
 
-template <>
-struct tuple_setup_visitor<0u>
+template <class R>
+struct tuple_index_visitor<1u, R>
 {
-    template <class... StepType>
-    static detail::execution_processor* invoke(std::tuple<StepType...>&, std::size_t)
+    template <class... T, class Fn, class... Args>
+    static R invoke(std::tuple<T...>& t, std::size_t i, Fn f, Args&&... args)
     {
-        BOOST_ASSERT(false);
-        return nullptr;
-    }
-};
-template <std::size_t I>
-struct tuple_set_result_visitor
-{
-    template <class... StepType>
-    static void invoke(std::tuple<StepType...>& t, std::size_t i, detail::err_block&& err, statement stmt)
-    {
-        i == I - 1 ? detail::access::get_impl(std::get<I - 1>(t)).set_result(std::move(err), stmt)
-                   : tuple_set_result_visitor<I - 1>::invoke(t, i, std::move(err), stmt);
+        BOOST_ASSERT(i == 0u);
+        ignore_unused(i);
+        return f(std::get<0u>(t), std::forward<Args>(args)...);
     }
 };
 
-template <>
-struct tuple_set_result_visitor<0u>
+template <class... T, class Fn, class... Args>
+auto tuple_index(std::tuple<T...>& t, std::size_t i, Fn f, Args&&... args)
+    -> decltype(f(std::get<0u>(t), std::forward<Args>(args)...))
 {
-    template <class... StepType>
-    static void invoke(std::tuple<StepType...>&, std::size_t, detail::err_block&&, statement)
+    static_assert(sizeof...(T) > 0u, "Empty tuples not allowed");
+    BOOST_ASSERT(i < sizeof...(T));
+    using result_type = decltype(f(std::get<0u>(t), std::forward<Args>(args)...));
+    return tuple_index_visitor<sizeof...(T), result_type>::invoke(t, i, f, std::forward<Args>(args)...);
+}
+
+// Concrete visitors
+struct step_reset_visitor
+{
+    template <class StepType>
+    void operator()(StepType& step) const
     {
-        BOOST_ASSERT(false);
+        access::get_impl(step).reset();
+    }
+};
+
+struct step_get_processor_visitor
+{
+    template <class StepType>
+    execution_processor* operator()(StepType& step) const
+    {
+        return access::get_impl(step).get_processor();
+    }
+};
+
+struct step_set_result_visitor
+{
+    template <class StepType>
+    void operator()(StepType& step, statement stmt) const
+    {
+        return access::get_impl(step).set_result(stmt);
+    }
+};
+
+struct step_set_error_visitor
+{
+    template <class StepType>
+    void operator()(StepType& step, err_block&& err) const
+    {
+        return access::get_impl(step).set_error(std::move(err));
     }
 };
 
@@ -427,18 +459,26 @@ struct pipeline_response_traits<std::tuple<StepResponseType...>>
 {
     using response_type = std::tuple<StepResponseType...>;
 
-    static void clear(response_type&) {}
-
-    static execution_processor* setup_step(response_type& self, pipeline_step_kind, std::size_t idx)
+    static void setup(response_type& self, span<const pipeline_request_step> request)
     {
-        BOOST_ASSERT(idx < sizeof...(StepResponseType));
-        return tuple_setup_visitor<sizeof...(StepResponseType)>::invoke(self, idx);
+        BOOST_ASSERT(request.size() == sizeof...(StepResponseType));
+        ignore_unused(request);
+        mp11::tuple_for_each(self, step_reset_visitor{});
     }
 
-    static void set_step_result(response_type& self, err_block&& err, statement stmt, std::size_t idx)
+    static execution_processor& get_processor(response_type& self, std::size_t idx)
     {
-        BOOST_ASSERT(idx < sizeof...(StepResponseType));
-        tuple_set_result_visitor<sizeof...(StepResponseType)>::invoke(self, idx, std::move(err), stmt);
+        return *tuple_index(self, idx, step_get_processor_visitor{});
+    }
+
+    static void set_result(response_type& self, std::size_t idx, statement stmt)
+    {
+        tuple_index(self, idx, step_set_result_visitor{}, stmt);
+    }
+
+    static void set_error(response_type& self, std::size_t idx, err_block&& err)
+    {
+        tuple_index(self, idx, step_set_error_visitor{}, std::move(err));
     }
 };
 

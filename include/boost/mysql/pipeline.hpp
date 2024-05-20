@@ -172,23 +172,40 @@ namespace detail {
 template <>
 struct pipeline_response_traits<pipeline_response>
 {
-    static void clear(pipeline_response& self) { self.clear(); }
-
-    static execution_processor* setup_step(pipeline_response& self, pipeline_step_kind kind, std::size_t idx)
+    static void setup(pipeline_response& self, span<const pipeline_request_step> request)
     {
-        BOOST_ASSERT(self.size() == idx);
-        self.emplace_back();
-        auto& res_impl = access::get_impl(self.back());
-        return kind == pipeline_step_kind::execute ? &access::get_impl(res_impl.emplace<results>()) : nullptr;
+        // Create as many response items as request steps
+        self.resize(request.size());
+
+        // Execution steps need to be initialized to results objects.
+        // Otherwise, clear any previous content
+        for (std::size_t i = 0u; i < request.size(); ++i)
+        {
+            auto kind = request[i].kind;
+            if (kind == pipeline_step_kind::execute)
+                access::get_impl(self[i]).emplace<results>();
+            else
+                access::get_impl(self[i]).emplace<variant2::monostate>();
+        }
     }
 
-    static void set_step_result(pipeline_response& self, err_block&& err, statement stmt, std::size_t idx)
+    static execution_processor& get_processor(pipeline_response& self, std::size_t idx)
     {
         BOOST_ASSERT(idx < self.size());
-        if (stmt.valid())
-            access::get_impl(self[idx]) = stmt;
-        else
-            access::get_impl(self[idx]) = std::move(err);
+        auto& response_variant = access::get_impl(self[idx]);
+        return access::get_impl(variant2::unsafe_get<3>(response_variant));
+    }
+
+    static void set_result(pipeline_response& self, std::size_t idx, statement stmt)
+    {
+        BOOST_ASSERT(idx < self.size());
+        access::get_impl(self[idx]) = stmt;
+    }
+
+    static void set_error(pipeline_response& self, std::size_t idx, err_block&& err)
+    {
+        BOOST_ASSERT(idx < self.size());
+        access::get_impl(self[idx]) = std::move(err);
     }
 };
 

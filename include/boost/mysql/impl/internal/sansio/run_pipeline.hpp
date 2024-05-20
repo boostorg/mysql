@@ -66,16 +66,18 @@ class run_pipeline_algo
     {
         // Reset previous data
         auto step = steps_[current_step_index_];
-        auto* processor = response_.setup_step(step.kind, current_step_index_);
 
         // Setup read algo
         switch (step.kind)
         {
         case pipeline_step_kind::execute:
-            processor->reset(step.step_specific.enc, st.meta_mode);
-            processor->sequence_number() = step.seqnum;
-            read_response_algo_.emplace<read_execute_response_algo>(&temp_diag_, processor);
+        {
+            auto& processor = response_.get_processor(current_step_index_);
+            processor.reset(step.step_specific.enc, st.meta_mode);
+            processor.sequence_number() = step.seqnum;
+            read_response_algo_.emplace<read_execute_response_algo>(&temp_diag_, &processor);
             break;
+        }
         case pipeline_step_kind::prepare_statement:
             read_response_algo_.emplace<read_prepare_statement_response_algo>(&temp_diag_)
                 .sequence_number() = step.seqnum;
@@ -116,17 +118,16 @@ class run_pipeline_algo
             }
 
             // Propagate the error
-            response_.set_step_result({step_ec, temp_diag_}, {}, current_step_index_);
+            response_.set_error(current_step_index_, {step_ec, temp_diag_});
         }
         else
         {
             if (steps_[current_step_index_].kind == pipeline_step_kind::prepare_statement)
             {
                 // Propagate results
-                response_.set_step_result(
-                    {},
-                    variant2::get<read_prepare_statement_response_algo>(read_response_algo_).result(st),
-                    current_step_index_
+                response_.set_result(
+                    current_step_index_,
+                    variant2::get<read_prepare_statement_response_algo>(read_response_algo_).result(st)
                 );
             }
         }
@@ -165,6 +166,7 @@ public:
 
             // Clear previous state
             diag_->clear();
+            response_.setup(steps_);
 
             // Write the request
             st.writer.prepare_pipelined_write(*buffer_);
@@ -183,8 +185,7 @@ public:
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    response_.setup_step(steps_[current_step_index_].kind, current_step_index_);
-                    response_.set_step_result({client_errc::cancelled, {}}, {}, current_step_index_);
+                    response_.set_error(current_step_index_, {client_errc::cancelled, {}});
                     continue;
                 }
 
