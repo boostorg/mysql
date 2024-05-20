@@ -46,8 +46,8 @@ class run_pipeline_algo
         no_response_algo,                      // close statement
         read_execute_response_algo,            // execute
         read_prepare_statement_response_algo,  // prepare statement
-        read_ok_response_algo,                 // reset connection, ping
-        read_set_character_set_response_algo   // set character set
+        read_ok_response_algo,  // reset connection, ping. TODO: reset connection is not clearing charset
+        read_set_character_set_response_algo  // set character set
         >;
 
     diagnostics* diag_;

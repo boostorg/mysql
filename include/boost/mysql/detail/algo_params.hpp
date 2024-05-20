@@ -119,7 +119,6 @@ struct ping_algo_params
 struct reset_connection_algo_params
 {
     diagnostics* diag;
-    character_set charset;  // set a non-empty character set to pipeline a SET NAMES with the reset request
 
     using result_type = void;
 };

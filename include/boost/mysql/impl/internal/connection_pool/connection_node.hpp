@@ -13,6 +13,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/static_pipeline.hpp>
 
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
@@ -75,6 +76,9 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     diagnostics connect_diag_;
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
+    static_pipeline_request<reset_connection_step, set_character_set_step>
+        reset_pipeline_req_;  // TODO: we could make this shared between all connections
+    decltype(reset_pipeline_req_)::response_type reset_pipeline_res_;
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -147,7 +151,11 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 break;
             case next_connection_action::reset:
                 run_with_timeout(
-                    access::get_impl(node_.conn_).async_reset_with_charset(utf8mb4_charset, asio::deferred),
+                    node_.conn_.async_run_pipeline(
+                        node_.reset_pipeline_req_,
+                        node_.reset_pipeline_res_,
+                        asio::deferred
+                    ),
                     node_.timer_,
                     node_.params_->ping_timeout,
                     std::move(self)
@@ -178,7 +186,8 @@ public:
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
           timer_(ex),
-          collection_timer_(ex, (std::chrono::steady_clock::time_point::max)())
+          collection_timer_(ex, (std::chrono::steady_clock::time_point::max)()),
+          reset_pipeline_req_({}, {utf8mb4_charset})
     {
     }
 
@@ -191,8 +200,8 @@ public:
 
     // This initiation must be invoked within the pool's executor
     template <class CompletionToken>
-    auto async_run(CompletionToken&& token)
-        -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
+    auto async_run(CompletionToken&& token
+    ) -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
     {
         return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token);
     }
