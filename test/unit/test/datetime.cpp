@@ -22,10 +22,18 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_datetime)
 
+// Helpers
 datetime from_timestamp(std::int64_t micros_since_epoch)
 {
     return datetime(datetime::time_point(datetime::time_point::duration(micros_since_epoch)));
 }
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+datetime from_local_timestamp(std::int64_t micros_since_epoch)
+{
+    return datetime(datetime::local_time_point(datetime::local_time_point::duration(micros_since_epoch)));
+}
+#endif
 
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
@@ -185,6 +193,23 @@ BOOST_AUTO_TEST_CASE(ctor_from_time_point_invalid)
     BOOST_CHECK_THROW(from_timestamp((std::numeric_limits<std::int64_t>::min)()), std::out_of_range);
 }
 
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+BOOST_AUTO_TEST_CASE(ctor_from_local_time_point)
+{
+    BOOST_TEST(from_local_timestamp(253402300799999999) == datetime(9999, 12, 31, 23, 59, 59, 999999));
+    BOOST_TEST(from_local_timestamp(1715966176806454) == datetime(2024, 5, 17, 17, 16, 16, 806454));
+    BOOST_TEST(from_local_timestamp(-62167219200000000) == datetime(0, 1, 1));
+}
+
+BOOST_AUTO_TEST_CASE(ctor_from_local_time_point_invalid)
+{
+    BOOST_CHECK_THROW(from_local_timestamp(253402300799999999 + 1), std::out_of_range);
+    BOOST_CHECK_THROW(from_local_timestamp(-62167219200000000 - 1), std::out_of_range);
+    BOOST_CHECK_THROW(from_local_timestamp((std::numeric_limits<std::int64_t>::max)()), std::out_of_range);
+    BOOST_CHECK_THROW(from_local_timestamp((std::numeric_limits<std::int64_t>::min)()), std::out_of_range);
+}
+#endif
+
 // spotcheck, uses the same routines as get_time_point
 BOOST_AUTO_TEST_CASE(as_time_point)
 {
@@ -194,6 +219,25 @@ BOOST_AUTO_TEST_CASE(as_time_point)
     datetime d2(0xffff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xffffffff);
     BOOST_CHECK_THROW(d2.as_time_point(), std::invalid_argument);
 }
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+// spotcheck, uses the same routines as get_time_point
+BOOST_AUTO_TEST_CASE(as_local_time_point)
+{
+    datetime d1(2010, 12, 31, 23, 59, 59, 999999);
+    BOOST_TEST(d1.as_local_time_point().time_since_epoch().count() == 1293839999999999);
+
+    datetime d2(0xffff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xffffffff);
+    BOOST_CHECK_THROW(d2.as_local_time_point(), std::invalid_argument);
+}
+
+// spotcheck, uses the same routines as get_time_point
+BOOST_AUTO_TEST_CASE(get_local_time_point)
+{
+    datetime d(2010, 12, 31, 23, 59, 59, 999999);
+    BOOST_TEST(d.get_local_time_point().time_since_epoch().count() == 1293839999999999);
+}
+#endif
 
 BOOST_AUTO_TEST_CASE(operator_equals)
 {
