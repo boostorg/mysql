@@ -56,17 +56,18 @@ asio::awaitable<std::vector<mysql::statement>> batch_prepare(
     boost::span<const string_view> statements
 )
 {
-    mysql::pipeline pipe;
+    mysql::pipeline_request req;
     for (auto stmt_sql : statements)
-        pipe.add_prepare_statement(stmt_sql);
+        req.add_prepare_statement(stmt_sql);
 
+    mysql::pipeline_response pipe_res;
     mysql::diagnostics diag;
-    auto [ec] = co_await conn.async_run_pipeline(pipe, diag, asio::as_tuple(asio::deferred));
+    auto [ec] = co_await conn.async_run_pipeline(req, pipe_res, diag, asio::as_tuple(asio::deferred));
     mysql::throw_on_error(ec, diag);
 
     std::vector<mysql::statement> res;
     res.reserve(statements.size());
-    for (const auto& step : pipe.steps())
+    for (const auto& step : pipe_res)
         res.push_back(step.prepare_statement_result());
     co_return res;
 }
@@ -143,30 +144,32 @@ void main_impl(int argc, char** argv)
             // Execute them. We must not include the COMMIT statement here.
             // If any of these steps fail, we shouldn't run COMMIT. This is a dependency,
             // and requires running it once the server responds
-            mysql::static_pipeline pipe(
+            mysql::static_pipeline_request req(
                 mysql::make_execute_args("START TRANSACTION"),
                 mysql::make_execute_args(stmts.at(0), company_id, "Juan", "Lopez"),
                 mysql::make_execute_args(stmts.at(0), company_id, "Pepito", "Rodriguez"),
                 mysql::make_execute_args(stmts.at(0), company_id, "Someone", "Random"),
                 mysql::make_execute_args(stmts.at(1), "Inserted 3 new emplyees")
             );
+            decltype(req)::response_type res;
 
-            std::tie(ec) = co_await conn.async_run_pipeline(pipe, diag, tok);
+            std::tie(ec) = co_await conn.async_run_pipeline(req, res, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
 
-            auto id1 = std::get<1>(pipe.steps()).result().last_insert_id();
-            auto id2 = std::get<2>(pipe.steps()).result().last_insert_id();
-            auto id3 = std::get<3>(pipe.steps()).result().last_insert_id();
+            auto id1 = std::get<1>(res).result().last_insert_id();
+            auto id2 = std::get<2>(res).result().last_insert_id();
+            auto id3 = std::get<3>(res).result().last_insert_id();
 
             // If the above statement were successful, we can close the statements
             // and run the COMMIT statement
-            mysql::static_pipeline pipe2{
+            mysql::static_pipeline_request pipe2{
                 mysql::close_statement_args(stmts.at(0)),
                 mysql::close_statement_args(stmts.at(1)),
                 mysql::make_execute_args("COMMIT")
             };
+            decltype(pipe2)::response_type res2;
 
-            std::tie(ec) = co_await conn.async_run_pipeline(pipe, diag, tok);
+            std::tie(ec) = co_await conn.async_run_pipeline(pipe2, res2, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
 
             std::cout << "Inserted employees: " << id1 << ", " << id2 << ", " << id3 << std::endl;

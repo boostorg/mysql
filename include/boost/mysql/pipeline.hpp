@@ -26,93 +26,51 @@
 #include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
-#include <boost/mysql/impl/statement.hpp>
-
 #include <boost/assert.hpp>
 #include <boost/core/span.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
 namespace boost {
 namespace mysql {
 
-class pipeline_step
+class any_step_response
 {
-    struct visitor
-    {
-        detail::pipeline_step_descriptor::step_specific_t operator()(variant2::monostate) const { return {}; }
-        detail::pipeline_step_descriptor::step_specific_t operator()(results& r) const
-        {
-            return detail::pipeline_step_descriptor::execute_t{&detail::access::get_impl(r)};
-        }
-        detail::pipeline_step_descriptor::step_specific_t operator()(statement& s) const
-        {
-            return detail::pipeline_step_descriptor::prepare_statement_t{&s};
-        }
-        detail::pipeline_step_descriptor::step_specific_t operator()(character_set c) const
-        {
-            return detail::pipeline_step_descriptor::set_character_set_t{c};
-        }
-    };
-
-    struct impl_t
-    {
-        pipeline_step_kind kind;
-        detail::pipeline_step_error err;
-        std::uint8_t seqnum;
-        variant2::variant<variant2::monostate, results, statement, character_set>
-            result;  // TODO: this sizeof is high
-
-        detail::pipeline_step_descriptor to_descriptor()
-        {
-            return {kind, &err, seqnum, variant2::visit(visitor{}, result)};
-        }
-    } impl_;
+    variant2::variant<variant2::monostate, detail::err_block, statement, results> impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
 #endif
-public:
-    // TODO: these should be private
-    pipeline_step(pipeline_step_kind k, std::uint8_t seqnum) noexcept : impl_{k, {}, seqnum, {}}
-    {
-        if (k == pipeline_step_kind::prepare_statement)
-            impl_.result.emplace<statement>();
-    }
-    pipeline_step(detail::resultset_encoding enc, std::uint8_t seqnum) noexcept
-        : impl_{pipeline_step_kind::execute, {}, seqnum, results{}}  // TODO: construct that in place
-    {
-        detail::access::get_impl(variant2::unsafe_get<1>(impl_.result)).reset(enc, metadata_mode::minimal);
-    }
-    pipeline_step(character_set charset, std::uint8_t seqnum) noexcept
-        : impl_{pipeline_step_kind::set_character_set, {}, seqnum, charset}
-    {
-    }
 
-    pipeline_step_kind kind() const noexcept { return impl_.kind; }
-    error_code error() const noexcept { return impl_.err.ec; }
-    const diagnostics& diag() const noexcept { return impl_.err.diag; }
-    const results& execute_result() const
+    bool has_error() const { return impl_.index() == 1u; }
+
+public:
+    any_step_response() = default;
+    // TODO: should we make this more regular? Ctors & comparisons
+
+    error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_).ec : error_code(); }
+    diagnostics diag() const& { return has_error() ? variant2::unsafe_get<1>(impl_).diag : diagnostics(); }
+    diagnostics diag() &&
     {
-        BOOST_ASSERT(impl_.kind == pipeline_step_kind::execute);
-        return variant2::get<results>(impl_.result);
+        return has_error() ? variant2::unsafe_get<1>(std::move(impl_)).diag : diagnostics();
     }
-    statement prepare_statement_result() const
-    {
-        BOOST_ASSERT(impl_.kind == pipeline_step_kind::prepare_statement);
-        return variant2::get<statement>(impl_.result);
-    }
+    statement prepare_statement_result() const { return variant2::unsafe_get<2>(impl_); }
+    const results& execute_result() const& { return variant2::unsafe_get<3>(impl_); }
+    results&& execute_result() && { return variant2::unsafe_get<3>(std::move(impl_)); }
 };
 
-class pipeline
+using pipeline_response = std::vector<any_step_response>;
+
+class pipeline_request
 {
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
-        std::vector<pipeline_step> steps_;
+        std::vector<detail::pipeline_request_step> steps_;
 
         void clear()
         {
@@ -120,12 +78,6 @@ class pipeline
             steps_.clear();
         }
 
-        detail::pipeline_step_descriptor step_descriptor_at(std::size_t idx)
-        {
-            return idx >= steps_.size() ? detail::pipeline_step_descriptor{}
-                                        : detail::access::get_impl(steps_[idx]).to_descriptor();
-        }
-
     } impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -133,80 +85,114 @@ class pipeline
 #endif
 
 public:
-    pipeline() = default;
+    pipeline_request() = default;
     void clear() noexcept { impl_.clear(); }
 
     // Adding steps
-    // TODO: would execution requests be less confusing?
-    pipeline& add_execute(string_view query)
+    pipeline_request& add_execute(string_view query)
     {
-        impl_.steps_.emplace_back(
+        impl_.steps_.push_back({
+            pipeline_step_kind::execute,
+            detail::serialize_query(impl_.buffer_, query),
             detail::resultset_encoding::text,
-            detail::serialize_query(impl_.buffer_, query)
-        );
+        });
         return *this;
     }
 
     template <class... Params>
-    pipeline& add_execute(statement stmt, const Params&... params)
+    pipeline_request& add_execute(statement stmt, const Params&... params)
     {
         std::array<field_view, sizeof...(Params)> params_array{{detail::to_field(params)...}};
         add_execute_range(stmt, params_array);
         return *this;
     }
 
-    pipeline& add_execute_range(statement stmt, span<const field_view> params)
+    pipeline_request& add_execute_range(statement stmt, span<const field_view> params)
     {
-        impl_.steps_.emplace_back(
+        impl_.steps_.push_back({
+            pipeline_step_kind::execute,
+            detail::serialize_execute_statement(impl_.buffer_, stmt, params),
             detail::resultset_encoding::binary,
-            detail::serialize_execute_statement(impl_.buffer_, stmt, params)
-        );
+        });
         return *this;
     }
 
-    pipeline& add_prepare_statement(string_view statement_sql)
+    pipeline_request& add_prepare_statement(string_view statement_sql)
     {
-        impl_.steps_.emplace_back(
+        impl_.steps_.push_back({
             pipeline_step_kind::prepare_statement,
-            detail::serialize_prepare_statement(impl_.buffer_, statement_sql)
-        );
+            detail::serialize_prepare_statement(impl_.buffer_, statement_sql),
+            {},
+        });
         return *this;
     }
 
-    pipeline& add_close_statement(statement stmt)
+    pipeline_request& add_close_statement(statement stmt)
     {
-        impl_.steps_.emplace_back(
+        impl_.steps_.push_back({
             pipeline_step_kind::close_statement,
-            detail::serialize_close_statement(impl_.buffer_, stmt)
-        );
+            detail::serialize_close_statement(impl_.buffer_, stmt),
+            {},
+        });
         return *this;
     }
 
-    pipeline& add_set_character_set(character_set charset)
+    pipeline_request& add_set_character_set(character_set charset)
     {
-        impl_.steps_.emplace_back(charset, detail::serialize_set_character_set(impl_.buffer_, charset));
+        impl_.steps_.push_back({
+            pipeline_step_kind::set_character_set,
+            detail::serialize_set_character_set(impl_.buffer_, charset),
+            charset,
+        });
         return *this;
     }
 
-    pipeline& add_reset_connection()
+    pipeline_request& add_reset_connection()
     {
-        impl_.steps_.emplace_back(
+        impl_.steps_.push_back({
             pipeline_step_kind::reset_connection,
-            detail::serialize_reset_connection(impl_.buffer_)
-        );
+            detail::serialize_reset_connection(impl_.buffer_),
+            {},
+        });
         return *this;
     }
 
-    pipeline& add_ping()
-    {
-        impl_.steps_.emplace_back(pipeline_step_kind::ping, detail::serialize_ping(impl_.buffer_));
-        return *this;
-    }
-
-    // Retrieving results
-    span<const pipeline_step> steps() const noexcept { return impl_.steps_; }
+    using response_type = pipeline_response;
 };
 
+}  // namespace mysql
+}  // namespace boost
+
+// TODO: can we move this to a separate header?
+// Implementations
+namespace boost {
+namespace mysql {
+namespace detail {
+
+template <>
+struct pipeline_response_traits<pipeline_response>
+{
+    static void clear(pipeline_response& self) { self.clear(); }
+
+    static execution_processor* setup_step(pipeline_response& self, pipeline_step_kind kind, std::size_t idx)
+    {
+        BOOST_ASSERT(self.size() == idx);
+        self.emplace_back();
+        auto& res_impl = access::get_impl(self.back());
+        return kind == pipeline_step_kind::execute ? &access::get_impl(res_impl.emplace<results>()) : nullptr;
+    }
+
+    static void set_step_result(pipeline_response& self, err_block&& err, statement stmt, std::size_t idx)
+    {
+        BOOST_ASSERT(idx < self.size());
+        if (stmt.valid())
+            access::get_impl(self[idx]) = stmt;
+        else
+            access::get_impl(self[idx]) = std::move(err);
+    }
+};
+
+}  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 

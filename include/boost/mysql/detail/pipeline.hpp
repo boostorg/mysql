@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <type_traits>
+#include <utility>
 
 // TODO: do we want to rename this file?
 
@@ -28,72 +29,75 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-struct pipeline_step_error
+struct err_block
 {
     error_code ec;
     diagnostics diag;
-
-    void clear()
-    {
-        ec.clear();
-        diag.clear();
-    }
 };
 
-struct pipeline_step_descriptor
+struct pipeline_request_step
 {
-    struct execute_t
-    {
-        execution_processor* processor;
-    };
-    struct prepare_statement_t
-    {
-        statement* stmt;
-    };
-    struct set_character_set_t
-    {
-        character_set charset;
-    };
-
     pipeline_step_kind kind;
-    pipeline_step_error* err;
     std::uint8_t seqnum;
     union step_specific_t
     {
         std::nullptr_t nothing;
-        execute_t execute;
-        prepare_statement_t prepare_statement;
-        set_character_set_t set_character_set;
+        resultset_encoding enc;
+        character_set charset;
 
         step_specific_t() noexcept : nothing() {}
-        step_specific_t(execute_t v) noexcept : execute(v) {}
-        step_specific_t(prepare_statement_t v) noexcept : prepare_statement(v) {}
-        step_specific_t(set_character_set_t v) noexcept : set_character_set(v) {}
+        step_specific_t(resultset_encoding v) noexcept : enc(v) {}
+        step_specific_t(character_set v) noexcept : charset(v) {}
     } step_specific;
-
-    bool valid() const { return err != nullptr; }
 };
 
-class pipeline_step_generator
+template <class T>
+struct pipeline_response_traits;
+
+class pipeline_response_ref
 {
     void* obj_;
-    pipeline_step_descriptor (*pfn)(void* obj, std::size_t current_index);
+    void (*clear_fn_)(void*);
+    execution_processor* (*setup_step_fn_)(void*, pipeline_step_kind, std::size_t);
+    void (*set_step_result_fn_)(void*, err_block&&, statement, std::size_t);
 
     template <class T>
-    static pipeline_step_descriptor do_step_descriptor_at(void* obj, std::size_t current_index)
+    static void do_clear(void* obj)
     {
-        return static_cast<T*>(obj)->step_descriptor_at(current_index);
+        pipeline_response_traits<T>::clear(*static_cast<T*>(obj));
+    }
+
+    template <class T>
+    static execution_processor* do_setup_step(void* obj, pipeline_step_kind kind, std::size_t idx)
+    {
+        return pipeline_response_traits<T>::setup_step(*static_cast<T*>(obj), kind, idx);
+    }
+
+    template <class T>
+    static void do_set_step_result(void* obj, err_block&& err, statement stmt, std::size_t idx)
+    {
+        pipeline_response_traits<T>::set_step_result(*static_cast<T*>(obj), std::move(err), stmt, idx);
     }
 
 public:
-    template <
-        class T,
-        class = typename std::enable_if<!std::is_same<T, pipeline_step_generator>::value>::type>
-    pipeline_step_generator(T& obj) : obj_(&obj), pfn(&do_step_descriptor_at<T>)
+    template <class T, class = typename std::enable_if<!std::is_same<T, pipeline_response_ref>::value>::type>
+    pipeline_response_ref(T& obj)
+        : obj_(&obj),
+          clear_fn_(&do_clear<T>),
+          setup_step_fn_(&do_setup_step<T>),
+          set_step_result_fn_(&do_set_step_result<T>)
     {
     }
 
-    pipeline_step_descriptor step_descriptor_at(std::size_t index) { return pfn(obj_, index); }
+    void clear() { clear_fn_(obj_); }
+    execution_processor* setup_step(pipeline_step_kind kind, std::size_t idx)
+    {
+        return setup_step_fn_(obj_, kind, idx);
+    }
+    void set_step_result(err_block&& err, statement stmt, std::size_t idx)
+    {
+        set_step_result_fn_(obj_, std::move(err), stmt, idx);
+    }
 };
 
 BOOST_MYSQL_DECL std::uint8_t serialize_query(std::vector<std::uint8_t>& buffer, string_view query);

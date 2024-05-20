@@ -149,8 +149,9 @@ struct close_connection_algo_params
 struct run_pipeline_algo_params
 {
     diagnostics* diag;
-    pipeline_step_generator step_gen;
     const std::vector<std::uint8_t>* buffer;  // TODO: change this
+    span<const detail::pipeline_request_step> steps;
+    detail::pipeline_response_ref response;
 
     using result_type = void;
 };

@@ -51,11 +51,12 @@ class run_pipeline_algo
         >;
 
     diagnostics* diag_;
-    pipeline_step_generator step_gen_;
+    diagnostics temp_diag_;
     const std::vector<std::uint8_t>* buffer_;
+    span<const detail::pipeline_request_step> steps_;
+    detail::pipeline_response_ref response_;
 
     int resume_point_{0};
-    pipeline_step_descriptor current_step_{};
     std::size_t current_step_index_{0};
     error_code pipeline_ec_;  // Result of the entire operation
     bool has_hatal_error_{};  // If true, fail further steps with client_errc::cancelled
@@ -64,44 +65,34 @@ class run_pipeline_algo
     void setup_current_step(const connection_state_data& st)
     {
         // Reset previous data
-        current_step_.err->clear();
+        auto step = steps_[current_step_index_];
+        auto* processor = response_.setup_step(step.kind, current_step_index_);
 
         // Setup read algo
-        switch (current_step_.kind)
+        switch (step.kind)
         {
         case pipeline_step_kind::execute:
-            current_step_.step_specific.execute.processor->reset(
-                current_step_.step_specific.execute.processor->encoding(),
-                st.meta_mode
-            );
-            current_step_.step_specific.execute.processor->sequence_number() = current_step_.seqnum;
-            read_response_algo_.emplace<read_execute_response_algo>(
-                &current_step_.err->diag,
-                current_step_.step_specific.execute.processor
-            );
+            processor->reset(step.step_specific.enc, st.meta_mode);
+            processor->sequence_number() = step.seqnum;
+            read_response_algo_.emplace<read_execute_response_algo>(&temp_diag_, processor);
             break;
         case pipeline_step_kind::prepare_statement:
-            read_response_algo_.emplace<read_prepare_statement_response_algo>(&current_step_.err->diag)
-                .sequence_number() = current_step_.seqnum;
+            read_response_algo_.emplace<read_prepare_statement_response_algo>(&temp_diag_)
+                .sequence_number() = step.seqnum;
             break;
         case pipeline_step_kind::close_statement:
             // Close statement doesn't have a response
-            // TODO: how can we make sure pipelines never end with a close_statement? This can cause massive
-            // delays
+            // TODO: this causes delays unless we disable naggle's algorithm
             read_response_algo_.emplace<no_response_algo>();
             break;
         case pipeline_step_kind::set_character_set:
             read_response_algo_
-                .emplace<read_set_character_set_response_algo>(
-                    &current_step_.err->diag,
-                    current_step_.step_specific.set_character_set.charset
-                )
-                .sequence_number() = current_step_.seqnum;
+                .emplace<read_set_character_set_response_algo>(&temp_diag_, step.step_specific.charset)
+                .sequence_number() = step.seqnum;
             break;
         case pipeline_step_kind::reset_connection:
         case pipeline_step_kind::ping:
-            read_response_algo_.emplace<read_ok_response_algo>(&current_step_.err->diag)
-                .sequence_number() = current_step_.seqnum;
+            read_response_algo_.emplace<read_ok_response_algo>(&temp_diag_).sequence_number() = step.seqnum;
             break;
         default: BOOST_ASSERT(false);
         }
@@ -115,7 +106,7 @@ class run_pipeline_algo
             if (!pipeline_ec_)
             {
                 pipeline_ec_ = step_ec;
-                *diag_ = current_step_.err->diag;
+                *diag_ = temp_diag_;
             }
 
             // If the error was fatal, fail successive steps with a cancelled error
@@ -123,15 +114,20 @@ class run_pipeline_algo
             {
                 has_hatal_error_ = true;
             }
+
+            // Propagate the error
+            response_.set_step_result({step_ec, temp_diag_}, {}, current_step_index_);
         }
         else
         {
-            if (current_step_.kind == pipeline_step_kind::prepare_statement)
+            if (steps_[current_step_index_].kind == pipeline_step_kind::prepare_statement)
             {
                 // Propagate results
-                *current_step_.step_specific.prepare_statement
-                     .stmt = variant2::get<read_prepare_statement_response_algo>(read_response_algo_)
-                                 .result(st);
+                response_.set_step_result(
+                    {},
+                    variant2::get<read_prepare_statement_response_algo>(read_response_algo_).result(st),
+                    current_step_index_
+                );
             }
         }
     }
@@ -155,7 +151,7 @@ class run_pipeline_algo
 
 public:
     run_pipeline_algo(run_pipeline_algo_params params) noexcept
-        : diag_(params.diag), step_gen_(params.step_gen), buffer_(params.buffer)
+        : diag_(params.diag), buffer_(params.buffer), steps_(params.steps), response_(params.response)
     {
     }
 
@@ -182,18 +178,13 @@ public:
             }
 
             // For each step
-            while (true)
+            for (; current_step_index_ < steps_.size(); ++current_step_index_)
             {
-                // Get the next step
-                current_step_ = step_gen_.step_descriptor_at(current_step_index_++);
-                if (!current_step_.valid())
-                    break;
-
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    current_step_.err->ec = client_errc::cancelled;
-                    current_step_.err->diag.clear();
+                    response_.setup_step(steps_[current_step_index_].kind, current_step_index_);
+                    response_.set_step_result({client_errc::cancelled, {}}, {}, current_step_index_);
                     continue;
                 }
 
