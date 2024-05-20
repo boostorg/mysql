@@ -58,69 +58,80 @@ struct pipeline_response_traits;
 
 class pipeline_response_ref
 {
-    // get_processor, set_result and set_error are pretty similar in signature,
-    // so we multiplex the call to store a single function pointer for the three of them
-    enum class index_step_op
+    // We multiplex calls to store a single function pointer, instead of four
+    enum fn_type
     {
-        get_processor,
-        set_result,
-        set_error
+        fn_type_setup,
+        fn_type_get_processor,
+        fn_type_set_result,
+        fn_type_set_error
+    };
+
+    union fn_args
+    {
+        struct setup_t
+        {
+            fn_type type;
+            span<const pipeline_request_step> request_steps;
+
+            static_assert(std::is_standard_layout<decltype(request_steps)>::value, "Internal error");
+        } setup;
+        struct get_processor_t
+        {
+            fn_type type;
+            std::size_t index;
+        } get_processor;
+        struct set_result_t
+        {
+            fn_type type;
+            std::size_t index;
+            statement stmt;
+        } set_result;
+        struct set_error_t
+        {
+            fn_type type;
+            std::size_t index;
+            err_block* err;
+        } set_error;
+
+        fn_args(span<const pipeline_request_step> v) noexcept : setup{fn_type_setup, v} {}
+        fn_args(std::size_t index) noexcept : get_processor{fn_type_get_processor, index} {}
+        fn_args(std::size_t index, statement stmt) noexcept : set_result{fn_type_set_result, index, stmt} {}
+        fn_args(std::size_t index, err_block* err) noexcept : set_error{fn_type_set_error, index, err} {}
     };
 
     void* obj_;
-    void (*setup_fn_)(void*, span<const pipeline_request_step>);
-    void (*index_step_fn_)(void*, index_step_op, std::size_t, void*);
+    execution_processor* (*fn_)(void*, fn_args);
 
     template <class T>
-    static void do_setup(void* obj, span<const pipeline_request_step> request_steps)
+    static execution_processor* do_invoke(void* obj, fn_args args)
     {
-        pipeline_response_traits<T>::setup(*static_cast<T*>(obj), request_steps);
-    }
+        using traits_t = pipeline_response_traits<T>;
 
-    template <class T>
-    static void do_index_step(void* obj, index_step_op op, std::size_t step_idx, void* arg)
-    {
         auto& self = *static_cast<T*>(obj);
-        if (op == index_step_op::get_processor)
+        switch (args.setup.type)
         {
-            *static_cast<execution_processor**>(arg
-            ) = &pipeline_response_traits<T>::get_processor(self, step_idx);
-        }
-        else if (op == index_step_op::set_result)
-        {
-            pipeline_response_traits<T>::set_result(self, step_idx, *static_cast<const statement*>(arg));
-        }
-        else
-        {
-            BOOST_ASSERT(op == index_step_op::set_error);
-            pipeline_response_traits<T>::set_error(self, step_idx, std::move(*static_cast<err_block*>(arg)));
+        case fn_type_setup: traits_t::setup(self, args.setup.request_steps); return nullptr;
+        case fn_type_get_processor: return &traits_t::get_processor(self, args.get_processor.index);
+        case fn_type_set_result:
+            traits_t::set_result(self, args.set_result.index, args.set_result.stmt);
+            return nullptr;
+        case fn_type_set_error:
+            traits_t::set_error(self, args.set_error.index, std::move(*args.set_error.err));
+            return nullptr;
         }
     }
 
 public:
     template <class T, class = typename std::enable_if<!std::is_same<T, pipeline_response_ref>::value>::type>
-    pipeline_response_ref(T& obj) : obj_(&obj), setup_fn_(&do_setup<T>), index_step_fn_(&do_index_step<T>)
+    pipeline_response_ref(T& obj) : obj_(&obj), fn_(&do_invoke<T>)
     {
     }
 
-    void setup(span<const pipeline_request_step> request_steps) { setup_fn_(obj_, request_steps); }
-
-    execution_processor& get_processor(std::size_t step_idx)
-    {
-        execution_processor* res{};
-        index_step_fn_(obj_, index_step_op::get_processor, step_idx, &res);
-        return *res;
-    }
-
-    void set_result(std::size_t step_idx, statement result)
-    {
-        index_step_fn_(obj_, index_step_op::set_result, step_idx, &result);
-    }
-
-    void set_error(std::size_t step_idx, err_block&& result)
-    {
-        index_step_fn_(obj_, index_step_op::set_error, step_idx, &result);
-    }
+    void setup(span<const pipeline_request_step> request_steps) { fn_(obj_, {request_steps}); }
+    execution_processor& get_processor(std::size_t step_idx) { return *fn_(obj_, {step_idx}); }
+    void set_result(std::size_t step_idx, statement result) { fn_(obj_, {step_idx, result}); }
+    void set_error(std::size_t step_idx, err_block&& result) { fn_(obj_, {step_idx, &result}); }
 };
 
 BOOST_MYSQL_DECL std::uint8_t serialize_query(std::vector<std::uint8_t>& buffer, string_view query);
