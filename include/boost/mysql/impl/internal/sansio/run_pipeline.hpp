@@ -66,9 +66,10 @@ class run_pipeline_algo
     void setup_current_step(const connection_state_data& st)
     {
         // Reset previous data
-        auto step = steps_[current_step_index_];
+        temp_diag_.clear();
 
         // Setup read algo
+        auto step = steps_[current_step_index_];
         switch (step.kind)
         {
         case pipeline_step_kind::execute:
@@ -121,8 +122,7 @@ class run_pipeline_algo
             }
 
             // Propagate the error
-            if (response_.has_value())
-                response_.set_error(current_step_index_, {step_ec, temp_diag_});
+            response_.set_error(current_step_index_, step_ec, std::move(temp_diag_));
         }
         else
         {
@@ -164,6 +164,8 @@ public:
     {
     }
 
+    diagnostics& diag() { return *diag_; }
+
     next_action resume(connection_state_data& st, error_code ec)
     {
         next_action act;
@@ -174,8 +176,7 @@ public:
 
             // Clear previous state
             diag_->clear();
-            if (response_.has_value())
-                response_.setup(steps_);
+            response_.setup(steps_);
 
             // Write the request
             st.writer.reset(request_buffer_);
@@ -194,8 +195,7 @@ public:
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    if (response_.has_value())
-                        response_.set_error(current_step_index_, {client_errc::cancelled, {}});
+                    response_.set_error(current_step_index_, client_errc::cancelled, {});
                     continue;
                 }
 

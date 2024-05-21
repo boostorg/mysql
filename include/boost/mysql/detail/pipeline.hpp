@@ -100,17 +100,20 @@ class pipeline_response_ref
         {
             fn_type type;
             std::size_t index;
-            err_block* err;
+            const error_code* ec;
+            diagnostics* diag;
         } set_error;
 
         fn_args(span<const pipeline_request_step> v) noexcept : setup{fn_type_setup, v} {}
         fn_args(std::size_t index) noexcept : get_processor{fn_type_get_processor, index} {}
         fn_args(std::size_t index, statement stmt) noexcept : set_result{fn_type_set_result, index, stmt} {}
-        fn_args(std::size_t index, err_block* err) noexcept : set_error{fn_type_set_error, index, err} {}
+        fn_args(std::size_t index, const error_code* ec, diagnostics* diag) noexcept
+            : set_error{fn_type_set_error, index, ec, diag}
+        {
+        }
     };
 
-    void* obj_{};
-    execution_processor* (*fn_)(void*, fn_args){};
+    static execution_processor* null_invoke(void*, fn_args) { return nullptr; }
 
     template <class T>
     static execution_processor* do_invoke(void* obj, fn_args args)
@@ -126,43 +129,32 @@ class pipeline_response_ref
             traits_t::set_result(self, args.set_result.index, args.set_result.stmt);
             return nullptr;
         case fn_type_set_error:
-            traits_t::set_error(self, args.set_error.index, std::move(*args.set_error.err));
+            traits_t::set_error(
+                self,
+                args.set_error.index,
+                err_block{*args.set_error.ec, std::move(*args.set_error.diag)}
+            );
             return nullptr;
         }
     }
 
+    void* obj_;
+    execution_processor* (*fn_)(void*, fn_args);
+
 public:
-    pipeline_response_ref() = default;
+    pipeline_response_ref() : obj_(nullptr), fn_(&null_invoke) {}
 
     template <class T, class = typename std::enable_if<!std::is_same<T, pipeline_response_ref>::value>::type>
     pipeline_response_ref(T& obj) : obj_(&obj), fn_(&do_invoke<T>)
     {
     }
 
-    bool has_value() const { return obj_ != nullptr; }
-
-    void setup(span<const pipeline_request_step> request_steps)
+    void setup(span<const pipeline_request_step> request_steps) { fn_(obj_, {request_steps}); }
+    execution_processor& get_processor(std::size_t step_idx) { return *fn_(obj_, {step_idx}); }
+    void set_result(std::size_t step_idx, statement result) { fn_(obj_, {step_idx, result}); }
+    void set_error(std::size_t step_idx, error_code ec, diagnostics&& diag)
     {
-        BOOST_ASSERT(has_value());
-        fn_(obj_, {request_steps});
-    }
-
-    execution_processor& get_processor(std::size_t step_idx)
-    {
-        BOOST_ASSERT(has_value());
-        return *fn_(obj_, {step_idx});
-    }
-
-    void set_result(std::size_t step_idx, statement result)
-    {
-        BOOST_ASSERT(has_value());
-        fn_(obj_, {step_idx, result});
-    }
-
-    void set_error(std::size_t step_idx, err_block&& result)
-    {
-        BOOST_ASSERT(has_value());
-        fn_(obj_, {step_idx, &result});
+        fn_(obj_, {step_idx, &ec, &diag});
     }
 };
 
