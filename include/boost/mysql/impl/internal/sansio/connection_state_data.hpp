@@ -124,23 +124,6 @@ struct connection_state_data
         writer.reset(write_buffer);
         return next_action::write({});
     }
-
-    // Serializes two messages into the write buffer. They must fit in a single frame
-    template <class Serializable1, class Serializable2>
-    next_action write(
-        const Serializable1& msg1,
-        std::uint8_t& seqnum1,
-        const Serializable2& msg2,
-        std::uint8_t& seqnum2
-    )
-    {
-        // buffer is attached by top_level_algo
-        write_buffer.clear();
-        seqnum1 = serialize_top_level(msg1, write_buffer, seqnum1);
-        seqnum2 = serialize_top_level(msg2, write_buffer, seqnum2);
-        writer.reset(write_buffer);
-        return next_action::write({});
-    }
 };
 
 }  // namespace detail
