@@ -176,7 +176,10 @@ BOOST_MYSQL_DECL std::uint8_t serialize_prepare_statement(
     std::vector<std::uint8_t>& buffer,
     string_view stmt_sql
 );
-BOOST_MYSQL_DECL std::uint8_t serialize_close_statement(std::vector<std::uint8_t>& buffer, statement stmt);
+BOOST_MYSQL_DECL std::uint8_t serialize_close_statement(
+    std::vector<std::uint8_t>& buffer,
+    std::uint32_t stmt_id
+);
 BOOST_MYSQL_DECL std::uint8_t serialize_set_character_set(
     std::vector<std::uint8_t>& buffer,
     character_set charset

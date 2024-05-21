@@ -267,7 +267,7 @@ public:
     // TODO: make this private
     static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, close_statement_args args)
     {
-        std::uint8_t seqnum = detail::serialize_close_statement(buffer, detail::access::get_impl(args));
+        std::uint8_t seqnum = detail::serialize_close_statement(buffer, detail::access::get_impl(args).id());
         return {detail::pipeline_step_kind::close_statement, seqnum, {}};
     }
 };

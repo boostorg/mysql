@@ -43,10 +43,10 @@ std::uint8_t boost::mysql::detail::serialize_prepare_statement(
 
 std::uint8_t boost::mysql::detail::serialize_close_statement(
     std::vector<std::uint8_t>& buffer,
-    statement stmt
+    std::uint32_t stmt_id
 )
 {
-    return detail::serialize_top_level(detail::close_stmt_command{stmt.id()}, buffer, 0);
+    return detail::serialize_top_level(detail::close_stmt_command{stmt_id}, buffer, 0);
 }
 
 std::uint8_t boost::mysql::detail::serialize_set_character_set(

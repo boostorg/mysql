@@ -128,7 +128,7 @@ public:
     {
         impl_.steps_.push_back({
             detail::pipeline_step_kind::close_statement,
-            detail::serialize_close_statement(impl_.buffer_, stmt),
+            detail::serialize_close_statement(impl_.buffer_, stmt.id()),
             {},
         });
         return *this;
