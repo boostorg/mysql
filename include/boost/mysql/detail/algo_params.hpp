@@ -25,7 +25,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -148,8 +147,8 @@ struct close_connection_algo_params
 struct run_pipeline_algo_params
 {
     diagnostics* diag;
-    const std::vector<std::uint8_t>* buffer;  // TODO: change this
-    span<const detail::pipeline_request_step> steps;
+    span<const std::uint8_t> request_buffer;
+    span<const detail::pipeline_request_step> request_steps;
     detail::pipeline_response_ref response;
 
     using result_type = void;

@@ -566,7 +566,7 @@ public:
     )
     {
         auto& req_impl = access::get_impl(req);
-        return {&diag, &req_impl.buffer_, req_impl.steps_, pipeline_response_ref(response)};
+        return {&diag, req_impl.buffer_, req_impl.steps_, pipeline_response_ref(response)};
     }
 };
 

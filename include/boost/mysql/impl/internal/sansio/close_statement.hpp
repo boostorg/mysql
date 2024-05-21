@@ -54,13 +54,11 @@ public:
             // to force the server send a response. Otherwise, the client ends up waiting
             // for the next TCP ACK, which takes some milliseconds to be sent
             // (see https://github.com/boostorg/mysql/issues/181)
-            st.writer.prepare_pipelined_write(
-                close_stmt_command{stmt_id_},
-                close_seqnum_,
-                ping_command{},
-                ping_seqnum_
-            );
-            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
+            BOOST_MYSQL_YIELD(
+                resume_point_,
+                1,
+                st.write(close_stmt_command{stmt_id_}, close_seqnum_, ping_command{}, ping_seqnum_)
+            )
 
             // Read ping response
             BOOST_MYSQL_YIELD(resume_point_, 2, st.read(ping_seqnum_))

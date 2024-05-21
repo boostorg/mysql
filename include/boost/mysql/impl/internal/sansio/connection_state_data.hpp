@@ -17,10 +17,12 @@
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 #include <boost/mysql/impl/internal/sansio/message_writer.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace boost {
@@ -64,6 +66,9 @@ struct connection_state_data
 
     // The current character set, or a default-constructed character set (will all nullptrs) if unknown
     character_set current_charset{};
+
+    // The write buffer
+    std::vector<std::uint8_t> write_buffer;
 
     // Reader and writer
     message_reader reader;
@@ -114,7 +119,26 @@ struct connection_state_data
     next_action write(const Serializable& msg, std::uint8_t& seqnum)
     {
         // buffer is attached by top_level_algo
-        writer.prepare_write(msg, seqnum);
+        write_buffer.clear();
+        seqnum = serialize_top_level(msg, write_buffer, seqnum);
+        writer.reset(write_buffer);
+        return next_action::write({});
+    }
+
+    // Serializes two messages into the write buffer. They must fit in a single frame
+    template <class Serializable1, class Serializable2>
+    next_action write(
+        const Serializable1& msg1,
+        std::uint8_t& seqnum1,
+        const Serializable2& msg2,
+        std::uint8_t& seqnum2
+    )
+    {
+        // buffer is attached by top_level_algo
+        write_buffer.clear();
+        seqnum1 = serialize_top_level(msg1, write_buffer, seqnum1);
+        seqnum2 = serialize_top_level(msg2, write_buffer, seqnum2);
+        writer.reset(write_buffer);
         return next_action::write({});
     }
 };

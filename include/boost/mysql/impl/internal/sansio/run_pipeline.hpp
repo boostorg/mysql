@@ -26,6 +26,7 @@
 #include <boost/mysql/impl/internal/sansio/read_prepare_statement_response.hpp>
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 
+#include <boost/core/span.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>
@@ -52,7 +53,7 @@ class run_pipeline_algo
 
     diagnostics* diag_;
     diagnostics temp_diag_;
-    const std::vector<std::uint8_t>* buffer_;
+    span<const std::uint8_t> request_buffer_;
     span<const detail::pipeline_request_step> steps_;
     detail::pipeline_response_ref response_;
 
@@ -152,7 +153,10 @@ class run_pipeline_algo
 
 public:
     run_pipeline_algo(run_pipeline_algo_params params) noexcept
-        : diag_(params.diag), buffer_(params.buffer), steps_(params.steps), response_(params.response)
+        : diag_(params.diag),
+          request_buffer_(params.request_buffer),
+          steps_(params.request_steps),
+          response_(params.response)
     {
     }
 
@@ -169,7 +173,7 @@ public:
             response_.setup(steps_);
 
             // Write the request
-            st.writer.prepare_pipelined_write(*buffer_);
+            st.writer.reset(request_buffer_);
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
 
             // If writing the request failed, fail all the steps with the given error code
