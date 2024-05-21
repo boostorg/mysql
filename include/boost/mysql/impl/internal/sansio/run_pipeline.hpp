@@ -73,6 +73,8 @@ class run_pipeline_algo
         {
         case pipeline_step_kind::execute:
         {
+            // We don't support running execute steps with responses
+            // having has_value() == false yet
             auto& processor = response_.get_processor(current_step_index_);
             processor.reset(step.step_specific.enc, st.meta_mode);
             processor.sequence_number() = step.seqnum;
@@ -119,13 +121,15 @@ class run_pipeline_algo
             }
 
             // Propagate the error
-            response_.set_error(current_step_index_, {step_ec, temp_diag_});
+            if (response_.has_value())
+                response_.set_error(current_step_index_, {step_ec, temp_diag_});
         }
         else
         {
             if (steps_[current_step_index_].kind == pipeline_step_kind::prepare_statement)
             {
-                // Propagate results
+                // Propagate results. We don't support prepare statements
+                // with responses having has_value() == false
                 response_.set_result(
                     current_step_index_,
                     variant2::get<read_prepare_statement_response_algo>(read_response_algo_).result(st)
@@ -170,7 +174,8 @@ public:
 
             // Clear previous state
             diag_->clear();
-            response_.setup(steps_);
+            if (response_.has_value())
+                response_.setup(steps_);
 
             // Write the request
             st.writer.reset(request_buffer_);
@@ -189,7 +194,8 @@ public:
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    response_.set_error(current_step_index_, {client_errc::cancelled, {}});
+                    if (response_.has_value())
+                        response_.set_error(current_step_index_, {client_errc::cancelled, {}});
                     continue;
                 }
 

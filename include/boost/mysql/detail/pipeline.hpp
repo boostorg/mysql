@@ -109,8 +109,8 @@ class pipeline_response_ref
         fn_args(std::size_t index, err_block* err) noexcept : set_error{fn_type_set_error, index, err} {}
     };
 
-    void* obj_;
-    execution_processor* (*fn_)(void*, fn_args);
+    void* obj_{};
+    execution_processor* (*fn_)(void*, fn_args){};
 
     template <class T>
     static execution_processor* do_invoke(void* obj, fn_args args)
@@ -132,15 +132,38 @@ class pipeline_response_ref
     }
 
 public:
+    pipeline_response_ref() = default;
+
     template <class T, class = typename std::enable_if<!std::is_same<T, pipeline_response_ref>::value>::type>
     pipeline_response_ref(T& obj) : obj_(&obj), fn_(&do_invoke<T>)
     {
     }
 
-    void setup(span<const pipeline_request_step> request_steps) { fn_(obj_, {request_steps}); }
-    execution_processor& get_processor(std::size_t step_idx) { return *fn_(obj_, {step_idx}); }
-    void set_result(std::size_t step_idx, statement result) { fn_(obj_, {step_idx, result}); }
-    void set_error(std::size_t step_idx, err_block&& result) { fn_(obj_, {step_idx, &result}); }
+    bool has_value() const { return obj_ != nullptr; }
+
+    void setup(span<const pipeline_request_step> request_steps)
+    {
+        BOOST_ASSERT(has_value());
+        fn_(obj_, {request_steps});
+    }
+
+    execution_processor& get_processor(std::size_t step_idx)
+    {
+        BOOST_ASSERT(has_value());
+        return *fn_(obj_, {step_idx});
+    }
+
+    void set_result(std::size_t step_idx, statement result)
+    {
+        BOOST_ASSERT(has_value());
+        fn_(obj_, {step_idx, result});
+    }
+
+    void set_error(std::size_t step_idx, err_block&& result)
+    {
+        BOOST_ASSERT(has_value());
+        fn_(obj_, {step_idx, &result});
+    }
 };
 
 BOOST_MYSQL_DECL std::uint8_t serialize_query(std::vector<std::uint8_t>& buffer, string_view query);
