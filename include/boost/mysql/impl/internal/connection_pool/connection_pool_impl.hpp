@@ -324,6 +324,7 @@ public:
     shared_state_type& shared_state() noexcept { return shared_st_; }
     internal_pool_params& params() noexcept { return params_; }
     asio::any_io_executor connection_ex() noexcept { return conn_ex_; }
+    const reset_pipeline_req_t& reset_pipeline_request() const { return reset_pipeline_req_; }
 };
 
 }  // namespace detail

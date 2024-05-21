@@ -47,7 +47,8 @@ struct pooled_connection_fixture
             pool->params(),
             ctx.get_executor(),
             ctx.get_executor(),
-            pool->shared_state()
+            pool->shared_state(),
+            &pool->reset_pipeline_request()
         )};
     }
 
