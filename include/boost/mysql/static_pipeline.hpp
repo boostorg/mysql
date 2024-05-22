@@ -39,8 +39,6 @@
 namespace boost {
 namespace mysql {
 
-class writable_field_arg;
-
 // Execute
 class writable_field_arg
 {
@@ -95,93 +93,83 @@ public:
 class execute_stage
 {
     // TODO: could we unify this and any_execution_request?
-    struct impl_t
+    enum type_t
     {
-        enum type_t
-        {
-            type_query,
-            type_stmt_tuple,
-            type_stmt_range
-        };
+        type_query,
+        type_stmt_tuple,
+        type_stmt_range
+    };
 
-        union data_t
+    union data_t
+    {
+        string_view query;
+        struct
         {
-            string_view query;
-            struct
+            statement stmt;
+            span<const writable_field_arg> params;
+        } stmt_tuple;
+        struct
+        {
+            statement stmt;
+            span<const field_view> params;
+        } stmt_range;
+
+        data_t(string_view q) noexcept : query(q) {}
+        data_t(statement s, span<const writable_field_arg> params) noexcept : stmt_tuple{s, params} {}
+        data_t(statement s, span<const field_view> params) noexcept : stmt_range{s, params} {}
+    };
+
+    type_t type_;
+    data_t data_;
+
+    // TODO: move to compiled
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
+    {
+        switch (type_)
+        {
+        case type_query: return detail::serialize_query(buffer, data_.query);
+        case type_stmt_tuple:
+        {
+            constexpr std::size_t stack_fields = 64u;
+            auto params = data_.stmt_tuple.params;
+            auto stmt = data_.stmt_tuple.stmt;
+            if (params.size() <= stack_fields)
             {
-                statement stmt;
-                span<const writable_field_arg> params;
-            } stmt_tuple;
-            struct
-            {
-                statement stmt;
-                span<const field_view> params;
-            } stmt_range;
-
-            data_t(string_view q) noexcept : query(q) {}
-            data_t(statement s, span<const writable_field_arg> params) noexcept : stmt_tuple{s, params} {}
-            data_t(statement s, span<const field_view> params) noexcept : stmt_range{s, params} {}
-        };
-
-        type_t type;
-        data_t data;
-
-        impl_t(string_view q) noexcept : type(type_query), data(q) {}
-        impl_t(statement s, span<const writable_field_arg> params) noexcept
-            : type(type_stmt_tuple), data(s, params)
-        {
-        }
-        impl_t(statement s, span<const field_view> params) noexcept : type(type_stmt_range), data(s, params)
-        {
-        }
-
-        // TODO: move to compiled
-        detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-        {
-            switch (type)
-            {
-            case type_query: return detail::serialize_query(buffer, data.query);
-            case type_stmt_tuple:
-            {
-                constexpr std::size_t stack_fields = 64u;
-                auto params = data.stmt_tuple.params;
-                auto stmt = data.stmt_tuple.stmt;
-                if (params.size() <= stack_fields)
-                {
-                    std::array<field_view, stack_fields> storage;
-                    for (std::size_t i = 0; i < params.size(); ++i)
-                        storage[i] = detail::access::get_impl(params[i]);
-                    return detail::serialize_execute_statement(buffer, stmt, {storage.data(), params.size()});
-                }
-                else
-                {
-                    std::vector<field_view> storage;
-                    storage.reserve(params.size());
-                    for (auto p : params)
-                        storage.push_back(detail::access::get_impl(p));
-                    return detail::serialize_execute_statement(buffer, stmt, storage);
-                }
+                std::array<field_view, stack_fields> storage;
+                for (std::size_t i = 0; i < params.size(); ++i)
+                    storage[i] = detail::access::get_impl(params[i]);
+                return detail::serialize_execute_statement(buffer, stmt, {storage.data(), params.size()});
             }
-            case type_stmt_range:
-                return detail::serialize_execute_statement(
-                    buffer,
-                    data.stmt_range.stmt,
-                    data.stmt_range.params
-                );
+            else
+            {
+                std::vector<field_view> storage;
+                storage.reserve(params.size());
+                for (auto p : params)
+                    storage.push_back(detail::access::get_impl(p));
+                return detail::serialize_execute_statement(buffer, stmt, storage);
             }
         }
-
-    } impl_;
+        case type_stmt_range:
+            return detail::serialize_execute_statement(
+                buffer,
+                data_.stmt_range.stmt,
+                data_.stmt_range.params
+            );
+        }
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
+    template <class... StageType>
+    friend class static_pipeline_request;
 #endif
 
 public:
-    execute_stage(string_view query) : impl_(query) {}
-    execute_stage(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
+    execute_stage(string_view query) : type_(type_query), data_(query) {}
     execute_stage(statement stmt, std::initializer_list<writable_field_arg> params)
-        : impl_(stmt, {params.begin(), params.size()})
+        : type_(type_stmt_tuple), data_(stmt, {params.begin(), params.size()})
+    {
+    }
+    execute_stage(statement stmt, span<const field_view> params) : type_(type_stmt_range), data_(stmt, params)
     {
     }
     using response_type = execute_stage_response;
@@ -227,22 +215,20 @@ public:
 
 class prepare_statement_stage
 {
-    struct impl_t
-    {
-        string_view stmt_sql;
+    string_view stmt_sql_;
 
-        detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-        {
-            return detail::serialize_prepare_statement(buffer, stmt_sql);
-        }
-    } impl_;
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
+    {
+        return detail::serialize_prepare_statement(buffer, stmt_sql_);
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
+    template <class... StageType>
+    friend class static_pipeline_request;
 #endif
 
 public:
-    prepare_statement_stage(string_view stmt_sql) : impl_{stmt_sql} {}
+    prepare_statement_stage(string_view stmt_sql) : stmt_sql_(stmt_sql) {}
 
     using response_type = prepare_statement_stage_response;
 };
@@ -283,37 +269,34 @@ public:
 // Close statement
 class close_statement_stage
 {
-    struct impl_t
-    {
-        std::uint32_t stmt_id;
+    std::uint32_t stmt_id_;
 
-        detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-        {
-            return detail::serialize_close_statement(buffer, stmt_id);
-        }
-    } impl_;
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
+    {
+        return detail::serialize_close_statement(buffer, stmt_id_);
+    }
+
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
+    template <class... StageType>
+    friend class static_pipeline_request;
 #endif
 
 public:
-    close_statement_stage(statement stmt) : impl_{stmt.id()} {}
+    close_statement_stage(statement stmt) : stmt_id_(stmt.id()) {}
     using response_type = no_result_stage_response;
 };
 
 // Reset connection
 class reset_connection_stage
 {
-    struct impl_t
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
     {
-        detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-        {
-            return detail::serialize_reset_connection(buffer);
-        }
-    } impl_;  // TODO: this doesn't look good
+        return detail::serialize_reset_connection(buffer);
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
+    template <class... StageType>
+    friend class static_pipeline_request;
 #endif
 
 public:
@@ -324,22 +307,20 @@ public:
 // Set character set
 class set_character_set_stage
 {
-    struct impl_t
-    {
-        character_set charset;
+    character_set charset_;
 
-        detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-        {
-            return detail::serialize_set_character_set(buffer, charset);
-        }
-    } impl_;
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
+    {
+        return detail::serialize_set_character_set(buffer, charset_);
+    }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
+    template <class... StageType>
+    friend class static_pipeline_request;
 #endif
 
 public:
-    set_character_set_stage(character_set charset) : impl_{charset} {}
+    set_character_set_stage(character_set charset) : charset_(charset) {}
     using response_type = no_result_stage_response;
 };
 
@@ -350,12 +331,17 @@ class static_pipeline_request
 
     using stage_array_t = std::array<detail::pipeline_request_stage, sizeof...(StageType)>;
 
+    static stage_array_t create_stage_array(std::vector<std::uint8_t>& buff, const StageType&... args)
+    {
+        return {{args.create(buff)...}};
+    }
+
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
         stage_array_t stages_;
 
-        impl_t(const StageType&... args) : stages_{{detail::access::get_impl(args).create(buffer_)...}} {}
+        impl_t(const StageType&... args) : stages_(create_stage_array(buffer_, args...)) {}
     } impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -368,7 +354,7 @@ public:
     void reset(const StageType&... args)
     {
         impl_.buffer_.clear();
-        impl_.stages_ = {detail::access::get_impl(args).create(impl_.buffer_)...};
+        impl_.stages_ = create_stage_array(impl_.buffer_, args...);
     }
 
     using response_type = std::tuple<typename StageType::response_type...>;
@@ -391,17 +377,6 @@ static_pipeline_request(const Args&... args) -> static_pipeline_request<Args...>
 namespace boost {
 namespace mysql {
 namespace detail {
-
-// Stage implementations
-
-struct execute_stage
-{
-public:
-    using args_type = execute_stage;
-    using response_type = execute_stage_response;
-
-    // TODO: make this private
-};
 
 // Index a tuple at runtime
 template <std::size_t I, class R>
