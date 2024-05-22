@@ -50,7 +50,7 @@ public:
 inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st, ping_algo_params params)
 {
     st.write_buffer.clear();
-    auto seqnum = serialize_top_level(ping_command{}, st.write_buffer, 0);
+    auto seqnum = serialize_top_level(ping_command{}, st.write_buffer);
     st.shared_pipeline_steps[0] = {pipeline_step_kind::ping, seqnum, {}};
     return {
         params.diag,

@@ -33,7 +33,7 @@ boost::mysql::detail::pipeline_request_step boost::mysql::detail::serialize_quer
 {
     return {
         pipeline_step_kind::execute,
-        detail::serialize_top_level(detail::query_command{sql}, buffer, 0),
+        detail::serialize_top_level(detail::query_command{sql}, buffer),
         resultset_encoding::text
     };
 }
@@ -50,7 +50,7 @@ boost::mysql::detail::pipeline_request_step boost::mysql::detail::serialize_exec
     }
     return {
         pipeline_step_kind::execute,
-        detail::serialize_top_level(detail::execute_stmt_command{stmt.id(), params}, buffer, 0),
+        detail::serialize_top_level(detail::execute_stmt_command{stmt.id(), params}, buffer),
         resultset_encoding::binary
     };
 }
@@ -62,7 +62,7 @@ boost::mysql::detail::pipeline_request_step boost::mysql::detail::serialize_prep
 {
     return {
         pipeline_step_kind::prepare_statement,
-        detail::serialize_top_level(detail::prepare_stmt_command{stmt_sql}, buffer, 0),
+        detail::serialize_top_level(detail::prepare_stmt_command{stmt_sql}, buffer),
         {}
     };
 }
@@ -74,7 +74,7 @@ boost::mysql::detail::pipeline_request_step boost::mysql::detail::serialize_clos
 {
     return {
         pipeline_step_kind::close_statement,
-        detail::serialize_top_level(detail::close_stmt_command{stmt_id}, buffer, 0),
+        detail::serialize_top_level(detail::close_stmt_command{stmt_id}, buffer),
         {}
     };
 }
@@ -91,7 +91,7 @@ boost::mysql::detail::pipeline_request_step boost::mysql::detail::serialize_set_
     }
     return {
         pipeline_step_kind::set_character_set,
-        detail::serialize_top_level(detail::query_command{*q}, buffer, 0),
+        detail::serialize_top_level(detail::query_command{*q}, buffer),
         charset
     };
 }
@@ -102,7 +102,7 @@ boost::mysql::detail::pipeline_request_step boost::mysql::detail::serialize_rese
 {
     return {
         pipeline_step_kind::reset_connection,
-        detail::serialize_top_level(detail::reset_connection_command{}, buffer, 0),
+        detail::serialize_top_level(detail::reset_connection_command{}, buffer),
         {}
     };
 }
