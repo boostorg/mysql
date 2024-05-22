@@ -53,7 +53,6 @@ template <> struct get_algo<read_some_rows_algo_params> { using type = read_some
 template <> struct get_algo<read_some_rows_dynamic_algo_params> { using type = read_some_rows_dynamic_algo; };
 template <> struct get_algo<prepare_statement_algo_params> { using type = prepare_statement_algo; };
 template <> struct get_algo<set_character_set_algo_params> { using type = set_character_set_algo; };
-template <> struct get_algo<ping_algo_params> { using type = ping_algo; };
 template <> struct get_algo<quit_connection_algo_params> { using type = quit_connection_algo; };
 template <> struct get_algo<close_connection_algo_params> { using type = close_connection_algo; };
 template <> struct get_algo<run_pipeline_algo_params> { using type = run_pipeline_algo; };
@@ -76,7 +75,6 @@ class connection_state
         read_some_rows_dynamic_algo,
         prepare_statement_algo,
         set_character_set_algo,
-        ping_algo,
         quit_connection_algo,
         close_connection_algo,
         run_pipeline_algo>;
@@ -90,7 +88,10 @@ public:
     // the need for a special null algo
     connection_state(std::size_t read_buffer_size, bool transport_supports_ssl)
         : st_data_(read_buffer_size, transport_supports_ssl),
-          algo_(top_level_algo<ping_algo>(st_data_, ping_algo_params{&st_data_.shared_diag}))
+          algo_(top_level_algo<quit_connection_algo>(
+              st_data_,
+              quit_connection_algo_params{&st_data_.shared_diag}
+          ))
     {
     }
 
@@ -112,6 +113,8 @@ public:
     {
         return setup(setup_reset_connection_pipeline(st_data_, params));
     }
+
+    any_resumable_ref setup(ping_algo_params params) { return setup(setup_ping_pipeline(st_data_, params)); }
 
     template <typename AlgoParams>
     typename AlgoParams::result_type result() const
