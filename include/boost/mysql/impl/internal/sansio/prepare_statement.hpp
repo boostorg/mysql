@@ -8,16 +8,76 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_PREPARE_STATEMENT_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_PREPARE_STATEMENT_HPP
 
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/statement.hpp>
+
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/read_prepare_statement_response.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
+
+class read_prepare_statement_response_algo
+{
+    int resume_point_{0};
+    diagnostics* diag_;
+    std::uint8_t sequence_number_{0};
+    unsigned remaining_meta_{0};
+    statement res_;
+
+    error_code process_response(connection_state_data& st)
+    {
+        prepare_stmt_response response{};
+        auto err = deserialize_prepare_stmt_response(st.reader.message(), st.flavor, response, *diag_);
+        if (err)
+            return err;
+        res_ = access::construct<statement>(response.id, response.num_params);
+        remaining_meta_ = response.num_columns + response.num_params;
+        return error_code();
+    }
+
+public:
+    read_prepare_statement_response_algo(diagnostics* diag) noexcept : diag_(diag) {}
+
+    std::uint8_t& sequence_number() { return sequence_number_; }
+    diagnostics& diag() { return *diag_; }
+
+    next_action resume(connection_state_data& st, error_code ec)
+    {
+        if (ec)
+            return ec;
+
+        switch (resume_point_)
+        {
+        case 0:
+
+            // Note: diagnostics should have been cleaned by other algos
+
+            // Read response
+            BOOST_MYSQL_YIELD(resume_point_, 1, st.read(sequence_number_))
+
+            // Process response
+            ec = process_response(st);
+            if (ec)
+                return ec;
+
+            // Server sends now one packet per parameter and field.
+            // We ignore these for now.
+            for (; remaining_meta_ > 0u; --remaining_meta_)
+                BOOST_MYSQL_YIELD(resume_point_, 2, st.read(sequence_number_))
+        }
+
+        return next_action();
+    }
+
+    statement result(const connection_state_data&) const { return res_; }
+};
 
 class prepare_statement_algo
 {
@@ -67,4 +127,4 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_PREPARE_STATEMENT_HPP_ */
+#endif

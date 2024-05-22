@@ -22,8 +22,8 @@
 
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/ping.hpp>
+#include <boost/mysql/impl/internal/sansio/prepare_statement.hpp>
 #include <boost/mysql/impl/internal/sansio/read_execute_response.hpp>
-#include <boost/mysql/impl/internal/sansio/read_prepare_statement_response.hpp>
 #include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 
