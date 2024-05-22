@@ -88,11 +88,7 @@ public:
     // Adding steps
     pipeline_request& add_execute(string_view query)
     {
-        impl_.steps_.push_back({
-            detail::pipeline_step_kind::execute,
-            detail::serialize_query(impl_.buffer_, query),
-            detail::resultset_encoding::text,
-        });
+        impl_.steps_.push_back(detail::serialize_query(impl_.buffer_, query));
         return *this;
     }
 
@@ -106,51 +102,31 @@ public:
 
     pipeline_request& add_execute_range(statement stmt, span<const field_view> params)
     {
-        impl_.steps_.push_back({
-            detail::pipeline_step_kind::execute,
-            detail::serialize_execute_statement(impl_.buffer_, stmt, params),
-            detail::resultset_encoding::binary,
-        });
+        impl_.steps_.push_back(detail::serialize_execute_statement(impl_.buffer_, stmt, params));
         return *this;
     }
 
     pipeline_request& add_prepare_statement(string_view statement_sql)
     {
-        impl_.steps_.push_back({
-            detail::pipeline_step_kind::prepare_statement,
-            detail::serialize_prepare_statement(impl_.buffer_, statement_sql),
-            {},
-        });
+        impl_.steps_.push_back(detail::serialize_prepare_statement(impl_.buffer_, statement_sql));
         return *this;
     }
 
     pipeline_request& add_close_statement(statement stmt)
     {
-        impl_.steps_.push_back({
-            detail::pipeline_step_kind::close_statement,
-            detail::serialize_close_statement(impl_.buffer_, stmt.id()),
-            {},
-        });
+        impl_.steps_.push_back(detail::serialize_close_statement(impl_.buffer_, stmt.id()));
         return *this;
     }
 
     pipeline_request& add_set_character_set(character_set charset)
     {
-        impl_.steps_.push_back({
-            detail::pipeline_step_kind::set_character_set,
-            detail::serialize_set_character_set(impl_.buffer_, charset),
-            charset,
-        });
+        impl_.steps_.push_back(detail::serialize_set_character_set(impl_.buffer_, charset));
         return *this;
     }
 
     pipeline_request& add_reset_connection()
     {
-        impl_.steps_.push_back({
-            detail::pipeline_step_kind::reset_connection,
-            detail::serialize_reset_connection(impl_.buffer_),
-            {},
-        });
+        impl_.steps_.push_back(detail::serialize_reset_connection(impl_.buffer_));
         return *this;
     }
 

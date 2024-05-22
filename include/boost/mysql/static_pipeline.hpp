@@ -131,15 +131,12 @@ public:
     static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, execute_args args)
     {
         auto args_impl = detail::access::get_impl(args);
-        auto enc = args_impl.is_query ? detail::resultset_encoding::text : detail::resultset_encoding::binary;
-
-        std::uint8_t seqnum = args_impl.is_query ? detail::serialize_query(buffer, args_impl.data.query)
-                                                 : detail::serialize_execute_statement(
-                                                       buffer,
-                                                       args_impl.data.stmt.stmt,
-                                                       args_impl.data.stmt.params
-                                                   );
-        return {detail::pipeline_step_kind::execute, seqnum, enc};
+        return args_impl.is_query ? detail::serialize_query(buffer, args_impl.data.query)
+                                  : detail::serialize_execute_statement(
+                                        buffer,
+                                        args_impl.data.stmt.stmt,
+                                        args_impl.data.stmt.params
+                                    );
     }
 };
 
@@ -207,8 +204,7 @@ public:
         prepare_statement_args args
     )
     {
-        std::uint8_t seqnum = detail::serialize_prepare_statement(buffer, detail::access::get_impl(args));
-        return {detail::pipeline_step_kind::prepare_statement, seqnum, {}};
+        return detail::serialize_prepare_statement(buffer, detail::access::get_impl(args));
     }
 };
 
@@ -267,8 +263,7 @@ public:
     // TODO: make this private
     static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, close_statement_args args)
     {
-        std::uint8_t seqnum = detail::serialize_close_statement(buffer, detail::access::get_impl(args).id());
-        return {detail::pipeline_step_kind::close_statement, seqnum, {}};
+        return detail::serialize_close_statement(buffer, detail::access::get_impl(args).id());
     }
 };
 
@@ -287,8 +282,7 @@ public:
     // TODO: make this private
     static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, reset_connection_args)
     {
-        std::uint8_t seqnum = detail::serialize_reset_connection(buffer);
-        return {detail::pipeline_step_kind::reset_connection, seqnum, {}};
+        return detail::serialize_reset_connection(buffer);
     }
 };
 
@@ -317,9 +311,7 @@ public:
         set_character_set_args args
     )
     {
-        character_set charset = detail::access::get_impl(args);
-        std::uint8_t seqnum = detail::serialize_set_character_set(buffer, charset);
-        return {detail::pipeline_step_kind::set_character_set, seqnum, charset};
+        return detail::serialize_set_character_set(buffer, detail::access::get_impl(args));
     }
 };
 
