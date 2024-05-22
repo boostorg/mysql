@@ -25,10 +25,10 @@ inline run_pipeline_algo_params setup_close_statement_pipeline(
     st.write_buffer.clear();
     auto seqnum1 = serialize_top_level(close_stmt_command{params.stmt_id}, st.write_buffer);
     auto seqnum2 = serialize_top_level(ping_command{}, st.write_buffer);
-    st.shared_pipeline_steps = {
-        {{pipeline_step_kind::close_statement, seqnum1, {}}, {pipeline_step_kind::ping, seqnum2, {}}}
+    st.shared_pipeline_stages = {
+        {{pipeline_stage_kind::close_statement, seqnum1, {}}, {pipeline_stage_kind::ping, seqnum2, {}}}
     };
-    return {params.diag, st.write_buffer, st.shared_pipeline_steps, {}};
+    return {params.diag, st.write_buffer, st.shared_pipeline_stages, {}};
 }
 
 }  // namespace detail

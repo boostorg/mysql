@@ -56,86 +56,84 @@ class run_pipeline_algo
     diagnostics* diag_;
     diagnostics temp_diag_;
     span<const std::uint8_t> request_buffer_;
-    span<const detail::pipeline_request_step> steps_;
+    span<const detail::pipeline_request_stage> stages_;
     detail::pipeline_response_ref response_;
 
     int resume_point_{0};
-    std::size_t current_step_index_{0};
+    std::size_t current_stage_index_{0};
     error_code pipeline_ec_;  // Result of the entire operation
-    bool has_hatal_error_{};  // If true, fail further steps with client_errc::cancelled
+    bool has_hatal_error_{};  // If true, fail further stages with client_errc::cancelled
     any_read_algo read_response_algo_;
 
-    void setup_current_step(const connection_state_data& st)
+    void setup_current_stage(const connection_state_data& st)
     {
         // Reset previous data
         temp_diag_.clear();
 
         // Setup read algo
-        auto step = steps_[current_step_index_];
-        switch (step.kind)
+        auto stage = stages_[current_stage_index_];
+        switch (stage.kind)
         {
-        case pipeline_step_kind::execute:
+        case pipeline_stage_kind::execute:
         {
-            // We don't support running execute steps with responses
-            // having has_value() == false yet
-            auto& processor = response_.get_processor(current_step_index_);
-            processor.reset(step.step_specific.enc, st.meta_mode);
-            processor.sequence_number() = step.seqnum;
+            auto& processor = response_.get_processor(current_stage_index_);
+            processor.reset(stage.stage_specific.enc, st.meta_mode);
+            processor.sequence_number() = stage.seqnum;
             read_response_algo_.emplace<read_execute_response_algo>(&temp_diag_, &processor);
             break;
         }
-        case pipeline_step_kind::prepare_statement:
+        case pipeline_stage_kind::prepare_statement:
             read_response_algo_.emplace<read_prepare_statement_response_algo>(&temp_diag_)
-                .sequence_number() = step.seqnum;
+                .sequence_number() = stage.seqnum;
             break;
-        case pipeline_step_kind::close_statement:
+        case pipeline_stage_kind::close_statement:
             // Close statement doesn't have a response
             // TODO: this causes delays unless we disable naggle's algorithm
             read_response_algo_.emplace<no_response_algo>();
             break;
-        case pipeline_step_kind::set_character_set:
+        case pipeline_stage_kind::set_character_set:
             read_response_algo_
-                .emplace<read_set_character_set_response_algo>(&temp_diag_, step.step_specific.charset)
-                .sequence_number() = step.seqnum;
+                .emplace<read_set_character_set_response_algo>(&temp_diag_, stage.stage_specific.charset)
+                .sequence_number() = stage.seqnum;
             break;
-        case pipeline_step_kind::reset_connection:
-            read_response_algo_.emplace<read_reset_connection_response_algo>(temp_diag_, step.seqnum);
+        case pipeline_stage_kind::reset_connection:
+            read_response_algo_.emplace<read_reset_connection_response_algo>(temp_diag_, stage.seqnum);
             break;
-        case pipeline_step_kind::ping:
-            read_response_algo_.emplace<read_ping_response_algo>(temp_diag_, step.seqnum);
+        case pipeline_stage_kind::ping:
+            read_response_algo_.emplace<read_ping_response_algo>(temp_diag_, stage.seqnum);
             break;
         default: BOOST_ASSERT(false);
         }
     }
 
-    void on_step_finished(const connection_state_data& st, error_code step_ec)
+    void on_stage_finished(const connection_state_data& st, error_code stage_ec)
     {
-        if (step_ec)
+        if (stage_ec)
         {
             // The first error we encounter is the result of the entire operation
             if (!pipeline_ec_)
             {
-                pipeline_ec_ = step_ec;
+                pipeline_ec_ = stage_ec;
                 *diag_ = temp_diag_;
             }
 
-            // If the error was fatal, fail successive steps with a cancelled error
-            if (is_fatal_error(step_ec))
+            // If the error was fatal, fail successive stages with a cancelled error
+            if (is_fatal_error(stage_ec))
             {
                 has_hatal_error_ = true;
             }
 
             // Propagate the error
-            response_.set_error(current_step_index_, step_ec, std::move(temp_diag_));
+            response_.set_error(current_stage_index_, stage_ec, std::move(temp_diag_));
         }
         else
         {
-            if (steps_[current_step_index_].kind == pipeline_step_kind::prepare_statement)
+            if (stages_[current_stage_index_].kind == pipeline_stage_kind::prepare_statement)
             {
                 // Propagate results. We don't support prepare statements
                 // with responses having has_value() == false
                 response_.set_result(
-                    current_step_index_,
+                    current_stage_index_,
                     variant2::get<read_prepare_statement_response_algo>(read_response_algo_).result(st)
                 );
             }
@@ -163,7 +161,7 @@ public:
     run_pipeline_algo(run_pipeline_algo_params params) noexcept
         : diag_(params.diag),
           request_buffer_(params.request_buffer),
-          steps_(params.request_steps),
+          stages_(params.request_stages),
           response_(params.response)
     {
     }
@@ -180,39 +178,39 @@ public:
 
             // Clear previous state
             diag_->clear();
-            response_.setup(steps_);
+            response_.setup(stages_);
 
             // Write the request
             st.writer.reset(request_buffer_);
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
 
-            // If writing the request failed, fail all the steps with the given error code
+            // If writing the request failed, fail all the stages with the given error code
             if (ec)
             {
                 pipeline_ec_ = ec;
                 has_hatal_error_ = true;
             }
 
-            // For each step
-            for (; current_step_index_ < steps_.size(); ++current_step_index_)
+            // For each stage
+            for (; current_stage_index_ < stages_.size(); ++current_stage_index_)
             {
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    response_.set_error(current_step_index_, client_errc::cancelled, {});
+                    response_.set_error(current_stage_index_, client_errc::cancelled, {});
                     continue;
                 }
 
-                // Setup the step
-                setup_current_step(st);
+                // Setup the stage
+                setup_current_stage(st);
 
                 // Run it until completion
                 ec.clear();
                 while (!(act = resume_read_algo(st, ec)).is_done())
                     BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
-                // Process the step's result
-                on_step_finished(st, act.error());
+                // Process the stage's result
+                on_stage_finished(st, act.error());
             }
         }
 

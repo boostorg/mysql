@@ -56,8 +56,8 @@ struct connection_state_data
     // Temporary field storage, re-used by several ops
     std::vector<field_view> shared_fields;
 
-    // Temporary pipeline steps storage, re-used by several ops
-    std::array<pipeline_request_step, 2> shared_pipeline_steps;
+    // Temporary pipeline stage storage, re-used by several ops
+    std::array<pipeline_request_stage, 2> shared_pipeline_stages;
 
     // Do we want to retain metadata strings or not? Used to save allocations
     metadata_mode meta_mode{metadata_mode::minimal};

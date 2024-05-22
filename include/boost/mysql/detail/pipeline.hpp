@@ -31,7 +31,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-enum class pipeline_step_kind
+enum class pipeline_stage_kind
 {
     execute,
     prepare_statement,
@@ -47,20 +47,20 @@ struct err_block
     diagnostics diag;
 };
 
-struct pipeline_request_step
+struct pipeline_request_stage
 {
-    pipeline_step_kind kind;
+    pipeline_stage_kind kind;
     std::uint8_t seqnum;
-    union step_specific_t
+    union stage_specific_t
     {
         std::nullptr_t nothing;
         resultset_encoding enc;
         character_set charset;
 
-        step_specific_t() noexcept : nothing() {}
-        step_specific_t(resultset_encoding v) noexcept : enc(v) {}
-        step_specific_t(character_set v) noexcept : charset(v) {}
-    } step_specific;
+        stage_specific_t() noexcept : nothing() {}
+        stage_specific_t(resultset_encoding v) noexcept : enc(v) {}
+        stage_specific_t(character_set v) noexcept : charset(v) {}
+    } stage_specific;
 };
 
 template <class T>
@@ -82,9 +82,9 @@ class pipeline_response_ref
         struct setup_t
         {
             fn_type type;
-            span<const pipeline_request_step> request_steps;
+            span<const pipeline_request_stage> request_stages;
 
-            static_assert(std::is_standard_layout<decltype(request_steps)>::value, "Internal error");
+            static_assert(std::is_standard_layout<decltype(request_stages)>::value, "Internal error");
         } setup;
         struct get_processor_t
         {
@@ -105,7 +105,7 @@ class pipeline_response_ref
             diagnostics* diag;
         } set_error;
 
-        fn_args(span<const pipeline_request_step> v) noexcept : setup{fn_type_setup, v} {}
+        fn_args(span<const pipeline_request_stage> v) noexcept : setup{fn_type_setup, v} {}
         fn_args(std::size_t index) noexcept : get_processor{fn_type_get_processor, index} {}
         fn_args(std::size_t index, statement stmt) noexcept : set_result{fn_type_set_result, index, stmt} {}
         fn_args(std::size_t index, const error_code* ec, diagnostics* diag) noexcept
@@ -124,7 +124,7 @@ class pipeline_response_ref
         auto& self = *static_cast<T*>(obj);
         switch (args.setup.type)
         {
-        case fn_type_setup: traits_t::setup(self, args.setup.request_steps); return nullptr;
+        case fn_type_setup: traits_t::setup(self, args.setup.request_stages); return nullptr;
         case fn_type_get_processor: return &traits_t::get_processor(self, args.get_processor.index);
         case fn_type_set_result:
             traits_t::set_result(self, args.set_result.index, args.set_result.stmt);
@@ -150,36 +150,36 @@ public:
     {
     }
 
-    void setup(span<const pipeline_request_step> request_steps) { fn_(obj_, {request_steps}); }
-    execution_processor& get_processor(std::size_t step_idx) { return *fn_(obj_, {step_idx}); }
-    void set_result(std::size_t step_idx, statement result) { fn_(obj_, {step_idx, result}); }
-    void set_error(std::size_t step_idx, error_code ec, diagnostics&& diag)
+    void setup(span<const pipeline_request_stage> request_stages) { fn_(obj_, {request_stages}); }
+    execution_processor& get_processor(std::size_t stage_idx) { return *fn_(obj_, {stage_idx}); }
+    void set_result(std::size_t stage_idx, statement result) { fn_(obj_, {stage_idx, result}); }
+    void set_error(std::size_t stage_idx, error_code ec, diagnostics&& diag)
     {
-        fn_(obj_, {step_idx, &ec, &diag});
+        fn_(obj_, {stage_idx, &ec, &diag});
     }
 };
 
 BOOST_MYSQL_DECL
-pipeline_request_step serialize_query(std::vector<std::uint8_t>& buffer, string_view query);
+pipeline_request_stage serialize_query(std::vector<std::uint8_t>& buffer, string_view query);
 
 BOOST_MYSQL_DECL
-pipeline_request_step serialize_execute_statement(
+pipeline_request_stage serialize_execute_statement(
     std::vector<std::uint8_t>& buffer,
     statement stmt,
     span<const field_view> params
 );
 
 BOOST_MYSQL_DECL
-pipeline_request_step serialize_prepare_statement(std::vector<std::uint8_t>& buffer, string_view stmt_sql);
+pipeline_request_stage serialize_prepare_statement(std::vector<std::uint8_t>& buffer, string_view stmt_sql);
 
 BOOST_MYSQL_DECL
-pipeline_request_step serialize_close_statement(std::vector<std::uint8_t>& buffer, std::uint32_t stmt_id);
+pipeline_request_stage serialize_close_statement(std::vector<std::uint8_t>& buffer, std::uint32_t stmt_id);
 
 BOOST_MYSQL_DECL
-pipeline_request_step serialize_set_character_set(std::vector<std::uint8_t>& buffer, character_set charset);
+pipeline_request_stage serialize_set_character_set(std::vector<std::uint8_t>& buffer, character_set charset);
 
 BOOST_MYSQL_DECL
-pipeline_request_step serialize_reset_connection(std::vector<std::uint8_t>& buffer);
+pipeline_request_stage serialize_reset_connection(std::vector<std::uint8_t>& buffer);
 
 }  // namespace detail
 }  // namespace mysql

@@ -148,7 +148,7 @@ struct run_pipeline_algo_params
 {
     diagnostics* diag;
     span<const std::uint8_t> request_buffer;
-    span<const detail::pipeline_request_step> request_steps;
+    span<const detail::pipeline_request_stage> request_stages;
     detail::pipeline_response_ref response;
 
     using result_type = void;

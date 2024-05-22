@@ -51,11 +51,11 @@ inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st, p
 {
     st.write_buffer.clear();
     auto seqnum = serialize_top_level(ping_command{}, st.write_buffer);
-    st.shared_pipeline_steps[0] = {pipeline_step_kind::ping, seqnum, {}};
+    st.shared_pipeline_stages[0] = {pipeline_stage_kind::ping, seqnum, {}};
     return {
         params.diag,
         st.write_buffer,
-        {st.shared_pipeline_steps.data(), 1},
+        {st.shared_pipeline_stages.data(), 1},
         {}
     };
 }

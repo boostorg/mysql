@@ -35,7 +35,7 @@
 namespace boost {
 namespace mysql {
 
-class any_step_response
+class any_stage_response
 {
     variant2::variant<variant2::monostate, detail::err_block, statement, results> impl_;
 
@@ -46,7 +46,7 @@ class any_step_response
     bool has_error() const { return impl_.index() == 1u; }
 
 public:
-    any_step_response() = default;
+    any_stage_response() = default;
     // TODO: should we make this more regular? Ctors & comparisons
 
     error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_).ec : error_code(); }
@@ -60,19 +60,19 @@ public:
     results&& execute_result() && { return variant2::unsafe_get<3>(std::move(impl_)); }
 };
 
-using pipeline_response = std::vector<any_step_response>;
+using pipeline_response = std::vector<any_stage_response>;
 
 class pipeline_request
 {
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
-        std::vector<detail::pipeline_request_step> steps_;
+        std::vector<detail::pipeline_request_stage> stages_;
 
         void clear()
         {
             buffer_.clear();
-            steps_.clear();
+            stages_.clear();
         }
 
     } impl_;
@@ -85,10 +85,9 @@ public:
     pipeline_request() = default;
     void clear() noexcept { impl_.clear(); }
 
-    // Adding steps
     pipeline_request& add_execute(string_view query)
     {
-        impl_.steps_.push_back(detail::serialize_query(impl_.buffer_, query));
+        impl_.stages_.push_back(detail::serialize_query(impl_.buffer_, query));
         return *this;
     }
 
@@ -102,31 +101,31 @@ public:
 
     pipeline_request& add_execute_range(statement stmt, span<const field_view> params)
     {
-        impl_.steps_.push_back(detail::serialize_execute_statement(impl_.buffer_, stmt, params));
+        impl_.stages_.push_back(detail::serialize_execute_statement(impl_.buffer_, stmt, params));
         return *this;
     }
 
     pipeline_request& add_prepare_statement(string_view statement_sql)
     {
-        impl_.steps_.push_back(detail::serialize_prepare_statement(impl_.buffer_, statement_sql));
+        impl_.stages_.push_back(detail::serialize_prepare_statement(impl_.buffer_, statement_sql));
         return *this;
     }
 
     pipeline_request& add_close_statement(statement stmt)
     {
-        impl_.steps_.push_back(detail::serialize_close_statement(impl_.buffer_, stmt.id()));
+        impl_.stages_.push_back(detail::serialize_close_statement(impl_.buffer_, stmt.id()));
         return *this;
     }
 
     pipeline_request& add_set_character_set(character_set charset)
     {
-        impl_.steps_.push_back(detail::serialize_set_character_set(impl_.buffer_, charset));
+        impl_.stages_.push_back(detail::serialize_set_character_set(impl_.buffer_, charset));
         return *this;
     }
 
     pipeline_request& add_reset_connection()
     {
-        impl_.steps_.push_back(detail::serialize_reset_connection(impl_.buffer_));
+        impl_.stages_.push_back(detail::serialize_reset_connection(impl_.buffer_));
         return *this;
     }
 
@@ -145,17 +144,17 @@ namespace detail {
 template <>
 struct pipeline_response_traits<pipeline_response>
 {
-    static void setup(pipeline_response& self, span<const pipeline_request_step> request)
+    static void setup(pipeline_response& self, span<const pipeline_request_stage> request)
     {
-        // Create as many response items as request steps
+        // Create as many response items as request stages
         self.resize(request.size());
 
-        // Execution steps need to be initialized to results objects.
+        // Execution stage needs to be initialized to results objects.
         // Otherwise, clear any previous content
         for (std::size_t i = 0u; i < request.size(); ++i)
         {
             auto kind = request[i].kind;
-            if (kind == pipeline_step_kind::execute)
+            if (kind == pipeline_stage_kind::execute)
                 access::get_impl(self[i]).emplace<results>();
             else
                 access::get_impl(self[i]).emplace<variant2::monostate>();

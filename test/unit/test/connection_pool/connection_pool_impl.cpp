@@ -226,11 +226,11 @@ public:
         CompletionToken&& token
     )
     {
-        boost::span<const detail::pipeline_request_step> steps = detail::access::get_impl(req).steps_;
-        BOOST_TEST(steps.size() == 2u);
-        BOOST_TEST((steps[0].kind == detail::pipeline_step_kind::reset_connection));
-        BOOST_TEST((steps[1].kind == detail::pipeline_step_kind::set_character_set));
-        BOOST_TEST(steps[1].step_specific.charset.name == "utf8mb4");
+        boost::span<const detail::pipeline_request_stage> stages = detail::access::get_impl(req).stages_;
+        BOOST_TEST(stages.size() == 2u);
+        BOOST_TEST((stages[0].kind == detail::pipeline_stage_kind::reset_connection));
+        BOOST_TEST((stages[1].kind == detail::pipeline_stage_kind::set_character_set));
+        BOOST_TEST(stages[1].stage_specific.charset.name == "utf8mb4");
         return impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token));
     }
 

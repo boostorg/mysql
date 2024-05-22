@@ -39,14 +39,14 @@
 namespace boost {
 namespace mysql {
 
-class execute_step;
-class prepare_statement_step;
-class close_statement_step;
-class reset_connection_step;
-class set_character_set_step;
+class execute_stage;
+class prepare_statement_stage;
+class close_statement_stage;
+class reset_connection_stage;
+class set_character_set_stage;
 
 // Execute
-class execute_step_response
+class execute_stage_response
 {
     struct impl_t
     {
@@ -69,7 +69,7 @@ class execute_step_response
 #endif
 
 public:
-    execute_step_response() = default;
+    execute_stage_response() = default;
     error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_.result).ec : error_code(); }
     diagnostics diag() const&
     {
@@ -94,7 +94,7 @@ class execute_args
 public:
     execute_args(string_view query) : impl_(query) {}
     execute_args(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
-    using step_type = execute_step;
+    using stage_type = execute_stage;
 };
 
 template <std::size_t N>
@@ -106,7 +106,7 @@ struct execute_args_store
 #endif
 
     operator execute_args() const { return {stmt, params}; }
-    using step_type = execute_step;
+    using stage_type = execute_stage;
 };
 
 inline execute_args make_execute_args(string_view v) { return {string_view(v)}; }
@@ -121,14 +121,14 @@ execute_args_store<sizeof...(Args)> make_execute_args(statement stmt, const Args
     return {stmt, {detail::to_field(params)...}};
 }
 
-class execute_step
+class execute_stage
 {
 public:
     using args_type = execute_args;
-    using response_type = execute_step_response;
+    using response_type = execute_stage_response;
 
     // TODO: make this private
-    static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, execute_args args)
+    static detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer, execute_args args)
     {
         auto args_impl = detail::access::get_impl(args);
         return args_impl.is_query ? detail::serialize_query(buffer, args_impl.data.query)
@@ -152,10 +152,10 @@ class prepare_statement_args
 public:
     prepare_statement_args(string_view stmt_sql) : impl_{stmt_sql} {}
 
-    using step_type = prepare_statement_step;
+    using stage_type = prepare_statement_stage;
 };
 
-class prepare_statement_step_response
+class prepare_statement_stage_response
 {
     struct impl_t
     {
@@ -179,7 +179,7 @@ class prepare_statement_step_response
 #endif
 
 public:
-    prepare_statement_step_response() = default;
+    prepare_statement_stage_response() = default;
     error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_.result).ec : error_code(); }
     diagnostics diag() const&
     {
@@ -192,14 +192,14 @@ public:
     statement result() const { return variant2::unsafe_get<0>(impl_.result); }
 };
 
-class prepare_statement_step
+class prepare_statement_stage
 {
 public:
     using args_type = prepare_statement_args;
-    using response_type = prepare_statement_step_response;
+    using response_type = prepare_statement_stage_response;
 
     // TODO: make this private
-    static detail::pipeline_request_step create(
+    static detail::pipeline_request_stage create(
         std::vector<std::uint8_t>& buffer,
         prepare_statement_args args
     )
@@ -208,8 +208,8 @@ public:
     }
 };
 
-// Generic response type, for steps that don't have a proper result
-class no_result_step_response
+// Generic response type, for stages that don't have a proper result
+class no_result_stage_response
 {
     struct impl_t
     {
@@ -235,7 +235,7 @@ class no_result_step_response
 #endif
 
 public:
-    no_result_step_response() = default;
+    no_result_stage_response() = default;
     error_code error() const { return impl_.result.ec; }
     const diagnostics& diag() const& { return impl_.result.diag; }
     diagnostics&& diag() && { return std::move(impl_.result.diag); }
@@ -251,17 +251,17 @@ class close_statement_args
 
 public:
     close_statement_args(statement stmt) : impl_(stmt) {}
-    using step_type = close_statement_step;
+    using stage_type = close_statement_stage;
 };
 
-class close_statement_step
+class close_statement_stage
 {
 public:
     using args_type = close_statement_args;
-    using response_type = no_result_step_response;
+    using response_type = no_result_stage_response;
 
     // TODO: make this private
-    static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, close_statement_args args)
+    static detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer, close_statement_args args)
     {
         return detail::serialize_close_statement(buffer, detail::access::get_impl(args).id());
     }
@@ -270,17 +270,17 @@ public:
 // Reset connection
 struct reset_connection_args
 {
-    using step_type = reset_connection_step;
+    using stage_type = reset_connection_stage;
 };
 
-class reset_connection_step
+class reset_connection_stage
 {
 public:
     using args_type = reset_connection_args;
-    using response_type = no_result_step_response;
+    using response_type = no_result_stage_response;
 
     // TODO: make this private
-    static detail::pipeline_request_step create(std::vector<std::uint8_t>& buffer, reset_connection_args)
+    static detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer, reset_connection_args)
     {
         return detail::serialize_reset_connection(buffer);
     }
@@ -296,17 +296,17 @@ class set_character_set_args
 
 public:
     set_character_set_args(character_set charset) : impl_(charset) {}
-    using step_type = set_character_set_step;
+    using stage_type = set_character_set_stage;
 };
 
-class set_character_set_step
+class set_character_set_stage
 {
 public:
     using args_type = set_character_set_args;
-    using response_type = no_result_step_response;
+    using response_type = no_result_stage_response;
 
     // TODO: make this private
-    static detail::pipeline_request_step create(
+    static detail::pipeline_request_stage create(
         std::vector<std::uint8_t>& buffer,
         set_character_set_args args
     )
@@ -315,19 +315,19 @@ public:
     }
 };
 
-template <class... StepType>
+template <class... StageType>
 class static_pipeline_request
 {
-    static_assert(sizeof...(StepType) > 0u, "A pipeline should have one step, at least");
+    static_assert(sizeof...(StageType) > 0u, "A pipeline should have one stage, at least");
 
-    using step_array_t = std::array<detail::pipeline_request_step, sizeof...(StepType)>;
+    using stage_array_t = std::array<detail::pipeline_request_stage, sizeof...(StageType)>;
 
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
-        step_array_t steps_;
+        stage_array_t stages_;
 
-        impl_t(const StepType::args_type&... args) : steps_{{StepType::create(buffer_, args)...}} {}
+        impl_t(const StageType::args_type&... args) : stages_{{StageType::create(buffer_, args)...}} {}
     } impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -335,25 +335,25 @@ class static_pipeline_request
 #endif
 
 public:
-    static_pipeline_request(const typename StepType::args_type&... args) : impl_(args...) {}
+    static_pipeline_request(const typename StageType::args_type&... args) : impl_(args...) {}
 
-    void reset(const typename StepType::args_type&... args)
+    void reset(const typename StageType::args_type&... args)
     {
         impl_.buffer_.clear();
-        impl_.steps_ = {StepType::create(impl_.buffer_, args)...};
+        impl_.stages_ = {StageType::create(impl_.buffer_, args)...};
     }
 
-    using response_type = std::tuple<typename StepType::response_type...>;
+    using response_type = std::tuple<typename StageType::response_type...>;
 };
 
 template <class... Args>
-static_pipeline_request<typename Args::step_type...> make_pipeline_request(const Args&... args)
+static_pipeline_request<typename Args::stage_type...> make_pipeline_request(const Args&... args)
 {
     return {args...};
 }
 
 template <class... Args>
-static_pipeline_request(const Args&... args) -> static_pipeline_request<typename Args::step_type...>;
+static_pipeline_request(const Args&... args) -> static_pipeline_request<typename Args::stage_type...>;
 
 }  // namespace mysql
 }  // namespace boost
@@ -399,67 +399,67 @@ auto tuple_index(std::tuple<T...>& t, std::size_t i, Fn f, Args&&... args)
 }
 
 // Concrete visitors
-struct step_reset_visitor
+struct stage_reset_visitor
 {
-    template <class StepType>
-    void operator()(StepType& step) const
+    template <class StageType>
+    void operator()(StageType& stage) const
     {
-        access::get_impl(step).reset();
+        access::get_impl(stage).reset();
     }
 };
 
-struct step_get_processor_visitor
+struct stage_get_processor_visitor
 {
-    template <class StepType>
-    execution_processor* operator()(StepType& step) const
+    template <class StageType>
+    execution_processor* operator()(StageType& stage) const
     {
-        return access::get_impl(step).get_processor();
+        return access::get_impl(stage).get_processor();
     }
 };
 
-struct step_set_result_visitor
+struct stage_set_result_visitor
 {
-    template <class StepType>
-    void operator()(StepType& step, statement stmt) const
+    template <class StageType>
+    void operator()(StageType& stage, statement stmt) const
     {
-        return access::get_impl(step).set_result(stmt);
+        return access::get_impl(stage).set_result(stmt);
     }
 };
 
-struct step_set_error_visitor
+struct stage_set_error_visitor
 {
-    template <class StepType>
-    void operator()(StepType& step, err_block&& err) const
+    template <class StageType>
+    void operator()(StageType& stage, err_block&& err) const
     {
-        return access::get_impl(step).set_error(std::move(err));
+        return access::get_impl(stage).set_error(std::move(err));
     }
 };
 
-template <class... StepResponseType>
-struct pipeline_response_traits<std::tuple<StepResponseType...>>
+template <class... StageResponseType>
+struct pipeline_response_traits<std::tuple<StageResponseType...>>
 {
-    using response_type = std::tuple<StepResponseType...>;
+    using response_type = std::tuple<StageResponseType...>;
 
-    static void setup(response_type& self, span<const pipeline_request_step> request)
+    static void setup(response_type& self, span<const pipeline_request_stage> request)
     {
-        BOOST_ASSERT(request.size() == sizeof...(StepResponseType));
+        BOOST_ASSERT(request.size() == sizeof...(StageResponseType));
         ignore_unused(request);
-        mp11::tuple_for_each(self, step_reset_visitor{});
+        mp11::tuple_for_each(self, stage_reset_visitor{});
     }
 
     static execution_processor& get_processor(response_type& self, std::size_t idx)
     {
-        return *tuple_index(self, idx, step_get_processor_visitor{});
+        return *tuple_index(self, idx, stage_get_processor_visitor{});
     }
 
     static void set_result(response_type& self, std::size_t idx, statement stmt)
     {
-        tuple_index(self, idx, step_set_result_visitor{}, stmt);
+        tuple_index(self, idx, stage_set_result_visitor{}, stmt);
     }
 
     static void set_error(response_type& self, std::size_t idx, err_block&& err)
     {
-        tuple_index(self, idx, step_set_error_visitor{}, std::move(err));
+        tuple_index(self, idx, stage_set_error_visitor{}, std::move(err));
     }
 };
 

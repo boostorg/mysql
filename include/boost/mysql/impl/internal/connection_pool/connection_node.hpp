@@ -59,7 +59,7 @@ struct conn_shared_state
 };
 
 // Helper to create the reset pipeline (reset + set names utf8mb4)
-using reset_pipeline_req_t = static_pipeline_request<reset_connection_step, set_character_set_step>;
+using reset_pipeline_req_t = static_pipeline_request<reset_connection_stage, set_character_set_stage>;
 inline reset_pipeline_req_t make_reset_pipeline() { return reset_pipeline_req_t({}, {utf8mb4_charset}); }
 
 // The templated type is never exposed to the user. We template
