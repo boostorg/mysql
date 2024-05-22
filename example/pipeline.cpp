@@ -145,11 +145,11 @@ void main_impl(int argc, char** argv)
             // If any of these steps fail, we shouldn't run COMMIT. This is a dependency,
             // and requires running it once the server responds
             mysql::static_pipeline_request req(
-                mysql::make_execute_args("START TRANSACTION"),
-                mysql::make_execute_args(stmts.at(0), company_id, "Juan", "Lopez"),
-                mysql::make_execute_args(stmts.at(0), company_id, "Pepito", "Rodriguez"),
-                mysql::make_execute_args(stmts.at(0), company_id, "Someone", "Random"),
-                mysql::make_execute_args(stmts.at(1), "Inserted 3 new emplyees")
+                mysql::execute_stage("START TRANSACTION"),
+                mysql::execute_stage(stmts.at(0), {company_id, "Juan", "Lopez"}),
+                mysql::execute_stage(stmts.at(0), {company_id, "Pepito", "Rodriguez"}),
+                mysql::execute_stage(stmts.at(0), {company_id, "Someone", "Random"}),
+                mysql::execute_stage(stmts.at(1), {"Inserted 3 new emplyees"})
             );
             decltype(req)::response_type res;
 
@@ -163,9 +163,9 @@ void main_impl(int argc, char** argv)
             // If the above statement were successful, we can close the statements
             // and run the COMMIT statement
             mysql::static_pipeline_request pipe2{
-                mysql::close_statement_args(stmts.at(0)),
-                mysql::close_statement_args(stmts.at(1)),
-                mysql::make_execute_args("COMMIT")
+                mysql::close_statement_stage(stmts.at(0)),
+                mysql::close_statement_stage(stmts.at(1)),
+                mysql::execute_stage("COMMIT")
             };
             decltype(pipe2)::response_type res2;
 
