@@ -17,7 +17,6 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
@@ -32,6 +31,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <initializer_list>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -44,8 +44,70 @@ class prepare_statement_stage;
 class close_statement_stage;
 class reset_connection_stage;
 class set_character_set_stage;
+class writable_field_arg;
+
+// TODO: move this
+// TODO: could we unify this and any_execution_request?
+namespace detail {
+
+struct execute_args_impl
+{
+    enum type_t
+    {
+        type_query,
+        type_stmt_tuple,
+        type_stmt_range
+    };
+
+    union data_t
+    {
+        string_view query;
+        struct
+        {
+            statement stmt;
+            span<const writable_field_arg> params;
+        } stmt_tuple;
+        struct
+        {
+            statement stmt;
+            span<const field_view> params;
+        } stmt_range;
+
+        data_t(string_view q) noexcept : query(q) {}
+        data_t(statement s, span<const writable_field_arg> params) noexcept : stmt_tuple{s, params} {}
+        data_t(statement s, span<const field_view> params) noexcept : stmt_range{s, params} {}
+    };
+
+    type_t type;
+    data_t data;
+
+    execute_args_impl(string_view q) noexcept : type(type_query), data(q) {}
+    execute_args_impl(statement s, span<const writable_field_arg> params) noexcept
+        : type(type_stmt_tuple), data(s, params)
+    {
+    }
+    execute_args_impl(statement s, span<const field_view> params) noexcept
+        : type(type_stmt_range), data(s, params)
+    {
+    }
+};
+
+}  // namespace detail
 
 // Execute
+class writable_field_arg
+{
+    field_view impl_;
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+public:
+    template <class WritableField>  // TODO: concept
+    writable_field_arg(const WritableField& f) noexcept : impl_(detail::to_field(f))
+    {
+    }
+};
+
 class execute_stage_response
 {
     struct impl_t
@@ -85,7 +147,7 @@ public:
 
 class execute_args
 {
-    detail::any_execution_request impl_;
+    detail::execute_args_impl impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
@@ -94,32 +156,9 @@ class execute_args
 public:
     execute_args(string_view query) : impl_(query) {}
     execute_args(statement stmt, span<const field_view> params) : impl_(stmt, params) {}
+    execute_args(statement stmt, std::initializer_list<writable_field_arg> params) : impl_(stmt, params) {}
     using stage_type = execute_stage;
 };
-
-template <std::size_t N>
-struct execute_args_store
-{
-#ifndef BOOST_MYSQL_DOXYGEN
-    statement stmt;
-    std::array<field_view, N> params;
-#endif
-
-    operator execute_args() const { return {stmt, params}; }
-    using stage_type = execute_stage;
-};
-
-inline execute_args make_execute_args(string_view v) { return {string_view(v)}; }
-inline execute_args make_execute_args(statement stmt, span<const field_view> params)
-{
-    return {stmt, params};
-}
-
-template <class... Args>
-execute_args_store<sizeof...(Args)> make_execute_args(statement stmt, const Args&... params)
-{
-    return {stmt, {detail::to_field(params)...}};
-}
 
 class execute_stage
 {
@@ -128,15 +167,42 @@ public:
     using response_type = execute_stage_response;
 
     // TODO: make this private
+    // TODO: move to compiled
     static detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer, execute_args args)
     {
         auto args_impl = detail::access::get_impl(args);
-        return args_impl.is_query ? detail::serialize_query(buffer, args_impl.data.query)
-                                  : detail::serialize_execute_statement(
-                                        buffer,
-                                        args_impl.data.stmt.stmt,
-                                        args_impl.data.stmt.params
-                                    );
+        switch (args_impl.type)
+        {
+        case detail::execute_args_impl::type_query:
+            return detail::serialize_query(buffer, args_impl.data.query);
+        case detail::execute_args_impl::type_stmt_tuple:
+        {
+            constexpr std::size_t stack_fields = 64u;
+            auto params = args_impl.data.stmt_tuple.params;
+            auto stmt = args_impl.data.stmt_tuple.stmt;
+            if (params.size() <= stack_fields)
+            {
+                std::array<field_view, stack_fields> storage;
+                for (std::size_t i = 0; i < params.size(); ++i)
+                    storage[i] = detail::access::get_impl(params[i]);
+                return detail::serialize_execute_statement(buffer, stmt, {storage.data(), params.size()});
+            }
+            else
+            {
+                std::vector<field_view> storage;
+                storage.reserve(params.size());
+                for (auto p : params)
+                    storage.push_back(detail::access::get_impl(p));
+                return detail::serialize_execute_statement(buffer, stmt, storage);
+            }
+        }
+        case detail::execute_args_impl::type_stmt_range:
+            return detail::serialize_execute_statement(
+                buffer,
+                args_impl.data.stmt_range.stmt,
+                args_impl.data.stmt_range.params
+            );
+        }
     }
 };
 
