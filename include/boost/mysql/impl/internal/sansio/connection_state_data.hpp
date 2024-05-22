@@ -14,6 +14,7 @@
 #include <boost/mysql/metadata_mode.hpp>
 
 #include <boost/mysql/detail/next_action.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
@@ -21,6 +22,7 @@
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 #include <boost/mysql/impl/internal/sansio/message_writer.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -53,6 +55,9 @@ struct connection_state_data
 
     // Temporary field storage, re-used by several ops
     std::vector<field_view> shared_fields;
+
+    // Temporary pipeline steps storage, re-used by several ops
+    std::array<pipeline_request_step, 2> shared_pipeline_steps;
 
     // Do we want to retain metadata strings or not? Used to save allocations
     metadata_mode meta_mode{metadata_mode::minimal};

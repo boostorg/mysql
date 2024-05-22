@@ -25,6 +25,7 @@
 #include <utility>
 
 // TODO: do we want to rename this file?
+// TODO: this header is included in many places (connection_state_data), should be kept minimal - split?
 
 namespace boost {
 namespace mysql {

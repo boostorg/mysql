@@ -8,14 +8,13 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_RESET_CONNECTION_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_RESET_CONNECTION_HPP
 
-#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
-#include <boost/mysql/impl/internal/protocol/compose_set_names.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
@@ -24,32 +23,28 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class reset_connection_algo
+class read_reset_connection_response_algo
 {
     int resume_point_{0};
     diagnostics* diag_;
     std::uint8_t seqnum_{0};
 
 public:
-    reset_connection_algo(reset_connection_algo_params params) noexcept : diag_(params.diag) {}
+    read_reset_connection_response_algo(diagnostics& diag, std::uint8_t seqnum) noexcept
+        : diag_(&diag), seqnum_(seqnum)
+    {
+    }
 
     next_action resume(connection_state_data& st, error_code ec)
     {
-        if (ec)
-            return ec;
-
         switch (resume_point_)
         {
         case 0:
 
-            // Clear diagnostics
-            diag_->clear();
-
-            // Send the request
-            BOOST_MYSQL_YIELD(resume_point_, 1, st.write(reset_connection_command{}, seqnum_))
-
             // Read the reset response
-            BOOST_MYSQL_YIELD(resume_point_, 2, st.read(seqnum_))
+            BOOST_MYSQL_YIELD(resume_point_, 1, st.read(seqnum_))
+            if (ec)
+                return ec;
 
             // Verify it's what we expected
             ec = st.deserialize_ok(*diag_);
@@ -68,6 +63,22 @@ public:
         return next_action();
     }
 };
+
+inline run_pipeline_algo_params setup_reset_connection_pipeline(
+    connection_state_data& st,
+    reset_connection_algo_params params
+)
+{
+    st.write_buffer.clear();
+    auto seqnum = serialize_reset_connection(st.write_buffer);
+    st.shared_pipeline_steps[0] = {pipeline_step_kind::reset_connection, seqnum, {}};
+    return {
+        params.diag,
+        st.write_buffer,
+        {st.shared_pipeline_steps.data(), 1},
+        {}
+    };
+}
 
 }  // namespace detail
 }  // namespace mysql

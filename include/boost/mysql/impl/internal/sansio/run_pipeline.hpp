@@ -24,6 +24,7 @@
 #include <boost/mysql/impl/internal/sansio/read_execute_response.hpp>
 #include <boost/mysql/impl/internal/sansio/read_ok_response.hpp>
 #include <boost/mysql/impl/internal/sansio/read_prepare_statement_response.hpp>
+#include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 
 #include <boost/core/span.hpp>
@@ -47,8 +48,9 @@ class run_pipeline_algo
         no_response_algo,                      // close statement
         read_execute_response_algo,            // execute
         read_prepare_statement_response_algo,  // prepare statement
-        read_ok_response_algo,  // reset connection, ping. TODO: reset connection is not clearing charset
-        read_set_character_set_response_algo  // set character set
+        read_reset_connection_response_algo,   // reset connection
+        read_ok_response_algo,                 // ping
+        read_set_character_set_response_algo   // set character set
         >;
 
     diagnostics* diag_;
@@ -97,6 +99,8 @@ class run_pipeline_algo
                 .sequence_number() = step.seqnum;
             break;
         case pipeline_step_kind::reset_connection:
+            read_response_algo_.emplace<read_reset_connection_response_algo>(temp_diag_, step.seqnum);
+            break;
         case pipeline_step_kind::ping:
             read_response_algo_.emplace<read_ok_response_algo>(&temp_diag_).sequence_number() = step.seqnum;
             break;

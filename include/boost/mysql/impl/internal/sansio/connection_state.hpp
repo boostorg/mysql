@@ -52,10 +52,8 @@ template <> struct get_algo<read_resultset_head_algo_params> { using type = read
 template <> struct get_algo<read_some_rows_algo_params> { using type = read_some_rows_algo; };
 template <> struct get_algo<read_some_rows_dynamic_algo_params> { using type = read_some_rows_dynamic_algo; };
 template <> struct get_algo<prepare_statement_algo_params> { using type = prepare_statement_algo; };
-template <> struct get_algo<close_statement_algo_params> { using type = close_statement_algo; };
 template <> struct get_algo<set_character_set_algo_params> { using type = set_character_set_algo; };
 template <> struct get_algo<ping_algo_params> { using type = ping_algo; };
-template <> struct get_algo<reset_connection_algo_params> { using type = reset_connection_algo; };
 template <> struct get_algo<quit_connection_algo_params> { using type = quit_connection_algo; };
 template <> struct get_algo<close_connection_algo_params> { using type = close_connection_algo; };
 template <> struct get_algo<run_pipeline_algo_params> { using type = run_pipeline_algo; };
@@ -77,10 +75,8 @@ class connection_state
         read_some_rows_algo,
         read_some_rows_dynamic_algo,
         prepare_statement_algo,
-        close_statement_algo,
         set_character_set_algo,
         ping_algo,
-        reset_connection_algo,
         quit_connection_algo,
         close_connection_algo,
         run_pipeline_algo>;
@@ -105,6 +101,16 @@ public:
     any_resumable_ref setup(AlgoParams params)
     {
         return any_resumable_ref(algo_.emplace<top_level_algo<get_algo_t<AlgoParams>>>(st_data_, params));
+    }
+
+    any_resumable_ref setup(close_statement_algo_params params)
+    {
+        return setup(setup_close_statement_pipeline(st_data_, params));
+    }
+
+    any_resumable_ref setup(reset_connection_algo_params params)
+    {
+        return setup(setup_reset_connection_pipeline(st_data_, params));
     }
 
     template <typename AlgoParams>
