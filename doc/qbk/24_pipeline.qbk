@@ -1,0 +1,220 @@
+[/
+    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:pipeline (Experimental) Pipelines]
+[nochunk]
+
+* Experimental
+* Advanced
+* In regular operation, you write a request, server responds, then you write another request, then server responds.
+* Pipeline: coalesce several requests in a single message and send them to the server all at once.
+* More efficient because it saves round trips to the server. But must be used with caution - see considerations.
+  Use when running multiple lightweight requests, dominated by server round-trip.
+
+* To access this functionality, first create a request ([reflink pipeline_request], [reflink static_pipeline_request]),
+describing what you want to run. Each of the components in the pipeline is called a stage:
+
+```
+// Create a pipeline request. This contains a serialized description of the
+// passed stages (two prepare statement requests, in this case)
+auto req = make_pipeline_request(
+    prepare_statement_stage("SELECT ..."),
+    prepare_statement_stage("INSERT ...")
+);
+```
+
+* To run a pipeline, create a response object, which will contain the result of the pipeline, and execute it
+  using [refmem any_connection run_pipipeline] or [refmemunq any_connection async_run_pipeline]:
+
+```
+// res is a std::tuple<prepare_statement_stage::response_type, prepare_statement_stage::response_type>
+decltype(req)::response_type res;
+conn.run_pipipeline(req, res);
+```
+
+* Finally, access your statements:
+
+```
+statement stmt1 = std::get<0>(res).value();
+statement stmt2 = std::get<1>(res).value();
+```
+
+
+* Two interfaces: static and dynamic. Both C++11. By default, use the static one, as it's type-safe.
+* The static can be accessed using [reflink make_pipeline_request] and [reflink static_pipeline_request] (C++17 deduction guides included).
+  [reflink make_pipeline_request] creates a [reflink static_pipeline_request] object, with deducing template params from the arguments
+  you pass:
+
+```
+// req1 is static_pipeline_request<
+//    reset_connection_stage,
+//    set_character_set_stage,
+//    prepare_statement_stage>
+auto req1 = make_pipeline_request(
+    reset_connection_stage(),
+    set_character_set_stage(utf8mb4_charset),
+    prepare_statement_stage("INSERT ...")
+);
+```
+
+* Each possible operation you can run is represented as a stage type, like [reflink reset_connection_stage] or [reflink set_character_set_stage].
+See TODO: link the reference table for the possible stage types.
+
+* Each stage type has a response type. This is specially relevant for stages like prepare statement, where the result contains the statement object
+that was prepared. See TODO: link the reference table for the result of each stage type.
+
+* Each static_pipeline_request specialization has a response_type, which is a `std::tuple` with a response item (matching `response_type`) per stage.
+So
+
+```
+// std::tuple<reset_connection_stage::response_type, set_character_set_stage::response_type ...>
+decltype(req1) res1;
+```
+
+* To run a pipeline, use [refmem any_connection run_pipipeline] or [refmem any_connection async_run_pipeline]:
+
+```
+conn.run_pipipeline(req, res);
+
+// The prepare statement was the 3rd stage. Access its result
+statement stmt = std::get<2>(res).value();
+```
+
+* The dynamic interface is useful when you don't know the number or type of requests upfront. It works similarly, except that
+  it uses [reflink pipeline_request]:
+
+```
+pipeline_request req;
+req.add_reset_connection()
+    .add_set_character_set(utf8mb4_charset)
+    .add_prepare_statement("SELECT ...");
+
+std::vector<any_stage_response> res;
+conn.run_pipipeline(req, res);
+
+statement stmt = res[2].get_statement();
+```
+
+Instead of typed responses, the dynamic interface uses a [reflink any_stage_response], which is variant-like.
+And instead of tuples, vectors are used.
+
+* Error handling:
+    * If any error is encountered at any stage, run_pipipeline fails. This means: if the operation finished successfully, all stages run correctly.
+    * If the operation failed, each stage response contains an error and diagnostics about what went wrong for each step.
+      If you have a look at `prepare_statement_stage::response_type`, it's a `system::result`, a vocabulary type that can contain
+      either a value or an error.
+    * No need to check each stage on success, this is done by the library.
+    * Note that an error in a step does not stop the pipeline. From the server's POV, it's just several requests in a row.
+      See considerations.
+
+
+* Reference table
+
+[table:reference
+    [
+        [Stage type]
+        [Description]
+        [Static interface]
+        [Dynamic interface]
+    ]
+    [
+        [Execute]
+        [
+            Executes a text query or prepared statement[br]
+            Equivalent to [reflink any_connection execute]
+        ]
+        [
+            Request: [reflink execute_stage][br]
+            Response: `system::result<`[reflink results], [reflink errcode_and_diag]`>`
+
+        ]
+        [
+            Request: [refmem pipeline_request add_execute][br]
+            Response: [refmem any_stage_response as_results], [refmemunq any_stage_response get_results], [refmemunq any_stage_response error]
+        ]
+    ]
+    [
+        [Prepare statement]
+        [
+            Prepares a statement server-side[br]
+            Equivalent to [reflink any_connection prepare_statement]
+        ]
+        [
+            Request: [reflink prepare_statement_stage][br]
+            Response: `system::result<`[reflink statement], [reflink errcode_and_diag]`>`
+        ]
+        [
+            Request: [refmem pipeline_request add_prepare_statement][br]
+            Response: [refmem any_stage_response as_statement], [refmemunq any_stage_response get_statement], [refmemunq any_stage_response error]
+        ]
+    ]
+    [
+        [Close statement]
+        [
+            Deallocates a prepared statement[br]
+            Equivalent to [reflink any_connection close_statement]
+        ]
+        [
+            Request: [reflink close_statement_stage][br]
+            Response: [reflink errcode_and_diag]
+        ]
+        [
+            Request: [refmem pipeline_request add_close_statement][br]
+            Response: [refmemunq any_stage_response error]
+        ]
+    ]
+    [
+        [Reset connection]
+        [
+            Resets server-side session state[br]
+            Equivalent to [reflink any_connection reset_connection]
+        ]
+        [
+            Request: [reflink reset_connection_stage][br]
+            Response: [reflink errcode_and_diag]
+        ]
+        [
+            Request: [refmem pipeline_request add_reset_connection][br]
+            Response: [refmemunq any_stage_response error]
+        ]
+    ]
+    [
+        [Set character set]
+        [
+            Sets the connection character set[br]
+            Equivalent to [reflink any_connection set_character_set]
+        ]
+        [
+            Request: [reflink set_character_set_stage][br]
+            Response: [reflink errcode_and_diag]
+        ]
+        [
+            Request: [refmem pipeline_request add_set_character_set][br]
+            Response: [refmemunq any_stage_response error]
+        ]
+    ]
+]
+
+
+
+
+--- considerations -----
+* The protocol provides no built-in support for pipelines, so:
+    * All requests in the pipeline are considered independent, regardless of the outcome of each request. If you need a failing request to stop the pipeline, you need to split it.
+    * If you have dependencies between pipeline stages (e.g. prepare statement => execute statement, or using an execute result in another stage), you need independent pipelines.
+    * Steps are processed sequentially by the server, in order. This means that if any of your stages are heavyweight queries, further steps will be blocked until the query resolves (head-of-line blocking).
+    * A warning on current charset and set charset
+    * Alternatives if you're just executing
+* Use case: speed up many lightweight, small requests, dominated by round-trip time and not by execution time.
+    * Preparing or closing several statements, in batch.
+    * Executing a statement and immediately closing it.
+    * Running setup code with multiple steps. For instance, what connection_pool does when resetting a connection: reset_connection + set_character_set.
+
+
+
+
+[endsect]
