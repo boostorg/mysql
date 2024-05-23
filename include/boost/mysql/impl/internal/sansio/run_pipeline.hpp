@@ -110,17 +110,19 @@ class run_pipeline_algo
     {
         if (stage_ec)
         {
-            // The first error we encounter is the result of the entire operation
-            if (!pipeline_ec_)
+            // If the error was fatal, fail successive stages with a cancelled error.
+            // This error is the result of the operation
+            if (is_fatal_error(stage_ec))
             {
                 pipeline_ec_ = stage_ec;
                 *diag_ = temp_diag_;
-            }
-
-            // If the error was fatal, fail successive stages with a cancelled error
-            if (is_fatal_error(stage_ec))
-            {
                 has_hatal_error_ = true;
+            }
+            else if (!pipeline_ec_)
+            {
+                // In the absence of fatal errors, the first error we encounter is the result of the operation
+                pipeline_ec_ = stage_ec;
+                *diag_ = temp_diag_;
             }
 
             // Propagate the error
@@ -165,8 +167,6 @@ public:
           response_(params.response)
     {
     }
-
-    diagnostics& diag() { return *diag_; }
 
     next_action resume(connection_state_data& st, error_code ec)
     {
