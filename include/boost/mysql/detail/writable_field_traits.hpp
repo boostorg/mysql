@@ -141,20 +141,6 @@ concept writable_field_tuple = is_writable_field_tuple<T>::value;
 
 #endif  // BOOST_MYSQL_HAS_CONCEPTS
 
-// TODO: test
-template <class... T, std::size_t... I>
-std::array<field_view, sizeof...(T)> writable_field_tuple_to_array_impl(const std::tuple<T...>& t, mp11::index_sequence<I...>)
-{
-    boost::ignore_unused(t);  // MSVC gets confused if sizeof...(T) == 0
-    return std::array<field_view, sizeof...(T)>{{to_field(std::get<I>(t))...}};
-}
-
-template <class... T>
-std::array<field_view, sizeof...(T)> writable_field_tuple_to_array(const std::tuple<T...>& t)
-{
-    return writable_field_tuple_to_array_impl(t, mp11::make_index_sequence<sizeof...(T)>());
-}
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
