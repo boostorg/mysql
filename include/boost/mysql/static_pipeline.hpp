@@ -42,23 +42,6 @@
 namespace boost {
 namespace mysql {
 
-// Common
-// TODO: move
-struct errcode_and_diagnostics
-{
-    error_code code;
-    diagnostics diag;
-};
-
-// TODO: move to compiled
-[[noreturn]] inline void throw_exception_from_error(
-    const errcode_and_diagnostics& e,
-    const source_location& loc
-)
-{
-    ::boost::throw_exception(error_with_diagnostics(e.code, e.diag), loc);
-}
-
 // Execute
 class writable_field_arg
 {

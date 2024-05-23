@@ -68,7 +68,7 @@ asio::awaitable<std::vector<mysql::statement>> batch_prepare(
     std::vector<mysql::statement> res;
     res.reserve(statements.size());
     for (const auto& stage_res : pipe_res)
-        res.push_back(stage_res.prepare_statement_result());
+        res.push_back(stage_res.get_statement());
     co_return res;
 }
 

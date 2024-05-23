@@ -11,6 +11,7 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
@@ -38,27 +39,36 @@ namespace mysql {
 
 class any_stage_response
 {
-    variant2::variant<variant2::monostate, std::pair<error_code, diagnostics>, statement, results> impl_;
+    variant2::variant<errcode_and_diagnostics, statement, results> impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
 #endif
 
-    bool has_error() const { return impl_.index() == 1u; }
+    bool has_error() const { return impl_.index() == 0u; }
 
 public:
     any_stage_response() = default;
-    // TODO: should we make this more regular? Ctors & comparisons
 
-    error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_).first : error_code(); }
-    diagnostics diag() const& { return has_error() ? variant2::unsafe_get<1>(impl_).second : diagnostics(); }
-    diagnostics diag() &&
+    bool has_statement() const { return impl_.index() == 1u; }
+    bool has_results() const { return impl_.index() == 2u; }
+
+    errcode_and_diagnostics error() const&
     {
-        return has_error() ? variant2::unsafe_get<1>(std::move(impl_)).second : diagnostics();
+        return has_error() ? variant2::unsafe_get<0>(impl_) : errcode_and_diagnostics();
     }
-    statement prepare_statement_result() const { return variant2::unsafe_get<2>(impl_); }
-    const results& execute_result() const& { return variant2::unsafe_get<3>(impl_); }
-    results&& execute_result() && { return variant2::unsafe_get<3>(std::move(impl_)); }
+    errcode_and_diagnostics error() &&
+    {
+        return has_error() ? variant2::unsafe_get<0>(std::move(impl_)) : errcode_and_diagnostics();
+    }
+
+    statement as_statement() const { return get_statement(); }  //  TODO
+    statement get_statement() const { return variant2::unsafe_get<1>(impl_); }
+
+    const results& as_results() const& { return variant2::unsafe_get<2>(impl_); }  // TODO
+    results&& as_results() && { return variant2::unsafe_get<2>(std::move(impl_)); }
+    const results& get_results() const& { return variant2::unsafe_get<2>(impl_); }
+    results&& get_results() && { return variant2::unsafe_get<2>(std::move(impl_)); }
 };
 
 using pipeline_response = std::vector<any_stage_response>;
@@ -158,7 +168,7 @@ struct pipeline_response_traits<pipeline_response>
             if (kind == pipeline_stage_kind::execute)
                 access::get_impl(self[i]).emplace<results>();
             else
-                access::get_impl(self[i]).emplace<variant2::monostate>();
+                access::get_impl(self[i]).emplace<errcode_and_diagnostics>();
         }
     }
 
@@ -166,7 +176,7 @@ struct pipeline_response_traits<pipeline_response>
     {
         BOOST_ASSERT(idx < self.size());
         auto& response_variant = access::get_impl(self[idx]);
-        return access::get_impl(variant2::unsafe_get<3>(response_variant));
+        return access::get_impl(variant2::unsafe_get<2>(response_variant));
     }
 
     static void set_result(pipeline_response& self, std::size_t idx, statement stmt)
@@ -178,7 +188,7 @@ struct pipeline_response_traits<pipeline_response>
     static void set_error(pipeline_response& self, std::size_t idx, error_code ec, diagnostics&& diag)
     {
         BOOST_ASSERT(idx < self.size());
-        access::get_impl(self[idx]).emplace<1>(ec, std::move(diag));
+        access::get_impl(self[idx]).emplace<0>(ec, std::move(diag));
     }
 };
 
