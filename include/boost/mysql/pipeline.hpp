@@ -39,7 +39,7 @@ namespace mysql {
 
 class any_stage_response
 {
-    variant2::variant<errcode_and_diagnostics, statement, results> impl_;
+    variant2::variant<errcode_with_diagnostics, statement, results> impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
@@ -53,13 +53,13 @@ public:
     bool has_statement() const { return impl_.index() == 1u; }
     bool has_results() const { return impl_.index() == 2u; }
 
-    errcode_and_diagnostics error() const&
+    errcode_with_diagnostics error() const&
     {
-        return has_error() ? variant2::unsafe_get<0>(impl_) : errcode_and_diagnostics();
+        return has_error() ? variant2::unsafe_get<0>(impl_) : errcode_with_diagnostics();
     }
-    errcode_and_diagnostics error() &&
+    errcode_with_diagnostics error() &&
     {
-        return has_error() ? variant2::unsafe_get<0>(std::move(impl_)) : errcode_and_diagnostics();
+        return has_error() ? variant2::unsafe_get<0>(std::move(impl_)) : errcode_with_diagnostics();
     }
 
     statement as_statement() const { return get_statement(); }  //  TODO
@@ -168,7 +168,7 @@ struct pipeline_response_traits<pipeline_response>
             if (kind == pipeline_stage_kind::execute)
                 access::get_impl(self[i]).emplace<results>();
             else
-                access::get_impl(self[i]).emplace<errcode_and_diagnostics>();
+                access::get_impl(self[i]).emplace<errcode_with_diagnostics>();
         }
     }
 

@@ -138,7 +138,7 @@ public:
     execute_stage(statement stmt, span<const field_view> params) : type_(type_stmt_range), data_(stmt, params)
     {
     }
-    using response_type = system::result<results, errcode_and_diagnostics>;
+    using response_type = system::result<results, errcode_with_diagnostics>;
 };
 
 // Prepare statement
@@ -159,7 +159,7 @@ class prepare_statement_stage
 public:
     prepare_statement_stage(string_view stmt_sql) : stmt_sql_(stmt_sql) {}
 
-    using response_type = system::result<statement, errcode_and_diagnostics>;
+    using response_type = system::result<statement, errcode_with_diagnostics>;
 };
 
 // Close statement
@@ -179,7 +179,7 @@ class close_statement_stage
 
 public:
     close_statement_stage(statement stmt) : stmt_id_(stmt.id()) {}
-    using response_type = errcode_and_diagnostics;
+    using response_type = errcode_with_diagnostics;
 };
 
 // Reset connection
@@ -197,7 +197,7 @@ class reset_connection_stage
 
 public:
     reset_connection_stage() = default;
-    using response_type = errcode_and_diagnostics;
+    using response_type = errcode_with_diagnostics;
 };
 
 // Set character set
@@ -217,7 +217,7 @@ class set_character_set_stage
 
 public:
     set_character_set_stage(character_set charset) : charset_(charset) {}
-    using response_type = errcode_and_diagnostics;
+    using response_type = errcode_with_diagnostics;
 };
 
 template <class... StageType>
@@ -314,7 +314,7 @@ struct stage_reset_visitor
     void operator()(execute_stage::response_type& value) const { value.emplace(); }
     void operator()(prepare_statement_stage::response_type& value) const { value.emplace(); }
 
-    void operator()(errcode_and_diagnostics& value) const
+    void operator()(errcode_with_diagnostics& value) const
     {
         value.code.clear();
         value.diag.clear();
@@ -352,7 +352,7 @@ struct stage_set_error_visitor
     template <class T>
     void operator()(T& r, error_code ec, diagnostics&& diag) const
     {
-        r = errcode_and_diagnostics{ec, std::move(diag)};
+        r = errcode_with_diagnostics{ec, std::move(diag)};
     }
 };
 
