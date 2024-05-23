@@ -156,9 +156,9 @@ void main_impl(int argc, char** argv)
             std::tie(ec) = co_await conn.async_run_pipeline(req, res, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
 
-            auto id1 = std::get<1>(res).result().last_insert_id();
-            auto id2 = std::get<2>(res).result().last_insert_id();
-            auto id3 = std::get<3>(res).result().last_insert_id();
+            auto id1 = std::get<1>(res)->last_insert_id();
+            auto id2 = std::get<2>(res)->last_insert_id();
+            auto id3 = std::get<3>(res)->last_insert_id();
 
             // If the above statement were successful, we can close the statements
             // and run the COMMIT statement

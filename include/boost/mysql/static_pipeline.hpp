@@ -11,6 +11,7 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
@@ -26,6 +27,8 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/core/span.hpp>
 #include <boost/mp11/tuple.hpp>
+#include <boost/system/result.hpp>
+#include <boost/throw_exception.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <array>
@@ -39,6 +42,23 @@
 namespace boost {
 namespace mysql {
 
+// Common
+// TODO: move
+struct errcode_and_diagnostics
+{
+    error_code code;
+    diagnostics diag;
+};
+
+// TODO: move to compiled
+[[noreturn]] inline void throw_exception_from_error(
+    const errcode_and_diagnostics& e,
+    const source_location& loc
+)
+{
+    ::boost::throw_exception(error_with_diagnostics(e.code, e.diag), loc);
+}
+
 // Execute
 class writable_field_arg
 {
@@ -51,43 +71,6 @@ public:
     writable_field_arg(const WritableField& f) noexcept : impl_(detail::to_field(f))
     {
     }
-};
-
-class execute_stage_response
-{
-    struct impl_t
-    {
-        variant2::variant<results, detail::err_block> result;
-
-        void reset() { result.emplace<results>(); }
-        detail::execution_processor* get_processor()
-        {
-            return &detail::access::get_impl(variant2::unsafe_get<0>(result));
-        }
-        void set_result(statement) { BOOST_ASSERT(false); }
-        void set_error(detail::err_block&& err) { result = std::move(err); }
-
-    } impl_;
-
-    bool has_error() const { return impl_.result.index() == 1u; }
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
-
-public:
-    execute_stage_response() = default;
-    error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_.result).ec : error_code(); }
-    diagnostics diag() const&
-    {
-        return has_error() ? variant2::unsafe_get<1>(impl_.result).diag : diagnostics();
-    }
-    diagnostics diag() &&
-    {
-        return has_error() ? variant2::unsafe_get<1>(std::move(impl_.result)).diag : diagnostics();
-    }
-    const results& result() const& { return variant2::unsafe_get<0>(impl_.result); }
-    results&& result() && { return variant2::unsafe_get<0>(std::move(impl_.result)); }
 };
 
 class execute_stage
@@ -172,47 +155,10 @@ public:
     execute_stage(statement stmt, span<const field_view> params) : type_(type_stmt_range), data_(stmt, params)
     {
     }
-    using response_type = execute_stage_response;
+    using response_type = system::result<results, errcode_and_diagnostics>;
 };
 
 // Prepare statement
-class prepare_statement_stage_response
-{
-    struct impl_t
-    {
-        variant2::variant<statement, detail::err_block> result;
-
-        void reset() { result.emplace<statement>(); }
-        detail::execution_processor* get_processor()
-        {
-            BOOST_ASSERT(false);
-            return nullptr;
-        }
-        void set_result(statement stmt) { result = stmt; }
-        void set_error(detail::err_block&& err) { result = std::move(err); }
-
-    } impl_;
-
-    bool has_error() const { return impl_.result.index() == 1u; }
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
-
-public:
-    prepare_statement_stage_response() = default;
-    error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_.result).ec : error_code(); }
-    diagnostics diag() const&
-    {
-        return has_error() ? variant2::unsafe_get<1>(impl_.result).diag : diagnostics();
-    }
-    diagnostics diag() &&
-    {
-        return has_error() ? variant2::unsafe_get<1>(std::move(impl_.result)).diag : diagnostics();
-    }
-    statement result() const { return variant2::unsafe_get<0>(impl_.result); }
-};
-
 class prepare_statement_stage
 {
     string_view stmt_sql_;
@@ -230,40 +176,7 @@ class prepare_statement_stage
 public:
     prepare_statement_stage(string_view stmt_sql) : stmt_sql_(stmt_sql) {}
 
-    using response_type = prepare_statement_stage_response;
-};
-
-// Generic response type, for stages that don't have a proper result
-class no_result_stage_response
-{
-    struct impl_t
-    {
-        detail::err_block result;
-
-        void reset()
-        {
-            result.ec.clear();
-            result.diag.clear();
-        }
-        detail::execution_processor* get_processor()
-        {
-            BOOST_ASSERT(false);
-            return nullptr;
-        }
-        void set_result(statement) { BOOST_ASSERT(false); }
-        void set_error(detail::err_block&& err) { result = std::move(err); }
-
-    } impl_;
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
-
-public:
-    no_result_stage_response() = default;
-    error_code error() const { return impl_.result.ec; }
-    const diagnostics& diag() const& { return impl_.result.diag; }
-    diagnostics&& diag() && { return std::move(impl_.result.diag); }
+    using response_type = system::result<statement, errcode_and_diagnostics>;
 };
 
 // Close statement
@@ -283,7 +196,7 @@ class close_statement_stage
 
 public:
     close_statement_stage(statement stmt) : stmt_id_(stmt.id()) {}
-    using response_type = no_result_stage_response;
+    using response_type = errcode_and_diagnostics;
 };
 
 // Reset connection
@@ -301,7 +214,7 @@ class reset_connection_stage
 
 public:
     reset_connection_stage() = default;
-    using response_type = no_result_stage_response;
+    using response_type = errcode_and_diagnostics;
 };
 
 // Set character set
@@ -321,7 +234,7 @@ class set_character_set_stage
 
 public:
     set_character_set_stage(character_set charset) : charset_(charset) {}
-    using response_type = no_result_stage_response;
+    using response_type = errcode_and_diagnostics;
 };
 
 template <class... StageType>
@@ -378,6 +291,61 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Functions required to treat all stage types uniformly
+template <class StageResponseType>
+struct stage_response_traits;
+
+template <>
+struct stage_response_traits<execute_stage::response_type>
+{
+    static void reset(execute_stage::response_type& r) { r.emplace(); }
+    static detail::execution_processor* get_processor(execute_stage::response_type& r)
+    {
+        return &access::get_impl(*r);
+    }
+    static void set_result(execute_stage::response_type&, statement) { BOOST_ASSERT(false); }
+    static void set_error(execute_stage::response_type& r, error_code ec, diagnostics&& diag)
+    {
+        r = errcode_and_diagnostics{ec, std::move(diag)};
+    }
+};
+
+template <>
+struct stage_response_traits<prepare_statement_stage::response_type>
+{
+    static void reset(prepare_statement_stage::response_type& r) { r.emplace(); }
+    static detail::execution_processor* get_processor(execute_stage::response_type&)
+    {
+        BOOST_ASSERT(false);
+        return nullptr;
+    }
+    static void set_result(prepare_statement_stage::response_type& r, statement s) { r = s; }
+    static void set_error(prepare_statement_stage::response_type& r, error_code ec, diagnostics&& diag)
+    {
+        r = errcode_and_diagnostics{ec, std::move(diag)};
+    }
+};
+
+template <>
+struct stage_response_traits<errcode_and_diagnostics>
+{
+    static void reset(errcode_and_diagnostics& r)
+    {
+        r.code.clear();
+        r.diag.clear();
+    }
+    static detail::execution_processor* get_processor(errcode_and_diagnostics&)
+    {
+        BOOST_ASSERT(false);
+        return nullptr;
+    }
+    static void set_result(errcode_and_diagnostics&, statement) { BOOST_ASSERT(false); }
+    static void set_error(errcode_and_diagnostics& r, error_code ec, diagnostics&& diag)
+    {
+        r = {ec, std::move(diag)};
+    }
+};
+
 // Index a tuple at runtime
 template <std::size_t I, class R>
 struct tuple_index_visitor
@@ -418,7 +386,7 @@ struct stage_reset_visitor
     template <class StageType>
     void operator()(StageType& stage) const
     {
-        access::get_impl(stage).reset();
+        stage_response_traits<StageType>::reset(stage);
     }
 };
 
@@ -427,7 +395,7 @@ struct stage_get_processor_visitor
     template <class StageType>
     execution_processor* operator()(StageType& stage) const
     {
-        return access::get_impl(stage).get_processor();
+        return stage_response_traits<StageType>::get_processor(stage);
     }
 };
 
@@ -436,16 +404,16 @@ struct stage_set_result_visitor
     template <class StageType>
     void operator()(StageType& stage, statement stmt) const
     {
-        return access::get_impl(stage).set_result(stmt);
+        stage_response_traits<StageType>::set_result(stage, stmt);
     }
 };
 
 struct stage_set_error_visitor
 {
     template <class StageType>
-    void operator()(StageType& stage, err_block&& err) const
+    void operator()(StageType& stage, error_code ec, diagnostics&& diag) const
     {
-        return access::get_impl(stage).set_error(std::move(err));
+        stage_response_traits<StageType>::set_error(stage, ec, std::move(diag));
     }
 };
 
@@ -471,9 +439,9 @@ struct pipeline_response_traits<std::tuple<StageResponseType...>>
         tuple_index(self, idx, stage_set_result_visitor{}, stmt);
     }
 
-    static void set_error(response_type& self, std::size_t idx, err_block&& err)
+    static void set_error(response_type& self, std::size_t idx, error_code ec, diagnostics&& diag)
     {
-        tuple_index(self, idx, stage_set_error_visitor{}, std::move(err));
+        tuple_index(self, idx, stage_set_error_visitor{}, ec, std::move(diag));
     }
 };
 

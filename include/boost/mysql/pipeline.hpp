@@ -30,6 +30,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace boost {
@@ -37,7 +38,7 @@ namespace mysql {
 
 class any_stage_response
 {
-    variant2::variant<variant2::monostate, detail::err_block, statement, results> impl_;
+    variant2::variant<variant2::monostate, std::pair<error_code, diagnostics>, statement, results> impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
@@ -49,11 +50,11 @@ public:
     any_stage_response() = default;
     // TODO: should we make this more regular? Ctors & comparisons
 
-    error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_).ec : error_code(); }
-    diagnostics diag() const& { return has_error() ? variant2::unsafe_get<1>(impl_).diag : diagnostics(); }
+    error_code error() const { return has_error() ? variant2::unsafe_get<1>(impl_).first : error_code(); }
+    diagnostics diag() const& { return has_error() ? variant2::unsafe_get<1>(impl_).second : diagnostics(); }
     diagnostics diag() &&
     {
-        return has_error() ? variant2::unsafe_get<1>(std::move(impl_)).diag : diagnostics();
+        return has_error() ? variant2::unsafe_get<1>(std::move(impl_)).second : diagnostics();
     }
     statement prepare_statement_result() const { return variant2::unsafe_get<2>(impl_); }
     const results& execute_result() const& { return variant2::unsafe_get<3>(impl_); }
@@ -174,10 +175,10 @@ struct pipeline_response_traits<pipeline_response>
         access::get_impl(self[idx]) = stmt;
     }
 
-    static void set_error(pipeline_response& self, std::size_t idx, err_block&& err)
+    static void set_error(pipeline_response& self, std::size_t idx, error_code ec, diagnostics&& diag)
     {
         BOOST_ASSERT(idx < self.size());
-        access::get_impl(self[idx]) = std::move(err);
+        access::get_impl(self[idx]).emplace<1>(ec, std::move(diag));
     }
 };
 

@@ -41,12 +41,6 @@ enum class pipeline_stage_kind
     ping,
 };
 
-struct err_block
-{
-    error_code ec;
-    diagnostics diag;
-};
-
 struct pipeline_request_stage
 {
     pipeline_stage_kind kind;
@@ -133,7 +127,8 @@ class pipeline_response_ref
             traits_t::set_error(
                 self,
                 args.set_error.index,
-                err_block{*args.set_error.ec, std::move(*args.set_error.diag)}
+                *args.set_error.ec,
+                std::move(*args.set_error.diag)
             );
             return nullptr;
         }
