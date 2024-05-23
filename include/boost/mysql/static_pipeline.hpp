@@ -291,61 +291,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Functions required to treat all stage types uniformly
-template <class StageResponseType>
-struct stage_response_traits;
-
-template <>
-struct stage_response_traits<execute_stage::response_type>
-{
-    static void reset(execute_stage::response_type& r) { r.emplace(); }
-    static detail::execution_processor* get_processor(execute_stage::response_type& r)
-    {
-        return &access::get_impl(*r);
-    }
-    static void set_result(execute_stage::response_type&, statement) { BOOST_ASSERT(false); }
-    static void set_error(execute_stage::response_type& r, error_code ec, diagnostics&& diag)
-    {
-        r = errcode_and_diagnostics{ec, std::move(diag)};
-    }
-};
-
-template <>
-struct stage_response_traits<prepare_statement_stage::response_type>
-{
-    static void reset(prepare_statement_stage::response_type& r) { r.emplace(); }
-    static detail::execution_processor* get_processor(execute_stage::response_type&)
-    {
-        BOOST_ASSERT(false);
-        return nullptr;
-    }
-    static void set_result(prepare_statement_stage::response_type& r, statement s) { r = s; }
-    static void set_error(prepare_statement_stage::response_type& r, error_code ec, diagnostics&& diag)
-    {
-        r = errcode_and_diagnostics{ec, std::move(diag)};
-    }
-};
-
-template <>
-struct stage_response_traits<errcode_and_diagnostics>
-{
-    static void reset(errcode_and_diagnostics& r)
-    {
-        r.code.clear();
-        r.diag.clear();
-    }
-    static detail::execution_processor* get_processor(errcode_and_diagnostics&)
-    {
-        BOOST_ASSERT(false);
-        return nullptr;
-    }
-    static void set_result(errcode_and_diagnostics&, statement) { BOOST_ASSERT(false); }
-    static void set_error(errcode_and_diagnostics& r, error_code ec, diagnostics&& diag)
-    {
-        r = {ec, std::move(diag)};
-    }
-};
-
 // Index a tuple at runtime
 template <std::size_t I, class R>
 struct tuple_index_visitor
@@ -383,37 +328,48 @@ auto tuple_index(std::tuple<T...>& t, std::size_t i, Fn f, Args&&... args)
 // Concrete visitors
 struct stage_reset_visitor
 {
-    template <class StageType>
-    void operator()(StageType& stage) const
+    void operator()(execute_stage::response_type& value) const { value.emplace(); }
+    void operator()(prepare_statement_stage::response_type& value) const { value.emplace(); }
+
+    void operator()(errcode_and_diagnostics& value) const
     {
-        stage_response_traits<StageType>::reset(stage);
+        value.code.clear();
+        value.diag.clear();
     }
 };
 
 struct stage_get_processor_visitor
 {
-    template <class StageType>
-    execution_processor* operator()(StageType& stage) const
+    execution_processor* operator()(execute_stage::response_type& value) const
     {
-        return stage_response_traits<StageType>::get_processor(stage);
+        return &access::get_impl(*value);
+    }
+
+    template <class T>
+    execution_processor* operator()(T&) const
+    {
+        BOOST_ASSERT(false);
+        return nullptr;
     }
 };
 
 struct stage_set_result_visitor
 {
-    template <class StageType>
-    void operator()(StageType& stage, statement stmt) const
+    void operator()(prepare_statement_stage::response_type& r, statement s) const { r = s; }
+
+    template <class T>
+    void operator()(T&, statement) const
     {
-        stage_response_traits<StageType>::set_result(stage, stmt);
+        BOOST_ASSERT(false);
     }
 };
 
 struct stage_set_error_visitor
 {
-    template <class StageType>
-    void operator()(StageType& stage, error_code ec, diagnostics&& diag) const
+    template <class T>
+    void operator()(T& r, error_code ec, diagnostics&& diag) const
     {
-        stage_response_traits<StageType>::set_error(stage, ec, std::move(diag));
+        r = errcode_and_diagnostics{ec, std::move(diag)};
     }
 };
 
