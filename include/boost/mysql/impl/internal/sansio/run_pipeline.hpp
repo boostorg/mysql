@@ -37,6 +37,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// TODO: running a pipeline without stages is possible - do we need any special handling?
 class run_pipeline_algo
 {
     struct no_response_algo

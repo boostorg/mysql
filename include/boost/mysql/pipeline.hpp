@@ -71,29 +71,66 @@ public:
     results&& get_results() && { return variant2::unsafe_get<2>(std::move(impl_)); }
 };
 
+/**
+ * \brief A dynamic pipeline request.
+ * \details
+ * Contains a collection of pipeline stages, fully describing the work to be performed
+ * by a pipeline operation. The number of stages and their type is determined at runtime.
+ * Call any of the `add_xxx` functions to append new stages to the request.
+ * \n
+ * If the number of stages and their type is known at compile time, prefer using
+ * \ref static_pipeline_request, instead.
+ * \n
+ * Stage responses are read into a vector of \ref any_stage_response, which is variant-like.
+ */
 class pipeline_request
 {
+#ifndef BOOST_MYSQL_DOXYGEN
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
         std::vector<detail::pipeline_request_stage> stages_;
-
-        void clear()
-        {
-            buffer_.clear();
-            stages_.clear();
-        }
-
     } impl_;
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
 #endif
 
 public:
+    /**
+     * \brief Default constructor.
+     * \details Constructs an empty pipeline request, with no stages.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     pipeline_request() = default;
-    void clear() noexcept { impl_.clear(); }
 
+    /**
+     * \brief Removes all stages in the pipeline request, making the object empty again.
+     * \details
+     * Can be used to re-use a single request object for multiple pipeline operations.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    void clear() noexcept
+    {
+        impl_.buffer_.clear();
+        impl_.stages_.clear();
+    }
+
+    /**
+     * \brief Adds a text query execution request to the pipeline.
+     * \details
+     * Creates a stage with effects equivalent to running `any_connection::execute(query)`.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations while composing the stage may throw.
+     *
+     * \par Object lifetimes
+     * The string pointed by `query` is copied into the request buffer, so it does not need
+     * to be kept alive after this function returns.
+     */
     pipeline_request& add_execute(string_view query)
     {
         impl_.stages_.push_back(detail::serialize_query(impl_.buffer_, query));
@@ -138,6 +175,8 @@ public:
         return *this;
     }
 
+    /// The response type to use when running a pipeline with this request type,
+    /// consisting of \ref any_stage_response objects.
     using response_type = std::vector<any_stage_response>;
 };
 
