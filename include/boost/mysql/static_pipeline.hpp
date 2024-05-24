@@ -241,7 +241,8 @@ constexpr bool check_stage_types(mp11::mp_identity<T1>, mp11::mp_identity<Rest>.
 {
     static_assert(
         is_stage_type<T1>(),
-        "static_pipeline_request instantiated with a type that is not a valid stage type"
+        "static_pipeline_request instantiated with an invalid stage type. Valid stage types: execute_stage, "
+        "prepare_statement_stage, close_statement_stage, reset_connection_stage, set_character_set_stage"
     );
     return check_stage_types(rest...);
 }
