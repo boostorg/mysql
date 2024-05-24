@@ -102,10 +102,10 @@ public:
         return *this;
     }
 
-    template <class... Params>
-    pipeline_request& add_execute(statement stmt, const Params&... params)
+    template <BOOST_MYSQL_WRITABLE_FIELD... WritableField>
+    pipeline_request& add_execute(statement stmt, const WritableField&... params)
     {
-        std::array<field_view, sizeof...(Params)> params_array{{detail::to_field(params)...}};
+        std::array<field_view, sizeof...(WritableField)> params_array{{detail::to_field(params)...}};
         add_execute_range(stmt, params_array);
         return *this;
     }

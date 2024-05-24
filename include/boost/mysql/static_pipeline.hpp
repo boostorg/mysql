@@ -21,12 +21,14 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
+#include <boost/mysql/detail/pipeline_concepts.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/core/ignore_unused.hpp>
 #include <boost/core/span.hpp>
 #include <boost/mp11/tuple.hpp>
+#include <boost/mp11/utility.hpp>
 #include <boost/system/result.hpp>
 #include <boost/throw_exception.hpp>
 #include <boost/variant2/variant.hpp>
@@ -36,6 +38,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -50,7 +53,7 @@ class writable_field_arg
     friend struct detail::access;
 #endif
 public:
-    template <class WritableField>  // TODO: concept
+    template <BOOST_MYSQL_WRITABLE_FIELD WritableField>
     writable_field_arg(const WritableField& f) noexcept : impl_(detail::to_field(f))
     {
     }
@@ -125,7 +128,7 @@ class execute_stage
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    template <class... StageType>
+    template <class... PipelineStageType>
     friend class static_pipeline_request;
 #endif
 
@@ -152,7 +155,7 @@ class prepare_statement_stage
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    template <class... StageType>
+    template <class... PipelineStageType>
     friend class static_pipeline_request;
 #endif
 
@@ -173,7 +176,7 @@ class close_statement_stage
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    template <class... StageType>
+    template <class... PipelineStageType>
     friend class static_pipeline_request;
 #endif
 
@@ -191,7 +194,7 @@ class reset_connection_stage
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    template <class... StageType>
+    template <class... PipelineStageType>
     friend class static_pipeline_request;
 #endif
 
@@ -211,7 +214,7 @@ class set_character_set_stage
     }
 
 #ifndef BOOST_MYSQL_DOXYGEN
-    template <class... StageType>
+    template <class... PipelineStageType>
     friend class static_pipeline_request;
 #endif
 
@@ -220,14 +223,40 @@ public:
     using response_type = errcode_with_diagnostics;
 };
 
-template <class... StageType>
+// TODO: move this
+namespace detail {
+
+template <class T>
+constexpr bool is_stage_type()
+{
+    return std::is_same<T, execute_stage>::value || std::is_same<T, prepare_statement_stage>::value ||
+           std::is_same<T, close_statement_stage>::value || std::is_same<T, reset_connection_stage>::value ||
+           std::is_same<T, set_character_set_stage>::value;
+}
+
+constexpr bool check_stage_types() { return true; }
+
+template <class T1, class... Rest>
+constexpr bool check_stage_types(mp11::mp_identity<T1>, mp11::mp_identity<Rest>... rest)
+{
+    static_assert(
+        is_stage_type<T1>(),
+        "static_pipeline_request instantiated with a type that is not a valid stage type"
+    );
+    return check_stage_types(rest...);
+}
+
+}  // namespace detail
+
+template <class... PipelineStageType>
 class static_pipeline_request
 {
-    static_assert(sizeof...(StageType) > 0u, "A pipeline should have one stage, at least");
+    static_assert(sizeof...(PipelineStageType) > 0u, "A pipeline should have one stage, at least");
+    static_assert(detail::check_stage_types(mp11::mp_identity<PipelineStageType>{}...), "");
 
-    using stage_array_t = std::array<detail::pipeline_request_stage, sizeof...(StageType)>;
+    using stage_array_t = std::array<detail::pipeline_request_stage, sizeof...(PipelineStageType)>;
 
-    static stage_array_t create_stage_array(std::vector<std::uint8_t>& buff, const StageType&... args)
+    static stage_array_t create_stage_array(std::vector<std::uint8_t>& buff, const PipelineStageType&... args)
     {
         return {{args.create(buff)...}};
     }
@@ -237,7 +266,7 @@ class static_pipeline_request
         std::vector<std::uint8_t> buffer_;
         stage_array_t stages_;
 
-        impl_t(const StageType&... args) : stages_(create_stage_array(buffer_, args...)) {}
+        impl_t(const PipelineStageType&... args) : stages_(create_stage_array(buffer_, args...)) {}
     } impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -245,25 +274,25 @@ class static_pipeline_request
 #endif
 
 public:
-    static_pipeline_request(const StageType&... args) : impl_(args...) {}
+    static_pipeline_request(const PipelineStageType&... args) : impl_(args...) {}
 
-    void reset(const StageType&... args)
+    void reset(const PipelineStageType&... args)
     {
         impl_.buffer_.clear();
         impl_.stages_ = create_stage_array(impl_.buffer_, args...);
     }
 
-    using response_type = std::tuple<typename StageType::response_type...>;
+    using response_type = std::tuple<typename PipelineStageType::response_type...>;
 };
 
-template <class... Args>
-static_pipeline_request<Args...> make_pipeline_request(const Args&... args)
+template <class... PipelineStageType>
+static_pipeline_request<PipelineStageType...> make_pipeline_request(const PipelineStageType&... args)
 {
     return {args...};
 }
 
-template <class... Args>
-static_pipeline_request(const Args&... args) -> static_pipeline_request<Args...>;
+template <class... PipelineStageType>
+static_pipeline_request(const PipelineStageType&... args) -> static_pipeline_request<PipelineStageType...>;
 
 }  // namespace mysql
 }  // namespace boost
@@ -328,8 +357,8 @@ struct stage_get_processor_visitor
         return &access::get_impl(*value);
     }
 
-    template <class T>
-    execution_processor* operator()(T&) const
+    template <class PipelineStageType>
+    execution_processor* operator()(PipelineStageType&) const
     {
         BOOST_ASSERT(false);
         return nullptr;
@@ -340,8 +369,8 @@ struct stage_set_result_visitor
 {
     void operator()(prepare_statement_stage::response_type& r, statement s) const { r = s; }
 
-    template <class T>
-    void operator()(T&, statement) const
+    template <class PipelineStageType>
+    void operator()(PipelineStageType&, statement) const
     {
         BOOST_ASSERT(false);
     }
@@ -349,21 +378,21 @@ struct stage_set_result_visitor
 
 struct stage_set_error_visitor
 {
-    template <class T>
-    void operator()(T& r, error_code ec, diagnostics&& diag) const
+    template <class PipelineStageType>
+    void operator()(PipelineStageType& r, error_code ec, diagnostics&& diag) const
     {
         r = errcode_with_diagnostics{ec, std::move(diag)};
     }
 };
 
-template <class... StageResponseType>
-struct pipeline_response_traits<std::tuple<StageResponseType...>>
+template <class... PipelineStageResponseType>
+struct pipeline_response_traits<std::tuple<PipelineStageResponseType...>>
 {
-    using response_type = std::tuple<StageResponseType...>;
+    using response_type = std::tuple<PipelineStageResponseType...>;
 
     static void setup(response_type& self, span<const pipeline_request_stage> request)
     {
-        BOOST_ASSERT(request.size() == sizeof...(StageResponseType));
+        BOOST_ASSERT(request.size() == sizeof...(PipelineStageResponseType));
         ignore_unused(request);
         mp11::tuple_for_each(self, stage_reset_visitor{});
     }

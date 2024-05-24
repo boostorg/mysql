@@ -29,6 +29,7 @@
 #include <boost/mysql/detail/connection_impl.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
+#include <boost/mysql/detail/pipeline_concepts.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
@@ -1082,8 +1083,7 @@ public:
     }
 
     // TODO: document
-    // TODO: concept
-    template <class PipelineRequestType>
+    template <BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType>
     void run_pipeline(
         const PipelineRequestType& req,
         typename PipelineRequestType::response_type& res,
@@ -1094,7 +1094,7 @@ public:
         impl_.run(impl_.make_params_pipeline(req, res, diag), err);
     }
 
-    template <class PipelineRequestType>
+    template <BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType>
     void run_pipeline(const PipelineRequestType& req, typename PipelineRequestType::response_type& res)
     {
         error_code err;
@@ -1103,7 +1103,9 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    template <class PipelineRequestType, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    template <
+        BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_run_pipeline(
         const PipelineRequestType& req,
         typename PipelineRequestType::response_type& res,
@@ -1114,7 +1116,9 @@ public:
     }
 
     /// \copydoc async_close
-    template <class PipelineRequestType, BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    template <
+        BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_run_pipeline(
         const PipelineRequestType& req,
         typename PipelineRequestType::response_type& res,
