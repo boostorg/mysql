@@ -71,8 +71,6 @@ public:
     results&& get_results() && { return variant2::unsafe_get<2>(std::move(impl_)); }
 };
 
-using pipeline_response = std::vector<any_stage_response>;
-
 class pipeline_request
 {
     struct impl_t
@@ -140,7 +138,7 @@ public:
         return *this;
     }
 
-    using response_type = pipeline_response;
+    using response_type = std::vector<any_stage_response>;
 };
 
 }  // namespace mysql
@@ -153,9 +151,11 @@ namespace mysql {
 namespace detail {
 
 template <>
-struct pipeline_response_traits<pipeline_response>
+struct pipeline_response_traits<std::vector<any_stage_response>>
 {
-    static void setup(pipeline_response& self, span<const pipeline_request_stage> request)
+    using response_type = std::vector<any_stage_response>;
+
+    static void setup(response_type& self, span<const pipeline_request_stage> request)
     {
         // Create as many response items as request stages
         self.resize(request.size());
@@ -172,20 +172,20 @@ struct pipeline_response_traits<pipeline_response>
         }
     }
 
-    static execution_processor& get_processor(pipeline_response& self, std::size_t idx)
+    static execution_processor& get_processor(response_type& self, std::size_t idx)
     {
         BOOST_ASSERT(idx < self.size());
         auto& response_variant = access::get_impl(self[idx]);
         return access::get_impl(variant2::unsafe_get<2>(response_variant));
     }
 
-    static void set_result(pipeline_response& self, std::size_t idx, statement stmt)
+    static void set_result(response_type& self, std::size_t idx, statement stmt)
     {
         BOOST_ASSERT(idx < self.size());
         access::get_impl(self[idx]) = stmt;
     }
 
-    static void set_error(pipeline_response& self, std::size_t idx, error_code ec, diagnostics&& diag)
+    static void set_error(response_type& self, std::size_t idx, error_code ec, diagnostics&& diag)
     {
         BOOST_ASSERT(idx < self.size());
         access::get_impl(self[idx]).emplace<0>(ec, std::move(diag));

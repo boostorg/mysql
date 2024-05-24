@@ -60,7 +60,7 @@ asio::awaitable<std::vector<mysql::statement>> batch_prepare(
     for (auto stmt_sql : statements)
         req.add_prepare_statement(stmt_sql);
 
-    mysql::pipeline_response pipe_res;
+    std::vector<mysql::any_stage_response> pipe_res;
     mysql::diagnostics diag;
     auto [ec] = co_await conn.async_run_pipeline(req, pipe_res, diag, asio::as_tuple(asio::deferred));
     mysql::throw_on_error(ec, diag);
