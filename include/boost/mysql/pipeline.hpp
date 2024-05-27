@@ -26,17 +26,32 @@
 
 #include <boost/assert.hpp>
 #include <boost/core/span.hpp>
+#include <boost/throw_exception.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
 namespace boost {
 namespace mysql {
 
+/**
+ * \brief A variant-like type holding the response of a single pipeline stage.
+ * \details
+ * When running dynamic pipelines with \ref pipeline_request, this type is used
+ * to hold individual stage responses.
+ * \n
+ * This is a variant-like type, similar to `boost::system::result`. At any point in time,
+ * it can contain: \n
+ *   \li A \ref statement. Will happen if the operation was a prepare statement that succeeded.
+ *   \li A \ref results. Will happen if the operation was a query or statement execution that succeeded.
+ *   \li A \ref errcode_with_diagnostics. Will happen if the operation failed, or if it succeeded but
+ *       the operation doesn't yield a value (as in close statement, reset connection and set character set).
+ */
 class any_stage_response
 {
     variant2::variant<errcode_with_diagnostics, statement, results> impl_;
@@ -47,28 +62,169 @@ class any_stage_response
 
     bool has_error() const { return impl_.index() == 0u; }
 
+    // TODO: move to compiled
+    void check_has_results() const
+    {
+        if (!has_results())
+        {
+            BOOST_THROW_EXCEPTION(
+                std::invalid_argument("any_stage_response::as_results: object doesn't contain results")
+            );
+        }
+    }
+
 public:
+    /**
+     * \brief Default constructor.
+     * \details
+     * Constructs an object containing an empty error (a default-constructed \ref errcode_with_diagnostics).
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     any_stage_response() = default;
 
+    /**
+     * \brief Returns true if the object contains a statement.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool has_statement() const { return impl_.index() == 1u; }
+
+    /**
+     * \brief Returns true if the object contains a results.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     bool has_results() const { return impl_.index() == 2u; }
 
+    /**
+     * \brief Retrieves the contained error (const lvalue reference accessor).
+     * \details
+     * If `*this` contains an error, retrieves it by copying it.
+     * Otherwise (if `this->has_statement() || this->has_results()`),
+     * returns an empty (default-constructed) error.
+     *
+     * \par Exception safety
+     * Strong guarantee. Memory allocations when copying the error's diagnostics may throw.
+     */
     errcode_with_diagnostics error() const&
     {
         return has_error() ? variant2::unsafe_get<0>(impl_) : errcode_with_diagnostics();
     }
+
+    /**
+     * \brief Retrieves the contained error (rvalue reference accessor).
+     * \details
+     * If `*this` contains an error, retrieves it by moving it.
+     * Otherwise (if `this->has_statement() || this->has_results()`),
+     * returns an empty (default-constructed) error.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     errcode_with_diagnostics error() &&
     {
         return has_error() ? variant2::unsafe_get<0>(std::move(impl_)) : errcode_with_diagnostics();
     }
 
-    statement as_statement() const { return get_statement(); }  //  TODO
-    statement get_statement() const { return variant2::unsafe_get<1>(impl_); }
+    /**
+     * \brief Retrieves the contained statement or throws an exception.
+     * \details
+     * If `*this` contains an statement (`this->has_statement() == true`),
+     * retrieves it. Otherwise, throws an exception.
+     *
+     * \par Exception safety
+     * Strong guarantee.
+     * \throws std::invalid_argument If `*this` does not contain a statement.
+     */
+    statement as_statement() const
+    {
+        // TODO: move to compiled?
+        if (!has_statement())
+        {
+            BOOST_THROW_EXCEPTION(
+                std::invalid_argument("any_stage_response::as_statement: object doesn't contain a statement")
+            );
+        }
+        return variant2::unsafe_get<1>(impl_);
+    }
 
-    const results& as_results() const& { return variant2::unsafe_get<2>(impl_); }  // TODO
-    results&& as_results() && { return variant2::unsafe_get<2>(std::move(impl_)); }
-    const results& get_results() const& { return variant2::unsafe_get<2>(impl_); }
-    results&& get_results() && { return variant2::unsafe_get<2>(std::move(impl_)); }
+    /**
+     * \brief Retrieves the contained statement (unchecked accessor).
+     * \details
+     * If `*this` contains an statement,
+     * retrieves it. Otherwise, the behavior is undefined.
+     *
+     * \par Preconditions
+     * `this->has_statement() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    statement get_statement() const
+    {
+        BOOST_ASSERT(has_statement());
+        return variant2::unsafe_get<1>(impl_);
+    }
+
+    /**
+     * \brief Retrieves the contained results or throws an exception.
+     * \details
+     * If `*this` contains a `results` object (`this->has_results() == true`),
+     * retrieves a reference to it. Otherwise, throws an exception.
+     *
+     * \par Exception safety
+     * Strong guarantee. Throws on invalid input.
+     * \throws std::invalid_argument If `this->has_results() == false`
+     *
+     * \par Object lifetimes
+     * The returned reference is valid as long as `*this` is alive
+     * and hasn't been assigned to.
+     */
+    const results& as_results() const&
+    {
+        check_has_results();
+        return variant2::unsafe_get<2>(impl_);
+    }
+
+    /// \copydoc as_results
+    results&& as_results() &&
+    {
+        check_has_results();
+        return variant2::unsafe_get<2>(std::move(impl_));
+    }
+
+    /**
+     * \brief Retrieves the contained results (unchecked accessor).
+     * \details
+     * If `*this` contains a `results` object, retrieves a reference to it.
+     * Otherwise, the behavior is undefined.
+     *
+     * \par Preconditions
+     * `this->has_results() == true`
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * The returned reference is valid as long as `*this` is alive
+     * and hasn't been assigned to.
+     */
+    const results& get_results() const&
+    {
+        BOOST_ASSERT(has_results());
+        return variant2::unsafe_get<2>(impl_);
+    }
+
+    /// \copydoc get_results
+    results&& get_results() &&
+    {
+        BOOST_ASSERT(has_results());
+        return variant2::unsafe_get<2>(std::move(impl_));
+    }
 };
 
 /**
