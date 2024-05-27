@@ -61,7 +61,6 @@ public:
 
 class execute_stage
 {
-    // TODO: could we unify this and any_execution_request?
     enum type_t
     {
         type_query,
@@ -137,6 +136,7 @@ public:
     execute_stage(statement stmt, std::initializer_list<writable_field_arg> params)
         : type_(type_stmt_tuple), data_(stmt, {params.begin(), params.size()})
     {
+        // TODO: this should throw on invalid params
     }
     execute_stage(statement stmt, span<const field_view> params) : type_(type_stmt_range), data_(stmt, params)
     {
@@ -249,6 +249,27 @@ constexpr bool check_stage_types(mp11::mp_identity<T1>, mp11::mp_identity<Rest>.
 
 }  // namespace detail
 
+/**
+ * \brief A static pipeline request type.
+ * \details
+ * Contains a collection of pipeline stages, fully describing the work to be performed
+ * by a pipeline operation. The pipeline contains as many stages as `PipelineStageType`
+ * template parameters are passed to this type.
+ * \n
+ * The following types can be used as `PipelineStageType` template parameters: \n
+ *    \li \ref execute_stage: behavior equivalent to \ref any_connection::execute
+ *    \li \ref prepare_statement_stage: behavior equivalent to \ref any_connection::prepare_statement
+ *    \li \ref close_statement_stage: behavior equivalent to \ref any_connection::close_statement
+ *    \li \ref reset_connection_stage: behavior equivalent to \ref any_connection::reset_connection
+ *    \li \ref set_character_set_stage: behavior equivalent to \ref any_connection::set_character_set
+ * \n
+ * Stage responses are read into `std::tuple` objects, with individual elements depending
+ * on stage types. See \ref response_type for more info.
+ * \n
+ * To create instances of this class without specifying template parameters,
+ * you can use \ref make_pipeline_request. If you're on C++17 or above, appropriate class deduction
+ * guidelines are also provided.
+ */
 template <class... PipelineStageType>
 class static_pipeline_request
 {
@@ -275,21 +296,70 @@ class static_pipeline_request
 #endif
 
 public:
-    static_pipeline_request(const PipelineStageType&... args) : impl_(args...) {}
+    /**
+     * \brief Constructor.
+     * \details
+     * Takes as many arguments as stages the pipeline has. Stage types include
+     * all the parameters required to fully compose the request.
+     *
+     * \par Exception safety
+     * Strong guarantee. Memory allocations while composing the request may throw.
+     *
+     * \par Object lifetimes
+     * Parameters are stored as a serialized request on the constructed object.
+     * The `stages` objects, and any other objects they point to, need not be kept alive
+     * once the constructor returns.
+     */
+    static_pipeline_request(const PipelineStageType&... stages) : impl_(stages...) {}
 
-    void reset(const PipelineStageType&... args)
+    /**
+     * \brief Replaces the request with a new one containing the supplied stages.
+     * \details
+     * The effect is equivalent to `*this = static_pipeline_request(stages)`, but
+     * may be more efficient.
+     * \n
+     * The supplied `stages` must have the same type as the current ones.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations while composing the request may throw.
+     *
+     * \par Object lifetimes
+     * The `stages` objects, and any other objects they point to, need not be kept alive
+     * once this function returns.
+     */
+    void assign(const PipelineStageType&... stages)
     {
         impl_.buffer_.clear();
-        impl_.stages_ = create_stage_array(impl_.buffer_, args...);
+        impl_.stages_ = create_stage_array(impl_.buffer_, stages...);
     }
 
+    /**
+     * \brief The response type to use when running a pipeline with this request type.
+     * \details
+     * Has the same number of elements as pipeline stages. Consult each stage
+     * `response_type` typedef for more info.
+     */
     using response_type = std::tuple<typename PipelineStageType::response_type...>;
 };
 
+/**
+ * \brief Creates a static_pipeline_request object.
+ * \details
+ * This factory function can be used to avoid having to explicitly specify
+ * template parameters on the request type. For C++17 code and later,
+ * you can directly use \ref static_pipeline_request constructor, instead.
+ *
+ * \par Exception safety
+ * Strong guarantee. Memory allocations while composing the request may throw.
+ *
+ * \par Object lifetimes
+ * The `stages` objects, and any other objects they point to, need not be kept alive
+ * once the constructor returns.
+ */
 template <class... PipelineStageType>
-static_pipeline_request<PipelineStageType...> make_pipeline_request(const PipelineStageType&... args)
+static_pipeline_request<PipelineStageType...> make_pipeline_request(const PipelineStageType&... stages)
 {
-    return {args...};
+    return {stages...};
 }
 
 template <class... PipelineStageType>
