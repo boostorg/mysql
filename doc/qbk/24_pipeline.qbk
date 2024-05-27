@@ -8,12 +8,50 @@
 [section:pipeline (Experimental) Pipelines]
 [nochunk]
 
-* Experimental
-* Advanced
-* In regular operation, you write a request, server responds, then you write another request, then server responds.
-* Pipeline: coalesce several requests in a single message and send them to the server all at once.
-* More efficient because it saves round trips to the server. But must be used with caution - see considerations.
-  Use when running multiple lightweight requests, dominated by server round-trip.
+Most connection functions (like [refmemunq any_connection execute], [refmemunq any_connection prepare_statement]
+and their async counterparts) behave sequentially: they write a single request to the server
+and then wait for its response. Thus, running N operations requires N round trips to the server.
+
+Pipelines coalesce several requests into a single message, so it can be written as a single batch.
+This can increase efficiency by saving round-trips.
+
+[warning
+    The protocol doesn't include explicit support for pipelines. [*From the server's point of view,
+    a pipeline is just a sequence of unrelated requests]. The server will try to execute all stages
+    in the pipeline, regardless of the result of previous steps. Pipelines are considered
+    an [*advanced feature].
+]
+
+[note
+    This feature is experimental. Its API may change in subsequent releases.
+]
+
+[heading Use cases]
+
+You should use pipelines for lightweight operations, dominated by round-trip time. Typical examples include:
+
+* Preparing several statements, in batch.
+* Executing and closing a statement in a single round-trip.
+* Running connection setup code, which may imply operations like [refmemunq any_connection reset_connection],
+  [refmemunq any_connection set_character_set] or preparing statements. [reflink connection_pool] uses
+  pipelines to clean up connections for re-use.
+
+You should [*avoid] pipelines for the following cases:
+
+* When you can achieve the same functionality using a combination of
+  [link mysql.multi_resultset.multi_queries multi-queries] and [link mysql.sql_formatting client-side SQL formatting].
+  Multi-queries will stop after the first error, which is usually what you want.
+* When running heavyweight queries, where the gains in round-trip time are not significant.
+* When there are dependencies between stages in the pipeline. Lack of protocol support makes this use case impossible.
+
+If you're not sure, don't use this feature.
+
+
+
+
+
+
+[heading Pipeline requests and responses]
 
 * To access this functionality, first create a request ([reflink pipeline_request], [reflink static_pipeline_request]),
 describing what you want to run. Each of the components in the pipeline is called a stage:
