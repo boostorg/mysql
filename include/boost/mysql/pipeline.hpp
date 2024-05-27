@@ -137,6 +137,20 @@ public:
         return *this;
     }
 
+    /**
+     * \brief Adds a prepared statement execution request to the pipeline.
+     * \details
+     * Creates a stage with effects equivalent to running `any_connection::execute(stmt.bind(params))`.
+     * As opposed to \ref statement::bind, this function will throw an exception if the number of
+     * provided parameters doesn't match `stmt.num_params()`.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations while composing the stage may throw.
+     * \throws std::invalid_argument If `sizeof...(params) != stmt.num_params()`.
+     *
+     * \par Object lifetimes
+     * Parameters are copied as required, and need not be kept alive after this function returns.
+     */
     template <BOOST_MYSQL_WRITABLE_FIELD... WritableField>
     pipeline_request& add_execute(statement stmt, const WritableField&... params)
     {
@@ -145,30 +159,88 @@ public:
         return *this;
     }
 
+    /**
+     * \brief Adds a prepared statement execution request to the pipeline.
+     * \details
+     * Creates a stage with effects equivalent to running
+     * `any_connection::execute(stmt.bind(params.begin(), params.end()))`.
+     * As opposed to \ref statement::bind, this function will throw an exception if the number of
+     * provided parameters doesn't match `stmt.num_params()`.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations while composing the stage may throw.
+     * \throws std::invalid_argument If `params.size() != stmt.num_params()`.
+     *
+     * \par Object lifetimes
+     * Parameters are copied as required, and need not be kept alive after this function returns.
+     */
     pipeline_request& add_execute_range(statement stmt, span<const field_view> params)
     {
         impl_.stages_.push_back(detail::serialize_execute_statement(impl_.buffer_, stmt, params));
         return *this;
     }
 
+    /**
+     * \brief Adds a statement preparation request to the pipeline.
+     * \details
+     * Creates a stage with effects equivalent to running
+     * `any_connection::prepare_statement(statement_sql)`.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations while composing the stage may throw.
+     *
+     * \par Object lifetimes
+     * The string pointed by `statement_sql` is copied into the request buffer, so it does not need
+     * to be kept alive after this function returns.
+     */
     pipeline_request& add_prepare_statement(string_view statement_sql)
     {
         impl_.stages_.push_back(detail::serialize_prepare_statement(impl_.buffer_, statement_sql));
         return *this;
     }
 
+    /**
+     * \brief Adds a close statement request to the pipeline.
+     * \details
+     * Creates a stage with effects equivalent to running
+     * `any_connection::close_statement(stmt)`.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations while composing the stage may throw.
+     */
     pipeline_request& add_close_statement(statement stmt)
     {
         impl_.stages_.push_back(detail::serialize_close_statement(impl_.buffer_, stmt.id()));
         return *this;
     }
 
+    /**
+     * \brief Adds a request to set the connection's character set to the pipeline.
+     * \details
+     * Creates a stage with effects equivalent to running
+     * `any_connection::set_character_set(charset)`.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations while composing the stage may throw.
+     * \throws std::invalid_argument If `charset.name` contains characters that are not allowed
+     *         in a character set name. This is checked as a security hardening measure,
+     *         and never happens with the character sets provided by this library.
+     */
     pipeline_request& add_set_character_set(character_set charset)
     {
         impl_.stages_.push_back(detail::serialize_set_character_set(impl_.buffer_, charset));
         return *this;
     }
 
+    /**
+     * \brief Adds a reset connection request to the pipeline.
+     * \details
+     * Creates a stage with effects equivalent to running
+     * `any_connection::reset_connection()`.
+     *
+     * \par Exception safety
+     * Basic guarantee. Memory allocations while composing the stage may throw.
+     */
     pipeline_request& add_reset_connection()
     {
         impl_.stages_.push_back(detail::serialize_reset_connection(impl_.buffer_));

@@ -10,7 +10,6 @@
 
 #pragma once
 
-#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -20,10 +19,10 @@
 #include <boost/mysql/impl/internal/protocol/compose_set_names.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
-#include <boost/system/system_error.hpp>
 #include <boost/throw_exception.hpp>
 
 #include <cstdint>
+#include <stdexcept>
 #include <vector>
 
 boost::mysql::detail::pipeline_request_stage boost::mysql::detail::serialize_query(
@@ -46,7 +45,9 @@ boost::mysql::detail::pipeline_request_stage boost::mysql::detail::serialize_exe
 {
     if (params.size() != stmt.num_params())
     {
-        BOOST_THROW_EXCEPTION(system::system_error(client_errc::wrong_num_params));
+        BOOST_THROW_EXCEPTION(
+            std::invalid_argument("Wrong number of actual parameters supplied to a prepared statement")
+        );
     }
     return {
         pipeline_stage_kind::execute,
@@ -87,7 +88,7 @@ boost::mysql::detail::pipeline_request_stage boost::mysql::detail::serialize_set
     auto q = detail::compose_set_names(charset);
     if (q.has_error())
     {
-        BOOST_THROW_EXCEPTION(system::system_error(q.error(), "Invalid charactet set name"));
+        BOOST_THROW_EXCEPTION(std::invalid_argument("Invalid character set name"));
     }
     return {
         pipeline_stage_kind::set_character_set,
