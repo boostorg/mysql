@@ -96,45 +96,39 @@ See TODO: link the reference table for a list of available stage types.
 
 [heading Dynamic pipelines]
 
-
-
-* Each stage type has a response type. This is specially relevant for stages like prepare statement, where the result contains the statement object
-that was prepared. See TODO: link the reference table for the result of each stage type.
-
-* Each static_pipeline_request specialization has a response_type, which is a `std::tuple` with a response item (matching `response_type`) per stage.
-So
+If the type or the number of stages in your pipeline is not known at compile-time, you can use
+dynamic pipelines, instead. The mechanics are pretty similar:
 
 ```
-// std::tuple<reset_connection_stage::response_type, set_character_set_stage::response_type ...>
-decltype(req1) res1;
-```
-
-* To run a pipeline, use [refmem any_connection run_pipipeline] or [refmem any_connection async_run_pipeline]:
-
-```
-conn.run_pipipeline(req, res);
-
-// The prepare statement was the 3rd stage. Access its result
-statement stmt = std::get<2>(res).value();
-```
-
-* The dynamic interface is useful when you don't know the number or type of requests upfront. It works similarly, except that
-  it uses [reflink pipeline_request]:
-
-```
+// Create a pipeline request and add three stages to it.
+// When run, this pipeline will set the connection's character set to utf8mb4
+// and prepare two statements.
 pipeline_request req;
-req.add_reset_connection()
+req
     .add_set_character_set(utf8mb4_charset)
-    .add_prepare_statement("SELECT ...");
+    .add_prepare_statement("INSERT INTO audit_log (t, msg) VALUES (?, ?)")
+    .add_prepare_statement("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)");
 
+// Run the pipeline, like we did with the static version
 std::vector<any_stage_response> res;
 conn.run_pipipeline(req, res);
 
-statement stmt = res[2].get_statement();
+// any_stage_response is a variant-like type. For prepare statement stages, it contains our statements
+statement stmt1 = res[1].as_statement();
+statement stmt2 = res[2].as_statement();
 ```
 
-Instead of typed responses, the dynamic interface uses a [reflink any_stage_response], which is variant-like.
-And instead of tuples, vectors are used.
+Prefer static pipelines if your use case allows them.
+
+
+
+
+
+[heading Error handling]
+
+
+
+
 
 * Error handling:
     * If any error is encountered at any stage, run_pipipeline fails. This means: if the operation finished successfully, all stages run correctly.
