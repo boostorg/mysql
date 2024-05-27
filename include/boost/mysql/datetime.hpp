@@ -45,6 +45,10 @@ namespace mysql {
  * \n
  * As opposed to `time_point`, this type allows representing MySQL invalid and zero datetimes.
  * These values are allowed by MySQL but don't represent real time points.
+ * \n
+ * Note: using `std::chrono` time zone functionality under MSVC may cause memory leaks to be reported.
+ * See <a href="https://github.com/microsoft/STL/issues/2047">this issue</a> for an explanation and
+ * <a href="https://github.com/microsoft/STL/issues/2504">this other issue</a> for a workaround.
  */
 class datetime
 {
