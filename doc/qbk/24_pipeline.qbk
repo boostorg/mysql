@@ -19,7 +19,7 @@ This can increase efficiency by saving round-trips.
     The protocol doesn't include explicit support for pipelines. [*From the server's point of view,
     a pipeline is just a sequence of unrelated requests]. The server will try to execute all stages
     in the pipeline, regardless of the result of previous steps. Pipelines are considered
-    an [*advanced feature].
+    an [*advanced feature]. See (TODO: like) pitfalls.
 ]
 
 [note
@@ -53,54 +53,50 @@ If you're not sure, don't use this feature.
 
 [heading Pipeline requests and responses]
 
-* To access this functionality, first create a request ([reflink pipeline_request], [reflink static_pipeline_request]),
-describing what you want to run. Each of the components in the pipeline is called a stage:
+There are two interfaces to pipelines: static ([reflink static_pipeline_request]) and
+dynamic ([reflink pipeline_request]). We will discuss the static interface first, as it
+provides stronger type-safety. Both interfaces are C++11 compatible.
+
+The first step is to create a pipeline request describing what should the pipeline do:
 
 ```
-// Create a pipeline request. This contains a serialized description of the
-// passed stages (two prepare statement requests, in this case)
+// Create a pipeline request containing with three stages.
+// When run, this pipeline will set the connection's character set to utf8mb4
+// and prepare two statements.
+// req is a static_pipeline_request<set_character_set_stage, prepare_statement_stage, prepare_statement_stage>
 auto req = make_pipeline_request(
-    prepare_statement_stage("SELECT ..."),
-    prepare_statement_stage("INSERT ...")
+    set_character_set_stage(utf8mb4_charset),
+    prepare_statement_stage("INSERT INTO audit_log (t, msg) VALUES (?, ?)"),
+    prepare_statement_stage("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)")
 );
 ```
 
-* To run a pipeline, create a response object, which will contain the result of the pipeline, and execute it
-  using [refmem any_connection run_pipipeline] or [refmemunq any_connection async_run_pipeline]:
+To actually run the pipeline, create a response object and call
+[refmem any_connection run_pipipeline] or [refmemunq any_connection async_run_pipeline]:
 
 ```
-// res is a std::tuple<prepare_statement_stage::response_type, prepare_statement_stage::response_type>
+// res is a std::tuple<set_character_set_stage::response_type, 
+//     prepare_statement_stage::response_type, prepare_statement_stage::response_type>
 decltype(req)::response_type res;
 conn.run_pipipeline(req, res);
 ```
 
-* Finally, access your statements:
+Finally, you can access the statements using:
 
 ```
-statement stmt1 = std::get<0>(res).value();
-statement stmt2 = std::get<1>(res).value();
+statement stmt1 = std::get<1>(res).value();
+statement stmt2 = std::get<2>(res).value();
 ```
 
+See TODO: link the reference table for a list of available stage types.
 
-* Two interfaces: static and dynamic. Both C++11. By default, use the static one, as it's type-safe.
-* The static can be accessed using [reflink make_pipeline_request] and [reflink static_pipeline_request] (C++17 deduction guides included).
-  [reflink make_pipeline_request] creates a [reflink static_pipeline_request] object, with deducing template params from the arguments
-  you pass:
 
-```
-// req1 is static_pipeline_request<
-//    reset_connection_stage,
-//    set_character_set_stage,
-//    prepare_statement_stage>
-auto req1 = make_pipeline_request(
-    reset_connection_stage(),
-    set_character_set_stage(utf8mb4_charset),
-    prepare_statement_stage("INSERT ...")
-);
-```
 
-* Each possible operation you can run is represented as a stage type, like [reflink reset_connection_stage] or [reflink set_character_set_stage].
-See TODO: link the reference table for the possible stage types.
+
+
+[heading Dynamic pipelines]
+
+
 
 * Each stage type has a response type. This is specially relevant for stages like prepare statement, where the result contains the statement object
 that was prepared. See TODO: link the reference table for the result of each stage type.
@@ -252,6 +248,7 @@ And instead of tuples, vectors are used.
     * Executing a statement and immediately closing it.
     * Running setup code with multiple steps. For instance, what connection_pool does when resetting a connection: reset_connection + set_character_set.
 
+TODO: potential pitfalls. INSERT, INSERT, COMMIT
 
 
 
