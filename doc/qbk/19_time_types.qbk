@@ -38,6 +38,12 @@ conversion:
 
 [time_types_date_get_local_time_point]
 
+[note
+  Using `std::chrono` time zone functionality under MSVC can cause your tooling to report
+  memory leaks. This is [@https://github.com/microsoft/STL/issues/2047 an issue in MSVC's standard library].
+  See [@https://github.com/microsoft/STL/issues/2504 this suggestion] for a possible workaround.
+]
+
 If your compiler doesn't support local times, you can use [refmem date get_time_point]
 or [refmem date as_time_point], instead. These return [refmem date time_point] objects,
 which are `time_points` that use the system clock. These time points should be interpreted
