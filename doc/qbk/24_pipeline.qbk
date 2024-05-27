@@ -40,7 +40,7 @@ You should [*avoid] pipelines for the following cases:
 
 * When you can achieve the same functionality using a combination of
   [link mysql.multi_resultset.multi_queries multi-queries] and [link mysql.sql_formatting client-side SQL formatting].
-  Multi-queries will stop after the first error, which is usually what you want.
+  Multi-queries will stop after the first error, which is usually what you want. See [link mysql.pipeline.pitfalls this section] for more info.
 * When running heavyweight queries, where the gains in round-trip time are not significant.
 * When there are dependencies between stages in the pipeline. Lack of protocol support makes this use case impossible.
 
@@ -124,20 +124,74 @@ Prefer static pipelines if your use case allows them.
 
 
 
-[heading Error handling]
+[heading:error Error handling]
+
+If any of the pipeline stages result in an error, the entire [refmemunq any_connection run_pipipeline] operation
+is considered failed. This means that [*if `run_pipipeline` completed successfully, all stages succeeded]. Recall that
+[*all stages are always run, regardless of the outcome of previous stages]. 
+
+If `run_pipipeline` fails, you can check which steps succeeded and failed by inspecting responses.
+Response types like [refmem prepare_statement_stage response_type] are aliases for
+[link mysql.error_handling.system_result `boost::system::result`], a vocabulary type that
+can contain either a value or an error. For instance:
+
+```
+// The second step in the pipeline will fail, the other ones will succeeded
+auto req = make_pipeline_request(
+    set_character_set_stage(utf8mb4_charset),
+    prepare_statement_stage("INSERT INTO bad_table (t, msg) VALUES (?, ?)"), // will fail
+    prepare_statement_stage("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)")
+);
+
+decltype(req)::response_type res;
+error_code ec;
+diagnostics diag;
+
+conn.run_pipipeline(req, res, ec, diag);
+BOOST_TEST(ec == common_server_errc::whatever);
+BOOST_TEST(std::get<0>(res).code == error_code());
+BOOST_TEST(std::get<1>(res).error().code == common_server_errc::whatever);
+BOOST_TEST(std::get<2>(res).error().code == error_code());
+```
+
+The [reflink errcode_with_diagnostics] error type, which contains an `error_code`
+and a [reflink diagnostics] string, is used throughout the module.
 
 
 
 
+[heading:pìtfalls Potential pitfalls]
 
-* Error handling:
-    * If any error is encountered at any stage, run_pipipeline fails. This means: if the operation finished successfully, all stages run correctly.
-    * If the operation failed, each stage response contains an error and diagnostics about what went wrong for each step.
-      If you have a look at `prepare_statement_stage::response_type`, it's a `system::result`, a vocabulary type that can contain
-      either a value or an error.
-    * No need to check each stage on success, this is done by the library.
-    * Note that an error in a step does not stop the pipeline. From the server's POV, it's just several requests in a row.
-      See considerations.
+All requests in the pipeline are always run, regardless of the outcome of previous requests. As a result, some pipelines can behave non-intuitively:
+
+```
+// This doesn't behave correctly - DO NOT DO THIS
+// COMMIT will be run even if one of the INSERTs fail, which defeats the purpose of the transaction
+auto req = make_pipeline_request(
+    execute_stage("START TRANSACTION"),
+    execute_stage("INSERT INTO employee VALUES (...)"),
+    execute_stage("INSERT INTO logs VALUES (...)"),
+    execute_stage("COMMIT"),
+);
+```
+
+Pipelines aren't the best fit here. Instead, you can express the same logic using semicolon-separated queries and [reflink format_sql]:
+
+```
+const char* sql = 
+    "START TRANSACTION;"
+    "INSERT INTO employee VALUES (...);"
+    "INSERT INTO logs VALUES (...);"
+    "COMMIT"
+;
+
+// If an error is encountered in any of the INSERTs, COMMIT won't run
+results r;
+conn.execute(sql, r);
+```
+
+Pipeline stages are run sequentially by the server. If any of the stages involves a heavyweight query, the server won't process subsequent stages until the query completes.
+
 
 
 * Reference table
@@ -229,20 +283,6 @@ Prefer static pipelines if your use case allows them.
 
 
 
-
---- considerations -----
-* The protocol provides no built-in support for pipelines, so:
-    * All requests in the pipeline are considered independent, regardless of the outcome of each request. If you need a failing request to stop the pipeline, you need to split it.
-    * If you have dependencies between pipeline stages (e.g. prepare statement => execute statement, or using an execute result in another stage), you need independent pipelines.
-    * Steps are processed sequentially by the server, in order. This means that if any of your stages are heavyweight queries, further steps will be blocked until the query resolves (head-of-line blocking).
-    * A warning on current charset and set charset
-    * Alternatives if you're just executing
-* Use case: speed up many lightweight, small requests, dominated by round-trip time and not by execution time.
-    * Preparing or closing several statements, in batch.
-    * Executing a statement and immediately closing it.
-    * Running setup code with multiple steps. For instance, what connection_pool does when resetting a connection: reset_connection + set_character_set.
-
-TODO: potential pitfalls. INSERT, INSERT, COMMIT
 
 
 
