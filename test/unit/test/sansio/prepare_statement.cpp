@@ -78,8 +78,6 @@ struct read_response_fixture : algo_fixture_base
     statement result() const { return algo.result(st); }
 };
 
-// OK
-// Number of meta: 0, 1, 2
 // Error deserializing response
 
 BOOST_AUTO_TEST_CASE(read_response_success)
@@ -99,6 +97,55 @@ BOOST_AUTO_TEST_CASE(read_response_success)
     auto stmt = fix.result();
     BOOST_TEST(stmt.id() == 1u);
     BOOST_TEST(stmt.num_params() == 2u);
+}
+
+BOOST_AUTO_TEST_CASE(read_response_success_0cols)
+{
+    // Setup
+    read_response_fixture fix;
+
+    // Run the algo
+    algo_test()
+        .expect_read(response_builder().id(5).num_columns(0).num_params(1).build())
+        .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
+        .check(fix);
+
+    // The statement was created successfully
+    auto stmt = fix.result();
+    BOOST_TEST(stmt.id() == 5u);
+    BOOST_TEST(stmt.num_params() == 1u);
+}
+
+BOOST_AUTO_TEST_CASE(read_response_success_0params)
+{
+    // Setup
+    read_response_fixture fix;
+
+    // Run the algo
+    algo_test()
+        .expect_read(response_builder().id(214).num_columns(2).num_params(0).build())
+        .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
+        .expect_read(create_coldef_frame(21, meta_builder().name("defff").build_coldef()))
+        .check(fix);
+
+    // The statement was created successfully
+    auto stmt = fix.result();
+    BOOST_TEST(stmt.id() == 214u);
+    BOOST_TEST(stmt.num_params() == 0u);
+}
+
+BOOST_AUTO_TEST_CASE(read_response_success_0cols_0params)
+{
+    // Setup
+    read_response_fixture fix;
+
+    // Run the algo
+    algo_test().expect_read(response_builder().id(98).num_columns(0).num_params(0).build()).check(fix);
+
+    // The statement was created successfully
+    auto stmt = fix.result();
+    BOOST_TEST(stmt.id() == 98u);
+    BOOST_TEST(stmt.num_params() == 0u);
 }
 
 // BOOST_AUTO_TEST_CASE(read_response_error_network)
