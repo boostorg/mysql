@@ -148,6 +148,24 @@ BOOST_AUTO_TEST_CASE(read_response_success_0cols_0params)
     BOOST_TEST(stmt.num_params() == 0u);
 }
 
+// A statement_id == 0 doesn't cause trouble
+BOOST_AUTO_TEST_CASE(read_response_success_0id)
+{
+    // Setup
+    read_response_fixture fix;
+
+    // Run the algo
+    algo_test()
+        .expect_read(response_builder().id(0).num_columns(0).num_params(1).build())
+        .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
+        .check(fix);
+
+    // The statement was created successfully
+    auto stmt = fix.result();
+    BOOST_TEST(stmt.id() == 0u);
+    BOOST_TEST(stmt.num_params() == 1u);
+}
+
 // BOOST_AUTO_TEST_CASE(read_response_error_network)
 // {
 //     algo_test()
