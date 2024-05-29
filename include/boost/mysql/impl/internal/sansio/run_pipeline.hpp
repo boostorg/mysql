@@ -103,7 +103,7 @@ class run_pipeline_algo
             read_response_algo_.emplace<read_reset_connection_response_algo>(&temp_diag_, stage.seqnum);
             break;
         case pipeline_stage_kind::ping:
-            read_response_algo_.emplace<read_ping_response_algo>(temp_diag_, stage.seqnum);
+            read_response_algo_.emplace<read_ping_response_algo>(&temp_diag_, stage.seqnum);
             break;
         default: BOOST_ASSERT(false);
         }

@@ -25,9 +25,7 @@ class read_ping_response_algo
     std::uint8_t seqnum_{0};
 
 public:
-    read_ping_response_algo(diagnostics& diag, std::uint8_t seqnum) noexcept : diag_(&diag), seqnum_(seqnum)
-    {
-    }
+    read_ping_response_algo(diagnostics* diag, std::uint8_t seqnum) noexcept : diag_(diag), seqnum_(seqnum) {}
 
     next_action resume(connection_state_data& st, error_code ec)
     {
