@@ -89,7 +89,7 @@ struct pipeline_stage_access
 }  // namespace detail
 
 /**
- * \brief Pipeline stage type to execute text queries and prepared statements.
+ * \brief (EXPERIMENTAL) Pipeline stage type to execute text queries and prepared statements.
  * \details
  * To be used with \ref pipeline_request or \ref static_pipeline_request.
  * Has effects equivalent to \ref any_connection::execute.
@@ -98,6 +98,10 @@ struct pipeline_stage_access
  * Like all stage types, this is a view type. Parameters required to run the stage
  * are stored internally as views. Objects of this type should only be used as
  * function or constructor parameters.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class execute_stage
 {
@@ -288,7 +292,7 @@ private:
 };
 
 /**
- * \brief Pipeline stage type to prepare statements.
+ * \brief (EXPERIMENTAL) Pipeline stage type to prepare statements.
  * \details
  * To be used with \ref pipeline_request or \ref static_pipeline_request.
  * Has effects equivalent to \ref any_connection::prepare_statement.
@@ -297,6 +301,10 @@ private:
  * Like all stage types, this is a view type. Parameters required to run the stage
  * are stored internally as views. Objects of this type should only be used as
  * function or constructor parameters.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class prepare_statement_stage
 {
@@ -337,10 +345,14 @@ public:
 };
 
 /**
- * \brief Pipeline stage type to close statements.
+ * \brief (EXPERIMENTAL) Pipeline stage type to close statements.
  * \details
  * To be used with \ref pipeline_request or \ref static_pipeline_request.
  * Has effects equivalent to \ref any_connection::close_statement.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class close_statement_stage
 {
@@ -372,10 +384,14 @@ public:
 };
 
 /**
- * \brief Pipeline stage type to reset session state.
+ * \brief (EXPERIMENTAL) Pipeline stage type to reset session state.
  * \details
  * To be used with \ref pipeline_request or \ref static_pipeline_request.
  * Has effects equivalent to \ref any_connection::reset_connection.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class reset_connection_stage
 {
@@ -405,10 +421,14 @@ public:
 };
 
 /**
- * \brief Pipeline stage type to set the connection's character set.
+ * \brief (EXPERIMENTAL) Pipeline stage type to set the connection's character set.
  * \details
  * To be used with \ref pipeline_request or \ref static_pipeline_request.
  * Has effects equivalent to \ref any_connection::set_character_set.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class set_character_set_stage
 {
@@ -445,7 +465,7 @@ public:
 };
 
 /**
- * \brief A variant-like type holding the response of a single pipeline stage.
+ * \brief (EXPERIMENTAL) A variant-like type holding the response of a single pipeline stage.
  * \details
  * When running dynamic pipelines with \ref pipeline_request, this type is used
  * to hold individual stage responses.
@@ -456,6 +476,10 @@ public:
  *   \li A \ref results. Will happen if the operation was a query or statement execution that succeeded.
  *   \li A \ref errcode_with_diagnostics. Will happen if the operation failed, or if it succeeded but
  *       the operation doesn't yield a value (as in close statement, reset connection and set character set).
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class any_stage_response
 {
@@ -633,7 +657,7 @@ public:
 };
 
 /**
- * \brief A dynamic pipeline request.
+ * \brief (EXPERIMENTAL) A dynamic pipeline request.
  * \details
  * Contains a collection of pipeline stages, fully describing the work to be performed
  * by a pipeline operation. The number of stages and their type is determined at runtime.
@@ -643,6 +667,10 @@ public:
  * \ref static_pipeline_request, instead.
  * \n
  * Stage responses are read into a vector of \ref any_stage_response, which is variant-like.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 class pipeline_request
 {
@@ -711,7 +739,7 @@ public:
 };
 
 /**
- * \brief A static pipeline request type.
+ * \brief (EXPERIMENTAL) A static pipeline request type.
  * \details
  * Contains a collection of pipeline stages, fully describing the work to be performed
  * by a pipeline operation. The pipeline contains as many stages as `PipelineStageType`
@@ -730,6 +758,10 @@ public:
  * To create instances of this class without specifying template parameters,
  * you can use \ref make_pipeline_request. If you're on C++17 or above, appropriate class deduction
  * guidelines are also provided.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 template <class... PipelineStageType>
 class static_pipeline_request
@@ -807,7 +839,7 @@ public:
 };
 
 /**
- * \brief Creates a static_pipeline_request object.
+ * \brief (EXPERIMENTAL) Creates a static_pipeline_request object.
  * \details
  * This factory function can be used to avoid having to explicitly specify
  * template parameters on the request type. For C++17 code and later,
@@ -822,6 +854,10 @@ public:
  * \par Object lifetimes
  * The `stages` objects, and any other objects they point to, need not be kept alive
  * once the constructor returns.
+ *
+ * \par Experimental
+ * This part of the API is experimental, and may change in successive
+ * releases without previous notice.
  */
 template <class... PipelineStageType>
 static_pipeline_request<PipelineStageType...> make_pipeline_request(const PipelineStageType&... stages)
