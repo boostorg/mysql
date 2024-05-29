@@ -19,10 +19,10 @@
 
 #include <cstddef>
 
+#include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
-#include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_query_frame.hpp"
@@ -38,6 +38,42 @@ struct fixture : algo_fixture_base
 
     fixture(const character_set& charset = utf8mb4_charset) : algo({&diag, charset}) {}
 };
+
+// Utility function to compose SET NAMES statements
+BOOST_AUTO_TEST_CASE(compose_set_names_success)
+{
+    BOOST_TEST(detail::compose_set_names(utf8mb4_charset).value() == "SET NAMES 'utf8mb4'");
+    BOOST_TEST(detail::compose_set_names(ascii_charset).value() == "SET NAMES 'ascii'");
+}
+
+BOOST_AUTO_TEST_CASE(compose_set_names_needs_escaping)
+{
+    // We don't create vulnerabilities when creating SET NAMES statements
+    character_set mock_charset{"ab'cd\"e", utf8mb4_charset.next_char};
+    BOOST_TEST(detail::compose_set_names(mock_charset).value() == "SET NAMES 'ab\\'cd\\\"e'");
+}
+
+BOOST_AUTO_TEST_CASE(compose_set_names_error)
+{
+    struct
+    {
+        string_view name;
+        string_view charset_name;
+    } test_cases[] = {
+        {"utf8",           "test-\xc3\xb1"     }, // anything non-ascii is rejected
+        {"non_utf8",       "test-\xb1-abc"     },
+        {"null_character", makesv("with\0null")}, // NULL characters not allowed
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.charset_name)
+        {
+            character_set charset{tc.charset_name, utf8mb4_charset.next_char};
+            BOOST_TEST(detail::compose_set_names(charset).error() == client_errc::invalid_encoding);
+        }
+    }
+}
 
 BOOST_AUTO_TEST_CASE(success)
 {

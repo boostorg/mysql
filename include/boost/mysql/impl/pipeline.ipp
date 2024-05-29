@@ -18,8 +18,8 @@
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
-#include <boost/mysql/impl/internal/protocol/compose_set_names.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/throw_exception.hpp>
