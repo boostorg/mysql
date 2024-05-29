@@ -786,8 +786,10 @@ static_pipeline_request<PipelineStageType...> make_pipeline_request(const Pipeli
     return {stages...};
 }
 
+#ifndef BOOST_NO_CXX17_DEDUCTION_GUIDES
 template <BOOST_MYSQL_PIPELINE_STAGE_TYPE... PipelineStageType>
 static_pipeline_request(const PipelineStageType&... args) -> static_pipeline_request<PipelineStageType...>;
+#endif
 
 }  // namespace mysql
 }  // namespace boost
