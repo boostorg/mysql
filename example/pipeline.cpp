@@ -28,7 +28,6 @@
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/mysql/static_pipeline.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
@@ -58,7 +57,7 @@ asio::awaitable<std::vector<mysql::statement>> batch_prepare(
 {
     mysql::pipeline_request req;
     for (auto stmt_sql : statements)
-        req.add_prepare_statement(stmt_sql);
+        req.add(mysql::prepare_statement_stage(stmt_sql));
 
     std::vector<mysql::any_stage_response> pipe_res;
     mysql::diagnostics diag;

@@ -13,7 +13,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/static_pipeline.hpp>
+#include <boost/mysql/pipeline.hpp>
 
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
