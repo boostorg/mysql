@@ -43,7 +43,10 @@ class read_prepare_statement_response_algo
     }
 
 public:
-    read_prepare_statement_response_algo(diagnostics* diag) noexcept : diag_(diag) {}
+    read_prepare_statement_response_algo(diagnostics* diag, std::uint8_t seqnum) noexcept
+        : diag_(diag), sequence_number_(seqnum)
+    {
+    }
 
     std::uint8_t& sequence_number() { return sequence_number_; }
     diagnostics& diag() { return *diag_; }
@@ -87,7 +90,7 @@ class prepare_statement_algo
 
 public:
     prepare_statement_algo(prepare_statement_algo_params params) noexcept
-        : read_response_st_(params.diag), stmt_sql_(params.stmt_sql)
+        : read_response_st_(params.diag, 0u), stmt_sql_(params.stmt_sql)
     {
     }
 

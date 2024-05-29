@@ -84,8 +84,7 @@ class run_pipeline_algo
             break;
         }
         case pipeline_stage_kind::prepare_statement:
-            read_response_algo_.emplace<read_prepare_statement_response_algo>(&temp_diag_)
-                .sequence_number() = stage.seqnum;
+            read_response_algo_.emplace<read_prepare_statement_response_algo>(&temp_diag_, stage.seqnum);
             break;
         case pipeline_stage_kind::close_statement:
             // Close statement doesn't have a response
