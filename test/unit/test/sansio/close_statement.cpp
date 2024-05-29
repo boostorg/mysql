@@ -27,8 +27,8 @@
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 
-// TODO: keep this?
-
+// setup_close_statement_pipeline: running a pipeline with these parameters
+// has the intended effect
 BOOST_AUTO_TEST_SUITE(test_close_statement)
 
 // A close_statement request pipelined with a ping (frame headers included)
