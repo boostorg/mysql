@@ -88,20 +88,6 @@ struct pipeline_stage_access
 
 }  // namespace detail
 
-// Execute
-class writable_field_arg
-{
-    field_view impl_;
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
-public:
-    template <BOOST_MYSQL_WRITABLE_FIELD WritableField>
-    writable_field_arg(const WritableField& f) noexcept : impl_(detail::to_field(f))
-    {
-    }
-};
-
 /**
  * \brief Pipeline stage type to execute text queries and prepared statements.
  * \details
@@ -115,76 +101,41 @@ public:
  */
 class execute_stage
 {
-    enum type_t
-    {
-        type_query,
-        type_stmt_tuple,
-        type_stmt_range
-    };
-
-    union data_t
-    {
-        string_view query;
-        struct
-        {
-            statement stmt;
-            span<const writable_field_arg> params;
-        } stmt_tuple;
-        struct
-        {
-            statement stmt;
-            span<const field_view> params;
-        } stmt_range;
-
-        data_t(string_view q) noexcept : query(q) {}
-        data_t(statement s, span<const writable_field_arg> params) noexcept : stmt_tuple{s, params} {}
-        data_t(statement s, span<const field_view> params) noexcept : stmt_range{s, params} {}
-    };
-
-    type_t type_;
-    data_t data_;
-
-    // TODO: move to compiled
-    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-    {
-        switch (type_)
-        {
-        case type_query: return detail::serialize_query(buffer, data_.query);
-        case type_stmt_tuple:
-        {
-            constexpr std::size_t stack_fields = 64u;
-            auto params = data_.stmt_tuple.params;
-            auto stmt = data_.stmt_tuple.stmt;
-            if (params.size() <= stack_fields)
-            {
-                std::array<field_view, stack_fields> storage;
-                for (std::size_t i = 0; i < params.size(); ++i)
-                    storage[i] = detail::access::get_impl(params[i]);
-                return detail::serialize_execute_statement(buffer, stmt, {storage.data(), params.size()});
-            }
-            else
-            {
-                std::vector<field_view> storage;
-                storage.reserve(params.size());
-                for (auto p : params)
-                    storage.push_back(detail::access::get_impl(p));
-                return detail::serialize_execute_statement(buffer, stmt, storage);
-            }
-        }
-        case type_stmt_range:
-            return detail::serialize_execute_statement(
-                buffer,
-                data_.stmt_range.stmt,
-                data_.stmt_range.params
-            );
-        }
-    }
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::pipeline_stage_access;
-#endif
-
 public:
+    /**
+     * \brief A single statement parameter, to be used in initializer lists.
+     * \details
+     * Applies lightweight type-erasure to types satisfying the `WritableField` concept,
+     * so they can be passed in initializer lists.
+     *
+     * \par Object lifetimes
+     * This is a view type, and should only be used in initializer lists, as a function argument.
+     */
+    class statement_param_arg
+    {
+        field_view impl_;
+#ifndef BOOST_MYSQL_DOXYGEN
+        friend class execute_stage;
+#endif
+    public:
+        /**
+         * \brief Constructor.
+         * \details
+         * Can be passed any type satisfying `WritableField`.
+         *
+         * \par Exception safety
+         * No-throw guarantee.
+         *
+         * \par Object lifetimes
+         * No copies of `f` are performed. This type should only be used in initializer lists, to avoid
+         * lifetime issues.
+         */
+        template <BOOST_MYSQL_WRITABLE_FIELD WritableField>
+        statement_param_arg(const WritableField& f) noexcept : impl_(detail::to_field(f))
+        {
+        }
+    };
+
     /**
      * \brief Constructs a stage to execute a text query.
      * \details
@@ -225,7 +176,7 @@ public:
      * No copies of `params` or the values they point to are performed.
      * This type should only be used as a function argument to avoid lifetime issues.
      */
-    execute_stage(statement stmt, std::initializer_list<writable_field_arg> params) noexcept
+    execute_stage(statement stmt, std::initializer_list<statement_param_arg> params) noexcept
         : type_(type_stmt_tuple), data_(stmt, {params.begin(), params.size()})
     {
     }
@@ -264,6 +215,76 @@ public:
      * a \ref errcode_with_diagnostics on failure.
      */
     using response_type = system::result<results, errcode_with_diagnostics>;
+
+private:
+    enum type_t
+    {
+        type_query,
+        type_stmt_tuple,
+        type_stmt_range
+    };
+
+    union data_t
+    {
+        string_view query;
+        struct
+        {
+            statement stmt;
+            span<const statement_param_arg> params;
+        } stmt_tuple;
+        struct
+        {
+            statement stmt;
+            span<const field_view> params;
+        } stmt_range;
+
+        data_t(string_view q) noexcept : query(q) {}
+        data_t(statement s, span<const statement_param_arg> params) noexcept : stmt_tuple{s, params} {}
+        data_t(statement s, span<const field_view> params) noexcept : stmt_range{s, params} {}
+    };
+
+    type_t type_;
+    data_t data_;
+
+    // TODO: move to compiled
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
+    {
+        switch (type_)
+        {
+        case type_query: return detail::serialize_query(buffer, data_.query);
+        case type_stmt_tuple:
+        {
+            constexpr std::size_t stack_fields = 64u;
+            auto params = data_.stmt_tuple.params;
+            auto stmt = data_.stmt_tuple.stmt;
+            if (params.size() <= stack_fields)
+            {
+                std::array<field_view, stack_fields> storage;
+                for (std::size_t i = 0; i < params.size(); ++i)
+                    storage[i] = params[i].impl_;
+                return detail::serialize_execute_statement(buffer, stmt, {storage.data(), params.size()});
+            }
+            else
+            {
+                std::vector<field_view> storage;
+                storage.reserve(params.size());
+                for (auto p : params)
+                    storage.push_back(p.impl_);
+                return detail::serialize_execute_statement(buffer, stmt, storage);
+            }
+        }
+        case type_stmt_range:
+            return detail::serialize_execute_statement(
+                buffer,
+                data_.stmt_range.stmt,
+                data_.stmt_range.params
+            );
+        }
+    }
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::pipeline_stage_access;
+#endif
 };
 
 /**
