@@ -93,9 +93,11 @@ class run_pipeline_algo
             read_response_algo_.emplace<no_response_algo>();
             break;
         case pipeline_stage_kind::set_character_set:
-            read_response_algo_
-                .emplace<read_set_character_set_response_algo>(&temp_diag_, stage.stage_specific.charset)
-                .sequence_number() = stage.seqnum;
+            read_response_algo_.emplace<read_set_character_set_response_algo>(
+                &temp_diag_,
+                stage.stage_specific.charset,
+                stage.seqnum
+            );
             break;
         case pipeline_stage_kind::reset_connection:
             read_response_algo_.emplace<read_reset_connection_response_algo>(temp_diag_, stage.seqnum);

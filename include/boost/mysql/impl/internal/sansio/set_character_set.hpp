@@ -53,8 +53,8 @@ class read_set_character_set_response_algo
     std::uint8_t seqnum_{0};
 
 public:
-    read_set_character_set_response_algo(diagnostics* diag, character_set charset)
-        : diag_(diag), charset_(charset)
+    read_set_character_set_response_algo(diagnostics* diag, character_set charset, std::uint8_t seqnum)
+        : diag_(diag), charset_(charset), seqnum_(seqnum)
     {
     }
     character_set charset() const { return charset_; }
@@ -71,6 +71,8 @@ public:
 
             // Read the response
             BOOST_MYSQL_YIELD(resume_point_, 1, st.read(seqnum_))
+            if (ec)
+                return ec;
 
             // Verify it's what we expected
             ec = st.deserialize_ok(*diag_);
@@ -100,15 +102,12 @@ class set_character_set_algo
 
 public:
     set_character_set_algo(set_character_set_algo_params params) noexcept
-        : read_response_st_(params.diag, params.charset)
+        : read_response_st_(params.diag, params.charset, 0u)
     {
     }
 
     next_action resume(connection_state_data& st, error_code ec)
     {
-        if (ec)
-            return ec;
-
         next_action act;
 
         // SET NAMES never returns rows. Using execute requires us to allocate
@@ -122,6 +121,8 @@ public:
 
             // Send the execution request
             BOOST_MYSQL_YIELD(resume_point_, 1, compose_request(st))
+            if (ec)
+                return ec;
 
             // Read the response
             while (!(act = read_response_st_.resume(st, ec)).is_done())
