@@ -11,10 +11,8 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/statement.hpp>
 
-#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/core/span.hpp>
@@ -24,12 +22,11 @@
 #include <type_traits>
 #include <utility>
 
-// TODO: do we want to rename this file?
-// TODO: this header is included in many places (connection_state_data), should be kept minimal - split?
-
 namespace boost {
 namespace mysql {
 namespace detail {
+
+class execution_processor;
 
 enum class pipeline_stage_kind
 {
