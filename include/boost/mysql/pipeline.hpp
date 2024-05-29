@@ -709,17 +709,24 @@ public:
     }
 
     /**
-     * TODO
-     * \brief Adds a text query execution request to the pipeline.
+     * \brief Adds a stage to the pipeline request.
      * \details
-     * Creates a stage with effects equivalent to running `any_connection::execute(query)`.
+     * Adds a stage with effects depending on the passed type. `PipelineStageType`
+     * should be one of: \n
+     *    \li \ref execute_stage
+     *    \li \ref prepare_statement_stage
+     *    \li \ref close_statement_stage
+     *    \li \ref reset_connection_stage
+     *    \li \ref set_character_set_stage
      *
      * \par Exception safety
-     * Basic guarantee. Memory allocations while composing the stage may throw.
+     * Basic guarantee. Memory allocations while composing the request may throw.
+     * Throws if `stage` contains invalid parameters. Consult individual stage descriptions for details.
+     * \throws std::invalid_argument If `stage` contains invalid parameters.
      *
      * \par Object lifetimes
-     * The string pointed by `query` is copied into the request buffer, so it does not need
-     * to be kept alive after this function returns.
+     * All arguments are copied into the request buffer. Once this function returns,
+     * `stage` and any values that `stage` points to need not be kept alive.
      */
     template <class PipelineStageType>
     pipeline_request& add(PipelineStageType stage)
@@ -745,12 +752,12 @@ public:
  * by a pipeline operation. The pipeline contains as many stages as `PipelineStageType`
  * template parameters are passed to this type.
  * \n
- * The following types can be used as `PipelineStageType` template parameters: \n
- *    \li \ref execute_stage: behavior equivalent to \ref any_connection::execute
- *    \li \ref prepare_statement_stage: behavior equivalent to \ref any_connection::prepare_statement
- *    \li \ref close_statement_stage: behavior equivalent to \ref any_connection::close_statement
- *    \li \ref reset_connection_stage: behavior equivalent to \ref any_connection::reset_connection
- *    \li \ref set_character_set_stage: behavior equivalent to \ref any_connection::set_character_set
+ * The following stage types may be used: \n
+ *    \li \ref execute_stage
+ *    \li \ref prepare_statement_stage
+ *    \li \ref close_statement_stage
+ *    \li \ref reset_connection_stage
+ *    \li \ref set_character_set_stage
  * \n
  * Stage responses are read into `std::tuple` objects, with individual elements depending
  * on stage types. See \ref response_type for more info.
@@ -798,8 +805,8 @@ public:
      * \par Exception safety
      * Strong guarantee. Memory allocations while composing the request may throw.
      * Supplying steps with invalid arguments also throws.
-     * \throws std::invalid_argument If `stages` contains a stage with invalid parameters.
-     *         See individual stage descriptions for possible error conditions.
+     * See individual stage descriptions for possible error conditions.
+     * \throws std::invalid_argument If any of `stages` contain invalid parameters.
      *
      * \par Object lifetimes
      * Parameters are stored as a serialized request on the constructed object.
@@ -818,6 +825,9 @@ public:
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations while composing the request may throw.
+     * Supplying steps with invalid arguments also throws.
+     * See individual stage descriptions for possible error conditions.
+     * \throws std::invalid_argument If any of `stages` contain invalid parameters.
      *
      * \par Object lifetimes
      * The `stages` objects, and any other objects they point to, need not be kept alive
