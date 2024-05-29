@@ -102,6 +102,17 @@ public:
     }
 };
 
+/**
+ * \brief Pipeline stage type to execute text queries and prepared statements.
+ * \details
+ * To be used with \ref pipeline_request or \ref static_pipeline_request.
+ * Has effects equivalent to \ref any_connection::execute.
+ *
+ * \par Object lifetimes
+ * Like all stage types, this is a view type. Parameters required to run the stage
+ * are stored internally as views. Objects of this type should only be used as
+ * function or constructor parameters.
+ */
 class execute_stage
 {
     enum type_t
@@ -174,15 +185,84 @@ class execute_stage
 #endif
 
 public:
-    execute_stage(string_view query) : type_(type_query), data_(query) {}
-    execute_stage(statement stmt, std::initializer_list<writable_field_arg> params)
+    /**
+     * \brief Constructs a stage to execute a text query.
+     * \details
+     * Adding `*this` to a pipeline creates a stage that will run
+     * `query` as a SQL query, as per \ref any_connection::execute.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * No copies of `query` are performed. This type should only be used
+     * as a function argument to avoid lifetime issues.
+     */
+    execute_stage(string_view query) noexcept : type_(type_query), data_(query) {}
+
+    /**
+     * \brief Constructs a stage to execute a prepared statement.
+     * \details
+     * Adding `*this` to a pipeline creates a stage that will run
+     * `stmt` bound to any parameters passed in `params`, as per \ref any_connection::execute
+     * and \ref statement::bind. For example, `execute_stage(stmt, {42, "John"})` has
+     * effects equivalent to `conn.execute(stmt.bind(42, "John"))`.
+     * \n
+     * If your statement doesn't take any parameters, pass an empty initializer list
+     * as `params`.
+     * \n
+     * If the number of parameters isn't known at compile-time, use
+     * \ref execute_stage::execute_stage(statement,span<const field_view>), instead.
+     *
+     * \par Exception safety
+     * No-throw guarantee. \n
+     * If the supplied number of parameters doesn't match the statement's number of parameters
+     * (i.e. `stmt.num_params() != params.size()`), a `std::invalid_argument` exception will
+     * be raised when the stage is added to the pipeline (\ref pipeline_request::add or
+     * \ref static_pipeline_request::static_pipeline_request).
+     *
+     * \par Object lifetimes
+     * No copies of `params` or the values they point to are performed.
+     * This type should only be used as a function argument to avoid lifetime issues.
+     */
+    execute_stage(statement stmt, std::initializer_list<writable_field_arg> params) noexcept
         : type_(type_stmt_tuple), data_(stmt, {params.begin(), params.size()})
     {
-        // TODO: this should throw on invalid params
     }
-    execute_stage(statement stmt, span<const field_view> params) : type_(type_stmt_range), data_(stmt, params)
+
+    /**
+     * \brief Constructs a stage to execute a prepared statement.
+     * \details
+     * Adding `*this` to a pipeline creates a stage that will run
+     * `stmt` bound to the parameter range passed in `params`, as per \ref any_connection::execute
+     * and \ref statement::bind. For example, `execute_stage(stmt, params_array)` has
+     * effects equivalent to `conn.execute(stmt.bind(params_array.begin(), params_array.end()))`.
+     * \n
+     * Use this signature when the number of parameters that your statement takes is not
+     * known at compile-time.
+     *
+     * \par Exception safety
+     * No-throw guarantee. \n
+     * If the supplied number of parameters doesn't match the statement's number of parameters
+     * (i.e. `stmt.num_params() != params.size()`), a `std::invalid_argument` exception will
+     * be raised when the stage is added to the pipeline (\ref pipeline_request::add or
+     * \ref static_pipeline_request::static_pipeline_request).
+     *
+     * \par Object lifetimes
+     * No copies of `params` or the values they point to are performed.
+     * This type should only be used as a function argument to avoid lifetime issues.
+     */
+    execute_stage(statement stmt, span<const field_view> params) noexcept
+        : type_(type_stmt_range), data_(stmt, params)
     {
     }
+
+    /**
+     * \brief The response type used by the static interface.
+     * \details
+     * A `boost::system::result` that contains a \ref results on success and
+     * a \ref errcode_with_diagnostics on failure.
+     */
     using response_type = system::result<results, errcode_with_diagnostics>;
 };
 
@@ -194,8 +274,8 @@ public:
  *
  * \par Object lifetimes
  * Like all stage types, this is a view type. Parameters required to run the stage
- * are stored internally as views. This type should only be used as a function or
- * constructor parameter, (e.g. when constructing \ref static_pipeline_request),
+ * are stored internally as views. Objects of this type should only be used as
+ * function or constructor parameters.
  */
 class prepare_statement_stage
 {
@@ -214,19 +294,33 @@ public:
     /**
      * \brief Constructor.
      * \details
-     * Passing a `prepare_statement_stage(stmt_sql)` to \ref static_pipeline_request
-     * creates a stage with effects equivalent to \ref any_connection::prepare_statement.
+     * Adding a `prepare_statement_stage(stmt_sql)` to a pipeline
+     * creates a stage with effects equivalent to `conn.prepare_statement(stmt_sql)`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * No copies of `stmt_sql` are performed. This type should only be used
+     * as a function argument to avoid lifetime issues.
      */
-    explicit prepare_statement_stage(string_view stmt_sql) noexcept : stmt_sql_(stmt_sql) {}
+    prepare_statement_stage(string_view stmt_sql) noexcept : stmt_sql_(stmt_sql) {}
 
     /**
-     * \brief The response type.
-     *
+     * \brief The response type used by the static interface.
+     * \details
+     * A `boost::system::result` that contains a \ref statement on success and
+     * a \ref errcode_with_diagnostics on failure.
      */
     using response_type = system::result<statement, errcode_with_diagnostics>;
 };
 
-// Close statement
+/**
+ * \brief Pipeline stage type to close statements.
+ * \details
+ * To be used with \ref pipeline_request or \ref static_pipeline_request.
+ * Has effects equivalent to \ref any_connection::close_statement.
+ */
 class close_statement_stage
 {
     std::uint32_t stmt_id_;
@@ -241,11 +335,27 @@ class close_statement_stage
 #endif
 
 public:
-    close_statement_stage(statement stmt) : stmt_id_(stmt.id()) {}
+    /**
+     * \brief Constructor.
+     * \details
+     * Adding a `close_statement_stage(stmt)` to a pipeline
+     * creates a stage with effects equivalent to `conn.close_statement(stmt)`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    close_statement_stage(statement stmt) noexcept : stmt_id_(stmt.id()) {}
+
+    /// The response type used by the static interface.
     using response_type = errcode_with_diagnostics;
 };
 
-// Reset connection
+/**
+ * \brief Pipeline stage type to reset session state.
+ * \details
+ * To be used with \ref pipeline_request or \ref static_pipeline_request.
+ * Has effects equivalent to \ref any_connection::reset_connection.
+ */
 class reset_connection_stage
 {
     detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
@@ -258,11 +368,27 @@ class reset_connection_stage
 #endif
 
 public:
+    /**
+     * \brief Constructor.
+     * \details
+     * Adding a `reset_connection_stage()` to a pipeline
+     * creates a stage with effects equivalent to `conn.reset_connection()`.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
     reset_connection_stage() = default;
+
+    /// The response type used by the static interface.
     using response_type = errcode_with_diagnostics;
 };
 
-// Set character set
+/**
+ * \brief Pipeline stage type to set the connection's character set.
+ * \details
+ * To be used with \ref pipeline_request or \ref static_pipeline_request.
+ * Has effects equivalent to \ref any_connection::set_character_set.
+ */
 class set_character_set_stage
 {
     character_set charset_;
@@ -277,7 +403,23 @@ class set_character_set_stage
 #endif
 
 public:
-    set_character_set_stage(character_set charset) : charset_(charset) {}
+    /**
+     * \brief Constructor.
+     * \details
+     * Adding `*this` to a pipeline creates a stage with effects
+     * equivalent to `conn.set_character_set(charset)`.
+     *
+     * \par Exception safety
+     * No-throw guarantee. \n
+     * If the supplied character set name is not valid (i.e. `charset.name` contains
+     * non-ASCII characters), a `std::invalid_argument` exception will
+     * be raised when the stage is added to the pipeline (\ref pipeline_request::add or
+     * \ref static_pipeline_request::static_pipeline_request). This never happens with
+     * the character sets provided by the library. The check is performed as a hardening measure.
+     */
+    set_character_set_stage(character_set charset) noexcept : charset_(charset) {}
+
+    /// The response type used by the static interface.
     using response_type = errcode_with_diagnostics;
 };
 
