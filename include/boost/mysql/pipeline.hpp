@@ -44,35 +44,8 @@
 namespace boost {
 namespace mysql {
 
-class execute_stage;
-class prepare_statement_stage;
-class close_statement_stage;
-class reset_connection_stage;
-class set_character_set_stage;
-
 // TODO: move this
 namespace detail {
-
-template <class T>
-constexpr bool is_stage_type()
-{
-    return std::is_same<T, execute_stage>::value || std::is_same<T, prepare_statement_stage>::value ||
-           std::is_same<T, close_statement_stage>::value || std::is_same<T, reset_connection_stage>::value ||
-           std::is_same<T, set_character_set_stage>::value;
-}
-
-constexpr bool check_stage_types() { return true; }
-
-template <class T1, class... Rest>
-constexpr bool check_stage_types(mp11::mp_identity<T1>, mp11::mp_identity<Rest>... rest)
-{
-    static_assert(
-        is_stage_type<T1>(),
-        "static_pipeline_request instantiated with an invalid stage type. Valid stage types: execute_stage, "
-        "prepare_statement_stage, close_statement_stage, reset_connection_stage, set_character_set_stage"
-    );
-    return check_stage_types(rest...);
-}
 
 struct pipeline_stage_access
 {
@@ -667,14 +640,10 @@ public:
      * All arguments are copied into the request buffer. Once this function returns,
      * `stage` and any values that `stage` points to need not be kept alive.
      */
-    template <class PipelineStageType>
+    template <BOOST_MYSQL_PIPELINE_STAGE_TYPE PipelineStageType>
     pipeline_request& add(PipelineStageType stage)
     {
-        static_assert(
-            detail::is_stage_type<PipelineStageType>(),
-            "Invalid PipelineStageType. Valid stage types: execute_stage, "
-            "prepare_statement_stage, close_statement_stage, reset_connection_stage, set_character_set_stage"
-        );
+        static_assert(detail::is_pipeline_stage_type<PipelineStageType>::value, "Invalid PipelineStageType");
         impl_.stages_.push_back(detail::pipeline_stage_access::create(stage, impl_.buffer_));
         return *this;
     }
@@ -709,11 +678,14 @@ public:
  * This part of the API is experimental, and may change in successive
  * releases without previous notice.
  */
-template <class... PipelineStageType>
+template <BOOST_MYSQL_PIPELINE_STAGE_TYPE... PipelineStageType>
 class static_pipeline_request
 {
     static_assert(sizeof...(PipelineStageType) > 0u, "A pipeline should have one stage, at least");
-    static_assert(detail::check_stage_types(mp11::mp_identity<PipelineStageType>{}...), "");
+    static_assert(
+        mp11::mp_all_of<mp11::mp_list<PipelineStageType...>, detail::is_pipeline_stage_type>::value,
+        "Some pipeline stage types are not valid"
+    );
 
     using stage_array_t = std::array<detail::pipeline_request_stage, sizeof...(PipelineStageType)>;
 
@@ -808,13 +780,13 @@ public:
  * This part of the API is experimental, and may change in successive
  * releases without previous notice.
  */
-template <class... PipelineStageType>
+template <BOOST_MYSQL_PIPELINE_STAGE_TYPE... PipelineStageType>
 static_pipeline_request<PipelineStageType...> make_pipeline_request(const PipelineStageType&... stages)
 {
     return {stages...};
 }
 
-template <class... PipelineStageType>
+template <BOOST_MYSQL_PIPELINE_STAGE_TYPE... PipelineStageType>
 static_pipeline_request(const PipelineStageType&... args) -> static_pipeline_request<PipelineStageType...>;
 
 }  // namespace mysql
@@ -826,6 +798,44 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Stage concepts
+template <>
+struct is_pipeline_stage_type<execute_stage> : std::true_type
+{
+};
+
+template <>
+struct is_pipeline_stage_type<prepare_statement_stage> : std::true_type
+{
+};
+
+template <>
+struct is_pipeline_stage_type<close_statement_stage> : std::true_type
+{
+};
+
+template <>
+struct is_pipeline_stage_type<reset_connection_stage> : std::true_type
+{
+};
+
+template <>
+struct is_pipeline_stage_type<set_character_set_stage> : std::true_type
+{
+};
+
+// Request concepts
+template <>
+struct is_pipeline_request_type<pipeline_request> : std::true_type
+{
+};
+
+template <class... PipelineStageType>
+struct is_pipeline_request_type<static_pipeline_request<PipelineStageType...>> : std::true_type
+{
+};
+
+// Response traits
 template <>
 struct pipeline_response_traits<std::vector<any_stage_response>>
 {

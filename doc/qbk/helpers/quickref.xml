@@ -136,6 +136,7 @@
           <member><link linkend="mysql.ref.boost__mysql__Formattable">Formattable</link></member>
           <member><link linkend="mysql.ref.boost__mysql__OutputString">OutputString</link></member>
           <member><link linkend="mysql.ref.boost__mysql__PipelineRequestType">PipelineRequestType</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__PipelineStageType">PipelineStageType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ResultsType">ResultsType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>
           <member><link linkend="mysql.ref.boost__mysql__StaticRow">StaticRow</link></member>

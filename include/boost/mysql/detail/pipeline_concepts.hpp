@@ -12,33 +12,34 @@
 
 #include <type_traits>
 
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-
-#include <concepts>
-
 namespace boost {
 namespace mysql {
-
-class pipeline_request;
-
-template <class... PipelineStageType>
-class static_pipeline_request;
-
 namespace detail {
 
+// PipelineStageType
 template <class T>
-struct is_static_pipeline_request : std::false_type
+struct is_pipeline_stage_type : std::false_type
 {
 };
 
-template <class... T>
-struct is_static_pipeline_request<static_pipeline_request<T...>> : std::true_type
+// PipelineRequestType
+template <class T>
+struct is_pipeline_request_type : std::false_type
 {
 };
 
-template <class T>
-concept pipeline_request_type = std::same_as<T, pipeline_request> || is_static_pipeline_request<T>::value;
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
 
+// If you're getting errors pointing to this line, you're passing invalid stage types
+// to a pipeline. Valid types include execute_stage, prepare_statement_stage, close_statement_stage,
+// reset_connection_stage and set_character_set_stage
+template <class T>
+concept pipeline_stage_type = is_pipeline_stage_type<T>::value;
+
+template <class T>
+concept pipeline_request_type = is_pipeline_request_type<T>::value;
+
+#define BOOST_MYSQL_PIPELINE_STAGE_TYPE ::boost::mysql::detail::pipeline_stage_type
 #define BOOST_MYSQL_PIPELINE_REQUEST_TYPE ::boost::mysql::detail::pipeline_request_type
 
 }  // namespace detail
@@ -47,6 +48,7 @@ concept pipeline_request_type = std::same_as<T, pipeline_request> || is_static_p
 
 #else
 
+#define BOOST_MYSQL_PIPELINE_STAGE_TYPE class
 #define BOOST_MYSQL_PIPELINE_REQUEST_TYPE class
 
 #endif
