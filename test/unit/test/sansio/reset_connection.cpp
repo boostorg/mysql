@@ -11,6 +11,7 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
+#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -24,11 +25,13 @@
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 
+// TODO: keep this?
+
 BOOST_AUTO_TEST_SUITE(test_reset_connection)
 
 struct fixture : algo_fixture_base
 {
-    detail::reset_connection_algo algo{{&diag}};
+    detail::run_pipeline_algo algo{detail::setup_reset_connection_pipeline(st, {&diag})};
 };
 
 BOOST_AUTO_TEST_CASE(success)

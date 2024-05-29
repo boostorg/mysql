@@ -11,16 +11,13 @@
 
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/ping.hpp>
+#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
 
 #include <boost/test/unit_test.hpp>
 
-#include <cstddef>
-
-#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
-#include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 
@@ -31,7 +28,7 @@ BOOST_AUTO_TEST_SUITE(test_ping)
 
 struct fixture : algo_fixture_base
 {
-    detail::ping_algo algo{{&diag}};
+    detail::run_pipeline_algo algo{detail::setup_ping_pipeline(st, {&diag})};
 };
 
 BOOST_AUTO_TEST_CASE(success)

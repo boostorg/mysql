@@ -11,6 +11,7 @@
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/impl/internal/sansio/close_statement.hpp>
+#include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -26,6 +27,8 @@
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 
+// TODO: keep this?
+
 BOOST_AUTO_TEST_SUITE(test_close_statement)
 
 // A close_statement request pipelined with a ping (frame headers included)
@@ -36,9 +39,7 @@ static std::vector<std::uint8_t> expected_request()
 
 struct fixture : algo_fixture_base
 {
-    detail::close_statement_algo algo{
-        {&diag, 3}
-    };
+    detail::run_pipeline_algo algo{detail::setup_close_statement_pipeline(st, {&diag, 3})};
 };
 
 BOOST_AUTO_TEST_CASE(success)
