@@ -9,16 +9,11 @@
 #define BOOST_MYSQL_DETAIL_ALGO_PARAMS_HPP
 
 #include <boost/mysql/character_set.hpp>
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/pipeline.hpp>
-#include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 
 #include <boost/core/span.hpp>
@@ -29,7 +24,14 @@
 namespace boost {
 namespace mysql {
 
+class rows_view;
+class diagnostics;
+class statement;
+
 namespace detail {
+
+class execution_processor;
+class execution_state_impl;
 
 struct connect_algo_params
 {
@@ -153,9 +155,6 @@ struct run_pipeline_algo_params
 
     using result_type = void;
 };
-
-template <class AlgoParams>
-using has_void_result = std::is_same<typename AlgoParams::result_type, void>;
 
 }  // namespace detail
 }  // namespace mysql

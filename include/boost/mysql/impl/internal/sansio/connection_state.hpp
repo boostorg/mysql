@@ -119,7 +119,6 @@ public:
     template <typename AlgoParams>
     typename AlgoParams::result_type result() const
     {
-        static_assert(!has_void_result<AlgoParams>(), "Internal error");
         return variant2::get<top_level_algo<get_algo_t<AlgoParams>>>(algo_).inner_algo().result(st_data_);
     }
 };

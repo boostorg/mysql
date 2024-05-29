@@ -136,6 +136,9 @@ make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, std::v
 // helpers to run algos
 //
 
+template <class AlgoParams>
+using has_void_result = std::is_same<typename AlgoParams::result_type, void>;
+
 template <class AlgoParams, bool is_void>
 struct completion_signature_impl;
 
