@@ -228,7 +228,13 @@ public:
 struct algo_fixture_base
 {
     detail::connection_state_data st{512};
-    diagnostics diag{create_server_diag("Diagnostics not cleared")};
+    diagnostics diag;
+
+    algo_fixture_base(diagnostics initial_diag = create_server_diag("Diagnostics not cleared"))
+        : diag(std::move(initial_diag))
+    {
+        st.write_buffer.push_back(0xff);  // Check that we clear the write buffer at each step
+    }
 };
 
 }  // namespace test

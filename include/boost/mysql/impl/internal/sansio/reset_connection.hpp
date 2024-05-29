@@ -30,8 +30,8 @@ class read_reset_connection_response_algo
     std::uint8_t seqnum_{0};
 
 public:
-    read_reset_connection_response_algo(diagnostics& diag, std::uint8_t seqnum) noexcept
-        : diag_(&diag), seqnum_(seqnum)
+    read_reset_connection_response_algo(diagnostics* diag, std::uint8_t seqnum) noexcept
+        : diag_(diag), seqnum_(seqnum)
     {
     }
 

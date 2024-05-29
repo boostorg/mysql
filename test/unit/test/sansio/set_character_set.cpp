@@ -17,8 +17,6 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <cstddef>
-
 #include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
@@ -77,9 +75,10 @@ struct read_response_fixture : algo_fixture_base
 {
     detail::read_set_character_set_response_algo algo;
 
-    read_response_fixture(character_set charset = utf8mb4_charset) : algo({&diag, charset, 29})
+    // Clearing diagnostics is not this algorithm's responsibility
+    read_response_fixture(character_set charset = utf8mb4_charset)
+        : algo_fixture_base(diagnostics()), algo({&diag, charset, 29})
     {
-        diag.clear();  // This is done by higher-level algorithms
     }
 };
 
