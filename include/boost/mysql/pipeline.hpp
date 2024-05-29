@@ -22,7 +22,6 @@
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/pipeline_concepts.hpp>
-#include <boost/mysql/detail/resultset_encoding.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>
@@ -31,14 +30,12 @@
 #include <boost/mp11/tuple.hpp>
 #include <boost/mp11/utility.hpp>
 #include <boost/system/result.hpp>
-#include <boost/throw_exception.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
-#include <stdexcept>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -250,41 +247,8 @@ private:
     type_t type_;
     data_t data_;
 
-    // TODO: move to compiled
-    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-    {
-        switch (type_)
-        {
-        case type_query: return detail::serialize_query(buffer, data_.query);
-        case type_stmt_tuple:
-        {
-            constexpr std::size_t stack_fields = 64u;
-            auto params = data_.stmt_tuple.params;
-            auto stmt = data_.stmt_tuple.stmt;
-            if (params.size() <= stack_fields)
-            {
-                std::array<field_view, stack_fields> storage;
-                for (std::size_t i = 0; i < params.size(); ++i)
-                    storage[i] = params[i].impl_;
-                return detail::serialize_execute_statement(buffer, stmt, {storage.data(), params.size()});
-            }
-            else
-            {
-                std::vector<field_view> storage;
-                storage.reserve(params.size());
-                for (auto p : params)
-                    storage.push_back(p.impl_);
-                return detail::serialize_execute_statement(buffer, stmt, storage);
-            }
-        }
-        case type_stmt_range:
-            return detail::serialize_execute_statement(
-                buffer,
-                data_.stmt_range.stmt,
-                data_.stmt_range.params
-            );
-        }
-    }
+    BOOST_MYSQL_DECL
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::pipeline_stage_access;
@@ -310,10 +274,8 @@ class prepare_statement_stage
 {
     string_view stmt_sql_;
 
-    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-    {
-        return detail::serialize_prepare_statement(buffer, stmt_sql_);
-    }
+    BOOST_MYSQL_DECL
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::pipeline_stage_access;
@@ -358,10 +320,8 @@ class close_statement_stage
 {
     std::uint32_t stmt_id_;
 
-    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-    {
-        return detail::serialize_close_statement(buffer, stmt_id_);
-    }
+    BOOST_MYSQL_DECL
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::pipeline_stage_access;
@@ -395,10 +355,8 @@ public:
  */
 class reset_connection_stage
 {
-    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-    {
-        return detail::serialize_reset_connection(buffer);
-    }
+    BOOST_MYSQL_DECL
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::pipeline_stage_access;
@@ -434,10 +392,8 @@ class set_character_set_stage
 {
     character_set charset_;
 
-    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const
-    {
-        return detail::serialize_set_character_set(buffer, charset_);
-    }
+    BOOST_MYSQL_DECL
+    detail::pipeline_request_stage create(std::vector<std::uint8_t>& buffer) const;
 
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::pipeline_stage_access;
@@ -491,16 +447,8 @@ class any_stage_response
 
     bool has_error() const { return impl_.index() == 0u; }
 
-    // TODO: move to compiled
-    void check_has_results() const
-    {
-        if (!has_results())
-        {
-            BOOST_THROW_EXCEPTION(
-                std::invalid_argument("any_stage_response::as_results: object doesn't contain results")
-            );
-        }
-    }
+    BOOST_MYSQL_DECL
+    void check_has_results() const;
 
 public:
     /**
@@ -569,17 +517,8 @@ public:
      * Strong guarantee.
      * \throws std::invalid_argument If `*this` does not contain a statement.
      */
-    statement as_statement() const
-    {
-        // TODO: move to compiled?
-        if (!has_statement())
-        {
-            BOOST_THROW_EXCEPTION(
-                std::invalid_argument("any_stage_response::as_statement: object doesn't contain a statement")
-            );
-        }
-        return variant2::unsafe_get<1>(impl_);
-    }
+    BOOST_MYSQL_DECL
+    statement as_statement() const;
 
     /**
      * \brief Retrieves the contained statement (unchecked accessor).
@@ -1042,5 +981,9 @@ struct pipeline_response_traits<std::tuple<PipelineStageResponseType...>>
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+#ifdef BOOST_MYSQL_HEADER_ONLY
+#include <boost/mysql/impl/pipeline.ipp>
+#endif
 
 #endif

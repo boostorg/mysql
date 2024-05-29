@@ -70,7 +70,11 @@ inline run_pipeline_algo_params setup_reset_connection_pipeline(
 )
 {
     st.write_buffer.clear();
-    st.shared_pipeline_stages[0] = serialize_reset_connection(st.write_buffer);
+    st.shared_pipeline_stages[0] = {
+        pipeline_stage_kind::reset_connection,
+        serialize_top_level(reset_connection_command{}, st.write_buffer),
+        {}
+    };
     return {
         params.diag,
         st.write_buffer,

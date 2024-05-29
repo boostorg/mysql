@@ -154,34 +154,8 @@ public:
     }
 };
 
-BOOST_MYSQL_DECL
-pipeline_request_stage serialize_query(std::vector<std::uint8_t>& buffer, string_view query);
-
-BOOST_MYSQL_DECL
-pipeline_request_stage serialize_execute_statement(
-    std::vector<std::uint8_t>& buffer,
-    statement stmt,
-    span<const field_view> params
-);
-
-BOOST_MYSQL_DECL
-pipeline_request_stage serialize_prepare_statement(std::vector<std::uint8_t>& buffer, string_view stmt_sql);
-
-BOOST_MYSQL_DECL
-pipeline_request_stage serialize_close_statement(std::vector<std::uint8_t>& buffer, std::uint32_t stmt_id);
-
-BOOST_MYSQL_DECL
-pipeline_request_stage serialize_set_character_set(std::vector<std::uint8_t>& buffer, character_set charset);
-
-BOOST_MYSQL_DECL
-pipeline_request_stage serialize_reset_connection(std::vector<std::uint8_t>& buffer);
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/pipeline.ipp>
-#endif
 
 #endif
