@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -122,7 +123,6 @@ std::ostream& operator<<(std::ostream& os, pipeline_stage_kind v) { return os <<
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
 /**
- * reset connection
  * set character set
  * ping
  * combination
@@ -269,6 +269,29 @@ BOOST_AUTO_TEST_CASE(close_statement_success)
     // Setup was called correctly and all stages succeeded
     fix.check_setup(stages);
     fix.check_all_stages_succeeded();
+}
+
+BOOST_AUTO_TEST_CASE(reset_connection)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::reset_connection, 3u, {}},
+    };
+    fixture fix(stages);
+    fix.st.current_charset = utf8mb4_charset;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(create_ok_frame(3, ok_builder().build()))
+        .check(fix);
+
+    // Setup was called correctly and all stages succeeded
+    fix.check_setup(stages);
+    fix.check_all_stages_succeeded();
+
+    // The current character set was reset
+    BOOST_TEST(fix.st.charset_ptr() == nullptr);
 }
 
 // BOOST_AUTO_TEST_CASE(read_response_error_network)
