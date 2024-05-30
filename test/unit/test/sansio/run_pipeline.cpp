@@ -122,7 +122,6 @@ std::ostream& operator<<(std::ostream& os, pipeline_stage_kind v) { return os <<
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
 /**
- * close statement
  * reset connection
  * set character set
  * ping
@@ -136,7 +135,6 @@ BOOST_AUTO_TEST_SUITE(test_run_pipeline)
  * error, fatal error
  * spotcheck: reset connection then set character set sets st.charset
  * seqnums get correctly set for all stage kinds
- * two steps with same kind together
  */
 
 constexpr std::uint8_t mock_request[] = {1, 2, 3, 4, 5, 6, 7, 9, 21};
@@ -254,6 +252,23 @@ BOOST_AUTO_TEST_CASE(prepare_statement_success)
     auto stmt1 = fix.resp.items[1].stmt;
     BOOST_TEST(stmt1.id() == 9u);
     BOOST_TEST(stmt1.num_params() == 1u);
+}
+
+BOOST_AUTO_TEST_CASE(close_statement_success)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::close_statement, 3u, {}},
+        {pipeline_stage_kind::close_statement, 8u, {}},
+    };
+    fixture fix(stages);
+
+    // Run the test. Close statement doesn't have a response
+    algo_test().expect_write(mock_request_as_vector()).check(fix);
+
+    // Setup was called correctly and all stages succeeded
+    fix.check_setup(stages);
+    fix.check_all_stages_succeeded();
 }
 
 // BOOST_AUTO_TEST_CASE(read_response_error_network)
