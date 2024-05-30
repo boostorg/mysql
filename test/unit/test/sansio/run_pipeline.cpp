@@ -33,6 +33,7 @@
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
+#include "test_unit/create_prepare_statement_response.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 
@@ -121,8 +122,6 @@ std::ostream& operator<<(std::ostream& os, pipeline_stage_kind v) { return os <<
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
 /**
- * execute
- * prepare statement
  * close statement
  * reset connection
  * set character set
@@ -137,7 +136,6 @@ BOOST_AUTO_TEST_SUITE(test_run_pipeline)
  * error, fatal error
  * spotcheck: reset connection then set character set sets st.charset
  * seqnums get correctly set for all stage kinds
- * resultset encoding gets correctly propagated
  * two steps with same kind together
  */
 
@@ -182,7 +180,7 @@ struct fixture : algo_fixture_base
 // All stage kinds work properly
 BOOST_AUTO_TEST_CASE(execute_success)
 {
-    // Setup
+    // Setup. Each step has a different encoding
     const pipeline_request_stage stages[] = {
         {pipeline_stage_kind::execute, 42u, resultset_encoding::binary},
         {pipeline_stage_kind::execute, 11u, resultset_encoding::text  },
@@ -202,10 +200,8 @@ BOOST_AUTO_TEST_CASE(execute_success)
                          .build())
         .check(fix);
 
-    // Setup was called correctly
+    // Setup was called correctly and all stages succeeded
     fix.check_setup(stages);
-
-    // All stages succeeded
     fix.check_all_stages_succeeded();
 
     // Check each processor calls
@@ -225,6 +221,39 @@ BOOST_AUTO_TEST_CASE(execute_success)
         .on_row_ok_packet(1)
         .validate();
     BOOST_TEST(proc1.info() == "2nd");
+}
+
+BOOST_AUTO_TEST_CASE(prepare_statement_success)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::prepare_statement, 42u, {}},
+        {pipeline_stage_kind::prepare_statement, 11u, {}},
+    };
+    fixture fix(stages);
+
+    // Run the test. 1st statement has 2 meta, 2nd has 1
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(prepare_stmt_response_builder().seqnum(42).id(7).num_columns(0).num_params(2).build())
+        .expect_read(create_coldef_frame(43, meta_builder().name("abc").build_coldef()))
+        .expect_read(create_coldef_frame(44, meta_builder().name("def").build_coldef()))
+        .expect_read(prepare_stmt_response_builder().seqnum(11).id(9).num_columns(0).num_params(1).build())
+        .expect_read(create_coldef_frame(12, meta_builder().name("aaa").build_coldef()))
+        .check(fix);
+
+    // Setup was called correctly and all stages succeeded
+    fix.check_setup(stages);
+    fix.check_all_stages_succeeded();
+
+    // Check the resulting statements
+    auto stmt0 = fix.resp.items[0].stmt;
+    BOOST_TEST(stmt0.id() == 7u);
+    BOOST_TEST(stmt0.num_params() == 2u);
+
+    auto stmt1 = fix.resp.items[1].stmt;
+    BOOST_TEST(stmt1.id() == 9u);
+    BOOST_TEST(stmt1.num_params() == 1u);
 }
 
 // BOOST_AUTO_TEST_CASE(read_response_error_network)

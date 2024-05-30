@@ -21,56 +21,12 @@
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
+#include "test_unit/create_prepare_statement_response.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 
 BOOST_AUTO_TEST_SUITE(test_prepare_statement)
-
-class response_builder
-{
-    std::uint8_t seqnum_{};
-    std::uint32_t statement_id_{1};
-    std::uint16_t num_columns_{3};
-    std::uint16_t num_params_{2};
-
-public:
-    response_builder() = default;
-    response_builder& seqnum(std::uint8_t v)
-    {
-        seqnum_ = v;
-        return *this;
-    }
-    response_builder& id(std::uint32_t v)
-    {
-        statement_id_ = v;
-        return *this;
-    }
-    response_builder& num_columns(std::uint16_t v)
-    {
-        num_columns_ = v;
-        return *this;
-    }
-    response_builder& num_params(std::uint16_t v)
-    {
-        num_params_ = v;
-        return *this;
-    }
-    std::vector<std::uint8_t> build() const
-    {
-        std::vector<std::uint8_t> res;
-        detail::serialization_context ctx(res, detail::disable_framing);
-        ctx.serialize(
-            detail::int1{0u},             // OK header
-            detail::int4{statement_id_},  // statement_id
-            detail::int2{num_columns_},   // num columns
-            detail::int2{num_params_},    // num_params
-            detail::int1{0u},             // reserved
-            detail::int2{90u}             // warning_count
-        );
-        return create_frame(seqnum_, res);
-    }
-};
 
 //
 // read_prepare_statement_response_algo
@@ -92,7 +48,7 @@ BOOST_AUTO_TEST_CASE(read_response_success)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().seqnum(19).id(1).num_columns(1).num_params(2).build())
+        .expect_read(prepare_stmt_response_builder().seqnum(19).id(1).num_columns(1).num_params(2).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(21, meta_builder().name("other").build_coldef()))
         .expect_read(create_coldef_frame(22, meta_builder().name("final").build_coldef()))
@@ -111,7 +67,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0cols)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().seqnum(19).id(5).num_columns(0).num_params(1).build())
+        .expect_read(prepare_stmt_response_builder().seqnum(19).id(5).num_columns(0).num_params(1).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .check(fix);
 
@@ -128,7 +84,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0params)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().seqnum(19).id(214).num_columns(2).num_params(0).build())
+        .expect_read(prepare_stmt_response_builder().seqnum(19).id(214).num_columns(2).num_params(0).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(21, meta_builder().name("defff").build_coldef()))
         .check(fix);
@@ -146,7 +102,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0cols_0params)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().seqnum(19).id(98).num_columns(0).num_params(0).build())
+        .expect_read(prepare_stmt_response_builder().seqnum(19).id(98).num_columns(0).num_params(0).build())
         .check(fix);
 
     // The statement was created successfully
@@ -163,7 +119,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0id)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().seqnum(19).id(0).num_columns(0).num_params(1).build())
+        .expect_read(prepare_stmt_response_builder().seqnum(19).id(0).num_columns(0).num_params(1).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .check(fix);
 
@@ -176,7 +132,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0id)
 BOOST_AUTO_TEST_CASE(read_response_error_network)
 {
     algo_test()
-        .expect_read(response_builder().seqnum(19).id(1).num_columns(1).num_params(2).build())
+        .expect_read(prepare_stmt_response_builder().seqnum(19).id(1).num_columns(1).num_params(2).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(21, meta_builder().name("other").build_coldef()))
         .expect_read(create_coldef_frame(22, meta_builder().name("final").build_coldef()))
@@ -223,7 +179,7 @@ BOOST_AUTO_TEST_CASE(prepare_success)
     // Run the algo
     algo_test()
         .expect_write(expected_prepare_msg())
-        .expect_read(response_builder().seqnum(1).id(29).num_columns(0).num_params(2).build())
+        .expect_read(prepare_stmt_response_builder().seqnum(1).id(29).num_columns(0).num_params(2).build())
         .expect_read(create_coldef_frame(2, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(3, meta_builder().name("other").build_coldef()))
         .check(fix);
@@ -239,7 +195,7 @@ BOOST_AUTO_TEST_CASE(prepare_network_error)
     // This covers errors in the request and the response
     algo_test()
         .expect_write(expected_prepare_msg())
-        .expect_read(response_builder().seqnum(1).id(29).num_columns(0).num_params(1).build())
+        .expect_read(prepare_stmt_response_builder().seqnum(1).id(29).num_columns(0).num_params(1).build())
         .expect_read(create_coldef_frame(2, meta_builder().name("abc").build_coldef()))
         .check_network_errors<prepare_fixture>();
 }
