@@ -164,7 +164,7 @@ boost::mysql::statement boost::mysql::any_stage_response::as_statement() const
             std::invalid_argument("any_stage_response::as_statement: object doesn't contain a statement")
         );
     }
-    return variant2::unsafe_get<1>(impl_);
+    return variant2::unsafe_get<1>(impl_.value);
 }
 
 #endif

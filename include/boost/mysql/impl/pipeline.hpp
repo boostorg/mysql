@@ -67,35 +67,27 @@ struct pipeline_response_traits<std::vector<any_stage_response>>
         // Create as many response items as request stages
         self.resize(request.size());
 
-        // Execution stage needs to be initialized to results objects.
-        // Otherwise, clear any previous content
+        // Setup them
         for (std::size_t i = 0u; i < request.size(); ++i)
-        {
-            auto kind = request[i].kind;
-            if (kind == pipeline_stage_kind::execute)
-                access::get_impl(self[i]).emplace<results>();
-            else
-                access::get_impl(self[i]).emplace<errcode_with_diagnostics>();
-        }
+            access::get_impl(self[i]).setup(request[i].kind);
     }
 
     static execution_processor& get_processor(response_type& self, std::size_t idx)
     {
         BOOST_ASSERT(idx < self.size());
-        auto& response_variant = access::get_impl(self[idx]);
-        return access::get_impl(variant2::unsafe_get<2>(response_variant));
+        return access::get_impl(self[idx]).get_processor();
     }
 
     static void set_result(response_type& self, std::size_t idx, statement stmt)
     {
         BOOST_ASSERT(idx < self.size());
-        access::get_impl(self[idx]) = stmt;
+        access::get_impl(self[idx]).set_result(stmt);
     }
 
     static void set_error(response_type& self, std::size_t idx, error_code ec, diagnostics&& diag)
     {
         BOOST_ASSERT(idx < self.size());
-        access::get_impl(self[idx]).emplace<0>(ec, std::move(diag));
+        access::get_impl(self[idx]).set_error(ec, std::move(diag));
     }
 };
 

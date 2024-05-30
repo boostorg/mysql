@@ -117,6 +117,7 @@ add_executable(
     test/escape_string.cpp
     test/constant_string_view.cpp
     test/pfr.cpp
+    test/pipeline.cpp
 )
 target_include_directories(
     boost_mysql_unittests

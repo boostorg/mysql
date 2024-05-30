@@ -410,13 +410,32 @@ public:
  */
 class any_stage_response
 {
-    variant2::variant<errcode_with_diagnostics, statement, results> impl_;
-
 #ifndef BOOST_MYSQL_DOXYGEN
+    struct
+    {
+        variant2::variant<errcode_with_diagnostics, statement, results> value;
+
+        void setup(detail::pipeline_stage_kind kind)
+        {
+            // Execution stages need to be initialized to results objects.
+            // Otherwise, clear any previous content
+            if (kind == detail::pipeline_stage_kind::execute)
+                value.emplace<results>();
+            else
+                value.emplace<errcode_with_diagnostics>();
+        }
+        detail::execution_processor& get_processor()
+        {
+            return detail::access::get_impl(variant2::unsafe_get<2>(value));
+        }
+        void set_result(statement s) { value = s; }
+        void set_error(error_code ec, diagnostics&& diag) { value.emplace<0>(ec, std::move(diag)); }
+    } impl_;
+
     friend struct detail::access;
 #endif
 
-    bool has_error() const { return impl_.index() == 0u; }
+    bool has_error() const { return impl_.value.index() == 0u; }
 
     BOOST_MYSQL_DECL
     void check_has_results() const;
@@ -438,7 +457,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool has_statement() const { return impl_.index() == 1u; }
+    bool has_statement() const { return impl_.value.index() == 1u; }
 
     /**
      * \brief Returns true if the object contains a results.
@@ -446,7 +465,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool has_results() const { return impl_.index() == 2u; }
+    bool has_results() const { return impl_.value.index() == 2u; }
 
     /**
      * \brief Retrieves the contained error (const lvalue reference accessor).
@@ -460,7 +479,7 @@ public:
      */
     errcode_with_diagnostics error() const&
     {
-        return has_error() ? variant2::unsafe_get<0>(impl_) : errcode_with_diagnostics();
+        return has_error() ? variant2::unsafe_get<0>(impl_.value) : errcode_with_diagnostics();
     }
 
     /**
@@ -475,7 +494,7 @@ public:
      */
     errcode_with_diagnostics error() &&
     {
-        return has_error() ? variant2::unsafe_get<0>(std::move(impl_)) : errcode_with_diagnostics();
+        return has_error() ? variant2::unsafe_get<0>(std::move(impl_.value)) : errcode_with_diagnostics();
     }
 
     /**
@@ -506,7 +525,7 @@ public:
     statement get_statement() const
     {
         BOOST_ASSERT(has_statement());
-        return variant2::unsafe_get<1>(impl_);
+        return variant2::unsafe_get<1>(impl_.value);
     }
 
     /**
@@ -526,14 +545,14 @@ public:
     const results& as_results() const&
     {
         check_has_results();
-        return variant2::unsafe_get<2>(impl_);
+        return variant2::unsafe_get<2>(impl_.value);
     }
 
     /// \copydoc as_results
     results&& as_results() &&
     {
         check_has_results();
-        return variant2::unsafe_get<2>(std::move(impl_));
+        return variant2::unsafe_get<2>(std::move(impl_.value));
     }
 
     /**
@@ -555,14 +574,14 @@ public:
     const results& get_results() const&
     {
         BOOST_ASSERT(has_results());
-        return variant2::unsafe_get<2>(impl_);
+        return variant2::unsafe_get<2>(impl_.value);
     }
 
     /// \copydoc get_results
     results&& get_results() &&
     {
         BOOST_ASSERT(has_results());
-        return variant2::unsafe_get<2>(std::move(impl_));
+        return variant2::unsafe_get<2>(std::move(impl_.value));
     }
 };
 

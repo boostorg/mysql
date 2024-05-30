@@ -126,6 +126,7 @@ run
         test/escape_string.cpp
         test/constant_string_view.cpp
         test/pfr.cpp
+        test/pipeline.cpp
         
     : requirements
         <include>include
