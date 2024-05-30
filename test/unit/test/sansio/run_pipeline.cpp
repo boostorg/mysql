@@ -123,7 +123,6 @@ std::ostream& operator<<(std::ostream& os, pipeline_stage_kind v) { return os <<
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
 /**
- * combination
  * no requests
  * error in each request kind
  * error writing request
@@ -131,7 +130,6 @@ BOOST_AUTO_TEST_SUITE(test_run_pipeline)
  * some errors and some successes
  * fatal error in the middle
  * error, fatal error
- * spotcheck: reset connection then set character set sets st.charset
  */
 
 constexpr std::uint8_t mock_request[] = {1, 2, 3, 4, 5, 6, 7, 9, 21};
@@ -200,12 +198,12 @@ BOOST_AUTO_TEST_CASE(execute_success)
     fix.check_all_stages_succeeded();
 
     // Check each processor calls
-    auto& proc0 = fix.resp.items[0].proc;
+    auto& proc0 = fix.resp.items.at(0).proc;
     proc0.num_calls().reset(1).on_head_ok_packet(1).validate();
     BOOST_TEST(proc0.info() == "1st");
     BOOST_TEST(proc0.encoding() == resultset_encoding::binary);
 
-    auto& proc1 = fix.resp.items[1].proc;
+    auto& proc1 = fix.resp.items.at(1).proc;
     proc1.num_calls()
         .reset(1)
         .on_num_meta(1)
@@ -242,11 +240,11 @@ BOOST_AUTO_TEST_CASE(prepare_statement_success)
     fix.check_all_stages_succeeded();
 
     // Check the resulting statements
-    auto stmt0 = fix.resp.items[0].stmt;
+    auto stmt0 = fix.resp.items.at(0).stmt;
     BOOST_TEST(stmt0.id() == 7u);
     BOOST_TEST(stmt0.num_params() == 2u);
 
-    auto stmt1 = fix.resp.items[1].stmt;
+    auto stmt1 = fix.resp.items.at(1).stmt;
     BOOST_TEST(stmt1.id() == 9u);
     BOOST_TEST(stmt1.num_params() == 1u);
 }
@@ -333,6 +331,43 @@ BOOST_AUTO_TEST_CASE(ping)
 
     // The OK packet was processed successfully
     BOOST_TEST(fix.st.backslash_escapes == false);
+}
+
+BOOST_AUTO_TEST_CASE(combination)
+{
+    // Setup. Typical connection setup pipeline, where we reset, set names,
+    // set the time_zone and prepare some statements
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::reset_connection,  32u, {}                      },
+        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
+        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+        {pipeline_stage_kind::prepare_statement, 0u,  {}                      },
+        {pipeline_stage_kind::prepare_statement, 1u,  {}                      },
+    };
+    fixture fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(create_ok_frame(32, ok_builder().build()))
+        .expect_read(create_ok_frame(16, ok_builder().build()))
+        .expect_read(create_ok_frame(10, ok_builder().build()))
+        .expect_read(prepare_stmt_response_builder().seqnum(0).id(3).num_columns(1).num_params(1).build())
+        .expect_read(create_coldef_frame(1, meta_builder().name("abc").build_coldef()))
+        .expect_read(create_coldef_frame(2, meta_builder().name("def").build_coldef()))
+        .expect_read(prepare_stmt_response_builder().seqnum(1).id(1).num_columns(0).num_params(0).build())
+        .check(fix);
+
+    // Setup was called correctly and all stages succeeded
+    fix.check_setup(stages);
+    fix.check_all_stages_succeeded();
+
+    // The pipeline had its intended effect
+    BOOST_TEST(fix.st.backslash_escapes == true);
+    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
+    BOOST_TEST(fix.resp.items.at(3).stmt.id() == 3u);
+    BOOST_TEST(fix.resp.items.at(4).stmt.id() == 1u);
 }
 
 // BOOST_AUTO_TEST_CASE(read_response_error_network)
