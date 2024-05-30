@@ -409,6 +409,57 @@ BOOST_AUTO_TEST_CASE(error_writing_request)
     fix.check_stage_error(2, client_errc::cancelled, {});
 }
 
+BOOST_AUTO_TEST_CASE(fatal_error_first)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::reset_connection,  32u, {}                      },
+        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
+        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    };
+    fixture fix(stages);
+
+    // Run the test. Reading the first response fails, and we don't further reading
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(asio::error::network_reset)
+        .check(fix, asio::error::network_reset);
+
+    // Setup was called correctly
+    fix.check_setup(stages);
+
+    // All subsequent requests were marked as failed
+    fix.check_stage_error(0, asio::error::network_reset, {});
+    fix.check_stage_error(1, client_errc::cancelled, {});
+    fix.check_stage_error(2, client_errc::cancelled, {});
+}
+
+BOOST_AUTO_TEST_CASE(fatal_error_middle)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::reset_connection,  32u, {}                      },
+        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
+        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    };
+    fixture fix(stages);
+
+    // Run the test. Reading the first response fails, and we don't further reading
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(create_ok_frame(32, ok_builder().build()))
+        .expect_read(asio::error::network_reset)
+        .check(fix, asio::error::network_reset);
+
+    // Setup was called correctly
+    fix.check_setup(stages);
+
+    // All subsequent requests were marked as failed
+    fix.check_stage_error(0, error_code(), {});
+    fix.check_stage_error(1, asio::error::network_reset, {});
+    fix.check_stage_error(2, client_errc::cancelled, {});
+}
+
 /**
  * error last
  * some errors and some successes
