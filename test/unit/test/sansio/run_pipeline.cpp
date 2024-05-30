@@ -30,8 +30,10 @@
 #include <vector>
 
 #include "test_common/buffer_concat.hpp"
+#include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
+#include "test_unit/create_err.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
@@ -409,6 +411,80 @@ BOOST_AUTO_TEST_CASE(error_writing_request)
     fix.check_stage_error(2, client_errc::cancelled, {});
 }
 
+BOOST_AUTO_TEST_CASE(nonfatal_errors)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::prepare_statement, 32u, {}                      },
+        {pipeline_stage_kind::prepare_statement, 16u, {}                      },
+        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    };
+    fixture fix(stages);
+
+    // Run the test. Steps 1 and 3 fail.
+    // The first error is the operation's result
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(err_builder()
+                         .seqnum(32)
+                         .code(common_server_errc::er_bad_db_error)
+                         .message("my_message")
+                         .build_frame())
+        .expect_read(prepare_stmt_response_builder().seqnum(16).id(3).num_columns(0).num_params(0).build())
+        .expect_read(err_builder()
+                         .seqnum(10)
+                         .code(common_server_errc::er_bad_field_error)
+                         .message("other_msg")
+                         .build_frame())
+        .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+
+    // Setup was called correctly
+    fix.check_setup(stages);
+
+    // Stage errors
+    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+    fix.check_stage_error(1, error_code(), {});
+    fix.check_stage_error(2, common_server_errc::er_bad_field_error, create_server_diag("other_msg"));
+
+    // The operation that succeeded had its result set
+    BOOST_TEST(fix.resp.items.at(1).stmt.id() == 3u);
+}
+
+BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::prepare_statement, 32u, {}                      },
+        {pipeline_stage_kind::prepare_statement, 16u, {}                      },
+        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    };
+    fixture fix(stages);
+
+    // Run the test. Steps 1 and 3 fail.
+    // The first error is the operation's result
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(prepare_stmt_response_builder().seqnum(32).id(3).num_columns(0).num_params(0).build())
+        .expect_read(err_builder()
+                         .seqnum(16)
+                         .code(common_server_errc::er_bad_db_error)
+                         .message("my_message")
+                         .build_frame())
+        .expect_read(create_ok_frame(10, ok_builder().no_backslash_escapes(true).build()))
+        .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+
+    // Setup was called correctly
+    fix.check_setup(stages);
+
+    // Stage errors
+    fix.check_stage_error(0, error_code(), {});
+    fix.check_stage_error(1, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+    fix.check_stage_error(2, error_code(), {});
+
+    // We processed the OK packet correctly
+    BOOST_TEST(fix.st.backslash_escapes == false);
+}
+
 BOOST_AUTO_TEST_CASE(fatal_error_first)
 {
     // Setup
@@ -444,7 +520,7 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
     };
     fixture fix(stages);
 
-    // Run the test. Reading the first response fails, and we don't further reading
+    // Run the test
     algo_test()
         .expect_write(mock_request_as_vector())
         .expect_read(create_ok_frame(32, ok_builder().build()))
@@ -461,9 +537,6 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
 }
 
 /**
- * error last
- * some errors and some successes
- * fatal error in the middle
  * error, fatal error
  */
 
