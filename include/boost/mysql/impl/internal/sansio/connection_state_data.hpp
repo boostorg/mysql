@@ -20,7 +20,6 @@
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
-#include <boost/mysql/impl/internal/sansio/message_writer.hpp>
 
 #include <array>
 #include <cstddef>
@@ -72,12 +71,11 @@ struct connection_state_data
     // The current character set, or a default-constructed character set (will all nullptrs) if unknown
     character_set current_charset{};
 
-    // The write buffer
+    // The write buffer. TODO: unify this with the read buffer
     std::vector<std::uint8_t> write_buffer;
 
-    // Reader and writer
+    // Reader
     message_reader reader;
-    message_writer writer;
 
     bool ssl_active() const { return ssl == ssl_state::active; }
     bool supports_ssl() const { return ssl != ssl_state::unsupported; }
@@ -123,11 +121,10 @@ struct connection_state_data
     template <class Serializable>
     next_action write(const Serializable& msg, std::uint8_t& seqnum)
     {
-        // buffer is attached by top_level_algo
+        // use_ssl is attached by top_level_algo
         write_buffer.clear();
         seqnum = serialize_top_level(msg, write_buffer, seqnum);
-        writer.reset(write_buffer);
-        return next_action::write({});
+        return next_action::write({write_buffer, false});
     }
 };
 

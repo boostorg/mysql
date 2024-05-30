@@ -17,6 +17,7 @@
 
 #include <boost/asio/error.hpp>
 #include <boost/config.hpp>
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cassert>
@@ -89,10 +90,9 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         }
     }
 
-    static void handle_write(detail::connection_state_data& st, const step_t& op)
+    static void handle_write(span<const std::uint8_t> actual_msg, const step_t& op)
     {
-        // Multi-frame messages are not supported by these tests (they don't add anything)
-        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(st.writer.current_chunk(), op.bytes);
+        BOOST_MYSQL_ASSERT_BUFFER_EQUALS(actual_msg, op.bytes);
     }
 
     algo_test& add_step(detail::next_action::type_t act_type, std::vector<std::uint8_t> bytes, error_code ec)
@@ -122,7 +122,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
                 if (step.type == detail::next_action::type_t::read)
                     handle_read(st, step);
                 else if (step.type == detail::next_action::type_t::write)
-                    handle_write(st, step);
+                    handle_write(act.write_args().buffer, step);
                 // Other actions don't need any handling
 
                 act = algo.resume(st, step.result);

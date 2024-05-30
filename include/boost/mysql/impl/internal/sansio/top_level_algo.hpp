@@ -15,7 +15,10 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
+#include <boost/core/span.hpp>
+
 #include <cstddef>
+#include <cstdint>
 
 #ifdef BOOST_USE_VALGRIND
 #include <valgrind/memcheck.h>
@@ -45,6 +48,7 @@ class top_level_algo
     int resume_point_{0};
     connection_state_data* st_;
     InnerAlgo algo_;
+    span<const std::uint8_t> bytes_to_write_;
 
 public:
     template <class... Args>
@@ -98,14 +102,15 @@ public:
                 else if (act.type() == next_action::type_t::write)
                 {
                     // Write until a complete message was written
-                    while (!st_->writer.done() && !ec)
+                    bytes_to_write_ = act.write_args().buffer;
+                    while (!bytes_to_write_.empty() && !ec)
                     {
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             2,
-                            next_action::write({st_->writer.current_chunk(), st_->ssl_active()})
+                            next_action::write({bytes_to_write_, st_->ssl_active()})
                         )
-                        st_->writer.resume(bytes_transferred);
+                        bytes_to_write_ = bytes_to_write_.subspan(bytes_transferred);
                     }
 
                     // We fully wrote a message, continue

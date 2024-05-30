@@ -37,7 +37,6 @@ run
         test/protocol/deserialization.cpp
 
         test/sansio/read_buffer.cpp
-        test/sansio/message_writer.cpp
         test/sansio/message_reader.cpp
         test/sansio/top_level_algo.cpp
 
@@ -50,6 +49,8 @@ run
         test/sansio/set_character_set.cpp
         test/sansio/ping.cpp
         test/sansio/reset_connection.cpp
+        test/sansio/prepare_statement.cpp
+        test/sansio/run_pipeline.cpp
 
         test/execution_processor/execution_processor.cpp
         test/execution_processor/execution_state_impl.cpp

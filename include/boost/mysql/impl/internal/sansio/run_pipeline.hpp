@@ -185,9 +185,8 @@ public:
             if (stages_.empty())
                 break;
 
-            // Write the request
-            st.writer.reset(request_buffer_);
-            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({}))
+            // Write the request. use_ssl is attached by top_level_algo
+            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({request_buffer_, false}))
 
             // If writing the request failed, fail all the stages with the given error code
             if (ec)
