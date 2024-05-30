@@ -18,6 +18,8 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <stdexcept>
+
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_execution_processor.hpp"
@@ -101,6 +103,38 @@ BOOST_AUTO_TEST_CASE(underlying_results)
 
     // error() can be called and returns an empty error
     check_error(r.error(), error_code());
+}
+
+BOOST_AUTO_TEST_CASE(as_results_error)
+{
+    // Empty error
+    any_stage_response r;
+    BOOST_CHECK_THROW(r.as_results(), std::invalid_argument);
+    BOOST_CHECK_THROW(std::move(r).as_results(), std::invalid_argument);
+
+    // Non-empty error
+    detail::access::get_impl(r).set_error(client_errc::extra_bytes, create_client_diag("my_msg"));
+    BOOST_CHECK_THROW(r.as_results(), std::invalid_argument);
+    BOOST_CHECK_THROW(std::move(r).as_results(), std::invalid_argument);
+
+    // Statement
+    detail::access::get_impl(r).set_result(statement_builder().build());
+    BOOST_CHECK_THROW(r.as_results(), std::invalid_argument);
+    BOOST_CHECK_THROW(std::move(r).as_results(), std::invalid_argument);
+}
+BOOST_AUTO_TEST_CASE(as_statement_error)
+{
+    // Empty error
+    any_stage_response r;
+    BOOST_CHECK_THROW(r.as_statement(), std::invalid_argument);
+
+    // Non-empty error
+    detail::access::get_impl(r).set_error(client_errc::extra_bytes, create_client_diag("my_msg"));
+    BOOST_CHECK_THROW(r.as_statement(), std::invalid_argument);
+
+    // results
+    detail::access::get_impl(r).setup(detail::pipeline_stage_kind::execute);
+    BOOST_CHECK_THROW(r.as_statement(), std::invalid_argument);
 }
 
 /**
