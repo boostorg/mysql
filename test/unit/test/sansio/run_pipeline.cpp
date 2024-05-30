@@ -536,30 +536,35 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
     fix.check_stage_error(2, client_errc::cancelled, {});
 }
 
-/**
- * error, fatal error
- */
+// If there are fatal and non-fatal errors, the fatal one is the result of the operation
+BOOST_AUTO_TEST_CASE(nonfatal_then_fatal_error)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::reset_connection,  32u, {}                      },
+        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
+        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    };
+    fixture fix(stages);
 
-// BOOST_AUTO_TEST_CASE(read_response_error_network)
-// {
-//     algo_test()
-//         .expect_read(create_ok_frame(57, ok_builder().build()))
-//         .check_network_errors<read_response_fixture>();
-// }
+    // Run the test
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(err_builder()
+                         .seqnum(32)
+                         .code(common_server_errc::er_bad_db_error)
+                         .message("my_message")
+                         .build_frame())
+        .expect_read(asio::error::already_connected)
+        .check(fix, asio::error::already_connected);
 
-// BOOST_AUTO_TEST_CASE(read_response_error_packet)
-// {
-//     // Setup
-//     read_response_fixture fix;
+    // Setup was called correctly
+    fix.check_setup(stages);
 
-//     // Run the test
-//     algo_test()
-//         .expect_read(err_builder()
-//                          .seqnum(57)
-//                          .code(common_server_errc::er_bad_db_error)
-//                          .message("my_message")
-//                          .build_frame())  // Error response
-//         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
-// }
+    // Stage results
+    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+    fix.check_stage_error(1, asio::error::already_connected, {});
+    fix.check_stage_error(2, client_errc::cancelled, {});
+}
 
 BOOST_AUTO_TEST_SUITE_END()
