@@ -37,7 +37,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// TODO: running a pipeline without stages is possible - do we need any special handling?
 class run_pipeline_algo
 {
     struct no_response_algo
@@ -181,6 +180,10 @@ public:
             // Clear previous state
             diag_->clear();
             response_.setup(stages_);
+
+            // If the request is empty, don't do anything
+            if (stages_.empty())
+                break;
 
             // Write the request
             st.writer.reset(request_buffer_);

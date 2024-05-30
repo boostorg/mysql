@@ -58,6 +58,7 @@ struct mock_pipeline_response
         errcode_with_diagnostics err;
     };
 
+    std::size_t setup_num_calls{0u};
     span<const detail::pipeline_request_stage> setup_args;
     std::vector<item> items;
 };
@@ -73,6 +74,7 @@ struct pipeline_response_traits<test::mock_pipeline_response>
 
     static void setup(response_type& self, span<const pipeline_request_stage> request)
     {
+        ++self.setup_num_calls;
         self.setup_args = request;
         self.items.resize(request.size());
     }
@@ -122,16 +124,6 @@ std::ostream& operator<<(std::ostream& os, pipeline_stage_kind v) { return os <<
 
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
-/**
- * no requests
- * error in each request kind
- * error writing request
- * error last
- * some errors and some successes
- * fatal error in the middle
- * error, fatal error
- */
-
 constexpr std::uint8_t mock_request[] = {1, 2, 3, 4, 5, 6, 7, 9, 21};
 
 static std::vector<std::uint8_t> mock_request_as_vector()
@@ -144,14 +136,16 @@ struct fixture : algo_fixture_base
     detail::run_pipeline_algo algo;
     mock_pipeline_response resp;
 
-    fixture(span<const pipeline_request_stage> stages)
-        : algo({&diag, mock_request, stages, detail::pipeline_response_ref(resp)})
+    fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req = mock_request)
+        : algo({&diag, req, stages, detail::pipeline_response_ref(resp)})
     {
     }
 
     // Verify that the stages we passed match the ones used in setup
     void check_setup(span<const pipeline_request_stage> stages)
     {
+        BOOST_TEST(resp.setup_num_calls == 1u);
+
         // Only kind needs to be validated, as seqnum and others don't contribute to usual setup effects
         // and are validated by other means
         BOOST_TEST_REQUIRE(resp.setup_args.size() == stages.size());
@@ -369,6 +363,27 @@ BOOST_AUTO_TEST_CASE(combination)
     BOOST_TEST(fix.resp.items.at(3).stmt.id() == 3u);
     BOOST_TEST(fix.resp.items.at(4).stmt.id() == 1u);
 }
+
+BOOST_AUTO_TEST_CASE(no_requests)
+{
+    // Setup
+    fixture fix({}, {});
+
+    // Run the test. We complete immediately
+    algo_test().check(fix);
+
+    // Setup was called correctly
+    fix.check_setup({});
+}
+
+/**
+ * error in each request kind
+ * error writing request
+ * error last
+ * some errors and some successes
+ * fatal error in the middle
+ * error, fatal error
+ */
 
 // BOOST_AUTO_TEST_CASE(read_response_error_network)
 // {
