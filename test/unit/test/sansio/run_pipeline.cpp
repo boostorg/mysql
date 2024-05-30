@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -17,6 +18,7 @@
 
 #include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
 
+#include <boost/asio/error.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -40,6 +42,7 @@
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
+namespace asio = boost::asio;
 using boost::span;
 using detail::pipeline_request_stage;
 using detail::pipeline_stage_kind;
@@ -161,6 +164,14 @@ struct fixture : algo_fixture_base
             BOOST_TEST(item.err.code == error_code());
             BOOST_TEST(item.err.diag == diagnostics());
         }
+    }
+
+    // Verify that a certain step failed
+    void check_stage_error(std::size_t i, error_code expected_ec, const diagnostics& expected_diag)
+    {
+        const auto& actual = resp.items.at(i).err;
+        BOOST_TEST(actual.code == expected_ec);
+        BOOST_TEST(actual.diag == expected_diag);
     }
 };
 
@@ -376,9 +387,29 @@ BOOST_AUTO_TEST_CASE(no_requests)
     fix.check_setup({});
 }
 
+BOOST_AUTO_TEST_CASE(error_writing_request)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::reset_connection,  32u, {}                      },
+        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
+        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    };
+    fixture fix(stages);
+
+    // Run the test. No response reading is attempted
+    algo_test().expect_write(mock_request_as_vector(), asio::error::eof).check(fix, asio::error::eof);
+
+    // Setup was called correctly
+    fix.check_setup(stages);
+
+    // All requests were marked as failed
+    fix.check_stage_error(0, client_errc::cancelled, {});
+    fix.check_stage_error(1, client_errc::cancelled, {});
+    fix.check_stage_error(2, client_errc::cancelled, {});
+}
+
 /**
- * error in each request kind
- * error writing request
  * error last
  * some errors and some successes
  * fatal error in the middle
