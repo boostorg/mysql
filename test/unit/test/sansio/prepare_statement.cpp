@@ -18,6 +18,7 @@
 
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
+#include "test_unit/create_err.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 
@@ -77,8 +78,6 @@ struct read_response_fixture : algo_fixture_base
 
     statement result() const { return algo.result(st); }
 };
-
-// Error deserializing response
 
 BOOST_AUTO_TEST_CASE(read_response_success)
 {
@@ -166,30 +165,29 @@ BOOST_AUTO_TEST_CASE(read_response_success_0id)
     BOOST_TEST(stmt.num_params() == 1u);
 }
 
-// BOOST_AUTO_TEST_CASE(read_response_error_network)
-// {
-//     algo_test()
-//         .expect_read(create_ok_frame(11, ok_builder().build()))
-//         .check_network_errors<read_response_fixture>();
-// }
+BOOST_AUTO_TEST_CASE(read_response_error_network)
+{
+    algo_test()
+        .expect_read(response_builder().id(1).num_columns(1).num_params(2).build())
+        .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
+        .expect_read(create_coldef_frame(21, meta_builder().name("other").build_coldef()))
+        .expect_read(create_coldef_frame(22, meta_builder().name("final").build_coldef()))
+        .check_network_errors<read_response_fixture>();
+}
 
-// BOOST_AUTO_TEST_CASE(read_response_error_packet)
-// {
-//     // Setup
-//     read_response_fixture fix;
-//     fix.st.current_charset = utf8mb4_charset;
+BOOST_AUTO_TEST_CASE(read_response_error_packet)
+{
+    // Setup
+    read_response_fixture fix;
 
-//     // Run the algo
-//     algo_test()
-//         .expect_read(err_builder()
-//                          .seqnum(11)
-//                          .code(common_server_errc::er_bad_db_error)
-//                          .message("my_message")
-//                          .build_frame())
-//         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
-
-//     // The charset was not updated
-//     BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
-// }
+    // Run the algo
+    algo_test()
+        .expect_read(err_builder()
+                         .seqnum(19)
+                         .code(common_server_errc::er_bad_db_error)
+                         .message("my_message")
+                         .build_frame())
+        .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
