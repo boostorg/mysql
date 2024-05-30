@@ -11,23 +11,34 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/core/ignore_unused.hpp>
+#include <boost/core/span.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <cstdint>
 #include <stdexcept>
+#include <vector>
 
+#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_ok.hpp"
+#include "test_unit/create_query_frame.hpp"
 #include "test_unit/create_statement.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using detail::pipeline_stage_kind;
+using detail::resultset_encoding;
 
 BOOST_AUTO_TEST_SUITE(test_pipeline)
 
@@ -163,6 +174,86 @@ BOOST_AUTO_TEST_CASE(change_type)
     detail::access::get_impl(r).emplace_results();
     BOOST_TEST(r.has_results());
     BOOST_TEST(!r.has_statement());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(stage_creation)
+
+template <class PipelineStageType>
+static detail::pipeline_request_stage check_stage_creation(
+    PipelineStageType stage,
+    const std::vector<std::uint8_t>& expected_buffer,
+    pipeline_stage_kind expected_kind
+)
+{
+    // Serialize the request
+    std::vector<std::uint8_t> buff{0xde, 0xad};
+    auto erased_stage = detail::pipeline_stage_access::create(stage, buff);
+
+    // Check
+    std::vector<std::uint8_t> expected{0xde, 0xad};
+    expected.insert(expected.end(), expected_buffer.begin(), expected_buffer.end());
+    BOOST_TEST(erased_stage.kind == expected_kind);
+    BOOST_TEST(erased_stage.seqnum == 1u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    return erased_stage;
+}
+
+static void check_execute_stage_creation(
+    execute_stage stage,
+    const std::vector<std::uint8_t>& expected_buffer,
+    resultset_encoding expected_encoding
+)
+{
+    auto erased_stage = check_stage_creation(stage, expected_buffer, pipeline_stage_kind::execute);
+    BOOST_TEST(erased_stage.stage_specific.enc == expected_encoding);
+}
+
+BOOST_AUTO_TEST_CASE(execute_text_query)
+{
+    check_execute_stage_creation(
+        execute_stage("SELECT 1"),
+        create_query_frame(0, "SELECT 1"),
+        resultset_encoding::text
+    );
+}
+
+BOOST_AUTO_TEST_CASE(execute_statement_individual_parameters)
+{
+    check_execute_stage_creation(
+        execute_stage(statement_builder().id(2).num_params(3).build(), {42, "abc", nullptr}),
+        {0x1e, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+         0x00, 0x00, 0x04, 0x01, 0x08, 0x00, 0xfe, 0x00, 0x06, 0x00, 0x2a, 0x00,
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x61, 0x62, 0x63},
+        resultset_encoding::binary
+    );
+}
+
+BOOST_AUTO_TEST_CASE(execute_statement_individual_fields_no_params)
+{
+    // We run the required writable field transformations
+    check_execute_stage_creation(
+        execute_stage(statement_builder().id(2).num_params(0).build(), {}),
+        {0x0a, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00},
+        resultset_encoding::binary
+    );
+}
+
+BOOST_AUTO_TEST_CASE(execute_statement_writable_fields)
+{
+    // We run the required writable field transformations
+    check_execute_stage_creation(
+        execute_stage(
+            statement_builder().id(2).num_params(3).build(),
+            {boost::optional<int>(42), "abc", boost::optional<int>()}
+        ),
+        {0x1e, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+         0x00, 0x00, 0x04, 0x01, 0x08, 0x00, 0xfe, 0x00, 0x06, 0x00, 0x2a, 0x00,
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x61, 0x62, 0x63},
+        resultset_encoding::binary
+    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()
