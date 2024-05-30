@@ -123,7 +123,6 @@ std::ostream& operator<<(std::ostream& os, pipeline_stage_kind v) { return os <<
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
 /**
- * set character set
  * ping
  * combination
  * no requests
@@ -292,6 +291,28 @@ BOOST_AUTO_TEST_CASE(reset_connection)
 
     // The current character set was reset
     BOOST_TEST(fix.st.charset_ptr() == nullptr);
+}
+
+BOOST_AUTO_TEST_CASE(set_character_set)
+{
+    // Setup
+    const pipeline_request_stage stages[] = {
+        {pipeline_stage_kind::set_character_set, 19u, utf8mb4_charset},
+    };
+    fixture fix(stages);
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(create_ok_frame(19, ok_builder().build()))
+        .check(fix);
+
+    // Setup was called correctly and all stages succeeded
+    fix.check_setup(stages);
+    fix.check_all_stages_succeeded();
+
+    // The current character set was set
+    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
 }
 
 // BOOST_AUTO_TEST_CASE(read_response_error_network)
