@@ -69,7 +69,15 @@ struct pipeline_response_traits<std::vector<any_stage_response>>
 
         // Setup them
         for (std::size_t i = 0u; i < request.size(); ++i)
-            access::get_impl(self[i]).setup(request[i].kind);
+        {
+            // Execution stages need to be initialized to results objects.
+            // Otherwise, clear any previous content
+            auto& impl = access::get_impl(self[i]);
+            if (request[i].kind == pipeline_stage_kind::execute)
+                impl.emplace_results();
+            else
+                impl.emplace_error();
+        }
     }
 
     static execution_processor& get_processor(response_type& self, std::size_t idx)

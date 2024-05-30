@@ -415,15 +415,8 @@ class any_stage_response
     {
         variant2::variant<errcode_with_diagnostics, statement, results> value;
 
-        void setup(detail::pipeline_stage_kind kind)
-        {
-            // Execution stages need to be initialized to results objects.
-            // Otherwise, clear any previous content
-            if (kind == detail::pipeline_stage_kind::execute)
-                value.emplace<results>();
-            else
-                value.emplace<errcode_with_diagnostics>();
-        }
+        void emplace_results() { value.emplace<results>(); }
+        void emplace_error() { value.emplace<errcode_with_diagnostics>(); }
         detail::execution_processor& get_processor()
         {
             return detail::access::get_impl(variant2::unsafe_get<2>(value));

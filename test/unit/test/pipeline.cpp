@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(underlying_results)
 {
     // Setup
     any_stage_response r;
-    detail::access::get_impl(r).setup(detail::pipeline_stage_kind::execute);
+    detail::access::get_impl(r).emplace_results();
     add_ok(detail::access::get_impl(r).get_processor(), ok_builder().info("some_info").build());
 
     // Check
@@ -122,6 +122,7 @@ BOOST_AUTO_TEST_CASE(as_results_error)
     BOOST_CHECK_THROW(r.as_results(), std::invalid_argument);
     BOOST_CHECK_THROW(std::move(r).as_results(), std::invalid_argument);
 }
+
 BOOST_AUTO_TEST_CASE(as_statement_error)
 {
     // Empty error
@@ -133,15 +134,36 @@ BOOST_AUTO_TEST_CASE(as_statement_error)
     BOOST_CHECK_THROW(r.as_statement(), std::invalid_argument);
 
     // results
-    detail::access::get_impl(r).setup(detail::pipeline_stage_kind::execute);
+    detail::access::get_impl(r).emplace_results();
     BOOST_CHECK_THROW(r.as_statement(), std::invalid_argument);
 }
 
-/**
- * changing between them
- * as_results, as_statement exceptions
- * setup
- */
+BOOST_AUTO_TEST_CASE(change_type)
+{
+    any_stage_response r;
+
+    // Set results
+    detail::access::get_impl(r).emplace_results();
+    BOOST_TEST(r.has_results());
+
+    // Set an error
+    detail::access::get_impl(r).set_error(client_errc::extra_bytes, create_client_diag("abc"));
+    BOOST_TEST(!r.has_results());
+    check_error(r.error(), client_errc::extra_bytes, create_client_diag("abc"));
+
+    // Reset the error
+    detail::access::get_impl(r).emplace_error();
+    check_error(r.error(), error_code());
+
+    // Set a statement
+    detail::access::get_impl(r).set_result(statement_builder().build());
+    BOOST_TEST(r.has_statement());
+
+    // Set results again
+    detail::access::get_impl(r).emplace_results();
+    BOOST_TEST(r.has_results());
+    BOOST_TEST(!r.has_statement());
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
