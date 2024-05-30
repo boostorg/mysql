@@ -29,12 +29,18 @@ BOOST_AUTO_TEST_SUITE(test_prepare_statement)
 
 class response_builder
 {
+    std::uint8_t seqnum_{};
     std::uint32_t statement_id_{1};
     std::uint16_t num_columns_{3};
     std::uint16_t num_params_{2};
 
 public:
     response_builder() = default;
+    response_builder& seqnum(std::uint8_t v)
+    {
+        seqnum_ = v;
+        return *this;
+    }
     response_builder& id(std::uint32_t v)
     {
         statement_id_ = v;
@@ -62,7 +68,7 @@ public:
             detail::int1{0u},             // reserved
             detail::int2{90u}             // warning_count
         );
-        return create_frame(19, res);
+        return create_frame(seqnum_, res);
     }
 };
 
@@ -86,7 +92,7 @@ BOOST_AUTO_TEST_CASE(read_response_success)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().id(1).num_columns(1).num_params(2).build())
+        .expect_read(response_builder().seqnum(19).id(1).num_columns(1).num_params(2).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(21, meta_builder().name("other").build_coldef()))
         .expect_read(create_coldef_frame(22, meta_builder().name("final").build_coldef()))
@@ -105,7 +111,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0cols)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().id(5).num_columns(0).num_params(1).build())
+        .expect_read(response_builder().seqnum(19).id(5).num_columns(0).num_params(1).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .check(fix);
 
@@ -122,7 +128,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0params)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().id(214).num_columns(2).num_params(0).build())
+        .expect_read(response_builder().seqnum(19).id(214).num_columns(2).num_params(0).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(21, meta_builder().name("defff").build_coldef()))
         .check(fix);
@@ -139,7 +145,9 @@ BOOST_AUTO_TEST_CASE(read_response_success_0cols_0params)
     read_response_fixture fix;
 
     // Run the algo
-    algo_test().expect_read(response_builder().id(98).num_columns(0).num_params(0).build()).check(fix);
+    algo_test()
+        .expect_read(response_builder().seqnum(19).id(98).num_columns(0).num_params(0).build())
+        .check(fix);
 
     // The statement was created successfully
     auto stmt = fix.result();
@@ -155,7 +163,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0id)
 
     // Run the algo
     algo_test()
-        .expect_read(response_builder().id(0).num_columns(0).num_params(1).build())
+        .expect_read(response_builder().seqnum(19).id(0).num_columns(0).num_params(1).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .check(fix);
 
@@ -168,7 +176,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_0id)
 BOOST_AUTO_TEST_CASE(read_response_error_network)
 {
     algo_test()
-        .expect_read(response_builder().id(1).num_columns(1).num_params(2).build())
+        .expect_read(response_builder().seqnum(19).id(1).num_columns(1).num_params(2).build())
         .expect_read(create_coldef_frame(20, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(21, meta_builder().name("other").build_coldef()))
         .expect_read(create_coldef_frame(22, meta_builder().name("final").build_coldef()))
@@ -184,6 +192,69 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
     algo_test()
         .expect_read(err_builder()
                          .seqnum(19)
+                         .code(common_server_errc::er_bad_db_error)
+                         .message("my_message")
+                         .build_frame())
+        .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+}
+
+//
+// prepare_statement_algo
+//
+struct prepare_fixture : algo_fixture_base
+{
+    detail::prepare_statement_algo algo{
+        {&diag, "SELECT 1"}
+    };
+
+    statement result() const { return algo.result(st); }
+};
+
+static std::vector<std::uint8_t> expected_prepare_msg()
+{
+    return create_frame(0, {0x16, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31});
+}
+
+BOOST_AUTO_TEST_CASE(prepare_success)
+{
+    // Setup
+    prepare_fixture fix;
+
+    // Run the algo
+    algo_test()
+        .expect_write(expected_prepare_msg())
+        .expect_read(response_builder().seqnum(1).id(29).num_columns(0).num_params(2).build())
+        .expect_read(create_coldef_frame(2, meta_builder().name("abc").build_coldef()))
+        .expect_read(create_coldef_frame(3, meta_builder().name("other").build_coldef()))
+        .check(fix);
+
+    // The statement was created successfully
+    auto stmt = fix.result();
+    BOOST_TEST(stmt.id() == 29u);
+    BOOST_TEST(stmt.num_params() == 2u);
+}
+
+BOOST_AUTO_TEST_CASE(prepare_network_error)
+{
+    // This covers errors in the request and the response
+    algo_test()
+        .expect_write(expected_prepare_msg())
+        .expect_read(response_builder().seqnum(1).id(29).num_columns(0).num_params(1).build())
+        .expect_read(create_coldef_frame(2, meta_builder().name("abc").build_coldef()))
+        .check_network_errors<prepare_fixture>();
+}
+
+// Spotcheck: an error while reading the response is propagated correctly
+BOOST_AUTO_TEST_CASE(prepare_error_packet)
+{
+    // Setup
+    prepare_fixture fix;
+
+    // Run the algo
+    algo_test()
+        .expect_write(expected_prepare_msg())
+        .expect_read(err_builder()
+                         .seqnum(1)
                          .code(common_server_errc::er_bad_db_error)
                          .message("my_message")
                          .build_frame())
