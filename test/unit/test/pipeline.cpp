@@ -641,7 +641,16 @@ BOOST_AUTO_TEST_CASE(assignment)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
 }
 
-// error adding
+BOOST_AUTO_TEST_CASE(ctor_error)
+{
+    // Spotcheck: ctor propagates errors raised by serialization functions
+    BOOST_CHECK_EXCEPTION(
+        make_pipeline_request(execute_stage(statement_builder().num_params(2).build(), {42})),
+        std::invalid_argument,
+        stmt_exc_validator
+    );
+}
+
 // deduction guideline
 
 BOOST_AUTO_TEST_SUITE_END()
