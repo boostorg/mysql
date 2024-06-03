@@ -198,73 +198,57 @@ BOOST_AUTO_TEST_SUITE(stage_creation)
 
 // Helper to run any successful stage creation test
 template <class PipelineStageType>
-static detail::pipeline_request_stage check_stage_creation(
+static void check_stage_creation(
     PipelineStageType stage,
     const std::vector<std::uint8_t>& expected_buffer,
-    pipeline_stage_kind expected_kind
+    pipeline_request_stage expected_stage
 )
 {
     // Serialize the request
     std::vector<std::uint8_t> buff{0xde, 0xad};
-    auto erased_stage = detail::pipeline_stage_access::create(stage, buff);
+    auto actual_stage = detail::pipeline_stage_access::create(stage, buff);
 
     // Check
     std::vector<std::uint8_t> expected{0xde, 0xad};
     expected.insert(expected.end(), expected_buffer.begin(), expected_buffer.end());
-    BOOST_TEST(erased_stage.kind == expected_kind);
-    BOOST_TEST(erased_stage.seqnum == 1u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
-
-    return erased_stage;
-}
-
-//
-// execute
-//
-static void check_execute_stage_creation(
-    execute_stage stage,
-    const std::vector<std::uint8_t>& expected_buffer,
-    resultset_encoding expected_encoding
-)
-{
-    auto erased_stage = check_stage_creation(stage, expected_buffer, pipeline_stage_kind::execute);
-    BOOST_TEST(erased_stage.stage_specific.enc == expected_encoding);
+    BOOST_TEST(actual_stage == expected_stage);
 }
 
 BOOST_AUTO_TEST_CASE(execute_text_query)
 {
-    check_execute_stage_creation(
+    check_stage_creation(
         execute_stage("SELECT 1"),
         create_query_frame(0, "SELECT 1"),
-        resultset_encoding::text
+        {pipeline_stage_kind::execute, 1u, resultset_encoding::text}
     );
 }
 
 BOOST_AUTO_TEST_CASE(execute_statement_individual_parameters)
 {
-    check_execute_stage_creation(
+    check_stage_creation(
         execute_stage(statement_builder().id(2).num_params(3).build(), {42, "abc", nullptr}),
         {0x1e, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
          0x00, 0x00, 0x04, 0x01, 0x08, 0x00, 0xfe, 0x00, 0x06, 0x00, 0x2a, 0x00,
          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x61, 0x62, 0x63},
-        resultset_encoding::binary
+        {pipeline_stage_kind::execute, 1u, resultset_encoding::binary}
     );
 }
 
 BOOST_AUTO_TEST_CASE(execute_statement_individual_fields_no_params)
 {
     // We run the required writable field transformations
-    check_execute_stage_creation(
+    check_stage_creation(
         execute_stage(statement_builder().id(2).num_params(0).build(), {}),
         {0x0a, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00},
-        resultset_encoding::binary
+        {pipeline_stage_kind::execute, 1u, resultset_encoding::binary}
     );
 }
 
 BOOST_AUTO_TEST_CASE(execute_statement_individual_fields_writable_fields)
 {
     // We run the required writable field transformations
-    check_execute_stage_creation(
+    check_stage_creation(
         execute_stage(
             statement_builder().id(2).num_params(3).build(),
             {boost::optional<int>(42), "abc", boost::optional<int>()}
@@ -272,19 +256,19 @@ BOOST_AUTO_TEST_CASE(execute_statement_individual_fields_writable_fields)
         {0x1e, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
          0x00, 0x00, 0x04, 0x01, 0x08, 0x00, 0xfe, 0x00, 0x06, 0x00, 0x2a, 0x00,
          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x61, 0x62, 0x63},
-        resultset_encoding::binary
+        {pipeline_stage_kind::execute, 1u, resultset_encoding::binary}
     );
 }
 
 BOOST_AUTO_TEST_CASE(execute_statement_range)
 {
     auto fv_arr = make_fv_arr(42, "abc", nullptr);
-    check_execute_stage_creation(
+    check_stage_creation(
         execute_stage(statement_builder().id(2).num_params(3).build(), fv_arr),
         {0x1e, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
          0x00, 0x00, 0x04, 0x01, 0x08, 0x00, 0xfe, 0x00, 0x06, 0x00, 0x2a, 0x00,
          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x61, 0x62, 0x63},
-        resultset_encoding::binary
+        {pipeline_stage_kind::execute, 1u, resultset_encoding::binary}
     );
 }
 
@@ -332,7 +316,7 @@ BOOST_AUTO_TEST_CASE(prepare_statement)
     check_stage_creation(
         prepare_statement_stage("SELECT 1"),
         create_prepare_statement_frame(0, "SELECT 1"),
-        pipeline_stage_kind::prepare_statement
+        {pipeline_stage_kind::prepare_statement, 1u, {}}
     );
 }
 
@@ -342,7 +326,7 @@ BOOST_AUTO_TEST_CASE(prepare_statement_empty)
     check_stage_creation(
         prepare_statement_stage(""),
         create_prepare_statement_frame(0, ""),
-        pipeline_stage_kind::prepare_statement
+        {pipeline_stage_kind::prepare_statement, 1u, {}}
     );
 }
 
@@ -354,7 +338,7 @@ BOOST_AUTO_TEST_CASE(close_statement)
     check_stage_creation(
         close_statement_stage(statement_builder().id(3).num_params(1).build()),
         create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}),
-        pipeline_stage_kind::close_statement
+        {pipeline_stage_kind::close_statement, 1u, {}}
     );
 }
 
@@ -366,7 +350,7 @@ BOOST_AUTO_TEST_CASE(reset_connection)
     check_stage_creation(
         reset_connection_stage(),
         create_frame(0, {0x1f}),
-        pipeline_stage_kind::reset_connection
+        {pipeline_stage_kind::reset_connection, 1u, {}}
     );
 }
 
@@ -375,23 +359,22 @@ BOOST_AUTO_TEST_CASE(reset_connection)
 //
 BOOST_AUTO_TEST_CASE(set_character_set)
 {
-    auto erased_stage = check_stage_creation(
+    check_stage_creation(
         set_character_set_stage(utf8mb4_charset),
         create_query_frame(0, "SET NAMES 'utf8mb4'"),
-        pipeline_stage_kind::set_character_set
+        {pipeline_stage_kind::set_character_set, 1u, utf8mb4_charset}
     );
-    BOOST_TEST(erased_stage.stage_specific.charset.name == "utf8mb4");
 }
 
 BOOST_AUTO_TEST_CASE(set_character_set_escapes)
 {
     // We don't create SQL injection vulnerabilities while composing SET NAMES
-    auto erased_stage = check_stage_creation(
-        set_character_set_stage(character_set{"inj'ection", utf8mb4_charset.next_char}),
+    character_set charset{"inj'ection", utf8mb4_charset.next_char};
+    check_stage_creation(
+        set_character_set_stage(charset),
         create_query_frame(0, "SET NAMES 'inj\\'ection'"),
-        pipeline_stage_kind::set_character_set
+        {pipeline_stage_kind::set_character_set, 1u, charset}
     );
-    BOOST_TEST(erased_stage.stage_specific.charset.name == "inj'ection");
 }
 
 BOOST_AUTO_TEST_CASE(set_character_set_error)
