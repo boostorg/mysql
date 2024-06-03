@@ -489,8 +489,42 @@ BOOST_AUTO_TEST_CASE(all_stage_kinds)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
 }
 
-// clearing
-// adding after clearing
+BOOST_AUTO_TEST_CASE(clear_previous_contents)
+{
+    // Create a pipeline request with some steps
+    pipeline_request req;
+    req.add(reset_connection_stage())
+        .add(set_character_set_stage(utf8mb4_charset))
+        .add(execute_stage("SELECT 1"));
+
+    // Clear the pipeline
+    req.clear();
+    auto view = detail::access::get_impl(req).to_view();
+    check_stages(view.stages, {});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, blob{});
+
+    // Add some stages again
+    req.add(execute_stage("abc")).add(close_statement_stage(statement_builder().id(7).build()));
+
+    // Check
+    view = detail::access::get_impl(req).to_view();
+    check_stages(view.stages, {pipeline_stage_kind::execute, pipeline_stage_kind::close_statement});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
+        view.buffer,
+        concat_copy(create_query_frame(0, "abc"), create_frame(0, {0x19, 0x07, 0x00, 0x00, 0x00}))
+    );
+}
+
+BOOST_AUTO_TEST_CASE(clear_empty)
+{
+    // Clearing an empty pipeline is a no-op
+    pipeline_request req;
+    req.clear();
+    auto view = detail::access::get_impl(req).to_view();
+    check_stages(view.stages, {});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, blob{});
+}
+
 // errors when adding
 
 BOOST_AUTO_TEST_SUITE_END()
