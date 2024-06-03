@@ -17,6 +17,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
+#include <boost/mysql/detail/pipeline_concepts.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/core/ignore_unused.hpp>
@@ -675,5 +676,36 @@ BOOST_AUTO_TEST_CASE(deduction_guide)
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// pipeline concepts
+using detail::is_pipeline_stage_type;
+static_assert(is_pipeline_stage_type<execute_stage>::value, "");
+static_assert(is_pipeline_stage_type<prepare_statement_stage>::value, "");
+static_assert(is_pipeline_stage_type<close_statement_stage>::value, "");
+static_assert(is_pipeline_stage_type<reset_connection_stage>::value, "");
+static_assert(is_pipeline_stage_type<set_character_set_stage>::value, "");
+static_assert(!is_pipeline_stage_type<execute_stage&>::value, "");
+static_assert(!is_pipeline_stage_type<const execute_stage&>::value, "");
+static_assert(!is_pipeline_stage_type<const execute_stage>::value, "");
+static_assert(!is_pipeline_stage_type<int>::value, "");
+static_assert(!is_pipeline_stage_type<pipeline_request>::value, "");
+
+using detail::is_pipeline_request_type;
+static_assert(is_pipeline_request_type<pipeline_request>::value, "");
+static_assert(is_pipeline_request_type<static_pipeline_request<execute_stage>>::value, "");
+static_assert(is_pipeline_request_type<static_pipeline_request<close_statement_stage>>::value, "");
+static_assert(
+    is_pipeline_request_type<static_pipeline_request<
+        execute_stage,
+        reset_connection_stage,
+        prepare_statement_stage,
+        close_statement_stage,
+        set_character_set_stage>>::value,
+    ""
+);
+static_assert(!is_pipeline_request_type<const pipeline_request>::value, "");
+static_assert(!is_pipeline_request_type<pipeline_request&>::value, "");
+static_assert(!is_pipeline_request_type<const pipeline_request&>::value, "");
+static_assert(!is_pipeline_request_type<int>::value, "");
 
 BOOST_AUTO_TEST_SUITE_END()
