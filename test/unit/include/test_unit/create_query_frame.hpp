@@ -36,7 +36,6 @@ inline std::vector<std::uint8_t> create_query_frame(std::uint8_t seqnum, string_
     return create_frame(seqnum, create_query_body_impl(0x03, sql));
 }
 
-// TODO: could we use this in other places?
 inline std::vector<std::uint8_t> create_prepare_statement_frame(std::uint8_t seqnum, string_view sql)
 {
     return create_frame(seqnum, create_query_body_impl(0x16, sql));

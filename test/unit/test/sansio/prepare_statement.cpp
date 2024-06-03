@@ -22,6 +22,7 @@
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_prepare_statement_response.hpp"
+#include "test_unit/create_query_frame.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -166,11 +167,6 @@ struct prepare_fixture : algo_fixture_base
     statement result() const { return algo.result(st); }
 };
 
-static std::vector<std::uint8_t> expected_prepare_msg()
-{
-    return create_frame(0, {0x16, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31});
-}
-
 BOOST_AUTO_TEST_CASE(prepare_success)
 {
     // Setup
@@ -178,7 +174,7 @@ BOOST_AUTO_TEST_CASE(prepare_success)
 
     // Run the algo
     algo_test()
-        .expect_write(expected_prepare_msg())
+        .expect_write(create_prepare_statement_frame(0, "SELECT 1"))
         .expect_read(prepare_stmt_response_builder().seqnum(1).id(29).num_columns(0).num_params(2).build())
         .expect_read(create_coldef_frame(2, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(3, meta_builder().name("other").build_coldef()))
@@ -194,7 +190,7 @@ BOOST_AUTO_TEST_CASE(prepare_network_error)
 {
     // This covers errors in the request and the response
     algo_test()
-        .expect_write(expected_prepare_msg())
+        .expect_write(create_prepare_statement_frame(0, "SELECT 1"))
         .expect_read(prepare_stmt_response_builder().seqnum(1).id(29).num_columns(0).num_params(1).build())
         .expect_read(create_coldef_frame(2, meta_builder().name("abc").build_coldef()))
         .check_network_errors<prepare_fixture>();
@@ -208,7 +204,7 @@ BOOST_AUTO_TEST_CASE(prepare_error_packet)
 
     // Run the algo
     algo_test()
-        .expect_write(expected_prepare_msg())
+        .expect_write(create_prepare_statement_frame(0, "SELECT 1"))
         .expect_read(err_builder()
                          .seqnum(1)
                          .code(common_server_errc::er_bad_db_error)
