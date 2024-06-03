@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -361,6 +362,48 @@ BOOST_AUTO_TEST_CASE(reset_connection)
         reset_connection_stage(),
         create_frame(0, {0x1f}),
         pipeline_stage_kind::reset_connection
+    );
+}
+
+//
+// set character set
+//
+BOOST_AUTO_TEST_CASE(set_character_set)
+{
+    auto erased_stage = check_stage_creation(
+        set_character_set_stage(utf8mb4_charset),
+        create_query_frame(0, "SET NAMES 'utf8mb4'"),
+        pipeline_stage_kind::set_character_set
+    );
+    BOOST_TEST(erased_stage.stage_specific.charset.name == "utf8mb4");
+}
+
+BOOST_AUTO_TEST_CASE(set_character_set_escapes)
+{
+    // We don't create SQL injection vulnerabilities while composing SET NAMES
+    auto erased_stage = check_stage_creation(
+        set_character_set_stage(character_set{"inj'ection", utf8mb4_charset.next_char}),
+        create_query_frame(0, "SET NAMES 'inj\\'ection'"),
+        pipeline_stage_kind::set_character_set
+    );
+    BOOST_TEST(erased_stage.stage_specific.charset.name == "inj'ection");
+}
+
+BOOST_AUTO_TEST_CASE(set_character_set_error)
+{
+    // If a character set name that can't be securely escaped gets passed, we throw
+    std::vector<std::uint8_t> buff;
+
+    BOOST_CHECK_EXCEPTION(
+        detail::pipeline_stage_access::create(
+            set_character_set_stage(character_set{"bad\xff", utf8mb4_charset.next_char}),
+            buff
+        ),
+        std::invalid_argument,
+        [](const std::invalid_argument& exc) {
+            BOOST_TEST(string_view(exc.what()) == "Invalid character set name");
+            return true;
+        }
     );
 }
 
