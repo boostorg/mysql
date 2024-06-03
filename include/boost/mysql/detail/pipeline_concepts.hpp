@@ -44,13 +44,13 @@ concept pipeline_request_type = is_pipeline_request_type<T>::value;
 
 #else
 
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
-
 #define BOOST_MYSQL_PIPELINE_STAGE_TYPE class
 #define BOOST_MYSQL_PIPELINE_REQUEST_TYPE class
 
 #endif
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
 
 #endif
