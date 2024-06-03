@@ -10,7 +10,7 @@ add_executable(
 
     # Helpers
     src/test_stream.cpp
-    src/operators.cpp
+    src/printing.cpp
 
     # Actual tests
     test/auth/auth.cpp

@@ -64,7 +64,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
 {
     struct step_t
     {
-        detail::next_action::type_t type;
+        detail::next_action_type type;
         std::vector<std::uint8_t> bytes;
         error_code result;
     };
@@ -95,7 +95,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         BOOST_MYSQL_ASSERT_BUFFER_EQUALS(actual_msg, op.bytes);
     }
 
-    algo_test& add_step(detail::next_action::type_t act_type, std::vector<std::uint8_t> bytes, error_code ec)
+    algo_test& add_step(detail::next_action_type act_type, std::vector<std::uint8_t> bytes, error_code ec)
     {
         steps_.push_back(step_t{act_type, std::move(bytes), ec});
         return *this;
@@ -119,9 +119,9 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
             {
                 const auto& step = steps_[i];
                 BOOST_TEST_REQUIRE(act.type() == step.type);
-                if (step.type == detail::next_action::type_t::read)
+                if (step.type == detail::next_action_type::read)
                     handle_read(st, step);
-                else if (step.type == detail::next_action::type_t::write)
+                else if (step.type == detail::next_action_type::write)
                     handle_write(act.write_args().buffer, step);
                 // Other actions don't need any handling
 
@@ -140,7 +140,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         auto act = run_algo_until_step(st, algo, steps_.size());
 
         // Check that we've finished
-        BOOST_TEST_REQUIRE(act.type() == detail::next_action::type_t::none);
+        BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
         BOOST_TEST(act.error() == expected_ec);
     }
 
@@ -160,7 +160,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         act = algo.resume(st, asio::error::bad_descriptor);
 
         // The operation finished and returned the network error
-        BOOST_TEST_REQUIRE(act.type() == detail::next_action::type_t::none);
+        BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
         BOOST_TEST(act.error() == error_code(asio::error::bad_descriptor));
     }
 
@@ -170,37 +170,34 @@ public:
     BOOST_ATTRIBUTE_NODISCARD
     algo_test& expect_write(std::vector<std::uint8_t> bytes, error_code result = {})
     {
-        return add_step(detail::next_action::type_t::write, std::move(bytes), result);
+        return add_step(detail::next_action_type::write, std::move(bytes), result);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
     algo_test& expect_read(std::vector<std::uint8_t> result_bytes)
     {
-        return add_step(detail::next_action::type_t::read, std::move(result_bytes), error_code());
+        return add_step(detail::next_action_type::read, std::move(result_bytes), error_code());
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    algo_test& expect_read(error_code result)
-    {
-        return add_step(detail::next_action::type_t::read, {}, result);
-    }
+    algo_test& expect_read(error_code result) { return add_step(detail::next_action_type::read, {}, result); }
 
     BOOST_ATTRIBUTE_NODISCARD
     algo_test& expect_ssl_handshake(error_code result = {})
     {
-        return add_step(detail::next_action::type_t::ssl_handshake, {}, result);
+        return add_step(detail::next_action_type::ssl_handshake, {}, result);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
     algo_test& expect_ssl_shutdown(error_code result = {})
     {
-        return add_step(detail::next_action::type_t::ssl_shutdown, {}, result);
+        return add_step(detail::next_action_type::ssl_shutdown, {}, result);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
     algo_test& expect_close(error_code result = {})
     {
-        return add_step(detail::next_action::type_t::close, {}, result);
+        return add_step(detail::next_action_type::close, {}, result);
     }
 
     template <class AlgoFixture>

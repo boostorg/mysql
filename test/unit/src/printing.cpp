@@ -1,0 +1,170 @@
+//
+// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#include <boost/mysql/any_address.hpp>
+#include <boost/mysql/character_set.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
+
+#include <boost/mysql/detail/next_action.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
+#include <boost/mysql/detail/results_iterator.hpp>
+#include <boost/mysql/detail/resultset_encoding.hpp>
+
+#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
+#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+
+#include <ostream>
+
+#include "test_common/printing.hpp"
+#include "test_unit/printing.hpp"
+
+using namespace boost::mysql;
+
+// character set
+bool boost::mysql::operator==(const character_set& lhs, const character_set& rhs)
+{
+    return lhs.name == rhs.name;
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, const character_set& v)
+{
+    return os << "character_set(\"" << v.name << "\")";
+}
+
+// address_type
+static const char* to_string(address_type value)
+{
+    switch (value)
+    {
+    case address_type::host_and_port: return "address_type::host_and_port";
+    case address_type::unix_path: return "address_type::unix_path";
+    default: return "<unknown address_type>";
+    }
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, address_type value)
+{
+    return os << to_string(value);
+}
+
+// errcode_with_diagnostics
+bool boost::mysql::operator==(const errcode_with_diagnostics& lhs, const errcode_with_diagnostics& rhs)
+{
+    return lhs.code == rhs.code && lhs.diag == rhs.diag;
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, const errcode_with_diagnostics& v)
+{
+    return os << "errcode_with_diagnostics{ .code = " << v.code << ", .diag = " << v.diag << " }";
+}
+
+// capabilities
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, const capabilities& v)
+{
+    return os << "capabilities{" << v.get() << "}";
+}
+
+// db_flavor
+static const char* to_string(detail::db_flavor v)
+{
+    switch (v)
+    {
+    case detail::db_flavor::mysql: return "db_flavor::mysql";
+    case detail::db_flavor::mariadb: return "db_flavor::mariadb";
+    default: return "<unknown db_flavor>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, db_flavor v) { return os << to_string(v); }
+
+// resultset_encoding
+static const char* to_string(detail::resultset_encoding v)
+{
+    switch (v)
+    {
+    case detail::resultset_encoding::text: return "resultset_encoding::text";
+    case detail::resultset_encoding::binary: return "resultset_encoding::binary";
+    default: return "<unknown resultset_encoding>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, detail::resultset_encoding v)
+{
+    return os << to_string(v);
+}
+
+// results_iterator
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, const results_iterator& it)
+{
+    return os << "results_iterator{ .self = " << static_cast<const void*>(it.obj())
+              << ", .index = " << it.index() << "}";
+}
+
+// next_action_type;
+static const char* to_string(detail::next_action_type v)
+{
+    switch (v)
+    {
+    case detail::next_action_type::none: return "next_action_type::none";
+    case detail::next_action_type::read: return "next_action_type::read";
+    case detail::next_action_type::write: return "next_action_type::write";
+    case detail::next_action_type::ssl_handshake: return "next_action_type::ssl_handshake";
+    case detail::next_action_type::ssl_shutdown: return "next_action_type::ssh_shutdown";
+    default: return "<unknown next_action_type>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, next_action_type v)
+{
+    return os << to_string(v);
+}
+
+// pipeline_stage_kind
+static const char* to_string(detail::pipeline_stage_kind v)
+{
+    switch (v)
+    {
+    case detail::pipeline_stage_kind::execute: return "pipeline_stage_kind::execute";
+    case detail::pipeline_stage_kind::prepare_statement: return "pipeline_stage_kind::prepare_statement";
+    case detail::pipeline_stage_kind::close_statement: return "pipeline_stage_kind::close_statement";
+    case detail::pipeline_stage_kind::reset_connection: return "pipeline_stage_kind::reset_connection";
+    case detail::pipeline_stage_kind::set_character_set: return "pipeline_stage_kind::set_character_set";
+    case detail::pipeline_stage_kind::ping: return "pipeline_stage_kind::ping";
+    default: return "<unknown pipeline_stage_kind>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, pipeline_stage_kind v)
+{
+    return os << to_string(v);
+}
+
+// pipeline_request_stage
+bool boost::mysql::detail::operator==(const pipeline_request_stage& lhs, const pipeline_request_stage& rhs)
+{
+    if (lhs.kind != rhs.kind || lhs.seqnum != rhs.seqnum)
+        return false;
+    switch (lhs.kind)
+    {
+    case pipeline_stage_kind::execute: return lhs.stage_specific.enc == rhs.stage_specific.enc;
+    case pipeline_stage_kind::set_character_set:
+        return lhs.stage_specific.charset == rhs.stage_specific.charset;
+    default: return true;
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, pipeline_request_stage v)
+{
+    os << "pipeline_request_stage{ .kind = " << v.kind << ", .seqnum = " << +v.seqnum;
+    switch (v.kind)
+    {
+    case pipeline_stage_kind::execute: os << ", .enc = " << v.stage_specific.enc; break;
+    case pipeline_stage_kind::set_character_set: os << ", .charset = " << v.stage_specific.charset; break;
+    default: break;
+    }
+    return os << " }";
+}

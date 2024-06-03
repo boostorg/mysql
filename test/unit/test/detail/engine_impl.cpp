@@ -236,7 +236,7 @@ BOOST_AUTO_TEST_CASE(next_action_read)
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(eng.stream().calls.size() == 1u);
-            BOOST_TEST(eng.stream().calls[0].type() == next_action::type_t::read);
+            BOOST_TEST(eng.stream().calls[0].type() == next_action_type::read);
             BOOST_TEST(eng.stream().calls[0].read_args().use_ssl == tc.ssl_active);
             BOOST_TEST(eng.stream().calls[0].read_args().buffer.data() == buff.data());
             BOOST_TEST(eng.stream().calls[0].read_args().buffer.size() == buff.size());
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(next_action_write)
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(eng.stream().calls.size() == 1u);
-            BOOST_TEST(eng.stream().calls[0].type() == next_action::type_t::write);
+            BOOST_TEST(eng.stream().calls[0].type() == next_action_type::write);
             BOOST_TEST(eng.stream().calls[0].write_args().use_ssl == tc.ssl_active);
             BOOST_TEST(eng.stream().calls[0].write_args().buffer.data() == buff.data());
             BOOST_TEST(eng.stream().calls[0].write_args().buffer.size() == buff.size());
@@ -436,7 +436,7 @@ BOOST_AUTO_TEST_CASE(resume_error_successive_calls)
 
             tc.fn(eng, any_resumable_ref(algo)).validate_error_exact(tc.ec);
             BOOST_TEST(eng.stream().calls.size() == 1u);
-            BOOST_TEST(eng.stream().calls[0].type() == next_action::type_t::connect);
+            BOOST_TEST(eng.stream().calls[0].type() == next_action_type::connect);
             algo.check_calls({
                 {error_code(), 0u},
                 {error_code(), 0u}

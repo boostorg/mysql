@@ -41,7 +41,6 @@
 #include "test_unit/create_prepare_statement_response.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
-#include "test_unit/operators/pipeline.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;

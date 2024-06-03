@@ -77,7 +77,7 @@ public:
                 {
                     return act;
                 }
-                else if (act.type() == next_action::type_t::read)
+                else if (act.type() == next_action_type::read)
                 {
                     // Read until a complete message is received
                     // (may be zero times if cached)
@@ -99,7 +99,7 @@ public:
 
                     // We've got a message, continue
                 }
-                else if (act.type() == next_action::type_t::write)
+                else if (act.type() == next_action_type::write)
                 {
                     // Write until a complete message was written
                     bytes_to_write_ = act.write_args().buffer;

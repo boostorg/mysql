@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(read_cached)
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::read);
+    BOOST_TEST(act.type() == next_action_type::read);
     BOOST_TEST(act.read_args().buffer.data() == st.reader.buffer().data());
     BOOST_TEST(act.read_args().buffer.size() == st.reader.buffer().size());
     BOOST_TEST(!act.read_args().use_ssl);
@@ -120,7 +120,7 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
 
     // Initial run yields a read request and resizes the buffer aprorpiately
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::read);
+    BOOST_TEST(act.type() == next_action_type::read);
     BOOST_TEST(act.read_args().buffer.data() == st.reader.buffer().data());
     BOOST_TEST(act.read_args().buffer.size() == st.reader.buffer().size());
     BOOST_TEST(!act.read_args().use_ssl);
@@ -131,12 +131,12 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
     act = algo.resume(error_code(), 4);
 
     // The read request wasn't completely satisified, so more bytes are asked for
-    BOOST_TEST(act.type() == next_action::type_t::read);
+    BOOST_TEST(act.type() == next_action_type::read);
 
     // Read part of the body
     transfer(act.read_args().buffer, span<const std::uint8_t>(bytes.data() + 4, 10));
     act = algo.resume(error_code(), 10);
-    BOOST_TEST(act.type() == next_action::type_t::read);
+    BOOST_TEST(act.type() == next_action_type::read);
 
     // Complete
     transfer(act.read_args().buffer, span<const std::uint8_t>(bytes.data() + 14, bytes.size() - 14));
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE(read_parsing_error)
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::read);
+    BOOST_TEST(act.type() == next_action_type::read);
 
     // Acknowledge the read request. This causes a seqnum mismatch that is transmitted to the op
     auto bytes = create_frame(0, msg1);
@@ -203,7 +203,7 @@ BOOST_AUTO_TEST_CASE(read_io_error)
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::read);
+    BOOST_TEST(act.type() == next_action_type::read);
 
     // Read request fails with an error
     act = algo.resume(client_errc::wrong_num_params, 0);
@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE(read_ssl_active)
 
     // Yielding a read with ssl active sets the use_ssl flag
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::read);
+    BOOST_TEST(act.type() == next_action_type::read);
     BOOST_TEST(act.read_args().buffer.data() == st.reader.buffer().data());
     BOOST_TEST(act.read_args().buffer.size() == st.reader.buffer().size());
     BOOST_TEST(act.read_args().use_ssl);
@@ -262,13 +262,13 @@ BOOST_AUTO_TEST_CASE(write_short)
 
     // Initial run yields a write request
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::write);
+    BOOST_TEST(act.type() == next_action_type::write);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, create_frame(0, msg1));
     BOOST_TEST(!act.write_args().use_ssl);
 
     // Acknowledge part of the write. This will ask for more bytes to be written
     act = algo.resume(error_code(), 4);
-    BOOST_TEST(act.type() == next_action::type_t::write);
+    BOOST_TEST(act.type() == next_action_type::write);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, msg1);
 
     // Complete
@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE(write_io_error)
 
     // Initial run yields a write request. Fail it
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::write);
+    BOOST_TEST(act.type() == next_action_type::write);
     act = algo.resume(client_errc::wrong_num_params, 0);
 
     // Done
@@ -326,7 +326,7 @@ BOOST_AUTO_TEST_CASE(write_ssl_active)
 
     // Yielding a write request when ssl_active() returns an action with the flag set
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::write);
+    BOOST_TEST(act.type() == next_action_type::write);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, create_frame(0, msg1));
     BOOST_TEST(act.write_args().use_ssl);
 }
@@ -354,7 +354,7 @@ BOOST_AUTO_TEST_CASE(ssl_handshake)
 
     // Initial run yields a SSL handshake request. These are always returned
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::ssl_handshake);
+    BOOST_TEST(act.type() == next_action_type::ssl_handshake);
 
     // Fail the op
     act = algo.resume(client_errc::wrong_num_params, 0);
@@ -386,7 +386,7 @@ BOOST_AUTO_TEST_CASE(ssl_shutdown)
 
     // Initial run yields a SSL handshake request. These are always returned
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::ssl_shutdown);
+    BOOST_TEST(act.type() == next_action_type::ssl_shutdown);
 
     // Fail the op
     act = algo.resume(client_errc::wrong_num_params, 0);
@@ -418,7 +418,7 @@ BOOST_AUTO_TEST_CASE(connect)
 
     // Initial run yields a connect request. These are always returned
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::connect);
+    BOOST_TEST(act.type() == next_action_type::connect);
 
     // Fail the op
     act = algo.resume(client_errc::wrong_num_params, 0);
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE(close)
 
     // Initial run yields a close request. These are always returned
     auto act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.type() == next_action::type_t::close);
+    BOOST_TEST(act.type() == next_action_type::close);
 
     // Fail the op
     act = algo.resume(client_errc::wrong_num_params, 0);

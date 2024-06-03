@@ -38,7 +38,6 @@
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_query_frame.hpp"
 #include "test_unit/create_statement.hpp"
-#include "test_unit/operators/pipeline.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
@@ -49,16 +48,6 @@ using detail::pipeline_stage_kind;
 using detail::resultset_encoding;
 
 BOOST_AUTO_TEST_SUITE(test_pipeline)
-
-static void check_error(
-    const errcode_with_diagnostics& actual,
-    error_code expected_ec,
-    const diagnostics& expected_diag = {}
-)
-{
-    BOOST_TEST(actual.code == expected_ec);
-    BOOST_TEST(actual.diag == expected_diag);
-}
 
 // Validates the exception thrown when adding a statement execution with wrong number of params
 static auto stmt_exc_validator = [](const std::invalid_argument& exc) {
@@ -78,7 +67,7 @@ BOOST_AUTO_TEST_CASE(default_ctor)
     // Contains an empty error
     BOOST_TEST(!r.has_results());
     BOOST_TEST(!r.has_statement());
-    check_error(r.error(), error_code());
+    BOOST_TEST(r.error() == errcode_with_diagnostics{});
 }
 
 BOOST_AUTO_TEST_CASE(underlying_error)
@@ -90,7 +79,10 @@ BOOST_AUTO_TEST_CASE(underlying_error)
     // Check
     BOOST_TEST(!r.has_results());
     BOOST_TEST(!r.has_statement());
-    check_error(r.error(), client_errc::invalid_encoding, create_server_diag("my_message"));
+    BOOST_TEST(
+        r.error() ==
+        (errcode_with_diagnostics{client_errc::invalid_encoding, create_server_diag("my_message")})
+    );
 }
 
 BOOST_AUTO_TEST_CASE(underlying_statement)
@@ -106,7 +98,7 @@ BOOST_AUTO_TEST_CASE(underlying_statement)
     BOOST_TEST(r.get_statement().id() == 3u);
 
     // error() can be called and returns an empty error
-    check_error(r.error(), error_code());
+    BOOST_TEST(r.error() == errcode_with_diagnostics{});
 }
 
 BOOST_AUTO_TEST_CASE(underlying_results)
@@ -129,7 +121,7 @@ BOOST_AUTO_TEST_CASE(underlying_results)
     boost::ignore_unused(ref2);
 
     // error() can be called and returns an empty error
-    check_error(r.error(), error_code());
+    BOOST_TEST(r.error() == errcode_with_diagnostics{});
 }
 
 BOOST_AUTO_TEST_CASE(as_results_error)
@@ -176,11 +168,11 @@ BOOST_AUTO_TEST_CASE(change_type)
     // Set an error
     detail::access::get_impl(r).set_error(client_errc::extra_bytes, create_client_diag("abc"));
     BOOST_TEST(!r.has_results());
-    check_error(r.error(), client_errc::extra_bytes, create_client_diag("abc"));
+    BOOST_TEST(r.error() == (errcode_with_diagnostics{client_errc::extra_bytes, create_client_diag("abc")}));
 
     // Reset the error
     detail::access::get_impl(r).emplace_error();
-    check_error(r.error(), error_code());
+    BOOST_TEST(r.error() == errcode_with_diagnostics{});
 
     // Set a statement
     detail::access::get_impl(r).set_result(statement_builder().build());
