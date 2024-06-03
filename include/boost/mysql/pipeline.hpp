@@ -699,21 +699,17 @@ class static_pipeline_request
         "Some pipeline stage types are not valid"
     );
 
-    using stage_array_t = std::array<detail::pipeline_request_stage, sizeof...(PipelineStageType)>;
-
-    static stage_array_t create_stage_array(std::vector<std::uint8_t>& buff, const PipelineStageType&... args)
-    {
-        return {{detail::pipeline_stage_access::create(args, buff)...}};
-    }
-
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
-        stage_array_t stages_;
+        std::array<detail::pipeline_request_stage, sizeof...(PipelineStageType)> stages_;
 
         detail::pipeline_request_view to_view() const { return {buffer_, stages_}; }
 
-        impl_t(const PipelineStageType&... args) : stages_(create_stage_array(buffer_, args...)) {}
+        impl_t(const PipelineStageType&... args)
+            : stages_{{detail::pipeline_stage_access::create(args, buffer_)...}}
+        {
+        }
     } impl_;
 
 #ifndef BOOST_MYSQL_DOXYGEN
@@ -739,30 +735,6 @@ public:
      * once the constructor returns.
      */
     static_pipeline_request(const PipelineStageType&... stages) : impl_(stages...) {}
-
-    /**
-     * \brief Replaces the request with a new one containing the supplied stages.
-     * \details
-     * The effect is equivalent to `*this = static_pipeline_request(stages)`, but
-     * may be more efficient.
-     * \n
-     * The supplied `stages` must have the same type as the current ones.
-     *
-     * \par Exception safety
-     * Basic guarantee. Memory allocations while composing the request may throw.
-     * Supplying steps with invalid arguments also throws.
-     * See individual stage descriptions for possible error conditions.
-     * \throws std::invalid_argument If any of `stages` contain invalid parameters.
-     *
-     * \par Object lifetimes
-     * The `stages` objects, and any other objects they point to, need not be kept alive
-     * once this function returns.
-     */
-    void assign(const PipelineStageType&... stages)
-    {
-        impl_.buffer_.clear();
-        impl_.stages_ = create_stage_array(impl_.buffer_, stages...);
-    }
 
     /**
      * \brief The response type to use when running a pipeline with this request type.
