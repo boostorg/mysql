@@ -340,6 +340,18 @@ BOOST_AUTO_TEST_CASE(prepare_statement_empty)
     );
 }
 
+//
+// close statement
+//
+BOOST_AUTO_TEST_CASE(close_statement)
+{
+    check_stage_creation(
+        close_statement_stage(statement_builder().id(3).num_params(1).build()),
+        create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}),
+        pipeline_stage_kind::close_statement
+    );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
