@@ -81,22 +81,6 @@ inline std::ostream& operator<<(std::ostream& os, next_action::type_t t)
     }
 }
 
-inline const char* to_string(pipeline_stage_kind v)
-{
-    switch (v)
-    {
-    case pipeline_stage_kind::execute: return "pipeline_stage_kind::execute";
-    case pipeline_stage_kind::prepare_statement: return "pipeline_stage_kind::prepare_statement";
-    case pipeline_stage_kind::close_statement: return "pipeline_stage_kind::close_statement";
-    case pipeline_stage_kind::reset_connection: return "pipeline_stage_kind::reset_connection";
-    case pipeline_stage_kind::set_character_set: return "pipeline_stage_kind::set_character_set";
-    case pipeline_stage_kind::ping: return "pipeline_stage_kind::ping";
-    default: return "<unknown pipeline_stage_kind>";
-    }
-}
-
-inline std::ostream& operator<<(std::ostream& os, pipeline_stage_kind v) { return os << to_string(v); }
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost

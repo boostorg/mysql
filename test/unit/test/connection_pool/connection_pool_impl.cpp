@@ -48,6 +48,7 @@
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
+#include "test_unit/operators/pipeline.hpp"
 #include "test_unit/pool_printing.hpp"
 #include "test_unit/printing.hpp"
 

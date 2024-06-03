@@ -38,10 +38,13 @@
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_query_frame.hpp"
 #include "test_unit/create_statement.hpp"
+#include "test_unit/operators/pipeline.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using boost::test_tools::per_element;
+using detail::pipeline_request_stage;
 using detail::pipeline_stage_kind;
 using detail::resultset_encoding;
 
@@ -413,38 +416,33 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(dynamic_interface)
 
-// TODO: could we unify this?
-static void check_stages(
-    boost::span<const detail::pipeline_request_stage> actual,
-    const std::vector<pipeline_stage_kind>& expected_kinds
-)
-{
-    std::vector<pipeline_stage_kind> actual_kinds;
-    actual_kinds.reserve(expected_kinds.size());
-    for (auto stage : actual)
-        actual_kinds.push_back(stage.kind);
-    BOOST_TEST(actual_kinds == expected_kinds);
-}
-
 // Adding stages work
 BOOST_AUTO_TEST_CASE(add)
 {
     // Default ctor creates an empty request
     pipeline_request req;
     auto view = detail::access::get_impl(req).to_view();
-    check_stages(view.stages, {});
+    std::vector<pipeline_request_stage> expected_stages;
+    BOOST_TEST(view.stages == expected_stages, per_element());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, blob{});
 
     // Add a reset connection stage
     req.add(reset_connection_stage());
     view = detail::access::get_impl(req).to_view();
-    check_stages(view.stages, {pipeline_stage_kind::reset_connection});
+    expected_stages = {
+        {pipeline_stage_kind::reset_connection, 1u, {}}
+    };
+    BOOST_TEST(view.stages == expected_stages, per_element());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, create_frame(0, {0x1f}));
 
     // Add an execution stage
     req.add(execute_stage("SELECT 1"));
     view = detail::access::get_impl(req).to_view();
-    check_stages(view.stages, {pipeline_stage_kind::reset_connection, pipeline_stage_kind::execute});
+    expected_stages = {
+        {pipeline_stage_kind::reset_connection, 1u, {}                      },
+        {pipeline_stage_kind::execute,          1u, resultset_encoding::text}
+    };
+    BOOST_TEST(view.stages == expected_stages, per_element());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
         view.buffer,
         concat_copy(create_frame(0, {0x1f}), create_query_frame(0, "SELECT 1"))
@@ -475,16 +473,14 @@ BOOST_AUTO_TEST_CASE(all_stage_kinds)
 
     // Check
     auto view = detail::access::get_impl(req).to_view();
-    check_stages(
-        view.stages,
-        {
-            pipeline_stage_kind::reset_connection,
-            pipeline_stage_kind::execute,
-            pipeline_stage_kind::prepare_statement,
-            pipeline_stage_kind::set_character_set,
-            pipeline_stage_kind::close_statement,
-        }
-    );
+    const pipeline_request_stage expected_stages[] = {
+        {pipeline_stage_kind::reset_connection,  1u, {}                      },
+        {pipeline_stage_kind::execute,           1u, resultset_encoding::text},
+        {pipeline_stage_kind::prepare_statement, 1u, {}                      },
+        {pipeline_stage_kind::set_character_set, 1u, utf8mb4_charset         },
+        {pipeline_stage_kind::close_statement,   1u, {}                      },
+    };
+    BOOST_TEST(view.stages == expected_stages, per_element());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
 }
 
@@ -499,7 +495,7 @@ BOOST_AUTO_TEST_CASE(clear_previous_contents)
     // Clear the pipeline
     req.clear();
     auto view = detail::access::get_impl(req).to_view();
-    check_stages(view.stages, {});
+    BOOST_TEST(view.stages == std::vector<pipeline_request_stage>{}, per_element());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, blob{});
 
     // Add some stages again
@@ -507,7 +503,11 @@ BOOST_AUTO_TEST_CASE(clear_previous_contents)
 
     // Check
     view = detail::access::get_impl(req).to_view();
-    check_stages(view.stages, {pipeline_stage_kind::execute, pipeline_stage_kind::close_statement});
+    const pipeline_request_stage expected_stages[] = {
+        {pipeline_stage_kind::execute,         1u, resultset_encoding::text},
+        {pipeline_stage_kind::close_statement, 1u, {}                      },
+    };
+    BOOST_TEST(view.stages == expected_stages, per_element());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
         view.buffer,
         concat_copy(create_query_frame(0, "abc"), create_frame(0, {0x19, 0x07, 0x00, 0x00, 0x00}))
@@ -520,7 +520,7 @@ BOOST_AUTO_TEST_CASE(clear_empty)
     pipeline_request req;
     req.clear();
     auto view = detail::access::get_impl(req).to_view();
-    check_stages(view.stages, {});
+    BOOST_TEST(view.stages == std::vector<pipeline_request_stage>{}, per_element());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, blob{});
 }
 
@@ -534,6 +534,10 @@ BOOST_AUTO_TEST_CASE(add_error)
         stmt_exc_validator
     );
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(static_interface)
 
 BOOST_AUTO_TEST_SUITE_END()
 

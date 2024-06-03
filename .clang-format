@@ -99,7 +99,7 @@ ForEachMacros:
   - foreach
   - Q_FOREACH
   - BOOST_FOREACH
-IncludeIsMainRegex: "([-_](test|unittest))?$"
+IncludeIsMainRegex: null
 IncludeIsMainSourceRegex: ""
 IndentGotoLabels: true
 IndentPPDirectives: None
