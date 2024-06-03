@@ -224,7 +224,7 @@ public:
         const PipelineRequest& req,
         typename PipelineRequest::response_type&,
         CompletionToken&& token
-    )
+    ) -> decltype(impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token)))
     {
         auto req_view = detail::access::get_impl(req).to_view();
         BOOST_TEST(req_view.stages.size() == 2u);

@@ -18,7 +18,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline void throw_on_error_loc(error_code err, const diagnostics& diag, const boost::source_location& loc)
+inline void throw_on_error_loc(error_code err, const diagnostics& diag, const source_location& loc)
 {
     if (err)
     {

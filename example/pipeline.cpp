@@ -43,6 +43,8 @@
 #include <iostream>
 #include <vector>
 
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+
 namespace asio = boost::asio;
 namespace mysql = boost::mysql;
 
@@ -214,5 +216,11 @@ int main(int argc, char** argv)
         return 1;
     }
 }
+
+#else
+
+int main(int, char**) { std::cout << "Sorry, your compiler does not support C++20 coroutines" << std::endl; }
+
+#endif
 
 //]

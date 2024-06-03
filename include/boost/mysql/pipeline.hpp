@@ -36,6 +36,7 @@
 #include <cstdint>
 #include <initializer_list>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -101,7 +102,9 @@ public:
          * No copies of `f` are performed. This type should only be used in initializer lists, to avoid
          * lifetime issues.
          */
-        template <BOOST_MYSQL_WRITABLE_FIELD WritableField>
+        template <
+            BOOST_MYSQL_WRITABLE_FIELD WritableField,
+            class = typename std::enable_if<detail::is_writable_field<WritableField>::value>::type>
         statement_param_arg(const WritableField& f) noexcept : impl_(detail::to_field(f))
         {
         }
@@ -422,7 +425,10 @@ class any_stage_response
             return detail::access::get_impl(variant2::unsafe_get<2>(value));
         }
         void set_result(statement s) { value = s; }
-        void set_error(error_code ec, diagnostics&& diag) { value.emplace<0>(ec, std::move(diag)); }
+        void set_error(error_code ec, diagnostics&& diag)
+        {
+            value.emplace<0>(errcode_with_diagnostics{ec, std::move(diag)});
+        }
     } impl_;
 
     friend struct detail::access;

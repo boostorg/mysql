@@ -42,11 +42,11 @@ concept pipeline_request_type = is_pipeline_request_type<T>::value;
 #define BOOST_MYSQL_PIPELINE_STAGE_TYPE ::boost::mysql::detail::pipeline_stage_type
 #define BOOST_MYSQL_PIPELINE_REQUEST_TYPE ::boost::mysql::detail::pipeline_request_type
 
+#else
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#else
 
 #define BOOST_MYSQL_PIPELINE_STAGE_TYPE class
 #define BOOST_MYSQL_PIPELINE_REQUEST_TYPE class
