@@ -651,7 +651,28 @@ BOOST_AUTO_TEST_CASE(ctor_error)
     );
 }
 
-// deduction guideline
+#ifndef BOOST_NO_CXX17_DEDUCTION_GUIDES
+BOOST_AUTO_TEST_CASE(deduction_guide)
+{
+    static_pipeline_request req(
+        reset_connection_stage(),
+        execute_stage("SELECT 1"),
+        prepare_statement_stage("SELECT ?"),
+        set_character_set_stage(utf8mb4_charset),
+        close_statement_stage(statement_builder().id(8).build()),
+        execute_stage("SELECT 1")
+    );
+    using expected_type = static_pipeline_request<
+        reset_connection_stage,
+        execute_stage,
+        prepare_statement_stage,
+        set_character_set_stage,
+        close_statement_stage,
+        execute_stage>;
+    static_assert(std::is_same<decltype(req), expected_type>::value, "Deduction guide is incorrect");
+    boost::ignore_unused(req);
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 
