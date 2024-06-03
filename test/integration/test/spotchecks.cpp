@@ -12,6 +12,7 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -20,7 +21,9 @@
 #include <boost/mysql/detail/config.hpp>
 
 #include "test_common/create_basic.hpp"
+#include "test_common/create_diagnostics.hpp"
 #include "test_common/netfun_maker.hpp"
+#include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/er_connection.hpp"
 #include "test_integration/network_test.hpp"
@@ -496,7 +499,7 @@ struct
     },
 };
 
-BOOST_AUTO_TEST_CASE(spotcheck_success)
+BOOST_AUTO_TEST_CASE(set_character_set_success)
 {
     for (const auto& fns : set_charset_all_fns)
     {
@@ -516,7 +519,7 @@ BOOST_AUTO_TEST_CASE(spotcheck_success)
     }
 }
 
-BOOST_AUTO_TEST_CASE(spotcheck_error)
+BOOST_AUTO_TEST_CASE(set_character_set_error)
 {
     for (const auto& fns : set_charset_all_fns)
     {
@@ -536,6 +539,90 @@ BOOST_AUTO_TEST_CASE(spotcheck_error)
 
             // The character set was not modified
             BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
+        }
+    }
+}
+
+// same for run_pipeline
+using run_pipeline_netmaker = netfun_maker_mem<
+    void,
+    any_connection,
+    const pipeline_request&,
+    pipeline_request::response_type&>;
+
+struct
+{
+    string_view name;
+    run_pipeline_netmaker::signature run_pipeline;
+} run_pipeline_all_fns[] = {
+    {"sync_errc", run_pipeline_netmaker::sync_errc(&any_connection::run_pipeline)},
+    {"sync_exc", run_pipeline_netmaker::sync_exc(&any_connection::run_pipeline)},
+    {"async_errinfo", run_pipeline_netmaker::async_errinfo(&any_connection::async_run_pipeline, false)},
+    {"async_noerrinfo", run_pipeline_netmaker::async_noerrinfo(&any_connection::async_run_pipeline, false)},
+};
+
+BOOST_AUTO_TEST_CASE(run_pipeline_success)
+{
+    for (const auto& fns : run_pipeline_all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            // Setup
+            boost::asio::io_context ctx;
+            any_connection conn(ctx);
+            conn.connect(default_connect_params(ssl_mode::disable));
+            pipeline_request req;
+            req.add(set_character_set_stage(ascii_charset))
+                .add(execute_stage("SET @myvar = 42"))
+                .add(execute_stage("SELECT @myvar"));
+            pipeline_request::response_type res;
+
+            // Issue the pipeline
+            fns.run_pipeline(conn, req, res).validate_no_error();
+
+            // Success
+            BOOST_TEST(conn.current_character_set()->name == "ascii");
+            BOOST_TEST_REQUIRE(res.size() == 3u);
+            BOOST_TEST(res.at(0).error().code == error_code());
+            BOOST_TEST(res.at(1).as_results().rows().empty());
+            BOOST_TEST(res.at(2).as_results().rows() == makerows(1, 42));
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(run_pipeline_error)
+{
+    for (const auto& fns : run_pipeline_all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            // Setup
+            boost::asio::io_context ctx;
+            any_connection conn(ctx);
+            conn.connect(default_connect_params(ssl_mode::disable));
+            pipeline_request req;
+            req.add(execute_stage("SET @myvar = 42"))
+                .add(prepare_statement_stage("SELECT * FROM bad_table"))
+                .add(execute_stage("SELECT @myvar"));
+            pipeline_request::response_type res;
+
+            // Issue the command
+            fns.run_pipeline(conn, req, res)
+                .validate_error_exact(
+                    common_server_errc::er_no_such_table,
+                    "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+                );
+
+            // Stages 0 and 2 were executed successfully
+            // TODO: this should use whole object comparisons
+            BOOST_TEST(res.size() == 3u);
+            BOOST_TEST(res[0].as_results().rows().size() == 0u);
+            BOOST_TEST(res[1].error().code == common_server_errc::er_no_such_table);
+            BOOST_TEST(
+                res[1].error().diag ==
+                create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
+            );
+            BOOST_TEST(res[2].as_results().rows() == makerows(1, 42));
         }
     }
 }
