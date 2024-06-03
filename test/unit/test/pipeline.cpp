@@ -24,7 +24,6 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
@@ -57,6 +56,14 @@ static void check_error(
     BOOST_TEST(actual.code == expected_ec);
     BOOST_TEST(actual.diag == expected_diag);
 }
+
+// Validates the exception thrown when adding a statement execution with wrong number of params
+static auto stmt_exc_validator = [](const std::invalid_argument& exc) {
+    BOOST_TEST(
+        string_view(exc.what()) == "Wrong number of actual parameters supplied to a prepared statement"
+    );
+    return true;
+};
 
 BOOST_AUTO_TEST_SUITE(any_stage_response_)
 
@@ -282,14 +289,6 @@ BOOST_AUTO_TEST_CASE(execute_statement_error)
 {
     std::vector<std::uint8_t> buff;
 
-    // Validates the exception message
-    auto exc_validator = [](const std::invalid_argument& exc) {
-        BOOST_TEST(
-            string_view(exc.what()) == "Wrong number of actual parameters supplied to a prepared statement"
-        );
-        return true;
-    };
-
     // Individual fields, too few parameters
     BOOST_CHECK_EXCEPTION(
         detail::pipeline_stage_access::create(
@@ -297,7 +296,7 @@ BOOST_AUTO_TEST_CASE(execute_statement_error)
             buff
         ),
         std::invalid_argument,
-        exc_validator
+        stmt_exc_validator
     );
 
     // Individual fields, too many parameters
@@ -307,7 +306,7 @@ BOOST_AUTO_TEST_CASE(execute_statement_error)
             buff
         ),
         std::invalid_argument,
-        exc_validator
+        stmt_exc_validator
     );
 
     // Range, too few parameters
@@ -318,7 +317,7 @@ BOOST_AUTO_TEST_CASE(execute_statement_error)
             buff
         ),
         std::invalid_argument,
-        exc_validator
+        stmt_exc_validator
     );
 }
 
@@ -529,17 +528,10 @@ BOOST_AUTO_TEST_CASE(add_error)
 {
     // Spotcheck: add propagates errors raised by serialization functions
     pipeline_request req;
-
     BOOST_CHECK_EXCEPTION(
         req.add(execute_stage(statement_builder().num_params(2).build(), {42})),
         std::invalid_argument,
-        [](const std::invalid_argument& exc) {
-            BOOST_TEST(
-                string_view(exc.what()) ==
-                "Wrong number of actual parameters supplied to a prepared statement"
-            );
-            return true;
-        }
+        stmt_exc_validator
     );
 }
 
