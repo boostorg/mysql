@@ -48,7 +48,6 @@
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
-#include "test_unit/pool_printing.hpp"
 #include "test_unit/printing.hpp"
 
 // These tests rely on channels, which are not compatible with this

@@ -23,7 +23,7 @@
 #include <memory>
 
 #include "test_common/printing.hpp"
-#include "test_unit/pool_printing.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
 namespace asio = boost::asio;

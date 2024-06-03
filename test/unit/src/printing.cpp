@@ -14,6 +14,7 @@
 #include <boost/mysql/detail/results_iterator.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
+#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 
@@ -167,4 +168,64 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, pipeline_reques
     default: break;
     }
     return os << " }";
+}
+
+// connection_status
+static const char* to_string(detail::connection_status v)
+{
+    switch (v)
+    {
+    case detail::connection_status::initial: return "connection_status::initial";
+    case detail::connection_status::connect_in_progress: return "connection_status::connect_in_progress";
+    case detail::connection_status::sleep_connect_failed_in_progress:
+        return "connection_status::sleep_connect_failed_in_progress";
+    case detail::connection_status::reset_in_progress: return "connection_status::reset_in_progress";
+    case detail::connection_status::ping_in_progress: return "connection_status::ping_in_progress";
+    case detail::connection_status::idle: return "connection_status::idle";
+    case detail::connection_status::in_use: return "connection_status::in_use";
+    default: return "<unknown connection_status>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, connection_status v)
+{
+    return os << to_string(v);
+}
+
+// collection_state
+static const char* to_string(detail::collection_state v)
+{
+    switch (v)
+    {
+    case detail::collection_state::needs_collect: return "collection_state::needs_collect";
+    case detail::collection_state::needs_collect_with_reset:
+        return "collection_state::needs_collect_with_reset";
+    case detail::collection_state::none: return "collection_state::none";
+    default: return "<unknown collection_state>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, collection_state v)
+{
+    return os << to_string(v);
+}
+
+static const char* to_string(detail::next_connection_action v)
+{
+    switch (v)
+    {
+    case detail::next_connection_action::none: return "next_connection_action::none";
+    case detail::next_connection_action::connect: return "next_connection_action::connect";
+    case detail::next_connection_action::sleep_connect_failed:
+        return "next_connection_action::sleep_connect_failed";
+    case detail::next_connection_action::idle_wait: return "next_connection_action::idle_wait";
+    case detail::next_connection_action::reset: return "next_connection_action::reset";
+    case detail::next_connection_action::ping: return "next_connection_action::ping";
+    default: return "<unknown next_connection_action>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, next_connection_action v)
+{
+    return os << to_string(v);
 }
