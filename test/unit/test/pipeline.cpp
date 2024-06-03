@@ -26,6 +26,7 @@
 
 #include <cstdint>
 #include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
@@ -445,9 +446,6 @@ BOOST_AUTO_TEST_CASE(all_stage_kinds)
                                .add(create_query_frame(0, "SET NAMES 'utf8mb4'"))
                                .add(create_frame(0, {0x19, 0x08, 0x00, 0x00, 0x00}))
                                .build();
-
-    // Check
-    auto view = detail::access::get_impl(req).to_view();
     const pipeline_request_stage expected_stages[] = {
         {pipeline_stage_kind::reset_connection,  1u, {}                      },
         {pipeline_stage_kind::execute,           1u, resultset_encoding::text},
@@ -455,6 +453,9 @@ BOOST_AUTO_TEST_CASE(all_stage_kinds)
         {pipeline_stage_kind::set_character_set, 1u, utf8mb4_charset         },
         {pipeline_stage_kind::close_statement,   1u, {}                      },
     };
+
+    // Check
+    auto view = detail::access::get_impl(req).to_view();
     BOOST_TEST(view.stages == expected_stages, per_element());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
 }
@@ -513,6 +514,135 @@ BOOST_AUTO_TEST_CASE(add_error)
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(static_interface)
+
+BOOST_AUTO_TEST_CASE(all_stage_kinds)
+{
+    // Setup
+    auto req = make_pipeline_request(
+        reset_connection_stage(),
+        execute_stage("SELECT 1"),
+        prepare_statement_stage("SELECT ?"),
+        set_character_set_stage(utf8mb4_charset),
+        close_statement_stage(statement_builder().id(8).build())
+    );
+    using expected_type = static_pipeline_request<
+        reset_connection_stage,
+        execute_stage,
+        prepare_statement_stage,
+        set_character_set_stage,
+        close_statement_stage>;
+    static_assert(std::is_same<decltype(req), expected_type>::value, "Type deduction error");
+
+    // Expected values
+    auto expected_buffer = buffer_builder()
+                               .add(create_frame(0, {0x1f}))
+                               .add(create_query_frame(0, "SELECT 1"))
+                               .add(create_prepare_statement_frame(0, "SELECT ?"))
+                               .add(create_query_frame(0, "SET NAMES 'utf8mb4'"))
+                               .add(create_frame(0, {0x19, 0x08, 0x00, 0x00, 0x00}))
+                               .build();
+    const pipeline_request_stage expected_stages[] = {
+        {pipeline_stage_kind::reset_connection,  1u, {}                      },
+        {pipeline_stage_kind::execute,           1u, resultset_encoding::text},
+        {pipeline_stage_kind::prepare_statement, 1u, {}                      },
+        {pipeline_stage_kind::set_character_set, 1u, utf8mb4_charset         },
+        {pipeline_stage_kind::close_statement,   1u, {}                      },
+    };
+
+    // Check
+    auto view = detail::access::get_impl(req).to_view();
+    BOOST_TEST(view.stages == expected_stages, per_element());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
+}
+
+BOOST_AUTO_TEST_CASE(repeated_stage_kinds)
+{
+    // Spotcheck: repeated stage kinds don't create problems
+    auto req = make_pipeline_request(
+        execute_stage("SELECT 1"),
+        execute_stage("SELECT 2"),
+        prepare_statement_stage("SELECT ?"),
+        prepare_statement_stage("COMMIT")
+    );
+    using expected_type = static_pipeline_request<
+        execute_stage,
+        execute_stage,
+        prepare_statement_stage,
+        prepare_statement_stage>;
+    static_assert(std::is_same<decltype(req), expected_type>::value, "Type deduction error");
+
+    // Expected values
+    auto expected_buffer = buffer_builder()
+                               .add(create_query_frame(0, "SELECT 1"))
+                               .add(create_query_frame(0, "SELECT 2"))
+                               .add(create_prepare_statement_frame(0, "SELECT ?"))
+                               .add(create_prepare_statement_frame(0, "COMMIT"))
+                               .build();
+    const pipeline_request_stage expected_stages[] = {
+        {pipeline_stage_kind::execute,           1u, resultset_encoding::text},
+        {pipeline_stage_kind::execute,           1u, resultset_encoding::text},
+        {pipeline_stage_kind::prepare_statement, 1u, {}                      },
+        {pipeline_stage_kind::prepare_statement, 1u, {}                      },
+    };
+
+    // Check
+    auto view = detail::access::get_impl(req).to_view();
+    BOOST_TEST(view.stages == expected_stages, per_element());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
+}
+
+BOOST_AUTO_TEST_CASE(statement_execution_lifetimes)
+{
+    // Spotcheck: we don't create lifetime problems when adding statement executions
+    std::string param = "abc";
+    auto req = make_pipeline_request(
+        execute_stage(statement_builder().id(2).num_params(3).build(), {42, param, nullptr})
+    );
+    param = "uuu";
+
+    // Expected values
+    const std::uint8_t expected_buffer[] = {0x1e, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00,
+                                            0x00, 0x01, 0x00, 0x00, 0x00, 0x04, 0x01, 0x08, 0x00,
+                                            0xfe, 0x00, 0x06, 0x00, 0x2a, 0x00, 0x00, 0x00, 0x00,
+                                            0x00, 0x00, 0x00, 0x03, 0x61, 0x62, 0x63};
+    const pipeline_request_stage expected_stages[] = {
+        {pipeline_stage_kind::execute, 1u, resultset_encoding::binary},
+    };
+
+    // Check
+    auto view = detail::access::get_impl(req).to_view();
+    BOOST_TEST(view.stages == expected_stages, per_element());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
+}
+
+BOOST_AUTO_TEST_CASE(assignment)
+{
+    // Spotcheck: assignment works as expected
+    // Setup
+    auto req = make_pipeline_request(
+        prepare_statement_stage("START TRANSACTION"),
+        execute_stage(statement_builder().id(1).num_params(0).build(), {})
+    );
+    req = {prepare_statement_stage("COMMIT"), execute_stage("SELECT 2")};
+
+    // Expected values
+    auto expected_buffer = buffer_builder()
+                               .add(create_prepare_statement_frame(0, "COMMIT"))
+                               .add(create_query_frame(0, "SELECT 2"))
+                               .build();
+    const pipeline_request_stage expected_stages[] = {
+        {pipeline_stage_kind::prepare_statement, 1u, {}                      },
+        {pipeline_stage_kind::execute,           1u, resultset_encoding::text},
+    };
+
+    // Check
+    auto view = detail::access::get_impl(req).to_view();
+    BOOST_TEST(view.stages == expected_stages, per_element());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
+}
+
+// error adding
+// deduction guideline
 
 BOOST_AUTO_TEST_SUITE_END()
 
