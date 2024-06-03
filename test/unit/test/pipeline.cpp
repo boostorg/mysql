@@ -31,6 +31,7 @@
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_execution_processor.hpp"
+#include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_query_frame.hpp"
 #include "test_unit/create_statement.hpp"
@@ -203,7 +204,9 @@ static detail::pipeline_request_stage check_stage_creation(
     return erased_stage;
 }
 
-// Helpers for execute
+//
+// execute
+//
 static void check_execute_stage_creation(
     execute_stage stage,
     const std::vector<std::uint8_t>& expected_buffer,
@@ -312,6 +315,28 @@ BOOST_AUTO_TEST_CASE(execute_statement_error)
         ),
         std::invalid_argument,
         exc_validator
+    );
+}
+
+//
+// prepare statement
+//
+BOOST_AUTO_TEST_CASE(prepare_statement)
+{
+    check_stage_creation(
+        prepare_statement_stage("SELECT 1"),
+        create_frame(0, {0x16, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31}),
+        pipeline_stage_kind::prepare_statement
+    );
+}
+
+BOOST_AUTO_TEST_CASE(prepare_statement_empty)
+{
+    // Empty prepare statements don't produce problems
+    check_stage_creation(
+        prepare_statement_stage(""),
+        create_frame(0, {0x16}),
+        pipeline_stage_kind::prepare_statement
     );
 }
 
