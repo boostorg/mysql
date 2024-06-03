@@ -525,7 +525,23 @@ BOOST_AUTO_TEST_CASE(clear_empty)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, blob{});
 }
 
-// errors when adding
+BOOST_AUTO_TEST_CASE(add_error)
+{
+    // Spotcheck: add propagates errors raised by serialization functions
+    pipeline_request req;
+
+    BOOST_CHECK_EXCEPTION(
+        req.add(execute_stage(statement_builder().num_params(2).build(), {42})),
+        std::invalid_argument,
+        [](const std::invalid_argument& exc) {
+            BOOST_TEST(
+                string_view(exc.what()) ==
+                "Wrong number of actual parameters supplied to a prepared statement"
+            );
+            return true;
+        }
+    );
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
