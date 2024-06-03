@@ -22,18 +22,24 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-inline std::vector<std::uint8_t> create_query_body(string_view sql)
+inline std::vector<std::uint8_t> create_query_body_impl(std::uint8_t command_id, string_view sql)
 {
     std::vector<std::uint8_t> buff;
     detail::serialization_context ctx(buff, detail::disable_framing);
-    ctx.add(0x03);
+    ctx.add(command_id);
     ctx.add(detail::to_span(sql));
     return buff;
 }
 
 inline std::vector<std::uint8_t> create_query_frame(std::uint8_t seqnum, string_view sql)
 {
-    return create_frame(seqnum, create_query_body(sql));
+    return create_frame(seqnum, create_query_body_impl(0x03, sql));
+}
+
+// TODO: could we use this in other places?
+inline std::vector<std::uint8_t> create_prepare_statement_frame(std::uint8_t seqnum, string_view sql)
+{
+    return create_frame(seqnum, create_query_body_impl(0x16, sql));
 }
 
 }  // namespace test

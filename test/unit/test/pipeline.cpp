@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/blob.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -23,11 +24,13 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/buffer_concat.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
@@ -326,7 +329,7 @@ BOOST_AUTO_TEST_CASE(prepare_statement)
 {
     check_stage_creation(
         prepare_statement_stage("SELECT 1"),
-        create_frame(0, {0x16, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31}),
+        create_prepare_statement_frame(0, "SELECT 1"),
         pipeline_stage_kind::prepare_statement
     );
 }
@@ -336,7 +339,7 @@ BOOST_AUTO_TEST_CASE(prepare_statement_empty)
     // Empty prepare statements don't produce problems
     check_stage_creation(
         prepare_statement_stage(""),
-        create_frame(0, {0x16}),
+        create_prepare_statement_frame(0, ""),
         pipeline_stage_kind::prepare_statement
     );
 }
@@ -406,6 +409,89 @@ BOOST_AUTO_TEST_CASE(set_character_set_error)
         }
     );
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE(dynamic_interface)
+
+// TODO: could we unify this?
+static void check_stages(
+    boost::span<const detail::pipeline_request_stage> actual,
+    const std::vector<pipeline_stage_kind>& expected_kinds
+)
+{
+    std::vector<pipeline_stage_kind> actual_kinds;
+    actual_kinds.reserve(expected_kinds.size());
+    for (auto stage : actual)
+        actual_kinds.push_back(stage.kind);
+    BOOST_TEST(actual_kinds == expected_kinds);
+}
+
+// Adding stages work
+BOOST_AUTO_TEST_CASE(add)
+{
+    // Default ctor creates an empty request
+    pipeline_request req;
+    auto view = detail::access::get_impl(req).to_view();
+    check_stages(view.stages, {});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, blob{});
+
+    // Add a reset connection stage
+    req.add(reset_connection_stage());
+    view = detail::access::get_impl(req).to_view();
+    check_stages(view.stages, {pipeline_stage_kind::reset_connection});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, create_frame(0, {0x1f}));
+
+    // Add an execution stage
+    req.add(execute_stage("SELECT 1"));
+    view = detail::access::get_impl(req).to_view();
+    check_stages(view.stages, {pipeline_stage_kind::reset_connection, pipeline_stage_kind::execute});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
+        view.buffer,
+        concat_copy(create_frame(0, {0x1f}), create_query_frame(0, "SELECT 1"))
+    );
+}
+
+// All stage types work
+BOOST_AUTO_TEST_CASE(all_stage_kinds)
+{
+    // Setup
+    pipeline_request req;
+
+    // Add stages
+    req.add(reset_connection_stage())
+        .add(execute_stage("SELECT 1"))
+        .add(prepare_statement_stage("SELECT ?"))
+        .add(set_character_set_stage(utf8mb4_charset))
+        .add(close_statement_stage(statement_builder().id(8).build()));
+
+    // Expected values
+    auto expected_buffer = buffer_builder()
+                               .add(create_frame(0, {0x1f}))
+                               .add(create_query_frame(0, "SELECT 1"))
+                               .add(create_prepare_statement_frame(0, "SELECT ?"))
+                               .add(create_query_frame(0, "SET NAMES 'utf8mb4'"))
+                               .add(create_frame(0, {0x19, 0x08, 0x00, 0x00, 0x00}))
+                               .build();
+
+    // Check
+    auto view = detail::access::get_impl(req).to_view();
+    check_stages(
+        view.stages,
+        {
+            pipeline_stage_kind::reset_connection,
+            pipeline_stage_kind::execute,
+            pipeline_stage_kind::prepare_statement,
+            pipeline_stage_kind::set_character_set,
+            pipeline_stage_kind::close_statement,
+        }
+    );
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(view.buffer, expected_buffer);
+}
+
+// clearing
+// adding after clearing
+// errors when adding
 
 BOOST_AUTO_TEST_SUITE_END()
 
