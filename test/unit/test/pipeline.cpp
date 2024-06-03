@@ -27,6 +27,7 @@
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_execution_processor.hpp"
@@ -180,6 +181,7 @@ BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE(stage_creation)
 
+// Helper to run any successful stage creation test
 template <class PipelineStageType>
 static detail::pipeline_request_stage check_stage_creation(
     PipelineStageType stage,
@@ -201,6 +203,7 @@ static detail::pipeline_request_stage check_stage_creation(
     return erased_stage;
 }
 
+// Helpers for execute
 static void check_execute_stage_creation(
     execute_stage stage,
     const std::vector<std::uint8_t>& expected_buffer,
@@ -241,7 +244,7 @@ BOOST_AUTO_TEST_CASE(execute_statement_individual_fields_no_params)
     );
 }
 
-BOOST_AUTO_TEST_CASE(execute_statement_writable_fields)
+BOOST_AUTO_TEST_CASE(execute_statement_individual_fields_writable_fields)
 {
     // We run the required writable field transformations
     check_execute_stage_creation(
@@ -253,6 +256,62 @@ BOOST_AUTO_TEST_CASE(execute_statement_writable_fields)
          0x00, 0x00, 0x04, 0x01, 0x08, 0x00, 0xfe, 0x00, 0x06, 0x00, 0x2a, 0x00,
          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x61, 0x62, 0x63},
         resultset_encoding::binary
+    );
+}
+
+BOOST_AUTO_TEST_CASE(execute_statement_range)
+{
+    auto fv_arr = make_fv_arr(42, "abc", nullptr);
+    check_execute_stage_creation(
+        execute_stage(statement_builder().id(2).num_params(3).build(), fv_arr),
+        {0x1e, 0x00, 0x00, 0x00, 0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+         0x00, 0x00, 0x04, 0x01, 0x08, 0x00, 0xfe, 0x00, 0x06, 0x00, 0x2a, 0x00,
+         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x61, 0x62, 0x63},
+        resultset_encoding::binary
+    );
+}
+
+BOOST_AUTO_TEST_CASE(execute_statement_error)
+{
+    std::vector<std::uint8_t> buff;
+
+    // Validates the exception message
+    auto exc_validator = [](const std::invalid_argument& exc) {
+        BOOST_TEST(
+            string_view(exc.what()) == "Wrong number of actual parameters supplied to a prepared statement"
+        );
+        return true;
+    };
+
+    // Individual fields, too few parameters
+    BOOST_CHECK_EXCEPTION(
+        detail::pipeline_stage_access::create(
+            execute_stage(statement_builder().num_params(2).build(), {10}),
+            buff
+        ),
+        std::invalid_argument,
+        exc_validator
+    );
+
+    // Individual fields, too many parameters
+    BOOST_CHECK_EXCEPTION(
+        detail::pipeline_stage_access::create(
+            execute_stage(statement_builder().num_params(2).build(), {10, 20, 30}),
+            buff
+        ),
+        std::invalid_argument,
+        exc_validator
+    );
+
+    // Range, too few parameters
+    auto fv_arr = make_fv_arr(42);
+    BOOST_CHECK_EXCEPTION(
+        detail::pipeline_stage_access::create(
+            execute_stage(statement_builder().num_params(2).build(), {fv_arr.begin(), fv_arr.end()}),
+            buff
+        ),
+        std::invalid_argument,
+        exc_validator
     );
 }
 
