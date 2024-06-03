@@ -114,11 +114,11 @@ struct pipeline_response_traits<test::mock_pipeline_response>
 
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
-constexpr std::uint8_t mock_request[] = {1, 2, 3, 4, 5, 6, 7, 9, 21};
+constexpr std::uint8_t mock_request_buff[] = {1, 2, 3, 4, 5, 6, 7, 9, 21};
 
 static std::vector<std::uint8_t> mock_request_as_vector()
 {
-    return {std::begin(mock_request), std::end(mock_request)};
+    return {std::begin(mock_request_buff), std::end(mock_request_buff)};
 }
 
 struct fixture : algo_fixture_base
@@ -126,8 +126,15 @@ struct fixture : algo_fixture_base
     detail::run_pipeline_algo algo;
     mock_pipeline_response resp;
 
-    fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req = mock_request)
-        : algo({&diag, req, stages, detail::pipeline_response_ref(resp)})
+    fixture(
+        span<const pipeline_request_stage> stages,
+        span<const std::uint8_t> req_buffer = mock_request_buff
+    )
+        : algo({
+              &diag,
+              detail::pipeline_request_view{req_buffer, stages},
+              detail::pipeline_response_ref(resp)
+    })
     {
     }
 

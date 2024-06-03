@@ -601,6 +601,8 @@ class pipeline_request
     {
         std::vector<std::uint8_t> buffer_;
         std::vector<detail::pipeline_request_stage> stages_;
+
+        detail::pipeline_request_view to_view() const { return {buffer_, stages_}; }
     } impl_;
 
     friend struct detail::access;
@@ -708,6 +710,8 @@ class static_pipeline_request
     {
         std::vector<std::uint8_t> buffer_;
         stage_array_t stages_;
+
+        detail::pipeline_request_view to_view() const { return {buffer_, stages_}; }
 
         impl_t(const PipelineStageType&... args) : stages_(create_stage_array(buffer_, args...)) {}
     } impl_;

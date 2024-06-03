@@ -49,6 +49,7 @@
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/pool_printing.hpp"
+#include "test_unit/printing.hpp"
 
 // These tests rely on channels, which are not compatible with this
 // See https://github.com/chriskohlhoff/asio/issues/1398
@@ -226,11 +227,11 @@ public:
         CompletionToken&& token
     )
     {
-        boost::span<const detail::pipeline_request_stage> stages = detail::access::get_impl(req).stages_;
-        BOOST_TEST(stages.size() == 2u);
-        BOOST_TEST((stages[0].kind == detail::pipeline_stage_kind::reset_connection));
-        BOOST_TEST((stages[1].kind == detail::pipeline_stage_kind::set_character_set));
-        BOOST_TEST(stages[1].stage_specific.charset.name == "utf8mb4");
+        auto req_view = detail::access::get_impl(req).to_view();
+        BOOST_TEST(req_view.stages.size() == 2u);
+        BOOST_TEST(req_view.stages[0].kind == detail::pipeline_stage_kind::reset_connection);
+        BOOST_TEST(req_view.stages[1].kind == detail::pipeline_stage_kind::set_character_set);
+        BOOST_TEST(req_view.stages[1].stage_specific.charset.name == "utf8mb4");
         return impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token));
     }
 

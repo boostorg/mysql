@@ -54,16 +54,16 @@ class run_pipeline_algo
         >;
 
     diagnostics* diag_;
-    diagnostics temp_diag_;
     span<const std::uint8_t> request_buffer_;
-    span<const detail::pipeline_request_stage> stages_;
-    detail::pipeline_response_ref response_;
+    span<const pipeline_request_stage> stages_;
+    pipeline_response_ref response_;
 
     int resume_point_{0};
     std::size_t current_stage_index_{0};
     error_code pipeline_ec_;  // Result of the entire operation
     bool has_hatal_error_{};  // If true, fail further stages with client_errc::cancelled
     any_read_algo read_response_algo_;
+    diagnostics temp_diag_;
 
     void setup_current_stage(const connection_state_data& st)
     {
@@ -163,8 +163,8 @@ class run_pipeline_algo
 public:
     run_pipeline_algo(run_pipeline_algo_params params) noexcept
         : diag_(params.diag),
-          request_buffer_(params.request_buffer),
-          stages_(params.request_stages),
+          request_buffer_(params.request.buffer),
+          stages_(params.request.stages),
           response_(params.response)
     {
     }

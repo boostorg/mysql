@@ -580,8 +580,7 @@ public:
         diagnostics& diag
     )
     {
-        auto& req_impl = access::get_impl(req);
-        return {&diag, req_impl.buffer_, req_impl.stages_, pipeline_response_ref(response)};
+        return {&diag, access::get_impl(req).to_view(), pipeline_response_ref(response)};
     }
 };
 

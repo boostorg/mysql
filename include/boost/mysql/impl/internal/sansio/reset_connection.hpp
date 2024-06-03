@@ -77,9 +77,8 @@ inline run_pipeline_algo_params setup_reset_connection_pipeline(
     };
     return {
         params.diag,
-        st.write_buffer,
-        {st.shared_pipeline_stages.data(), 1},
-        {}
+        pipeline_request_view{st.write_buffer, {st.shared_pipeline_stages.data(), 1}},
+        pipeline_response_ref()
     };
 }
 

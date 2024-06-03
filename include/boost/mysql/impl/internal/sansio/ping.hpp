@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_PING_HPP
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
@@ -52,9 +53,8 @@ inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st, p
     st.shared_pipeline_stages[0] = {pipeline_stage_kind::ping, seqnum, {}};
     return {
         params.diag,
-        st.write_buffer,
-        {st.shared_pipeline_stages.data(), 1},
-        {}
+        pipeline_request_view{st.write_buffer, {st.shared_pipeline_stages.data(), 1}},
+        pipeline_response_ref{}
     };
 }
 

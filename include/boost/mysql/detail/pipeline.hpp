@@ -54,6 +54,12 @@ struct pipeline_request_stage
     } stage_specific;
 };
 
+struct pipeline_request_view
+{
+    span<const std::uint8_t> buffer;
+    span<const pipeline_request_stage> stages;
+};
+
 template <class T>
 struct pipeline_response_traits;
 

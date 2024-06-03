@@ -149,8 +149,7 @@ struct close_connection_algo_params
 struct run_pipeline_algo_params
 {
     diagnostics* diag;
-    span<const std::uint8_t> request_buffer;
-    span<const detail::pipeline_request_stage> request_stages;
+    detail::pipeline_request_view request;
     detail::pipeline_response_ref response;
 
     using result_type = void;
