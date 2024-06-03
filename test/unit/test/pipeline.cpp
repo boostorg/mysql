@@ -352,6 +352,18 @@ BOOST_AUTO_TEST_CASE(close_statement)
     );
 }
 
+//
+// reset connection
+//
+BOOST_AUTO_TEST_CASE(reset_connection)
+{
+    check_stage_creation(
+        reset_connection_stage(),
+        create_frame(0, {0x1f}),
+        pipeline_stage_kind::reset_connection
+    );
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
