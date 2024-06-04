@@ -5,10 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/row.hpp>
@@ -75,3 +77,25 @@ static const char* to_string(ssl_mode v)
 }
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, ssl_mode v) { return os << to_string(v); }
+
+// character set
+bool boost::mysql::operator==(const character_set& lhs, const character_set& rhs)
+{
+    return lhs.name == rhs.name;
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, const character_set& v)
+{
+    return os << "character_set(\"" << v.name << "\")";
+}
+
+// errcode_with_diagnostics
+bool boost::mysql::operator==(const errcode_with_diagnostics& lhs, const errcode_with_diagnostics& rhs)
+{
+    return lhs.code == rhs.code && lhs.diag == rhs.diag;
+}
+
+std::ostream& boost::mysql::operator<<(std::ostream& os, const errcode_with_diagnostics& v)
+{
+    return os << "errcode_with_diagnostics{ .code = " << v.code << ", .diag = " << v.diag << " }";
+}

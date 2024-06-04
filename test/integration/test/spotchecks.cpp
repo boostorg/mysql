@@ -10,6 +10,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/pipeline.hpp>
@@ -581,9 +582,9 @@ BOOST_AUTO_TEST_CASE(run_pipeline_success)
             fns.run_pipeline(conn, req, res).validate_no_error();
 
             // Success
-            BOOST_TEST(conn.current_character_set()->name == "ascii");
+            BOOST_TEST(conn.current_character_set().value() == ascii_charset);
             BOOST_TEST_REQUIRE(res.size() == 3u);
-            BOOST_TEST(res.at(0).error().code == error_code());
+            BOOST_TEST(res.at(0).error() == errcode_with_diagnostics());
             BOOST_TEST(res.at(1).as_results().rows().empty());
             BOOST_TEST(res.at(2).as_results().rows() == makerows(1, 42));
         }
@@ -614,13 +615,14 @@ BOOST_AUTO_TEST_CASE(run_pipeline_error)
                 );
 
             // Stages 0 and 2 were executed successfully
-            // TODO: this should use whole object comparisons
             BOOST_TEST(res.size() == 3u);
             BOOST_TEST(res[0].as_results().rows().size() == 0u);
-            BOOST_TEST(res[1].error().code == common_server_errc::er_no_such_table);
             BOOST_TEST(
-                res[1].error().diag ==
-                create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
+                res[1].error() ==
+                (errcode_with_diagnostics{
+                    common_server_errc::er_no_such_table,
+                    create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
+                })
             );
             BOOST_TEST(res[2].as_results().rows() == makerows(1, 42));
         }

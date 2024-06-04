@@ -25,17 +25,6 @@
 
 using namespace boost::mysql;
 
-// character set
-bool boost::mysql::operator==(const character_set& lhs, const character_set& rhs)
-{
-    return lhs.name == rhs.name;
-}
-
-std::ostream& boost::mysql::operator<<(std::ostream& os, const character_set& v)
-{
-    return os << "character_set(\"" << v.name << "\")";
-}
-
 // address_type
 static const char* to_string(address_type value)
 {
@@ -50,17 +39,6 @@ static const char* to_string(address_type value)
 std::ostream& boost::mysql::operator<<(std::ostream& os, address_type value)
 {
     return os << to_string(value);
-}
-
-// errcode_with_diagnostics
-bool boost::mysql::operator==(const errcode_with_diagnostics& lhs, const errcode_with_diagnostics& rhs)
-{
-    return lhs.code == rhs.code && lhs.diag == rhs.diag;
-}
-
-std::ostream& boost::mysql::operator<<(std::ostream& os, const errcode_with_diagnostics& v)
-{
-    return os << "errcode_with_diagnostics{ .code = " << v.code << ", .diag = " << v.diag << " }";
 }
 
 // capabilities
