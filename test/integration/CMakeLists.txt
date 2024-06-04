@@ -29,6 +29,7 @@ add_executable(
     test/reconnect.cpp
     test/any_connection.cpp
     test/character_set_tracking.cpp
+    test/pipeline.cpp
     test/connection_pool.cpp
     test/db_specific.cpp
     test/database_types.cpp
