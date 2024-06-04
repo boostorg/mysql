@@ -29,6 +29,7 @@ target_sources(
     INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/common/src/entry_point.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/common/src/tracker_executor.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/src/printing.cpp
 )
 target_link_libraries(
     boost_mysql_testing
