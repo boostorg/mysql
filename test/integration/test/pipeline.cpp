@@ -8,6 +8,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/pipeline.hpp>
@@ -17,6 +18,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "test_common/create_basic.hpp"
+#include "test_common/create_diagnostics.hpp"
 #include "test_common/netfun_helpers.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
@@ -25,6 +27,7 @@
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 namespace asio = boost::asio;
+using boost::test_tools::per_element;
 
 namespace {
 
@@ -81,11 +84,56 @@ BOOST_FIXTURE_TEST_CASE(dynamic_success, fixture)
     BOOST_TEST(res[0].error() == errcode_with_diagnostics{});
     BOOST_TEST(!res[0].has_results());
     BOOST_TEST(!res[0].has_statement());
-    BOOST_TEST(res[1].as_results().rows() == rows(), boost::test_tools::per_element());
-    BOOST_TEST(res[2].as_results().rows() == makerows(2, 1, "f0"), boost::test_tools::per_element());
+    BOOST_TEST(res[1].as_results().rows() == rows(), per_element());
+    BOOST_TEST(res[2].as_results().rows() == makerows(2, 1, "f0"), per_element());
     BOOST_TEST(res[3].error() == errcode_with_diagnostics{});
     BOOST_TEST(!res[3].has_results());
     BOOST_TEST(!res[3].has_statement());
+}
+
+BOOST_FIXTURE_TEST_CASE(dynamic_errors, fixture)
+{
+    // Setup
+    pipeline_request req;
+    pipeline_request::response_type res;
+
+    // Populate the request with some successes and some errors
+    req.add(execute_stage("SET @myvar = 42"))                                  // OK
+        .add(prepare_statement_stage("SELECT * FROM bad_table WHERE id = ?"))  // error: bad table
+        .add(execute_stage(""))                                                // error: empty query
+        .add(execute_stage("SELECT @myvar"))                                   // OK
+        .add(set_character_set_stage(character_set("bad_charset", utf8mb4_charset.next_char)))  // bad charset
+        .add(execute_stage("SELECT 'abc'"));                                                    // OK
+
+    // Run it. The result of the operation is the first encountered error
+    auto result = create_initial_netresult<void>();
+    conn.run_pipeline(req, res, result.err, *result.diag);
+    result.validate_error_exact(
+        common_server_errc::er_no_such_table,
+        "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+    );
+
+    // Check results
+    BOOST_TEST_REQUIRE(res.size() == 6u);
+    BOOST_TEST(res[0].has_results());
+    BOOST_TEST(
+        res[1].error() == (errcode_with_diagnostics{
+                              common_server_errc::er_no_such_table,
+                              create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
+                          })
+    );
+    BOOST_TEST(
+        res[2].error() ==
+        (errcode_with_diagnostics{common_server_errc::er_empty_query, create_server_diag("Query was empty")})
+    );
+    BOOST_TEST(res[3].as_results().rows() == makerows(1, 42), per_element());
+    BOOST_TEST(
+        res[4].error() == (errcode_with_diagnostics{
+                              common_server_errc::er_unknown_character_set,
+                              create_server_diag("Unknown character set: 'bad_charset'")
+                          })
+    );
+    BOOST_TEST(res[5].as_results().rows() == makerows(1, "abc"), per_element());
 }
 
 // dynamic, with non fatal errors at each step
