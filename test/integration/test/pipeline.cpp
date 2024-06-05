@@ -187,7 +187,7 @@ BOOST_FIXTURE_TEST_CASE(static_errors, fixture)
         prepare_statement_stage("SELECT * FROM bad_table WHERE id = ?"),  // error: bad table
         execute_stage(""),                                                // error: empty query
         execute_stage("SELECT @myvar"),                                   // OK
-        set_character_set_stage(character_set("bad_charset", utf8mb4_charset.next_char)),  // bad charset
+        set_character_set_stage(character_set{"bad_charset", utf8mb4_charset.next_char}),  // bad charset
         execute_stage("SELECT 'abc'")                                                      // OK
     );
     decltype(req)::response_type res;
