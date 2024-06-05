@@ -53,11 +53,51 @@ If you're not sure, don't use this feature.
 
 [heading Pipeline requests and responses]
 
-There are two interfaces to pipelines: static ([reflink static_pipeline_request]) and
-dynamic ([reflink pipeline_request]). We will discuss the static interface first, as it
-provides stronger type-safety. Both interfaces are C++11 compatible.
+There are two interfaces to pipelines: dynamic ([reflink pipeline_request]) and static
+([reflink static_pipeline_request]). Both are C++11 compatible.
 
-The first step is to create a pipeline request describing what should the pipeline do:
+To run a dynamic pipeline, create a request object describing what should the pipeline do:
+
+```
+// Create a pipeline request and add three stages to it.
+// When run, this pipeline will set the connection's character set to utf8mb4
+// and prepare two statements.
+pipeline_request req;
+req.add(set_character_set_stage(utf8mb4_charset))
+    .add(prepare_statement_stage("INSERT INTO audit_log (t, msg) VALUES (?, ?)"))
+    .add(prepare_statement_stage("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)"));
+```
+
+Use [refmem pipeline_request add] with (TODO: link) any of the stage types to add stages your pipeline.
+
+To actually run the pipeline, create a response object and call
+[refmem any_connection run_pipipeline] or [refmemunq any_connection async_run_pipeline]:
+
+```
+// Run the pipeline request req, and store responses into res
+// any_stage_response is a variant-like type that can the response
+// of any stage type (including results and statements).
+std::vector<any_stage_response> res;
+conn.run_pipipeline(req, res);
+```
+
+Finally, you can access the statements using:
+
+```
+// The 2nd and 3rd stages were prepare statements, so res[1] and res[2]
+// contain statement objects
+statement stmt1 = res[1].as_statement();
+statement stmt2 = res[2].as_statement();
+```
+
+
+
+
+[heading Static pipelines]
+
+If the type and number of stages in your pipeline is known at compile-time, you can use
+static pipelines, instead. The mechanics are similar, except that some checks are moved
+to compile-time. The pipeline in the previous example can be rewritten as:
 
 ```
 // Create a pipeline request containing with three stages.
@@ -69,56 +109,25 @@ auto req = make_pipeline_request(
     prepare_statement_stage("INSERT INTO audit_log (t, msg) VALUES (?, ?)"),
     prepare_statement_stage("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)")
 );
-```
 
-To actually run the pipeline, create a response object and call
-[refmem any_connection run_pipipeline] or [refmemunq any_connection async_run_pipeline]:
-
-```
+// Create a response object. Instead of vectors, static pipelines use tuples.
 // res is a std::tuple<set_character_set_stage::response_type, 
 //     prepare_statement_stage::response_type, prepare_statement_stage::response_type>
+// Each stage type has an associated response type
 decltype(req)::response_type res;
+
+
+// Run the pipeline
 conn.run_pipipeline(req, res);
-```
 
-Finally, you can access the statements using:
-
-```
+// Access your statements
 statement stmt1 = std::get<1>(res).value();
 statement stmt2 = std::get<2>(res).value();
 ```
 
-See TODO: link the reference table for a list of available stage types.
+If your use case allows it, prefer the static interface.
 
 
-
-
-
-[heading Dynamic pipelines]
-
-If the type or the number of stages in your pipeline is not known at compile-time, you can use
-dynamic pipelines, instead. The mechanics are pretty similar:
-
-```
-// Create a pipeline request and add three stages to it.
-// When run, this pipeline will set the connection's character set to utf8mb4
-// and prepare two statements.
-pipeline_request req;
-req
-    .add_set_character_set(utf8mb4_charset)
-    .add_prepare_statement("INSERT INTO audit_log (t, msg) VALUES (?, ?)")
-    .add_prepare_statement("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)");
-
-// Run the pipeline, like we did with the static version
-std::vector<any_stage_response> res;
-conn.run_pipipeline(req, res);
-
-// any_stage_response is a variant-like type. For prepare statement stages, it contains our statements
-statement stmt1 = res[1].as_statement();
-statement stmt2 = res[2].as_statement();
-```
-
-Prefer static pipelines if your use case allows them.
 
 
 
@@ -200,83 +209,135 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
     [
         [Stage type]
         [Description]
-        [Static interface]
-        [Dynamic interface]
+        [Example]
+        [Equivalent to...]
+        [Response type]
     ]
     [
-        [Execute]
+        [[reflink execute_stage]]
         [
-            Executes a text query or prepared statement[br]
-            Equivalent to [reflink any_connection execute]
+            Executes a text query or a prepared statement
         ]
         [
-            Request: [reflink execute_stage][br]
-            Response: `system::result<`[reflink results], [reflink errcode_and_diag]`>`
+            ```
+            // Text query
+            req.add(execute_stage("SELECT 1"));
 
+            // Prepared statement, with number of parameters known at compile time
+            req.add(execute_stage(stmt, {42, "abc"}));
+
+            // Prepared statement, with number of parameters unknown at compile time
+            std::vector<field_view> params { /*... */ };
+            req.add(execute_stage(stmt, params));
+            ```
         ]
         [
-            Request: [refmem pipeline_request add_execute][br]
-            Response: [refmem any_stage_response as_results], [refmemunq any_stage_response get_results], [refmemunq any_stage_response error]
+            [reflink any_connection execute]:
+            ```
+            // Text query
+            conn.execute("SELECT 1", result);
+
+            // Prepared statement, with number of parameters known at compile time
+            conn.execute(stmt.bind(42, "abc"), result);
+
+            // Prepared statement, with number of parameters unknown at compile time
+            std::vector<field_view> params { /*... */ };
+            conn.execute(stmt.bind(params.begin(), params.end()), result);
+            ```
+        ]
+        [
+            Dynamic: [reflink any_stage_response] containing [reflink results]
+            ([refmemunq any_stage_response as_results], [refmemunq any_stage_response get_results], [refmemunq any_stage_response has_results])
+            or an error.
+
+            Static: `system::result<`[reflink results], [reflink errcode_and_diag]`>`
         ]
     ]
     [
-        [Prepare statement]
+        [[reflink prepare_statement_stage]]
         [
-            Prepares a statement server-side[br]
-            Equivalent to [reflink any_connection prepare_statement]
+            Prepares a statement server-side
         ]
         [
-            Request: [reflink prepare_statement_stage][br]
-            Response: `system::result<`[reflink statement], [reflink errcode_and_diag]`>`
+            ```
+            req.add(prepare_statement_stage("SELECT * FROM employee WHERE id = ?"));
+            ```
         ]
         [
-            Request: [refmem pipeline_request add_prepare_statement][br]
-            Response: [refmem any_stage_response as_statement], [refmemunq any_stage_response get_statement], [refmemunq any_stage_response error]
+            [reflink any_connection prepare_statement]:
+            ```
+            conn.prepare_statement("SELECT * FROM employee WHERE id = ?");
+            ```
+        ]
+        [
+            Dynamic: [reflink any_stage_response] containing a [reflink statement]
+            ([refmemunq any_stage_response as_statement], [refmemunq any_stage_response get_statement], [refmemunq any_stage_response has_statement])
+            or an [refmemunq any_stage_response error].
+
+            Static: `system::result<`[reflink statement], [reflink errcode_and_diag]`>`
         ]
     ]
     [
         [Close statement]
         [
             Deallocates a prepared statement[br]
-            Equivalent to [reflink any_connection close_statement]
         ]
         [
-            Request: [reflink close_statement_stage][br]
-            Response: [reflink errcode_and_diag]
+            ```
+            req.add(close_statement_stage(stmt));
+            ```
         ]
         [
-            Request: [refmem pipeline_request add_close_statement][br]
-            Response: [refmemunq any_stage_response error]
+            [reflink any_connection close_statement]:
+            ```
+            conn.close_statement(stmt);
+            ```
+        ]
+        [
+            Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
+
+            Static: [reflink errcode_and_diag]
         ]
     ]
     [
         [Reset connection]
         [
-            Resets server-side session state[br]
-            Equivalent to [reflink any_connection reset_connection]
+            Resets server-side session state
         ]
         [
-            Request: [reflink reset_connection_stage][br]
-            Response: [reflink errcode_and_diag]
+            ```
+            req.add(reset_connection_stage());
+            ```
         ]
         [
-            Request: [refmem pipeline_request add_reset_connection][br]
-            Response: [refmemunq any_stage_response error]
+            [reflink any_connection reset_connection]
+        ]
+        [
+            Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
+
+            Static: [reflink errcode_and_diag]
         ]
     ]
     [
         [Set character set]
         [
-            Sets the connection character set[br]
-            Equivalent to [reflink any_connection set_character_set]
+            Sets the connection's current character set
         ]
         [
-            Request: [reflink set_character_set_stage][br]
-            Response: [reflink errcode_and_diag]
+            ```
+            req.add(set_character_set_stage(utf8mb4_charset));
+            ```
         ]
         [
-            Request: [refmem pipeline_request add_set_character_set][br]
-            Response: [refmemunq any_stage_response error]
+            [reflink any_connection set_character_set]:
+            ```
+            conn.set_character_set(utf8mb4_charset);
+            ```
+        ]
+        [
+            Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
+
+            Static: [reflink errcode_and_diag]
         ]
     ]
 ]
