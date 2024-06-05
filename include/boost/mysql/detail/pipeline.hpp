@@ -134,6 +134,7 @@ class pipeline_response_ref
                 std::move(*args.set_error.diag)
             );
             return nullptr;
+        default: BOOST_ASSERT(false); return nullptr;
         }
     }
 
