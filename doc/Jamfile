@@ -66,6 +66,7 @@ docca.reference reference.qbk
             \"BOOST_MYSQL_STATIC_ROW=class\" \\
             \"BOOST_MYSQL_DECL=\" \\
             \"BOOST_MYSQL_HAS_LOCAL_TIME=\" \\
+            \"BOOST_NO_CXX17_DEDUCTION_GUIDES=\" \\
             "
         <doxygen:param>SKIP_FUNCTION_MACROS=NO
         <doxygen:param>OUTPUT_LANGUAGE=English

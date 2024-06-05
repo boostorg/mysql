@@ -176,6 +176,7 @@ END
 [include helpers/Formattable.qbk]
 [include helpers/OutputString.qbk]
 [include helpers/PipelineRequestType.qbk]
+[include helpers/PipelineStageType.qbk]
 [include helpers/ResultsType.qbk]
 [include helpers/SocketStream.qbk]
 [include helpers/StaticRow.qbk]

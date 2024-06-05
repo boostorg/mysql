@@ -169,7 +169,7 @@ and a [reflink diagnostics] string, is used throughout the module.
 
 
 
-[heading:pìtfalls Potential pitfalls]
+[heading:pitfalls Potential pitfalls]
 
 All requests in the pipeline are always run, regardless of the outcome of previous requests. As a result, some pipelines can behave non-intuitively:
 
@@ -232,7 +232,7 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [reflink any_connection execute]:
+            [refmem any_connection execute]:
             ```
             // Text query
             conn.execute("SELECT 1", result);
@@ -250,7 +250,7 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ([refmemunq any_stage_response as_results], [refmemunq any_stage_response get_results], [refmemunq any_stage_response has_results])
             or an error.
 
-            Static: `system::result<`[reflink results], [reflink errcode_and_diag]`>`
+            Static: `system::result<`[reflink results], [reflink errcode_with_diagnostics]`>`
         ]
     ]
     [
@@ -264,7 +264,7 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [reflink any_connection prepare_statement]:
+            [refmem any_connection prepare_statement]:
             ```
             conn.prepare_statement("SELECT * FROM employee WHERE id = ?");
             ```
@@ -274,7 +274,7 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ([refmemunq any_stage_response as_statement], [refmemunq any_stage_response get_statement], [refmemunq any_stage_response has_statement])
             or an [refmemunq any_stage_response error].
 
-            Static: `system::result<`[reflink statement], [reflink errcode_and_diag]`>`
+            Static: `system::result<`[reflink statement], [reflink errcode_with_diagnostics]`>`
         ]
     ]
     [
@@ -288,7 +288,7 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [reflink any_connection close_statement]:
+            [refmem any_connection close_statement]:
             ```
             conn.close_statement(stmt);
             ```
@@ -296,7 +296,7 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
         [
             Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
 
-            Static: [reflink errcode_and_diag]
+            Static: [reflink errcode_with_diagnostics]
         ]
     ]
     [
@@ -310,12 +310,12 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [reflink any_connection reset_connection]
+            [refmem any_connection reset_connection]
         ]
         [
             Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
 
-            Static: [reflink errcode_and_diag]
+            Static: [reflink errcode_with_diagnostics]
         ]
     ]
     [
@@ -329,7 +329,7 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [reflink any_connection set_character_set]:
+            [refmem any_connection set_character_set]:
             ```
             conn.set_character_set(utf8mb4_charset);
             ```
@@ -337,14 +337,10 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
         [
             Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
 
-            Static: [reflink errcode_and_diag]
+            Static: [reflink errcode_with_diagnostics]
         ]
     ]
 ]
-
-
-
-
 
 
 [endsect]
