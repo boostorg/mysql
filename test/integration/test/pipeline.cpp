@@ -136,11 +136,92 @@ BOOST_FIXTURE_TEST_CASE(dynamic_errors, fixture)
     BOOST_TEST(res[5].as_results().rows() == makerows(1, "abc"), per_element());
 }
 
-// dynamic, with non fatal errors at each step
-// static, with all step kinds, success
-// static, with non fatal errors at each step
-// dynamic, empty (should this be unit?)
-// dynamic, fatal error (unit)
+BOOST_FIXTURE_TEST_CASE(static_success, fixture)
+{
+    // Setup
+    auto req = make_pipeline_request(
+        reset_connection_stage(),
+        execute_stage("SET @myvar = 15"),
+        prepare_statement_stage("SELECT * FROM one_row_table WHERE id = ?")
+    );
+    decltype(req)::response_type res;
+
+    // Run it
+    auto result = create_initial_netresult<void>();
+    conn.run_pipeline(req, res, result.err, *result.diag);
+    result.validate_no_error();
+
+    // Check results
+    BOOST_TEST(std::get<0>(res) == errcode_with_diagnostics{});
+    BOOST_TEST(std::get<1>(res).has_value());
+    auto stmt = std::get<2>(res).value();
+    BOOST_TEST(stmt.valid());
+    BOOST_TEST(conn.current_character_set().error() == client_errc::unknown_character_set);
+
+    // Create another pipeline
+    auto req2 = make_pipeline_request(
+        set_character_set_stage(utf8mb4_charset),
+        execute_stage(stmt, {0}),
+        execute_stage(stmt, {1}),
+        close_statement_stage(stmt)
+    );
+    decltype(req2)::response_type res2;
+
+    // Run it
+    result = create_initial_netresult<void>();
+    conn.run_pipeline(req2, res2, result.err, *result.diag);
+    result.validate_no_error();
+
+    // Check results
+    BOOST_TEST(std::get<0>(res2) == errcode_with_diagnostics{});
+    BOOST_TEST(std::get<1>(res2).value().rows() == rows(), per_element());
+    BOOST_TEST(std::get<2>(res2).value().rows() == makerows(2, 1, "f0"), per_element());
+    BOOST_TEST(std::get<3>(res2) == errcode_with_diagnostics{});
+}
+
+BOOST_FIXTURE_TEST_CASE(static_errors, fixture)
+{
+    // Setup
+    auto req = make_pipeline_request(
+        execute_stage("SET @myvar = 42"),                                 // OK
+        prepare_statement_stage("SELECT * FROM bad_table WHERE id = ?"),  // error: bad table
+        execute_stage(""),                                                // error: empty query
+        execute_stage("SELECT @myvar"),                                   // OK
+        set_character_set_stage(character_set("bad_charset", utf8mb4_charset.next_char)),  // bad charset
+        execute_stage("SELECT 'abc'")                                                      // OK
+    );
+    decltype(req)::response_type res;
+
+    // Run it. The result of the operation is the first encountered error
+    auto result = create_initial_netresult<void>();
+    conn.run_pipeline(req, res, result.err, *result.diag);
+    result.validate_error_exact(
+        common_server_errc::er_no_such_table,
+        "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+    );
+
+    // Check results
+    BOOST_TEST(std::get<0>(res).has_value());
+    BOOST_TEST(
+        std::get<1>(res).error() ==
+        (errcode_with_diagnostics{
+            common_server_errc::er_no_such_table,
+            create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
+        })
+    );
+    BOOST_TEST(
+        std::get<2>(res).error() ==
+        (errcode_with_diagnostics{common_server_errc::er_empty_query, create_server_diag("Query was empty")})
+    );
+    BOOST_TEST(std::get<3>(res).value().rows() == makerows(1, 42), per_element());
+    BOOST_TEST(
+        std::get<4>(res) == (errcode_with_diagnostics{
+                                common_server_errc::er_unknown_character_set,
+                                create_server_diag("Unknown character set: 'bad_charset'")
+                            })
+    );
+    BOOST_TEST(std::get<5>(res).value().rows() == makerows(1, "abc"), per_element());
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
