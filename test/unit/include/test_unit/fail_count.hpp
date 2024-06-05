@@ -30,7 +30,7 @@ public:
         : fail_after_(fail_after), err_(err)
     {
     }
-    error_code maybe_fail() noexcept { return ++num_calls_ >= fail_after_ ? err_ : error_code(); }
+    error_code maybe_fail() noexcept { return num_calls_++ >= fail_after_ ? err_ : error_code(); }
 };
 
 }  // namespace test

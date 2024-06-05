@@ -130,6 +130,12 @@ class any_connection
         detail::any_address_view,
         decltype(asio::consign(std::declval<CompletionToken>(), std::unique_ptr<char[]>()))>;
 
+    // Used by tests
+    any_connection(std::size_t initial_read_buffer_size, std::unique_ptr<detail::engine> eng)
+        : impl_(initial_read_buffer_size, std::move(eng))
+    {
+    }
+
 public:
     /**
      * \brief Constructs a connection object from an executor and an optional set of parameters.
@@ -141,7 +147,7 @@ public:
      * an \ref any_connection_params object to this constructor.
      */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
-        : impl_(params.initial_read_buffer_size, create_engine(std::move(ex), params.ssl_context))
+        : any_connection(params.initial_read_buffer_size, create_engine(std::move(ex), params.ssl_context))
     {
     }
 

@@ -5,14 +5,22 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/mysql_collations.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
+
+#include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/engine.hpp>
+#include <boost/mysql/detail/engine_impl.hpp>
+#include <boost/mysql/detail/engine_stream_adaptor.hpp>
 
 #include <boost/asio/error.hpp>
 #include <boost/asio/use_awaitable.hpp>
@@ -24,6 +32,7 @@
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/netfun_maker.hpp"
+#include "test_common/printing.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_frame.hpp"
@@ -419,6 +428,66 @@ BOOST_AUTO_TEST_CASE(stmt_tuple_ref)
 
     // This should compile and run
     BOOST_CHECK_NO_THROW(conn.execute(stmt.bind(std::ref(s), std::ref(b)), r));
+}
+
+// Helper to create any_connection objects using test_stream
+struct test_any_connection_fixture
+{
+    any_connection conn;
+
+    test_any_connection_fixture()
+        : conn(detail::access::construct<any_connection>(
+              default_initial_read_buffer_size,
+              std::unique_ptr<detail::engine>(
+                  new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>()
+              )
+          ))
+    {
+    }
+
+    test_stream& stream()
+    {
+        return detail::stream_from_engine<test_stream>(detail::access::get_impl(conn).get_engine());
+    }
+};
+
+auto pipeline_fn = netfun_maker_mem<
+    void,
+    any_connection,
+    const pipeline_request&,
+    pipeline_request::response_type&>::async_errinfo(&any_connection::async_run_pipeline);
+
+// empty pipelines complete immediately, posting adequately
+BOOST_FIXTURE_TEST_CASE(empty_dynamic_pipeline, test_any_connection_fixture)
+{
+    // Setup
+    pipeline_request req;
+    pipeline_request::response_type res;
+
+    // Run it. It should complete immediately, posting to the correct executor (verified by the testing
+    // infrastructure)
+    pipeline_fn(conn, req, res).validate_no_error();
+    BOOST_TEST(res.size() == 0u);
+}
+
+// fatal errors in pipelines behave correctly
+BOOST_FIXTURE_TEST_CASE(pipeline_fatal_error, test_any_connection_fixture)
+{
+    // Setup
+    pipeline_request req;
+    pipeline_request::response_type res;
+    req.add(execute_stage("SELECT 1")).add(execute_stage("SELECT 2"));
+
+    // The first read will fail
+    stream().set_fail_count(fail_count(1, boost::asio::error::network_reset));
+
+    // Run it
+    pipeline_fn(conn, req, res).validate_error_exact(boost::asio::error::network_reset);
+
+    // Validate the results
+    BOOST_TEST(res.size() == 2u);
+    BOOST_TEST(res[0].error() == (errcode_with_diagnostics{boost::asio::error::network_reset, {}}));
+    BOOST_TEST(res[1].error() == (errcode_with_diagnostics{client_errc::cancelled, {}}));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
