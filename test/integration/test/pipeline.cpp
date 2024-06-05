@@ -102,7 +102,7 @@ BOOST_FIXTURE_TEST_CASE(dynamic_errors, fixture)
         .add(prepare_statement_stage("SELECT * FROM bad_table WHERE id = ?"))  // error: bad table
         .add(execute_stage(""))                                                // error: empty query
         .add(execute_stage("SELECT @myvar"))                                   // OK
-        .add(set_character_set_stage(character_set("bad_charset", utf8mb4_charset.next_char)))  // bad charset
+        .add(set_character_set_stage(character_set{"bad_charset", utf8mb4_charset.next_char}))  // bad charset
         .add(execute_stage("SELECT 'abc'"));                                                    // OK
 
     // Run it. The result of the operation is the first encountered error
