@@ -57,15 +57,7 @@ There are two interfaces to pipelines: dynamic ([reflink pipeline_request]) and 
 
 To run a dynamic pipeline, create a request object describing what should the pipeline do:
 
-```
-// Create a pipeline request and add three stages to it.
-// When run, this pipeline will set the connection's character set to utf8mb4
-// and prepare two statements.
-pipeline_request req;
-req.add(set_character_set_stage(utf8mb4_charset))
-    .add(prepare_statement_stage("INSERT INTO audit_log (t, msg) VALUES (?, ?)"))
-    .add(prepare_statement_stage("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)"));
-```
+[pipeline_dynamic_request]
 
 Use [refmem pipeline_request add] with any of the [link mysql.pipeline.reference available stage types]
 to add stages your pipeline.
@@ -73,22 +65,11 @@ to add stages your pipeline.
 To actually run the pipeline, create a response object and call
 [refmem any_connection run_pipeline] or [refmemunq any_connection async_run_pipeline]:
 
-```
-// Run the pipeline request req, and store responses into res
-// any_stage_response is a variant-like type that can store the response
-// of any stage type (including results and statements).
-std::vector<any_stage_response> res;
-conn.run_pipeline(req, res);
-```
+[pipeline_dynamic_run]
 
 Finally, you can access the statements using:
 
-```
-// The 2nd and 3rd stages were statement preparation requests,
-// so res[1] and res[2] contain statement objects
-statement stmt1 = res[1].as_statement();
-statement stmt2 = res[2].as_statement();
-```
+[pipeline_dynamic_results]
 
 
 
@@ -99,31 +80,7 @@ If the type and number of stages in your pipeline is known at compile-time, you 
 static pipelines, instead. The mechanics are similar, except that some checks are moved
 to compile-time. The pipeline in the previous example can be rewritten as:
 
-```
-// Create a pipeline request containing three stages.
-// When run, this pipeline will set the connection's character set to utf8mb4
-// and prepare two statements.
-// req is a static_pipeline_request<set_character_set_stage, prepare_statement_stage, prepare_statement_stage>
-auto req = make_pipeline_request(
-    set_character_set_stage(utf8mb4_charset),
-    prepare_statement_stage("INSERT INTO audit_log (t, msg) VALUES (?, ?)"),
-    prepare_statement_stage("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)")
-);
-
-// Create a response object. Instead of vectors, static pipelines use tuples.
-// Each stage type has an associated response type
-// res is a std::tuple<set_character_set_stage::response_type, 
-//     prepare_statement_stage::response_type, prepare_statement_stage::response_type>
-decltype(req)::response_type res;
-
-
-// Run the pipeline
-conn.run_pipeline(req, res);
-
-// Access your statements
-statement stmt1 = std::get<1>(res).value();
-statement stmt2 = std::get<2>(res).value();
-```
+[pipeline_static]
 
 
 
@@ -144,24 +101,7 @@ Response types like [refmem prepare_statement_stage response_type] are aliases f
 [link mysql.error_handling.system_result `boost::system::result`], a vocabulary type that
 can contain either a value or an error. For instance:
 
-```
-// The second step in the pipeline will fail, the other ones will succeeded
-auto req = make_pipeline_request(
-    set_character_set_stage(utf8mb4_charset),
-    prepare_statement_stage("INSERT INTO bad_table (t, msg) VALUES (?, ?)"), // will fail
-    prepare_statement_stage("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)")
-);
-
-decltype(req)::response_type res;
-error_code ec;
-diagnostics diag;
-
-conn.run_pipipeline(req, res, ec, diag);
-BOOST_TEST(ec == common_server_errc::whatever);
-BOOST_TEST(std::get<0>(res).code == error_code());
-BOOST_TEST(std::get<1>(res).error().code == common_server_errc::whatever);
-BOOST_TEST(std::get<2>(res).error().code == error_code());
-```
+[pipeline_errors]
 
 The module uses [reflink errcode_with_diagnostics] as the error type,
 which contains an `error_code` and a [reflink diagnostics] object.
@@ -173,33 +113,11 @@ which contains an `error_code` and a [reflink diagnostics] object.
 
 All requests in the pipeline are always run, regardless of the outcome of previous requests. As a result, some pipelines can behave non-intuitively:
 
-```
-// This doesn't behave correctly - DO NOT DO THIS
-// The first INSERT will fail due to a failed foreign key check (there is no such company),
-// but COMMIT will still be run, thus leaving us with an inconsistent data model
-auto req = make_pipeline_request(
-    execute_stage("START TRANSACTION"),
-    execute_stage("INSERT INTO employee (first_name, last_name, company_id) VALUES ('John', 'Doe', 'bad')"),
-    execute_stage("INSERT INTO logs VALUES ('Inserted 1 employee')"),
-    execute_stage("COMMIT")
-);
-```
+[pipeline_pitfalls_bad]
 
 Pipelines aren't the best fit here. Instead, you can express the same logic using semicolon-separated queries:
 
-```
-const char* sql = 
-    "START TRANSACTION;"
-    "INSERT INTO employee (first_name, last_name, company_id) VALUES ('John', 'Doe', 'bad');"
-    "INSERT INTO logs VALUES ('Inserted 1 employee');"
-    "COMMIT"
-;
-
-// After the first INSERT fails, nothing else will be run. This is what we want.
-// Note that you need to enable multi queries when connecting to be able to run this.
-results r;
-conn.execute(sql, r);
-```
+[pipeline_pitfalls_good]
 
 Pipeline stages are run sequentially by the server. If any of the stages involves a heavyweight query,
 the server won't process subsequent stages until the query completes.
@@ -219,7 +137,7 @@ In the table below, the following variables are assumed:
     [
         [Stage type]
         [Example]
-        [Equivalent to...]
+        [When run, equivalent to...]
         [Response type]
     ]
     [
@@ -227,32 +145,8 @@ In the table below, the following variables are assumed:
             [reflink execute_stage][br][br]
             Behaves like [refmem any_connection execute]
         ]
-        [
-            ```
-            // Text query
-            req.add(execute_stage("SELECT 1"));
-
-            // Prepared statement, with number of parameters known at compile time
-            req.add(execute_stage(stmt, {42, "abc"}));
-
-            // Prepared statement, with number of parameters unknown at compile time
-            std::vector<field_view> params { /*... */ };
-            req.add(execute_stage(stmt, params));
-            ```
-        ]
-        [
-            ```
-            // Text query
-            conn.execute("SELECT 1", result);
-
-            // Prepared statement, with number of parameters known at compile time
-            conn.execute(stmt.bind(42, "abc"), result);
-
-            // Prepared statement, with number of parameters unknown at compile time
-            std::vector<field_view> params { /*... */ };
-            conn.execute(stmt.bind(params.begin(), params.end()), result);
-            ```
-        ]
+        [[pipeline_reference_execute]]
+        [[pipeline_reference_execute_equivalent]]
         [
             [reflink results] or [reflink errcode_with_diagnostics]
         ]
@@ -262,16 +156,8 @@ In the table below, the following variables are assumed:
             [reflink prepare_statement_stage][br][br]
             Behaves like [refmem any_connection prepare_statement]
         ]
-        [
-            ```
-            req.add(prepare_statement_stage("SELECT * FROM employee WHERE id = ?"));
-            ```
-        ]
-        [
-            ```
-            conn.prepare_statement("SELECT * FROM employee WHERE id = ?");
-            ```
-        ]
+        [[pipeline_reference_prepare_statement]]
+        [[pipeline_reference_prepare_statement_equivalent]]
         [
             [reflink statement] or [reflink errcode_with_diagnostics]
         ]
@@ -281,16 +167,8 @@ In the table below, the following variables are assumed:
             [reflink close_statement_stage][br][br]
             Behaves like [refmem any_connection close_statement]
         ]
-        [
-            ```
-            req.add(close_statement_stage(stmt));
-            ```
-        ]
-        [
-            ```
-            conn.close_statement(stmt);
-            ```
-        ]
+        [[pipeline_reference_close_statement]]
+        [[pipeline_reference_close_statement_equivalent]]
         [
             Possibly empty [reflink errcode_with_diagnostics]
         ]
@@ -300,16 +178,8 @@ In the table below, the following variables are assumed:
             [reflink reset_connection_stage][br][br]
             Behaves like [refmem any_connection reset_connection]
         ]
-        [
-            ```
-            req.add(reset_connection_stage());
-            ```
-        ]
-        [
-            ```
-            conn.reset_connection();
-            ```
-        ]
+        [[pipeline_reference_reset_connection]]
+        [[pipeline_reference_reset_connection_equivalent]]
         [
             Possibly empty [reflink errcode_with_diagnostics]
         ]
@@ -319,16 +189,8 @@ In the table below, the following variables are assumed:
             [reflink set_character_set_stage][br][br]
             Behaves like [refmem any_connection set_character_set]
         ]
-        [
-            ```
-            req.add(set_character_set_stage(utf8mb4_charset));
-            ```
-        ]
-        [
-            ```
-            conn.set_character_set(utf8mb4_charset);
-            ```
-        ]
+        [[pipeline_reference_set_character_set]]
+        [[pipeline_reference_set_character_set_equivalent]]
         [
             Possibly empty [reflink errcode_with_diagnostics]
         ]

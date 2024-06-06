@@ -25,9 +25,8 @@
 #include <string>
 #include <utility>
 
-#include "test_common/ci_server.hpp"
 #include "test_common/printing.hpp"
-#include "test_integration/snippets/credentials.hpp"
+#include "test_integration/snippets/get_any_connection.hpp"
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
@@ -157,21 +156,8 @@ void test_compose_update_query()
 
 BOOST_AUTO_TEST_CASE(section_sql_formatting)
 {
-    auto server_hostname = get_hostname();
-
-    connect_params params;
-    params.server_address.emplace_host_and_port(server_hostname);
-    params.username = mysql_username;
-    params.password = mysql_password;
-    params.database = "boost_mysql_examples";
-    params.multi_queries = true;
-    params.ssl = ssl_mode::disable;
-
-    boost::asio::io_context ioc;
-    any_connection conn(ioc);
+    auto& conn = get_any_connection();
     results r;
-
-    conn.connect(params);
 
     {
         //[sql_formatting_simple
