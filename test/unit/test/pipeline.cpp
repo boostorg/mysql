@@ -294,7 +294,10 @@ BOOST_AUTO_TEST_CASE(execute_statement_error)
     auto fv_arr = make_fv_arr(42);
     BOOST_CHECK_EXCEPTION(
         detail::pipeline_stage_access::create(
-            execute_stage(statement_builder().num_params(2).build(), {fv_arr.begin(), fv_arr.end()}),
+            execute_stage(
+                statement_builder().num_params(2).build(),
+                {fv_arr.data(), fv_arr.data() + fv_arr.size()}
+            ),
             buff
         ),
         std::invalid_argument,
