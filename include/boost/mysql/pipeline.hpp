@@ -87,7 +87,7 @@ public:
     {
         field_view impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
-        friend class execute_stage;
+        friend struct detail::access;
 #endif
     public:
         /**

@@ -47,6 +47,31 @@ inline std::uint8_t serialize_execute_statement(
     return serialize_top_level(execute_stmt_command{stmt.id(), params}, buff);
 }
 
+// TODO: consider using Boost.Container (or adding tests)
+inline std::uint8_t serialize_execute_stmt_tuple(
+    statement stmt,
+    span<const execute_stage::statement_param_arg> params,
+    std::vector<std::uint8_t>& buff
+)
+{
+    constexpr std::size_t stack_fields = 64u;
+    if (params.size() <= stack_fields)
+    {
+        std::array<field_view, stack_fields> storage;
+        for (std::size_t i = 0; i < params.size(); ++i)
+            storage[i] = access::get_impl(params[i]);
+        return detail::serialize_execute_statement(stmt, {storage.data(), params.size()}, buff);
+    }
+    else
+    {
+        std::vector<field_view> storage;
+        storage.reserve(params.size());
+        for (auto p : params)
+            storage.push_back(access::get_impl(p));
+        return detail::serialize_execute_statement(stmt, storage, buff);
+    }
+}
+
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
@@ -56,45 +81,30 @@ boost::mysql::detail::pipeline_request_stage boost::mysql::execute_stage::create
     std::vector<std::uint8_t>& buff
 ) const
 {
-    std::uint8_t seqnum;
-    detail::resultset_encoding enc;
-
     switch (type_)
     {
     case type_query:
-        seqnum = detail::serialize_top_level(detail::query_command{data_.query}, buff);
-        enc = detail::resultset_encoding::text;
-        break;
+        return {
+            detail::pipeline_stage_kind::execute,
+            detail::serialize_top_level(detail::query_command{data_.query}, buff),
+            detail::resultset_encoding::text
+        };
     case type_stmt_tuple:
     {
-        enc = detail::resultset_encoding::binary;
-        constexpr std::size_t stack_fields = 64u;
-        auto params = data_.stmt_tuple.params;
-        auto stmt = data_.stmt_tuple.stmt;
-        if (params.size() <= stack_fields)
-        {
-            std::array<field_view, stack_fields> storage;
-            for (std::size_t i = 0; i < params.size(); ++i)
-                storage[i] = params[i].impl_;
-            seqnum = detail::serialize_execute_statement(stmt, {storage.data(), params.size()}, buff);
-        }
-        else
-        {
-            std::vector<field_view> storage;
-            storage.reserve(params.size());
-            for (auto p : params)
-                storage.push_back(p.impl_);
-            seqnum = detail::serialize_execute_statement(stmt, storage, buff);
-        }
-        break;
+        return {
+            detail::pipeline_stage_kind::execute,
+            detail::serialize_execute_stmt_tuple(data_.stmt_tuple.stmt, data_.stmt_tuple.params, buff),
+            detail::resultset_encoding::binary
+        };
     }
     case type_stmt_range:
-        seqnum = detail::serialize_execute_statement(data_.stmt_range.stmt, data_.stmt_range.params, buff);
-        enc = detail::resultset_encoding::binary;
-        break;
+        return {
+            detail::pipeline_stage_kind::execute,
+            detail::serialize_execute_statement(data_.stmt_range.stmt, data_.stmt_range.params, buff),
+            detail::resultset_encoding::binary
+        };
+    default: BOOST_ASSERT(false); return {};
     }
-
-    return {detail::pipeline_stage_kind::execute, seqnum, enc};
 }
 
 boost::mysql::detail::pipeline_request_stage boost::mysql::prepare_statement_stage::create(
