@@ -6,7 +6,6 @@
 //
 
 #include <boost/mysql/character_set.hpp>
-#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -25,8 +24,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <iterator>
-#include <ostream>
 #include <vector>
 
 #include "test_common/buffer_concat.hpp"
@@ -47,6 +44,7 @@ using namespace boost::mysql::test;
 using namespace boost::mysql;
 namespace asio = boost::asio;
 using boost::span;
+using boost::test_tools::per_element;
 using detail::pipeline_request_stage;
 using detail::pipeline_stage_kind;
 using detail::resultset_encoding;
@@ -134,30 +132,20 @@ struct fixture : algo_fixture_base
     void check_setup(span<const pipeline_request_stage> stages)
     {
         BOOST_TEST(resp.setup_num_calls == 1u);
-
-        // Only kind needs to be validated, as seqnum and others don't contribute to usual setup effects
-        // and are validated by other means
-        BOOST_TEST_REQUIRE(resp.setup_args.size() == stages.size());
-        for (std::size_t i = 0; i < stages.size(); ++i)
-            BOOST_TEST(resp.setup_args[i].kind == stages[i].kind);
+        BOOST_TEST(resp.setup_args == stages, per_element());
     }
 
     // Verify that all stages succeeded
     void check_all_stages_succeeded()
     {
         for (const auto& item : resp.items)
-        {
-            BOOST_TEST(item.err.code == error_code());
-            BOOST_TEST(item.err.diag == diagnostics());
-        }
+            BOOST_TEST(item.err == errcode_with_diagnostics{});
     }
 
     // Verify that a certain step failed
-    void check_stage_error(std::size_t i, error_code expected_ec, const diagnostics& expected_diag)
+    void check_stage_error(std::size_t i, const errcode_with_diagnostics& expected)
     {
-        const auto& actual = resp.items.at(i).err;
-        BOOST_TEST(actual.code == expected_ec);
-        BOOST_TEST(actual.diag == expected_diag);
+        BOOST_TEST(resp.items.at(i).err == expected);
     }
 };
 
@@ -400,9 +388,9 @@ BOOST_AUTO_TEST_CASE(error_writing_request)
     fix.check_setup(stages);
 
     // All requests were marked as failed
-    fix.check_stage_error(0, asio::error::eof, {});
-    fix.check_stage_error(1, asio::error::eof, {});
-    fix.check_stage_error(2, asio::error::eof, {});
+    fix.check_stage_error(0, {asio::error::eof, {}});
+    fix.check_stage_error(1, {asio::error::eof, {}});
+    fix.check_stage_error(2, {asio::error::eof, {}});
 }
 
 BOOST_AUTO_TEST_CASE(nonfatal_errors)
@@ -438,9 +426,9 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors)
     fix.check_setup(stages);
 
     // Stage errors
-    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
-    fix.check_stage_error(1, error_code(), {});
-    fix.check_stage_error(2, common_server_errc::er_bad_field_error, create_server_diag("other_msg"));
+    fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
+    fix.check_stage_error(1, {error_code(), {}});
+    fix.check_stage_error(2, {common_server_errc::er_bad_field_error, create_server_diag("other_msg")});
 
     // The operation that succeeded had its result set
     BOOST_TEST(fix.resp.items.at(1).stmt.id() == 3u);
@@ -475,9 +463,9 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
     fix.check_setup(stages);
 
     // Stage errors
-    fix.check_stage_error(0, error_code(), {});
-    fix.check_stage_error(1, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
-    fix.check_stage_error(2, error_code(), {});
+    fix.check_stage_error(0, {});
+    fix.check_stage_error(1, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
+    fix.check_stage_error(2, {});
 
     // We processed the OK packet correctly
     BOOST_TEST(fix.st.backslash_escapes == false);
@@ -505,9 +493,9 @@ BOOST_AUTO_TEST_CASE(fatal_error_first)
     fix.check_setup(stages);
 
     // All subsequent requests were marked as failed
-    fix.check_stage_error(0, asio::error::network_reset, {});
-    fix.check_stage_error(1, asio::error::network_reset, {});
-    fix.check_stage_error(2, asio::error::network_reset, {});
+    fix.check_stage_error(0, {asio::error::network_reset, {}});
+    fix.check_stage_error(1, {asio::error::network_reset, {}});
+    fix.check_stage_error(2, {asio::error::network_reset, {}});
 }
 
 BOOST_AUTO_TEST_CASE(fatal_error_middle)
@@ -533,9 +521,9 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
     fix.check_setup(stages);
 
     // All subsequent requests were marked as failed
-    fix.check_stage_error(0, error_code(), {});
-    fix.check_stage_error(1, asio::error::network_reset, {});
-    fix.check_stage_error(2, asio::error::network_reset, {});
+    fix.check_stage_error(0, {});
+    fix.check_stage_error(1, {asio::error::network_reset, {}});
+    fix.check_stage_error(2, {asio::error::network_reset, {}});
 }
 
 // If there are fatal and non-fatal errors, the fatal one is the result of the operation
@@ -566,9 +554,9 @@ BOOST_AUTO_TEST_CASE(nonfatal_then_fatal_error)
     fix.check_setup(stages);
 
     // Stage results
-    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
-    fix.check_stage_error(1, asio::error::already_connected, {});
-    fix.check_stage_error(2, asio::error::already_connected, {});
+    fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
+    fix.check_stage_error(1, {asio::error::already_connected, {}});
+    fix.check_stage_error(2, {asio::error::already_connected, {}});
 }
 
 // Edge case: fatal error with non-empty diagnostics
@@ -601,16 +589,14 @@ BOOST_AUTO_TEST_CASE(fatal_error_with_diag)
     fix.check_setup(stages);
 
     // Stage results
-    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("bad db"));
+    fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("bad db")});
     fix.check_stage_error(
         1,
-        common_server_errc::er_aborting_connection,
-        create_server_diag("aborting connection")
+        {common_server_errc::er_aborting_connection, create_server_diag("aborting connection")}
     );
     fix.check_stage_error(
         2,
-        common_server_errc::er_aborting_connection,
-        create_server_diag("aborting connection")
+        {common_server_errc::er_aborting_connection, create_server_diag("aborting connection")}
     );
 }
 
