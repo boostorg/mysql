@@ -85,8 +85,8 @@ void main_impl(int argc, char** argv)
 
     const char* hostname = argv[3];
 
-    // The company_id whose employees we will be listing. This
-    // is user-supplied input, and should be treated as untrusted.
+    // The company_id to use when inserting new employees.
+    // This is user-supplied input, and should be treated as untrusted.
     const char* company_id = argc == 5 ? argv[4] : "HGS";
 
     // I/O context
