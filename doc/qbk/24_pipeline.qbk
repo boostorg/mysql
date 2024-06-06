@@ -8,18 +8,16 @@
 [section:pipeline (Experimental) Pipelines]
 [nochunk]
 
-Most connection functions (like [refmemunq any_connection execute], [refmemunq any_connection prepare_statement]
-and their async counterparts) behave sequentially: they write a single request to the server
-and then wait for its response. Thus, running N operations requires N round trips to the server.
-
-Pipelines coalesce several requests into a single message, so it can be written as a single batch.
-This can increase efficiency by saving round-trips.
+Functions like [refmemunq any_connection execute], [refmemunq any_connection prepare_statement]
+and their async counterparts work in a half-duplex request-response fashion:
+they write a single request to the server and wait for its response.
+Pipelines can increase efficiency by coalescing several requests into a single message, saving round-trips to the server.
 
 [warning
-    The protocol doesn't include explicit support for pipelines. [*From the server's point of view,
+    The MySQL client/server protocol doesn't have explicit support for pipelines. [*From the server's point of view,
     a pipeline is just a sequence of unrelated requests]. The server will try to execute all stages
-    in the pipeline, regardless of the result of previous steps. Pipelines are considered
-    an [*advanced feature]. See (TODO: like) pitfalls.
+    in each pipeline, regardless of the result of previous steps. Pipelines are considered
+    an [*advanced feature]. Please read [link mysql.pipeline.pitfalls the pitfalls section] for more info.
 ]
 
 [note
@@ -30,16 +28,17 @@ This can increase efficiency by saving round-trips.
 
 You should use pipelines for lightweight operations, dominated by round-trip time. Typical examples include:
 
-* Preparing several statements, in batch.
-* Executing and closing a statement in a single round-trip.
-* Running connection setup code, which may imply operations like [refmemunq any_connection reset_connection],
+* Running connection setup code, involving operations like [refmemunq any_connection reset_connection],
   [refmemunq any_connection set_character_set] or preparing statements. [reflink connection_pool] uses
   pipelines to clean up connections for re-use.
+* Preparing several statements, in batch.
+* Executing and closing a statement in a single round-trip.
+
 
 You should [*avoid] pipelines for the following cases:
 
-* When you can achieve the same functionality using a combination of
-  [link mysql.multi_resultset.multi_queries multi-queries] and [link mysql.sql_formatting client-side SQL formatting].
+* When you can achieve the same functionality using semicolon-separated queries
+  (thus using [link mysql.multi_resultset.multi_queries multi-queries] and [link mysql.sql_formatting client-side SQL formatting]).
   Multi-queries will stop after the first error, which is usually what you want. See [link mysql.pipeline.pitfalls this section] for more info.
 * When running heavyweight queries, where the gains in round-trip time are not significant.
 * When there are dependencies between stages in the pipeline. Lack of protocol support makes this use case impossible.
@@ -203,20 +202,26 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
 
 
 
-* Reference table
+[heading:reference Pipeline stage reference]
+
+In the table below, the following variables are assumed:
+
+* `req` is a [reflink pipeline_request].
+* `stmt` is a valid [reflink statement].
+* `result` is a [reflink results] object.
+* `conn` is an [reflink any_connection] object.
 
 [table:reference
     [
         [Stage type]
-        [Description]
         [Example]
         [Equivalent to...]
         [Response type]
     ]
     [
-        [[reflink execute_stage]]
         [
-            Executes a text query or a prepared statement
+            [reflink execute_stage][br][br]
+            Behaves like [refmem any_connection execute]
         ]
         [
             ```
@@ -232,7 +237,6 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [refmem any_connection execute]:
             ```
             // Text query
             conn.execute("SELECT 1", result);
@@ -246,17 +250,13 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            Dynamic: [reflink any_stage_response] containing [reflink results]
-            ([refmemunq any_stage_response as_results], [refmemunq any_stage_response get_results], [refmemunq any_stage_response has_results])
-            or an error.
-
-            Static: `system::result<`[reflink results], [reflink errcode_with_diagnostics]`>`
+            [reflink results] or [reflink errcode_with_diagnostics]
         ]
     ]
     [
-        [[reflink prepare_statement_stage]]
         [
-            Prepares a statement server-side
+            [reflink prepare_statement_stage][br][br]
+            Behaves like [refmem any_connection prepare_statement]
         ]
         [
             ```
@@ -264,23 +264,18 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [refmem any_connection prepare_statement]:
             ```
             conn.prepare_statement("SELECT * FROM employee WHERE id = ?");
             ```
         ]
         [
-            Dynamic: [reflink any_stage_response] containing a [reflink statement]
-            ([refmemunq any_stage_response as_statement], [refmemunq any_stage_response get_statement], [refmemunq any_stage_response has_statement])
-            or an [refmemunq any_stage_response error].
-
-            Static: `system::result<`[reflink statement], [reflink errcode_with_diagnostics]`>`
+            [reflink statement] or [reflink errcode_with_diagnostics]
         ]
     ]
     [
-        [Close statement]
         [
-            Deallocates a prepared statement[br]
+            [reflink close_statement_stage][br][br]
+            Behaves like [refmem any_connection close_statement]
         ]
         [
             ```
@@ -288,21 +283,18 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [refmem any_connection close_statement]:
             ```
             conn.close_statement(stmt);
             ```
         ]
         [
-            Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
-
-            Static: [reflink errcode_with_diagnostics]
+            Possibly empty [reflink errcode_with_diagnostics]
         ]
     ]
     [
-        [Reset connection]
         [
-            Resets server-side session state
+            [reflink reset_connection_stage][br][br]
+            Behaves like [refmem any_connection reset_connection]
         ]
         [
             ```
@@ -310,18 +302,18 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [refmem any_connection reset_connection]
+            ```
+            conn.reset_connection();
+            ```
         ]
         [
-            Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
-
-            Static: [reflink errcode_with_diagnostics]
+            Possibly empty [reflink errcode_with_diagnostics]
         ]
     ]
     [
-        [Set character set]
         [
-            Sets the connection's current character set
+            [reflink set_character_set_stage][br][br]
+            Behaves like [refmem any_connection set_character_set]
         ]
         [
             ```
@@ -329,15 +321,12 @@ Pipeline stages are run sequentially by the server. If any of the stages involve
             ```
         ]
         [
-            [refmem any_connection set_character_set]:
             ```
             conn.set_character_set(utf8mb4_charset);
             ```
         ]
         [
-            Dynamic: [reflink any_stage_response] containing a (possibly empty) [refmemunq any_stage_response error].
-
-            Static: [reflink errcode_with_diagnostics]
+            Possibly empty [reflink errcode_with_diagnostics]
         ]
     ]
 ]
