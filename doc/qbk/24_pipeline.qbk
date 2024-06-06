@@ -175,31 +175,34 @@ All requests in the pipeline are always run, regardless of the outcome of previo
 
 ```
 // This doesn't behave correctly - DO NOT DO THIS
-// COMMIT will be run even if one of the INSERTs fail, which defeats the purpose of the transaction
+// The first INSERT will fail due to a failed foreign key check (there is no such company),
+// but COMMIT will still be run, thus leaving us with an inconsistent data model
 auto req = make_pipeline_request(
     execute_stage("START TRANSACTION"),
-    execute_stage("INSERT INTO employee VALUES (...)"),
-    execute_stage("INSERT INTO logs VALUES (...)"),
-    execute_stage("COMMIT"),
+    execute_stage("INSERT INTO employee (first_name, last_name, company_id) VALUES ('John', 'Doe', 'bad')"),
+    execute_stage("INSERT INTO logs VALUES ('Inserted 1 employee')"),
+    execute_stage("COMMIT")
 );
 ```
 
-Pipelines aren't the best fit here. Instead, you can express the same logic using semicolon-separated queries and [reflink format_sql]:
+Pipelines aren't the best fit here. Instead, you can express the same logic using semicolon-separated queries:
 
 ```
 const char* sql = 
     "START TRANSACTION;"
-    "INSERT INTO employee VALUES (...);"
-    "INSERT INTO logs VALUES (...);"
+    "INSERT INTO employee (first_name, last_name, company_id) VALUES ('John', 'Doe', 'bad');"
+    "INSERT INTO logs VALUES ('Inserted 1 employee');"
     "COMMIT"
 ;
 
-// If an error is encountered in any of the INSERTs, COMMIT won't run
+// After the first INSERT fails, nothing else will be run. This is what we want.
+// Note that you need to enable multi queries when connecting to be able to run this.
 results r;
 conn.execute(sql, r);
 ```
 
-Pipeline stages are run sequentially by the server. If any of the stages involves a heavyweight query, the server won't process subsequent stages until the query completes.
+Pipeline stages are run sequentially by the server. If any of the stages involves a heavyweight query,
+the server won't process subsequent stages until the query completes.
 
 
 
