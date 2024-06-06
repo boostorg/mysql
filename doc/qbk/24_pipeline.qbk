@@ -78,7 +78,7 @@ To actually run the pipeline, create a response object and call
 // any_stage_response is a variant-like type that can the response
 // of any stage type (including results and statements).
 std::vector<any_stage_response> res;
-conn.run_pipipeline(req, res);
+conn.run_pipeline(req, res);
 ```
 
 Finally, you can access the statements using:
@@ -118,7 +118,7 @@ decltype(req)::response_type res;
 
 
 // Run the pipeline
-conn.run_pipipeline(req, res);
+conn.run_pipeline(req, res);
 
 // Access your statements
 statement stmt1 = std::get<1>(res).value();
@@ -135,7 +135,7 @@ If your use case allows it, prefer the static interface.
 
 [heading:error Error handling]
 
-If any of the pipeline stages result in an error, the entire [refmemunq any_connection run_pipipeline] operation
+If any of the pipeline stages result in an error, the entire [refmemunq any_connection run_pipeline] operation
 is considered failed. This means that [*if `run_pipipeline` completed successfully, all stages succeeded]. Recall that
 [*all stages are always run, regardless of the outcome of previous stages]. 
 
