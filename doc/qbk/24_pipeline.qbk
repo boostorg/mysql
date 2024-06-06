@@ -71,7 +71,7 @@ req.add(set_character_set_stage(utf8mb4_charset))
 Use [refmem pipeline_request add] with (TODO: link) any of the stage types to add stages your pipeline.
 
 To actually run the pipeline, create a response object and call
-[refmem any_connection run_pipipeline] or [refmemunq any_connection async_run_pipeline]:
+[refmem any_connection run_pipeline] or [refmemunq any_connection async_run_pipeline]:
 
 ```
 // Run the pipeline request req, and store responses into res
