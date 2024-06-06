@@ -173,9 +173,11 @@ struct fixture : algo_fixture_base
 BOOST_AUTO_TEST_CASE(execute_success)
 {
     // Setup. Each step has a different encoding
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::execute, 42u, resultset_encoding::binary},
-        {pipeline_stage_kind::execute, 11u, resultset_encoding::text  },
+    const std::array<pipeline_request_stage, 2> stages{
+        {
+         {pipeline_stage_kind::execute, 42u, resultset_encoding::binary},
+         {pipeline_stage_kind::execute, 11u, resultset_encoding::text},
+         }
     };
     fixture fix(stages);
 
@@ -218,9 +220,11 @@ BOOST_AUTO_TEST_CASE(execute_success)
 BOOST_AUTO_TEST_CASE(prepare_statement_success)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::prepare_statement, 42u, {}},
-        {pipeline_stage_kind::prepare_statement, 11u, {}},
+    const std::array<pipeline_request_stage, 2> stages{
+        {
+         {pipeline_stage_kind::prepare_statement, 42u, {}},
+         {pipeline_stage_kind::prepare_statement, 11u, {}},
+         }
     };
     fixture fix(stages);
 
@@ -251,9 +255,11 @@ BOOST_AUTO_TEST_CASE(prepare_statement_success)
 BOOST_AUTO_TEST_CASE(close_statement_success)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::close_statement, 3u, {}},
-        {pipeline_stage_kind::close_statement, 8u, {}},
+    const std::array<pipeline_request_stage, 2> stages{
+        {
+         {pipeline_stage_kind::close_statement, 3u, {}},
+         {pipeline_stage_kind::close_statement, 8u, {}},
+         }
     };
     fixture fix(stages);
 
@@ -268,8 +274,10 @@ BOOST_AUTO_TEST_CASE(close_statement_success)
 BOOST_AUTO_TEST_CASE(reset_connection)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::reset_connection, 3u, {}},
+    const std::array<pipeline_request_stage, 1> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 3u, {}},
+         }
     };
     fixture fix(stages);
     fix.st.current_charset = utf8mb4_charset;
@@ -291,8 +299,10 @@ BOOST_AUTO_TEST_CASE(reset_connection)
 BOOST_AUTO_TEST_CASE(set_character_set)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::set_character_set, 19u, utf8mb4_charset},
+    const std::array<pipeline_request_stage, 1> stages{
+        {
+         {pipeline_stage_kind::set_character_set, 19u, utf8mb4_charset},
+         }
     };
     fixture fix(stages);
 
@@ -313,8 +323,10 @@ BOOST_AUTO_TEST_CASE(set_character_set)
 BOOST_AUTO_TEST_CASE(ping)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::ping, 32u, {}},
+    const std::array<pipeline_request_stage, 1> stages{
+        {
+         {pipeline_stage_kind::ping, 32u, {}},
+         }
     };
     fixture fix(stages);
 
@@ -336,12 +348,14 @@ BOOST_AUTO_TEST_CASE(combination)
 {
     // Setup. Typical connection setup pipeline, where we reset, set names,
     // set the time_zone and prepare some statements
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::reset_connection,  32u, {}                      },
-        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
-        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
-        {pipeline_stage_kind::prepare_statement, 0u,  {}                      },
-        {pipeline_stage_kind::prepare_statement, 1u,  {}                      },
+    const std::array<pipeline_request_stage, 5> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::execute, 10u, resultset_encoding::text},
+         {pipeline_stage_kind::prepare_statement, 0u, {}},
+         {pipeline_stage_kind::prepare_statement, 1u, {}},
+         }
     };
     fixture fix(stages);
     fix.st.backslash_escapes = false;
@@ -384,10 +398,12 @@ BOOST_AUTO_TEST_CASE(no_requests)
 BOOST_AUTO_TEST_CASE(error_writing_request)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::reset_connection,  32u, {}                      },
-        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
-        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    const std::array<pipeline_request_stage, 3> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::execute, 10u, resultset_encoding::text},
+         }
     };
     fixture fix(stages);
 
@@ -406,10 +422,12 @@ BOOST_AUTO_TEST_CASE(error_writing_request)
 BOOST_AUTO_TEST_CASE(nonfatal_errors)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::prepare_statement, 32u, {}                      },
-        {pipeline_stage_kind::prepare_statement, 16u, {}                      },
-        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    const std::array<pipeline_request_stage, 3> stages{
+        {
+         {pipeline_stage_kind::prepare_statement, 32u, {}},
+         {pipeline_stage_kind::prepare_statement, 16u, {}},
+         {pipeline_stage_kind::execute, 10u, resultset_encoding::text},
+         }
     };
     fixture fix(stages);
 
@@ -445,10 +463,12 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors)
 BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::prepare_statement, 32u, {}                      },
-        {pipeline_stage_kind::prepare_statement, 16u, {}                      },
-        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    const std::array<pipeline_request_stage, 3> stages{
+        {
+         {pipeline_stage_kind::prepare_statement, 32u, {}},
+         {pipeline_stage_kind::prepare_statement, 16u, {}},
+         {pipeline_stage_kind::execute, 10u, resultset_encoding::text},
+         }
     };
     fixture fix(stages);
 
@@ -480,10 +500,12 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
 BOOST_AUTO_TEST_CASE(fatal_error_first)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::reset_connection,  32u, {}                      },
-        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
-        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    const std::array<pipeline_request_stage, 3> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::execute, 10u, resultset_encoding::text},
+         }
     };
     fixture fix(stages);
 
@@ -505,10 +527,12 @@ BOOST_AUTO_TEST_CASE(fatal_error_first)
 BOOST_AUTO_TEST_CASE(fatal_error_middle)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::reset_connection,  32u, {}                      },
-        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
-        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    const std::array<pipeline_request_stage, 3> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::execute, 10u, resultset_encoding::text},
+         }
     };
     fixture fix(stages);
 
@@ -532,10 +556,12 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
 BOOST_AUTO_TEST_CASE(nonfatal_then_fatal_error)
 {
     // Setup
-    const pipeline_request_stage stages[] = {
-        {pipeline_stage_kind::reset_connection,  32u, {}                      },
-        {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset         },
-        {pipeline_stage_kind::execute,           10u, resultset_encoding::text},
+    const std::array<pipeline_request_stage, 3> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::execute, 10u, resultset_encoding::text},
+         }
     };
     fixture fix(stages);
 
