@@ -5,19 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_any_connection
+//[example_pipeline
 
-// any_connection is a connection type that is easier to use than regular
-// connection. It is type-erased: it's not a template, and is able to connect
-// to any server using TCP, UNIX sockets and SSL. It features a simplified
-// connect and async_connect function family, which handle name resolution.
-// Performance is equivalent to regular connection.
+// This example demonstrates how to use the pipeline API to prepare,
+// execute and close statements in batch.
+// It uses asynchronous functions and C++20 coroutines (with boost::asio::co_spawn).
 //
-// This example demonstrates how to connect to a server using any_connection.
-// It uses asynchronous functions and coroutines (with boost::asio::spawn).
-// Recall that using these coroutines requires linking against Boost.Context.
-//
-// any_connection is an experimental feature.
+// Pipelines are an experimental feature.
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
@@ -46,27 +40,35 @@
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 namespace asio = boost::asio;
-namespace mysql = boost::mysql;
 
 using boost::mysql::error_code;
 using boost::mysql::string_view;
 
-// Prepare several statements in batch
-asio::awaitable<std::vector<mysql::statement>> batch_prepare(
-    mysql::any_connection& conn,
+// Prepare several statements in batch.
+// This is faster than preparing them one by one, as it saves round-trips to the server.
+asio::awaitable<std::vector<boost::mysql::statement>> batch_prepare(
+    boost::mysql::any_connection& conn,
     boost::span<const string_view> statements
 )
 {
-    mysql::pipeline_request req;
+    // Construct a pipeline request describing the work to be performed.
+    // There must be one prepare_statement_stage per statement to prepare
+    boost::mysql::pipeline_request req;
     for (auto stmt_sql : statements)
-        req.add(mysql::prepare_statement_stage(stmt_sql));
+        req.add(boost::mysql::prepare_statement_stage(stmt_sql));
 
-    std::vector<mysql::any_stage_response> pipe_res;
-    mysql::diagnostics diag;
+    // Run the pipeline. Using as_tuple prevents async_run_pipeline from throwing.
+    // This allows us to include the diagnostics object diag in the thrown exception.
+    // any_stage_response is a variant-like type that can hold the response of any stage type.
+    std::vector<boost::mysql::any_stage_response> pipe_res;
+    boost::mysql::diagnostics diag;
     auto [ec] = co_await conn.async_run_pipeline(req, pipe_res, diag, asio::as_tuple(asio::deferred));
-    mysql::throw_on_error(ec, diag);
+    boost::mysql::throw_on_error(ec, diag);
 
-    std::vector<mysql::statement> res;
+    // If we got here, all statements were prepared successfully.
+    // pipe_res contains as many elements as statements.size(), holding statement objects
+    // Extract them into a vector
+    std::vector<boost::mysql::statement> res;
     res.reserve(statements.size());
     for (const auto& stage_res : pipe_res)
         res.push_back(stage_res.get_statement());
@@ -112,67 +114,64 @@ void main_impl(int argc, char** argv)
     // Database to use; leave empty or omit for no database
     params.database = "boost_mysql_examples";
 
-    /**
-     * The entry point. We spawn a stackful coroutine using boost::asio::spawn.
-     *
-     * The coroutine will actually start running when we call io_context::run().
-     * It will suspend every time we call one of the asynchronous functions, saving
-     * all information it needs for resuming. When the asynchronous operation completes,
-     * the coroutine will resume in the point it was left.
-     */
+    // Spawn a coroutine running the passed function
     boost::asio::co_spawn(
         ctx.get_executor(),
         [&conn, &params, company_id]() -> boost::asio::awaitable<void> {
+            // Use as_tuple and throw_on_error to include diagnostics in our exceptions
             constexpr auto tok = boost::asio::as_tuple(boost::asio::deferred);
-
-            // This error_code and diagnostics will be filled if an
-            // operation fails. We will check them for every operation we perform.
             boost::mysql::diagnostics diag;
 
-            // Connect to the server. This will take care of resolving the provided
-            // hostname to an IP address, connect to that address, and establish
-            // the MySQL session.
+            // Connect to the server
             auto [ec] = co_await conn.async_connect(params, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
 
-            // Prepare statements
-            std::array<string_view, 2> stmt_sql{
+            // Prepare the statements using the batch prepare function that we previously defined
+            const std::array<string_view, 2> stmt_sql{
                 "INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)",
                 "INSERT INTO audit_log (msg) VALUES (?)"
             };
-            std::vector<mysql::statement> stmts = co_await batch_prepare(conn, stmt_sql);
+            std::vector<boost::mysql::statement> stmts = co_await batch_prepare(conn, stmt_sql);
 
-            // Execute them. We must not include the COMMIT statement here.
-            // If any of these steps fail, we shouldn't run COMMIT. This is a dependency,
-            // and requires running it once the server responds
-            mysql::static_pipeline_request req(
-                mysql::execute_stage("START TRANSACTION"),
-                mysql::execute_stage(stmts.at(0), {company_id, "Juan", "Lopez"}),
-                mysql::execute_stage(stmts.at(0), {company_id, "Pepito", "Rodriguez"}),
-                mysql::execute_stage(stmts.at(0), {company_id, "Someone", "Random"}),
-                mysql::execute_stage(stmts.at(1), {"Inserted 3 new emplyees"})
+            // Create a request to execute them, this time using the static interface.
+            // Warning: do NOT include the COMMIT statement in this pipeline.
+            // COMMIT must only be executed if all the previous statements succeeded.
+            // In a pipeline, all stages get executed, regardless of the outcome of previous stages.
+            // We say that COMMIT has a dependency on the result of previous stages.
+            boost::mysql::static_pipeline_request req(
+                boost::mysql::execute_stage("START TRANSACTION"),
+                boost::mysql::execute_stage(stmts.at(0), {company_id, "Juan", "Lopez"}),
+                boost::mysql::execute_stage(stmts.at(0), {company_id, "Pepito", "Rodriguez"}),
+                boost::mysql::execute_stage(stmts.at(0), {company_id, "Someone", "Random"}),
+                boost::mysql::execute_stage(stmts.at(1), {"Inserted 3 new emplyees"})
             );
             decltype(req)::response_type res;
 
+            // Execute the static pipeline
             std::tie(ec) = co_await conn.async_run_pipeline(req, res, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
 
+            // If we got here, all stages executed successfully.
+            // Since they were execution stages, the response contains a results object.
+            // Get the IDs of the newly created employees
             auto id1 = std::get<1>(res)->last_insert_id();
             auto id2 = std::get<2>(res)->last_insert_id();
             auto id3 = std::get<3>(res)->last_insert_id();
 
-            // If the above statement were successful, we can close the statements
-            // and run the COMMIT statement
-            mysql::static_pipeline_request pipe2{
-                mysql::close_statement_stage(stmts.at(0)),
-                mysql::close_statement_stage(stmts.at(1)),
-                mysql::execute_stage("COMMIT")
+            // We can now commit our transaction and close the statements.
+            // Create the request to do so
+            boost::mysql::static_pipeline_request pipe2{
+                boost::mysql::execute_stage("COMMIT"),
+                boost::mysql::close_statement_stage(stmts.at(0)),
+                boost::mysql::close_statement_stage(stmts.at(1))
             };
             decltype(pipe2)::response_type res2;
 
+            // Run it
             std::tie(ec) = co_await conn.async_run_pipeline(pipe2, res2, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
 
+            // If we got here, our insertions got committed.
             std::cout << "Inserted employees: " << id1 << ", " << id2 << ", " << id3 << std::endl;
 
             // Notify the MySQL server we want to quit, then close the underlying connection.
