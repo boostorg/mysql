@@ -71,7 +71,7 @@ struct connection_state_data
     // The current character set, or a default-constructed character set (will all nullptrs) if unknown
     character_set current_charset{};
 
-    // The write buffer. TODO: unify this with the read buffer
+    // The write buffer
     std::vector<std::uint8_t> write_buffer;
 
     // Reader

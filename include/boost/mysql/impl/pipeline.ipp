@@ -76,7 +76,6 @@ inline std::uint8_t serialize_execute_stmt_tuple(
 }  // namespace mysql
 }  // namespace boost
 
-// TODO: refactor this
 boost::mysql::detail::pipeline_request_stage boost::mysql::execute_stage::create(
     std::vector<std::uint8_t>& buff
 ) const

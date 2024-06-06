@@ -191,7 +191,6 @@ public:
     using response_type = system::result<results, errcode_with_diagnostics>;
 
 private:
-    // TODO: this is very similar to any_execution_request
     enum type_t
     {
         type_query,

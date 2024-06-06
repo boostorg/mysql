@@ -82,7 +82,6 @@ class run_pipeline_algo
             break;
         case pipeline_stage_kind::close_statement:
             // Close statement doesn't have a response
-            // TODO: this causes delays unless we disable naggle's algorithm
             read_response_algo_.nothing = nullptr;
             break;
         case pipeline_stage_kind::set_character_set:
