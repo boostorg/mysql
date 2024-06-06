@@ -1087,7 +1087,25 @@ public:
         );
     }
 
-    // TODO: document
+    /**
+     * \brief Runs a set of pipelined requests.
+     * \details
+     * Runs the pipeline described by `req` and stores its response in `res`.
+     * \n
+     * Request stages are seen by the server as a series of unrelated requests.
+     * As a consequence, all stages are always run, even if previous stages fail.
+     *
+     * If all stages succeed, the operation completes successfully. Thus, there is no need to check
+     * the per-stage error code in `res` if this operation completed successfully.
+     * \n
+     * If any stage fails with a non-fatal error (as per \ref is_fatal_error), the result of the operation
+     * is the first encountered error. You can check which stages succeeded and which ones didn't by
+     * inspecting each stage in `res`.
+     * \n
+     * If any stage fails with a fatal error, the result of the operation is the fatal error.
+     * Successive stages will be marked as failed with the fatal error. The server may or may
+     * not have processed such stages.
+     */
     template <BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType>
     void run_pipeline(
         const PipelineRequestType& req,
@@ -1099,6 +1117,7 @@ public:
         impl_.run(impl_.make_params_pipeline(req, res, diag), err);
     }
 
+    /// \copydoc run_pipeline
     template <BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType>
     void run_pipeline(const PipelineRequestType& req, typename PipelineRequestType::response_type& res)
     {
@@ -1108,6 +1127,16 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
+    /**
+     * \copydoc run_pipeline
+     * \details
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Object lifetimes
+     * The request and response objects must be kept alive and should not be modified
+     * until the operation completes.
+     */
     template <
         BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
@@ -1120,7 +1149,7 @@ public:
         return async_run_pipeline(req, res, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
-    /// \copydoc async_close
+    /// \copydoc async_run_pipeline
     template <
         BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
