@@ -67,14 +67,15 @@ req.add(set_character_set_stage(utf8mb4_charset))
     .add(prepare_statement_stage("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)"));
 ```
 
-Use [refmem pipeline_request add] with (TODO: link) any of the stage types to add stages your pipeline.
+Use [refmem pipeline_request add] with any of the [link mysql.pipeline.reference available stage types]
+to add stages your pipeline.
 
 To actually run the pipeline, create a response object and call
 [refmem any_connection run_pipeline] or [refmemunq any_connection async_run_pipeline]:
 
 ```
 // Run the pipeline request req, and store responses into res
-// any_stage_response is a variant-like type that can the response
+// any_stage_response is a variant-like type that can store the response
 // of any stage type (including results and statements).
 std::vector<any_stage_response> res;
 conn.run_pipeline(req, res);
@@ -83,8 +84,8 @@ conn.run_pipeline(req, res);
 Finally, you can access the statements using:
 
 ```
-// The 2nd and 3rd stages were prepare statements, so res[1] and res[2]
-// contain statement objects
+// The 2nd and 3rd stages were statement preparation requests,
+// so res[1] and res[2] contain statement objects
 statement stmt1 = res[1].as_statement();
 statement stmt2 = res[2].as_statement();
 ```
@@ -99,7 +100,7 @@ static pipelines, instead. The mechanics are similar, except that some checks ar
 to compile-time. The pipeline in the previous example can be rewritten as:
 
 ```
-// Create a pipeline request containing with three stages.
+// Create a pipeline request containing three stages.
 // When run, this pipeline will set the connection's character set to utf8mb4
 // and prepare two statements.
 // req is a static_pipeline_request<set_character_set_stage, prepare_statement_stage, prepare_statement_stage>
@@ -110,9 +111,9 @@ auto req = make_pipeline_request(
 );
 
 // Create a response object. Instead of vectors, static pipelines use tuples.
+// Each stage type has an associated response type
 // res is a std::tuple<set_character_set_stage::response_type, 
 //     prepare_statement_stage::response_type, prepare_statement_stage::response_type>
-// Each stage type has an associated response type
 decltype(req)::response_type res;
 
 
@@ -124,7 +125,7 @@ statement stmt1 = std::get<1>(res).value();
 statement stmt2 = std::get<2>(res).value();
 ```
 
-If your use case allows it, prefer the static interface.
+
 
 
 
@@ -162,8 +163,8 @@ BOOST_TEST(std::get<1>(res).error().code == common_server_errc::whatever);
 BOOST_TEST(std::get<2>(res).error().code == error_code());
 ```
 
-The [reflink errcode_with_diagnostics] error type, which contains an `error_code`
-and a [reflink diagnostics] string, is used throughout the module.
+The module uses [reflink errcode_with_diagnostics] as the error type,
+which contains an `error_code` and a [reflink diagnostics] object.
 
 
 
