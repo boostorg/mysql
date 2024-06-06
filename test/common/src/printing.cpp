@@ -63,7 +63,7 @@ static const char* to_string(metadata_mode v)
     }
 }
 
-std::ostream& boost::mysql::operator<<(std::ostream& os, metadata_mode v) { return os << to_string(v); }
+std::ostream& boost::mysql::operator<<(std::ostream& os, metadata_mode v) { return os << ::to_string(v); }
 
 static const char* to_string(ssl_mode v)
 {
@@ -76,7 +76,7 @@ static const char* to_string(ssl_mode v)
     }
 }
 
-std::ostream& boost::mysql::operator<<(std::ostream& os, ssl_mode v) { return os << to_string(v); }
+std::ostream& boost::mysql::operator<<(std::ostream& os, ssl_mode v) { return os << ::to_string(v); }
 
 // character set
 bool boost::mysql::operator==(const character_set& lhs, const character_set& rhs)

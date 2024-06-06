@@ -26,9 +26,9 @@
 using namespace boost::mysql;
 
 // address_type
-static const char* to_string(address_type value)
+static const char* to_string(address_type v)
 {
-    switch (value)
+    switch (v)
     {
     case address_type::host_and_port: return "address_type::host_and_port";
     case address_type::unix_path: return "address_type::unix_path";
@@ -36,10 +36,7 @@ static const char* to_string(address_type value)
     }
 }
 
-std::ostream& boost::mysql::operator<<(std::ostream& os, address_type value)
-{
-    return os << to_string(value);
-}
+std::ostream& boost::mysql::operator<<(std::ostream& os, address_type v) { return os << ::to_string(v); }
 
 // capabilities
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, const capabilities& v)
@@ -58,7 +55,7 @@ static const char* to_string(detail::db_flavor v)
     }
 }
 
-std::ostream& boost::mysql::detail::operator<<(std::ostream& os, db_flavor v) { return os << to_string(v); }
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, db_flavor v) { return os << ::to_string(v); }
 
 // resultset_encoding
 static const char* to_string(detail::resultset_encoding v)
@@ -73,7 +70,7 @@ static const char* to_string(detail::resultset_encoding v)
 
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, detail::resultset_encoding v)
 {
-    return os << to_string(v);
+    return os << ::to_string(v);
 }
 
 // results_iterator
@@ -99,7 +96,7 @@ static const char* to_string(detail::next_action_type v)
 
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, next_action_type v)
 {
-    return os << to_string(v);
+    return os << ::to_string(v);
 }
 
 // pipeline_stage_kind
@@ -119,7 +116,7 @@ static const char* to_string(detail::pipeline_stage_kind v)
 
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, pipeline_stage_kind v)
 {
-    return os << to_string(v);
+    return os << ::to_string(v);
 }
 
 // pipeline_request_stage
@@ -167,7 +164,7 @@ static const char* to_string(detail::connection_status v)
 
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, connection_status v)
 {
-    return os << to_string(v);
+    return os << ::to_string(v);
 }
 
 // collection_state
@@ -185,7 +182,7 @@ static const char* to_string(detail::collection_state v)
 
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, collection_state v)
 {
-    return os << to_string(v);
+    return os << ::to_string(v);
 }
 
 static const char* to_string(detail::next_connection_action v)
@@ -205,5 +202,5 @@ static const char* to_string(detail::next_connection_action v)
 
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, next_connection_action v)
 {
-    return os << to_string(v);
+    return os << ::to_string(v);
 }
