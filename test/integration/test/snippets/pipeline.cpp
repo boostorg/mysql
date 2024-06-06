@@ -10,10 +10,12 @@
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
 
+#include <boost/system/system_error.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <vector>
@@ -145,7 +147,7 @@ BOOST_AUTO_TEST_CASE(section_pipeline_pitfalls)
         error_code ec;
         diagnostics diag;
         conn.run_pipeline(req, res, ec, diag);
-        BOOST_TEST(ec == error_code());  // TODO
+        BOOST_TEST(ec == common_server_errc::er_no_referenced_row_2);
     }
 
     {
@@ -156,13 +158,20 @@ BOOST_AUTO_TEST_CASE(section_pipeline_pitfalls)
             "INSERT INTO logs VALUES ('Inserted 1 employee');"
             "COMMIT";
 
-        // After the first INSERT fails, nothing else will be run. This is what we want.
-        // Note that you need to enable multi queries when connecting to be able to run this.
-        results r;
-        conn.execute(sql, r);
-        //]
-
-        // TODO: try/catch
+        //<-
+        try
+        {
+            //->
+            // After the first INSERT fails, nothing else will be run. This is what we want.
+            // Note that you need to enable multi queries when connecting to be able to run this.
+            results r;
+            conn.execute(sql, r);
+            //]
+        }
+        catch (const boost::system::system_error& err)
+        {
+            BOOST_TEST(err.code() == common_server_errc::er_no_referenced_row_2);
+        }
     }
 }
 
@@ -177,7 +186,6 @@ BOOST_AUTO_TEST_CASE(section_pipeline_reference)
         pipeline_request req;
         auto stmt = conn.prepare_statement("SELECT ?, ?, ?");
 
-        // TODO: setup params vector
         //[pipeline_reference_execute
         // Text query
         req.add(execute_stage("SELECT 1"));
@@ -186,14 +194,21 @@ BOOST_AUTO_TEST_CASE(section_pipeline_reference)
         req.add(execute_stage(stmt, {"John", "Doe", 42}));
 
         // Prepared statement, with number of parameters unknown at compile time
-        std::vector<field_view> params{/*... */};
+        std::vector<field_view> params{
+            /*... */
+            //<-
+            field_view("Janet"),
+            field_view("Joyce"),
+            field_view(50)
+            //->
+        };
         req.add(execute_stage(stmt, params));
         //]
 
         conn.run_pipeline(req, pipe_res);
         BOOST_TEST(pipe_res.at(0).as_results().rows() == makerows(1, 1), per_element());
         BOOST_TEST(pipe_res.at(1).as_results().rows() == makerows(3, "John", "Doe", 42), per_element());
-        BOOST_TEST(pipe_res.at(2).as_results().rows() == makerows(3, "John", "Doe", 42), per_element());
+        BOOST_TEST(pipe_res.at(2).as_results().rows() == makerows(3, "Janet", "Joyce", 50), per_element());
     }
     {
         auto stmt = conn.prepare_statement("SELECT ?, ?, ?");
@@ -201,14 +216,29 @@ BOOST_AUTO_TEST_CASE(section_pipeline_reference)
         //[pipeline_reference_execute_equivalent
         // Text query
         conn.execute("SELECT 1", result);
+        //<-
+        BOOST_TEST(result.rows() == makerows(1, 1), per_element());
+        //->
 
         // Prepared statement, with number of parameters known at compile time
         conn.execute(stmt.bind("John", "Doe", 42), result);
+        //<-
+        BOOST_TEST(result.rows() == makerows(3, "John", "Doe", 42), per_element());
+        //->
 
         // Prepared statement, with number of parameters unknown at compile time
-        std::vector<field_view> params{/*... */};
+        std::vector<field_view> params{
+            /*... */
+            //<-
+            field_view("Janet"),
+            field_view("Joyce"),
+            field_view(50)
+            //->
+        };
         conn.execute(stmt.bind(params.begin(), params.end()), result);
         //]
+
+        BOOST_TEST(result.rows() == makerows(3, "Janet", "Joyce", 50), per_element());
     }
 
     // Prepare statement
