@@ -9,14 +9,14 @@
 [nochunk]
 
 Functions like [refmemunq any_connection execute], [refmemunq any_connection prepare_statement]
-and their async counterparts work in a half-duplex request-response fashion:
+and their async counterparts are half-duplex:
 they write a single request to the server and wait for its response.
-Pipelines can increase efficiency by coalescing several requests into a single message, saving round-trips to the server.
+In contrast, pipelines can increase efficiency by coalescing several requests into a single message, saving round-trips to the server.
 
 [warning
     The MySQL client/server protocol doesn't have explicit support for pipelines. [*From the server's point of view,
     a pipeline is just a sequence of unrelated requests]. The server will try to execute all stages
-    in each pipeline, regardless of the result of previous steps. Pipelines are considered
+    in each pipeline, regardless of the result of previous stages. Pipelines are considered
     an [*advanced feature]. Please read [link mysql.pipeline.pitfalls the pitfalls section] for more info.
 ]
 
@@ -96,7 +96,7 @@ If any of the pipeline stages result in an error, the entire [refmemunq any_conn
 is considered failed. This means that [*if `run_pipipeline` completed successfully, all stages succeeded]. Recall that
 [*all stages are always run, regardless of the outcome of previous stages]. 
 
-If `run_pipipeline` fails, you can check which steps succeeded and failed by inspecting responses.
+If `run_pipipeline` fails, you can check which stages succeeded and failed by inspecting responses.
 Response types like [refmem prepare_statement_stage response_type] are aliases for
 [link mysql.error_handling.system_result `boost::system::result`], a vocabulary type that
 can contain either a value or an error. For instance:

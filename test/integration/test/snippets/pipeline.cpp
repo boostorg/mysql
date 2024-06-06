@@ -151,17 +151,15 @@ BOOST_AUTO_TEST_CASE(section_pipeline_pitfalls)
     }
 
     {
-        //[pipeline_pitfalls_good
-        const char* sql =
-            "START TRANSACTION;"
-            "INSERT INTO employee (first_name, last_name, company_id) VALUES ('John', 'Doe', 'bad');"
-            "INSERT INTO logs VALUES ('Inserted 1 employee');"
-            "COMMIT";
-
-        //<-
         try
         {
-            //->
+            //[pipeline_pitfalls_good
+            const char* sql =
+                "START TRANSACTION;"
+                "INSERT INTO employee (first_name, last_name, company_id) VALUES ('John', 'Doe', 'bad');"
+                "INSERT INTO logs VALUES ('Inserted 1 employee');"
+                "COMMIT";
+
             // After the first INSERT fails, nothing else will be run. This is what we want.
             // Note that you need to enable multi queries when connecting to be able to run this.
             results r;
@@ -195,7 +193,7 @@ BOOST_AUTO_TEST_CASE(section_pipeline_reference)
 
         // Prepared statement, with number of parameters unknown at compile time
         std::vector<field_view> params{
-            /*... */
+            /* ... */
             //<-
             field_view("Janet"),
             field_view("Joyce"),
@@ -228,7 +226,7 @@ BOOST_AUTO_TEST_CASE(section_pipeline_reference)
 
         // Prepared statement, with number of parameters unknown at compile time
         std::vector<field_view> params{
-            /*... */
+            /* ... */
             //<-
             field_view("Janet"),
             field_view("Joyce"),
