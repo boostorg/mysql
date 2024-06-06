@@ -507,7 +507,7 @@ public:
      * \throws std::invalid_argument If `*this` does not contain a statement.
      */
     BOOST_MYSQL_DECL
-    statement as_statement() const noexcept;
+    statement as_statement() const;
 
     /**
      * \brief Retrieves the contained statement (unchecked accessor).
@@ -541,14 +541,14 @@ public:
      * The returned reference is valid as long as `*this` is alive
      * and hasn't been assigned to.
      */
-    const results& as_results() const& noexcept
+    const results& as_results() const&
     {
         check_has_results();
         return variant2::unsafe_get<2>(impl_.value);
     }
 
     /// \copydoc as_results
-    results&& as_results() && noexcept
+    results&& as_results() &&
     {
         check_has_results();
         return variant2::unsafe_get<2>(std::move(impl_.value));
