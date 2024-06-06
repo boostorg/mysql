@@ -12,8 +12,6 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include <boost/core/ignore_unused.hpp>
-
 #include <type_traits>
 
 namespace boost {

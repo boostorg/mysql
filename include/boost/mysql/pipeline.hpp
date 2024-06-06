@@ -103,8 +103,12 @@ public:
          * lifetime issues.
          */
         template <
-            BOOST_MYSQL_WRITABLE_FIELD WritableField,
-            class = typename std::enable_if<detail::is_writable_field<WritableField>::value>::type>
+            BOOST_MYSQL_WRITABLE_FIELD WritableField
+#ifndef BOOST_MYSQL_DOXYGEN
+            ,
+            class = typename std::enable_if<detail::is_writable_field<WritableField>::value>::type
+#endif
+            >
         statement_param_arg(const WritableField& f) noexcept : impl_(detail::to_field(f))
         {
         }
@@ -135,15 +139,12 @@ public:
      * \n
      * If your statement doesn't take any parameters, pass an empty initializer list
      * as `params`.
-     * \n
-     * If the number of parameters isn't known at compile-time, use
-     * \ref execute_stage::execute_stage(statement,span<const field_view>), instead.
      *
      * \par Exception safety
      * No-throw guarantee. \n
      * If the supplied number of parameters doesn't match the statement's number of parameters
      * (i.e. `stmt.num_params() != params.size()`), a `std::invalid_argument` exception will
-     * be raised when the stage is added to the pipeline (\ref pipeline_request::add or
+     * be thrown when the stage is added to the pipeline (\ref pipeline_request::add or
      * \ref static_pipeline_request::static_pipeline_request).
      *
      * \par Object lifetimes
@@ -401,10 +402,10 @@ public:
  * \n
  * This is a variant-like type, similar to `boost::system::result`. At any point in time,
  * it can contain: \n
- *   \li A \ref statement. Will happen if the operation was a prepare statement that succeeded.
- *   \li A \ref results. Will happen if the operation was a query or statement execution that succeeded.
- *   \li A \ref errcode_with_diagnostics. Will happen if the operation failed, or if it succeeded but
- *       the operation doesn't yield a value (as in close statement, reset connection and set character set).
+ *   \li A \ref statement. Will happen if the stage was a prepare statement that succeeded.
+ *   \li A \ref results. Will happen if the stage was a query or statement execution that succeeded.
+ *   \li A \ref errcode_with_diagnostics. Will happen if the stage failed, or if it succeeded but
+ *       it doesn't yield a value (as in close statement, reset connection and set character set).
  *
  * \par Experimental
  * This part of the API is experimental, and may change in successive
@@ -455,7 +456,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool has_statement() const { return impl_.value.index() == 1u; }
+    bool has_statement() const noexcept { return impl_.value.index() == 1u; }
 
     /**
      * \brief Returns true if the object contains a results.
@@ -463,7 +464,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool has_results() const { return impl_.value.index() == 2u; }
+    bool has_results() const noexcept { return impl_.value.index() == 2u; }
 
     /**
      * \brief Retrieves the contained error (const lvalue reference accessor).
@@ -475,7 +476,7 @@ public:
      * \par Exception safety
      * Strong guarantee. Memory allocations when copying the error's diagnostics may throw.
      */
-    errcode_with_diagnostics error() const&
+    errcode_with_diagnostics error() const& noexcept
     {
         return has_error() ? variant2::unsafe_get<0>(impl_.value) : errcode_with_diagnostics();
     }
@@ -490,7 +491,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    errcode_with_diagnostics error() &&
+    errcode_with_diagnostics error() && noexcept
     {
         return has_error() ? variant2::unsafe_get<0>(std::move(impl_.value)) : errcode_with_diagnostics();
     }
@@ -506,7 +507,7 @@ public:
      * \throws std::invalid_argument If `*this` does not contain a statement.
      */
     BOOST_MYSQL_DECL
-    statement as_statement() const;
+    statement as_statement() const noexcept;
 
     /**
      * \brief Retrieves the contained statement (unchecked accessor).
@@ -520,7 +521,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    statement get_statement() const
+    statement get_statement() const noexcept
     {
         BOOST_ASSERT(has_statement());
         return variant2::unsafe_get<1>(impl_.value);
@@ -540,14 +541,14 @@ public:
      * The returned reference is valid as long as `*this` is alive
      * and hasn't been assigned to.
      */
-    const results& as_results() const&
+    const results& as_results() const& noexcept
     {
         check_has_results();
         return variant2::unsafe_get<2>(impl_.value);
     }
 
     /// \copydoc as_results
-    results&& as_results() &&
+    results&& as_results() && noexcept
     {
         check_has_results();
         return variant2::unsafe_get<2>(std::move(impl_.value));
@@ -569,14 +570,14 @@ public:
      * The returned reference is valid as long as `*this` is alive
      * and hasn't been assigned to.
      */
-    const results& get_results() const&
+    const results& get_results() const& noexcept
     {
         BOOST_ASSERT(has_results());
         return variant2::unsafe_get<2>(impl_.value);
     }
 
     /// \copydoc get_results
-    results&& get_results() &&
+    results&& get_results() && noexcept
     {
         BOOST_ASSERT(has_results());
         return variant2::unsafe_get<2>(std::move(impl_.value));
@@ -665,8 +666,10 @@ public:
         return *this;
     }
 
-    /// The response type to use when running a pipeline with this request type,
-    /// consisting of \ref any_stage_response objects.
+    /**
+     * \brief The response type to use when running a pipeline with this request type, consisting of \ref
+     * any_stage_response objects.
+     */
     using response_type = std::vector<any_stage_response>;
 };
 
@@ -689,7 +692,7 @@ public:
  * \n
  * To create instances of this class without specifying template parameters,
  * you can use \ref make_pipeline_request. If you're on C++17 or above, appropriate class deduction
- * guidelines are also provided.
+ * guides are also provided.
  *
  * \par Experimental
  * This part of the API is experimental, and may change in successive

@@ -25,10 +25,12 @@
     'Formattable',
     'OutputString',
     'PipelineRequestType',
+    'PipelineStageType',
     'ResultsType',
     'SocketStream',
     'StaticRow',
     'Stream',
+    'WritableField',
     'WritableFieldTuple'
   "/>
 

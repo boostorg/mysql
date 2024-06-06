@@ -43,10 +43,12 @@
 [def __Formattable__ [reflink2 Formattable ['Formattable]]]
 [def __OutputString__ [reflink2 OutputString ['OutputString]]]
 [def __PipelineRequestType__ [reflink2 PipelineRequestType ['PipelineRequestType]]]
+[def __PipelineStageType__ [reflink2 PipelineStageType ['PipelineStageType]]]
 [def __ResultsType__ [reflink2 ResultsType ['ResultsType]]]
 [def __SocketStream__ [reflink2 SocketStream ['SocketStream]]]
 [def __StaticRow__ [reflink2 StaticRow ['StaticRow]]]
 [def __Stream__ [reflink2 Stream ['Stream]]]
+[def __WritableField__ [reflink2 WritableFieldTuple ['WritableField]]]
 [def __WritableFieldTuple__ [reflink2 WritableFieldTuple ['WritableFieldTuple]]]
 
 

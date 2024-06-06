@@ -165,7 +165,7 @@ void boost::mysql::any_stage_response::check_has_results() const
     }
 }
 
-boost::mysql::statement boost::mysql::any_stage_response::as_statement() const
+boost::mysql::statement boost::mysql::any_stage_response::as_statement() const noexcept
 {
     if (!has_statement())
     {
