@@ -12,7 +12,6 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/is_fatal_error.hpp>
-#include <boost/mysql/pipeline.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
@@ -27,7 +26,6 @@
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 
 #include <boost/core/span.hpp>
-#include <boost/variant2/variant.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -38,19 +36,17 @@ namespace detail {
 
 class run_pipeline_algo
 {
-    struct no_response_algo
+    union any_read_algo
     {
-        next_action resume(connection_state_data&, error_code ec) { return ec; }
-    };
+        std::nullptr_t nothing;
+        read_execute_response_algo execute;
+        read_prepare_statement_response_algo prepare_statement;
+        read_reset_connection_response_algo reset_connection;
+        read_ping_response_algo ping;
+        read_set_character_set_response_algo set_character_set;
 
-    using any_read_algo = variant2::variant<
-        no_response_algo,                      // close statement
-        read_execute_response_algo,            // execute
-        read_prepare_statement_response_algo,  // prepare statement
-        read_reset_connection_response_algo,   // reset connection
-        read_ping_response_algo,               // ping
-        read_set_character_set_response_algo   // set character set
-        >;
+        any_read_algo() noexcept : nothing{} {}
+    };
 
     diagnostics* diag_;
     span<const std::uint8_t> request_buffer_;
@@ -78,30 +74,24 @@ class run_pipeline_algo
             auto& processor = response_.get_processor(current_stage_index_);
             processor.reset(stage.stage_specific.enc, st.meta_mode);
             processor.sequence_number() = stage.seqnum;
-            read_response_algo_.emplace<read_execute_response_algo>(&temp_diag_, &processor);
+            read_response_algo_.execute = {&temp_diag_, &processor};
             break;
         }
         case pipeline_stage_kind::prepare_statement:
-            read_response_algo_.emplace<read_prepare_statement_response_algo>(&temp_diag_, stage.seqnum);
+            read_response_algo_.prepare_statement = {&temp_diag_, stage.seqnum};
             break;
         case pipeline_stage_kind::close_statement:
             // Close statement doesn't have a response
             // TODO: this causes delays unless we disable naggle's algorithm
-            read_response_algo_.emplace<no_response_algo>();
+            read_response_algo_.nothing = nullptr;
             break;
         case pipeline_stage_kind::set_character_set:
-            read_response_algo_.emplace<read_set_character_set_response_algo>(
-                &temp_diag_,
-                stage.stage_specific.charset,
-                stage.seqnum
-            );
+            read_response_algo_.set_character_set = {&temp_diag_, stage.stage_specific.charset, stage.seqnum};
             break;
         case pipeline_stage_kind::reset_connection:
-            read_response_algo_.emplace<read_reset_connection_response_algo>(&temp_diag_, stage.seqnum);
+            read_response_algo_.reset_connection = {&temp_diag_, stage.seqnum};
             break;
-        case pipeline_stage_kind::ping:
-            read_response_algo_.emplace<read_ping_response_algo>(&temp_diag_, stage.seqnum);
-            break;
+        case pipeline_stage_kind::ping: read_response_algo_.ping = {&temp_diag_, stage.seqnum}; break;
         default: BOOST_ASSERT(false);
         }
     }
@@ -134,29 +124,26 @@ class run_pipeline_algo
             {
                 // Propagate results. We don't support prepare statements
                 // with responses having has_value() == false
-                response_.set_result(
-                    current_stage_index_,
-                    variant2::get<read_prepare_statement_response_algo>(read_response_algo_).result(st)
-                );
+                response_.set_result(current_stage_index_, read_response_algo_.prepare_statement.result(st));
             }
         }
     }
 
-    struct resume_visitor
-    {
-        connection_state_data& st;
-        error_code ec;
-
-        template <class Algo>
-        next_action operator()(Algo& algo) const
-        {
-            return algo.resume(st, ec);
-        }
-    };
-
     next_action resume_read_algo(connection_state_data& st, error_code ec)
     {
-        return variant2::visit(resume_visitor{st, ec}, read_response_algo_);
+        switch (stages_[current_stage_index_].kind)
+        {
+        case pipeline_stage_kind::execute: return read_response_algo_.execute.resume(st, ec);
+        case pipeline_stage_kind::prepare_statement:
+            return read_response_algo_.prepare_statement.resume(st, ec);
+        case pipeline_stage_kind::reset_connection:
+            return read_response_algo_.reset_connection.resume(st, ec);
+        case pipeline_stage_kind::set_character_set:
+            return read_response_algo_.set_character_set.resume(st, ec);
+        case pipeline_stage_kind::ping: return read_response_algo_.ping.resume(st, ec);
+        case pipeline_stage_kind::close_statement: return next_action();  // has no response
+        default: BOOST_ASSERT(false); return next_action();
+        }
     }
 
 public:
