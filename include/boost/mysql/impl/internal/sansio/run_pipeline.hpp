@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_RUN_PIPELINE_HPP
 
 #include <boost/mysql/character_set.hpp>
-#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/is_fatal_error.hpp>
@@ -61,7 +60,7 @@ class run_pipeline_algo
     int resume_point_{0};
     std::size_t current_stage_index_{0};
     error_code pipeline_ec_;  // Result of the entire operation
-    bool has_hatal_error_{};  // If true, fail further stages with client_errc::cancelled
+    bool has_hatal_error_{};  // If true, fail further stages with pipeline_ec_
     any_read_algo read_response_algo_;
     diagnostics temp_diag_;
 
@@ -111,7 +110,7 @@ class run_pipeline_algo
     {
         if (stage_ec)
         {
-            // If the error was fatal, fail successive stages with a cancelled error.
+            // If the error was fatal, fail successive stages.
             // This error is the result of the operation
             if (is_fatal_error(stage_ec))
             {
@@ -201,7 +200,7 @@ public:
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    response_.set_error(current_stage_index_, client_errc::cancelled, {});
+                    response_.set_error(current_stage_index_, pipeline_ec_, diagnostics(*diag_));
                     continue;
                 }
 

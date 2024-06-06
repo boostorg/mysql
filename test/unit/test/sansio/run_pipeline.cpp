@@ -414,9 +414,9 @@ BOOST_AUTO_TEST_CASE(error_writing_request)
     fix.check_setup(stages);
 
     // All requests were marked as failed
-    fix.check_stage_error(0, client_errc::cancelled, {});
-    fix.check_stage_error(1, client_errc::cancelled, {});
-    fix.check_stage_error(2, client_errc::cancelled, {});
+    fix.check_stage_error(0, asio::error::eof, {});
+    fix.check_stage_error(1, asio::error::eof, {});
+    fix.check_stage_error(2, asio::error::eof, {});
 }
 
 BOOST_AUTO_TEST_CASE(nonfatal_errors)
@@ -520,8 +520,8 @@ BOOST_AUTO_TEST_CASE(fatal_error_first)
 
     // All subsequent requests were marked as failed
     fix.check_stage_error(0, asio::error::network_reset, {});
-    fix.check_stage_error(1, client_errc::cancelled, {});
-    fix.check_stage_error(2, client_errc::cancelled, {});
+    fix.check_stage_error(1, asio::error::network_reset, {});
+    fix.check_stage_error(2, asio::error::network_reset, {});
 }
 
 BOOST_AUTO_TEST_CASE(fatal_error_middle)
@@ -549,7 +549,7 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
     // All subsequent requests were marked as failed
     fix.check_stage_error(0, error_code(), {});
     fix.check_stage_error(1, asio::error::network_reset, {});
-    fix.check_stage_error(2, client_errc::cancelled, {});
+    fix.check_stage_error(2, asio::error::network_reset, {});
 }
 
 // If there are fatal and non-fatal errors, the fatal one is the result of the operation
@@ -582,7 +582,50 @@ BOOST_AUTO_TEST_CASE(nonfatal_then_fatal_error)
     // Stage results
     fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
     fix.check_stage_error(1, asio::error::already_connected, {});
-    fix.check_stage_error(2, client_errc::cancelled, {});
+    fix.check_stage_error(2, asio::error::already_connected, {});
+}
+
+// Edge case: fatal error with non-empty diagnostics
+BOOST_AUTO_TEST_CASE(fatal_error_with_diag)
+{
+    // Setup
+    const std::array<pipeline_request_stage, 3> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::execute, 10u, resultset_encoding::text},
+         }
+    };
+    fixture fix(stages);
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request_as_vector())
+        .expect_read(
+            err_builder().seqnum(32).code(common_server_errc::er_bad_db_error).message("bad db").build_frame()
+        )
+        .expect_read(err_builder()
+                         .seqnum(16)
+                         .code(common_server_errc::er_aborting_connection)
+                         .message("aborting connection")
+                         .build_frame())
+        .check(fix, common_server_errc::er_aborting_connection, create_server_diag("aborting connection"));
+
+    // Setup was called correctly
+    fix.check_setup(stages);
+
+    // Stage results
+    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("bad db"));
+    fix.check_stage_error(
+        1,
+        common_server_errc::er_aborting_connection,
+        create_server_diag("aborting connection")
+    );
+    fix.check_stage_error(
+        2,
+        common_server_errc::er_aborting_connection,
+        create_server_diag("aborting connection")
+    );
 }
 
 BOOST_AUTO_TEST_SUITE_END()

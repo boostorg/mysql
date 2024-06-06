@@ -487,7 +487,7 @@ BOOST_FIXTURE_TEST_CASE(pipeline_fatal_error, test_any_connection_fixture)
     // Validate the results
     BOOST_TEST(res.size() == 2u);
     BOOST_TEST(res[0].error() == (errcode_with_diagnostics{boost::asio::error::network_reset, {}}));
-    BOOST_TEST(res[1].error() == (errcode_with_diagnostics{client_errc::cancelled, {}}));
+    BOOST_TEST(res[1].error() == (errcode_with_diagnostics{boost::asio::error::network_reset, {}}));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
