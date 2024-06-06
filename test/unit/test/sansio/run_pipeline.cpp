@@ -114,22 +114,14 @@ struct pipeline_response_traits<test::mock_pipeline_response>
 
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
-constexpr std::uint8_t mock_request_buff[] = {1, 2, 3, 4, 5, 6, 7, 9, 21};
-
-static std::vector<std::uint8_t> mock_request_as_vector()
-{
-    return {std::begin(mock_request_buff), std::end(mock_request_buff)};
-}
+const std::vector<std::uint8_t> mock_request{1, 2, 3, 4, 5, 6, 7, 9, 21};
 
 struct fixture : algo_fixture_base
 {
     detail::run_pipeline_algo algo;
     mock_pipeline_response resp;
 
-    fixture(
-        span<const pipeline_request_stage> stages,
-        span<const std::uint8_t> req_buffer = mock_request_buff
-    )
+    fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req_buffer = mock_request)
         : algo({
               &diag,
               detail::pipeline_request_view{req_buffer, stages},
@@ -183,7 +175,7 @@ BOOST_AUTO_TEST_CASE(execute_success)
 
     // Run the test
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(create_ok_frame(42, ok_builder().info("1st").build()))  // 1st op ok
         .expect_read(create_frame(11, {0x01}))                               // 2nd op OK, 1 column
         .expect_read(create_coldef_frame(12, meta_builder().type(column_type::tinyint).build_coldef()))
@@ -230,7 +222,7 @@ BOOST_AUTO_TEST_CASE(prepare_statement_success)
 
     // Run the test. 1st statement has 2 meta, 2nd has 1
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(prepare_stmt_response_builder().seqnum(42).id(7).num_columns(0).num_params(2).build())
         .expect_read(create_coldef_frame(43, meta_builder().name("abc").build_coldef()))
         .expect_read(create_coldef_frame(44, meta_builder().name("def").build_coldef()))
@@ -264,7 +256,7 @@ BOOST_AUTO_TEST_CASE(close_statement_success)
     fixture fix(stages);
 
     // Run the test. Close statement doesn't have a response
-    algo_test().expect_write(mock_request_as_vector()).check(fix);
+    algo_test().expect_write(mock_request).check(fix);
 
     // Setup was called correctly and all stages succeeded
     fix.check_setup(stages);
@@ -283,10 +275,7 @@ BOOST_AUTO_TEST_CASE(reset_connection)
     fix.st.current_charset = utf8mb4_charset;
 
     // Run the test
-    algo_test()
-        .expect_write(mock_request_as_vector())
-        .expect_read(create_ok_frame(3, ok_builder().build()))
-        .check(fix);
+    algo_test().expect_write(mock_request).expect_read(create_ok_frame(3, ok_builder().build())).check(fix);
 
     // Setup was called correctly and all stages succeeded
     fix.check_setup(stages);
@@ -307,10 +296,7 @@ BOOST_AUTO_TEST_CASE(set_character_set)
     fixture fix(stages);
 
     // Run the test
-    algo_test()
-        .expect_write(mock_request_as_vector())
-        .expect_read(create_ok_frame(19, ok_builder().build()))
-        .check(fix);
+    algo_test().expect_write(mock_request).expect_read(create_ok_frame(19, ok_builder().build())).check(fix);
 
     // Setup was called correctly and all stages succeeded
     fix.check_setup(stages);
@@ -332,7 +318,7 @@ BOOST_AUTO_TEST_CASE(ping)
 
     // Run the test
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(create_ok_frame(32, ok_builder().no_backslash_escapes(true).build()))
         .check(fix);
 
@@ -362,7 +348,7 @@ BOOST_AUTO_TEST_CASE(combination)
 
     // Run the test
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(create_ok_frame(32, ok_builder().build()))
         .expect_read(create_ok_frame(16, ok_builder().build()))
         .expect_read(create_ok_frame(10, ok_builder().build()))
@@ -408,7 +394,7 @@ BOOST_AUTO_TEST_CASE(error_writing_request)
     fixture fix(stages);
 
     // Run the test. No response reading is attempted
-    algo_test().expect_write(mock_request_as_vector(), asio::error::eof).check(fix, asio::error::eof);
+    algo_test().expect_write(mock_request, asio::error::eof).check(fix, asio::error::eof);
 
     // Setup was called correctly
     fix.check_setup(stages);
@@ -434,7 +420,7 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors)
     // Run the test. Steps 1 and 3 fail.
     // The first error is the operation's result
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(err_builder()
                          .seqnum(32)
                          .code(common_server_errc::er_bad_db_error)
@@ -475,7 +461,7 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
     // Run the test. Steps 1 and 3 fail.
     // The first error is the operation's result
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(prepare_stmt_response_builder().seqnum(32).id(3).num_columns(0).num_params(0).build())
         .expect_read(err_builder()
                          .seqnum(16)
@@ -511,7 +497,7 @@ BOOST_AUTO_TEST_CASE(fatal_error_first)
 
     // Run the test. Reading the first response fails, and we don't further reading
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(asio::error::network_reset)
         .check(fix, asio::error::network_reset);
 
@@ -538,7 +524,7 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
 
     // Run the test
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(create_ok_frame(32, ok_builder().build()))
         .expect_read(asio::error::network_reset)
         .check(fix, asio::error::network_reset);
@@ -567,7 +553,7 @@ BOOST_AUTO_TEST_CASE(nonfatal_then_fatal_error)
 
     // Run the test
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(err_builder()
                          .seqnum(32)
                          .code(common_server_errc::er_bad_db_error)
@@ -600,7 +586,7 @@ BOOST_AUTO_TEST_CASE(fatal_error_with_diag)
 
     // Run the test
     algo_test()
-        .expect_write(mock_request_as_vector())
+        .expect_write(mock_request)
         .expect_read(
             err_builder().seqnum(32).code(common_server_errc::er_bad_db_error).message("bad db").build_frame()
         )
