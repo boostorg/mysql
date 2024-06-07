@@ -23,6 +23,7 @@
 #include <boost/core/ignore_unused.hpp>
 #include <boost/core/span.hpp>
 #include <boost/optional/optional.hpp>
+#include <boost/system/result.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
@@ -716,6 +717,21 @@ BOOST_AUTO_TEST_CASE(deduction_guide)
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// errcode_with_diagnostics can be used with system::result
+BOOST_AUTO_TEST_CASE(errcode_with_diagnostics_result)
+{
+    boost::system::result<int, errcode_with_diagnostics> r = errcode_with_diagnostics{
+        client_errc::cancelled,
+        create_server_diag("my_message")
+    };
+
+    BOOST_CHECK_EXCEPTION(r.value(), error_with_diagnostics, [](const error_with_diagnostics& exc) {
+        BOOST_TEST(exc.code() == client_errc::cancelled);
+        BOOST_TEST(exc.get_diagnostics() == create_server_diag("my_message"));
+        return true;
+    });
+}
 
 // pipeline concepts
 using detail::is_pipeline_stage_type;
