@@ -41,7 +41,7 @@ public:
     {
     }
 
-    void reset() noexcept
+    void reset()
     {
         buffer_.reset();
         state_ = parse_state();
@@ -50,7 +50,7 @@ public:
     // Prepares a read operation. sequence_number should be kept alive until
     // the next read is prepared or no more calls to resume() are expected.
     // If keep_state=true, and the op is not complete, parsing state is preserved
-    void prepare_read(std::uint8_t& sequence_number, bool keep_state = false) noexcept
+    void prepare_read(std::uint8_t& sequence_number, bool keep_state = false)
     {
         if (!keep_state || done())
             state_ = parse_state(sequence_number);
@@ -63,7 +63,7 @@ public:
     bool done() const { return state_.resume_point == -1; }
 
     // Returns any errors generated during parsing. Requires this->done()
-    error_code error() const noexcept
+    error_code error() const
     {
         BOOST_ASSERT(done());
         return state_.ec;
@@ -71,7 +71,7 @@ public:
 
     // Returns the last parsed message. Valid until prepare_buffer()
     // is next called. Requires done() && !error()
-    span<const std::uint8_t> message() const noexcept
+    span<const std::uint8_t> message() const
     {
         BOOST_ASSERT(done());
         BOOST_ASSERT(!error());
@@ -79,7 +79,7 @@ public:
     }
 
     // Returns buffer space suitable to read bytes to
-    span<std::uint8_t> buffer() noexcept { return buffer_.free_area(); }
+    span<std::uint8_t> buffer() { return buffer_.free_area(); }
 
     // Removes old messages stored in the buffer, and resizes it, if required, to accomodate
     // the message currently being parsed.
@@ -164,7 +164,7 @@ public:
     }
 
     // Exposed for testing
-    const read_buffer& internal_buffer() const noexcept { return buffer_; }
+    const read_buffer& internal_buffer() const { return buffer_; }
 
 private:
     read_buffer buffer_;
@@ -184,7 +184,7 @@ private:
         parse_state(std::uint8_t& seqnum) noexcept : sequence_number(&seqnum) {}
     } state_;
 
-    void set_required_size(std::size_t required_bytes) noexcept
+    void set_required_size(std::size_t required_bytes)
     {
         if (required_bytes > buffer_.pending_size())
             state_.required_size = required_bytes - buffer_.pending_size();

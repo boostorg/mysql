@@ -10,6 +10,7 @@ add_executable(
 
     # Helpers
     src/test_stream.cpp
+    src/printing.cpp
 
     # Actual tests
     test/auth/auth.cpp
@@ -28,7 +29,6 @@ add_executable(
     test/protocol/deserialization.cpp
 
     test/sansio/read_buffer.cpp
-    test/sansio/message_writer.cpp
     test/sansio/message_reader.cpp
     test/sansio/top_level_algo.cpp
 
@@ -41,6 +41,8 @@ add_executable(
     test/sansio/set_character_set.cpp
     test/sansio/ping.cpp
     test/sansio/reset_connection.cpp
+    test/sansio/prepare_statement.cpp
+    test/sansio/run_pipeline.cpp
 
     test/execution_processor/execution_processor.cpp
     test/execution_processor/execution_state_impl.cpp
@@ -116,6 +118,7 @@ add_executable(
     test/escape_string.cpp
     test/constant_string_view.cpp
     test/pfr.cpp
+    test/pipeline.cpp
 )
 target_include_directories(
     boost_mysql_unittests

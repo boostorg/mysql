@@ -16,6 +16,9 @@
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
+#include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
+
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
 #include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
@@ -32,18 +35,20 @@
 #include <boost/asio/post.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
 #include <cstddef>
 #include <memory>
+#include <ostream>
 #include <utility>
 
 #include "mock_timer.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
-#include "test_unit/pool_printing.hpp"
+#include "test_unit/printing.hpp"
 
 // These tests rely on channels, which are not compatible with this
 // See https://github.com/chriskohlhoff/asio/issues/1398
@@ -65,12 +70,23 @@ using std::chrono::steady_clock;
 
 BOOST_AUTO_TEST_SUITE(test_connection_pool_impl)
 
-enum fn_type
+enum class fn_type
 {
     connect,
-    reset,
+    pipeline,
     ping,
 };
+
+std::ostream& operator<<(std::ostream& os, fn_type t)
+{
+    switch (t)
+    {
+    case fn_type::connect: return os << "fn_type::connect";
+    case fn_type::pipeline: return os << "fn_type::pipeline";
+    case fn_type::ping: return os << "fn_type::ping";
+    default: return os << "<unknown fn_type>";
+    }
+}
 
 // A mock for mysql::any_connection. This allows us to control
 // when and how operations like async_connect or async_ping complete,
@@ -140,14 +156,6 @@ class mock_connection
             );
         }
 
-        // We use an internal async_reset_connection that allows setting the character set
-        template <class CompletionToken>
-        auto async_reset_with_charset(const character_set& charset, CompletionToken&& token)
-            -> decltype(op_impl(fn_type::reset, nullptr, std::forward<CompletionToken>(token)))
-        {
-            BOOST_TEST(charset.name == "utf8mb4");  // We must always use utf8mb4
-            return op_impl(fn_type::reset, nullptr, std::forward<CompletionToken>(token));
-        }
     } impl_;
 
     struct step_op
@@ -205,10 +213,25 @@ public:
     }
 
     template <class CompletionToken>
-    auto async_ping(CompletionToken&& token)
-        -> decltype(impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
+    auto async_ping(CompletionToken&& token
+    ) -> decltype(impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
     {
         return impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token));
+    }
+
+    template <class PipelineRequest, class CompletionToken>
+    auto async_run_pipeline(
+        const PipelineRequest& req,
+        typename PipelineRequest::response_type&,
+        CompletionToken&& token
+    ) -> decltype(impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token)))
+    {
+        auto req_view = detail::access::get_impl(req).to_view();
+        BOOST_TEST(req_view.stages.size() == 2u);
+        BOOST_TEST(req_view.stages[0].kind == detail::pipeline_stage_kind::reset_connection);
+        BOOST_TEST(req_view.stages[1].kind == detail::pipeline_stage_kind::set_character_set);
+        BOOST_TEST(req_view.stages[1].stage_specific.charset.name == "utf8mb4");
+        return impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token));
     }
 
     void step(
@@ -629,7 +652,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // Successful reset makes the connection idle again
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::reset);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::pipeline);
                 wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -660,7 +683,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
 
                 // Reset fails. This triggers a reconnection. Diagnostics are not saved
                 BOOST_ASIO_CORO_YIELD
-                step(node, fn_type::reset, common_server_errc::er_aborting_connection);
+                step(node, fn_type::pipeline, common_server_errc::er_aborting_connection);
                 wait_for_status(node, connection_status::connect_in_progress);
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
@@ -739,7 +762,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
                 // Reset succeeds
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::reset);
+                BOOST_ASIO_CORO_YIELD step(node, fn_type::pipeline);
                 wait_for_status(node, connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
             }
@@ -1207,7 +1230,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 
                 // A connection is returned. The first task to enter is served
                 return_connection(*node1, true);
-                BOOST_ASIO_CORO_YIELD step(*node1, fn_type::reset);
+                BOOST_ASIO_CORO_YIELD step(*node1, fn_type::pipeline);
                 BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node1);
 
                 // The next connection to be returned is for task5

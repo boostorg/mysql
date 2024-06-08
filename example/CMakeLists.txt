@@ -77,6 +77,7 @@ set(REGULAR_EXAMPLES
     metadata
     ssl
     timeouts
+    pipeline
 )
 
 foreach(FILE_NAME ${REGULAR_EXAMPLES})

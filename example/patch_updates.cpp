@@ -212,7 +212,7 @@ void main_impl(int argc, char** argv)
     params.username = args.username;
     params.password = args.password;
     params.database = "boost_mysql_examples";
-    params.multi_queries = true;  // TODO
+    params.multi_queries = true;
 
     // Connect to the server
     conn.connect(params);

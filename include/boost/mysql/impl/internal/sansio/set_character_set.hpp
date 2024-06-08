@@ -9,10 +9,9 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_SET_CHARACTER_SET_HPP
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/format_sql.hpp>
-#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/next_action.hpp>
@@ -20,22 +19,25 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/system/result.hpp>
 
-#include <string>
+#include <cstdint>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// Securely compose a SET NAMES statement. This function
-// is also used by the pipelined version of reset_connection
-inline system::result<std::string> compose_set_names(const character_set& charset)
+// Securely compose a SET NAMES statement
+inline system::result<std::string> compose_set_names(character_set charset)
 {
-    // The character set should have a non-empty name
+    // The character set should have a non-empty name (should not be default-constructed)
     BOOST_ASSERT(!charset.name.empty());
+
+    // NULL characters cause MySQL to truncate the character set name string
+    if (charset.name.contains('\0'))
+        return client_errc::invalid_encoding;
 
     // For security, if the character set has non-ascii characters in it name, reject it.
     format_context ctx(format_options{ascii_charset, true});
@@ -43,31 +45,70 @@ inline system::result<std::string> compose_set_names(const character_set& charse
     return std::move(ctx).get();
 }
 
-class set_character_set_algo : public sansio_algorithm
+class read_set_character_set_response_algo
 {
     int resume_point_{0};
     diagnostics* diag_;
     character_set charset_;
     std::uint8_t seqnum_{0};
 
-    next_action compose_request()
+public:
+    read_set_character_set_response_algo(diagnostics* diag, character_set charset, std::uint8_t seqnum)
+        : diag_(diag), charset_(charset), seqnum_(seqnum)
     {
-        auto q = compose_set_names(charset_);
+    }
+    character_set charset() const { return charset_; }
+    diagnostics& diag() { return *diag_; }
+    std::uint8_t& sequence_number() { return seqnum_; }
+
+    next_action resume(connection_state_data& st, error_code ec)
+    {
+        // SET NAMES never returns rows. Using execute requires us to allocate
+        // a results object, which we can avoid by simply sending the query and reading the OK response.
+        switch (resume_point_)
+        {
+        case 0:
+
+            // Read the response
+            BOOST_MYSQL_YIELD(resume_point_, 1, st.read(seqnum_))
+            if (ec)
+                return ec;
+
+            // Verify it's what we expected
+            ec = st.deserialize_ok(*diag_);
+            if (ec)
+                return ec;
+
+            // If we were successful, update the character set
+            st.current_charset = charset_;
+        }
+
+        return next_action();
+    }
+};
+
+class set_character_set_algo
+{
+    int resume_point_{0};
+    read_set_character_set_response_algo read_response_st_;
+
+    next_action compose_request(connection_state_data& st)
+    {
+        auto q = compose_set_names(read_response_st_.charset());
         if (q.has_error())
             return q.error();
-        return write(query_command{q.value()}, seqnum_);
+        return st.write(query_command{q.value()}, read_response_st_.sequence_number());
     }
 
 public:
-    set_character_set_algo(connection_state_data& st, set_character_set_algo_params params) noexcept
-        : sansio_algorithm(st), diag_(params.diag), charset_(params.charset)
+    set_character_set_algo(set_character_set_algo_params params) noexcept
+        : read_response_st_(params.diag, params.charset, 0u)
     {
     }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
-        if (ec)
-            return ec;
+        next_action act;
 
         // SET NAMES never returns rows. Using execute requires us to allocate
         // a results object, which we can avoid by simply sending the query and reading the OK response.
@@ -76,21 +117,17 @@ public:
         case 0:
 
             // Setup
-            diag_->clear();
+            read_response_st_.diag().clear();
 
             // Send the execution request
-            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request())
-
-            // Read the response
-            BOOST_MYSQL_YIELD(resume_point_, 2, read(seqnum_))
-
-            // Verify it's what we expected
-            ec = st_->deserialize_ok(*diag_);
+            BOOST_MYSQL_YIELD(resume_point_, 1, compose_request(st))
             if (ec)
                 return ec;
 
-            // If we were successful, update the character set
-            st_->current_charset = charset_;
+            // Read the response
+            while (!(act = read_response_st_.resume(st, ec)).is_done())
+                BOOST_MYSQL_YIELD(resume_point_, 2, act)
+            return act;
         }
 
         return next_action();

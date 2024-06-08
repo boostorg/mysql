@@ -16,12 +16,10 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
-#include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
@@ -39,21 +37,156 @@ using boost::mysql::detail::resultset_encoding;
 
 BOOST_AUTO_TEST_SUITE(test_execute)
 
-struct fixture : algo_fixture_base
+// The serialized form of a SELECT 1 query request
+static constexpr std::uint8_t serialized_select_1[] = {0x03, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31};
+
+struct read_response_fixture : algo_fixture_base
+{
+    mock_execution_processor proc;
+    detail::read_execute_response_algo algo{&diag, &proc};
+
+    read_response_fixture() { proc.sequence_number() = 42; }
+};
+
+BOOST_AUTO_TEST_CASE(read_response_eof)
+{
+    // Setup
+    read_response_fixture fix;
+
+    // Run the algo
+    algo_test()
+        .expect_read(create_ok_frame(42, ok_builder().affected_rows(60u).info("abc").build()))
+        .check(fix);
+
+    // Verify
+    fix.proc.num_calls().on_head_ok_packet(1).validate();
+    BOOST_TEST(fix.proc.affected_rows() == 60u);
+    BOOST_TEST(fix.proc.info() == "abc");
+}
+
+BOOST_AUTO_TEST_CASE(read_response_single_row_batch)
+{
+    // Setup
+    read_response_fixture fix;
+
+    // Run the algo. Rows and OK are received in a single go (one call to read_some_rows)
+    algo_test()
+        .expect_read(create_frame(42, {0x01}))  // OK, 1 column
+        .expect_read(create_coldef_frame(43, meta_builder().type(column_type::bigint).build_coldef()))
+        .expect_read(buffer_builder()
+                         .add(create_text_row_message(44, 42))
+                         .add(create_text_row_message(45, 43))
+                         .add(create_eof_frame(46, ok_builder().affected_rows(10u).info("1st").build()))
+                         .build())
+        .check(fix);
+
+    // Verify
+    fix.proc.num_calls()
+        .on_num_meta(1)
+        .on_meta(1)
+        .on_row_batch_start(1)
+        .on_row(2)
+        .on_row_batch_finish(1)
+        .on_row_ok_packet(1)
+        .validate();
+    BOOST_TEST(fix.proc.encoding() == resultset_encoding::text);
+    BOOST_TEST(fix.proc.num_meta() == 1u);
+    check_meta(fix.proc.meta(), {column_type::bigint});
+    BOOST_TEST(fix.proc.affected_rows() == 10u);
+    BOOST_TEST(fix.proc.info() == "1st");
+}
+
+BOOST_AUTO_TEST_CASE(read_response_multiple_row_batches)
+{
+    // Setup
+    read_response_fixture fix;
+
+    // Run the algo. Multiple read_some_rows calls are required
+    algo_test()
+        .expect_read(create_frame(42, {0x01}))  // OK, 1 column
+        .expect_read(create_coldef_frame(43, meta_builder().type(column_type::tinyint).build_coldef()))
+        .expect_read(create_text_row_message(44, 42))
+        .expect_read(create_text_row_message(45, 43))
+        .expect_read(create_eof_frame(46, ok_builder().affected_rows(10u).info("1st").build()))
+        .check(fix);
+
+    // Verify
+    fix.proc.num_calls()
+        .on_num_meta(1)
+        .on_meta(1)
+        .on_row_batch_start(3)
+        .on_row(2)
+        .on_row_batch_finish(3)
+        .on_row_ok_packet(1)
+        .validate();
+    BOOST_TEST(fix.proc.encoding() == resultset_encoding::text);
+    BOOST_TEST(fix.proc.num_meta() == 1u);
+    check_meta(fix.proc.meta(), {column_type::tinyint});
+    BOOST_TEST(fix.proc.affected_rows() == 10u);
+    BOOST_TEST(fix.proc.info() == "1st");
+}
+
+BOOST_AUTO_TEST_CASE(read_response_multiple_resultsets)
+{
+    // Setup
+    read_response_fixture fix;
+
+    // Run the algo. Multiple read_some_rows calls are required
+    algo_test()
+        .expect_read(create_frame(42, {0x01}))  // OK, 1 column
+        .expect_read(create_coldef_frame(43, meta_builder().type(column_type::tinyint).build_coldef()))
+        .expect_read(create_text_row_message(44, 42))
+        .expect_read(
+            create_eof_frame(45, ok_builder().affected_rows(10u).info("1st").more_results(true).build())
+        )
+        .expect_read(create_frame(46, {0x01}))  // OK, 1 column
+        .expect_read(create_coldef_frame(47, meta_builder().type(column_type::varchar).build_coldef()))
+        .expect_read(
+            create_eof_frame(48, ok_builder().affected_rows(11u).info("2nd").more_results(true).build())
+        )
+        .expect_read(create_ok_frame(49, ok_builder().affected_rows(12u).info("3rd").build()))
+        .check(fix);
+
+    // Verify
+    fix.proc.num_calls()
+        .on_num_meta(2)
+        .on_meta(2)
+        .on_row_batch_start(3)
+        .on_row(1)
+        .on_row_batch_finish(3)
+        .on_row_ok_packet(2)
+        .on_head_ok_packet(1)
+        .validate();
+    BOOST_TEST(fix.proc.encoding() == resultset_encoding::text);
+    BOOST_TEST(fix.proc.num_meta() == 1u);
+    BOOST_TEST(fix.proc.affected_rows() == 12u);
+    BOOST_TEST(fix.proc.info() == "3rd");
+}
+
+// Tests error on write, while reading head and while reading rows (error spotcheck)
+BOOST_AUTO_TEST_CASE(read_response_error_network_error)
+{
+    algo_test()
+        .expect_read(create_frame(42, {0x01}))  // OK, 1 column
+        .expect_read(create_coldef_frame(43, meta_builder().type(column_type::tinyint).build_coldef()))
+        .expect_read(create_text_row_message(44, 42))
+        .expect_read(create_text_row_message(45, 43))
+        .expect_read(create_eof_frame(46, ok_builder().affected_rows(10u).info("1st").build()))
+        .check_network_errors<read_response_fixture>();
+}
+
+struct execute_fixture : algo_fixture_base
 {
     mock_execution_processor proc;
     detail::execute_algo algo;
 
-    fixture(any_execution_request req = {"SELECT 1"}) : algo(st, {&diag, req, &proc}) {}
+    execute_fixture(any_execution_request req = {"SELECT 1"}) : algo({&diag, req, &proc}) {}
 };
 
-// The serialized form of a SELECT 1 query request
-static constexpr std::uint8_t serialized_select_1[] = {0x03, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31};
-
-BOOST_AUTO_TEST_CASE(eof)
+BOOST_AUTO_TEST_CASE(execute_success_eof)
 {
     // Setup
-    fixture fix;
+    execute_fixture fix;
 
     // Run the algo
     algo_test()
@@ -68,10 +201,10 @@ BOOST_AUTO_TEST_CASE(eof)
     BOOST_TEST(fix.proc.info() == "abc");
 }
 
-BOOST_AUTO_TEST_CASE(single_row_batch)
+BOOST_AUTO_TEST_CASE(execute_success_rows)
 {
     // Setup
-    fixture fix;
+    execute_fixture fix;
 
     // Run the algo. Rows and OK are received in a single go (one call to read_some_rows)
     algo_test()
@@ -102,84 +235,13 @@ BOOST_AUTO_TEST_CASE(single_row_batch)
     BOOST_TEST(fix.proc.info() == "1st");
 }
 
-BOOST_AUTO_TEST_CASE(multiple_row_batches)
-{
-    // Setup
-    fixture fix;
-
-    // Run the algo. Multiple read_some_rows calls are required
-    algo_test()
-        .expect_write(create_frame(0, serialized_select_1))
-        .expect_read(create_frame(1, {0x01}))  // OK, 1 column
-        .expect_read(create_coldef_frame(2, meta_builder().type(column_type::tinyint).build_coldef()))
-        .expect_read(create_text_row_message(3, 42))
-        .expect_read(create_text_row_message(4, 43))
-        .expect_read(create_eof_frame(5, ok_builder().affected_rows(10u).info("1st").build()))
-        .check(fix);
-
-    // Verify
-    fix.proc.num_calls()
-        .reset(1)
-        .on_num_meta(1)
-        .on_meta(1)
-        .on_row_batch_start(3)
-        .on_row(2)
-        .on_row_batch_finish(3)
-        .on_row_ok_packet(1)
-        .validate();
-    BOOST_TEST(fix.proc.encoding() == resultset_encoding::text);
-    BOOST_TEST(fix.proc.num_meta() == 1u);
-    check_meta(fix.proc.meta(), {column_type::tinyint});
-    BOOST_TEST(fix.proc.affected_rows() == 10u);
-    BOOST_TEST(fix.proc.info() == "1st");
-}
-
-BOOST_AUTO_TEST_CASE(multiple_resultsets)
-{
-    // Setup
-    fixture fix;
-
-    // Run the algo. Multiple read_some_rows calls are required
-    algo_test()
-        .expect_write(create_frame(0, serialized_select_1))
-        .expect_read(create_frame(1, {0x01}))  // OK, 1 column
-        .expect_read(create_coldef_frame(2, meta_builder().type(column_type::tinyint).build_coldef()))
-        .expect_read(create_text_row_message(3, 42))
-        .expect_read(
-            create_eof_frame(4, ok_builder().affected_rows(10u).info("1st").more_results(true).build())
-        )
-        .expect_read(create_frame(5, {0x01}))  // OK, 1 column
-        .expect_read(create_coldef_frame(6, meta_builder().type(column_type::varchar).build_coldef()))
-        .expect_read(
-            create_eof_frame(7, ok_builder().affected_rows(11u).info("2nd").more_results(true).build())
-        )
-        .expect_read(create_ok_frame(8, ok_builder().affected_rows(12u).info("3rd").build()))
-        .check(fix);
-
-    // Verify
-    fix.proc.num_calls()
-        .reset(1)
-        .on_num_meta(2)
-        .on_meta(2)
-        .on_row_batch_start(3)
-        .on_row(1)
-        .on_row_batch_finish(3)
-        .on_row_ok_packet(2)
-        .on_head_ok_packet(1)
-        .validate();
-    BOOST_TEST(fix.proc.encoding() == resultset_encoding::text);
-    BOOST_TEST(fix.proc.num_meta() == 1u);
-    BOOST_TEST(fix.proc.affected_rows() == 12u);
-    BOOST_TEST(fix.proc.info() == "3rd");
-}
-
 // Test that immediate completion with errors in start_execution are propagated correctlty
-BOOST_AUTO_TEST_CASE(error_num_params)
+BOOST_AUTO_TEST_CASE(execute_error_num_params)
 {
     // Setup
     auto stmt = statement_builder().id(1).num_params(2).build();
     const auto params = make_fv_arr("test", nullptr, 42);  // too many params
-    fixture fix(any_execution_request(stmt, params));
+    execute_fixture fix(any_execution_request(stmt, params));
 
     // Run the algo. Nothing should be written to the server
     algo_test().check(fix, client_errc::wrong_num_params);
@@ -189,7 +251,7 @@ BOOST_AUTO_TEST_CASE(error_num_params)
 }
 
 // Tests error on write, while reading head and while reading rows (error spotcheck)
-BOOST_AUTO_TEST_CASE(error_network_error)
+BOOST_AUTO_TEST_CASE(execute_error_network_error)
 {
     algo_test()
         .expect_write(create_frame(0, serialized_select_1))
@@ -198,7 +260,7 @@ BOOST_AUTO_TEST_CASE(error_network_error)
         .expect_read(create_text_row_message(3, 42))
         .expect_read(create_text_row_message(4, 43))
         .expect_read(create_eof_frame(5, ok_builder().affected_rows(10u).info("1st").build()))
-        .check_network_errors<fixture>();
+        .check_network_errors<execute_fixture>();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

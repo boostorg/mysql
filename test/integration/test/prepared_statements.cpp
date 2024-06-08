@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
@@ -17,12 +18,9 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <tuple>
-
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
-#include "test_integration/er_connection.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
 using namespace boost::mysql::test;

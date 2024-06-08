@@ -28,6 +28,7 @@
 #include <boost/mysql/detail/connection_impl.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
+#include <boost/mysql/detail/pipeline_concepts.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
@@ -129,6 +130,12 @@ class any_connection
         detail::any_address_view,
         decltype(asio::consign(std::declval<CompletionToken>(), std::unique_ptr<char[]>()))>;
 
+    // Used by tests
+    any_connection(std::size_t initial_read_buffer_size, std::unique_ptr<detail::engine> eng)
+        : impl_(initial_read_buffer_size, std::move(eng))
+    {
+    }
+
 public:
     /**
      * \brief Constructs a connection object from an executor and an optional set of parameters.
@@ -140,7 +147,7 @@ public:
      * an \ref any_connection_params object to this constructor.
      */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
-        : impl_(params.initial_read_buffer_size, create_engine(std::move(ex), params.ssl_context))
+        : any_connection(params.initial_read_buffer_size, create_engine(std::move(ex), params.ssl_context))
     {
     }
 
@@ -1076,6 +1083,85 @@ public:
     {
         return this->impl_.async_run(
             this->impl_.make_params_close(diag),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /**
+     * \brief Runs a set of pipelined requests.
+     * \details
+     * Runs the pipeline described by `req` and stores its response in `res`.
+     * \n
+     * Request stages are seen by the server as a series of unrelated requests.
+     * As a consequence, all stages are always run, even if previous stages fail.
+     *
+     * If all stages succeed, the operation completes successfully. Thus, there is no need to check
+     * the per-stage error code in `res` if this operation completed successfully.
+     * \n
+     * If any stage fails with a non-fatal error (as per \ref is_fatal_error), the result of the operation
+     * is the first encountered error. You can check which stages succeeded and which ones didn't by
+     * inspecting each stage in `res`.
+     * \n
+     * If any stage fails with a fatal error, the result of the operation is the fatal error.
+     * Successive stages will be marked as failed with the fatal error. The server may or may
+     * not have processed such stages.
+     */
+    template <BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType>
+    void run_pipeline(
+        const PipelineRequestType& req,
+        typename PipelineRequestType::response_type& res,
+        error_code& err,
+        diagnostics& diag
+    )
+    {
+        impl_.run(impl_.make_params_pipeline(req, res, diag), err);
+    }
+
+    /// \copydoc run_pipeline
+    template <BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType>
+    void run_pipeline(const PipelineRequestType& req, typename PipelineRequestType::response_type& res)
+    {
+        error_code err;
+        diagnostics diag;
+        run_pipeline(req, res, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
+    }
+
+    /**
+     * \copydoc run_pipeline
+     * \details
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Object lifetimes
+     * The request and response objects must be kept alive and should not be modified
+     * until the operation completes.
+     */
+    template <
+        BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    auto async_run_pipeline(
+        const PipelineRequestType& req,
+        typename PipelineRequestType::response_type& res,
+        CompletionToken&& token
+    ) BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
+    {
+        return async_run_pipeline(req, res, impl_.shared_diag(), std::forward<CompletionToken>(token));
+    }
+
+    /// \copydoc async_run_pipeline
+    template <
+        BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType,
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    auto async_run_pipeline(
+        const PipelineRequestType& req,
+        typename PipelineRequestType::response_type& res,
+        diagnostics& diag,
+        CompletionToken&& token
+    ) BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
+    {
+        return this->impl_.async_run(
+            impl_.make_params_pipeline(req, res, diag),
             std::forward<CompletionToken>(token)
         );
     }

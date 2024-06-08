@@ -58,6 +58,7 @@ run_regular_example async_futures ;
 run_regular_example metadata ;
 run_regular_example ssl ;
 run_regular_example timeouts ;
+run_regular_example pipeline ;
 run_regular_example async_coroutines : /boost/mysql/test//boost_context_lib ;
 run_regular_example any_connection : /boost/mysql/test//boost_context_lib ;
 

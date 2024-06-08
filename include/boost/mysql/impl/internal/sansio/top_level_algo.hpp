@@ -14,9 +14,11 @@
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
+
+#include <boost/core/span.hpp>
 
 #include <cstddef>
+#include <cstdint>
 
 #ifdef BOOST_USE_VALGRIND
 #include <valgrind/memcheck.h>
@@ -36,22 +38,25 @@ inline void valgrind_make_mem_defined(const void* data, std::size_t size)
 inline void valgrind_make_mem_defined(const void*, std::size_t) noexcept {}
 #endif
 
+// InnerAlgo should have
+//   Constructible from the args forwarded by the ctor.
+//   next_action resume(connection_state_data&, error_code);
+//   AlgoParams::result_type result(const connection_state_data&) const; // if AlgoParams::result_type != void
 template <class InnerAlgo>
 class top_level_algo
 {
     int resume_point_{0};
+    connection_state_data* st_;
     InnerAlgo algo_;
-
-    connection_state_data& conn_state() noexcept { return algo_.conn_state(); }
+    span<const std::uint8_t> bytes_to_write_;
 
 public:
     template <class... Args>
-    top_level_algo(connection_state_data& st_data, Args&&... args)
-        : algo_(st_data, std::forward<Args>(args)...)
+    top_level_algo(connection_state_data& st, Args&&... args) : st_(&st), algo_(std::forward<Args>(args)...)
     {
     }
 
-    const InnerAlgo& inner_algo() const noexcept { return algo_; }
+    const InnerAlgo& inner_algo() const { return algo_; }
 
     next_action resume(error_code ec, std::size_t bytes_transferred)
     {
@@ -65,48 +70,47 @@ public:
             while (true)
             {
                 // Run the op
-                act = algo_.resume(ec);
+                act = algo_.resume(*st_, ec);
 
                 // Check next action
                 if (act.is_done())
                 {
                     return act;
                 }
-                else if (act.type() == next_action::type_t::read)
+                else if (act.type() == next_action_type::read)
                 {
                     // Read until a complete message is received
                     // (may be zero times if cached)
-                    while (!conn_state().reader.done() && !ec)
+                    while (!st_->reader.done() && !ec)
                     {
-                        conn_state().reader.prepare_buffer();
+                        st_->reader.prepare_buffer();
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             1,
-                            next_action::read({conn_state().reader.buffer(), conn_state().ssl_active()})
+                            next_action::read({st_->reader.buffer(), st_->ssl_active()})
                         )
-                        valgrind_make_mem_defined(conn_state().reader.buffer().data(), bytes_transferred);
-                        conn_state().reader.resume(bytes_transferred);
+                        valgrind_make_mem_defined(st_->reader.buffer().data(), bytes_transferred);
+                        st_->reader.resume(bytes_transferred);
                     }
 
                     // Check for errors
                     if (!ec)
-                        ec = conn_state().reader.error();
+                        ec = st_->reader.error();
 
                     // We've got a message, continue
                 }
-                else if (act.type() == next_action::type_t::write)
+                else if (act.type() == next_action_type::write)
                 {
                     // Write until a complete message was written
-                    while (!conn_state().writer.done() && !ec)
+                    bytes_to_write_ = act.write_args().buffer;
+                    while (!bytes_to_write_.empty() && !ec)
                     {
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             2,
-                            next_action::write(
-                                {conn_state().writer.current_chunk(), conn_state().ssl_active()}
-                            )
+                            next_action::write({bytes_to_write_, st_->ssl_active()})
                         )
-                        conn_state().writer.resume(bytes_transferred);
+                        bytes_to_write_ = bytes_to_write_.subspan(bytes_transferred);
                     }
 
                     // We fully wrote a message, continue

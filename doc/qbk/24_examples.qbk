@@ -31,6 +31,7 @@ Here is a list of available examples:
 # [link mysql.examples.batch_inserts_generic (Experimental) Generic batch inserts with Boost.Describe: extending format_sql]
 # [link mysql.examples.dynamic_filters (Experimental) Implements a query with several dynamic filters using client-side query formatting]
 # [link mysql.examples.patch_updates (Experimental) Implements a dynamic UPDATE query for PATCH-like update semantics using client-side query formatting]
+# [link mysql.examples.pipeline (Experimental) Prepares, executes and closes statements in batch using the pipeline API]
 # [link mysql.examples.connection_pool (Experimental) A REST API server that uses connection pooling]
 # [@https://github.com/anarthal/servertech-chat The BoostServerTech chat project uses Boost.MySQL and Boost.Redis to implement a chat server]
 
@@ -392,6 +393,29 @@ __assume_setup__
 [example_patch_updates]
 
 [endsect]
+
+
+
+
+
+
+
+
+
+[section:pipeline (Experimental) Pipelines]
+
+This example demonstrates how use [link mysql.pipeline the pipeline API]
+to prepare, execute and close statements in batch.
+
+The example employs async functions with C++20 coroutines.
+
+__assume_setup__
+
+[import ../../example/pipeline.cpp]
+[example_pipeline]
+
+[endsect]
+
 
 
 

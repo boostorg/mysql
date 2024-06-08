@@ -29,6 +29,7 @@ add_executable(
     test/reconnect.cpp
     test/any_connection.cpp
     test/character_set_tracking.cpp
+    test/pipeline.cpp
     test/connection_pool.cpp
     test/db_specific.cpp
     test/database_types.cpp
@@ -46,6 +47,7 @@ add_executable(
     test/snippets/any_connection.cpp
     test/snippets/connection_pool.cpp
     test/snippets/sql_formatting.cpp
+    test/snippets/pipeline.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests

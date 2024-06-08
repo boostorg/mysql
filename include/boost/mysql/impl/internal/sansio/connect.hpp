@@ -17,25 +17,24 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/handshake.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class connect_algo : public sansio_algorithm
+class connect_algo
 {
     int resume_point_{0};
     handshake_algo handshake_;
     error_code stored_ec_;
 
 public:
-    connect_algo(connection_state_data& st, connect_algo_params params) noexcept
-        : sansio_algorithm(st), handshake_(st, {params.diag, params.hparams, params.secure_channel})
+    connect_algo(connect_algo_params params) noexcept
+        : handshake_({params.diag, params.hparams, params.secure_channel})
     {
     }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         next_action act;
 
@@ -52,7 +51,7 @@ public:
                 return ec;
 
             // Handshake
-            while (!(act = handshake_.resume(ec)).is_done())
+            while (!(act = handshake_.resume(st, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
             // If handshake failed, close the stream ignoring the result

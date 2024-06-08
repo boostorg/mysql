@@ -126,7 +126,7 @@ template <class Serializable>
 inline std::uint8_t serialize_top_level(
     const Serializable& input,
     std::vector<std::uint8_t>& to,
-    std::uint8_t seqnum,
+    std::uint8_t seqnum = 0,
     std::size_t frame_size = max_packet_size
 )
 {
