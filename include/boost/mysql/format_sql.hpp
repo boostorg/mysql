@@ -24,8 +24,10 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <iterator>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -431,6 +433,62 @@ struct formatter<identifier>
 {
     BOOST_MYSQL_DECL
     static void format(const identifier& value, format_context_base& ctx);
+};
+
+// TODO: this should probably be private, and we should split
+// range transformation from join
+struct default_format_fn
+{
+    template <class T>
+    void operator()(const T& value, format_context_base& ctx) const
+    {
+        ctx.append_value(value);
+    }
+};
+
+template <class It, class Sentinel, class FormatFn>
+struct join_view
+{
+    It it;
+    Sentinel sentinel;
+    FormatFn fn;
+    string_view glue;
+
+    // TODO make this private
+};
+
+// TODO: type requirements
+// Range: has begin() and end() (could we do ADL?)
+// FormatFn: has operator()(const reference_type&, format_context_base&) const
+template <class Range, class FormatFn>
+auto join(Range&& range, FormatFn fn, string_view glue = ", ")
+    -> join_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
+{
+    return {std::begin(range), std::end(range), std::move(fn), glue};
+}
+
+// Range: has begin() and end(), reference_type is Formattable
+template <class Range>
+auto join(Range&& range, string_view glue = ", ")
+    -> join_view<decltype(std::begin(range)), decltype(std::end(range)), default_format_fn>
+{
+    return {std::begin(range), std::end(range), default_format_fn(), glue};
+}
+
+template <class It, class Sentinel, class FormatFn>
+struct formatter<join_view<It, Sentinel, FormatFn>>
+{
+    static void format(const join_view<It, Sentinel, FormatFn>& value, format_context_base& ctx)
+    {
+        bool is_first = true;
+        for (auto it = value.it; it != value.sentinel; ++it)
+        {
+            if (!is_first)
+                ctx.append_raw(runtime(value.glue));
+            is_first = false;
+            value.fn(*it, ctx);
+        }
+    }
 };
 
 /**
