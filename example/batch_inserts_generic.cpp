@@ -6,8 +6,15 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/constant_string_view.hpp>
+#include <boost/mysql/field_view.hpp>
 
 #include <boost/describe/class.hpp>
+#include <boost/mp11/list.hpp>
+#include <boost/mp11/tuple.hpp>
+
+#include <array>
+#include <cstddef>
 
 #ifdef BOOST_DESCRIBE_CXX14
 
@@ -76,127 +83,48 @@ struct insert_list
     boost::span<const T> values;
 };
 
-/**
- * Represents field names for a Boost.Describe struct T.
- * The idea is to make the following work:
- *
- *   format_sql("INSERT INTO t ({}) VALUES ...", opts, field_name_list<employee>());
- *
- * Generating something like: "INSERT INTO t (`first_name`, `last_name`, `company_id`, `salary`) VALUES ..."
- */
-template <class T>
-struct field_name_list
-{
-};
-
 // Helper to reflect a Boost.Descibe type T.
 // This retrieves all public data members, including inherited ones.
 template <class T>
 using public_members = describe::describe_members<T, describe::mod_public | describe::mod_inherited>;
 
-// To make a type U formattable, we need to specialize boost::mysql::formatter<U>
-namespace boost {
-namespace mysql {
-
-// Make insert_list<T> formattable
+// The number of public members of a struct
 template <class T>
-struct formatter<insert_list<T>>
+constexpr std::size_t num_public_members = mp11::mp_size<public_members<T>>::value;
+
+// Gets the member names of a struct, as an array of string views
+// For employee, generates {"first_name", "last_name", "company_id", "salary"}
+template <class T>
+constexpr std::array<string_view, num_public_members<T>> get_field_names()
 {
-    // Helper function. This is not required by Boost.MySQL.
-    // Adds a single value of type T into the format_context.
-    // For an employee, it might generate something like:
-    //   "('John', 'Doe', 'HGS', 35000)"
-    static void format_single(const T& value, format_context_base& ctx)
+    return mp11::tuple_apply(
+        [](auto... descriptors) {
+            return std::array<string_view, num_public_members<T>>{descriptors.name...};
+        },
+        mp11::mp_rename<public_members<T>, std::tuple>()
+    );
+}
+
+struct describe_struct_format_fn
+{
+    template <class T>
+    void operator()(const T& value, boost::mysql::format_context_base& ctx) const
     {
-        // Opening bracket
-        ctx.append_raw("(");
+        // Convert the struct into an array of type-erased format args
+        // TODO: this doesn't work for optionals or things with custom formatters
+        auto args = mp11::tuple_apply(
+            [&value](auto... descriptors) {
+                return std::array<boost::mysql::field_view, num_public_members<T>>{
+                    boost::mysql::field_view(value.*descriptors.pointer)...
+                };
+            },
+            mp11::mp_rename<public_members<T>, std::tuple>()
+        );
 
-        // We must build a comma-separated list. The first member is not preceeded by a comma.
-        bool is_first = true;
-
-        // Iterate over all members of T
-        mp11::mp_for_each<public_members<T>>([&](auto D) {
-            // Comma separator
-            if (!is_first)
-            {
-                ctx.append_raw(", ");
-            }
-            is_first = false;
-
-            // Insert the actual member. value.*D.pointer will get
-            // each of the data members of our struct.
-            // append_value will format the supplied value according to its type,
-            // as if it was a {} replacement field: strings are escaped and quoted,
-            // doubles are formatted as number literals, and so on.
-            ctx.append_value(value.*D.pointer);
-        });
-
-        // Closing bracket
-        ctx.append_raw(")");
-    }
-
-    // Boost.MySQL requires us to define this function. It should take
-    // our value as first argument, and a format_context_base& as the second.
-    // It should format the value into the context.
-    // format_context_base has append_raw and append_value, like format_context.
-    static void format(const insert_list<T>& values, format_context_base& ctx)
-    {
-        // We need one record, at least. If this is not the case, we can use
-        // add_error to report the error and exit. This will cause format_sql to throw.
-        if (values.values.empty())
-        {
-            ctx.add_error(client_errc::unformattable_value);
-            return;
-        }
-
-        // Build a comma-separated list
-        bool is_first = true;
-        for (const T& val : values.values)
-        {
-            // Comma separator
-            if (!is_first)
-            {
-                ctx.append_raw(", ");
-            }
-            is_first = false;
-
-            // Values
-            format_single(val, ctx);
-        }
+        // Join them
+        boost::mysql::format_sql_to(ctx, "({})", boost::mysql::join(args));
     }
 };
-
-// Make field_name_list<T> formattable
-template <class T>
-struct formatter<field_name_list<T>>
-{
-    // Recall that given a type like employee, we want to output an identifier list:
-    //    "`first_name`, `last_name`, `company_id`, `salary`"
-    static void format(const field_name_list<T>&, format_context_base& ctx)
-    {
-        // We must build a comma-separated list. The first member is not preceeded by a comma.
-        bool is_first = true;
-
-        // Iterate over all members of T
-        mp11::mp_for_each<public_members<T>>([&](auto D) {
-            // Comma separator
-            if (!is_first)
-            {
-                ctx.append_raw(", ");
-            }
-            is_first = false;
-
-            // Output the field's name.
-            // D.name is a const char* containing the T's field names.
-            // identifier wraps a string to be formatted as a SQL identifier
-            // (i.e. `first_name`, rather than 'first_name').
-            ctx.append_value(boost::mysql::identifier(D.name));
-        });
-    }
-};
-
-}  // namespace mysql
-}  // namespace boost
 
 // Reads a file into memory
 std::string read_file(const char* file_name)
@@ -240,6 +168,13 @@ void main_impl(int argc, char** argv)
     // Connect to the server
     conn.connect(params);
 
+    // We need one value to insert, at least
+    if (values.empty())
+    {
+        std::cerr << argv[0] << ": the JSON file should contain at least one employee\n";
+        exit(1);
+    }
+
     // Compose the query. We've managed to make all out types formattable,
     // so we can use format_sql.
     // Recall that format_opts() returns a system::result<format_options>,
@@ -248,8 +183,16 @@ void main_impl(int argc, char** argv)
     std::string query = boost::mysql::format_sql(
         conn.format_opts().value(),
         "INSERT INTO employee ({}) VALUES {}",
-        field_name_list<employee>(),
-        insert_list<employee>{values}
+        // Field names
+        boost::mysql::join(
+            get_field_names<employee>(),
+            [](string_view field_name, boost::mysql::format_context_base& ctx) {
+                boost::mysql::format_sql_to(ctx, "{}", boost::mysql::identifier(field_name));
+            }
+        ),
+
+        // Field values
+        boost::mysql::join(values, describe_struct_format_fn())
     );
 
     // Execute the query as usual.
