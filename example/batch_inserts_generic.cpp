@@ -122,7 +122,7 @@ struct describe_struct_format_fn
         );
 
         // Join them
-        boost::mysql::format_sql_to(ctx, "({})", boost::mysql::join(args));
+        boost::mysql::format_sql_to(ctx, "({})", boost::mysql::sequence(args));
     }
 };
 
@@ -184,7 +184,7 @@ void main_impl(int argc, char** argv)
         conn.format_opts().value(),
         "INSERT INTO employee ({}) VALUES {}",
         // Field names
-        boost::mysql::join(
+        boost::mysql::sequence(
             get_field_names<employee>(),
             [](string_view field_name, boost::mysql::format_context_base& ctx) {
                 boost::mysql::format_sql_to(ctx, "{}", boost::mysql::identifier(field_name));
@@ -192,7 +192,7 @@ void main_impl(int argc, char** argv)
         ),
 
         // Field values
-        boost::mysql::join(values, describe_struct_format_fn())
+        boost::mysql::sequence(values, describe_struct_format_fn())
     );
 
     // Execute the query as usual.

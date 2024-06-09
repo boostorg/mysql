@@ -110,7 +110,7 @@ static std::string compose_batch_insert(
     return boost::mysql::format_sql(
         opts,
         "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
-        boost::mysql::join(employees, format_employee)
+        boost::mysql::sequence(employees, format_employee)
     );
 }
 

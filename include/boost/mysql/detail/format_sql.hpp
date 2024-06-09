@@ -15,11 +15,9 @@
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <initializer_list>
+#include <iterator>
 #include <string>
 #include <type_traits>
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-#include <concepts>
-#endif
 
 namespace boost {
 namespace mysql {
@@ -64,11 +62,19 @@ concept formattable =
     // This covers custom types that specialized boost::mysql::formatter
     has_specialized_formatter<T>();
 
+template <class Range, class FormatFn>
+concept formattable_range = requires(Range&& range, const FormatFn& format_fn, format_context_base& ctx) {
+    format_fn(*std::begin(range), ctx);
+    std::end(range);
+};
+
 #define BOOST_MYSQL_FORMATTABLE ::boost::mysql::detail::formattable
+#define BOOST_MYSQL_FORMATTABLE_RANGE(Fn) ::boost::mysql::detail::formattable_range<Fn>
 
 #else
 
 #define BOOST_MYSQL_FORMATTABLE class
+#define BOOST_MYSQL_FORMATTABLE_RANGE(Fn) class
 
 #endif
 

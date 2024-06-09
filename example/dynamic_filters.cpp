@@ -198,7 +198,7 @@ std::string compose_get_employees_query(
     boost::mysql::format_sql_to(
         ctx,
         "SELECT id, first_name, last_name, company_id, salary FROM employee WHERE {}",
-        boost::mysql::join(
+        boost::mysql::sequence(
             filts,
             [](filter_item item, boost::mysql::format_context_base& ctx) {
                 ctx.append_value(boost::mysql::identifier(item.field_name))

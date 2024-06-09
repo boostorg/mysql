@@ -435,11 +435,9 @@ struct formatter<identifier>
     static void format(const identifier& value, format_context_base& ctx);
 };
 
-// TODO: this should probably be private, and we should split
-// range transformation from join
-struct default_format_fn
+struct default_format_function
 {
-    template <class T>
+    template <BOOST_MYSQL_FORMATTABLE T>
     void operator()(const T& value, format_context_base& ctx) const
     {
         ctx.append_value(value);
@@ -447,38 +445,32 @@ struct default_format_fn
 };
 
 template <class It, class Sentinel, class FormatFn>
-struct join_view
+struct format_sequence
 {
     It it;
     Sentinel sentinel;
     FormatFn fn;
     string_view glue;
-
-    // TODO make this private
 };
 
-// TODO: type requirements
-// Range: has begin() and end() (could we do ADL?)
-// FormatFn: has operator()(const reference_type&, format_context_base&) const
-template <class Range, class FormatFn>
-auto join(Range&& range, FormatFn fn, string_view glue = ", ")
-    -> join_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
+template <class FormatFn, BOOST_MYSQL_FORMATTABLE_RANGE(FormatFn) FormattableRange>
+auto sequence(FormattableRange&& range, FormatFn fn, string_view glue = ", ")
+    -> format_sequence<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
 {
     return {std::begin(range), std::end(range), std::move(fn), glue};
 }
 
-// Range: has begin() and end(), reference_type is Formattable
-template <class Range>
-auto join(Range&& range, string_view glue = ", ")
-    -> join_view<decltype(std::begin(range)), decltype(std::end(range)), default_format_fn>
+template <BOOST_MYSQL_FORMATTABLE_RANGE(default_format_function) FormattableRange>
+auto sequence(FormattableRange&& range, string_view glue = ", ")
+    -> format_sequence<decltype(std::begin(range)), decltype(std::end(range)), default_format_function>
 {
-    return {std::begin(range), std::end(range), default_format_fn(), glue};
+    return {std::begin(range), std::end(range), default_format_function(), glue};
 }
 
 template <class It, class Sentinel, class FormatFn>
-struct formatter<join_view<It, Sentinel, FormatFn>>
+struct formatter<format_sequence<It, Sentinel, FormatFn>>
 {
-    static void format(const join_view<It, Sentinel, FormatFn>& value, format_context_base& ctx)
+    static void format(const format_sequence<It, Sentinel, FormatFn>& value, format_context_base& ctx)
     {
         bool is_first = true;
         for (auto it = value.it; it != value.sentinel; ++it)

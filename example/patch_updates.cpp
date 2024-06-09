@@ -195,7 +195,7 @@ void main_impl(int argc, char** argv)
         "UPDATE employee SET {0} WHERE id = {1}; "
         "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
         "COMMIT",
-        boost::mysql::join(
+        boost::mysql::sequence(
             args.updates,
             [](update_field upd, boost::mysql::format_context_base& ctx) {
                 boost::mysql::format_sql_to(
