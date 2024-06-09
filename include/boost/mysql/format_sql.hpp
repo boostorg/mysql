@@ -435,6 +435,9 @@ struct formatter<identifier>
     static void format(const identifier& value, format_context_base& ctx);
 };
 
+// TODO: document properly
+// The default format function, used by \ref sequence unless otherwise specified.
+// Appends the passed value to the context, without performing any transformation.
 struct default_format_function
 {
     template <BOOST_MYSQL_FORMATTABLE T>
@@ -444,39 +447,47 @@ struct default_format_function
     }
 };
 
+// TODO: document properly
+// A formattable view type. Holds a range (as an iterator/sentinel pair),
+// a formatter function, and a glue string. Defines a custom formatter.
+// When formatted, the [it, sentinel) range is iterated, applying fn for each
+// element in the range. The string glue is output raw (as per \ref format_context_base::append_raw)
+// to the context between each invocation of fn, after the first one.
+// Can be used to generate glue-separated sequences.
+// See \ref sequence for appropriate adaptor functions
 template <class It, class Sentinel, class FormatFn>
-struct format_sequence
+struct format_sequence_view
 {
     It it;
     Sentinel sentinel;
     FormatFn fn;
-    string_view glue;
+    constant_string_view glue;
 };
 
 template <class FormatFn, BOOST_MYSQL_FORMATTABLE_RANGE(FormatFn) FormattableRange>
-auto sequence(FormattableRange&& range, FormatFn fn, string_view glue = ", ")
-    -> format_sequence<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
+auto sequence(FormattableRange&& range, FormatFn fn, constant_string_view glue = ", ")
+    -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
 {
     return {std::begin(range), std::end(range), std::move(fn), glue};
 }
 
 template <BOOST_MYSQL_FORMATTABLE_RANGE(default_format_function) FormattableRange>
-auto sequence(FormattableRange&& range, string_view glue = ", ")
-    -> format_sequence<decltype(std::begin(range)), decltype(std::end(range)), default_format_function>
+auto sequence(FormattableRange&& range, constant_string_view glue = ", ")
+    -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), default_format_function>
 {
     return {std::begin(range), std::end(range), default_format_function(), glue};
 }
 
 template <class It, class Sentinel, class FormatFn>
-struct formatter<format_sequence<It, Sentinel, FormatFn>>
+struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
 {
-    static void format(const format_sequence<It, Sentinel, FormatFn>& value, format_context_base& ctx)
+    static void format(const format_sequence_view<It, Sentinel, FormatFn>& value, format_context_base& ctx)
     {
         bool is_first = true;
         for (auto it = value.it; it != value.sentinel; ++it)
         {
             if (!is_first)
-                ctx.append_raw(runtime(value.glue));
+                ctx.append_raw(value.glue);
             is_first = false;
             value.fn(*it, ctx);
         }
