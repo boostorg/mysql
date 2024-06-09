@@ -12,7 +12,7 @@
 //[example_batch_inserts
 
 // Uses client-side SQL formatting to implement batch inserts
-// for a specific type. It makes use of format_context and format_sql_to.
+// for a specific type.
 // The program reads a JSON file containing a list of employees
 // and inserts it into the employee table.
 //
@@ -91,10 +91,12 @@ static std::string compose_batch_insert(
     // We need at least one employee to insert
     assert(!employees.empty());
 
-    // TODO: document
-    auto format_employee = [](const employee& emp, boost::mysql::format_context_base& ctx) {
+    // A function describing how to format a single employee object. Used with mysql::sequence.
+    auto format_employee_fn = [](const employee& emp, boost::mysql::format_context_base& ctx) {
+        // format_context_base can be used to build query strings incrementally.
+        // Used internally by the sequence() formatter
         // format_sql_to expands a format string, replacing {} fields,
-        // and appends the result to our context.
+        // and appends the result to the passed context.
         // When formatted, strings are quoted and escaped as string literals.
         // Doubles are formatted as number literals.
         boost::mysql::format_sql_to(
@@ -107,10 +109,13 @@ static std::string compose_batch_insert(
         );
     };
 
+    // sequence() takes a range and a formatter function.
+    // It will call the formatter function for each object in the sequence,
+    // adding commas between invocations.
     return boost::mysql::format_sql(
         opts,
         "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
-        boost::mysql::sequence(employees, format_employee)
+        boost::mysql::sequence(employees, format_employee_fn)
     );
 }
 

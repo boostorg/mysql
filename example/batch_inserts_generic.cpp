@@ -21,8 +21,7 @@
 //[example_batch_inserts_generic
 
 // Uses client-side SQL formatting to implement batch inserts
-// for any type T with Boost.Describe metadata. It shows how to
-// extend format_sql by specializing formatter.
+// for any type T with Boost.Describe metadata.
 //
 // The program reads a JSON file containing a list of employees
 // and inserts it into the employee table.
@@ -69,48 +68,41 @@ struct employee
 };
 BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, company_id, salary))
 
-/**
- * Represents a list of objects to be formatted as a list in an INSERT statement.
- * T must be a struct annotated with Boost.Describe metadata.
- * The idea is to make the following work:
- *
- *   std::vector<employee> employees = ... ;
- *   format_sql("INSERT INTO t VALUES {}", opts, insert_list<employee>(employees));
- */
-template <class T>
-struct insert_list
-{
-    boost::span<const T> values;
-};
-
-// Helper to reflect a Boost.Descibe type T.
-// This retrieves all public data members, including inherited ones.
+// Retrieves all public data members from a Boost.Describe struct, including inherited ones.
+// This is a Boost.Mp11 compatible type list.
 template <class T>
 using public_members = describe::describe_members<T, describe::mod_public | describe::mod_inherited>;
 
-// The number of public members of a struct
+// The number of public members of a Boost.Describe struct
 template <class T>
 constexpr std::size_t num_public_members = mp11::mp_size<public_members<T>>::value;
 
-// Gets the member names of a struct, as an array of string views
-// For employee, generates {"first_name", "last_name", "company_id", "salary"}
+// Gets the member names of a struct, as an array of identifiers.
+// For employee, generates
+// {identifier("first_name"), identifier("last_name"), identifier("company_id"), identifier("salary")}
 template <class T>
-constexpr std::array<string_view, num_public_members<T>> get_field_names()
+constexpr std::array<boost::mysql::identifier, num_public_members<T>> get_field_names()
 {
     return mp11::tuple_apply(
         [](auto... descriptors) {
-            return std::array<string_view, num_public_members<T>>{descriptors.name...};
+            return std::array<boost::mysql::identifier, num_public_members<T>>{
+                boost::mysql::identifier(descriptors.name)...
+            };
         },
         mp11::mp_rename<public_members<T>, std::tuple>()
     );
 }
 
-struct describe_struct_format_fn
+// A formatting function that generates an insert field list for any struct T with
+// Boost.Describe metadata.
+// For example, employee{"John", "Doe", "HGS", 20000} generates the string
+// "('John', 'Doe', 'HGS', 20000)"
+struct insert_struct_format_fn
 {
     template <class T>
     void operator()(const T& value, boost::mysql::format_context_base& ctx) const
     {
-        // Convert the struct into an array of type-erased format args
+        // Convert the struct into a std::array of field_view's
         // TODO: this doesn't work for optionals or things with custom formatters
         auto args = mp11::tuple_apply(
             [&value](auto... descriptors) {
@@ -121,7 +113,7 @@ struct describe_struct_format_fn
             mp11::mp_rename<public_members<T>, std::tuple>()
         );
 
-        // Join them
+        // Format them as a comma-separated sequence
         boost::mysql::format_sql_to(ctx, "({})", boost::mysql::sequence(args));
     }
 };
@@ -171,28 +163,20 @@ void main_impl(int argc, char** argv)
     // We need one value to insert, at least
     if (values.empty())
     {
-        std::cerr << argv[0] << ": the JSON file should contain at least one employee\n";
+        std::cerr << argv[0] << ": the JSON file should contain at least one employee" << std::endl;
         exit(1);
     }
 
-    // Compose the query. We've managed to make all out types formattable,
-    // so we can use format_sql.
+    // Compose the query. We use sequence() to format C++ ranges as
+    // comma-separated sequences.
     // Recall that format_opts() returns a system::result<format_options>,
     // which can contain an error if the connection doesn't know which character set is using.
     // Use set_character_set if this happens.
     std::string query = boost::mysql::format_sql(
         conn.format_opts().value(),
         "INSERT INTO employee ({}) VALUES {}",
-        // Field names
-        boost::mysql::sequence(
-            get_field_names<employee>(),
-            [](string_view field_name, boost::mysql::format_context_base& ctx) {
-                boost::mysql::format_sql_to(ctx, "{}", boost::mysql::identifier(field_name));
-            }
-        ),
-
-        // Field values
-        boost::mysql::sequence(values, describe_struct_format_fn())
+        boost::mysql::sequence(get_field_names<employee>()),
+        boost::mysql::sequence(values, insert_struct_format_fn())
     );
 
     // Execute the query as usual.

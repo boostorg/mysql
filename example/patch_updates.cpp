@@ -13,10 +13,6 @@
 // as provided by command-line arguments, and leaving all other
 // fields unmodified.
 //
-// This example specializes formatter to make custom types
-// compatible with format_sql. It also uses multi-queries
-// to execute several queries at once.
-//
 // Note: client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
@@ -44,16 +40,7 @@ using boost::mysql::string_view;
  * Represents a single update as a name, value pair.
  * The idea is to use command-line arguments to compose
  * a std::vector<update_field> with the fields to be updated,
- * and make the following work:
- * TODO: rewrite this
- *
- *    std::vector<update_field> updates {
- *       { "fist_name", field_view("John") },
- *       { "salary", field_view(35000)     },
- *    };
- *    format_sql("UPDATE employee SET {} WHERE id = {}", opts, updates, 42);
- *
- * "UPDATE employee SET `first_name` = 'John', `salary` = 35000 WHERE id = 42"
+ * and use mysql::sequence() to join these with commas
  */
 struct update_field
 {
@@ -180,32 +167,32 @@ void main_impl(int argc, char** argv)
     // Connect to the server
     conn.connect(params);
 
-    // Compose the query. We've managed to make all out types formattable,
-    // so we can use format_sql.
+    // Formats an individual update. Used by sequence().
+    // For update_field{"first_name", "John"}, it generates the string
+    // "`first_name` = 'John'"
+    auto update_format_fn = [](update_field upd, boost::mysql::format_context_base& ctx) {
+        boost::mysql::format_sql_to(
+            ctx,
+            "{} = {}",
+            boost::mysql::identifier(upd.field_name),
+            upd.field_value
+        );
+    };
+
+    // Compose the query. We use sequence() to output the update list separated by commas.
     // We want to update the employee and then retrieve it. MySQL doesn't support
     // the UPDATE ... RETURNING statement to update and retrieve data atomically,
     // so we will use a transaction to guarantee consistency.
     // Instead of running every statement separately, we activated params.multi_queries,
     // which allows semicolon-separated statements.
     // As in std::format, we can use explicit indices like {0} and {1} to reference arguments.
-    // TODO: this was showing how to report errors using add_error, can we show it somewhere else?
     std::string query = boost::mysql::format_sql(
         conn.format_opts().value(),
         "START TRANSACTION; "
         "UPDATE employee SET {0} WHERE id = {1}; "
         "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
         "COMMIT",
-        boost::mysql::sequence(
-            args.updates,
-            [](update_field upd, boost::mysql::format_context_base& ctx) {
-                boost::mysql::format_sql_to(
-                    ctx,
-                    "{} = {}",
-                    boost::mysql::identifier(upd.field_name),
-                    upd.field_value
-                );
-            }
-        ),
+        boost::mysql::sequence(args.updates, update_format_fn),
         args.employee_id
     );
 

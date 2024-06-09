@@ -52,16 +52,18 @@ void print_employee(boost::mysql::row_view employee)
               << ", salary: " << employee.at(4) << '\n';              // field 4: salary
 }
 
+// An operator to use in a filter
 enum class op_type
 {
-    lt,
-    lte,
-    eq,
-    gt,
-    gte,
+    lt,   // <
+    lte,  // <=
+    eq,   // =
+    gt,   // >
+    gte,  // >=
 };
 
-string_view op_type_to_string(op_type value)
+// Returns the SQL operator for the given op_type
+string_view op_type_to_sql(op_type value)
 {
     switch (value)
     {
@@ -74,12 +76,14 @@ string_view op_type_to_string(op_type value)
     }
 }
 
-// An individual filter to apply
-struct filter_item
+// An individual filter to apply.
+// For example, filter{"salary", op_type::gt, field_view(20000)} should generate a
+// `salary` > 20000 condition
+struct filter
 {
-    string_view field_name;
-    op_type op;
-    field_view field_value;
+    string_view field_name;  // The database column name
+    op_type op;              // The operator to apply
+    field_view field_value;  // The value to check. field_view can hold any MySQL type
 };
 
 // Command line arguments
@@ -95,7 +99,7 @@ struct cmdline_args
     string_view server_hostname;
 
     // The filters to apply
-    std::vector<filter_item> filts;
+    std::vector<filter> filts;
 
     // If order_by.has_value(), order employees using the given field
     boost::optional<string_view> order_by;
@@ -187,26 +191,27 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
 //
 std::string compose_get_employees_query(
     boost::mysql::format_options opts,
-    const std::vector<filter_item>& filts,
+    const std::vector<filter>& filts,
     boost::optional<string_view> order_by
 )
 {
     // A format context allows composing queries incrementally
     boost::mysql::format_context ctx(opts);
 
-    // Add the query with the filters
+    // Adds an individual filter to the context. Used by sequence()
+    auto filter_format_fn = [](filter item, boost::mysql::format_context_base& elm_ctx) {
+        elm_ctx.append_value(boost::mysql::identifier(item.field_name))
+            .append_raw(boost::mysql::runtime(op_type_to_sql(item.op)))
+            .append_value(item.field_value);
+    };
+
+    // Add the query with the filters to ctx.
+    // sequence() will invoke filter_format_fn for each element in filts,
+    // using the string " AND " as glue, to separate filters
     boost::mysql::format_sql_to(
         ctx,
         "SELECT id, first_name, last_name, company_id, salary FROM employee WHERE {}",
-        boost::mysql::sequence(
-            filts,
-            [](filter_item item, boost::mysql::format_context_base& ctx) {
-                ctx.append_value(boost::mysql::identifier(item.field_name))
-                    .append_raw(boost::mysql::runtime(op_type_to_string(item.op)))
-                    .append_value(item.field_value);
-            },
-            " AND "
-        )
+        boost::mysql::sequence(filts, filter_format_fn, " AND ")
     );
 
     // Add the order by
