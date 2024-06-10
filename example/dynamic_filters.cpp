@@ -226,7 +226,7 @@ std::string compose_get_employees_query(boost::mysql::format_options opts, const
     {
         // identifier formats a string as a SQL identifier, instead of a string literal.
         // For instance, this may generate "ORDER BY `first_name`"
-        boost::mysql::format_sql_to(ctx, "ORDER BY {}", boost::mysql::identifier(*filts.order_by));
+        boost::mysql::format_sql_to(ctx, "ORDER BY {:i}", *filts.order_by);
     }
 
     // Get our generated query

@@ -178,15 +178,12 @@ struct table_base
         }
     }
 
-    std::string select_sql() const
-    {
-        return format_sql(opts, "SELECT * FROM {} ORDER BY id", identifier(name));
-    }
+    std::string select_sql() const { return format_sql(opts, "SELECT * FROM {:i} ORDER BY id", name); }
 
     std::string insert_sql_stmt() const
     {
         format_context ctx(opts);
-        format_sql_to(ctx, "INSERT INTO {} VALUES (", identifier(name));
+        format_sql_to(ctx, "INSERT INTO {:i} VALUES (", name);
         for (std::size_t i = 0; i < metas.size(); ++i)
         {
             if (i == 0)
@@ -201,7 +198,7 @@ struct table_base
     std::string insert_sql() const
     {
         format_context ctx(opts);
-        format_sql_to(ctx, "INSERT INTO {} VALUES ", identifier(name));
+        format_sql_to(ctx, "INSERT INTO {:i} VALUES ", name);
 
         bool is_first_row = true;
         for (const auto& r : rws)
@@ -230,7 +227,7 @@ struct table_base
         return std::move(ctx).get().value();
     }
 
-    std::string delete_sql() const { return format_sql(opts, "DELETE FROM {}", identifier(name)); }
+    std::string delete_sql() const { return format_sql(opts, "DELETE FROM {:i}", name); }
 };
 
 template <class T>
