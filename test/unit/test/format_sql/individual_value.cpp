@@ -46,7 +46,9 @@ using mysql_time = boost::mysql::time;
 BOOST_AUTO_TEST_SUITE(test_format_sql_individual_value)
 
 constexpr format_options opts{utf8mb4_charset, true};
-constexpr auto single_fmt = "SELECT {};";
+constexpr const char* single_fmt = "SELECT {};";
+constexpr const char* identifier_fmt = "SELECT {:i} FROM myt";
+constexpr const char* raw_fmt = "SELECT {:r};";
 
 BOOST_AUTO_TEST_CASE(individual_null)
 {
@@ -217,10 +219,29 @@ BOOST_AUTO_TEST_CASE(individual_float)
 
 BOOST_AUTO_TEST_CASE(individual_string_literal)
 {
+    // As values
     BOOST_TEST(format_sql(opts, single_fmt, "abc") == "SELECT 'abc';");
     BOOST_TEST(format_sql(opts, single_fmt, "abc'\\ OR 1=1") == "SELECT 'abc\\'\\\\ OR 1=1';");
     BOOST_TEST(format_sql(opts, single_fmt, "hola \xc3\xb1!") == "SELECT 'hola \xc3\xb1!';");
     BOOST_TEST(format_sql(opts, single_fmt, "") == "SELECT '';");
+
+    // As identifiers
+    BOOST_TEST(format_sql(opts, identifier_fmt, "myfield") == "SELECT `myfield` FROM myt");
+    BOOST_TEST(format_sql(opts, identifier_fmt, "inj`ect'ion") == "SELECT `inj``ect'ion` FROM myt");
+    BOOST_TEST(
+        format_sql(opts, identifier_fmt, "mo`e\\inj``ectionatt\nemmpts`") ==
+        "SELECT `mo``e\\inj````ectionatt\nemmpts``` FROM myt"
+    );
+
+    // Empty identifiers are not valid in MySQL but they shouldn't case formatting problems.
+    // They are correctly rejected by MySQL (they don't cause problems)
+    BOOST_TEST(format_sql(opts, identifier_fmt, "") == "SELECT `` FROM myt");
+
+    // As raw
+    BOOST_TEST(format_sql(opts, raw_fmt, "abc") == "SELECT abc;");              // regular
+    BOOST_TEST(format_sql(opts, raw_fmt, "") == "SELECT ;");                    // empty
+    BOOST_TEST(format_sql(opts, raw_fmt, "a\\'\"b`c") == "SELECT a\\'\"b`c;");  // we don't escape
+    BOOST_TEST(format_sql(opts, raw_fmt, "a\xff bc") == "SELECT a\xff bc;");    // we don't check charset
 }
 
 BOOST_AUTO_TEST_CASE(individual_c_str)
@@ -238,6 +259,12 @@ BOOST_AUTO_TEST_CASE(individual_string)
     BOOST_TEST(format_sql(opts, single_fmt, std::string("abc")) == "SELECT 'abc';");
     BOOST_TEST(format_sql(opts, single_fmt, std::string()) == "SELECT '';");
     BOOST_TEST(format_sql(opts, single_fmt, string_with_alloc("abc'")) == "SELECT 'abc\\'';");
+
+    // specifiers work
+    BOOST_TEST(format_sql(opts, identifier_fmt, lval) == "SELECT `I'm an lvalue` FROM myt");
+    BOOST_TEST(format_sql(opts, identifier_fmt, clval) == "SELECT `I'm const` FROM myt");
+    BOOST_TEST(format_sql(opts, identifier_fmt, std::string("abc")) == "SELECT `abc` FROM myt");
+    BOOST_TEST(format_sql(opts, identifier_fmt, string_with_alloc("abc")) == "SELECT `abc` FROM myt");
 }
 
 BOOST_AUTO_TEST_CASE(individual_string_view)
@@ -245,6 +272,9 @@ BOOST_AUTO_TEST_CASE(individual_string_view)
     BOOST_TEST(format_sql(opts, single_fmt, string_view("abc")) == "SELECT 'abc';");
     BOOST_TEST(format_sql(opts, single_fmt, string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';");
     BOOST_TEST(format_sql(opts, single_fmt, string_view()) == "SELECT '';");
+
+    // specifiers work
+    BOOST_TEST(format_sql(opts, identifier_fmt, string_view("abc")) == "SELECT `abc` FROM myt");
 }
 
 #ifdef __cpp_lib_string_view
@@ -255,6 +285,9 @@ BOOST_AUTO_TEST_CASE(individual_std_string_view)
         format_sql(opts, single_fmt, std::string_view("abc'\\ OR 1=1")) == "SELECT 'abc\\'\\\\ OR 1=1';"
     );
     BOOST_TEST(format_sql(opts, single_fmt, std::string_view()) == "SELECT '';");
+
+    // specifiers work
+    BOOST_TEST(format_sql(opts, identifier_fmt, std::string_view("abc")) == "SELECT `abc` FROM myt");
 }
 #endif
 
@@ -453,21 +486,6 @@ BOOST_AUTO_TEST_CASE(individual_std_optional)
     BOOST_TEST(format_sql(opts, single_fmt, co_clval) == "SELECT 'abdef';");
 }
 #endif
-
-BOOST_AUTO_TEST_CASE(individual_identifier)
-{
-    constexpr const char* fmt = "SELECT {:i} FROM myt";
-    BOOST_TEST(format_sql(opts, fmt, "myfield") == "SELECT `myfield` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, "inj`ect'ion") == "SELECT `inj``ect'ion` FROM myt");
-    BOOST_TEST(
-        format_sql(opts, fmt, "mo`e\\inj``ectionatt\nemmpts`") ==
-        "SELECT `mo``e\\inj````ectionatt\nemmpts``` FROM myt"
-    );
-
-    // Empty identifiers are not valid in MySQL but they shouldn't case formatting problems.
-    // They are correctly rejected by MySQL (they don't cause problems)
-    BOOST_TEST(format_sql(opts, fmt, "") == "SELECT `` FROM myt");
-}
 
 BOOST_AUTO_TEST_CASE(individual_custom_type)
 {
