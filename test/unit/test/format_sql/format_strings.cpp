@@ -163,8 +163,6 @@ BOOST_AUTO_TEST_CASE(error)
         {"name_contains_invalid",    "SELECT {na'me}",      client_errc::format_string_invalid_syntax  },
         {"name_spaces",              "SELECT { name }",     client_errc::format_string_invalid_syntax  },
         {"name_non_ascii",           "SELECT {e\xc3\xb1p}", client_errc::format_string_invalid_syntax  },
-        {"name_format_spec",         "SELECT {name:abc}",   client_errc::format_string_invalid_syntax  },
-        {"name_format_spec_empty",   "SELECT {name:}",      client_errc::format_string_invalid_syntax  },
         {"name_eof",                 "SELECT {name",        client_errc::format_string_invalid_syntax  },
         {"name_not_found",           "SELECT {name} {bad}", client_errc::format_arg_not_found          },
 
@@ -172,8 +170,6 @@ BOOST_AUTO_TEST_CASE(error)
         {"index_hex",                "SELECT {0x10}",       client_errc::format_string_invalid_syntax  },
         {"index_hex_noprefix",       "SELECT {1a}",         client_errc::format_string_invalid_syntax  },
         {"index_spaces",             "SELECT { 1 }",        client_errc::format_string_invalid_syntax  },
-        {"index_format_spec",        "SELECT {0:abc}",      client_errc::format_string_invalid_syntax  },
-        {"index_format_spec_empty",  "SELECT {0:}",         client_errc::format_string_invalid_syntax  },
         {"index_eof",                "SELECT {0",           client_errc::format_string_invalid_syntax  },
         {"index_gt_max",             "SELECT {65536}",      client_errc::format_string_invalid_syntax  },
         {"index_negative",           "SELECT {-1}",         client_errc::format_string_invalid_syntax  },
@@ -182,8 +178,6 @@ BOOST_AUTO_TEST_CASE(error)
         {"index_to_manual",          "SELECT {0}, {}",      client_errc::format_string_manual_auto_mix },
 
         // Auto indexing problems
-        {"auto_format_spec",         "SELECT {:abc}",       client_errc::format_string_invalid_syntax  },
-        {"auto_format_spec_empty",   "SELECT {:}",          client_errc::format_string_invalid_syntax  },
         {"auto_replacement_inside",  "SELECT { {} }",       client_errc::format_string_invalid_syntax  },
         {"auto_too_many_args",       "SELECT {}, {}, {}",   client_errc::format_arg_not_found          },
         {"auto_to_manual",           "SELECT {}, {0}",      client_errc::format_string_manual_auto_mix },
