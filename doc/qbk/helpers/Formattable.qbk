@@ -13,7 +13,6 @@ functions, like [reflink format_sql] or [refmem format_context_base append_value
 Formally, a type `T` satisfies `Formattable` if any of the following are true:
 
 * It satisfies [reflink2 WritableFieldTuple WritableField]. This includes scalar types and optionals.
-* It is [reflink identifier].
 * The class [reflink formatter] has been specialized for `T`.
 
 For a reference table on built-in formattable types, see [link mysql.sql_formatting.reference this section].

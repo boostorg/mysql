@@ -9,10 +9,10 @@
 [nochunk]
 
 
-[heading Extending format_sql and format_context]
+[heading Extending format_sql]
 
 You can specialize [reflink formatter] to add formatting support to your types.
-The notation resembles `std::format` but is much simpler, since format specs are not supported.
+The notation is similar to `std::format`:
 
 [sql_formatting_formatter_specialization]
 
@@ -21,6 +21,8 @@ and [refmem basic_format_context append_value]:
 
 [sql_formatting_formatter_use]
 
+
+TODO: format specifiers
 
 
 
@@ -67,10 +69,15 @@ You can output a brace literal by doubling it:
 
 [sql_formatting_brace_literal]
 
-Format specifiers (e.g. `{:g}`), common in `fmtlib`, are not allowed.
-There is usually a single, canonical representation for each type in
-MySQL, so there is no need to format types with different formats.
-This makes the implementation simpler.
+Format specifiers (e.g. `{:i}`) are supported for some types,
+but are far less common than in fmtlib, since most types have a
+single, canonical representation.
+
+Specifiers can appear when doing automatic indexing (e.g. `{:i}`),
+manual indexing (e.g. `{0:i}`) and named arguments (e.g. `{name:i}`).
+
+Types specializing formatters can define custom specifiers.
+Only ASCII characters that are not `{` or `}` can be used as specifiers.
 
 Format strings must be encoded according to [refmem format_options charset].
 Otherwise, an error will be generated. 

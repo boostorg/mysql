@@ -105,13 +105,24 @@ namespace mysql {
 template <>
 struct formatter<employee>
 {
-    // formatter<T> should define, at least, a function with signature:
-    //    static void format(const T&, format_context_base&)
-    // This function must use format_sql_to, format_context_base::append_raw
-    // or format_context_base::append_value to format the passed value.
-    // We will make this suitable for INSERT statements
-    static void format(const employee& emp, format_context_base& ctx)
+    // formatter<T> should define the following functions:
+    //    const char* parse(const char* first, const char*);
+    //    void format(const T&, format_context_base&) const;
+
+    const char* parse(const char* begin, const char* /* end */)
     {
+        // Parse any format specifiers for this type.
+        // [begin, end) point to the range of characters holding the format specifier string
+        // We should return a pointer to the first unparsed character.
+        // We don't support any specifiers for this type
+        return begin;
+    }
+
+    void format(const employee& emp, format_context_base& ctx) const
+    {
+        // Perform the actual formatting by appending characters to ctx.
+        // We usually use format_sql_to to achieve this.
+        // We will make this suitable for INSERT statements
         format_sql_to(ctx, "{}, {}, {}", emp.first_name, emp.last_name, emp.company_id);
     }
 };
@@ -258,11 +269,11 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         conn.execute(query, r);
     }
     {
-        //[sql_formatting_identifiers
+        //[sql_formatting_specifiers
         std::string query = boost::mysql::format_sql(
             conn.format_opts().value(),
-            "SELECT id, last_name FROM employee ORDER BY {} DESC",
-            boost::mysql::identifier("company_id")
+            "SELECT id, last_name FROM employee ORDER BY {:i} DESC",
+            "company_id"
         );
 
         BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
@@ -271,23 +282,15 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         conn.execute(query, r);
     }
     {
-        //[sql_formatting_qualified_identifiers
+        //[sql_formatting_specifiers_explicit_indices
         std::string query = boost::mysql::format_sql(
             conn.format_opts().value(),
-            "SELECT salary, tax_id FROM employee "
-            "INNER JOIN company ON employee.company_id = company.id "
-            "ORDER BY {} DESC",
-            boost::mysql::identifier("company", "id")
+            "SELECT id, last_name FROM employee ORDER BY {0:i} DESC",
+            "company_id"
         );
-        // SELECT ... ORDER BY `company`.`id` DESC
         //]
 
-        BOOST_TEST(
-            query ==
-            "SELECT salary, tax_id FROM employee "
-            "INNER JOIN company ON employee.company_id = company.id "
-            "ORDER BY `company`.`id` DESC"
-        );
+        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
         conn.execute(query, r);
     }
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
@@ -369,22 +372,47 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         //->
         //]
 
+        // clang-format off
         //[sql_formatting_reference_string
+        // Without format specifier: quoted string value
         //<-
         BOOST_TEST(
-            //->
-            format_sql(opts, "SELECT {}", "Hello world") == "SELECT 'Hello world'"
-            //<-
+        //->
+        format_sql(opts, "SELECT {}", "Hello world") == "SELECT 'Hello world'"
+        //<-
+        );
+        BOOST_TEST(
+        //->
+        format_sql(opts, "SELECT {}", "Hello 'world'") == R"(SELECT 'Hello \'world\'')"
+        //<-
         );
         //->
+
+        // {:i}: dynamic identifier
         //<-
         BOOST_TEST(
-            //->
-            format_sql(opts, "SELECT {}", "Hello 'world'") == R"(SELECT 'Hello \'world\'')"
-            //<-
+        //->
+        format_sql(opts, "SELECT {:i} FROM t", "salary") == "SELECT `salary` FROM t"
+        //<-
+        );
+        BOOST_TEST(
+        //->
+        format_sql(opts, "SELECT {:i} FROM t", "sal`ary") == "SELECT `sal``ary` FROM t"
+        //<-
+        );
+        //->
+
+        // {:r}: raw, unescaped SQL. WARNING: incorrect use can cause vulnerabilities
+        //<-
+        BOOST_TEST(
+        //->
+        format_sql(opts, "SELECT * FROM t WHERE id = 42 {:r} salary > 20000", "OR") ==
+            "SELECT * FROM t WHERE id = 42 OR salary > 20000"
+        //<-
         );
         //->
         //]
+        // clang-format on
 
         //[sql_formatting_reference_blob
         //<-
@@ -497,41 +525,6 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
             //->
             format_sql(opts, "SELECT {}", field()) == "SELECT NULL"
             //<-
-        );
-        //->
-        //]
-
-        //[sql_formatting_reference_identifier
-        //<-
-        BOOST_TEST(
-            //->
-            format_sql(opts, "SELECT {} FROM t", identifier("salary")) == "SELECT `salary` FROM t"
-            //<-
-        );
-        //->
-        //<-
-        BOOST_TEST(
-            //->
-            format_sql(opts, "SELECT {} FROM t", identifier("sal`ary")) == "SELECT `sal``ary` FROM t"
-            //<-
-        );
-        //->
-        //<-
-        BOOST_TEST(
-            // clang-format off
-            //->
-            format_sql(opts, "SELECT {} FROM t", identifier("mytable", "myfield")) == "SELECT `mytable`.`myfield` FROM t"
-            //<-
-            // clang-format on
-        );
-        //->
-        //<-
-        BOOST_TEST(
-            // clang-format off
-            //->
-            format_sql(opts, "SELECT {} FROM t", identifier("mydb", "mytable", "myfield")) == "SELECT `mydb`.`mytable`.`myfield` FROM t"
-            //<-
-            // clang-format on
         );
         //->
         //]

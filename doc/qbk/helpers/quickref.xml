@@ -45,7 +45,6 @@
           <member><link linkend="mysql.ref.boost__mysql__format_options">format_options</link></member>
           <member><link linkend="mysql.ref.boost__mysql__handshake_params">handshake_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__host_and_port">host_and_port</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__identifier">identifier</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata">metadata</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pfr_by_name">pfr_by_name</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pfr_by_position">pfr_by_position</link></member>

@@ -94,16 +94,20 @@ explanation on format strings.
 
 
 
-[heading Formatting identifiers]
+[heading Format specifiers]
 
-By default, strings are formatted as values. If you need to generate a dynamic
-SQL identifier (like a field or table name), use the [reflink identifier] class:
+Some types, like strings, can be formatted in multiple ways. As with
+`std::format`, you can select how to format them using format specifiers.
 
-[sql_formatting_identifiers]
+As we've seen, strings are formatted as single-quoted values by default.
+If you use the `{:i}` specifier, you can obtain dynamic SQL identifiers:
 
-[reflink identifier] can also generate qualified identifiers:
+[sql_formatting_specifiers]
 
-[sql_formatting_qualified_identifiers]
+Specifiers are compatible with explicit indices and named arguments, too.
+This is equivalent to the previous snippet:
+
+[sql_formatting_specifiers_explicit_indices]
 
 
 
@@ -222,35 +226,46 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     ]
     [
         [`signed char`, `short`, `int`, `long`, `long long`]
-        [Integral literal]
+        [
+            Integral literal[br]
+            No format specifiers allowed
+        ]
         [
             [sql_formatting_reference_signed]
         ]
     ]
     [
         [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
-        [Integral literal]
+        [
+            Integral literal[br]
+            No format specifiers allowed
+        ]
         [
             [sql_formatting_reference_unsigned]
         ]
     ]
     [
         [`bool`]
-        [Integral literal `1` if `true`, `0` if `false`]
+        [
+            Integral literal `1` if `true`, `0` if `false`[br]
+            No format specifiers allowed
+        ]
         [
             [sql_formatting_reference_bool]
         ]
     ]
     [
         [
-            `std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`)[br]
-            [reflink string_view][br]
-            [br]`std::string_view`
-            [br]`const char*`
+            String types:[br][br]
+            `std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`)[br][br]
+            [reflink string_view][br][br]
+            `std::string_view`[br][br]
+            `const char*`[br][br]
         ]
         [
-            Single-quoted escaped string literal[br]
-            Note that `LIKE` special characters (`%` and `_`) are not escaped.
+            Without format specifiers: single-quoted escaped string literal. Note that `LIKE` special characters (`%` and `_`) are not escaped.[br][br]
+            [*`i`] format specifier: backtick-quoted, escaped SQL identifier.[br][br]
+            [*`r`] format specifier: raw, unescaped SQL. [*Warning]: use this specifier with caution.
         ]
         [
             [sql_formatting_reference_string]
@@ -258,10 +273,13 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     ]
     [
         [
-            `std::basic_vector<unsigned char, Allocator>` (including [reflink blob])[br]
+            `std::basic_vector<unsigned char, Allocator>` (including [reflink blob])[br][br]
             [reflink blob_view]
         ]
-        [Hex string literal]
+        [
+            Hex string literal[br]
+            No format specifiers allowed
+        ]
         [
             [sql_formatting_reference_blob]
         ]
@@ -271,7 +289,8 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
         [
             Floating-point literal, after casting to `double.`[br]
             MySQL does not support NaNs and infinities. Attempting to format
-            these cause a `client_errc::unformattable_value` error.
+            these cause a `client_errc::unformattable_value` error.[br]
+            No format specifiers allowed.
         ]
         [
             [sql_formatting_reference_float]
@@ -282,7 +301,8 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
         [
             Floating-point literal.[br]
             MySQL does not support NaNs and infinities. Attempting to format
-            these cause a `client_errc::unformattable_value` error.
+            these cause a `client_errc::unformattable_value` error.[br]
+            No format specifiers allowed.
         ]
         [
             [sql_formatting_reference_double]
@@ -290,28 +310,40 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     ]
     [
         [[reflink date]]
-        [Single quoted, `DATE`-compatible string literal]
+        [
+            Single quoted, `DATE`-compatible string literal[br]
+            No format specifiers allowed
+        ]
         [
             [sql_formatting_reference_date]
         ]
     ]
     [
         [[reflink datetime]]
-        [Single quoted `DATETIME`-compatible string literal]
+        [
+            Single quoted `DATETIME`-compatible string literal[br]
+            No format specifiers allowed
+        ]
         [
             [sql_formatting_reference_datetime]
         ]
     ]
     [
         [[reflink time] and `std::chrono::duration` types convertible to [reflink time]]
-        [Single quoted `TIME`-compatible string literal]
+        [
+            Single quoted `TIME`-compatible string literal[br]
+            No format specifiers allowed
+        ]
         [
             [sql_formatting_reference_time]
         ]
     ]
     [
         [`std::nullptr_t`]
-        [`NULL`]
+        [
+            `NULL`[br]
+            No format specifiers allowed
+        ]
         [
             [sql_formatting_reference_nullptr]
         ]
@@ -319,7 +351,8 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     [
         [
             `boost::optional<T>` and `std::optional<T>`, `T` being one of the fundamental types above.[br]
-            Not applicable to custom types or [reflink identifier].
+            Not applicable to custom types.[br]
+            No format specifiers allowed
         ]
         [
             Formats the underlying value if there is any.[br]
@@ -332,22 +365,19 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     [
         [[reflink field] and [reflink field_view]]
         [
-            Formats the underlying value.
+            Formats the underlying value.[br]
+            No format specifiers allowed
         ]
         [
             [sql_formatting_reference_field]
         ]
     ]
     [
-        [[reflink identifier]]
-        [Backtick-quoted, escaped SQL identifier]
-        [
-            [sql_formatting_reference_identifier]
-        ]
-    ]
-    [
         [Custom type that specializes [reflink formatter]]
-        [Calls `formatter::format`]
+        [
+            Calls `formatter::parse` and `formatter::format`[br]
+            May accept user-defined format specifiers.
+        ]
         []
     ]
 ]

@@ -118,14 +118,14 @@ inline void append_string(string_view str, string_view format_spec, format_conte
         ctx.add_error(client_errc::format_string_invalid_specifier);
         return;
     }
-    char format_as = format_spec.empty() ? 's' : format_spec[0];
 
-    // Apply the operation
-    switch (format_as)
-    {
-    case 's':
-        // format as string
+    // No specifier: quoted string
+    if (format_spec.empty())
         return append_quoted_string(str, ctx);
+
+    // We got a specifier
+    switch (format_spec[0])
+    {
     case 'i':
         // format as identifier
         return append_quoted_identifier(str, ctx);
