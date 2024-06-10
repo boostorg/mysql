@@ -280,7 +280,7 @@ BOOST_AUTO_TEST_CASE(individual_blob_coverage)
         {"injection_chars", {0x5c, 0x5c, 0x27},                                                            "SELECT x'5c5c27';"  }, // 5c = backslash, 27 = single quote
         {"all_zeros",       {0x00, 0x00, 0x00, 0x00},                                                      "SELECT x'00000000';"},
 
- // Check that we encode all possible byte values correctly
+        // Check that we encode all possible byte values correctly
         {"bytes_00_3f",
          {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
           0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
@@ -310,7 +310,7 @@ BOOST_AUTO_TEST_CASE(individual_blob_coverage)
          "SELECT x'c0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedf"
          "e0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff';"                                                   },
 
- // We use a 64 byte buffer for the formatting operation. Update these if the buffer size changes.
+        // We use a 64 byte buffer for the formatting operation. Update these if the buffer size changes.
         {"31_bytes",
          {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
           0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f},
@@ -456,39 +456,17 @@ BOOST_AUTO_TEST_CASE(individual_std_optional)
 
 BOOST_AUTO_TEST_CASE(individual_identifier)
 {
-    constexpr const char* fmt = "SELECT {} FROM myt";
-    BOOST_TEST(format_sql(opts, fmt, identifier("myfield")) == "SELECT `myfield` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("myt", "myf")) == "SELECT `myt`.`myf` FROM myt");
+    constexpr const char* fmt = "SELECT {:i} FROM myt";
+    BOOST_TEST(format_sql(opts, fmt, "myfield") == "SELECT `myfield` FROM myt");
+    BOOST_TEST(format_sql(opts, fmt, "inj`ect'ion") == "SELECT `inj``ect'ion` FROM myt");
     BOOST_TEST(
-        format_sql(opts, fmt, identifier("mydb", "myt", "myf")) == "SELECT `mydb`.`myt`.`myf` FROM myt"
-    );
-    BOOST_TEST(format_sql(opts, fmt, identifier("inj`ect'ion")) == "SELECT `inj``ect'ion` FROM myt");
-    BOOST_TEST(
-        format_sql(opts, fmt, identifier("mo`e\\", "inj``ection", "att\nemmpts`")) ==
-        "SELECT `mo``e\\`.`inj````ection`.`att\nemmpts``` FROM myt"
+        format_sql(opts, fmt, "mo`e\\inj``ectionatt\nemmpts`") ==
+        "SELECT `mo``e\\inj````ectionatt\nemmpts``` FROM myt"
     );
 
     // Empty identifiers are not valid in MySQL but they shouldn't case formatting problems.
     // They are correctly rejected by MySQL (they don't cause problems)
-    BOOST_TEST(format_sql(opts, fmt, identifier("")) == "SELECT `` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("", "myf")) == "SELECT ``.`myf` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("myt", "")) == "SELECT `myt`.`` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("", "myt", "myf")) == "SELECT ``.`myt`.`myf` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("mydb", "", "myf")) == "SELECT `mydb`.``.`myf` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("mydb", "myt", "")) == "SELECT `mydb`.`myt`.`` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("", "", "myf")) == "SELECT ``.``.`myf` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("", "myt", "")) == "SELECT ``.`myt`.`` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("mydb", "", "")) == "SELECT `mydb`.``.`` FROM myt");
-    BOOST_TEST(format_sql(opts, fmt, identifier("", "", "")) == "SELECT ``.``.`` FROM myt");
-
-    // Spotcheck: identifiers constexpr-ness works
-    constexpr string_view s("abc", 3);  // traits is not constexpr until C++17
-    constexpr identifier id1(s);
-    constexpr identifier id2(s, s);
-    constexpr identifier id3(s, s, s);
-    boost::ignore_unused(id1);
-    boost::ignore_unused(id2);
-    boost::ignore_unused(id3);
+    BOOST_TEST(format_sql(opts, fmt, "") == "SELECT `` FROM myt");
 }
 
 BOOST_AUTO_TEST_CASE(individual_custom_type)
@@ -502,10 +480,10 @@ BOOST_AUTO_TEST_CASE(individual_custom_type)
 // Errors when formatting individual fields
 //
 template <class Arg>
-error_code format_single_error(const Arg& arg)
+error_code format_single_error(const Arg& arg, constant_string_view format_spec = string_view())
 {
     format_context ctx(opts);
-    ctx.append_value(arg);
+    ctx.append_value(arg, format_spec);
     return std::move(ctx).get().error();
 }
 
@@ -530,15 +508,8 @@ BOOST_AUTO_TEST_CASE(individual_error)
     BOOST_TEST(format_single_error("a\xff\xff") == client_errc::invalid_encoding);
 
     // identifiers with invalid characters
-    BOOST_TEST(format_single_error(identifier("a\xd8")) == client_errc::invalid_encoding);
-    BOOST_TEST(format_single_error(identifier("a\xd8", "abc")) == client_errc::invalid_encoding);
-    BOOST_TEST(format_single_error(identifier("a\xd8", "abc", "def")) == client_errc::invalid_encoding);
-    BOOST_TEST(format_single_error(identifier("abc", "a\xc3 ")) == client_errc::invalid_encoding);
-    BOOST_TEST(format_single_error(identifier("abc", "a\xc3 ", "def")) == client_errc::invalid_encoding);
-    BOOST_TEST(format_single_error(identifier("abc", "def", "a\xd9")) == client_errc::invalid_encoding);
-    BOOST_TEST(format_single_error(identifier("a\xc3", "\xff", "abc")) == client_errc::invalid_encoding);
-    BOOST_TEST(format_single_error(identifier("a\xc3", "abc", "a\xdf")) == client_errc::invalid_encoding);
-    BOOST_TEST(format_single_error(identifier("a\xc3", "\xff", "a\xd9")) == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error("a\xd8", "i") == client_errc::invalid_encoding);
+    BOOST_TEST(format_single_error("a\xc3 ", "i") == client_errc::invalid_encoding);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

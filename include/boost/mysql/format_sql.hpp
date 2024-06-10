@@ -22,7 +22,6 @@
 #include <boost/core/span.hpp>
 #include <boost/system/result.hpp>
 
-#include <cstddef>
 #include <initializer_list>
 #include <string>
 #include <type_traits>
@@ -68,73 +67,6 @@ public:
     template <BOOST_MYSQL_FORMATTABLE Formattable>
     constexpr format_arg(string_view name, const Formattable& value) noexcept
         : impl_{name, detail::make_format_value(value)}
-    {
-    }
-};
-
-/**
- * \brief (EXPERIMENTAL) A SQL identifier to use for client-side SQL formatting.
- * \details
- * Represents a possibly-qualified SQL identifier.
- *
- * \par Object lifetimes
- * This type is non-owning, and should only be used as an argument to SQL formatting
- * functions.
- */
-class identifier
-{
-    struct impl_t
-    {
-        std::size_t qual_level;
-        string_view ids[3];
-
-        constexpr impl_t(std::size_t qual_level, string_view id1, string_view id2, string_view id3) noexcept
-            : qual_level(qual_level), ids{id1, id2, id3}
-        {
-        }
-    } impl_;
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
-
-public:
-    /**
-     * \brief Constructs an unqualified identifier.
-     * \details
-     * Unqualified identifiers are usually field, table or database names,
-     * and get formatted as: \code "`column_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr explicit identifier(string_view id) noexcept : impl_(1u, id, {}, {}) {}
-
-    /**
-     * \brief Constructs an identifier with a single qualifier.
-     * \details
-     * Identifiers with one qualifier are used for field, table and view names.
-     * The qualifier identifies the parent object. For instance,
-     * `identifier("table_name", "field_name")` maps to: \code "`table_name`.`field_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr identifier(string_view qualifier, string_view id) noexcept : impl_(2u, qualifier, id, {}) {}
-
-    /**
-     * \brief Constructs an identifier with two qualifiers.
-     * \details
-     * Identifiers with two qualifier are used for field names.
-     * The first qualifier identifies the database, the second, the table name.
-     * For instance, `identifier("db", "table_name", "field_name")` maps to:
-     * \code "`db`.`table_name`.`field_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr identifier(string_view qual1, string_view qual2, string_view id) noexcept
-        : impl_(3u, qual1, qual2, id)
     {
     }
 };
@@ -198,7 +130,7 @@ class format_context_base
     friend class detail::format_state;
 #endif
 
-    BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg);
+    BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg, string_view format_spec);
 
 protected:
     format_context_base(detail::output_string_ref out, format_options opts, error_code ec = {}) noexcept
@@ -240,6 +172,7 @@ public:
     }
 
     /**
+     * TODO: do we want to keep this?
      * \brief Formats a value and adds it to the output string.
      * \details
      * value is formatted according to its type. If formatting
@@ -259,9 +192,9 @@ public:
      * \li Any other error code that user-supplied formatter specializations may add using \ref add_error.
      */
     template <BOOST_MYSQL_FORMATTABLE Formattable>
-    format_context_base& append_value(const Formattable& v)
+    format_context_base& append_value(const Formattable& v, constant_string_view format_spec = string_view())
     {
-        format_arg(detail::make_format_value(v));
+        format_arg(detail::make_format_value(v), format_spec.get());
         return *this;
     }
 
@@ -425,13 +358,6 @@ public:
  * Convenience type alias for `basic_format_context`'s most common case.
  */
 using format_context = basic_format_context<std::string>;
-
-template <>
-struct formatter<identifier>
-{
-    BOOST_MYSQL_DECL
-    static void format(const identifier& value, format_context_base& ctx);
-};
 
 /**
  * \brief (EXPERIMENTAL) Composes a SQL query client-side appending it to a format context.

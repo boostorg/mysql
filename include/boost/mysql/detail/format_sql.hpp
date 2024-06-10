@@ -76,7 +76,7 @@ concept formattable =
 struct format_custom_arg
 {
     const void* obj;
-    void (*format_fn)(const void*, format_context_base&);
+    bool (*format_fn)(const void*, string_view, format_context_base&);
 
     template <class T>
     static format_custom_arg create(const T& obj) noexcept
@@ -85,9 +85,16 @@ struct format_custom_arg
     }
 
     template <class T>
-    static void do_format(const void* obj, format_context_base& ctx)
+    static bool do_format(const void* obj, string_view spec, format_context_base& ctx)
     {
-        return formatter<T>::format(*static_cast<const T*>(obj), ctx);
+        formatter<T> fmt;
+        const char* end = fmt.parse(spec.begin(), spec.end());
+        if (end != spec.end())
+        {
+            return false;
+        }
+        fmt.format(*static_cast<const T*>(obj), ctx);
+        return true;
     }
 };
 

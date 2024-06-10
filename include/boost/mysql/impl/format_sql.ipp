@@ -11,8 +11,10 @@
 #include <boost/mysql/blob_view.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/field_kind.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -28,6 +30,7 @@
 
 #include <boost/charconv/from_chars.hpp>
 #include <boost/charconv/to_chars.hpp>
+#include <boost/core/detail/string_view.hpp>
 #include <boost/system/result.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/throw_exception.hpp>
@@ -42,12 +45,14 @@ namespace mysql {
 namespace detail {
 
 // Helpers to format fundamental types
-inline void append_identifier(string_view name, format_context_base& ctx)
+inline void append_quoted_identifier(string_view name, format_context_base& ctx)
 {
+    ctx.append_raw("`");
     auto& impl = access::get_impl(ctx);
     auto ec = detail::escape_string(name, impl.opts, '`', impl.output);
     if (ec)
         ctx.add_error(ec);
+    ctx.append_raw("`");
 }
 
 template <class T>
@@ -103,6 +108,33 @@ inline void append_quoted_string(string_view str, format_context_base& ctx)
     if (ec)
         ctx.add_error(ec);
     impl.output.append("'");
+}
+
+inline void append_string(string_view str, string_view format_spec, format_context_base& ctx)
+{
+    // Parse format spec
+    if (format_spec.size() > 1u)
+    {
+        ctx.add_error(client_errc::format_string_invalid_specifier);
+        return;
+    }
+    char format_as = format_spec.empty() ? 's' : format_spec[0];
+
+    // Apply the operation
+    switch (format_as)
+    {
+    case 's':
+        // format as string
+        return append_quoted_string(str, ctx);
+    case 'i':
+        // format as identifier
+        return append_quoted_identifier(str, ctx);
+    case 'r':
+        // append raw SQL
+        ctx.append_raw(runtime(str));
+        break;
+    default: ctx.add_error(client_errc::format_string_invalid_specifier);
+    }
 }
 
 inline void append_blob(blob_view b, format_context_base& ctx)
@@ -183,9 +215,23 @@ inline void append_quoted_time(time t, format_context_base& ctx)
     access::get_impl(ctx).output.append(string_view(buffer, sz + 2));
 }
 
-inline void append_field_view(field_view fv, format_context_base& ctx)
+inline void append_field_view(field_view fv, string_view format_spec, format_context_base& ctx)
 {
-    switch (fv.kind())
+    auto kind = fv.kind();
+
+    // Strings allow format specs
+    if (kind == field_kind::string)
+        return append_string(fv.get_string(), format_spec, ctx);
+
+    // Other types don't
+    if (!format_spec.empty())
+    {
+        ctx.add_error(client_errc::format_string_invalid_specifier);
+        return;
+    }
+
+    // Perform the formatting operation
+    switch (kind)
     {
     case field_kind::null: ctx.append_raw("NULL"); return;
     case field_kind::int64: return append_int(fv.get_int64(), ctx);
@@ -193,8 +239,7 @@ inline void append_field_view(field_view fv, format_context_base& ctx)
     case field_kind::float_:
         // float is formatted as double because it's parsed as such
         return append_double(fv.get_float(), ctx);
-    case field_kind::double_: return append_double(fv.get_double(), ctx);
-    case field_kind::string: return append_quoted_string(fv.get_string(), ctx);
+    case field_kind::double_: return append_double(fv.get_double(), ctx); return;
     case field_kind::blob: return append_blob(fv.get_blob(), ctx);
     case field_kind::date: return append_quoted_date(fv.get_date(), ctx);
     case field_kind::datetime: return append_quoted_datetime(fv.get_datetime(), ctx);
@@ -204,11 +249,13 @@ inline void append_field_view(field_view fv, format_context_base& ctx)
 }
 
 // Helpers for parsing format strings
-inline bool is_number(char c) noexcept { return c >= '0' && c <= '9'; }
+inline bool is_number(char c) { return c >= '0' && c <= '9'; }
 
-inline bool is_name_start(char c) noexcept
+inline bool is_name_start(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'; }
+
+inline bool is_format_spec_char(char c)
 {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
+    return c != '{' && c != '}' && static_cast<unsigned char>(c) < 0x80;
 }
 
 class format_state
@@ -238,10 +285,13 @@ class format_state
     bool uses_auto_ids() const noexcept { return next_arg_id_ > 0; }
     bool uses_explicit_ids() const noexcept { return next_arg_id_ == -1; }
 
-    void do_field(format_arg arg) { ctx_.format_arg(access::get_impl(arg).value); }
+    void do_field(format_arg arg, string_view format_spec)
+    {
+        ctx_.format_arg(access::get_impl(arg).value, format_spec);
+    }
 
     BOOST_ATTRIBUTE_NODISCARD
-    bool do_indexed_field(int arg_id)
+    bool do_indexed_field(int arg_id, string_view format_spec)
     {
         BOOST_ASSERT(arg_id >= 0);
         if (static_cast<std::size_t>(arg_id) >= args_.size())
@@ -249,81 +299,120 @@ class format_state
             ctx_.add_error(client_errc::format_arg_not_found);
             return false;
         }
-        do_field(args_[arg_id]);
+        do_field(args_[arg_id], format_spec);
         return true;
+    }
+
+    struct arg_id_t
+    {
+        enum class type_t
+        {
+            none,
+            integral,
+            identifier
+        };
+        union data_t
+        {
+            unsigned short integral;
+            string_view identifier{};
+        };
+
+        type_t type;
+        data_t data;
+
+        arg_id_t() noexcept : type(type_t::none), data() {}
+        arg_id_t(unsigned short v) noexcept : type(type_t::integral) { data.integral = v; }
+        arg_id_t(string_view v) noexcept : type(type_t::identifier) { data.identifier = v; }
+    };
+
+    BOOST_ATTRIBUTE_NODISCARD
+    static arg_id_t parse_arg_id(const char*& it, const char* format_end)
+    {
+        if (is_number(*it))
+        {
+            unsigned short field_index = 0;
+            auto res = charconv::from_chars(it, format_end, field_index);
+            if (res.ec != std::errc{})
+                return arg_id_t();
+            it = res.ptr;
+            return field_index;
+        }
+        else if (is_name_start(*it))
+        {
+            const char* name_begin = it;
+            while (it != format_end && (is_name_start(*it) || is_number(*it)))
+                ++it;
+            string_view field_name(name_begin, it);
+            return field_name;
+        }
+        else
+        {
+            return arg_id_t();
+        }
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    static string_view parse_format_spec(const char*& it, const char* format_end)
+    {
+        if (it != format_end && *it == ':')
+        {
+            ++it;
+            const char* first = it;
+            while (it != format_end && is_format_spec_char(*it))
+                ++it;
+            return {first, it};
+        }
+        else
+        {
+            return string_view();
+        }
     }
 
     BOOST_ATTRIBUTE_NODISCARD
     bool parse_field(const char*& it, const char* format_end)
     {
-        // {{ : escape for brace
-        // {}:  auto field
-        // {integer}: index
-        // {identifier}: named field
-        // All characters until the closing } must be ASCII, otherwise the format string is not valid
+        // Taken from fmtlib and adapted to our requirements
+        // it points to the character next to the opening '{'
+        // replacement_field ::=  "{" [arg_id] [":" (format_spec)] "}"
+        // arg_id            ::=  integer | identifier
+        // integer           ::=  <decimal, unsigned short, parsed by from_chars>
+        // identifier        ::=  id_start id_continue*
+        // id_start          ::=  "a"..."z" | "A"..."Z" | "_"
+        // id_continue       ::=  id_start | digit
+        // digit             ::=  "0"..."9"
+        // format_spec       ::=  <any ASCII character != "{", "}">
 
-        if (it == format_end)
+        // Parse the ID and spec components
+        auto arg_id = parse_arg_id(it, format_end);
+        auto spec = parse_format_spec(it, format_end);
+
+        // If we're not at the end on the string, it's a syntax error
+        if (it == format_end || *it != '}')
         {
             ctx_.add_error(client_errc::format_string_invalid_syntax);
             return false;
         }
-        else if (*it == '{')
+        ++it;
+
+        // Process what was parsed
+        switch (arg_id.type)
         {
-            ctx_.append_raw("{");
-            ++it;
-            return true;
-        }
-        else if (*it == '}')
-        {
-            ++it;
-            return append_auto_field();
-        }
-        else if (is_number(*it))
-        {
-            unsigned short field_index = 0;
-            auto res = charconv::from_chars(it, format_end, field_index);
-            if (res.ec != std::errc{})
-            {
-                ctx_.add_error(client_errc::format_string_invalid_syntax);
-                return false;
-            }
-            it = res.ptr;
-            if (it == format_end || *it++ != '}')
-            {
-                ctx_.add_error(client_errc::format_string_invalid_syntax);
-                return false;
-            }
-            return append_indexed_field(static_cast<int>(field_index));
-        }
-        else
-        {
-            const char* name_begin = it;
-            if (!is_name_start(*it++))
-            {
-                ctx_.add_error(client_errc::format_string_invalid_syntax);
-                return false;
-            }
-            while (it != format_end && (is_name_start(*it) || is_number(*it)))
-                ++it;
-            string_view field_name(name_begin, it);
-            if (it == format_end || *it++ != '}')
-            {
-                ctx_.add_error(client_errc::format_string_invalid_syntax);
-                return false;
-            }
-            return append_named_field(field_name);
+        case arg_id_t::type_t::none: return append_auto_field(spec);
+        case arg_id_t::type_t::integral: return append_indexed_field(arg_id.data.integral, spec);
+        case arg_id_t::type_t::identifier: return append_named_field(arg_id.data.identifier, spec);
+        default: BOOST_ASSERT(false); return false;
         }
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    bool append_named_field(string_view field_name)
+    bool append_named_field(string_view field_name, string_view format_spec)
     {
         // Find the argument
         for (const auto& arg : args_)
         {
             if (access::get_impl(arg).name == field_name)
             {
-                do_field(arg);
+                do_field(arg, format_spec);
                 return true;
             }
         }
@@ -334,7 +423,7 @@ class format_state
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    bool append_indexed_field(int index)
+    bool append_indexed_field(int index, string_view format_spec)
     {
         if (uses_auto_ids())
         {
@@ -342,18 +431,18 @@ class format_state
             return false;
         }
         next_arg_id_ = -1;
-        return do_indexed_field(index);
+        return do_indexed_field(index, format_spec);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    bool append_auto_field()
+    bool append_auto_field(string_view format_spec)
     {
         if (uses_explicit_ids())
         {
             ctx_.add_error(client_errc::format_string_manual_auto_mix);
             return false;
         }
-        return do_indexed_field(next_arg_id_++);
+        return do_indexed_field(next_arg_id_++, format_spec);
     }
 
 public:
@@ -362,7 +451,7 @@ public:
     void format(string_view format_str)
     {
         // We can use operator++ when we know a character is ASCII. Some charsets
-        // allow ASCII continuation bytes, so we need to skip the entire character othwerwise
+        // allow ASCII continuation bytes, so we need to skip the entire character otherwise
         auto cur_begin = format_str.data();
         auto it = format_str.data();
         auto end = format_str.data() + format_str.size();
@@ -370,11 +459,28 @@ public:
         {
             if (*it == '{')
             {
-                // Found a replacement field. Dump the SQL we've been skipping and parse it
+                // May be a replacement field or a literal brace. In any case, dump accumulated output
                 ctx_.impl_.output.append({cur_begin, it});
                 ++it;
-                if (!parse_field(it, end))
+
+                if (it == end)
+                {
+                    // If the string ends here, it's en error
+                    ctx_.add_error(client_errc::format_string_invalid_syntax);
                     return;
+                }
+                else if (*it == '{')
+                {
+                    // A double brace is the escaped form of '{'
+                    ctx_.append_raw("{");
+                    ++it;
+                }
+                else
+                {
+                    // It's a replacement field. Process it
+                    if (!parse_field(it, end))
+                        return;
+                }
                 cur_begin = it;
             }
             else if (*it == '}')
@@ -407,37 +513,19 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::formatter<boost::mysql::identifier>::format(
-    const identifier& value,
-    format_context_base& ctx
-)
-{
-    const auto& impl = detail::access::get_impl(value);
-
-    ctx.append_raw("`");
-    detail::append_identifier(impl.ids[0], ctx);
-    if (impl.qual_level >= 2u)
-    {
-        ctx.append_raw("`.`");
-        detail::append_identifier(impl.ids[1], ctx);
-        if (impl.qual_level == 3u)
-        {
-            ctx.append_raw("`.`");
-            detail::append_identifier(impl.ids[2], ctx);
-        }
-    }
-    ctx.append_raw("`");
-}
-
-void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg)
+void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg, string_view format_spec)
 {
     if (arg.is_custom)
     {
-        arg.data.custom.format_fn(arg.data.custom.obj, *this);
+        if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec, *this))
+        {
+            // TODO: this feels not ideal
+            add_error(client_errc::format_string_invalid_specifier);
+        }
     }
     else
     {
-        detail::append_field_view(arg.data.fv, *this);
+        detail::append_field_view(arg.data.fv, format_spec, *this);
     }
 }
 

@@ -122,7 +122,7 @@ BOOST_AUTO_TEST_CASE(options_propagated)
 
     // Charset affects string values and identifiers
     BOOST_TEST(format_sql(opts_charset, "SELECT {};", "ab\xff''") == "SELECT 'ab\xff'\\'';");
-    BOOST_TEST(format_sql(opts_charset, "SELECT {};", identifier("ab\xff``")) == "SELECT `ab\xff````;");
+    BOOST_TEST(format_sql(opts_charset, "SELECT {:i};", "ab\xff``") == "SELECT `ab\xff````;");
 
     // Backslash escapes affects how string values are escaped
     BOOST_TEST(format_sql(opts_backslashes, "SELECT {};", "ab'cd") == "SELECT 'ab''cd';");
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(error)
         string_view format_str;
         error_code expected_ec;
     } test_cases[] = {
-  // Simply invalid
+        // Simply invalid
         {"unbalanced_{",             "SELECT { bad",        client_errc::format_string_invalid_syntax  },
         {"unbalanced_{_eof",         "SELECT {",            client_errc::format_string_invalid_syntax  },
         {"unbalanced_}",             "SELECT } bad",        client_errc::format_string_invalid_syntax  },
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(error)
         {"unbalanced_}_eof",         "SELECT }",            client_errc::format_string_invalid_syntax  },
         {"invalid_character",        "SELECT \xc3 bad",     client_errc::format_string_invalid_encoding},
 
- // Named argument problems
+        // Named argument problems
         {"name_starts_number",       "SELECT {0name}",      client_errc::format_string_invalid_syntax  },
         {"name_starts_invalid",      "SELECT {!name}",      client_errc::format_string_invalid_syntax  },
         {"name_ends_invalid",        "SELECT {name!}",      client_errc::format_string_invalid_syntax  },
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE(error)
         {"name_eof",                 "SELECT {name",        client_errc::format_string_invalid_syntax  },
         {"name_not_found",           "SELECT {name} {bad}", client_errc::format_arg_not_found          },
 
- // Explicit indexing problems
+        // Explicit indexing problems
         {"index_hex",                "SELECT {0x10}",       client_errc::format_string_invalid_syntax  },
         {"index_hex_noprefix",       "SELECT {1a}",         client_errc::format_string_invalid_syntax  },
         {"index_spaces",             "SELECT { 1 }",        client_errc::format_string_invalid_syntax  },
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(error)
         {"index_not_found",          "SELECT {2}",          client_errc::format_arg_not_found          },
         {"index_to_manual",          "SELECT {0}, {}",      client_errc::format_string_manual_auto_mix },
 
- // Auto indexing problems
+        // Auto indexing problems
         {"auto_format_spec",         "SELECT {:abc}",       client_errc::format_string_invalid_syntax  },
         {"auto_format_spec_empty",   "SELECT {:}",          client_errc::format_string_invalid_syntax  },
         {"auto_replacement_inside",  "SELECT { {} }",       client_errc::format_string_invalid_syntax  },

@@ -46,9 +46,24 @@ namespace mysql {
 template <>
 struct formatter<custom::condition>
 {
-    static void format(const custom::condition& v, format_context_base& ctx)
+    bool space{false};
+
+    const char* parse(const char* it, const char* end)
     {
-        ctx.append_value(identifier(v.name)).append_raw("=").append_value(v.value);
+        if (it != end && *it == 's')
+        {
+            space = true;
+            ++it;
+        }
+        return it;
+    }
+
+    void format(const custom::condition& v, format_context_base& ctx)
+    {
+        if (space)
+            format_sql_to(ctx, "{:i} = {}", v.name, v.value);
+        else
+            format_sql_to(ctx, "{:i}={}", v.name, v.value);
     }
 };
 

@@ -106,11 +106,6 @@ BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<void*>, false)
 BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<format_options>, false)
 BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<int&>, false)
 
-// identifier accepted
-BOOST_MYSQL_CHECK_FORMATTABLE(identifier, true)
-BOOST_MYSQL_CHECK_FORMATTABLE(identifier&, false)
-BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<identifier>, false)
-
 // Types with custom formatters accepted, but not references or optionals to them
 BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition&, false)
