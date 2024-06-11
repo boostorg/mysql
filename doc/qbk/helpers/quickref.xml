@@ -18,12 +18,14 @@
           <member><link linkend="mysql.ref.boost__mysql__any_address">any_address</link></member>
           <member><link linkend="mysql.ref.boost__mysql__any_connection">any_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__any_connection_params">any_connection_params</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__any_stage_response">any_stage_response</link></member>
           <member><link linkend="mysql.ref.boost__mysql__bad_field_access">bad_field_access</link></member>
           <member><link linkend="mysql.ref.boost__mysql__basic_format_context">basic_format_context</link></member>
           <member><link linkend="mysql.ref.boost__mysql__bound_statement_tuple">bound_statement_tuple</link></member>
           <member><link linkend="mysql.ref.boost__mysql__bound_statement_iterator_range">bound_statement_iterator_range</link></member>
           <member><link linkend="mysql.ref.boost__mysql__buffer_params">buffer_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__character_set">character_set</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__close_statement_stage">close_statement_stage</link></member>
           <member><link linkend="mysql.ref.boost__mysql__connect_params">connect_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__connection">connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__connection_pool">connection_pool</link></member>
@@ -31,7 +33,9 @@
           <member><link linkend="mysql.ref.boost__mysql__date">date</link></member>
           <member><link linkend="mysql.ref.boost__mysql__datetime">datetime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__diagnostics">diagnostics</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__errcode_with_diagnostics">errcode_with_diagnostics</link></member>
           <member><link linkend="mysql.ref.boost__mysql__error_with_diagnostics">error_with_diagnostics</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__execute_stage">execute_stage</link></member>
           <member><link linkend="mysql.ref.boost__mysql__execution_state">execution_state</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field">field</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field_view">field_view</link></member>
@@ -45,9 +49,12 @@
           <member><link linkend="mysql.ref.boost__mysql__metadata">metadata</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pfr_by_name">pfr_by_name</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pfr_by_position">pfr_by_position</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__pipeline_request">pipeline_request</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pool_executor_params">pool_executor_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pool_params">pool_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pooled_connection">pooled_connection</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__prepare_statement_stage">prepare_statement_stage</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__reset_connection_stage">reset_connection_stage</link></member>
           <member><link linkend="mysql.ref.boost__mysql__results">results</link></member>
           <member><link linkend="mysql.ref.boost__mysql__resultset_view">resultset_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__resultset">resultset</link></member>
@@ -55,8 +62,10 @@
           <member><link linkend="mysql.ref.boost__mysql__row_view">row_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows">rows</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows_view">rows_view</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__set_character_set_stage">set_character_set_stage</link></member>
           <member><link linkend="mysql.ref.boost__mysql__statement">statement</link></member>
           <member><link linkend="mysql.ref.boost__mysql__static_execution_state">static_execution_state</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__static_pipeline_request">static_pipeline_request</link></member>
           <member><link linkend="mysql.ref.boost__mysql__static_results">static_results</link></member>
           <member><link linkend="mysql.ref.boost__mysql__unix_path">unix_path</link></member>
         </simplelist>
@@ -97,6 +106,7 @@
           <member><link linkend="mysql.ref.boost__mysql__get_mysql_server_category">get_mysql_server_category</link></member>
           <member><link linkend="mysql.ref.boost__mysql__get_mariadb_server_category">get_mariadb_server_category</link></member>
           <member><link linkend="mysql.ref.boost__mysql__make_error_code">make_error_code</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__make_pipeline_request">make_pipeline_request</link></member>
           <member><link linkend="mysql.ref.boost__mysql__runtime">runtime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__throw_on_error">throw_on_error</link></member>
         </simplelist>
@@ -125,6 +135,8 @@
           <member><link linkend="mysql.ref.boost__mysql__FieldViewFwdIterator">FieldViewFwdIterator</link></member>
           <member><link linkend="mysql.ref.boost__mysql__Formattable">Formattable</link></member>
           <member><link linkend="mysql.ref.boost__mysql__OutputString">OutputString</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__PipelineRequestType">PipelineRequestType</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__PipelineStageType">PipelineStageType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__ResultsType">ResultsType</link></member>
           <member><link linkend="mysql.ref.boost__mysql__SocketStream">SocketStream</link></member>
           <member><link linkend="mysql.ref.boost__mysql__StaticRow">StaticRow</link></member>
@@ -138,6 +150,7 @@
           <member><link linkend="mysql.static_interface.readable_field_reference">ReadableField types</link></member>
           <member><link linkend="mysql.prepared_statements.writable_field_reference">WritableField types</link></member>
           <member><link linkend="mysql.sql_formatting.reference">Formattable types</link></member>
+          <member><link linkend="mysql.pipeline.reference">Pipeline stage reference</link></member>
           <member><link linkend="mysql.charsets.string_encoding">String encoding</link></member>
         </simplelist>
       </entry>

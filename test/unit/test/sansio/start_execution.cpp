@@ -42,7 +42,7 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     detail::start_execution_algo algo;
 
-    fixture(any_execution_request req) : algo(st, {&diag, req, &proc}) {}
+    fixture(any_execution_request req) : algo({&diag, req, &proc}) {}
 };
 
 BOOST_AUTO_TEST_CASE(text_query)

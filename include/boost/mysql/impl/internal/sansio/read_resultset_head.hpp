@@ -16,7 +16,6 @@
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 
 namespace boost {
 namespace mysql {
@@ -59,52 +58,60 @@ inline error_code process_field_definition(
     return proc.on_meta(coldef, diag);
 }
 
-class read_resultset_head_algo : public sansio_algorithm
+class read_resultset_head_algo
 {
-    int resume_point_{0};
-    read_resultset_head_algo_params params_;
+    diagnostics* diag_;
+    execution_processor* proc_;
+
+    struct state_t
+    {
+        int resume_point{0};
+    } state_;
 
 public:
-    read_resultset_head_algo(connection_state_data& st, read_resultset_head_algo_params params) noexcept
-        : sansio_algorithm(st), params_(params)
+    read_resultset_head_algo(read_resultset_head_algo_params params) noexcept
+        : diag_(params.diag), proc_(params.proc)
     {
     }
 
-    read_resultset_head_algo_params params() const { return params_; }
+    void reset() { state_ = state_t{}; }
 
-    next_action resume(error_code ec)
+    diagnostics& diag() { return *diag_; }
+    execution_processor& processor() { return *proc_; }
+
+    next_action resume(connection_state_data& st, error_code ec)
     {
         if (ec)
             return ec;
 
-        switch (resume_point_)
+        switch (state_.resume_point)
         {
         case 0:
 
             // Clear diagnostics
-            params_.diag->clear();
+            diag_->clear();
 
             // If we're not reading head, return
-            if (!params_.proc->is_reading_head())
+            if (!proc_->is_reading_head())
                 return next_action();
 
             // Read the response
-            BOOST_MYSQL_YIELD(resume_point_, 1, read(params_.proc->sequence_number()))
+            BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number()))
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
-            ec = process_execution_response(*st_, *params_.proc, st_->reader.message(), *params_.diag);
+            ec = process_execution_response(st, *proc_, st.reader.message(), *diag_);
             if (ec)
                 return ec;
 
             // Read all of the field definitions
-            while (params_.proc->is_reading_meta())
+            while (proc_->is_reading_meta())
             {
                 // Read a message
-                BOOST_MYSQL_YIELD(resume_point_, 2, read(params_.proc->sequence_number()))
+                BOOST_MYSQL_YIELD(state_.resume_point, 2, st.read(proc_->sequence_number()))
 
                 // Process the metadata packet
-                ec = process_field_definition(*params_.proc, st_->reader.message(), *params_.diag);
+                ec = process_field_definition(*proc_, st.reader.message(), *diag_);
                 if (ec)
                     return ec;
             }

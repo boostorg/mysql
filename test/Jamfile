@@ -119,6 +119,7 @@ alias common_test_sources
     :
         common/src/entry_point.cpp
         common/src/tracker_executor.cpp
+        common/src/printing.cpp
     ;
 
 # Boost.Context causes failures with warnings-as-errors

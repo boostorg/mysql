@@ -28,6 +28,7 @@
 #include <boost/mysql/impl/datetime.ipp>
 #include <boost/mysql/impl/engine_impl_instantiations.ipp>
 #include <boost/mysql/impl/error_categories.ipp>
+#include <boost/mysql/impl/error_with_diagnostics.ipp>
 #include <boost/mysql/impl/escape_string.ipp>
 #include <boost/mysql/impl/execution_state_impl.ipp>
 #include <boost/mysql/impl/field.ipp>
@@ -38,6 +39,7 @@
 #include <boost/mysql/impl/internal/error/server_error_to_string.ipp>
 #include <boost/mysql/impl/is_fatal_error.ipp>
 #include <boost/mysql/impl/meta_check_context.ipp>
+#include <boost/mysql/impl/pipeline.ipp>
 #include <boost/mysql/impl/results_impl.ipp>
 #include <boost/mysql/impl/resultset.ipp>
 #include <boost/mysql/impl/row_impl.ipp>

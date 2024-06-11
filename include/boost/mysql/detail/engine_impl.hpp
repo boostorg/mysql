@@ -72,7 +72,7 @@ struct run_algo_op
                     self.complete(stored_ec_);
                     return;
                 }
-                else if (act.type() == next_action::type_t::read)
+                else if (act.type() == next_action_type::read)
                 {
                     BOOST_MYSQL_YIELD(
                         resume_point_,
@@ -85,7 +85,7 @@ struct run_algo_op
                     )
                     has_done_io_ = true;
                 }
-                else if (act.type() == next_action::type_t::write)
+                else if (act.type() == next_action_type::write)
                 {
                     BOOST_MYSQL_YIELD(
                         resume_point_,
@@ -98,24 +98,24 @@ struct run_algo_op
                     )
                     has_done_io_ = true;
                 }
-                else if (act.type() == next_action::type_t::ssl_handshake)
+                else if (act.type() == next_action_type::ssl_handshake)
                 {
                     BOOST_MYSQL_YIELD(resume_point_, 4, stream_.async_ssl_handshake(std::move(self)))
                     has_done_io_ = true;
                 }
-                else if (act.type() == next_action::type_t::ssl_shutdown)
+                else if (act.type() == next_action_type::ssl_shutdown)
                 {
                     BOOST_MYSQL_YIELD(resume_point_, 5, stream_.async_ssl_shutdown(std::move(self)))
                     has_done_io_ = true;
                 }
-                else if (act.type() == next_action::type_t::connect)
+                else if (act.type() == next_action_type::connect)
                 {
                     BOOST_MYSQL_YIELD(resume_point_, 6, stream_.async_connect(std::move(self)))
                     has_done_io_ = true;
                 }
                 else
                 {
-                    BOOST_ASSERT(act.type() == next_action::type_t::close);
+                    BOOST_ASSERT(act.type() == next_action_type::close);
                     stream_.close(io_ec);
                 }
             }
@@ -180,7 +180,7 @@ public:
                 ec = act.error();
                 return;
             }
-            else if (act.type() == next_action::type_t::read)
+            else if (act.type() == next_action_type::read)
             {
                 bytes_transferred = stream_.read_some(
                     to_buffer(act.read_args().buffer),
@@ -188,7 +188,7 @@ public:
                     io_ec
                 );
             }
-            else if (act.type() == next_action::type_t::write)
+            else if (act.type() == next_action_type::write)
             {
                 bytes_transferred = stream_.write_some(
                     asio::buffer(act.write_args().buffer),
@@ -196,21 +196,21 @@ public:
                     io_ec
                 );
             }
-            else if (act.type() == next_action::type_t::ssl_handshake)
+            else if (act.type() == next_action_type::ssl_handshake)
             {
                 stream_.ssl_handshake(io_ec);
             }
-            else if (act.type() == next_action::type_t::ssl_shutdown)
+            else if (act.type() == next_action_type::ssl_shutdown)
             {
                 stream_.ssl_shutdown(io_ec);
             }
-            else if (act.type() == next_action::type_t::connect)
+            else if (act.type() == next_action_type::connect)
             {
                 stream_.connect(io_ec);
             }
             else
             {
-                BOOST_ASSERT(act.type() == next_action::type_t::close);
+                BOOST_ASSERT(act.type() == next_action_type::close);
                 stream_.close(io_ec);
             }
         }

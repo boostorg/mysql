@@ -39,7 +39,6 @@ struct fixture : algo_fixture_base
 {
     mock_execution_processor proc;
     detail::read_resultset_head_algo algo{
-        st,
         {&diag, &proc}
     };
 
@@ -253,6 +252,27 @@ BOOST_AUTO_TEST_CASE(error_on_meta)
 
     // Verify
     fix.proc.num_calls().on_num_meta(1).on_meta(1).validate();
+}
+
+BOOST_AUTO_TEST_CASE(reset)
+{
+    // Setup
+    fixture fix;
+
+    // Run the algo once
+    algo_test()
+        .expect_read(create_frame(1, {0x01}))  // 1 metadata follows
+        .expect_read(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
+        .check(fix);
+    fix.proc.num_calls().on_num_meta(1).on_meta(1).validate();
+
+    // Reset. Place the processor into a state where we can read head again
+    fix.algo.reset();
+    add_ok(fix.proc, ok_builder().more_results(true).build());
+
+    // Run it again
+    algo_test().expect_read(create_ok_frame(3, ok_builder().build())).check(fix);
+    fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).on_head_ok_packet(1).validate();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

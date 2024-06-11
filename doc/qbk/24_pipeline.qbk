@@ -1,0 +1,201 @@
+[/
+    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:pipeline (Experimental) Pipelines]
+[nochunk]
+
+Functions like [refmemunq any_connection execute], [refmemunq any_connection prepare_statement]
+and their async counterparts are half-duplex:
+they write a single request to the server and wait for its response.
+In contrast, pipelines can increase efficiency by coalescing several requests into a single message, saving round-trips to the server.
+
+[warning
+    The MySQL client/server protocol doesn't have explicit support for pipelines. [*From the server's point of view,
+    a pipeline is just a sequence of unrelated requests]. The server will try to execute all stages
+    in each pipeline, regardless of the result of previous stages. Pipelines are considered
+    an [*advanced feature]. Please read [link mysql.pipeline.pitfalls the pitfalls section] for more info.
+]
+
+[note
+    This feature is experimental. Its API may change in subsequent releases.
+]
+
+[heading Use cases]
+
+You should use pipelines for lightweight operations, dominated by round-trip time. Typical examples include:
+
+* Running connection setup code, involving operations like [refmemunq any_connection reset_connection],
+  [refmemunq any_connection set_character_set] or preparing statements. [reflink connection_pool] uses
+  pipelines to clean up connections for re-use.
+* Preparing several statements, in batch.
+* Executing and closing a statement in a single round-trip.
+
+
+You should [*avoid] pipelines for the following cases:
+
+* When you can achieve the same functionality using semicolon-separated queries
+  (thus using [link mysql.multi_resultset.multi_queries multi-queries] and [link mysql.sql_formatting client-side SQL formatting]).
+  Multi-queries will stop after the first error, which is usually what you want. See [link mysql.pipeline.pitfalls this section] for more info.
+* When running heavyweight queries, where the gains in round-trip time are not significant.
+* When there are dependencies between stages in the pipeline. Lack of protocol support makes this use case impossible.
+
+If you're not sure, don't use this feature.
+
+
+
+
+
+
+[heading Pipeline requests and responses]
+
+There are two interfaces to pipelines: dynamic ([reflink pipeline_request]) and static
+([reflink static_pipeline_request]). Both are C++11 compatible.
+
+To run a dynamic pipeline, create a request object describing what should the pipeline do:
+
+[pipeline_dynamic_request]
+
+Use [refmem pipeline_request add] with any of the [link mysql.pipeline.reference available stage types]
+to add stages your pipeline.
+
+To actually run the pipeline, create a response object and call
+[refmem any_connection run_pipeline] or [refmemunq any_connection async_run_pipeline]:
+
+[pipeline_dynamic_run]
+
+Finally, you can access the statements using:
+
+[pipeline_dynamic_results]
+
+
+
+
+[heading Static pipelines]
+
+If the type and number of stages in your pipeline is known at compile-time, you can use
+static pipelines, instead. The mechanics are similar, except that some checks are moved
+to compile-time. The pipeline in the previous example can be rewritten as:
+
+[pipeline_static]
+
+
+
+
+
+
+
+
+
+[heading:error Error handling]
+
+If any of the pipeline stages result in an error, the entire [refmemunq any_connection run_pipeline] operation
+is considered failed. This means that [*if `run_pipipeline` completed successfully, all stages succeeded]. Recall that
+[*all stages are always run, regardless of the outcome of previous stages]. 
+
+If `run_pipipeline` fails, you can check which stages succeeded and failed by inspecting responses.
+Response types like [refmem prepare_statement_stage response_type] are aliases for
+[link mysql.error_handling.system_result `boost::system::result`], a vocabulary type that
+can contain either a value or an error. For instance:
+
+[pipeline_errors]
+
+The module uses [reflink errcode_with_diagnostics] as the error type,
+which contains an `error_code` and a [reflink diagnostics] object.
+
+
+
+
+[heading:pitfalls Potential pitfalls]
+
+All requests in the pipeline are always run, regardless of the outcome of previous requests. As a result, some pipelines can behave non-intuitively:
+
+[pipeline_pitfalls_bad]
+
+Pipelines aren't the best fit here. Instead, you can express the same logic using semicolon-separated queries:
+
+[pipeline_pitfalls_good]
+
+Pipeline stages are run sequentially by the server. If any of the stages involves a heavyweight query,
+the server won't process subsequent stages until the query completes.
+
+
+
+[heading:reference Pipeline stage reference]
+
+In the table below, the following variables are assumed:
+
+* `req` is a [reflink pipeline_request].
+* `stmt` is a valid [reflink statement].
+* `result` is a [reflink results] object.
+* `conn` is an [reflink any_connection] object.
+
+[table:reference
+    [
+        [Stage type]
+        [Example]
+        [When run, equivalent to...]
+        [Response type]
+    ]
+    [
+        [
+            [reflink execute_stage][br][br]
+            Behaves like [refmem any_connection execute]
+        ]
+        [[pipeline_reference_execute]]
+        [[pipeline_reference_execute_equivalent]]
+        [
+            [reflink results] or [reflink errcode_with_diagnostics]
+        ]
+    ]
+    [
+        [
+            [reflink prepare_statement_stage][br][br]
+            Behaves like [refmem any_connection prepare_statement]
+        ]
+        [[pipeline_reference_prepare_statement]]
+        [[pipeline_reference_prepare_statement_equivalent]]
+        [
+            [reflink statement] or [reflink errcode_with_diagnostics]
+        ]
+    ]
+    [
+        [
+            [reflink close_statement_stage][br][br]
+            Behaves like [refmem any_connection close_statement]
+        ]
+        [[pipeline_reference_close_statement]]
+        [[pipeline_reference_close_statement_equivalent]]
+        [
+            Possibly empty [reflink errcode_with_diagnostics]
+        ]
+    ]
+    [
+        [
+            [reflink reset_connection_stage][br][br]
+            Behaves like [refmem any_connection reset_connection]
+        ]
+        [[pipeline_reference_reset_connection]]
+        [[pipeline_reference_reset_connection_equivalent]]
+        [
+            Possibly empty [reflink errcode_with_diagnostics]
+        ]
+    ]
+    [
+        [
+            [reflink set_character_set_stage][br][br]
+            Behaves like [refmem any_connection set_character_set]
+        ]
+        [[pipeline_reference_set_character_set]]
+        [[pipeline_reference_set_character_set_equivalent]]
+        [
+            Possibly empty [reflink errcode_with_diagnostics]
+        ]
+    ]
+]
+
+
+[endsect]

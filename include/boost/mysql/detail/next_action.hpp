@@ -19,20 +19,20 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+enum class next_action_type
+{
+    none,
+    write,
+    read,
+    ssl_handshake,
+    ssl_shutdown,
+    connect,
+    close,
+};
+
 class next_action
 {
 public:
-    enum class type_t
-    {
-        none,
-        write,
-        read,
-        ssl_handshake,
-        ssl_shutdown,
-        connect,
-        close,
-    };
-
     struct read_args_t
     {
         span<std::uint8_t> buffer;
@@ -45,11 +45,11 @@ public:
         bool use_ssl;
     };
 
-    next_action(error_code ec = {}) noexcept : type_(type_t::none), data_(ec) {}
+    next_action(error_code ec = {}) noexcept : type_(next_action_type::none), data_(ec) {}
 
     // Type
-    type_t type() const noexcept { return type_; }
-    bool is_done() const noexcept { return type_ == type_t::none; }
+    next_action_type type() const noexcept { return type_; }
+    bool is_done() const noexcept { return type_ == next_action_type::none; }
     bool success() const noexcept { return is_done() && !data_.ec; }
 
     // Arguments
@@ -60,24 +60,33 @@ public:
     }
     read_args_t read_args() const noexcept
     {
-        BOOST_ASSERT(type_ == type_t::read);
+        BOOST_ASSERT(type_ == next_action_type::read);
         return data_.read_args;
     }
     write_args_t write_args() const noexcept
     {
-        BOOST_ASSERT(type_ == type_t::write);
+        BOOST_ASSERT(type_ == next_action_type::write);
         return data_.write_args;
     }
 
-    static next_action connect() noexcept { return next_action(type_t::connect, data_t()); }
-    static next_action read(read_args_t args) noexcept { return next_action(type_t::read, args); }
-    static next_action write(write_args_t args) noexcept { return next_action(type_t::write, args); }
-    static next_action ssl_handshake() noexcept { return next_action(type_t::ssl_handshake, data_t()); }
-    static next_action ssl_shutdown() noexcept { return next_action(type_t::ssl_shutdown, data_t()); }
-    static next_action close() noexcept { return next_action(type_t::close, data_t()); }
+    static next_action connect() noexcept { return next_action(next_action_type::connect, data_t()); }
+    static next_action read(read_args_t args) noexcept { return next_action(next_action_type::read, args); }
+    static next_action write(write_args_t args) noexcept
+    {
+        return next_action(next_action_type::write, args);
+    }
+    static next_action ssl_handshake() noexcept
+    {
+        return next_action(next_action_type::ssl_handshake, data_t());
+    }
+    static next_action ssl_shutdown() noexcept
+    {
+        return next_action(next_action_type::ssl_shutdown, data_t());
+    }
+    static next_action close() noexcept { return next_action(next_action_type::close, data_t()); }
 
 private:
-    type_t type_{type_t::none};
+    next_action_type type_{next_action_type::none};
     union data_t
     {
         error_code ec;
@@ -90,7 +99,7 @@ private:
         data_t(write_args_t args) noexcept : write_args(args) {}
     } data_;
 
-    next_action(type_t t, data_t data) noexcept : type_(t), data_(data) {}
+    next_action(next_action_type t, data_t data) noexcept : type_(t), data_(data) {}
 };
 
 }  // namespace detail

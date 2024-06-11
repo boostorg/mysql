@@ -33,7 +33,6 @@
 #include <cstddef>
 #include <limits>
 #include <string>
-#include <tuple>
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
@@ -52,6 +51,9 @@ using boost::mysql::detail::meta_check_context;
 using boost::mysql::detail::name_table_t;
 using boost::mysql::detail::pos_absent;
 using boost::mysql::detail::readable_field_traits;
+
+// Don't attempt to print std::chrono values
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 BOOST_AUTO_TEST_SUITE(test_readable_field_traits)
 

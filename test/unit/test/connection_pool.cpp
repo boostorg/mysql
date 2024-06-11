@@ -23,7 +23,7 @@
 #include <memory>
 
 #include "test_common/printing.hpp"
-#include "test_unit/pool_printing.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
 namespace asio = boost::asio;
@@ -47,7 +47,8 @@ struct pooled_connection_fixture
             pool->params(),
             ctx.get_executor(),
             ctx.get_executor(),
-            pool->shared_state()
+            pool->shared_state(),
+            &pool->reset_pipeline_request()
         )};
     }
 

@@ -29,16 +29,16 @@ namespace detail {
 class read_some_rows_dynamic_algo : public read_some_rows_algo
 {
 public:
-    read_some_rows_dynamic_algo(connection_state_data& st, read_some_rows_dynamic_algo_params params) noexcept
-        : read_some_rows_algo(st, read_some_rows_algo_params{params.diag, params.exec_st, output_ref()})
+    read_some_rows_dynamic_algo(read_some_rows_dynamic_algo_params params) noexcept
+        : read_some_rows_algo(read_some_rows_algo_params{params.diag, params.exec_st, output_ref()})
     {
     }
 
-    rows_view result() const noexcept
+    rows_view result(const connection_state_data& st) const
     {
-        std::size_t num_rows = read_some_rows_algo::result();
-        std::size_t num_cols = static_cast<const execution_state_impl&>(*params().proc).meta().size();
-        return access::construct<rows_view>(st_->shared_fields.data(), num_rows * num_cols, num_cols);
+        std::size_t num_rows = read_some_rows_algo::result(st);
+        std::size_t num_cols = static_cast<const execution_state_impl&>(processor()).meta().size();
+        return access::construct<rows_view>(st.shared_fields.data(), num_rows * num_cols, num_cols);
     }
 };
 

@@ -72,6 +72,19 @@ struct is_writable_field : std::integral_constant<bool, writable_field_traits<T>
 {
 };
 
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+
+template <class T>
+concept writable_field = is_writable_field<T>::value;
+
+#define BOOST_MYSQL_WRITABLE_FIELD ::boost::mysql::detail::writable_field
+
+#else
+
+#define BOOST_MYSQL_WRITABLE_FIELD class
+
+#endif
+
 // field_view_forward_iterator
 template <typename T, typename = void>
 struct is_field_view_forward_iterator : std::false_type

@@ -41,7 +41,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <type_traits>
 
 namespace boost {
 namespace mysql {
@@ -106,8 +105,6 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_prepare_stmt_response(
 // Execution messages
 struct execute_response
 {
-    static_assert(std::is_trivially_destructible<error_code>::value, "");
-
     enum class type_t
     {
         num_fields,

@@ -26,6 +26,7 @@
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/core/ignore_unused.hpp>
@@ -134,6 +135,9 @@ make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, std::v
 //
 // helpers to run algos
 //
+
+template <class AlgoParams>
+using has_void_result = std::is_same<typename AlgoParams::result_type, void>;
 
 template <class AlgoParams, bool is_void>
 struct completion_signature_impl;
@@ -560,34 +564,24 @@ public:
     ping_algo_params make_params_ping(diagnostics& diag) const { return {&diag}; }
 
     // Reset connection
-    reset_connection_algo_params make_params_reset_connection(
-        diagnostics& diag,
-        const character_set& charset = {}
-    ) const
-    {
-        return {&diag, charset};
-    }
-
-    // Reset connection and issue a SET NAMES, using a pipeline.
-    // Used internally by connection_pool.
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-    auto async_reset_with_charset(const character_set& charset, CompletionToken&& token)
-        BOOST_MYSQL_RETURN_TYPE(decltype(std::declval<connection_impl&>().async_run(
-            std::declval<reset_connection_algo_params>(),
-            std::forward<CompletionToken>(token)
-        )))
-    {
-        return async_run(
-            make_params_reset_connection(shared_diag(), charset),
-            std::forward<CompletionToken>(token)
-        );
-    }
+    reset_connection_algo_params make_params_reset_connection(diagnostics& diag) const { return {&diag}; }
 
     // Quit connection
     quit_connection_algo_params make_params_quit(diagnostics& diag) const { return {&diag}; }
 
     // Close connection
     close_connection_algo_params make_params_close(diagnostics& diag) const { return {&diag}; }
+
+    // Run pipeline
+    template <class PipelineRequestType>
+    static run_pipeline_algo_params make_params_pipeline(
+        const PipelineRequestType& req,
+        typename PipelineRequestType::response_type& response,
+        diagnostics& diag
+    )
+    {
+        return {&diag, access::get_impl(req).to_view(), pipeline_response_ref(response)};
+    }
 };
 
 // To use some completion tokens, like deferred, in C++11, the old macros
@@ -650,6 +644,9 @@ using async_quit_connection_t = async_run_t<quit_connection_algo_params, Complet
 
 template <class CompletionToken>
 using async_close_connection_t = async_run_t<close_connection_algo_params, CompletionToken>;
+
+template <class CompletionToken>
+using async_run_pipeline_t = async_run_t<run_pipeline_algo_params, CompletionToken>;
 
 }  // namespace detail
 }  // namespace mysql
