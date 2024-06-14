@@ -577,7 +577,7 @@ BOOST_AUTO_TEST_CASE(string_error)
     BOOST_TEST(format_single_error("{:i}", "a\xc3 ") == client_errc::invalid_encoding);
 
     // unknown specifiers are rejected
-    BOOST_TEST(format_single_error("SELECT {:i}", "abc") == spec_err);
+    BOOST_TEST(format_single_error("SELECT {:x}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:s}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:d}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:>}", "abc") == spec_err);

@@ -217,13 +217,7 @@ inline void append_quoted_time(time t, format_context_base& ctx)
 
 inline void append_field_view(field_view fv, string_view format_spec, format_context_base& ctx)
 {
-    auto kind = fv.kind();
-
-    // Strings allow format specs
-    if (kind == field_kind::string)
-        return append_string(fv.get_string(), format_spec, ctx);
-
-    // Other types don't
+    // Types here don't allow specifiers, even if they're strings (e.g. optional<string>)
     if (!format_spec.empty())
     {
         ctx.add_error(client_errc::format_string_invalid_specifier);
@@ -231,7 +225,7 @@ inline void append_field_view(field_view fv, string_view format_spec, format_con
     }
 
     // Perform the formatting operation
-    switch (kind)
+    switch (fv.kind())
     {
     case field_kind::null: ctx.append_raw("NULL"); return;
     case field_kind::int64: return append_int(fv.get_int64(), ctx);
@@ -239,7 +233,8 @@ inline void append_field_view(field_view fv, string_view format_spec, format_con
     case field_kind::float_:
         // float is formatted as double because it's parsed as such
         return append_double(fv.get_float(), ctx);
-    case field_kind::double_: return append_double(fv.get_double(), ctx); return;
+    case field_kind::double_: return append_double(fv.get_double(), ctx);
+    case field_kind::string: return append_quoted_string(fv.get_string(), ctx);
     case field_kind::blob: return append_blob(fv.get_blob(), ctx);
     case field_kind::date: return append_quoted_date(fv.get_date(), ctx);
     case field_kind::datetime: return append_quoted_datetime(fv.get_datetime(), ctx);
@@ -515,17 +510,22 @@ public:
 
 void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg, string_view format_spec)
 {
-    if (arg.is_custom)
+    switch (arg.type)
     {
+    case detail::format_arg_value::type_t::string:
+        detail::append_string(arg.data.s, format_spec, *this);
+        break;
+    case detail::format_arg_value::type_t::field:
+        detail::append_field_view(arg.data.fv, format_spec, *this);
+        break;
+    case detail::format_arg_value::type_t::custom:
         if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec, *this))
         {
             // TODO: this feels not ideal
             add_error(client_errc::format_string_invalid_specifier);
         }
-    }
-    else
-    {
-        detail::append_field_view(arg.data.fv, format_spec, *this);
+        break;
+    default: BOOST_ASSERT(false);
     }
 }
 
