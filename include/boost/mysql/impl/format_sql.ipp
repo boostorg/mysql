@@ -310,7 +310,9 @@ class format_state
         union data_t
         {
             unsigned short integral;
-            string_view identifier{};
+            string_view identifier;
+
+            data_t() noexcept : integral{} {}
         };
 
         type_t type;
