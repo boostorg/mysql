@@ -14,9 +14,11 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <cstddef>
 #include <initializer_list>
 
 #include "format_common.hpp"
+#include "test_common/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -27,6 +29,12 @@ namespace test {
 
 // When formatted, outputs the spec to the output context
 struct echo_spec
+{
+};
+
+// Parse returns begin + N
+template <std::size_t N>
+struct parse_consume
 {
 };
 
@@ -46,6 +54,13 @@ struct formatter<echo_spec>
     void format(echo_spec, format_context_base& ctx) const { ctx.append_raw(runtime(spec)); }
 };
 
+template <std::size_t N>
+struct formatter<parse_consume<N>>
+{
+    const char* parse(const char* it, const char*) { return it + N; }
+    void format(parse_consume<N>, format_context_base&) const {}
+};
+
 }  // namespace mysql
 }  // namespace boost
 
@@ -53,10 +68,6 @@ BOOST_AUTO_TEST_SUITE(test_format_sql_custom)
 
 constexpr format_options opts{utf8mb4_charset, true};
 
-// format spec parsing
-//    Only the specifier part is passed (auto, index, name, with and without characters after it)
-//    custom formatter, specifiers may contain any character that is not {, }, non-ascii
-//    returning start and middle of the range causes errors
 // format processing
 //    you can access the parsed formatters
 //    you can access the character set and other options
@@ -100,6 +111,21 @@ BOOST_AUTO_TEST_CASE(parse_passed_format_specs)
         format_sql(opts, "{:!\"#$%&'()*+,-./:;<=>?@[]\\^_`|~}", echo_spec{}) ==
         "!\"#$%&'()*+,-./:;<=>?@[]\\^_`|~"
     );
+}
+
+// Returning something != end in parse is an error
+BOOST_AUTO_TEST_CASE(parse_error)
+{
+    BOOST_TEST(
+        format_single_error("{:abc}", parse_consume<0>()) == client_errc::format_string_invalid_specifier
+    );
+    BOOST_TEST(
+        format_single_error("{:abc}", parse_consume<1>()) == client_errc::format_string_invalid_specifier
+    );
+    BOOST_TEST(
+        format_single_error("{:abc}", parse_consume<2>()) == client_errc::format_string_invalid_specifier
+    );
+    BOOST_TEST(format_single_error("{:abc}", parse_consume<3>()) == error_code());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
