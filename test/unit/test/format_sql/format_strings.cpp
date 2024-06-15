@@ -69,6 +69,10 @@ BOOST_AUTO_TEST_CASE(success)
     BOOST_TEST(format_sql(opts, "SELECT {1}, {0}", 42, "abc") == "SELECT 'abc', 42");
     BOOST_TEST(format_sql(opts, "SELECT {0}, {0}", 42) == "SELECT 42, 42");  // repeated
 
+    // Specifiers work with positional args
+    BOOST_TEST(format_sql(opts, "SELECT {1:i};", 42, "abc") == "SELECT `abc`;");
+    BOOST_TEST(format_sql(opts, "SELECT {0:r};", "abc") == "SELECT abc;");
+
     // Unused arguments are ignored
     BOOST_TEST(format_sql(opts, "SELECT {}", 42, "abc", nullptr) == "SELECT 42");
     BOOST_TEST(format_sql(opts, "SELECT {2}, {1}", 42, "abc", nullptr, 4.2) == "SELECT NULL, 'abc'");
@@ -85,6 +89,10 @@ BOOST_AUTO_TEST_CASE(success)
     // Format strings with non-ascii (but valid) characters
     BOOST_TEST(format_sql(opts, "SELECT `e\xc3\xb1u` + {};", 42) == "SELECT `e\xc3\xb1u` + 42;");
     BOOST_TEST(format_sql(opts, "\xc3\xb1{}", "abc") == "\xc3\xb1'abc'");
+
+    // Empty specifiers allowed, they do nothing
+    BOOST_TEST(format_sql(opts, "SELECT {:};", 42) == "SELECT 42;");
+    BOOST_TEST(format_sql(opts, "SELECT {0:};", 42) == "SELECT 42;");
 }
 
 BOOST_AUTO_TEST_CASE(success_named_args)
@@ -108,6 +116,12 @@ BOOST_AUTO_TEST_CASE(success_named_args)
 
     // Unused arguments are ignored
     BOOST_TEST(format_sql(opts, "SELECT {value}", {{"a", 10}, {"value", 42}, {"a", "ac"}}) == "SELECT 42");
+
+    // Format specifiers allowed
+    BOOST_TEST(format_sql(opts, "SELECT {name:i};", {{"name", "value"}}) == "SELECT `value`;");
+
+    // Empty specifiers allowed
+    BOOST_TEST(format_sql(opts, "SELECT {name:};", {{"name", 42}}) == "SELECT 42;");
     // clang-format on
 }
 
