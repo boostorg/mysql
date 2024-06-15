@@ -38,6 +38,12 @@ struct parse_consume
 {
 };
 
+// Format may call set_error
+struct maybe_error
+{
+    bool do_error;
+};
+
 }  // namespace test
 
 template <>
@@ -61,6 +67,20 @@ struct formatter<parse_consume<N>>
     void format(parse_consume<N>, format_context_base&) const {}
 };
 
+template <>
+struct formatter<maybe_error>
+{
+    const char* parse(const char* it, const char*) { return it; }
+
+    void format(maybe_error v, format_context_base& ctx) const
+    {
+        if (v.do_error)
+            ctx.add_error(client_errc::unformattable_value);
+        else
+            format_sql_to(ctx, "{}", v.do_error);
+    };
+};
+
 }  // namespace mysql
 }  // namespace boost
 
@@ -69,8 +89,6 @@ BOOST_AUTO_TEST_SUITE(test_format_sql_custom)
 constexpr format_options opts{utf8mb4_charset, true};
 
 // format processing
-//    you can access the parsed formatters
-//    you can access the character set and other options
 //    you can call set_error
 // spotcheck over custom::condition
 
@@ -127,5 +145,14 @@ BOOST_AUTO_TEST_CASE(parse_error)
     );
     BOOST_TEST(format_single_error("{:abc}", parse_consume<3>()) == error_code());
 }
+
+// format can call add_error to report problems
+BOOST_AUTO_TEST_CASE(format_add_error)
+{
+    BOOST_TEST(format_single_error("SELECT {};", maybe_error{true}) == client_errc::unformattable_value);
+    BOOST_TEST(format_sql(opts, "SELECT {};", maybe_error{false}) == "SELECT 0;");
+}
+
+// Spotcheck on a realistic type
 
 BOOST_AUTO_TEST_SUITE_END()
