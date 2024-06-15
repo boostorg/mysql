@@ -100,7 +100,6 @@ BOOST_AUTO_TEST_CASE(parse_passed_format_specs)
         format_sql(opts, "{:!\"#$%&'()*+,-./:;<=>?@[]\\^_`|~}", echo_spec{}) ==
         "!\"#$%&'()*+,-./:;<=>?@[]\\^_`|~"
     );
-    BOOST_TEST(format_sql(opts, "{:\1\2\6\3\x19\x20\x7f}", echo_spec{}) == "\1\2\6\3\x19\x20\x7f");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

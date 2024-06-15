@@ -487,23 +487,9 @@ BOOST_AUTO_TEST_CASE(std_optional)
 }
 #endif
 
-BOOST_AUTO_TEST_CASE(custom_type)
-{
-    auto actual = format_sql(opts, "SELECT * FROM myt WHERE {}", custom::condition{"myfield", 42});
-    string_view expected = "SELECT * FROM myt WHERE `myfield`=42";
-    BOOST_TEST(actual == expected);
-}
-
 //
 // Errors when formatting individual fields
 //
-template <class Arg>
-error_code format_single_error(constant_string_view format_str, const Arg& arg)
-{
-    format_context ctx(opts);
-    format_sql_to(ctx, format_str, arg);
-    return std::move(ctx).get().error();
-}
 
 // Make code less verbose
 constexpr auto spec_err = client_errc::format_string_invalid_specifier;
@@ -523,6 +509,8 @@ BOOST_AUTO_TEST_CASE(integers_error)
     BOOST_TEST(format_single_error("SELECT {:r}", (unsigned short)42) == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i}", (int)42) == spec_err);
     BOOST_TEST(format_single_error("SELECT {:d}", (int)42) == spec_err);
+    BOOST_TEST(format_single_error("SELECT {: }", (int)42) == spec_err);
+    BOOST_TEST(format_single_error("SELECT {::}", (int)42) == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i}", (unsigned int)42) == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i}", (long)42) == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i}", (unsigned long)42) == spec_err);
@@ -581,7 +569,7 @@ BOOST_AUTO_TEST_CASE(string_error)
     BOOST_TEST(format_single_error("SELECT {:s}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:d}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:>}", "abc") == spec_err);
-    BOOST_TEST(format_single_error(makesv("SELECT {:\0}"), "abc") == spec_err);
+    BOOST_TEST(format_single_error("SELECT {::}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:id}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:sd}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i:}", "abc") == spec_err);

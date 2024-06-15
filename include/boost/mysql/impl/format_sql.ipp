@@ -250,7 +250,8 @@ inline bool is_name_start(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' &
 
 inline bool is_format_spec_char(char c)
 {
-    return c != '{' && c != '}' && static_cast<unsigned char>(c) < 0x80;
+    return c != '{' && c != '}' && static_cast<unsigned char>(c) >= 0x20 &&
+           static_cast<unsigned char>(c) <= 0x7e;
 }
 
 class format_state

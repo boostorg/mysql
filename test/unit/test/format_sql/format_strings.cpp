@@ -15,6 +15,7 @@
 #include <boost/system/system_error.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/ff_charset.hpp"
 
@@ -163,54 +164,62 @@ BOOST_AUTO_TEST_CASE(error)
         error_code expected_ec;
     } test_cases[] = {
         // Simply invalid
-        {"unbalanced_{",             "SELECT { bad",           client_errc::format_string_invalid_syntax   },
-        {"unbalanced_{_eof",         "SELECT {",               client_errc::format_string_invalid_syntax   },
-        {"unbalanced_}",             "SELECT } bad",           client_errc::format_string_invalid_syntax   },
-        {"unbalanced_}_after_field", "SELECT {}} bad",         client_errc::format_string_invalid_syntax   },
-        {"unbalanced_}_eof",         "SELECT }",               client_errc::format_string_invalid_syntax   },
-        {"invalid_character",        "SELECT \xc3 bad",        client_errc::format_string_invalid_encoding },
+        {"unbalanced_{",             "SELECT { bad",               client_errc::format_string_invalid_syntax   },
+        {"unbalanced_{_eof",         "SELECT {",                   client_errc::format_string_invalid_syntax   },
+        {"unbalanced_}",             "SELECT } bad",               client_errc::format_string_invalid_syntax   },
+        {"unbalanced_}_after_field", "SELECT {}} bad",             client_errc::format_string_invalid_syntax   },
+        {"unbalanced_}_eof",         "SELECT }",                   client_errc::format_string_invalid_syntax   },
+        {"invalid_character",        "SELECT \xc3 bad",            client_errc::format_string_invalid_encoding },
 
         // Named argument problems
-        {"name_starts_number",       "SELECT {0name}",         client_errc::format_string_invalid_syntax   },
-        {"name_starts_invalid",      "SELECT {!name}",         client_errc::format_string_invalid_syntax   },
-        {"name_ends_invalid",        "SELECT {name!}",         client_errc::format_string_invalid_syntax   },
-        {"name_contains_invalid",    "SELECT {na'me}",         client_errc::format_string_invalid_syntax   },
-        {"name_spaces",              "SELECT { name }",        client_errc::format_string_invalid_syntax   },
-        {"name_non_ascii",           "SELECT {e\xc3\xb1p}",    client_errc::format_string_invalid_syntax   },
-        {"name_eof",                 "SELECT {name",           client_errc::format_string_invalid_syntax   },
-        {"name_not_found",           "SELECT {name} {bad}",    client_errc::format_arg_not_found           },
-        {"name_spec_nonascii",       "SELECT {name:\xc3\xb1}", client_errc::format_string_invalid_syntax   },
-        {"name_spec_{",              "SELECT {name:i{}",       client_errc::format_string_invalid_syntax   },
-        {"name_spec_}",              "SELECT {name:i}}",       client_errc::format_string_invalid_syntax   },
-        {"name_spec_{}",             "SELECT {name:i{}}",      client_errc::format_string_invalid_syntax   },
-        {"name_spec_eof",            "SELECT {name:eof",       client_errc::format_string_invalid_syntax   },
-        {"name_spec_invalid",        "SELECT {name:d}",        client_errc::format_string_invalid_specifier},
+        {"name_starts_number",       "SELECT {0name}",             client_errc::format_string_invalid_syntax   },
+        {"name_starts_invalid",      "SELECT {!name}",             client_errc::format_string_invalid_syntax   },
+        {"name_ends_invalid",        "SELECT {name!}",             client_errc::format_string_invalid_syntax   },
+        {"name_contains_invalid",    "SELECT {na'me}",             client_errc::format_string_invalid_syntax   },
+        {"name_spaces",              "SELECT { name }",            client_errc::format_string_invalid_syntax   },
+        {"name_non_ascii",           "SELECT {e\xc3\xb1p}",        client_errc::format_string_invalid_syntax   },
+        {"name_eof",                 "SELECT {name",               client_errc::format_string_invalid_syntax   },
+        {"name_not_found",           "SELECT {name} {bad}",        client_errc::format_arg_not_found           },
+        {"name_spec_nonascii",       "SELECT {name:\xc3\xb1}",     client_errc::format_string_invalid_syntax   },
+        {"name_spec_{",              "SELECT {name:i{}",           client_errc::format_string_invalid_syntax   },
+        {"name_spec_}",              "SELECT {name:i}}",           client_errc::format_string_invalid_syntax   },
+        {"name_spec_{}",             "SELECT {name:i{}}",          client_errc::format_string_invalid_syntax   },
+        {"name_spec_eof",            "SELECT {name:eof",           client_errc::format_string_invalid_syntax   },
+        {"name_spec_invalid",        "SELECT {name:d}",            client_errc::format_string_invalid_specifier},
 
         // Explicit indexing problems
-        {"index_hex",                "SELECT {0x10}",          client_errc::format_string_invalid_syntax   },
-        {"index_hex_noprefix",       "SELECT {1a}",            client_errc::format_string_invalid_syntax   },
-        {"index_spaces",             "SELECT { 1 }",           client_errc::format_string_invalid_syntax   },
-        {"index_eof",                "SELECT {0",              client_errc::format_string_invalid_syntax   },
-        {"index_gt_max",             "SELECT {65536}",         client_errc::format_string_invalid_syntax   },
-        {"index_negative",           "SELECT {-1}",            client_errc::format_string_invalid_syntax   },
-        {"index_float",              "SELECT {4.2}",           client_errc::format_string_invalid_syntax   },
-        {"index_not_found",          "SELECT {2}",             client_errc::format_arg_not_found           },
-        {"index_to_manual",          "SELECT {0}, {}",         client_errc::format_string_manual_auto_mix  },
-        {"index_spec_nonascii",      "SELECT {0:\xff}",        client_errc::format_string_invalid_syntax   },
-        {"index_spec_{",             "SELECT {0:i{}",          client_errc::format_string_invalid_syntax   },
-        {"index_spec_{}",            "SELECT {0:i{}}",         client_errc::format_string_invalid_syntax   },
-        {"index_spec_eof",           "SELECT {0:eof",          client_errc::format_string_invalid_syntax   },
-        {"index_spec_invalid",       "SELECT {0:i}",           client_errc::format_string_invalid_specifier},
+        {"index_hex",                "SELECT {0x10}",              client_errc::format_string_invalid_syntax   },
+        {"index_hex_noprefix",       "SELECT {1a}",                client_errc::format_string_invalid_syntax   },
+        {"index_spaces",             "SELECT { 1 }",               client_errc::format_string_invalid_syntax   },
+        {"index_eof",                "SELECT {0",                  client_errc::format_string_invalid_syntax   },
+        {"index_gt_max",             "SELECT {65536}",             client_errc::format_string_invalid_syntax   },
+        {"index_negative",           "SELECT {-1}",                client_errc::format_string_invalid_syntax   },
+        {"index_float",              "SELECT {4.2}",               client_errc::format_string_invalid_syntax   },
+        {"index_not_found",          "SELECT {2}",                 client_errc::format_arg_not_found           },
+        {"index_to_manual",          "SELECT {0}, {}",             client_errc::format_string_manual_auto_mix  },
+        {"index_spec_nonascii",      "SELECT {0:\xff}",            client_errc::format_string_invalid_syntax   },
+        {"index_spec_{",             "SELECT {0:i{}",              client_errc::format_string_invalid_syntax   },
+        {"index_spec_{}",            "SELECT {0:i{}}",             client_errc::format_string_invalid_syntax   },
+        {"index_spec_eof",           "SELECT {0:eof",              client_errc::format_string_invalid_syntax   },
+        {"index_spec_invalid",       "SELECT {0:i}",               client_errc::format_string_invalid_specifier},
 
         // Auto indexing problems
-        {"auto_replacement_inside",  "SELECT { {} }",          client_errc::format_string_invalid_syntax   },
-        {"auto_too_many_args",       "SELECT {}, {}, {}",      client_errc::format_arg_not_found           },
-        {"auto_to_manual",           "SELECT {}, {0}",         client_errc::format_string_manual_auto_mix  },
-        {"auto_spec_nonascii",       "SELECT {:\xff}",         client_errc::format_string_invalid_syntax   },
-        {"auto_spec_{",              "SELECT {:i{}",           client_errc::format_string_invalid_syntax   },
-        {"auto_spec_{}",             "SELECT {:i{}}",          client_errc::format_string_invalid_syntax   },
-        {"auto_spec_eof",            "SELECT {:",              client_errc::format_string_invalid_syntax   },
-        {"auto_spec_invalid",        "SELECT {:b}",            client_errc::format_string_invalid_specifier},
+        {"auto_replacement_inside",  "SELECT { {} }",              client_errc::format_string_invalid_syntax   },
+        {"auto_too_many_args",       "SELECT {}, {}, {}",          client_errc::format_arg_not_found           },
+        {"auto_to_manual",           "SELECT {}, {0}",             client_errc::format_string_manual_auto_mix  },
+        {"auto_spec_nonascii",       "SELECT {:\xff}",             client_errc::format_string_invalid_syntax   },
+        {"auto_spec_{",              "SELECT {:i{}",               client_errc::format_string_invalid_syntax   },
+        {"auto_spec_{}",             "SELECT {:i{}}",              client_errc::format_string_invalid_syntax   },
+        {"auto_spec_eof",            "SELECT {:",                  client_errc::format_string_invalid_syntax   },
+        {"auto_spec_invalid",        "SELECT {:b}",                client_errc::format_string_invalid_specifier},
+
+        // Specs containing non-printable ASCII characters are rejected
+        {"spec_zero",                test::makesv("SELECT {:\0}"), client_errc::format_string_invalid_syntax   },
+        {"spec_ctrl_1",              "SELECT {:\1}",               client_errc::format_string_invalid_syntax   },
+        {"spec_ctrl_mid",            "SELECT {:\x10}",             client_errc::format_string_invalid_syntax   },
+        {"spec_ctrl_high",           "SELECT {:\x19}",             client_errc::format_string_invalid_syntax   },
+        {"spec_del",                 "SELECT {:\x7f}",             client_errc::format_string_invalid_syntax   },
+        {"spec_nonascii",            "SELECT {:\x80}",             client_errc::format_string_invalid_syntax   },
     };
 
     for (const auto& tc : test_cases)
