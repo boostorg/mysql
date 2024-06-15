@@ -88,10 +88,6 @@ BOOST_AUTO_TEST_SUITE(test_format_sql_custom)
 
 constexpr format_options opts{utf8mb4_charset, true};
 
-// format processing
-//    you can call set_error
-// spotcheck over custom::condition
-
 // We pass the correct format spec to parse
 BOOST_AUTO_TEST_CASE(parse_passed_format_specs)
 {
@@ -154,5 +150,14 @@ BOOST_AUTO_TEST_CASE(format_add_error)
 }
 
 // Spotcheck on a realistic type
+BOOST_AUTO_TEST_CASE(spotcheck)
+{
+    BOOST_TEST(format_sql(opts, "{}", custom::condition{"myfield", 42}) == "`myfield`=42");
+    BOOST_TEST(format_sql(opts, "{:s}", custom::condition{"myfield", 42}) == "`myfield` = 42");
+    BOOST_TEST(
+        format_single_error("{:i}", custom::condition{"myfield", 42}) ==
+        client_errc::format_string_invalid_specifier
+    );
+}
 
 BOOST_AUTO_TEST_SUITE_END()
