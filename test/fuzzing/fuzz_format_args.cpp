@@ -12,9 +12,7 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/endian/detail/endian_load.hpp>
-#include <boost/endian/detail/order.hpp>
-#include <boost/variant2/variant.hpp>
+#include <boost/endian/conversion.hpp>
 
 #include <array>
 #include <cstddef>
