@@ -96,13 +96,13 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting_custom)
     // We can now use the 'u' specifier with employee
     std::string query = boost::mysql::format_sql(
         conn.format_opts().value(),
-        "UPDATE employee SET ({:u}) WHERE id = {}",
+        "UPDATE employee SET {:u} WHERE id = {}",
         employee{"John", "Doe", "HGS"},
         42
     );
 
     BOOST_TEST(
-        query == "UPDATE employee SET (first_name='John', last_name='Doe', company_id='HGS') WHERE id = 42"
+        query == "UPDATE employee SET first_name='John', last_name='Doe', company_id='HGS' WHERE id = 42"
     );
     //<-
     conn.execute(query, r);
