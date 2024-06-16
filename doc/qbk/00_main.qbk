@@ -139,6 +139,7 @@ END
 [import ../../test/integration/test/snippets/any_connection.cpp]
 [import ../../test/integration/test/snippets/connection_pool.cpp]
 [import ../../test/integration/test/snippets/sql_formatting.cpp]
+[import ../../test/integration/test/snippets/sql_formatting_custom.cpp]
 [import ../../test/integration/test/snippets/pipeline.cpp]
 
 [include 01_intro.qbk]

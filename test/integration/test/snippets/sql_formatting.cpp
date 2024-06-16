@@ -114,7 +114,7 @@ struct formatter<employee>
         // Parse any format specifiers for this type.
         // [begin, end) point to the range of characters holding the format specifier string
         // We should return a pointer to the first unparsed character.
-        // We don't support any specifiers for this type
+        // We don't support any specifiers for this type, so we return the begin pointer.
         return begin;
     }
 

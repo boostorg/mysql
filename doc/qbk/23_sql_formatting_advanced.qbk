@@ -11,8 +11,7 @@
 
 [heading Extending format_sql]
 
-You can specialize [reflink formatter] to add formatting support to your types.
-The notation is similar to `std::format`:
+You can specialize [reflink formatter] to add formatting support to your types:
 
 [sql_formatting_formatter_specialization]
 
@@ -21,9 +20,17 @@ and [refmem basic_format_context append_value]:
 
 [sql_formatting_formatter_use]
 
+You can add support for custom format specifiers for your type by modifying
+the `parse` function in `formatter`. For example, an `employee` can be formatted
+differently depending on whether we're using it in an `INSERT` or an `UPDATE`:
 
-TODO: format specifiers
+[sql_formatting_formatter_specialization_specifiers]
 
+We can now use it like this:
+
+[sql_formatting_formatter_use_specifiers]
+
+See the [reflink formatter] reference docs for more info.
 
 
 [heading:format_string_syntax Format string syntax]
