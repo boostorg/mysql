@@ -203,15 +203,6 @@ def _gen_format_args() -> List[_Sample]:
         def add_datetime(self, v: datetime):
             self.io.write(struct.pack('<HBBBBBL', v.year, v.month, v.day, v.hour, v.minute, v.second, v.microsecond))
         
-        def add_identifier2(self, v):
-            self.add_string(v[0])
-            self.add_string(v[1])
-        
-        def add_identifier3(self, v):
-            self.add_string(v[0])
-            self.add_string(v[1])
-            self.add_string(v[2])
-        
         def pack(self, type1: int, type2: int, fn1, fn2, val1, val2) -> bytes:
             # Sample format: type code, value 1, value 2
             self.io.write(struct.pack('<B', type1 | type2 << 4))
@@ -231,9 +222,6 @@ def _gen_format_args() -> List[_Sample]:
         ('date',     0x07, Packer.add_date, date(2021, 10, 11), date(1970, 1, 1)),
         ('datetime', 0x08, Packer.add_datetime, datetime(2021, 11, 9, 10, 1, 20, 91), datetime(2100, 10, 1)),
         ('time',     0x09, Packer.add_int64, -90, 439389289202),
-        ('id1',      0x0a, Packer.add_string, 'id`e```\n\\', 't\n\\abc`'),
-        ('id2',      0x0b, Packer.add_identifier2, ('abc', '`ab`'), ('``', 'abdef')),
-        ('id3',      0x0c, Packer.add_identifier3, ('a', 'b', 'c'), ('`a', '\n`b', '\'c`')),
     ]
 
     # Perform a dot product of all cases
