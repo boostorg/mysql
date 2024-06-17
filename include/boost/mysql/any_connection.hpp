@@ -14,9 +14,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/results.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -34,10 +32,8 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/consign.hpp>
-#include <boost/asio/execution_context.hpp>
 #include <boost/assert.hpp>
 #include <boost/system/result.hpp>
-#include <boost/variant2/variant.hpp>
 
 #include <cstddef>
 #include <memory>
