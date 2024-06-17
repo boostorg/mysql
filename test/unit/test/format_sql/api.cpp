@@ -206,6 +206,8 @@ BOOST_AUTO_TEST_CASE(format_context_success)
     BOOST_TEST(get(format_context(opts).append_value(42)) == "42");
     BOOST_TEST(get(format_context(opts).append_value("a str'ing")) == "'a str\\'ing'");
     BOOST_TEST(get(format_context(opts).append_value(true)) == "1");
+
+    // Specifiers work
     BOOST_TEST(get(format_context(opts).append_value("abc`d", "i")) == "`abc``d`");
 
     // Custom values work
@@ -303,6 +305,11 @@ BOOST_AUTO_TEST_CASE(format_context_error)
 
     // Spotcheck: invalid floats are diagnosed correctly
     BOOST_TEST(get(format_context(opts).append_value(HUGE_VAL)) == client_errc::unformattable_value);
+
+    // Spotcheck: invalid specifiers are diagnosed correctly
+    BOOST_TEST(
+        get(format_context(opts).append_value("abc", "u")) == client_errc::format_string_invalid_specifier
+    );
 }
 
 // Spotcheck: we can use string types that are not std::string with format context
