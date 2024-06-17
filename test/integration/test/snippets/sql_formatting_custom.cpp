@@ -44,7 +44,7 @@ struct formatter<employee>
         // We recognize the 'u' specifier, which means that we should
         // format the type for an UPDATE statement, instead of an INSERT
         // If no specifier is found, default to INSERT
-        // Note that the range may be empty, so we must check for it
+        // Note that the range may be empty, so we must check for this condition
         if (it != end && *it == 'u')
         {
             // The 'u' specifier is present, record it

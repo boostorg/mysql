@@ -15,12 +15,11 @@ You can specialize [reflink formatter] to add formatting support to your types:
 
 [sql_formatting_formatter_specialization]
 
-The type can now be used in [reflink format_sql], [reflink format_sql_to]
-and [refmem basic_format_context append_value]:
+The type can now be used in [reflink format_sql] and [reflink format_sql_to]:
 
 [sql_formatting_formatter_use]
 
-You can add support for custom format specifiers for your type by modifying
+You can add support for format specifiers for your type by modifying
 the `parse` function in `formatter`. For example, an `employee` can be formatted
 differently depending on whether we're using it in an `INSERT` or an `UPDATE`:
 
@@ -84,7 +83,7 @@ Specifiers can appear when doing automatic indexing (e.g. `{:i}`),
 manual indexing (e.g. `{0:i}`) and named arguments (e.g. `{name:i}`).
 
 Types specializing formatters can define custom specifiers.
-Only ASCII characters that are not `{` or `}` can be used as specifiers.
+Only printable ASCII characters that are not `{` or `}` can be used as specifiers.
 
 Format strings must be encoded according to [refmem format_options charset].
 Otherwise, an error will be generated. 
