@@ -13,7 +13,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <cmath>
-#include <cstddef>
 #include <initializer_list>
 #include <string>
 
