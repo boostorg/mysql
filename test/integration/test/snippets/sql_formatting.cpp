@@ -374,7 +374,7 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
 
         // clang-format off
         //[sql_formatting_reference_string
-        // Without format specifier: quoted string value
+        // Without format specifier: escaped, quoted string value
         //<-
         BOOST_TEST(
         //->
@@ -388,7 +388,7 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         );
         //->
 
-        // {:i}: dynamic identifier
+        // {:i}: escaped, quoted dynamic identifier
         //<-
         BOOST_TEST(
         //->

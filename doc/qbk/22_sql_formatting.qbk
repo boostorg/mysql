@@ -40,11 +40,13 @@ This feature can also be used to improve efficiency, as text queries perform les
 round-trips to the server. See [link mysql.sql_formatting.efficiency this section]
 for more info.
 
-[warning
-    [*Security considerations]: misusing the tools described in this section
-    can lead to [*SQL injection vulnerabilities]. Please read the documentation
-    carefully and thoroughly test your code when using this feature.
-]
+
+[heading Security considerations]
+
+Client-side SQL formatting [*does protect against SQL injection] by appropriately quoting and escaping
+string values. However, this feature [*does not understand your queries]. You need to make sure that
+your formatting operations result in valid SQL. If you try to build very complex
+queries and make mistakes, attackers may exploit logic errors in your formatting logic to overtake your system.
 
 
 
@@ -100,7 +102,7 @@ Some types, like strings, can be formatted in multiple ways. As with
 `std::format`, you can select how to format them using format specifiers.
 
 As we've seen, strings are formatted as single-quoted values by default.
-If you use the `{:i}` specifier, you can obtain dynamic SQL identifiers:
+If you use the `{:i}` specifier, you can obtain dynamic SQL identifiers, instead:
 
 [sql_formatting_specifiers]
 
@@ -120,9 +122,6 @@ build query strings incrementally:
 
 [sql_formatting_incremental_fn]
 [sql_formatting_incremental_use]
-
-[refmemunq basic_format_context append_raw] and [refmemunq basic_format_context append_value]
-can be used on format contexts to add raw SQL and formatted values without a format string.
 
 
 
