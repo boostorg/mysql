@@ -17,9 +17,6 @@
 #include <initializer_list>
 #include <string>
 #include <type_traits>
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-#include <concepts>
-#endif
 
 namespace boost {
 namespace mysql {
@@ -76,7 +73,7 @@ concept formattable =
 struct format_custom_arg
 {
     const void* obj;
-    bool (*format_fn)(const void*, string_view, format_context_base&);
+    bool (*format_fn)(const void*, const char*, const char*, format_context_base&);
 
     template <class T>
     static format_custom_arg create(const T& obj) noexcept
@@ -85,11 +82,16 @@ struct format_custom_arg
     }
 
     template <class T>
-    static bool do_format(const void* obj, string_view spec, format_context_base& ctx)
+    static bool do_format(
+        const void* obj,
+        const char* spec_begin,
+        const char* spec_end,
+        format_context_base& ctx
+    )
     {
         formatter<T> fmt;
-        const char* end = fmt.parse(spec.begin(), spec.end());
-        if (end != spec.end())
+        const char* it = fmt.parse(spec_begin, spec_end);
+        if (it != spec_end)
         {
             return false;
         }

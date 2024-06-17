@@ -378,7 +378,7 @@ class format_state
         // id_start          ::=  "a"..."z" | "A"..."Z" | "_"
         // id_continue       ::=  id_start | digit
         // digit             ::=  "0"..."9"
-        // format_spec       ::=  <any ASCII character != "{", "}">
+        // format_spec       ::=  <any character >= 0x20 && <= 0x7e && != "{", "}">
 
         // Parse the ID and spec components
         auto arg_id = parse_arg_id(it, format_end);
@@ -522,9 +522,8 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg,
         detail::append_field_view(arg.data.fv, format_spec, *this);
         break;
     case detail::format_arg_value::type_t::custom:
-        if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec, *this))
+        if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec.begin(), format_spec.end(), *this))
         {
-            // TODO: this feels not ideal
             add_error(client_errc::format_string_invalid_specifier);
         }
         break;
