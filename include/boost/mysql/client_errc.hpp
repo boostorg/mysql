@@ -84,7 +84,7 @@ enum class client_errc : int
     /// (EXPERIMENTAL) A formatting operation could not format one of its arguments.
     unformattable_value,
 
-    /// (EXPERIMENTAL) An format string with invalid syntax was provided to a SQL formatting function.
+    /// (EXPERIMENTAL) A format string containing invalid syntax was provided to a SQL formatting function.
     format_string_invalid_syntax,
 
     /// (EXPERIMENTAL) A format string with an invalid byte sequence was provided to a SQL formatting
@@ -93,6 +93,9 @@ enum class client_errc : int
 
     /// (EXPERIMENTAL) A format string mixes manual (e.g. {0}) and automatic (e.g. {}) indexing.
     format_string_manual_auto_mix,
+
+    /// (EXPERIMENTAL) The supplied format specifier (e.g. {:i}) is not supported by the type being formatted.
+    format_string_invalid_specifier,
 
     /// (EXPERIMENTAL) A format argument referenced by a format string was not found. Check the number
     /// of format arguments passed and their names.
