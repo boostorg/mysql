@@ -12,45 +12,17 @@
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
-#include <boost/mysql/string_view.hpp>
-
-#include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/config.hpp>
-
-#include <memory>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-struct any_address_view
-{
-    address_type type;
-    string_view address;
-    unsigned short port;
-
-    any_address_view(
-        address_type t = address_type::host_and_port,
-        string_view addr = {},
-        unsigned short port = 0
-    ) noexcept
-        : type(t), address(addr), port(port)
-    {
-    }
-};
-
-inline any_address_view make_view(const any_address& input) noexcept
-{
-    const auto& impl = access::get_impl(input);
-    return any_address_view(impl.type, impl.address, impl.port);
-}
-
-inline ssl_mode adjust_ssl_mode(ssl_mode input, address_type addr_type) noexcept
+inline ssl_mode adjust_ssl_mode(ssl_mode input, address_type addr_type)
 {
     return addr_type == address_type::host_and_port ? input : ssl_mode::disable;
 }
 
-inline handshake_params make_hparams(const connect_params& input) noexcept
+inline handshake_params make_hparams(const connect_params& input)
 {
     return handshake_params(
         input.username,
@@ -62,22 +34,8 @@ inline handshake_params make_hparams(const connect_params& input) noexcept
     );
 }
 
-struct stable_connect_params
-{
-    any_address_view address;
-    handshake_params hparams;
-    std::unique_ptr<char[]> string_buffer;
-};
-
-BOOST_MYSQL_DECL
-stable_connect_params make_stable(const connect_params& input);
-
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
-
-#ifdef BOOST_MYSQL_HEADER_ONLY
-#include <boost/mysql/impl/connect_params_helpers.ipp>
-#endif
 
 #endif

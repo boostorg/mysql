@@ -21,7 +21,6 @@
 #include <boost/mysql/impl/any_connection.ipp>
 #include <boost/mysql/impl/character_set.ipp>
 #include <boost/mysql/impl/column_type.ipp>
-#include <boost/mysql/impl/connect_params_helpers.ipp>
 #include <boost/mysql/impl/connection_impl.ipp>
 #include <boost/mysql/impl/connection_pool.ipp>
 #include <boost/mysql/impl/date.ipp>

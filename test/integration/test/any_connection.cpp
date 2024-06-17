@@ -18,14 +18,10 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 
-#include <memory>
-
 #include "test_common/create_diagnostics.hpp"
-#include "test_common/netfun_helpers.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
 #include "test_integration/common.hpp"
-#include "test_integration/get_endpoint.hpp"
 #include "test_integration/server_ca.hpp"
 
 // Additional spotchecks for any_connection
@@ -183,54 +179,6 @@ network_result<void> create_net_result()
         common_server_errc::er_aborting_connection,
         create_server_diag("diagnostics not cleared")
     );
-}
-
-// TODO: move this to unit once we implement unit tests for handshake/connect
-BOOST_AUTO_TEST_CASE(async_connect_lifetimes)
-{
-    // Create the connection
-    boost::asio::io_context ctx;
-    any_connection conn(ctx);
-
-    // Create params with SSL disabled to save runtime
-    std::unique_ptr<connect_params> params(new connect_params(default_connect_params(ssl_mode::disable)));
-
-    // Launch the function
-    auto res = create_net_result();
-    conn.async_connect(*params, *res.diag, [&](error_code ec) { res.err = ec; });
-
-    // Make the passed-in params invalid
-    params.reset();
-
-    // Run the function until completion
-    ctx.run();
-
-    // No error
-    res.validate_no_error();
-}
-
-BOOST_AUTO_TEST_CASE(async_connect_deferred_lifetimes)
-{
-    // Create the connection
-    boost::asio::io_context ctx;
-    any_connection conn(ctx);
-
-    // Create params with SSL disabled to save runtime
-    std::unique_ptr<connect_params> params(new connect_params(default_connect_params(ssl_mode::disable)));
-
-    // Create a deferred object
-    auto res = create_net_result();
-    auto op = conn.async_connect(*params, *res.diag, asio::deferred);
-
-    // Make the params invalid
-    params.reset();
-
-    // Run the operation
-    std::move(op)([&](error_code ec) { res.err = ec; });
-    ctx.run();
-
-    // No error
-    res.validate_no_error();
 }
 
 // Backslash escapes
