@@ -75,19 +75,41 @@ public:
  * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
  * \details
  * This type can be specialized for custom types to make them formattable.
- * This makes them satisfy the `Formattable` concept, and usable in
- * \ref format_sql and \ref format_context_base::append_value.
+ * This makes them satisfy the `Formattable` concept, and thus usable in
+ * \ref format_sql and similar functions.
  * \n
  * A `formatter` specialization for a type `T` should have the following form:
  * ```
- * template <> struct formatter<MyType> {
- *     static void format(const MyType&, format_context_base&);
- * }
+ * template <>
+ * struct formatter<T>
+ * {
+ *     const char* parse(const char* begin, const char* end); // parse format specs
+ *     void format(const T&, format_context_base&) const; // perform the actual formatting
+ * };
  * ```
  * \n
+ * When a value with a custom formatter is formatted (using \ref format_sql or a similar
+ * function), the library performs the following actions: \n
+ *   \li An instance of `formatter<T>` is default-constructed, where `T` is the type of the
+ *       value being formatted, removing const and references.
+ *   \li `formatter<T>::parse` is invoked, with `[begin, end)` pointing to the format specifier
+ *       that the current replacement field has. If `parse` finds specifiers it understands, it should
+ *       store them in the `formatter` instance. `parse` must return an iterator to the first
+ *       unparsed character in the range (or th `end` iterator, if everything was parsed).
+ *       Some examples of the character ranges passed to `parse`: (TODO: nest): \n
+ *       \li In `"SELECT {}"`, the range would be empty.
+ *       \li In `"SELECT {:abc}"`, the range would be `"abc"`.
+ *       \li In `"SELECT {0:i}"`, the range would be `"i"`.
+ *   \li If `parse` didn't manage to parse all the passed specifiers (i.e. if it returned an iterator
+ *       different to the passed's end), a \ref client_errc::format_string_invalid_specifier
+ *       is emitted and the format operation finishes.
+ *  \li Otherwise, `formatter<T>::format` is invoked, passing the supplied value and a reference to a
+ *      \ref format_context_base. This function should perform the actual formatting, usually calling
+ *      \ref format_sql_to on the passed context.
+ *
+ * \n
  * Don't specialize `formatter` for built-in types, like `int`, `std::string` or
- * optionals (formally, any type satisfying `WritableField`). This is not supported
- * and will result in a compile-time error.
+ * optionals (formally, any type satisfying `WritableField`), as the specializations will be ignored.
  */
 template <class T>
 struct formatter
@@ -152,12 +174,14 @@ protected:
 
 public:
     /**
-     * \brief Adds raw SQL to the output string.
+     * \brief Adds raw SQL to the output string (low level).
      * \details
      * Adds raw, unescaped SQL to the output string. Doesn't alter the error state.
      * \n
      * By default, the passed SQL should be available at compile-time.
      * Use \ref runtime if you need to use runtime values.
+     * \n
+     * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
@@ -172,14 +196,15 @@ public:
     }
 
     /**
-     * TODO: do we want to keep this?
-     * \brief Formats a value and adds it to the output string.
+     * \brief Formats a value and adds it to the output string (low level).
      * \details
-     * value is formatted according to its type. If formatting
-     * generates an error (for instance, a string with invalid encoding is passed),
+     * value is formatted according to its type, applying the passed format specifiers.
+     * If formatting generates an error (for instance, a string with invalid encoding is passed),
      * the error state may be set.
      * \n
      * The supplied type must satisfy the `Formattable` concept.
+     * \n
+     * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
@@ -189,12 +214,17 @@ public:
      * \li \ref client_errc::invalid_encoding if a string with byte sequences that can't be decoded
      *          with the current character set is passed.
      * \li \ref client_errc::unformattable_value if a NaN or infinity `float` or `double` is passed.
+     * \li \ref client_errc::format_string_invalid_specifier if `format_specifiers` includes
+     *          specifiers not supported by the type being formatted.
      * \li Any other error code that user-supplied formatter specializations may add using \ref add_error.
      */
     template <BOOST_MYSQL_FORMATTABLE Formattable>
-    format_context_base& append_value(const Formattable& v, constant_string_view format_spec = string_view())
+    format_context_base& append_value(
+        const Formattable& value,
+        constant_string_view format_specifiers = string_view()
+    )
     {
-        format_arg(detail::make_format_value(v), format_spec.get());
+        format_arg(detail::make_format_value(value), format_specifiers.get());
         return *this;
     }
 
@@ -384,6 +414,8 @@ using format_context = basic_format_context<std::string>;
  *     that can't be decoded with the current character set.
  * \li \ref client_errc::unformattable_value if `args` contains a floating-point value
  *     that is NaN or infinity.
+ * \li \ref client_errc::format_string_invalid_specifier if a replacement field includes
+ *          a specifier not supported by the type being formatted.
  * \li Any other error generated by user-defined \ref formatter specializations.
  * \li \ref client_errc::format_string_invalid_syntax if `format_str` can't be parsed as
  *     a format string.
@@ -439,6 +471,8 @@ inline void format_sql_to(
  *     that can't be decoded with the current character set.
  * \li \ref client_errc::unformattable_value if `args` contains a floating-point value
  *     that is NaN or infinity.
+ * \li \ref client_errc::format_string_invalid_specifier if a replacement field includes
+ *          a specifier not supported by the type being formatted.
  * \li Any other error generated by user-defined \ref formatter specializations.
  * \li \ref client_errc::format_string_invalid_syntax if `format_str` can't be parsed as
  *     a format string.
