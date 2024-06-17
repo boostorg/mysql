@@ -125,10 +125,7 @@ struct formatter<insert_list<T>>
 
             // Insert the actual member. value.*D.pointer will get
             // each of the data members of our struct.
-            // append_value will format the supplied value according to its type,
-            // as if it was a {} replacement field: strings are escaped and quoted,
-            // doubles are formatted as number literals, and so on.
-            ctx.append_value(value.*D.pointer);
+            format_sql_to(ctx, "{}", value.*D.pointer);
         });
 
         // Closing bracket
