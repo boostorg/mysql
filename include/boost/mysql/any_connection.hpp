@@ -29,12 +29,12 @@
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/pipeline_concepts.hpp>
+#include <boost/mysql/detail/ssl_fwd.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/consign.hpp>
 #include <boost/asio/execution_context.hpp>
-#include <boost/asio/ssl/context.hpp>
 #include <boost/assert.hpp>
 #include <boost/system/result.hpp>
 #include <boost/variant2/variant.hpp>
