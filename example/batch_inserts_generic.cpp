@@ -125,21 +125,23 @@ struct formatter<insert_list<T>>
 
             // Insert the actual member. value.*D.pointer will get
             // each of the data members of our struct.
-            // append_value will format the supplied value according to its type,
-            // as if it was a {} replacement field: strings are escaped and quoted,
-            // doubles are formatted as number literals, and so on.
-            ctx.append_value(value.*D.pointer);
+            format_sql_to(ctx, "{}", value.*D.pointer);
         });
 
         // Closing bracket
         ctx.append_raw(")");
     }
 
+    // If your type supports custom format specifiers, parse them here
+    // and return an iterator to the first unparsed character.
+    // insert_list<T> doesn't support specifiers
+    const char* parse(const char* begin, const char* /* end */) { return begin; }
+
     // Boost.MySQL requires us to define this function. It should take
     // our value as first argument, and a format_context_base& as the second.
     // It should format the value into the context.
     // format_context_base has append_raw and append_value, like format_context.
-    static void format(const insert_list<T>& values, format_context_base& ctx)
+    void format(const insert_list<T>& values, format_context_base& ctx) const
     {
         // We need one record, at least. If this is not the case, we can use
         // add_error to report the error and exit. This will cause format_sql to throw.
@@ -170,9 +172,12 @@ struct formatter<insert_list<T>>
 template <class T>
 struct formatter<field_name_list<T>>
 {
+    // Type doesn't support format specifiers
+    const char* parse(const char* begin, const char* /* end */) { return begin; }
+
     // Recall that given a type like employee, we want to output an identifier list:
     //    "`first_name`, `last_name`, `company_id`, `salary`"
-    static void format(const field_name_list<T>&, format_context_base& ctx)
+    void format(const field_name_list<T>&, format_context_base& ctx) const
     {
         // We must build a comma-separated list. The first member is not preceeded by a comma.
         bool is_first = true;
@@ -188,9 +193,9 @@ struct formatter<field_name_list<T>>
 
             // Output the field's name.
             // D.name is a const char* containing the T's field names.
-            // identifier wraps a string to be formatted as a SQL identifier
+            // The 'i' specifier outputs a string as a quoted identifier
             // (i.e. `first_name`, rather than 'first_name').
-            ctx.append_value(boost::mysql::identifier(D.name));
+            format_sql_to(ctx, "{:i}", D.name);
         });
     }
 };

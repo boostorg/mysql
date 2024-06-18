@@ -12,10 +12,9 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/time.hpp>
 
-#include <boost/endian/detail/endian_load.hpp>
-#include <boost/endian/detail/order.hpp>
-#include <boost/variant2/variant.hpp>
+#include <boost/endian/conversion.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -23,21 +22,6 @@
 using namespace boost::mysql;
 
 namespace {
-
-// format_arg is designed as function argument. For identifiers,
-// it only stores a reference. This type avoids lifetime problems
-using owning_format_arg = boost::variant2::variant<
-    std::nullptr_t,
-    int64_t,
-    uint64_t,
-    float,
-    double,
-    string_view,
-    blob_view,
-    date,
-    datetime,
-    boost::mysql::time,
-    identifier>;
 
 // Helper for parsing the input sample from the binary string provided by the fuzzer
 // This follows a "never fail" approach
@@ -91,31 +75,28 @@ class sample_parser
 
     boost::mysql::time get_time() { return boost::mysql::time(get<int64_t>()); }
 
-    owning_format_arg get_format_arg(uint8_t type)
+    format_arg get_format_arg(uint8_t type)
     {
-        switch (type % 13)
+        switch (type % 10)
         {
         case 0:
-        default: return nullptr;
-        case 1: return get<int64_t>();
-        case 2: return get<uint64_t>();
-        case 3: return get<float>();
-        case 4: return get<double>();
-        case 5: return get_string();
-        case 6: return get_blob();
-        case 7: return get_date();
-        case 8: return get_datetime();
-        case 9: return get_time();
-        case 10: return identifier(get_string());
-        case 11: return identifier(get_string(), get_string());
-        case 12: return identifier(get_string(), get_string(), get_string());
+        default: return format_arg("", nullptr);
+        case 1: return format_arg("", get<int64_t>());
+        case 2: return format_arg("", get<uint64_t>());
+        case 3: return format_arg("", get<float>());
+        case 4: return format_arg("", get<double>());
+        case 5: return format_arg("", get_string());
+        case 6: return format_arg("", get_blob());
+        case 7: return format_arg("", get_date());
+        case 8: return format_arg("", get_datetime());
+        case 9: return format_arg("", get_time());
         }
     }
 
 public:
     sample_parser(const uint8_t* data, size_t size) noexcept : it_(data), end_(data + size) {}
 
-    std::pair<owning_format_arg, owning_format_arg> parse()
+    std::array<format_arg, 2> parse()
     {
         // Types
         uint8_t type_code = get<uint8_t>();
@@ -123,17 +104,13 @@ public:
         uint8_t type1 = type_code & 0xf0 >> 4;
 
         // Arguments
-        return {get_format_arg(type0), get_format_arg(type1)};
+        return {
+            {get_format_arg(type0), get_format_arg(type1)}
+        };
     }
 };
 
 }  // namespace
-
-// Converts to format_arg
-static format_arg to_format_arg(const owning_format_arg& input)
-{
-    return boost::variant2::visit([](const auto& v) { return format_arg{"", v}; }, input);
-}
 
 static bool call_format_sql(const uint8_t* data, size_t size) noexcept
 {
@@ -142,7 +119,7 @@ static bool call_format_sql(const uint8_t* data, size_t size) noexcept
 
     // Use a format context so we can avoid exceptions
     format_context ctx({utf8mb4_charset, true});
-    format_sql_to(ctx, "{}, {}", {to_format_arg(sample.first), to_format_arg(sample.second)});
+    format_sql_to(ctx, "{}, {}", {sample[0], sample[1]});
 
     return std::move(ctx).get().has_value();
 }

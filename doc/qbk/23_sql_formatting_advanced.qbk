@@ -9,19 +9,27 @@
 [nochunk]
 
 
-[heading Extending format_sql and format_context]
+[heading Extending format_sql]
 
-You can specialize [reflink formatter] to add formatting support to your types.
-The notation resembles `std::format` but is much simpler, since format specs are not supported.
+You can specialize [reflink formatter] to add formatting support to your types:
 
 [sql_formatting_formatter_specialization]
 
-The type can now be used in [reflink format_sql], [reflink format_sql_to]
-and [refmem basic_format_context append_value]:
+The type can now be used in [reflink format_sql] and [reflink format_sql_to]:
 
 [sql_formatting_formatter_use]
 
+You can add support for format specifiers for your type by modifying
+the `parse` function in `formatter`. For example, an `employee` can be formatted
+differently depending on whether we're using it in an `INSERT` or an `UPDATE`:
 
+[sql_formatting_formatter_specialization_specifiers]
+
+We can now use it like this:
+
+[sql_formatting_formatter_use_specifiers]
+
+See the [reflink formatter] reference docs for more info.
 
 
 [heading:format_string_syntax Format string syntax]
@@ -67,10 +75,15 @@ You can output a brace literal by doubling it:
 
 [sql_formatting_brace_literal]
 
-Format specifiers (e.g. `{:g}`), common in `fmtlib`, are not allowed.
-There is usually a single, canonical representation for each type in
-MySQL, so there is no need to format types with different formats.
-This makes the implementation simpler.
+Format specifiers (e.g. `{:i}`) are supported for some types,
+but are far less common than in fmtlib, since most types have a
+single, canonical representation.
+
+Specifiers can appear when doing automatic indexing (e.g. `{:i}`),
+manual indexing (e.g. `{0:i}`) and named arguments (e.g. `{name:i}`).
+
+Types specializing formatters can define custom specifiers.
+Only printable ASCII characters that are not `{` or `}` can be used as specifiers.
 
 Format strings must be encoded according to [refmem format_options charset].
 Otherwise, an error will be generated. 
