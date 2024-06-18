@@ -82,8 +82,6 @@ def b2_build(
         _conditional('undefined-sanitizer=norecover', undefined_sanitizer),
         _conditional('coverage=on', coverage),
         _conditional('valgrind=on', valgrind),
-        # Workaround for https://github.com/bfgroup/b2/issues/368
-        _conditional('architecture=x86', address_model == '32' and not IS_WINDOWS),
         'warnings=extra',
         'warnings-as-errors=on',
         '-j4',
