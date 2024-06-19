@@ -13,7 +13,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <cmath>
-#include <cstddef>
 #include <initializer_list>
 #include <string>
 
@@ -41,8 +40,8 @@ constexpr format_options opts{utf8mb4_charset, true};
 //
 BOOST_AUTO_TEST_CASE(format_sql_success)
 {
-    constexpr const char* format_str = "SELECT * FROM {} WHERE id = {} OR name = {}";
-    auto str = format_sql(opts, format_str, identifier("my`table"), 42, "Joh'n");
+    constexpr const char* format_str = "SELECT * FROM {:i} WHERE id = {} OR name = {}";
+    auto str = format_sql(opts, format_str, "my`table", 42, "Joh'n");
     BOOST_TEST(str == R"(SELECT * FROM `my``table` WHERE id = 42 OR name = 'Joh\'n')");
 }
 
@@ -72,7 +71,7 @@ BOOST_AUTO_TEST_CASE(format_sql_invalid_format_string)
         [&](const boost::system::system_error& err) {
             std::string expected_diag =
                 "A format argument referenced by a format string was not found. Check the number of format "
-                "arguments passed and their names. [mysql.client:22]";
+                "arguments passed and their names. [mysql.client:23]";
             BOOST_TEST(err.code() == client_errc::format_arg_not_found);
             BOOST_TEST(err.what() == expected_diag);
             return true;
@@ -99,7 +98,7 @@ BOOST_AUTO_TEST_CASE(format_sql_empty_initializer_list)
 BOOST_AUTO_TEST_CASE(format_sql_to_success)
 {
     format_context ctx(opts);
-    format_sql_to(ctx, "SELECT * FROM {} WHERE id = {} OR name = {}", identifier("my`table"), 42, "Joh'n");
+    format_sql_to(ctx, "SELECT * FROM {:i} WHERE id = {} OR name = {}", "my`table", 42, "Joh'n");
     BOOST_TEST(
         std::move(ctx).get().value() == R"(SELECT * FROM `my``table` WHERE id = 42 OR name = 'Joh\'n')"
     );
@@ -150,7 +149,7 @@ BOOST_AUTO_TEST_CASE(format_sql_to_custom_string)
     using context_t = basic_format_context<string_with_alloc>;
 
     context_t ctx(opts);
-    format_sql_to(ctx, "SELECT * FROM {} WHERE id = {} OR name = {}", identifier("myt`able"), 42, "Joh'n");
+    format_sql_to(ctx, "SELECT * FROM {:i} WHERE id = {} OR name = {}", "myt`able", 42, "Joh'n");
     BOOST_TEST(
         std::move(ctx).get().value() == R"(SELECT * FROM `myt``able` WHERE id = 42 OR name = 'Joh\'n')"
     );
@@ -206,7 +205,9 @@ BOOST_AUTO_TEST_CASE(format_context_success)
     BOOST_TEST(get(format_context(opts).append_value(42)) == "42");
     BOOST_TEST(get(format_context(opts).append_value("a str'ing")) == "'a str\\'ing'");
     BOOST_TEST(get(format_context(opts).append_value(true)) == "1");
-    BOOST_TEST(get(format_context(opts).append_value(identifier("abc`d"))) == "`abc``d`");
+
+    // Specifiers work
+    BOOST_TEST(get(format_context(opts).append_value("abc`d", "i")) == "`abc``d`");
 
     // Custom values work
     BOOST_TEST(get(format_context(opts).append_value(custom::condition{"id", 42})) == "`id`=42");
@@ -215,8 +216,8 @@ BOOST_AUTO_TEST_CASE(format_context_success)
     BOOST_TEST(get(format_context(opts).append_raw("SELECT ").append_value(42)) == "SELECT 42");
     BOOST_TEST(get(format_context(opts).append_value(42).append_raw(" OR 1=1")) == "42 OR 1=1");
     BOOST_TEST(
-        get(format_context(opts).append_raw("SELECT ").append_raw("* FROM ").append_value(identifier("myt"))
-        ) == "SELECT * FROM `myt`"
+        get(format_context(opts).append_raw("SELECT ").append_raw("* FROM ").append_value("myt", "i")) ==
+        "SELECT * FROM `myt`"
     );
     BOOST_TEST(
         get(format_context(opts).append_raw("SELECT ").append_value(42).append_raw(" OR 1=1")) ==
@@ -245,7 +246,7 @@ BOOST_AUTO_TEST_CASE(format_context_charset)
     ctx.append_raw("SELECT '\xff{abc' + ")
         .append_value("abd\xff{}")
         .append_raw(" + ")
-        .append_value(identifier("i`d`ent\xff`ifier"));
+        .append_value("i`d`ent\xff`ifier", "i");
     BOOST_TEST(std::move(ctx).get().value() == "SELECT '\xff{abc' + 'abd\xff{}' + `i``d``ent\xff`ifier`");
 }
 
@@ -254,10 +255,7 @@ BOOST_AUTO_TEST_CASE(format_context_backslashes)
     format_options opts_charset{ff_charset, false};
 
     format_context ctx(opts_charset);
-    ctx.append_raw("SELECT ")
-        .append_value("ab'cd\"ef")
-        .append_raw(" + ")
-        .append_value(identifier("identif`ier"));
+    ctx.append_raw("SELECT ").append_value("ab'cd\"ef").append_raw(" + ").append_value("identif`ier", "i");
     BOOST_TEST(std::move(ctx).get().value() == "SELECT 'ab''cd\"ef' + `identif``ier`");
 }
 
@@ -293,7 +291,7 @@ BOOST_AUTO_TEST_CASE(format_context_error)
     BOOST_TEST(
         get(format_context(opts)
                 .append_raw("SELECT * FROM ")
-                .append_value(identifier("db", "tab", "bad\xff"))
+                .append_value("bad\xff", "i")
                 .append_raw(" WHERE id=")
                 .append_value(42)) == client_errc::invalid_encoding
     );
@@ -306,6 +304,11 @@ BOOST_AUTO_TEST_CASE(format_context_error)
 
     // Spotcheck: invalid floats are diagnosed correctly
     BOOST_TEST(get(format_context(opts).append_value(HUGE_VAL)) == client_errc::unformattable_value);
+
+    // Spotcheck: invalid specifiers are diagnosed correctly
+    BOOST_TEST(
+        get(format_context(opts).append_value("abc", "u")) == client_errc::format_string_invalid_specifier
+    );
 }
 
 // Spotcheck: we can use string types that are not std::string with format context
@@ -315,7 +318,7 @@ BOOST_AUTO_TEST_CASE(format_context_custom_string)
 
     context_t ctx(opts);
     ctx.append_raw("SELECT * FROM ")
-        .append_value(identifier("myt`able"))
+        .append_value("myt`able", "i")
         .append_raw(" WHERE id = ")
         .append_value(42)
         .append_raw(" OR name = ")

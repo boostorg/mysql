@@ -17,9 +17,6 @@
 #include <initializer_list>
 #include <string>
 #include <type_traits>
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-#include <concepts>
-#endif
 
 namespace boost {
 namespace mysql {
@@ -76,7 +73,7 @@ concept formattable =
 struct format_custom_arg
 {
     const void* obj;
-    void (*format_fn)(const void*, format_context_base&);
+    bool (*format_fn)(const void*, const char*, const char*, format_context_base&);
 
     template <class T>
     static format_custom_arg create(const T& obj) noexcept
@@ -85,9 +82,21 @@ struct format_custom_arg
     }
 
     template <class T>
-    static void do_format(const void* obj, format_context_base& ctx)
+    static bool do_format(
+        const void* obj,
+        const char* spec_begin,
+        const char* spec_end,
+        format_context_base& ctx
+    )
     {
-        return formatter<T>::format(*static_cast<const T*>(obj), ctx);
+        formatter<T> fmt;
+        const char* it = fmt.parse(spec_begin, spec_end);
+        if (it != spec_end)
+        {
+            return false;
+        }
+        fmt.format(*static_cast<const T*>(obj), ctx);
+        return true;
     }
 };
 
@@ -96,35 +105,61 @@ struct format_custom_arg
 // to reduce the number of do_format instantiations
 struct format_arg_value
 {
-    bool is_custom;
+    enum class type_t
+    {
+        string,
+        field,
+        custom
+    };
+
     union data_t
     {
+        string_view s;
         field_view fv;
         format_custom_arg custom;
 
+        data_t(string_view v) noexcept : s(v) {}
         data_t(field_view fv) noexcept : fv(fv) {}
         data_t(format_custom_arg v) noexcept : custom(v) {}
-    } data;
+    };
+
+    type_t type;
+    data_t data;
 };
 
 // make_format_value: creates a type erased format_arg_value from a typed value.
+// Used for types convertible to string view. We must differentiate this from
+// field_views and optionals because supported specifiers are different
+template <class T>
+format_arg_value make_format_value_impl(
+    const T& v,
+    std::true_type,  // convertible to string view
+    std::true_type   // if it's convertible to string_view, it will be a writable field, too
+) noexcept
+{
+    return {format_arg_value::type_t::string, string_view(v)};
+}
+
 // Used for types having is_writable_field<T>
 template <class T>
-format_arg_value make_format_value_impl(const T& v, std::true_type) noexcept
+format_arg_value make_format_value_impl(
+    const T& v,
+    std::false_type,  // convertible to string view
+    std::true_type    // is_writable_field
+) noexcept
 {
-    static_assert(
-        !has_specialized_formatter<T>(),
-        "formatter<T> specializations for basic types (satisfying the WritableField concept) are not "
-        "supported. Please remove the formatter specialization"
-    );
-    return {false, to_field(v)};
+    return {format_arg_value::type_t::field, to_field(v)};
 }
 
 // Used for types having !is_writable_field<T>
 template <class T>
-format_arg_value make_format_value_impl(const T& v, std::false_type) noexcept
+format_arg_value make_format_value_impl(
+    const T& v,
+    std::false_type,  // convertible to string view
+    std::false_type   // writable field
+) noexcept
 {
-    return {true, format_custom_arg::create(v)};
+    return {format_arg_value::type_t::custom, format_custom_arg::create(v)};
 }
 
 template <class T>
@@ -135,7 +170,7 @@ format_arg_value make_format_value(const T& v) noexcept
         "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
         "formattable"
     );
-    return make_format_value_impl(v, is_writable_field<T>{});
+    return make_format_value_impl(v, std::is_convertible<T, string_view>(), is_writable_field<T>());
 }
 
 BOOST_MYSQL_DECL

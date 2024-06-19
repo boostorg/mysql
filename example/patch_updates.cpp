@@ -71,11 +71,17 @@ namespace mysql {
 template <>
 struct formatter<std::vector<update_field>>
 {
-    // Boost.MySQL requires us to define this function. It should take
+    // If your type supports custom format specifiers, parse them here
+    // and return an iterator to the first unparsed character.
+    // std::vector<update_field> doesn't support specifiers
+    const char* parse(const char* begin, const char* /* end */) { return begin; }
+
+    // The function performing the actual formatting. It should take
     // our value as first argument, and a format_context_base& as the second.
     // It should format the value into the context.
-    // format_context_base has append_raw and append_value, like format_context.
-    static void format(const std::vector<update_field>& value, format_context_base& ctx)
+    // format_context_base has append_raw and append_value, like format_context,
+    // and can be used with format_sql_to
+    void format(const std::vector<update_field>& value, format_context_base& ctx)
     {
         // We need one update field, at least. If this is not the case, we can use
         // add_error to report the error and exit. This will cause format_sql to throw.
@@ -97,11 +103,9 @@ struct formatter<std::vector<update_field>>
             is_first = false;
 
             // Output the field's name, an equal sign, and the field's value.
-            // identifier wraps a string to be formatted as a SQL identifier
+            // The 'i' specifier outputs a string as a SQL identifier
             // (i.e. `first_name`, rather than 'first_name').
-            ctx.append_value(boost::mysql::identifier(update.field_name))
-                .append_raw(" = ")
-                .append_value(update.field_value);
+            format_sql_to(ctx, "{:i} = {}", update.field_name, update.field_value);
         }
     }
 };

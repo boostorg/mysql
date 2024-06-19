@@ -67,11 +67,13 @@ inline const char* error_to_string(client_errc error)
     case client_errc::unformattable_value:
         return "A formatting operation could not format one of its arguments.";
     case client_errc::format_string_invalid_syntax:
-        return "A format string with an invalid byte sequence was provided to a SQL formatting function.";
+        return "A format string with invalid syntax was provided to a SQL formatting function.";
     case client_errc::format_string_invalid_encoding:
         return "A format string with an invalid byte sequence was provided to a SQL formatting function.";
     case client_errc::format_string_manual_auto_mix:
         return "A format string mixes manual (e.g. {0}) and automatic (e.g. {}) indexing.";
+    case client_errc::format_string_invalid_specifier:
+        return "The supplied format specifier is not supported by the type being formatted.";
     case client_errc::format_arg_not_found:
         return "A format argument referenced by a format string was not found. Check the number of format "
                "arguments passed and their names.";
