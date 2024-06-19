@@ -172,14 +172,8 @@ void main_impl(int argc, char** argv)
     // Use set_character_set if this happens.
     std::string query = boost::mysql::format_sql(
         conn.format_opts().value(),
-        "INSERT INTO employee ({}) VALUES {}",
-        // TODO: could we support {::i} ?
-        boost::mysql::sequence(
-            get_field_names<employee>(),
-            [](string_view v, boost::mysql::format_context_base& ctx) {
-                boost::mysql::format_sql_to(ctx, "{:i}", v);
-            }
-        ),
+        "INSERT INTO employee ({::i}) VALUES {}",
+        get_field_names<employee>(),
         boost::mysql::sequence(values, insert_struct_format_fn())
     );
 

@@ -551,4 +551,28 @@ std::string boost::mysql::detail::vformat_sql(
     return std::move(ctx).get().value();
 }
 
+std::pair<bool, boost::mysql::string_view> boost::mysql::detail::parse_range_specifiers(
+    const char* spec_begin,
+    const char* spec_end
+)
+{
+    // range_format_spec ::=  [":" [underlying_spec]]
+    // Example: {::i} => format an array of strings as identifiers
+
+    // Empty: no specifiers
+    if (spec_begin == spec_end)
+        return {true, {}};
+
+    // If the first character is not a ':', the spec is invalid.
+    if (*spec_begin != ':')
+        return {false, {}};
+    ++spec_begin;
+
+    // Return the rest of the range
+    return {
+        true,
+        {spec_begin, spec_end}
+    };
+}
+
 #endif

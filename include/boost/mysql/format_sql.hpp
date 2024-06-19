@@ -395,18 +395,6 @@ public:
 using format_context = basic_format_context<std::string>;
 
 // TODO: document properly
-// The default format function, used by \ref sequence unless otherwise specified.
-// Appends the passed value to the context, without performing any transformation.
-struct default_format_function
-{
-    template <BOOST_MYSQL_FORMATTABLE T>
-    void operator()(const T& value, format_context_base& ctx) const
-    {
-        ctx.append_value(value);
-    }
-};
-
-// TODO: document properly
 // A formattable view type. Holds a range (as an iterator/sentinel pair),
 // a formatter function, and a glue string. Defines a custom formatter.
 // When formatted, the [it, sentinel) range is iterated, applying fn for each
@@ -428,13 +416,6 @@ auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
     -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
 {
     return {std::begin(range), std::end(range), std::move(fn), glue};
-}
-
-template <class Range>
-auto sequence(Range&& range, constant_string_view glue = ", ")
-    -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), default_format_function>
-{
-    return {std::begin(range), std::end(range), default_format_function(), glue};
 }
 
 template <class It, class Sentinel, class FormatFn>
@@ -590,8 +571,13 @@ bool boost::mysql::detail::format_custom_arg::do_format_range(
     format_context_base& ctx
 )
 {
-    if (spec_begin != spec_end)
+    // Parse specifiers
+    auto res = detail::parse_range_specifiers(spec_begin, spec_end);
+    if (!res.first)
         return false;
+    auto spec = runtime(res.second);
+
+    // Output the sequence
     const auto& value = *static_cast<const T*>(obj);
     bool is_first = true;
     for (auto it = std::begin(value); it != std::end(value); ++it)
@@ -599,7 +585,7 @@ bool boost::mysql::detail::format_custom_arg::do_format_range(
         if (!is_first)
             ctx.append_raw(", ");
         is_first = false;
-        ctx.append_value(*it);
+        ctx.append_value(*it, spec);
     }
     return true;
 }

@@ -19,6 +19,7 @@
 #include <iterator>
 #include <string>
 #include <type_traits>
+#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -259,6 +260,9 @@ std::string vformat_sql(
     string_view format_str,
     std::initializer_list<format_arg> args
 );
+
+BOOST_MYSQL_DECL
+std::pair<bool, string_view> parse_range_specifiers(const char* spec_begin, const char* spec_end);
 
 }  // namespace detail
 }  // namespace mysql
