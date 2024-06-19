@@ -25,6 +25,14 @@ namespace test {
 using string_with_alloc = std::basic_string<char, std::char_traits<char>, custom_allocator<char>>;
 using blob_with_alloc = std::vector<unsigned char, custom_allocator<unsigned char>>;
 
+template <class Arg>
+error_code format_single_error(constant_string_view format_str, const Arg& arg)
+{
+    format_context ctx({utf8mb4_charset, true});
+    format_sql_to(ctx, format_str, arg);
+    return std::move(ctx).get().error();
+}
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
@@ -46,9 +54,24 @@ namespace mysql {
 template <>
 struct formatter<custom::condition>
 {
-    static void format(const custom::condition& v, format_context_base& ctx)
+    bool space{false};
+
+    const char* parse(const char* it, const char* end)
     {
-        ctx.append_value(identifier(v.name)).append_raw("=").append_value(v.value);
+        if (it != end && *it == 's')
+        {
+            space = true;
+            ++it;
+        }
+        return it;
+    }
+
+    void format(const custom::condition& v, format_context_base& ctx) const
+    {
+        if (space)
+            format_sql_to(ctx, "{:i} = {}", v.name, v.value);
+        else
+            format_sql_to(ctx, "{:i}={}", v.name, v.value);
     }
 };
 

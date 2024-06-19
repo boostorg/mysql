@@ -200,9 +200,13 @@ std::string compose_get_employees_query(
 
     // Adds an individual filter to the context. Used by sequence()
     auto filter_format_fn = [](filter item, boost::mysql::format_context_base& elm_ctx) {
-        elm_ctx.append_value(boost::mysql::identifier(item.field_name))
-            .append_raw(boost::mysql::runtime(op_type_to_sql(item.op)))
-            .append_value(item.field_value);
+        boost::mysql::format_sql_to(
+            elm_ctx,
+            "{:i} {:r} {}",
+            item.field_name,
+            op_type_to_sql(item.op),
+            item.field_value
+        );
     };
 
     // Add the query with the filters to ctx.
@@ -219,7 +223,7 @@ std::string compose_get_employees_query(
     {
         // identifier formats a string as a SQL identifier, instead of a string literal.
         // For instance, this may generate "ORDER BY `first_name`"
-        boost::mysql::format_sql_to(ctx, " ORDER BY {}", boost::mysql::identifier(*order_by));
+        boost::mysql::format_sql_to(ctx, "ORDER BY {:i}", *order_by);
     }
 
     // Get our generated query

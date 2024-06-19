@@ -171,12 +171,7 @@ void main_impl(int argc, char** argv)
     // For update_field{"first_name", "John"}, it generates the string
     // "`first_name` = 'John'"
     auto update_format_fn = [](update_field upd, boost::mysql::format_context_base& ctx) {
-        boost::mysql::format_sql_to(
-            ctx,
-            "{} = {}",
-            boost::mysql::identifier(upd.field_name),
-            upd.field_value
-        );
+        boost::mysql::format_sql_to(ctx, "{:i} = {}", upd.field_name, upd.field_value);
     };
 
     // Compose the query. We use sequence() to output the update list separated by commas.

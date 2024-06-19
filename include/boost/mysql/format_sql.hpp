@@ -22,7 +22,6 @@
 #include <boost/core/span.hpp>
 #include <boost/system/result.hpp>
 
-#include <cstddef>
 #include <initializer_list>
 #include <iterator>
 #include <string>
@@ -75,89 +74,47 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) A SQL identifier to use for client-side SQL formatting.
- * \details
- * Represents a possibly-qualified SQL identifier.
- *
- * \par Object lifetimes
- * This type is non-owning, and should only be used as an argument to SQL formatting
- * functions.
- */
-class identifier
-{
-    struct impl_t
-    {
-        std::size_t qual_level;
-        string_view ids[3];
-
-        constexpr impl_t(std::size_t qual_level, string_view id1, string_view id2, string_view id3) noexcept
-            : qual_level(qual_level), ids{id1, id2, id3}
-        {
-        }
-    } impl_;
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
-
-public:
-    /**
-     * \brief Constructs an unqualified identifier.
-     * \details
-     * Unqualified identifiers are usually field, table or database names,
-     * and get formatted as: \code "`column_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr explicit identifier(string_view id) noexcept : impl_(1u, id, {}, {}) {}
-
-    /**
-     * \brief Constructs an identifier with a single qualifier.
-     * \details
-     * Identifiers with one qualifier are used for field, table and view names.
-     * The qualifier identifies the parent object. For instance,
-     * `identifier("table_name", "field_name")` maps to: \code "`table_name`.`field_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr identifier(string_view qualifier, string_view id) noexcept : impl_(2u, qualifier, id, {}) {}
-
-    /**
-     * \brief Constructs an identifier with two qualifiers.
-     * \details
-     * Identifiers with two qualifier are used for field names.
-     * The first qualifier identifies the database, the second, the table name.
-     * For instance, `identifier("db", "table_name", "field_name")` maps to:
-     * \code "`db`.`table_name`.`field_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr identifier(string_view qual1, string_view qual2, string_view id) noexcept
-        : impl_(3u, qual1, qual2, id)
-    {
-    }
-};
-
-/**
  * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
  * \details
  * This type can be specialized for custom types to make them formattable.
- * This makes them satisfy the `Formattable` concept, and usable in
- * \ref format_sql and \ref format_context_base::append_value.
+ * This makes them satisfy the `Formattable` concept, and thus usable in
+ * \ref format_sql and similar functions.
  * \n
  * A `formatter` specialization for a type `T` should have the following form:
  * ```
- * template <> struct formatter<MyType> {
- *     static void format(const MyType&, format_context_base&);
- * }
+ * template <>
+ * struct formatter<T>
+ * {
+ *     const char* parse(const char* begin, const char* end); // parse format specs
+ *     void format(const T& value, format_context_base& ctx) const; // perform the actual formatting
+ * };
  * ```
  * \n
+ * When a value with a custom formatter is formatted (using \ref format_sql or a similar
+ * function), the library performs the following actions: \n
+ *   - An instance of `formatter<T>` is default-constructed, where `T` is the type of the
+ *     value being formatted after removing const and references.
+ *   - The `parse` function is invoked on the constructed instance,
+ *     with `[begin, end)` pointing to the format specifier
+ *     that the current replacement field has. If `parse` finds specifiers it understands, it should
+ *     remember them, usually setting some flag in the `formatter` instance.
+ *     `parse` must return an iterator to the first
+ *     unparsed character in the range (or the `end` iterator, if everything was parsed).
+ *     Some examples of what would get passed to `parse`:
+ *       - In `"SELECT {}"`, the range would be empty.
+ *       - In `"SELECT {:abc}"`, the range would be `"abc"`.
+ *       - In `"SELECT {0:i}"`, the range would be `"i"`.
+ *   - If `parse` didn't manage to parse all the passed specifiers (i.e. if it returned an iterator
+ *     different to the passed's end), a \ref client_errc::format_string_invalid_specifier
+ *     is emitted and the format operation finishes.
+ *   - Otherwise, `format` is invoked on the formatter instance, passing the value to be formatted
+ *     and the \ref format_context_base where format operation is running.
+ *     This function should perform the actual formatting, usually calling
+ *     \ref format_sql_to on the passed context.
+ *
+ * \n
  * Don't specialize `formatter` for built-in types, like `int`, `std::string` or
- * optionals (formally, any type satisfying `WritableField`). This is not supported
- * and will result in a compile-time error.
+ * optionals (formally, any type satisfying `WritableField`), as the specializations will be ignored.
  */
 template <class T>
 struct formatter
@@ -200,7 +157,7 @@ class format_context_base
     friend class detail::format_state;
 #endif
 
-    BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg);
+    BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg, string_view format_spec);
 
 protected:
     format_context_base(detail::output_string_ref out, format_options opts, error_code ec = {}) noexcept
@@ -222,12 +179,14 @@ protected:
 
 public:
     /**
-     * \brief Adds raw SQL to the output string.
+     * \brief Adds raw SQL to the output string (low level).
      * \details
      * Adds raw, unescaped SQL to the output string. Doesn't alter the error state.
      * \n
      * By default, the passed SQL should be available at compile-time.
      * Use \ref runtime if you need to use runtime values.
+     * \n
+     * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
@@ -242,13 +201,15 @@ public:
     }
 
     /**
-     * \brief Formats a value and adds it to the output string.
+     * \brief Formats a value and adds it to the output string (low level).
      * \details
-     * value is formatted according to its type. If formatting
-     * generates an error (for instance, a string with invalid encoding is passed),
+     * value is formatted according to its type, applying the passed format specifiers.
+     * If formatting generates an error (for instance, a string with invalid encoding is passed),
      * the error state may be set.
      * \n
      * The supplied type must satisfy the `Formattable` concept.
+     * \n
+     * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
@@ -258,12 +219,17 @@ public:
      * \li \ref client_errc::invalid_encoding if a string with byte sequences that can't be decoded
      *          with the current character set is passed.
      * \li \ref client_errc::unformattable_value if a NaN or infinity `float` or `double` is passed.
+     * \li \ref client_errc::format_string_invalid_specifier if `format_specifiers` includes
+     *          specifiers not supported by the type being formatted.
      * \li Any other error code that user-supplied formatter specializations may add using \ref add_error.
      */
     template <BOOST_MYSQL_FORMATTABLE Formattable>
-    format_context_base& append_value(const Formattable& v)
+    format_context_base& append_value(
+        const Formattable& value,
+        constant_string_view format_specifiers = string_view()
+    )
     {
-        format_arg(detail::make_format_value(v));
+        format_arg(detail::make_format_value(value), format_specifiers.get());
         return *this;
     }
 
@@ -428,13 +394,6 @@ public:
  */
 using format_context = basic_format_context<std::string>;
 
-template <>
-struct formatter<identifier>
-{
-    BOOST_MYSQL_DECL
-    static void format(const identifier& value, format_context_base& ctx);
-};
-
 // TODO: document properly
 // The default format function, used by \ref sequence unless otherwise specified.
 // Appends the passed value to the context, without performing any transformation.
@@ -519,6 +478,8 @@ struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
  *     that can't be decoded with the current character set.
  * \li \ref client_errc::unformattable_value if `args` contains a floating-point value
  *     that is NaN or infinity.
+ * \li \ref client_errc::format_string_invalid_specifier if a replacement field includes
+ *          a specifier not supported by the type being formatted.
  * \li Any other error generated by user-defined \ref formatter specializations.
  * \li \ref client_errc::format_string_invalid_syntax if `format_str` can't be parsed as
  *     a format string.
@@ -574,6 +535,8 @@ inline void format_sql_to(
  *     that can't be decoded with the current character set.
  * \li \ref client_errc::unformattable_value if `args` contains a floating-point value
  *     that is NaN or infinity.
+ * \li \ref client_errc::format_string_invalid_specifier if a replacement field includes
+ *          a specifier not supported by the type being formatted.
  * \li Any other error generated by user-defined \ref formatter specializations.
  * \li \ref client_errc::format_string_invalid_syntax if `format_str` can't be parsed as
  *     a format string.

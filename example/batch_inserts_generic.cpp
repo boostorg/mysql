@@ -77,17 +77,15 @@ using public_members = describe::describe_members<T, describe::mod_public | desc
 template <class T>
 constexpr std::size_t num_public_members = mp11::mp_size<public_members<T>>::value;
 
-// Gets the member names of a struct, as an array of identifiers.
+// Gets the member names of a struct, as an array of strings.
 // For employee, generates
-// {identifier("first_name"), identifier("last_name"), identifier("company_id"), identifier("salary")}
+// {"first_name", "last_name", "company_id", "salary"}
 template <class T>
-constexpr std::array<boost::mysql::identifier, num_public_members<T>> get_field_names()
+constexpr std::array<string_view, num_public_members<T>> get_field_names()
 {
     return mp11::tuple_apply(
         [](auto... descriptors) {
-            return std::array<boost::mysql::identifier, num_public_members<T>>{
-                boost::mysql::identifier(descriptors.name)...
-            };
+            return std::array<string_view, num_public_members<T>>{{descriptors.name...}};
         },
         mp11::mp_rename<public_members<T>, std::tuple>()
     );
@@ -175,7 +173,13 @@ void main_impl(int argc, char** argv)
     std::string query = boost::mysql::format_sql(
         conn.format_opts().value(),
         "INSERT INTO employee ({}) VALUES {}",
-        boost::mysql::sequence(get_field_names<employee>()),
+        // TODO: could we support {::i} ?
+        boost::mysql::sequence(
+            get_field_names<employee>(),
+            [](string_view v, boost::mysql::format_context_base& ctx) {
+                boost::mysql::format_sql_to(ctx, "{:i}", v);
+            }
+        ),
         boost::mysql::sequence(values, insert_struct_format_fn())
     );
 
