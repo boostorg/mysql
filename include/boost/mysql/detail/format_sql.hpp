@@ -191,9 +191,9 @@ struct format_arg_value
 template <class T, bool is_rng>
 format_arg_value make_format_value_impl(
     const T& v,
-    std::true_type,             // convertible to string view
-    std::true_type,             // if it's convertible to string_view, it will be a writable field, too
-    std::bool_constant<is_rng>  // is formattable range: we don't care
+    std::true_type,  // convertible to string view
+    std::true_type,  // if it's convertible to string_view, it will be a writable field, too
+    std::integral_constant<bool, is_rng>  // is formattable range: we don't care
 ) noexcept
 {
     return {format_arg_value::type_t::string, string_view(v)};
@@ -203,9 +203,9 @@ format_arg_value make_format_value_impl(
 template <class T, bool is_rng>
 format_arg_value make_format_value_impl(
     const T& v,
-    std::false_type,            // convertible to string view
-    std::true_type,             // is_writable_field
-    std::bool_constant<is_rng>  // is formattable range: we don't care
+    std::false_type,                      // convertible to string view
+    std::true_type,                       // is_writable_field
+    std::integral_constant<bool, is_rng>  // is formattable range: we don't care
 ) noexcept
 {
     return {format_arg_value::type_t::field, to_field(v)};
