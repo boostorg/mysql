@@ -112,7 +112,7 @@ struct insert_struct_format_fn
         );
 
         // Format them as a comma-separated sequence
-        boost::mysql::format_sql_to(ctx, "({})", boost::mysql::sequence(args));
+        boost::mysql::format_sql_to(ctx, "({})", args);
     }
 };
 

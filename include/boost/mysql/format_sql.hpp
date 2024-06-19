@@ -423,15 +423,15 @@ struct format_sequence_view
     constant_string_view glue;
 };
 
-template <class FormatFn, BOOST_MYSQL_FORMATTABLE_RANGE(FormatFn) FormattableRange>
-auto sequence(FormattableRange&& range, FormatFn fn, constant_string_view glue = ", ")
+template <class Range, BOOST_MYSQL_FORMAT_FN_FOR_RANGE(Range) FormatFn>
+auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
     -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
 {
     return {std::begin(range), std::end(range), std::move(fn), glue};
 }
 
-template <BOOST_MYSQL_FORMATTABLE_RANGE(default_format_function) FormattableRange>
-auto sequence(FormattableRange&& range, constant_string_view glue = ", ")
+template <class Range>
+auto sequence(Range&& range, constant_string_view glue = ", ")
     -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), default_format_function>
 {
     return {std::begin(range), std::end(range), default_format_function(), glue};
@@ -440,7 +440,9 @@ auto sequence(FormattableRange&& range, constant_string_view glue = ", ")
 template <class It, class Sentinel, class FormatFn>
 struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
 {
-    static void format(const format_sequence_view<It, Sentinel, FormatFn>& value, format_context_base& ctx)
+    const char* parse(const char* begin, const char*) { return begin; }
+
+    void format(const format_sequence_view<It, Sentinel, FormatFn>& value, format_context_base& ctx) const
     {
         bool is_first = true;
         for (auto it = value.it; it != value.sentinel; ++it)
@@ -578,6 +580,29 @@ inline std::string format_sql(
 
 }  // namespace mysql
 }  // namespace boost
+
+// Definitions
+template <class T>
+bool boost::mysql::detail::format_custom_arg::do_format_range(
+    const void* obj,
+    const char* spec_begin,
+    const char* spec_end,
+    format_context_base& ctx
+)
+{
+    if (spec_begin != spec_end)
+        return false;
+    const auto& value = *static_cast<const T*>(obj);
+    bool is_first = true;
+    for (auto it = std::begin(value); it != std::end(value); ++it)
+    {
+        if (!is_first)
+            ctx.append_raw(", ");
+        is_first = false;
+        ctx.append_value(*it);
+    }
+    return true;
+}
 
 #ifdef BOOST_MYSQL_HEADER_ONLY
 #include <boost/mysql/impl/format_sql.ipp>
