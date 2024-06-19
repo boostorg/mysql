@@ -111,24 +111,13 @@ concept format_fn_for_range = requires(Range&& range, const FormatFn& format_fn,
 
 #endif
 
-// A type-erased custom argument passed to format, invoking formatter<T>::format
+// A type-erased custom argument passed to format
 struct format_custom_arg
 {
     const void* obj;
     bool (*format_fn)(const void*, const char*, const char*, format_context_base&);
 
-    template <class T>
-    static format_custom_arg create(const T& obj) noexcept
-    {
-        return {&obj, &do_format<T>};
-    }
-
-    template <class T>
-    static format_custom_arg create_range(const T& obj)
-    {
-        return {&obj, &do_format_range<T>};
-    }
-
+    // To use with arguments with a custom formatter
     template <class T>
     static bool do_format(
         const void* obj,
@@ -147,7 +136,13 @@ struct format_custom_arg
         return true;
     }
 
-    // TODO: refactor this
+    template <class T>
+    static format_custom_arg create_custom_formatter(const T& obj) noexcept
+    {
+        return {&obj, &do_format<T>};
+    }
+
+    // To use with ranges
     // Definition depends on format_context_base
     template <class T>
     static bool do_format_range(
@@ -156,6 +151,12 @@ struct format_custom_arg
         const char* spec_end,
         format_context_base& ctx
     );
+
+    template <class T>
+    static format_custom_arg create_range(const T& obj)
+    {
+        return {&obj, &do_format_range<T>};
+    }
 };
 
 // A type-erased argument passed to format. Built-in types are passed
@@ -232,7 +233,7 @@ format_arg_value make_format_value_impl(
     std::false_type   // is formattable range
 ) noexcept
 {
-    return {format_arg_value::type_t::custom, format_custom_arg::create(v)};
+    return {format_arg_value::type_t::custom, format_custom_arg::create_custom_formatter(v)};
 }
 
 template <class T>
