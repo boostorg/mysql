@@ -632,7 +632,7 @@ using async_connect_t = decltype(std::declval<connection_impl&>().async_connect(
 ));
 
 template <class CompletionToken>
-using async_connect_v2_t = decltype(std::declval<connection_impl&>().async_connect(
+using async_connect_v2_t = decltype(std::declval<connection_impl&>().async_connect_v2(
     std::declval<const connect_params&>(),
     std::declval<diagnostics&>(),
     std::declval<CompletionToken>()
