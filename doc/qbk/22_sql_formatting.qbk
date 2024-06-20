@@ -77,11 +77,7 @@ strings, blobs, dates and times:
 
 Collections and ranges are supported, as long as its elements can be formatted:
 
-```
-std::vector<long> ids {1, 5, 20};
-std::string query = format_sql(opts, "SELECT * FROM employee WHERE id IN ({})", ids);
-BOOST_TEST(query == "SELECT * FROM employee WHERE id IN (1, 5, 20)");
-```
+[sql_formatting_ranges]
 
 See [link mysql.sql_formatting.ranges this section] for more on formatting ranges,
 and [link mysql.sql_formatting.reference this table] for a reference of types
@@ -145,47 +141,11 @@ The [reflink sequence] function can be used when the default range formatting is
 If the elements in your range are not formattable, you can pass a user-defined function to `sequence`
 describing how to format each element:
 
-```
-// Employee is a plain struct, not formattable by default
-std::vector<employee> emps { {"John", "HGS" }, { "Doe", "AWC" } };
-std::string query = format_sql(
-    opts,
-    "INSERT INTO employee (first_name, company_id) VALUES {}",
-    sequence(
-        emps,
-        [](const employee& e, format_context_base& ctx) {
-            // This function will be called for each element in emps,
-            // and should format a single element into the passed ctx.
-            // Commas will be inserted separating elements.
-            format_sql_to(ctx, "({}, {})", e.first_name, e.company_id);
-        }
-    )
-);
-BOOST_TEST(query == "INSERT INTO employee (first_name, company_id) VALUES ('John', 'HGS'), ('Doe', 'AWC')");
-```
+[sql_formatting_sequence_1]
 
 By default, elements are separated by commas, but this is configurable:
 
-```
-// A collection of filters to apply to a query
-std::vector<std::pair<string_view, string_view>> filters {
-    { "company_id", "HGS" },
-    { "first_name", "John" },
-};
-
-std::string query = format_sql(opts, "SELECT * FROM employee WHERE {}",
-    sequence(
-        filters,
-        [](const std::pair<string_view, string_view>& f, format_context_base& ctx) {
-            // Compose a single filter
-            format_sql_to(ctx, "{:i} = {}", e.first, e.second);
-        },
-        " AND " // glue string: separate each element with AND clauses
-    )
-);
-
-BOOST_TEST(query == "SELECT * FROM employee WHERE `company_id` = 'HGS' AND `first_name` = 'John'");
-```
+[sql_formatting_sequence_2]
 
 
 
@@ -439,22 +399,7 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
             Specifiers can be applied to individual elements by prefixing them with a colon (`:`)
         ]
         [
-            ```
-            // long is a WritableField
-            std::vector<long> ids {1, 5, 20};
-            BOOST_TEST(format_sql(opts, "SELECT * FROM employee WHERE id IN ({})", ids) == 
-                "SELECT * FROM employee WHERE id IN (1, 5, 20)");
-            
-
-            // C++20 ranges and other custom ranges accepted
-            BOOST_TEST(format_sql(opts, "SELECT * FROM employee WHERE id IN ({})", ids | std::views::take(2)) == 
-                "SELECT * FROM employee WHERE id IN (1, 5)");
-            
-            // Apply the 'i' specifier to each element in the sequence
-            const string_view field_names [] = { "first_name", "last_name", "company_id" };
-            BOOST_TEST(format_sql(opts, "SELECT {::i} FROM employee", field_names) == 
-                "SELECT `first_name`, `last_name`, `company_id` FROM employee");
-            ```
+            [sql_formatting_reference_ranges]
         ]
     ]
     [
@@ -467,16 +412,7 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
             No format specifiers allowed
         ]
         [
-            ```
-            std::vector<employee> emps { {"John", "HGS" }, { "Doe", "AWC" } };
-            BOOST_TEST(format_sql(
-                opts,
-                "INSERT INTO employee (first_name, company_id) VALUES {}",
-                sequence(emps, [](const employee& e, format_context_base& ctx) {
-                    format_sql_to(ctx, "({}, {})", e.first_name, e.company_id);
-                })
-            ) == "INSERT INTO employee (first_name, company_id) VALUES ('John', 'HGS'), ('Doe', 'AWC')");
-            ```
+            [sql_formatting_reference_sequence]
         ]
     ]
     [
