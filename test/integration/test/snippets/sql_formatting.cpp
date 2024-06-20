@@ -44,43 +44,27 @@ static std::string get_name() { return "John"; }
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 //[sql_formatting_incremental_fn
-// Compose an update query that sets first_name, last_name, or both
-std::string compose_update_query(
+// Compose a query that retrieves all employees in a company,
+// with an optional limit
+std::string compose_select_query(
     boost::mysql::format_options opts,
-    std::int64_t employee_id,
-    std::optional<std::string> new_first_name,
-    std::optional<std::string> new_last_name
+    string_view company_id,
+    std::optional<long> limit
 )
 {
-    // There should be at least one update
-    assert(new_first_name || new_last_name);
-
     // format_context will accumulate the query as we compose it
     boost::mysql::format_context ctx(opts);
 
-    // append_raw adds raw SQL to the generated query, without quoting or escaping.
-    // You can only pass strings known at compile-time to append_raw,
-    // unless you use the runtime function.
-    ctx.append_raw("UPDATE employee SET ");
+    // format_sql_to expands a format string and appends the result
+    // to a format context. This way, we can build our query in smaller pieces
+    // Add all the query except for the LIMIT clause
+    boost::mysql::format_sql_to(ctx, "SELECT * FROM employee WHERE company_id = {}", company_id);
 
-    if (new_first_name)
+    if (limit)
     {
-        // format_sql_to expands a format string and appends the result
-        // to a format context. This way, we can build our query in small pieces
-        // Add the first_name update clause
-        boost::mysql::format_sql_to(ctx, "first_name = {}", *new_first_name);
+        // Add the LIMIT clause
+        boost::mysql::format_sql_to(ctx, " LIMIT {}", *limit);
     }
-    if (new_last_name)
-    {
-        if (new_first_name)
-            ctx.append_raw(", ");
-
-        // Add the last_name update clause
-        boost::mysql::format_sql_to(ctx, "last_name = {}", *new_last_name);
-    }
-
-    // Add the where clause
-    boost::mysql::format_sql_to(ctx, " WHERE id = {}", employee_id);
 
     // Retrieve the generated query string
     return std::move(ctx).get().value();
@@ -132,38 +116,6 @@ struct formatter<employee>
 //]
 
 namespace {
-
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-//[sql_formatting_unit_test
-// For reference, the function under test
-std::string compose_update_query(
-    boost::mysql::format_options opts,
-    std::int64_t employee_id,
-    std::optional<std::string> new_first_name,
-    std::optional<std::string> new_last_name
-);
-
-// Your test body
-void test_compose_update_query()
-{
-    // You can safely use these format_options for testing,
-    // since they are the most common ones.
-    boost::mysql::format_options opts{boost::mysql::utf8mb4_charset, true};
-
-    // Test for the different cases
-    BOOST_TEST(
-        compose_update_query(opts, 42, "Bob", {}) == "UPDATE employee SET first_name = 'Bob' WHERE id = 42"
-    );
-    BOOST_TEST(
-        compose_update_query(opts, 42, {}, "Alice") == "UPDATE employee SET last_name = 'Alice' WHERE id = 42"
-    );
-    BOOST_TEST(
-        compose_update_query(opts, 0, "Bob", "Alice") ==
-        "UPDATE employee SET first_name = 'Bob', last_name = 'Alice' WHERE id = 0"
-    );
-}
-//]
-#endif
 
 BOOST_AUTO_TEST_CASE(section_sql_formatting)
 {
@@ -296,15 +248,17 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
     {
         //[sql_formatting_incremental_use
-        std::string query = compose_update_query(conn.format_opts().value(), 42, "John", {});
-
+        std::string query = compose_select_query(conn.format_opts().value(), "HGS", {});
         BOOST_TEST(query == "UPDATE employee SET first_name = 'John' WHERE id = 42");
+        //<-
+        conn.execute(query, r);
+        //->
+
+        query = compose_select_query(conn.format_opts().value(), "HGS", 50);
+        BOOST_TEST(query == "UPDATE employee SET first_name = 'John' WHERE id = 42 LIMIT 50");
         //]
 
         conn.execute(query, r);
-    }
-    {
-        test_compose_update_query();
     }
 #endif
     {
