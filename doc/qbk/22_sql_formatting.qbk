@@ -402,7 +402,7 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     [
         [
             `boost::optional<T>` and `std::optional<T>`, `T` being one of the fundamental types above.[br]
-            Not applicable to custom types.[br]
+            Not applicable to custom types or ranges.[br]
             No format specifiers allowed
         ]
         [
@@ -426,16 +426,17 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     [
         [
             Range of formattable elements. Given a variable `t` of type `const T&`,
-            `T` is considered a range if:[br][br]
+            `T` is considered a range if:
+
             * `std::begin(t)` and `std::end(t)` return an iterator/sentinel pair and
-            * The type `*std::begin(t)` is a formattable type, but not a range
+            * Applying `std::decay_t` to the type of `*std::begin(t)` yields a formattable type, but not a range
               of formattable elements.
             * `T` does not satisfy [reflink2 WritableFieldTuple WritableField] (i.e. `vector<unsigned char>` is
                formatted as a blob, not as a sequence).
         ]
         [
             Formats each element in the range, separating elements with commas.[br]
-            Specifiers can be applied to individual elements by prefixing them with `:`
+            Specifiers can be applied to individual elements by prefixing them with a colon (`:`)
         ]
         [
             ```
