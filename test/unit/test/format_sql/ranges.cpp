@@ -38,48 +38,6 @@ BOOST_AUTO_TEST_SUITE(test_format_sql_ranges)
 constexpr format_options opts{utf8mb4_charset, true};
 constexpr const char* single_fmt = "SELECT {};";
 
-/**
-Regular ranges
-    Inner type
-        All individual writable field
-        optionals
-        field_view, field
-        Custom types
-    Range type
-        vector, C array, std::array
-        test these with u8
-        forward_list (forward iterator)
-        something with input iterators?
-        row, row_view
-        vector<bool>
-        filter
-        not a common range
-    Number of elements
-        0 elements
-        1 elements
-        more elements
-    Specifiers success
-        vector of string-like
-        weird range of string-like
-        vector of field_views containing strings
-        empty specs OK, does nothing
-            :
-            ::
-        specifiers get passed to custom types
-        specifiers errors
-            :abc
-            :abc:
-            :abc:i
-            ::unknown
-        move these to format_strings?
-            :abc:{
-            :abc:}
-    error while formatting an element
-    formattable concept
-        range of ranges (e.g. rows) isn't formattable
-        optional<range> isn't formattable
- */
-
 BOOST_AUTO_TEST_CASE(elm_integral)
 {
     // Note: unsigned char is formatted as a blob, instead
@@ -119,6 +77,12 @@ BOOST_AUTO_TEST_CASE(elm_string)
         format_sql(opts, single_fmt, std::vector<std::string_view>{"abc", "buf"}) == "SELECT 'abc', 'buf';"
     );
 #endif
+
+    // Specifiers handled correctly
+    BOOST_TEST(
+        format_sql(opts, "FROM {::i};", std::vector<const char*>{"abc", "buf"}) == "FROM `abc`, `buf`;"
+    );
+    BOOST_TEST(format_sql(opts, "FROM {::r};", std::vector<string_view>{"SELECT", "*"}) == "FROM SELECT, *;");
 }
 
 BOOST_AUTO_TEST_CASE(elm_blob)
@@ -188,5 +152,53 @@ BOOST_AUTO_TEST_CASE(elm_std_optional)
     BOOST_TEST(format_sql(opts, single_fmt, optionals) == "SELECT 'abc', NULL, 'd';");
 }
 #endif
+
+BOOST_AUTO_TEST_CASE(elm_custom_type)
+{
+    std::vector<custom::condition> conds{
+        {"f1", 42},
+        {"f2", 60},
+    };
+
+    BOOST_TEST(format_sql(opts, single_fmt, conds) == "SELECT `f1`=42, `f2`=60;");
+
+    // Specifiers are correctly passed to custom types
+    BOOST_TEST(format_sql(opts, "SELECT {::s};", conds) == "SELECT `f1` = 42, `f2` = 60;");
+}
+
+/**
+Regular ranges
+    Range type
+        vector, C array, std::array
+        test these with u8
+        forward_list (forward iterator)
+        something with input iterators?
+        row, row_view
+        vector<bool>
+        filter
+        not a common range
+    Number of elements
+        0 elements
+        1 elements
+        more elements
+    Specifiers success
+        weird range of string-like
+        vector of field_views containing strings
+        empty specs OK, does nothing
+            :
+            ::
+        specifiers errors
+            :abc
+            :abc:
+            :abc:i
+            ::unknown
+        move these to format_strings?
+            :abc:{
+            :abc:}
+    error while formatting an element
+    formattable concept
+        range of ranges (e.g. rows) isn't formattable
+        optional<range> isn't formattable
+ */
 
 BOOST_AUTO_TEST_SUITE_END()
