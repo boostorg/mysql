@@ -437,7 +437,7 @@ struct format_sequence_view
  */
 template <class Range, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
-    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<Range, FormatFn>
+    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, Range>
 #endif
 auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
     -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
