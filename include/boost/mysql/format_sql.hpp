@@ -428,12 +428,21 @@ struct format_sequence_view
  * between consecutive invocations of the formatter function, generating an effect
  * similar to `std::ranges::views::join`.
  * \n
- * Type requirements: \n
+ * \par Type requirements
  *   - Type `FormatFn` should be move constructible.
  *   - Expressions `std::begin(range)` and `std::end(range)` should return an iterator/sentinel
  *     pair that can be compared for (in)equality.
  *   - The expression `fn(*std::begin(range), ctx)` should be well formed, with `ctx` begin
  *     a `format_context_base&`.
+ *
+ * \par Object lifetimes
+ * The input range is stored in \ref format_sequence_view as a view, using an iterator/sentinel pair,
+ * and is never copied. The caller must make sure that the elements pointed by the obtained
+ * iterator/sentinel are kept alive until the view is formatted.
+ *
+ * \par Exception safety
+ * Strong-throw guarantee. Throws any exception that `std::begin`, `std::end`
+ * or move-constructing `FormatFn` may throw.
  */
 template <class Range, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
