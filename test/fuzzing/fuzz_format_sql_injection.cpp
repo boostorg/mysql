@@ -8,6 +8,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/format_sql.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/asio/io_context.hpp>

@@ -134,7 +134,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
             case next_connection_action::connect:
                 run_with_timeout(
                     node_.conn_
-                        .async_connect(&node_.params_->connect_config, node_.connect_diag_, asio::deferred),
+                        .async_connect(node_.params_->connect_config, node_.connect_diag_, asio::deferred),
                     node_.timer_,
                     node_.params_->connect_timeout,
                     std::move(self)

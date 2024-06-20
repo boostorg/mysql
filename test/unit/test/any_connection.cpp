@@ -10,6 +10,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/results.hpp>
 
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/io_context.hpp>
@@ -105,7 +106,6 @@ void deferred_spotcheck()
 
     (void)conn.async_connect(params, deferred);
     (void)conn.async_connect(params, diag, deferred);
-    (void)conn.async_connect(&params, diag, deferred);
 
     (void)conn.async_execute("SELECT 1", result, deferred);
     (void)conn.async_execute(str, result, deferred);

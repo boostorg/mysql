@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_VARIANT_STREAM_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_VARIANT_STREAM_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -58,7 +59,7 @@ public:
 
     bool supports_ssl() const { return true; }
 
-    void set_endpoint(const void* value) { address_ = *static_cast<const any_address_view*>(value); }
+    void set_endpoint(const void* value) { address_ = static_cast<const any_address*>(value); }
 
     // Executor
     using executor_type = asio::any_io_executor;
@@ -196,13 +197,13 @@ public:
         if (ec)
             return;
 
-        if (address_.type == address_type::host_and_port)
+        if (address_->type() == address_type::host_and_port)
         {
             // Resolve endpoints
             auto& tcp_sock = variant2::unsafe_get<1>(sock_);
             auto endpoints = tcp_sock.resolv.resolve(
-                cast_asio_sv_param(address_.address),
-                std::to_string(address_.port),
+                cast_asio_sv_param(address_->hostname()),
+                std::to_string(address_->port()),
                 ec
             );
             if (ec)
@@ -214,11 +215,11 @@ public:
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else
         {
-            BOOST_ASSERT(address_.type == address_type::unix_path);
+            BOOST_ASSERT(address_->type() == address_type::unix_path);
 
             // Just connect the stream
             auto& unix_sock = variant2::unsafe_get<2>(sock_);
-            unix_sock.connect(cast_asio_sv_param(address_.address), ec);
+            unix_sock.connect(cast_asio_sv_param(address_->unix_socket_path()), ec);
         }
 #endif
     }
@@ -256,7 +257,7 @@ private:
     using unix_socket = asio::local::stream_protocol::socket;
 #endif
 
-    any_address_view address_;
+    const any_address* address_{};
     asio::any_io_executor ex_;
     variant2::variant<
         variant2::monostate,
@@ -272,13 +273,13 @@ private:
 
     error_code setup_stream()
     {
-        if (address_.type == address_type::host_and_port)
+        if (address_->type() == address_type::host_and_port)
         {
             // Clean up any previous state
             sock_.emplace<socket_and_resolver>(ex_);
         }
 
-        else if (address_.type == address_type::unix_path)
+        else if (address_->type() == address_type::unix_path)
         {
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
             // Clean up any previous state
@@ -330,7 +331,7 @@ private:
                     return;
                 }
 
-                if (this_obj_.address_.type == address_type::host_and_port)
+                if (this_obj_.address_->type() == address_type::host_and_port)
                 {
                     // Resolve endpoints
                     BOOST_MYSQL_YIELD(
@@ -338,8 +339,8 @@ private:
                         2,
                         variant2::unsafe_get<1>(this_obj_.sock_)
                             .resolv.async_resolve(
-                                cast_asio_sv_param(this_obj_.address_.address),
-                                std::to_string(this_obj_.address_.port),
+                                cast_asio_sv_param(this_obj_.address_->hostname()),
+                                std::to_string(this_obj_.address_->port()),
                                 std::move(self)
                             )
                     )
@@ -361,14 +362,17 @@ private:
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
                 else
                 {
-                    BOOST_ASSERT(this_obj_.address_.type == address_type::unix_path);
+                    BOOST_ASSERT(this_obj_.address_->type() == address_type::unix_path);
 
                     // Just connect the stream
                     BOOST_MYSQL_YIELD(
                         resume_point_,
                         4,
                         variant2::unsafe_get<2>(this_obj_.sock_)
-                            .async_connect(cast_asio_sv_param(this_obj_.address_.address), std::move(self))
+                            .async_connect(
+                                cast_asio_sv_param(this_obj_.address_->unix_socket_path()),
+                                std::move(self)
+                            )
                     )
 
                     self.complete(error_code());
