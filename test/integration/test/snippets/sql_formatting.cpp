@@ -15,6 +15,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/config.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/system/result.hpp>
 #include <boost/test/unit_test.hpp>
@@ -36,6 +37,13 @@
 #endif
 #ifdef __cpp_lib_ranges
 #include <ranges>
+#endif
+
+// libstdc++11 and below claim to support ranges, but basic piping fails to compile
+#ifdef __cpp_lib_ranges
+#if !defined(BOOST_LIBSTDCXX_VERSION) || BOOST_LIBSTDCXX_VERSION >= 120000
+#define BOOST_MYSQL_HAS_RANGES
+#endif
 #endif
 
 using namespace boost::mysql;
@@ -562,7 +570,7 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
 //->
 
 //<-
-#ifdef __cpp_lib_ranges
+#ifdef BOOST_MYSQL_HAS_RANGES
         BOOST_TEST(
             //->
             // C++20 ranges and other custom ranges accepted
