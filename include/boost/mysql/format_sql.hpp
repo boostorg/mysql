@@ -27,6 +27,9 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+#include <concepts>
+#endif
 
 namespace boost {
 namespace mysql {
@@ -394,24 +397,48 @@ public:
  */
 using format_context = basic_format_context<std::string>;
 
-// TODO: document properly
-// A formattable view type. Holds a range (as an iterator/sentinel pair),
-// a formatter function, and a glue string. Defines a custom formatter.
-// When formatted, the [it, sentinel) range is iterated, applying fn for each
-// element in the range. The string glue is output raw (as per \ref format_context_base::append_raw)
-// to the context between each invocation of fn, after the first one.
-// Can be used to generate glue-separated sequences.
-// See \ref sequence for appropriate adaptor functions
+/**
+ * \brief (EXPERIMENTAL) The return type of \ref sequence.
+ * \details
+ * Contains a range view (as an interator/sentinel pair), a formatter function, and a glue string.
+ * This type satisfies the `Formattable` concept. See \ref sequence for a detailed
+ * description of what formatting this class does.
+ * \n
+ * Don't instantiate this class directly - use \ref sequence, instead.
+ * The exact definition may vary between releases.
+ */
 template <class It, class Sentinel, class FormatFn>
 struct format_sequence_view
+#ifndef BOOST_MYSQL_DOXYGEN
 {
     It it;
     Sentinel sentinel;
     FormatFn fn;
     constant_string_view glue;
-};
+}
+#endif
+;
 
-template <class Range, BOOST_MYSQL_FORMAT_FN_FOR_RANGE(Range) FormatFn>
+/**
+ * \brief Makes a range formattable by supplying a per-element formatter function.
+ * \details
+ * Objects returned by this function satisfy `Formattable`.
+ * When formatted, the formatter function `fn` is invoked for each element
+ * in the range. The glue string `glue` is output raw (as per \ref format_context_base::append_raw)
+ * between consecutive invocations of the formatter function, generating an effect
+ * similar to `std::ranges::views::join`.
+ * \n
+ * Type requirements: \n
+ *   - Type `FormatFn` should be move constructible.
+ *   - Expressions `std::begin(range)` and `std::end(range)` should return an iterator/sentinel
+ *     pair that can be compared for (in)equality.
+ *   - The expression `fn(*std::begin(range), ctx)` should be well formed, with `ctx` begin
+ *     a `format_context_base&`.
+ */
+template <class Range, class FormatFn>
+#if defined(BOOST_MYSQL_HAS_CONCEPTS)
+    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<Range, FormatFn>
+#endif
 auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
     -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
 {
@@ -563,6 +590,7 @@ inline std::string format_sql(
 }  // namespace boost
 
 // Definitions
+#ifndef BOOST_MYSQL_DOXYGEN
 template <class T>
 bool boost::mysql::detail::format_custom_arg::do_format_range(
     const void* obj,
@@ -589,6 +617,7 @@ bool boost::mysql::detail::format_custom_arg::do_format_range(
     }
     return true;
 }
+#endif
 
 #ifdef BOOST_MYSQL_HEADER_ONLY
 #include <boost/mysql/impl/format_sql.ipp>

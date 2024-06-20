@@ -21,6 +21,10 @@
 #include <type_traits>
 #include <utility>
 
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+#include <concepts>
+#endif
+
 namespace boost {
 namespace mysql {
 
@@ -96,18 +100,17 @@ concept formattable =
     is_formattable_range<T>::value;
 
 template <class FormatFn, class Range>
-concept format_fn_for_range = requires(Range&& range, const FormatFn& format_fn, format_context_base& ctx) {
+concept format_fn_for_range = requires(Range&& range, FormatFn& format_fn, format_context_base& ctx) {
+    { std::begin(range) != std::end(range) } -> std::convertible_to<bool>;
     format_fn(*std::begin(range), ctx);
     std::end(range);
 };
 
 #define BOOST_MYSQL_FORMATTABLE ::boost::mysql::detail::formattable
-#define BOOST_MYSQL_FORMAT_FN_FOR_RANGE(Range) ::boost::mysql::detail::format_fn_for_range<Range>
 
 #else
 
 #define BOOST_MYSQL_FORMATTABLE class
-#define BOOST_MYSQL_FORMAT_FN_FOR_RANGE(Range) class
 
 #endif
 
