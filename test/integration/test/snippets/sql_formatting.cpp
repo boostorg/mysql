@@ -264,13 +264,13 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
     {
         //[sql_formatting_incremental_use
         std::string query = compose_select_query(conn.format_opts().value(), "HGS", {});
-        BOOST_TEST(query == "UPDATE employee SET first_name = 'John' WHERE id = 42");
+        BOOST_TEST(query == "SELECT * FROM employee WHERE company_id = 'HGS'");
         //<-
         conn.execute(query, r);
         //->
 
         query = compose_select_query(conn.format_opts().value(), "HGS", 50);
-        BOOST_TEST(query == "UPDATE employee SET first_name = 'John' WHERE id = 42 LIMIT 50");
+        BOOST_TEST(query == "SELECT * FROM employee WHERE company_id = 'HGS' LIMIT 50");
         //]
 
         conn.execute(query, r);
