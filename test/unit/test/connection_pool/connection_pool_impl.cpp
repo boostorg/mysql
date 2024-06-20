@@ -204,11 +204,10 @@ public:
     }
 
     template <class CompletionToken>
-    auto async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
+    auto async_connect(const connect_params& params, diagnostics& diag, CompletionToken&& token)
         -> decltype(impl_.op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token)))
     {
-        BOOST_TEST(params != nullptr);
-        last_connect_params = *params;
+        last_connect_params = params;
         return impl_.op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token));
     }
 

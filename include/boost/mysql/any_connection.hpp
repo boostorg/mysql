@@ -8,15 +8,14 @@
 #ifndef BOOST_MYSQL_ANY_CONNECTION_HPP
 #define BOOST_MYSQL_ANY_CONNECTION_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/results.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -29,15 +28,12 @@
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/pipeline_concepts.hpp>
+#include <boost/mysql/detail/ssl_fwd.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/consign.hpp>
-#include <boost/asio/execution_context.hpp>
-#include <boost/asio/ssl/context.hpp>
 #include <boost/assert.hpp>
 #include <boost/system/result.hpp>
-#include <boost/variant2/variant.hpp>
 
 #include <cstddef>
 #include <memory>
@@ -124,11 +120,6 @@ class any_connection
 
     BOOST_MYSQL_DECL
     static std::unique_ptr<detail::engine> create_engine(asio::any_io_executor ex, asio::ssl::context* ctx);
-
-    template <class CompletionToken>
-    using async_connect_owning_t = detail::async_connect_t<
-        detail::any_address_view,
-        decltype(asio::consign(std::declval<CompletionToken>(), std::unique_ptr<char[]>()))>;
 
     // Used by tests
     any_connection(std::size_t initial_read_buffer_size, std::unique_ptr<detail::engine> eng)
@@ -348,7 +339,7 @@ public:
      */
     void connect(const connect_params& params, error_code& ec, diagnostics& diag)
     {
-        impl_.connect(detail::make_view(params.server_address), detail::make_hparams(params), ec, diag);
+        impl_.connect_v2(params, ec, diag);
     }
 
     /// \copydoc connect
@@ -364,61 +355,25 @@ public:
      * \copydoc connect
      *
      * \par Object lifetimes
-     * The implementation will copy `params` as required, so it needs not be
-     * kept alive.
+     * params needs to be kept alive until the operation completes, as no
+     * copies will be made by the library.
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_connect(const connect_params& params, diagnostics& diag, CompletionToken&& token)
-        BOOST_MYSQL_RETURN_TYPE(async_connect_owning_t<CompletionToken&&>)
+        BOOST_MYSQL_RETURN_TYPE(detail::async_connect_v2_t<CompletionToken&&>)
     {
-        auto stable_prms = detail::make_stable(params);
-        return impl_.async_connect(
-            stable_prms.address,
-            stable_prms.hparams,
-            diag,
-            asio::consign(std::forward<CompletionToken>(token), std::move(stable_prms.string_buffer))
-        );
+        return impl_.async_connect_v2(params, diag, std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_connect
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_connect(const connect_params& params, CompletionToken&& token)
-        BOOST_MYSQL_RETURN_TYPE(async_connect_owning_t<CompletionToken&&>)
+        BOOST_MYSQL_RETURN_TYPE(detail::async_connect_v2_t<CompletionToken&&>)
     {
         return async_connect(params, impl_.shared_diag(), std::forward<CompletionToken>(token));
-    }
-
-    /**
-     * \copydoc connect
-     * This function has the same behavior as the other `async_connect` overloads,
-     * but perform less copies.
-     * \par Object lifetimes
-     * Zero-copy overload: no copies of the value pointed to by `params`
-     * will be made. It must be kept alive for the duration of the operation,
-     * until the final completion handler is called. If you are in doubt,
-     * prefer the overloads taking a `const connect_params&`, which will ensure
-     * lifetime correctness for you.
-     *
-     * \par Preconditions
-     * `params != nullptr`
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
-    auto async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
-        BOOST_MYSQL_RETURN_TYPE(detail::async_connect_t<detail::any_address_view, CompletionToken&&>)
-    {
-        BOOST_ASSERT(params != nullptr);
-        return impl_.async_connect(
-            detail::make_view(params->server_address),
-            detail::make_hparams(*params),
-            diag,
-            std::forward<CompletionToken>(token)
-        );
     }
 
     /// \copydoc connection::execute

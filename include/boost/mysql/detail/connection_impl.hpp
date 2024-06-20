@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 
 #include <boost/mysql/any_address.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
@@ -252,25 +253,18 @@ class connection_impl
     };
 
     // Connect
-    static connect_algo_params make_params_connect(
-        diagnostics& diag,
-        const handshake_params& params,
-        bool secure_channel
-    )
+    static connect_algo_params make_params_connect(diagnostics& diag, const handshake_params& params)
     {
-        return connect_algo_params{&diag, params, secure_channel};
+        return connect_algo_params{&diag, params, false};
     }
 
-    // TODO: can we make this better?
-    template <class EndpointType>
-    static bool is_secure_channel(const EndpointType&)
+    static connect_algo_params make_params_connect_v2(diagnostics& diag, const connect_params& params)
     {
-        return false;
-    }
-
-    static bool is_secure_channel(const any_address_view& addr)
-    {
-        return addr.type == address_type::unix_path;
+        return connect_algo_params{
+            &diag,
+            make_hparams(params),
+            params.server_address.type() == address_type::unix_path
+        };
     }
 
     template <class EndpointType>
@@ -287,12 +281,23 @@ class connection_impl
         )
         {
             eng->set_endpoint(&endpoint);
-            async_run_impl(
-                *eng,
-                *st,
-                make_params_connect(*diag, params, is_secure_channel(endpoint)),
-                std::forward<Handler>(handler)
-            );
+            async_run_impl(*eng, *st, make_params_connect(*diag, params), std::forward<Handler>(handler));
+        }
+    };
+
+    struct initiate_connect_v2
+    {
+        template <class Handler>
+        void operator()(
+            Handler&& handler,
+            engine* eng,
+            connection_state* st,
+            const connect_params* params,
+            diagnostics* diag
+        )
+        {
+            eng->set_endpoint(&params->server_address);
+            async_run_impl(*eng, *st, make_params_connect_v2(*diag, *params), std::forward<Handler>(handler));
         }
     };
 
@@ -400,7 +405,13 @@ public:
     )
     {
         engine_->set_endpoint(&endpoint);
-        run(make_params_connect(diag, params, is_secure_channel(endpoint)), err);
+        run(make_params_connect(diag, params), err);
+    }
+
+    void connect_v2(const connect_params& params, error_code& err, diagnostics& diag)
+    {
+        engine_->set_endpoint(&params.server_address);
+        run(make_params_connect_v2(diag, params), err);
     }
 
     template <class EndpointType, class CompletionToken>
@@ -427,6 +438,27 @@ public:
             st_.get(),
             endpoint,
             params,
+            &diag
+        );
+    }
+
+    template <class CompletionToken>
+    auto async_connect_v2(const connect_params& params, diagnostics& diag, CompletionToken&& token)
+        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
+            initiate_connect_v2(),
+            token,
+            engine_.get(),
+            st_.get(),
+            &params,
+            &diag
+        ))
+    {
+        return asio::async_initiate<CompletionToken, void(error_code)>(
+            initiate_connect_v2(),
+            token,
+            engine_.get(),
+            st_.get(),
+            &params,
             &diag
         );
     }
@@ -595,6 +627,13 @@ template <class EndpointType, class CompletionToken>
 using async_connect_t = decltype(std::declval<connection_impl&>().async_connect(
     std::declval<const EndpointType&>(),
     std::declval<const handshake_params&>(),
+    std::declval<diagnostics&>(),
+    std::declval<CompletionToken>()
+));
+
+template <class CompletionToken>
+using async_connect_v2_t = decltype(std::declval<connection_impl&>().async_connect_v2(
+    std::declval<const connect_params&>(),
     std::declval<diagnostics&>(),
     std::declval<CompletionToken>()
 ));

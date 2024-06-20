@@ -111,7 +111,7 @@ public:
             while (true)
             {
                 BOOST_ASIO_CORO_YIELD
-                conn_.async_connect(params_, diag_, [this](error_code ec) { resume(ec); });
+                conn_.async_connect(*params_, diag_, [this](error_code ec) { resume(ec); });
 
                 BOOST_ASIO_CORO_YIELD
                 conn_.async_prepare_statement(

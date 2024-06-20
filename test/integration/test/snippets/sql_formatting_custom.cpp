@@ -9,6 +9,7 @@
 // Having it separate avoids problems
 
 #include <boost/mysql/format_sql.hpp>
+#include <boost/mysql/results.hpp>
 
 #include <boost/test/unit_test.hpp>
 
