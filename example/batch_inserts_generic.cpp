@@ -105,7 +105,7 @@ struct insert_struct_format_fn
         auto args = mp11::tuple_apply(
             [&value](auto... descriptors) {
                 return std::array<boost::mysql::field_view, num_public_members<T>>{
-                    boost::mysql::field_view(value.*descriptors.pointer)...
+                    {boost::mysql::field_view(value.*descriptors.pointer)...}
                 };
             },
             mp11::mp_rename<public_members<T>, std::tuple>()
