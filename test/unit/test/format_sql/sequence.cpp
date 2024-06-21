@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -17,13 +18,16 @@
 #include <type_traits>
 #include <vector>
 
+#include "format_common.hpp"
 #include "test_common/has_ranges.hpp"
+#include "test_common/printing.hpp"
 
 #ifdef BOOST_MYSQL_HAS_RANGES
 #include <ranges>
 #endif
 
 using namespace boost::mysql;
+using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_format_sql_sequence)
 
@@ -158,13 +162,33 @@ BOOST_AUTO_TEST_CASE(num_elms)
     BOOST_TEST(format_sql(opts, single_fmt, sequence(std::vector<int>{1}, fmt_as_str)) == "SELECT '1';");
 }
 
+//
+// Error cases
+//
+BOOST_AUTO_TEST_CASE(error_nonempty_spec)
+{
+    constant_string_view test_cases[] = {
+        "{:i}",
+        "{:other}",
+        "{::}",
+        "{::i}",
+        "{:i:}",
+        "{:i:i}",
+    };
+
+    for (auto fmt : test_cases)
+    {
+        BOOST_TEST_CONTEXT(fmt.get())
+        {
+            BOOST_TEST(
+                format_single_error(fmt, sequence(std::vector<int>{10}, fmt_as_str)) ==
+                client_errc::format_string_invalid_specifier
+            );
+        }
+    }
+}
+
 /**
-errors
-    spec
-        {::}
-        {:i}
-        {::i}
-        {:other}
     error formatting elements
  */
 
