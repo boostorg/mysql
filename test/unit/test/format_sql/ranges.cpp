@@ -240,14 +240,20 @@ BOOST_AUTO_TEST_CASE(vector_of_bool)
     BOOST_TEST(format_sql(opts, single_fmt, values) == "SELECT 1, 0;");
 }
 
-//
 // Different number of elements
-//
 BOOST_AUTO_TEST_CASE(num_elms)
 {
     BOOST_TEST(format_sql(opts, single_fmt, std::vector<long>{}) == "SELECT ;");
     BOOST_TEST(format_sql(opts, single_fmt, std::vector<long>{10}) == "SELECT 10;");
     BOOST_TEST(format_sql(opts, single_fmt, std::vector<long>{1, 2, 3, 4}) == "SELECT 1, 2, 3, 4;");
+}
+
+// Empty specs do nothing
+BOOST_AUTO_TEST_CASE(empty_specs)
+{
+    std::vector<const char*> elms{"abc", "def"};
+    BOOST_TEST(format_sql(opts, "SELECT {:};", elms) == "SELECT 'abc', 'def';");
+    BOOST_TEST(format_sql(opts, "SELECT {::};", elms) == "SELECT 'abc', 'def';");
 }
 
 //
@@ -290,9 +296,6 @@ BOOST_AUTO_TEST_CASE(error_parsing_spec)
 /**
 Regular ranges
     Specifiers success
-        empty specs OK, does nothing
-            :
-            ::
         move these to format_strings?
             :abc:{
             :abc:}
