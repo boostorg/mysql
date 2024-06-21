@@ -66,17 +66,19 @@ struct is_formattable_range : std::false_type
 {
 };
 
+// Note: T might be a reference.
+// Using T& + reference collapsing gets the right semantics for non-const ranges
 template <class T>
 struct is_formattable_range<
     T,
     typename std::enable_if<
         // std::begin and std::end can be called on it, and we can compare values
-        std::is_convertible<decltype(std::begin(std::declval<T>()) != std::end(std::declval<T>())), bool>::
+        std::is_convertible<decltype(std::begin(std::declval<T&>()) != std::end(std::declval<T&>())), bool>::
             value &&
 
         // value_type is either a writable field or a type with a specialized formatter.
         // We don't support sequences of sequences out of the box (no known use case)
-        is_writable_or_custom_formattable<decltype(*std::begin(std::declval<T>()))>()
+        is_writable_or_custom_formattable<decltype(*std::begin(std::declval<T&>()))>()
 
         // end of conditions
         >::type> : std::true_type
