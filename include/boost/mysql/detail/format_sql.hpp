@@ -45,15 +45,20 @@ struct formatter_is_unspecialized
 };
 
 template <class T>
-constexpr bool has_specialized_formatter() noexcept
+constexpr bool has_specialized_formatter()
 {
-    return !std::is_base_of<formatter_is_unspecialized, formatter<T>>::value;
+    return !std::is_base_of<formatter_is_unspecialized, formatter<typename std::decay<T>::type>>::value;
 }
+
+template <class T>
+struct is_writable_field_ref : is_writable_field<typename std::decay<T>::type>
+{
+};
 
 template <class T>
 constexpr bool is_writable_or_custom_formattable()
 {
-    return is_writable_field<T>::value || has_specialized_formatter<T>();
+    return is_writable_field_ref<T>::value || has_specialized_formatter<T>();
 }
 
 template <class T, class = void>
@@ -66,14 +71,12 @@ struct is_formattable_range<
     T,
     typename std::enable_if<
         // std::begin and std::end can be called on it, and we can compare values
-        std::is_convertible<
-            decltype(std::begin(std::declval<const T&>()) != std::end(std::declval<const T&>())),
-            bool>::value &&
+        std::is_convertible<decltype(std::begin(std::declval<T>()) != std::end(std::declval<T>())), bool>::
+            value &&
 
         // value_type is either a writable field or a type with a specialized formatter.
         // We don't support sequences of sequences out of the box (no known use case)
-        is_writable_or_custom_formattable<
-            typename std::decay<decltype(*std::begin(std::declval<const T&>()))>::type>()
+        is_writable_or_custom_formattable<decltype(*std::begin(std::declval<T>()))>()
 
         // end of conditions
         >::type> : std::true_type
@@ -93,7 +96,7 @@ constexpr bool is_formattable_type()
 template <class T>
 concept formattable =
     // This covers basic types and optionals
-    is_writable_field<T>::value ||
+    is_writable_field_ref<T>::value ||
     // This covers custom types that specialized boost::mysql::formatter
     has_specialized_formatter<T>() ||
     // This covers ranges of formattable types
@@ -158,6 +161,12 @@ struct format_custom_arg
     template <class T>
     static format_custom_arg create_range(const T& obj)
     {
+        return {&obj, &do_format_range<const T>};
+    }
+
+    template <class T>
+    static format_custom_arg create_range(T& obj)
+    {
         return {&obj, &do_format_range<T>};
     }
 };
@@ -218,7 +227,7 @@ format_arg_value make_format_value_impl(
 // Used for types having is_formattable_range
 template <class T>
 format_arg_value make_format_value_impl(
-    const T& v,
+    T&& v,
     std::false_type,  // convertible to string view
     std::false_type,  // is_writable_field
     std::true_type    // is formattable range
@@ -240,7 +249,7 @@ format_arg_value make_format_value_impl(
 }
 
 template <class T>
-format_arg_value make_format_value(const T& v) noexcept
+format_arg_value make_format_value(T&& v) noexcept
 {
     static_assert(
         is_formattable_type<T>(),
@@ -248,9 +257,9 @@ format_arg_value make_format_value(const T& v) noexcept
         "formattable"
     );
     return make_format_value_impl(
-        v,
+        std::forward<T>(v),
         std::is_convertible<T, string_view>(),
-        is_writable_field<T>(),
+        is_writable_field_ref<T>(),
         is_formattable_range<T>()
     );
 }

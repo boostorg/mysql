@@ -42,10 +42,10 @@ using mysql_time = boost::mysql::time;
 // field and field_view accepted (writable fields)
 BOOST_MYSQL_CHECK_FORMATTABLE(field_view, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(field, true)
-BOOST_MYSQL_CHECK_FORMATTABLE(field&, false)
-BOOST_MYSQL_CHECK_FORMATTABLE(const field&, false)
-BOOST_MYSQL_CHECK_FORMATTABLE(field&&, false)
-BOOST_MYSQL_CHECK_FORMATTABLE(const field&&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(field&, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(const field&, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(field&&, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(const field&&, true)
 
 // Scalars accepted (writable fields)
 BOOST_MYSQL_CHECK_FORMATTABLE(std::nullptr_t, true)
@@ -63,8 +63,8 @@ BOOST_MYSQL_CHECK_FORMATTABLE(date, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(datetime, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(mysql_time, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(bool, true)
-BOOST_MYSQL_CHECK_FORMATTABLE(int&, false)
-BOOST_MYSQL_CHECK_FORMATTABLE(bool&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(int&, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(bool&, true)
 
 // characters (except signed/unsigned char) not accepted
 BOOST_MYSQL_CHECK_FORMATTABLE(char, false)
@@ -86,7 +86,7 @@ BOOST_MYSQL_CHECK_FORMATTABLE(std::string_view, true)
 #endif
 BOOST_MYSQL_CHECK_FORMATTABLE(const char*, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(char[16], true)
-BOOST_MYSQL_CHECK_FORMATTABLE(std::string&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(std::string&, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(std::wstring, false)
 
 // Blobs
@@ -98,7 +98,7 @@ BOOST_MYSQL_CHECK_FORMATTABLE(blob_with_alloc, true)
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 BOOST_MYSQL_CHECK_FORMATTABLE(std::optional<int>, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(std::optional<std::string>, true)
-BOOST_MYSQL_CHECK_FORMATTABLE(std::optional<int>&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(std::optional<int>&, true)
 #endif
 BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<string_view>, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<blob>, true)
@@ -108,10 +108,10 @@ BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<int&>, false)
 
 // Types with custom formatters accepted, but not references or optionals to them
 BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition, true)
-BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition&, false)
-BOOST_MYSQL_CHECK_FORMATTABLE(const custom::condition&, false)
-BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition&&, false)
-BOOST_MYSQL_CHECK_FORMATTABLE(const custom::condition&&, false)
+BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition&, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(const custom::condition&, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition&&, true)
+BOOST_MYSQL_CHECK_FORMATTABLE(const custom::condition&&, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(custom::condition*, false)
 BOOST_MYSQL_CHECK_FORMATTABLE(boost::optional<custom::condition>, false)
 

@@ -70,8 +70,8 @@ public:
      * Both `name` and `value` are stored as views.
      */
     template <BOOST_MYSQL_FORMATTABLE Formattable>
-    constexpr format_arg(string_view name, const Formattable& value) noexcept
-        : impl_{name, detail::make_format_value(value)}
+    constexpr format_arg(string_view name, Formattable&& value) noexcept
+        : impl_{name, detail::make_format_value(std::forward<Formattable>(value))}
     {
     }
 };
@@ -510,10 +510,10 @@ struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-void format_sql_to(format_context_base& ctx, constant_string_view format_str, const Formattable&... args)
+void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args)
 {
     std::initializer_list<format_arg> args_il{
-        {string_view(), args}
+        {string_view(), std::forward<Formattable>(args)}
         ...
     };
     detail::vformat_sql_to(ctx, format_str.get(), args_il);
@@ -567,14 +567,10 @@ inline void format_sql_to(
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-std::string format_sql(
-    const format_options& opts,
-    constant_string_view format_str,
-    const Formattable&... args
-)
+std::string format_sql(const format_options& opts, constant_string_view format_str, Formattable&&... args)
 {
     std::initializer_list<format_arg> args_il{
-        {string_view(), args}
+        {string_view(), std::forward<Formattable>(args)}
         ...
     };
     return detail::vformat_sql(opts, format_str.get(), args_il);
@@ -614,8 +610,10 @@ bool boost::mysql::detail::format_custom_arg::do_format_range(
         return false;
     auto spec = runtime(res.second);
 
+    // Retrieve the object. T here may be the actual type U or const U
+    auto& value = *const_cast<T*>(static_cast<const T*>(obj));
+
     // Output the sequence
-    const auto& value = *static_cast<const T*>(obj);
     bool is_first = true;
     for (auto it = std::begin(value); it != std::end(value); ++it)
     {

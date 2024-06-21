@@ -221,6 +221,13 @@ BOOST_AUTO_TEST_CASE(range_not_common)
     static_assert(!std::is_same_v<decltype(r.begin()), decltype(r.end())>);
     BOOST_TEST(format_sql(opts, "SELECT {};", r) == "SELECT 5, 6, 7;");
 }
+
+BOOST_AUTO_TEST_CASE(range_not_const)
+{
+    std::vector<long> values{4, 10, 1, 21};
+    auto r = values | std::ranges::views::filter([](long v) { return v >= 10; });
+    BOOST_TEST(format_sql(opts, "SELECT {};", r) == "SELECT 10, 21;");
+}
 #endif
 
 /**

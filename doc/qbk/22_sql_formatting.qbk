@@ -385,14 +385,17 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     ]
     [
         [
-            Range of formattable elements. Given a variable `t` of type `const T&`,
-            `T` is considered a range if:
+            Range of formattable elements. Informally, such ranges support
+            `std::begin()` and `std::end()`, and its iterator `operator*`
+            must yield one of the following:
 
-            * `std::begin(t)` and `std::end(t)` return an iterator/sentinel pair and
-            * Applying `std::decay_t` to the type of `*std::begin(t)` yields a formattable type, but not a range
-              of formattable elements.
-            * `T` does not satisfy [reflink2 WritableFieldTuple WritableField] (i.e. `vector<unsigned char>` is
-               formatted as a blob, not as a sequence).
+                * A [reflink2 WritableFieldTuple WritableField] (i.e. one of the fundamental types above).
+                * A type with a custom formatter.
+
+            Ranges of ranges are not supported.
+            Note that `vector<unsigned char>` and similar types are formatted as blobs, not as sequences.
+            
+            See [reflink2 Formattable the Formattable concept reference] for a formal definition.
         ]
         [
             Formats each element in the range, separating elements with commas.[br]
