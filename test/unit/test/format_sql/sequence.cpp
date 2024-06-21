@@ -12,8 +12,16 @@
 #include <boost/test/unit_test.hpp>
 
 #include <array>
+#include <forward_list>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+#include "test_common/has_ranges.hpp"
+
+#ifdef BOOST_MYSQL_HAS_RANGES
+#include <ranges>
+#endif
 
 using namespace boost::mysql;
 
@@ -61,9 +69,7 @@ BOOST_AUTO_TEST_CASE(fn_decay_copied)
     BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '2';");
 }
 
-//
 // Different glues
-//
 BOOST_AUTO_TEST_CASE(glue)
 {
     struct
@@ -93,12 +99,59 @@ BOOST_AUTO_TEST_CASE(glue)
     }
 }
 
+//
+// Different range types
+//
+constexpr auto fmt_as_str = [](int v, format_context_base& ctx) {
+    format_sql_to(ctx, "{}", std::to_string(v));
+};
+
+BOOST_AUTO_TEST_CASE(range_c_array)
+{
+    int arr[] = {1, 4, 2};
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(arr, fmt_as_str)) == "SELECT '1', '4', '2';");
+}
+
+BOOST_AUTO_TEST_CASE(range_forward_list)
+{
+    std::forward_list<int> col{1, 4, 2};
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(col, fmt_as_str)) == "SELECT '1', '4', '2';");
+}
+
+#ifdef BOOST_MYSQL_HAS_RANGES
+BOOST_AUTO_TEST_CASE(range_input_iterator)
+{
+    std::istringstream str("1 4 2");
+    std::ranges::subrange subr{std::istream_iterator<int>(str), std::istream_iterator<int>()};
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(subr, fmt_as_str)) == "SELECT '1', '4', '2';");
+}
+#endif
+
+#ifdef BOOST_MYSQL_HAS_RANGES
+BOOST_AUTO_TEST_CASE(range_not_common)
+{
+    // Sentinel type != iterator type
+    auto r = std::ranges::views::iota(5) | std::ranges::views::take(3);
+    static_assert(!std::is_same_v<decltype(r.begin()), decltype(r.end())>);
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(r, fmt_as_str)) == "SELECT '5', '6', '7';");
+}
+
+BOOST_AUTO_TEST_CASE(range_not_const)
+{
+    std::vector<long> values{4, 10, 1, 21};
+    auto r = values | std::ranges::views::filter([](long v) { return v >= 10; });
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(r, fmt_as_str)) == "SELECT '10', '21';");
+}
+#endif
+
+BOOST_AUTO_TEST_CASE(range_vector_of_bool)
+{
+    std::vector<bool> values{true, false};
+    auto fn = [](bool v, format_context_base& ctx) { format_sql_to(ctx, "{}", v ? "true" : "false"); };
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(values, fn)) == "SELECT 'true', 'false';");
+}
+
 /**
-range type
-    C array
-    forward list
-    input iterator
-    not common
 num elms: 0, 1, more
 errors
     spec
