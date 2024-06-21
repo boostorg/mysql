@@ -230,12 +230,16 @@ BOOST_AUTO_TEST_CASE(range_not_const)
 }
 #endif
 
+BOOST_AUTO_TEST_CASE(vector_of_bool)
+{
+    std::vector<bool> values{true, false};
+    BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 1, 0;");
+}
+
 /**
 Regular ranges
     Range type
         test these with u8
-        vector<bool>
-        filter
     Number of elements
         0 elements
         1 elements
