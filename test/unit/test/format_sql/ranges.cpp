@@ -178,7 +178,7 @@ BOOST_AUTO_TEST_CASE(elm_custom_type)
 BOOST_AUTO_TEST_CASE(range_c_array)
 {
     const int values[] = {42, 60};
-    BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 42, 60;");
+    BOOST_TEST(format_sql(opts, single_fmt, values) == "SELECT 42, 60;");
 }
 
 BOOST_AUTO_TEST_CASE(range_std_array)
@@ -186,7 +186,7 @@ BOOST_AUTO_TEST_CASE(range_std_array)
     std::array<int, 2> values{
         {42, 60}
     };
-    BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 42, 60;");
+    BOOST_TEST(format_sql(opts, single_fmt, values) == "SELECT 42, 60;");
 }
 
 BOOST_AUTO_TEST_CASE(range_forward_list)
@@ -202,15 +202,15 @@ BOOST_AUTO_TEST_CASE(range_input_iterator)
 {
     std::istringstream str("1 5 15");
     std::ranges::subrange subr{std::istream_iterator<int>(str), std::istream_iterator<int>()};
-    BOOST_TEST(format_sql(opts, "SELECT {};", subr) == "SELECT 1, 5, 15;");
+    BOOST_TEST(format_sql(opts, single_fmt, subr) == "SELECT 1, 5, 15;");
 }
 #endif
 
 BOOST_AUTO_TEST_CASE(range_row)
 {
     auto r = makerow(42, "abc");
-    BOOST_TEST(format_sql(opts, "SELECT {};", r) == "SELECT 42, 'abc';");
-    BOOST_TEST(format_sql(opts, "SELECT {};", row_view(r)) == "SELECT 42, 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, r) == "SELECT 42, 'abc';");
+    BOOST_TEST(format_sql(opts, single_fmt, row_view(r)) == "SELECT 42, 'abc';");
 }
 
 #ifdef BOOST_MYSQL_HAS_RANGES
@@ -219,29 +219,35 @@ BOOST_AUTO_TEST_CASE(range_not_common)
     // Sentinel type != iterator type
     auto r = std::ranges::views::iota(5) | std::ranges::views::take(3);
     static_assert(!std::is_same_v<decltype(r.begin()), decltype(r.end())>);
-    BOOST_TEST(format_sql(opts, "SELECT {};", r) == "SELECT 5, 6, 7;");
+    BOOST_TEST(format_sql(opts, single_fmt, r) == "SELECT 5, 6, 7;");
 }
 
 BOOST_AUTO_TEST_CASE(range_not_const)
 {
     std::vector<long> values{4, 10, 1, 21};
     auto r = values | std::ranges::views::filter([](long v) { return v >= 10; });
-    BOOST_TEST(format_sql(opts, "SELECT {};", r) == "SELECT 10, 21;");
+    BOOST_TEST(format_sql(opts, single_fmt, r) == "SELECT 10, 21;");
 }
 #endif
 
 BOOST_AUTO_TEST_CASE(vector_of_bool)
 {
     std::vector<bool> values{true, false};
-    BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 1, 0;");
+    BOOST_TEST(format_sql(opts, single_fmt, values) == "SELECT 1, 0;");
+}
+
+//
+// Different number of elements
+//
+BOOST_AUTO_TEST_CASE(num_elms)
+{
+    BOOST_TEST(format_sql(opts, single_fmt, std::vector<long>{}) == "SELECT ;");
+    BOOST_TEST(format_sql(opts, single_fmt, std::vector<long>{10}) == "SELECT 10;");
+    BOOST_TEST(format_sql(opts, single_fmt, std::vector<long>{1, 2, 3, 4}) == "SELECT 1, 2, 3, 4;");
 }
 
 /**
 Regular ranges
-    Number of elements
-        0 elements
-        1 elements
-        more elements
     Specifiers success
         weird range of string-like
         vector of field_views containing strings
