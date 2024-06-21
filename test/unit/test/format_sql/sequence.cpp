@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(num_elms)
 //
 BOOST_AUTO_TEST_CASE(error_nonempty_spec)
 {
-    constant_string_view test_cases[] = {
+    string_view test_cases[] = {
         "{:i}",
         "{:other}",
         "{::}",
@@ -178,10 +178,10 @@ BOOST_AUTO_TEST_CASE(error_nonempty_spec)
 
     for (auto fmt : test_cases)
     {
-        BOOST_TEST_CONTEXT(fmt.get())
+        BOOST_TEST_CONTEXT(fmt)
         {
             BOOST_TEST(
-                format_single_error(fmt, sequence(std::vector<int>{10}, fmt_as_str)) ==
+                format_single_error(runtime(fmt), sequence(std::vector<int>{10}, fmt_as_str)) ==
                 client_errc::format_string_invalid_specifier
             );
         }

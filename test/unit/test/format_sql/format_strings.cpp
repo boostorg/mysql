@@ -160,7 +160,7 @@ BOOST_AUTO_TEST_CASE(error)
     struct
     {
         string_view name;
-        constant_string_view format_str;
+        string_view format_str;
         error_code expected_ec;
     } test_cases[] = {
         // Simply invalid
@@ -230,7 +230,7 @@ BOOST_AUTO_TEST_CASE(error)
         {
             format_context ctx(opts);
             // clang-format off
-            format_sql_to(ctx, tc.format_str, {{"number", 42}, {"name", "abc"}});
+            format_sql_to(ctx, runtime(tc.format_str), {{"number", 42}, {"name", "abc"}});
             // clang-format on
             BOOST_TEST(std::move(ctx).get().error() == tc.expected_ec);
         }

@@ -280,7 +280,7 @@ BOOST_AUTO_TEST_CASE(error_underlying_type_doesnt_support_spec)
 BOOST_AUTO_TEST_CASE(error_parsing_spec)
 {
     // These are rejected by the collection spec parser
-    constant_string_view test_cases[] = {
+    string_view test_cases[] = {
         "{:a}",
         "{:a:}",
         "{:a:i}",
@@ -289,10 +289,10 @@ BOOST_AUTO_TEST_CASE(error_parsing_spec)
 
     for (auto s : test_cases)
     {
-        BOOST_TEST_CONTEXT(s.get())
+        BOOST_TEST_CONTEXT(s)
         {
             std::vector<const char*> coll{"abc", "def"};
-            BOOST_TEST(format_single_error(s, coll) == client_errc::format_string_invalid_specifier);
+            BOOST_TEST(format_single_error(runtime(s), coll) == client_errc::format_string_invalid_specifier);
         }
     }
 }
