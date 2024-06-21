@@ -199,8 +199,11 @@ BOOST_AUTO_TEST_CASE(error)
         {"index_to_manual",          "SELECT {0}, {}",             client_errc::format_string_manual_auto_mix  },
         {"index_spec_nonascii",      "SELECT {0:\xff}",            client_errc::format_string_invalid_syntax   },
         {"index_spec_{",             "SELECT {0:i{}",              client_errc::format_string_invalid_syntax   },
+        {"index_spec_range_{",       "SELECT {0:i:{}",             client_errc::format_string_invalid_syntax   },
+        {"index_spec_range_}",       "SELECT {0:i:}}",             client_errc::format_string_invalid_syntax   },
         {"index_spec_{}",            "SELECT {0:i{}}",             client_errc::format_string_invalid_syntax   },
         {"index_spec_eof",           "SELECT {0:eof",              client_errc::format_string_invalid_syntax   },
+        {"index_spec_range_eof",     "SELECT {0:i:",               client_errc::format_string_invalid_syntax   },
         {"index_spec_invalid",       "SELECT {0:i}",               client_errc::format_string_invalid_specifier},
 
         // Auto indexing problems
