@@ -188,8 +188,15 @@ BOOST_AUTO_TEST_CASE(error_nonempty_spec)
     }
 }
 
-/**
-    error formatting elements
- */
+BOOST_AUTO_TEST_CASE(error_formatting_element)
+{
+    auto fn = [](int v, format_context_base& ctx) {
+        if (v == 42)
+            ctx.add_error(client_errc::cancelled);
+        format_sql_to(ctx, "{}", v);
+    };
+    std::vector<int> col{1, 42, 10};
+    BOOST_TEST(format_single_error("{}", sequence(col, fn)) == client_errc::cancelled);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
