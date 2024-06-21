@@ -5,11 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/test/unit_test.hpp>
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -59,11 +61,39 @@ BOOST_AUTO_TEST_CASE(fn_decay_copied)
     BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '2';");
 }
 
+//
+// Different glues
+//
+BOOST_AUTO_TEST_CASE(glue)
+{
+    struct
+    {
+        string_view name;
+        constant_string_view glue;
+        string_view expected;
+    } test_cases[] = {
+        {"regular",         " OR ",   "1 OR 2 OR 3"    },
+        {"braces",          "{}",     "1{}2{}3"        },
+        {"invalid_utf8",    " \xff ", "1 \xff 2 \xff 3"},
+        {"escapable_chars", "'`",     "1'`2'`3"        },
+        {"empty",           "",       "123"            },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            std::array<int, 3> arr{
+                {1, 2, 3}
+            };
+            auto fn = [](int v, format_context_base& ctx) { format_sql_to(ctx, "{}", v); };
+
+            BOOST_TEST(format_sql(opts, "{}", sequence(arr, fn, tc.glue)) == tc.expected);
+        }
+    }
+}
+
 /**
-glue
-    default
-    custom
-    custom with {}, invalid chars, escapable chars
 range type
     C array
     forward list
