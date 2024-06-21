@@ -6,7 +6,10 @@
 //
 
 #include <boost/mysql/blob_view.hpp>
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/field.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/config.hpp>
 #include <boost/optional/optional.hpp>
@@ -20,6 +23,7 @@
 #include "format_common.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/has_ranges.hpp"
+#include "test_common/printing.hpp"
 
 #ifdef __cpp_lib_string_view
 #include <string_view>
@@ -246,19 +250,49 @@ BOOST_AUTO_TEST_CASE(num_elms)
     BOOST_TEST(format_sql(opts, single_fmt, std::vector<long>{1, 2, 3, 4}) == "SELECT 1, 2, 3, 4;");
 }
 
+//
+// Errors
+//
+BOOST_AUTO_TEST_CASE(error_underlying_type_doesnt_support_spec)
+{
+    // The underlying type must be string for 'i' to be supported
+    BOOST_TEST(
+        format_single_error("{::i}", make_fv_arr("abc", "def")) ==
+        client_errc::format_string_invalid_specifier
+    );
+
+    // int does not support 'r'
+    BOOST_TEST(
+        format_single_error("{::r}", std::vector<int>{1, 2}) == client_errc::format_string_invalid_specifier
+    );
+}
+
+BOOST_AUTO_TEST_CASE(error_parsing_spec)
+{
+    // These are rejected by the collection spec parser
+    constant_string_view test_cases[] = {
+        "{:a}",
+        "{:a:}",
+        "{:a:i}",
+        "{:[]:}",
+    };
+
+    for (auto s : test_cases)
+    {
+        BOOST_TEST_CONTEXT(s.get())
+        {
+            std::vector<const char*> coll{"abc", "def"};
+            BOOST_TEST(format_single_error(s, coll) == client_errc::format_string_invalid_specifier);
+        }
+    }
+}
+
 /**
 Regular ranges
     Specifiers success
-        weird range of string-like
-        vector of field_views containing strings
         empty specs OK, does nothing
             :
             ::
-        specifiers errors
-            :abc
-            :abc:
-            :abc:i
-            ::unknown
         move these to format_strings?
             :abc:{
             :abc:}
