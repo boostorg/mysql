@@ -238,8 +238,6 @@ BOOST_AUTO_TEST_CASE(vector_of_bool)
 
 /**
 Regular ranges
-    Range type
-        test these with u8
     Number of elements
         0 elements
         1 elements
