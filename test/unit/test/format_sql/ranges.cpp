@@ -13,17 +13,22 @@
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
+#include <forward_list>
+#include <iterator>
 #include <vector>
 
 #include "format_common.hpp"
 #include "test_common/create_basic.hpp"
-#include "test_common/printing.hpp"
+#include "test_common/has_ranges.hpp"
 
 #ifdef __cpp_lib_string_view
 #include <string_view>
 #endif
 #ifdef __cpp_lib_optional
 #include <optional>
+#endif
+#ifdef BOOST_MYSQL_HAS_RANGES
+#include <ranges>
 #endif
 
 using namespace boost::mysql;
@@ -38,6 +43,9 @@ BOOST_AUTO_TEST_SUITE(test_format_sql_ranges)
 constexpr format_options opts{utf8mb4_charset, true};
 constexpr const char* single_fmt = "SELECT {};";
 
+//
+// Different element types
+//
 BOOST_AUTO_TEST_CASE(elm_integral)
 {
     // Note: unsigned char is formatted as a blob, instead
@@ -130,8 +138,6 @@ BOOST_AUTO_TEST_CASE(elm_duration)
     BOOST_TEST(format_sql(opts, single_fmt, secs) == "SELECT '00:00:20.000000', '00:01:01.000000';");
 }
 
-// TODO: ranges of optionals and fields should not compile
-// This would require exposing a type-erased formattable type, as replacement for field_view
 BOOST_AUTO_TEST_CASE(elm_field)
 {
     std::vector<field> fields{field("abc"), field(42)};
@@ -166,17 +172,63 @@ BOOST_AUTO_TEST_CASE(elm_custom_type)
     BOOST_TEST(format_sql(opts, "SELECT {::s};", conds) == "SELECT `f1` = 42, `f2` = 60;");
 }
 
+//
+// Different range types
+//
+BOOST_AUTO_TEST_CASE(range_c_array)
+{
+    const int values[] = {42, 60};
+    BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 42, 60;");
+}
+
+BOOST_AUTO_TEST_CASE(range_std_array)
+{
+    std::array<int, 2> values{
+        {42, 60}
+    };
+    BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 42, 60;");
+}
+
+BOOST_AUTO_TEST_CASE(range_forward_list)
+{
+    std::forward_list<int> values{
+        {42, 60}
+    };
+    BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 42, 60;");
+}
+
+#ifdef BOOST_MYSQL_HAS_RANGES
+BOOST_AUTO_TEST_CASE(range_input_iterator)
+{
+    std::istringstream str("1 5 15");
+    std::ranges::subrange subr{std::istream_iterator<int>(str), std::istream_iterator<int>()};
+    BOOST_TEST(format_sql(opts, "SELECT {};", subr) == "SELECT 1, 5, 15;");
+}
+#endif
+
+BOOST_AUTO_TEST_CASE(range_row)
+{
+    auto r = makerow(42, "abc");
+    BOOST_TEST(format_sql(opts, "SELECT {};", r) == "SELECT 42, 'abc';");
+    BOOST_TEST(format_sql(opts, "SELECT {};", row_view(r)) == "SELECT 42, 'abc';");
+}
+
+#ifdef BOOST_MYSQL_HAS_RANGES
+BOOST_AUTO_TEST_CASE(range_not_common)
+{
+    // Sentinel type != iterator type
+    auto r = std::ranges::views::iota(5) | std::ranges::views::take(3);
+    static_assert(!std::is_same_v<decltype(r.begin()), decltype(r.end())>);
+    BOOST_TEST(format_sql(opts, "SELECT {};", r) == "SELECT 5, 6, 7;");
+}
+#endif
+
 /**
 Regular ranges
     Range type
-        vector, C array, std::array
         test these with u8
-        forward_list (forward iterator)
-        something with input iterators?
-        row, row_view
         vector<bool>
         filter
-        not a common range
     Number of elements
         0 elements
         1 elements

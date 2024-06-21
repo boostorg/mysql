@@ -26,6 +26,7 @@
 #include <string>
 #include <utility>
 
+#include "test_common/has_ranges.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/snippets/get_any_connection.hpp"
 
@@ -35,15 +36,8 @@
 #ifdef __cpp_lib_polymorphic_allocator
 #include <memory_resource>
 #endif
-#ifdef __cpp_lib_ranges
+#ifdef BOOST_MYSQL_HAS_RANGES
 #include <ranges>
-#endif
-
-// libstdc++11 and below claim to support ranges, but basic piping fails to compile
-#ifdef __cpp_lib_ranges
-#if !defined(BOOST_LIBSTDCXX_VERSION) || BOOST_LIBSTDCXX_VERSION >= 120000
-#define BOOST_MYSQL_HAS_RANGES
-#endif
 #endif
 
 using namespace boost::mysql;

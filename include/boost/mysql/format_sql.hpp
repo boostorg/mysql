@@ -430,7 +430,7 @@ struct format_sequence_view
  * \n
  * \par Type requirements
  *   - FormatFn should be move constructible.
- *   - Expressions `std::begin(range)` and `std::end(range)` should return an iterator/sentinel
+ *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
  *     pair that can be compared for (in)equality.
  *   - The expression `fn(*std::begin(range), ctx)` should be well formed, with `ctx` begin
  *     a `format_context_base&`.
