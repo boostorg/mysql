@@ -205,6 +205,12 @@ BOOST_AUTO_TEST_CASE(range_forward_list)
     BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 42, 60;");
 }
 
+BOOST_AUTO_TEST_CASE(range_const)
+{
+    const std::vector<int> values{42, 60};
+    BOOST_TEST(format_sql(opts, "SELECT {};", values) == "SELECT 42, 60;");
+}
+
 #ifdef BOOST_MYSQL_HAS_RANGES
 BOOST_AUTO_TEST_CASE(range_input_iterator)
 {

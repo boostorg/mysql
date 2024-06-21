@@ -138,6 +138,7 @@ BOOST_AUTO_TEST_CASE(range_not_common)
     auto r = std::ranges::views::iota(5) | std::ranges::views::take(3);
     static_assert(!std::is_same_v<decltype(r.begin()), decltype(r.end())>);
     BOOST_TEST(format_sql(opts, single_fmt, sequence(r, fmt_as_str)) == "SELECT '5', '6', '7';");
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(std::move(r), fmt_as_str)) == "SELECT '5', '6', '7';");
 }
 
 BOOST_AUTO_TEST_CASE(range_not_const)
