@@ -62,7 +62,11 @@ BOOST_AUTO_TEST_CASE(elm_integral)
     BOOST_TEST(format_sql(opts, single_fmt, std::vector<unsigned long>{10, 8}) == "SELECT 10, 8;");
     BOOST_TEST(format_sql(opts, single_fmt, std::vector<long long>{10, 8}) == "SELECT 10, 8;");
     BOOST_TEST(format_sql(opts, single_fmt, std::vector<unsigned long long>{10, 8}) == "SELECT 10, 8;");
-    BOOST_TEST(format_sql(opts, single_fmt, std::array<bool, 2>{true, false}) == "SELECT 1, 0;");
+
+    std::array<bool, 2> arr_of_bool{
+        {true, false}
+    };
+    BOOST_TEST(format_sql(opts, single_fmt, arr_of_bool) == "SELECT 1, 0;");
 }
 
 BOOST_AUTO_TEST_CASE(elm_floating_point)
