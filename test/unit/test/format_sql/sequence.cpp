@@ -151,8 +151,14 @@ BOOST_AUTO_TEST_CASE(range_vector_of_bool)
     BOOST_TEST(format_sql(opts, single_fmt, sequence(values, fn)) == "SELECT 'true', 'false';");
 }
 
+// Different number of elements
+BOOST_AUTO_TEST_CASE(num_elms)
+{
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(std::vector<int>{}, fmt_as_str)) == "SELECT ;");
+    BOOST_TEST(format_sql(opts, single_fmt, sequence(std::vector<int>{1}, fmt_as_str)) == "SELECT '1';");
+}
+
 /**
-num elms: 0, 1, more
 errors
     spec
         {::}
