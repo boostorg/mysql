@@ -293,16 +293,10 @@ BOOST_AUTO_TEST_CASE(error_parsing_spec)
     }
 }
 
-/**
-Regular ranges
-    Specifiers success
-        move these to format_strings?
-            :abc:{
-            :abc:}
-    error while formatting an element
-    formattable concept
-        range of ranges (e.g. rows) isn't formattable
-        optional<range> isn't formattable
- */
+BOOST_AUTO_TEST_CASE(error_formatting_element)
+{
+    std::vector<const char*> coll{"abc", "d\xffpol", "aaaaa"};
+    BOOST_TEST(format_single_error(single_fmt, coll) == client_errc::invalid_encoding);
+}
 
 BOOST_AUTO_TEST_SUITE_END()

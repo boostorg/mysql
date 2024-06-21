@@ -30,6 +30,13 @@ using mysql_time = boost::mysql::time;
 // We have a type trait (is_formattable_type) for C++ < 20,
 // and a concept (formattable), for C++ >= 20. This macro checks both without repetition
 
+/**
+TODO: Regular ranges
+    formattable concept
+        range of ranges (e.g. rows) isn't formattable
+        optional<range> isn't formattable
+ */
+
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 #define BOOST_MYSQL_CHECK_FORMATTABLE(type, expected)         \
     static_assert(detail::formattable<type> == expected, ""); \
