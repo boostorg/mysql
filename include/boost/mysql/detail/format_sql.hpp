@@ -103,7 +103,7 @@ concept formattable =
     is_formattable_range<T>::value;
 
 template <class FormatFn, class Range>
-concept format_fn_for_range = requires(FormatFn& format_fn, Range&& range, format_context_base& ctx) {
+concept format_fn_for_range = requires(const FormatFn& format_fn, Range&& range, format_context_base& ctx) {
     { std::begin(range) != std::end(range) } -> std::convertible_to<bool>;
     format_fn(*std::begin(range), ctx);
     std::end(range);

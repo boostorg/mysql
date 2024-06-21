@@ -432,8 +432,8 @@ struct format_sequence_view
  *   - FormatFn should be move constructible.
  *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
  *     pair that can be compared for (in)equality.
- *   - The expression `fn(*std::begin(range), ctx)` should be well formed, with `ctx` begin
- *     a `format_context_base&`.
+ *   - The expression `static_cast<const FormatFn&>(fn)(*std::begin(range), ctx)`
+ *     should be well formed, with `ctx` begin a `format_context_base&`.
  *
  * \par Object lifetimes
  * The input range is stored in \ref format_sequence_view as a view, using an iterator/sentinel pair,
