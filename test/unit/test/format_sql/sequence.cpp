@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(glue)
     struct
     {
         string_view name;
-        constant_string_view glue;
+        string_view glue;
         string_view expected;
     } test_cases[] = {
         {"regular",         " OR ",   "1 OR 2 OR 3"    },
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(glue)
             };
             auto fn = [](int v, format_context_base& ctx) { format_sql_to(ctx, "{}", v); };
 
-            BOOST_TEST(format_sql(opts, "{}", sequence(arr, fn, tc.glue)) == tc.expected);
+            BOOST_TEST(format_sql(opts, "{}", sequence(arr, fn, runtime(tc.glue))) == tc.expected);
         }
     }
 }
