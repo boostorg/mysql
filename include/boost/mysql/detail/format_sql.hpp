@@ -180,18 +180,16 @@ struct format_arg_value
 {
     enum class type_t
     {
-        string,
         field,
+        field_with_specs,
         custom
     };
 
     union data_t
     {
-        string_view s;
         field_view fv;
         format_custom_arg custom;
 
-        data_t(string_view v) noexcept : s(v) {}
         data_t(field_view fv) noexcept : fv(fv) {}
         data_t(format_custom_arg v) noexcept : custom(v) {}
     };
@@ -201,37 +199,27 @@ struct format_arg_value
 };
 
 // make_format_value: creates a type erased format_arg_value from a typed value.
-// Used for types convertible to string view. We must differentiate this from
-// field_views and optionals because supported specifiers are different
-template <class T, bool is_rng>
-format_arg_value make_format_value_impl(
-    const T& v,
-    std::true_type,  // convertible to string view
-    std::true_type,  // if it's convertible to string_view, it will be a writable field, too
-    std::integral_constant<bool, is_rng>  // is formattable range: we don't care
-) noexcept
-{
-    return {format_arg_value::type_t::string, string_view(v)};
-}
-
 // Used for types having is_writable_field<T>
 template <class T, bool is_rng>
 format_arg_value make_format_value_impl(
     const T& v,
-    std::false_type,                      // convertible to string view
     std::true_type,                       // is_writable_field
     std::integral_constant<bool, is_rng>  // is formattable range: we don't care
 ) noexcept
 {
-    return {format_arg_value::type_t::field, to_field(v)};
+    // Only string types (and not field_views or optionals) support the string specifiers
+    return {
+        std::is_convertible<T, string_view>::value ? format_arg_value::type_t::field_with_specs
+                                                   : format_arg_value::type_t::field,
+        to_field(v)
+    };
 }
 
 // Used for types having is_formattable_range
 template <class T>
 format_arg_value make_format_value_impl(
     T&& v,
-    std::false_type,  // convertible to string view
-    std::false_type,  // is_writable_field
+    std::false_type,  // writable field
     std::true_type    // is formattable range
 ) noexcept
 {
@@ -242,7 +230,6 @@ format_arg_value make_format_value_impl(
 template <class T>
 format_arg_value make_format_value_impl(
     const T& v,
-    std::false_type,  // convertible to string view
     std::false_type,  // writable field
     std::false_type   // is formattable range
 ) noexcept
@@ -258,12 +245,7 @@ format_arg_value make_format_value(T&& v) noexcept
         "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
         "formattable"
     );
-    return make_format_value_impl(
-        std::forward<T>(v),
-        std::is_convertible<T, string_view>(),
-        is_writable_field_ref<T>(),
-        is_formattable_range<T>()
-    );
+    return make_format_value_impl(std::forward<T>(v), is_writable_field_ref<T>(), is_formattable_range<T>());
 }
 
 BOOST_MYSQL_DECL

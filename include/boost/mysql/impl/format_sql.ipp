@@ -215,9 +215,23 @@ inline void append_quoted_time(time t, format_context_base& ctx)
     access::get_impl(ctx).output.append(string_view(buffer, sz + 2));
 }
 
-inline void append_field_view(field_view fv, string_view format_spec, format_context_base& ctx)
+inline void append_field_view(
+    field_view fv,
+    string_view format_spec,
+    bool allow_specs,
+    format_context_base& ctx
+)
 {
-    // Types here don't allow specifiers, even if they're strings (e.g. optional<string>)
+    auto kind = fv.kind();
+
+    // String types may allow specs
+    if (allow_specs && kind == field_kind::string)
+    {
+        append_string(fv.get_string(), format_spec, ctx);
+        return;
+    }
+
+    // Reject specifiers if !allow_specs or for other types
     if (!format_spec.empty())
     {
         ctx.add_error(client_errc::format_string_invalid_specifier);
@@ -515,11 +529,11 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg,
 {
     switch (arg.type)
     {
-    case detail::format_arg_value::type_t::string:
-        detail::append_string(arg.data.s, format_spec, *this);
-        break;
     case detail::format_arg_value::type_t::field:
-        detail::append_field_view(arg.data.fv, format_spec, *this);
+        detail::append_field_view(arg.data.fv, format_spec, false, *this);
+        break;
+    case detail::format_arg_value::type_t::field_with_specs:
+        detail::append_field_view(arg.data.fv, format_spec, true, *this);
         break;
     case detail::format_arg_value::type_t::custom:
         if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec.begin(), format_spec.end(), *this))
