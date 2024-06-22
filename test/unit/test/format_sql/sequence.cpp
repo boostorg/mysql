@@ -106,9 +106,7 @@ BOOST_AUTO_TEST_CASE(glue)
 //
 // Different range types
 //
-constexpr auto fmt_as_str = [](int v, format_context_base& ctx) {
-    format_sql_to(ctx, "{}", std::to_string(v));
-};
+const auto fmt_as_str = [](int v, format_context_base& ctx) { format_sql_to(ctx, "{}", std::to_string(v)); };
 
 BOOST_AUTO_TEST_CASE(range_c_array)
 {
