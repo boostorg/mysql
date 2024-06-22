@@ -34,6 +34,7 @@ struct formatter;
 class format_context_base;
 class format_arg;
 struct format_options;
+class formattable_ref;
 
 namespace detail {
 
@@ -55,9 +56,15 @@ struct is_writable_field_ref : is_writable_field<typename std::decay<T>::type>
 };
 
 template <class T>
-constexpr bool is_writable_or_custom_formattable()
+struct is_formattable_ref : std::is_same<typename std::decay<T>::type, formattable_ref>
 {
-    return is_writable_field_ref<T>::value || has_specialized_formatter<T>();
+};
+
+// Is T suitable for being the element type of a formattable range?
+template <class T>
+constexpr bool is_formattable_range_elm_type()
+{
+    return is_writable_field_ref<T>::value || has_specialized_formatter<T>() || is_formattable_ref<T>::value;
 }
 
 template <class T, class = void>
@@ -77,7 +84,7 @@ struct is_formattable_range<
 
         // value_type is either a writable field or a type with a specialized formatter.
         // We don't support sequences of sequences out of the box (no known use case)
-        is_writable_or_custom_formattable<decltype(*std::begin(std::declval<T&>()))>()
+        is_formattable_range_elm_type<decltype(*std::begin(std::declval<T&>()))>()
 
         // end of conditions
         >::type> : std::true_type
@@ -87,7 +94,7 @@ struct is_formattable_range<
 template <class T>
 constexpr bool is_formattable_type()
 {
-    return is_writable_or_custom_formattable<T>() || is_formattable_range<T>::value;
+    return is_formattable_range_elm_type<T>() || is_formattable_range<T>::value;
 }
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -101,7 +108,9 @@ concept formattable =
     // This covers custom types that specialized boost::mysql::formatter
     has_specialized_formatter<T>() ||
     // This covers ranges of formattable types
-    is_formattable_range<T>::value;
+    is_formattable_range<T>::value ||
+    // This covers passing formattable_ref as a format argument
+    is_formattable_ref<T>::value;
 
 template <class FormatFn, class Range>
 concept format_fn_for_range = requires(const FormatFn& format_fn, Range&& range, format_context_base& ctx) {
@@ -206,8 +215,9 @@ struct format_arg_value
 template <class T, bool is_rng>
 format_arg_value make_format_value_impl(
     const T& v,
-    std::true_type,                       // is_writable_field
-    std::integral_constant<bool, is_rng>  // is formattable range: we don't care
+    std::true_type,                        // is_writable_field
+    std::integral_constant<bool, is_rng>,  // is formattable range: we don't care
+    std::false_type                        // is formattable ref
 ) noexcept
 {
     // Only string types (and not field_views or optionals) support the string specifiers
@@ -223,7 +233,8 @@ template <class T>
 format_arg_value make_format_value_impl(
     T&& v,
     std::false_type,  // writable field
-    std::true_type    // is formattable range
+    std::true_type,   // is formattable range
+    std::false_type   // is formattable ref
 ) noexcept
 {
     return {format_arg_value::type_t::custom, format_custom_arg::create_range(v)};
@@ -234,11 +245,21 @@ template <class T>
 format_arg_value make_format_value_impl(
     const T& v,
     std::false_type,  // writable field
-    std::false_type   // is formattable range
+    std::false_type,  // is formattable range
+    std::false_type   // is formattable ref
 ) noexcept
 {
     return {format_arg_value::type_t::custom, format_custom_arg::create_custom_formatter(v)};
 }
+
+// Used for formattable_ref
+// TODO: restructure
+inline format_arg_value make_format_value_impl(
+    formattable_ref v,
+    std::false_type,  // writable field
+    std::false_type,  // is formattable range
+    std::true_type    // is formattable ref
+) noexcept;
 
 template <class T>
 format_arg_value make_format_value(T&& v) noexcept
@@ -248,7 +269,12 @@ format_arg_value make_format_value(T&& v) noexcept
         "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
         "formattable"
     );
-    return make_format_value_impl(std::forward<T>(v), is_writable_field_ref<T>(), is_formattable_range<T>());
+    return make_format_value_impl(
+        std::forward<T>(v),
+        is_writable_field_ref<T>(),
+        is_formattable_range<T>(),
+        is_formattable_ref<T>()
+    );
 }
 
 BOOST_MYSQL_DECL

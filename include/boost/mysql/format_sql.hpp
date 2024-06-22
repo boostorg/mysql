@@ -35,48 +35,6 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) A named format argument, to be used in initializer lists.
- * \details
- * Represents a name, value pair to be passed to a formatting function.
- * This type should only be used in initializer lists, as a function argument.
- *
- * \par Object lifetimes
- * This is a non-owning type. Both the argument name and value are stored
- * as views.
- */
-class format_arg
-{
-#ifndef BOOST_MYSQL_DOXYGEN
-    struct
-    {
-        string_view name;
-        detail::format_arg_value value;
-    } impl_;
-
-    friend struct detail::access;
-#endif
-
-public:
-    /**
-     * \brief Constructor.
-     * \details
-     * Constructs an argument from a name and a value.
-     * value must satisfy the `Formattable` concept.
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * Both `name` and `value` are stored as views.
-     */
-    template <BOOST_MYSQL_FORMATTABLE Formattable>
-    constexpr format_arg(string_view name, Formattable&& value) noexcept
-        : impl_{name, detail::make_format_value(std::forward<Formattable>(value))}
-    {
-    }
-};
-
-/**
  * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
  * \details
  * This type can be specialized for custom types to make them formattable.
@@ -127,6 +85,67 @@ struct formatter
 }
 #endif
 ;
+
+// TODO: document
+class formattable_ref
+{
+    detail::format_arg_value impl_;
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+public:
+    template <
+        BOOST_MYSQL_FORMATTABLE Formattable
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
+        class = typename std::enable_if<
+            detail::is_formattable_type<Formattable>() &&
+            !detail::is_formattable_ref<Formattable>::value>::type
+#endif
+        >
+    formattable_ref(Formattable&& value) noexcept
+        : impl_(detail::make_format_value(std::forward<Formattable>(value)))
+    {
+    }
+};
+
+/**
+ * \brief (EXPERIMENTAL) A named format argument, to be used in initializer lists.
+ * \details
+ * Represents a name, value pair to be passed to a formatting function.
+ * This type should only be used in initializer lists, as a function argument.
+ *
+ * \par Object lifetimes
+ * This is a non-owning type. Both the argument name and value are stored
+ * as views.
+ */
+class format_arg
+{
+#ifndef BOOST_MYSQL_DOXYGEN
+    struct
+    {
+        string_view name;
+        formattable_ref value;
+    } impl_;
+
+    friend struct detail::access;
+#endif
+
+public:
+    /**
+     * \brief Constructor.
+     * \details
+     * Constructs an argument from a name and a value.
+     * value must satisfy the `Formattable` concept.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Both `name` and `value` are stored as views.
+     */
+    format_arg(string_view name, formattable_ref value) noexcept : impl_{name, value} {}
+};
 
 /**
  * \brief (EXPERIMENTAL) Base class for concrete format contexts.
@@ -226,13 +245,12 @@ public:
      *          specifiers not supported by the type being formatted.
      * \li Any other error code that user-supplied formatter specializations may add using \ref add_error.
      */
-    template <BOOST_MYSQL_FORMATTABLE Formattable>
     format_context_base& append_value(
-        const Formattable& value,
+        formattable_ref value,
         constant_string_view format_specifiers = string_view()
     )
     {
-        format_arg(detail::make_format_value(value), format_specifiers.get());
+        format_arg(detail::access::get_impl(value), format_specifiers.get());
         return *this;
     }
 
@@ -623,6 +641,16 @@ bool boost::mysql::detail::format_custom_arg::do_format_range(
         ctx.append_value(*it, spec);
     }
     return true;
+}
+
+boost::mysql::detail::format_arg_value boost::mysql::detail::make_format_value_impl(
+    formattable_ref v,
+    std::false_type,  // writable field
+    std::false_type,  // is formattable range
+    std::true_type    // is formattable ref
+) noexcept
+{
+    return access::get_impl(v);
 }
 #endif
 
