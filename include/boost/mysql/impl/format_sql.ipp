@@ -215,9 +215,23 @@ inline void append_quoted_time(time t, format_context_base& ctx)
     access::get_impl(ctx).output.append(string_view(buffer, sz + 2));
 }
 
-inline void append_field_view(field_view fv, string_view format_spec, format_context_base& ctx)
+inline void append_field_view(
+    field_view fv,
+    string_view format_spec,
+    bool allow_specs,
+    format_context_base& ctx
+)
 {
-    // Types here don't allow specifiers, even if they're strings (e.g. optional<string>)
+    auto kind = fv.kind();
+
+    // String types may allow specs
+    if (allow_specs && kind == field_kind::string)
+    {
+        append_string(fv.get_string(), format_spec, ctx);
+        return;
+    }
+
+    // Reject specifiers if !allow_specs or for other types
     if (!format_spec.empty())
     {
         ctx.add_error(client_errc::format_string_invalid_specifier);
@@ -515,11 +529,11 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg,
 {
     switch (arg.type)
     {
-    case detail::format_arg_value::type_t::string:
-        detail::append_string(arg.data.s, format_spec, *this);
-        break;
     case detail::format_arg_value::type_t::field:
-        detail::append_field_view(arg.data.fv, format_spec, *this);
+        detail::append_field_view(arg.data.fv, format_spec, false, *this);
+        break;
+    case detail::format_arg_value::type_t::field_with_specs:
+        detail::append_field_view(arg.data.fv, format_spec, true, *this);
         break;
     case detail::format_arg_value::type_t::custom:
         if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec.begin(), format_spec.end(), *this))
@@ -549,6 +563,30 @@ std::string boost::mysql::detail::vformat_sql(
     format_context ctx(opts);
     detail::vformat_sql_to(ctx, format_str, args);
     return std::move(ctx).get().value();
+}
+
+std::pair<bool, boost::mysql::string_view> boost::mysql::detail::parse_range_specifiers(
+    const char* spec_begin,
+    const char* spec_end
+)
+{
+    // range_format_spec ::=  [":" [underlying_spec]]
+    // Example: {::i} => format an array of strings as identifiers
+
+    // Empty: no specifiers
+    if (spec_begin == spec_end)
+        return {true, {}};
+
+    // If the first character is not a ':', the spec is invalid.
+    if (*spec_begin != ':')
+        return {false, {}};
+    ++spec_begin;
+
+    // Return the rest of the range
+    return {
+        true,
+        {spec_begin, spec_end}
+    };
 }
 
 #endif

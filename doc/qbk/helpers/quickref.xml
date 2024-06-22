@@ -43,6 +43,7 @@
           <member><link linkend="mysql.ref.boost__mysql__format_context_base">format_context_base</link></member>
           <member><link linkend="mysql.ref.boost__mysql__formatter">formatter</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_options">format_options</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__format_sequence_view">format_sequence_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__handshake_params">handshake_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__host_and_port">host_and_port</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata">metadata</link></member>
@@ -107,6 +108,7 @@
           <member><link linkend="mysql.ref.boost__mysql__make_error_code">make_error_code</link></member>
           <member><link linkend="mysql.ref.boost__mysql__make_pipeline_request">make_pipeline_request</link></member>
           <member><link linkend="mysql.ref.boost__mysql__runtime">runtime</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__sequence">sequence</link></member>
           <member><link linkend="mysql.ref.boost__mysql__throw_on_error">throw_on_error</link></member>
         </simplelist>
       </entry>

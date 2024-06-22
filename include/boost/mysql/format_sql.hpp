@@ -23,8 +23,13 @@
 #include <boost/system/result.hpp>
 
 #include <initializer_list>
+#include <iterator>
 #include <string>
 #include <type_traits>
+#include <utility>
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+#include <concepts>
+#endif
 
 namespace boost {
 namespace mysql {
@@ -65,8 +70,8 @@ public:
      * Both `name` and `value` are stored as views.
      */
     template <BOOST_MYSQL_FORMATTABLE Formattable>
-    constexpr format_arg(string_view name, const Formattable& value) noexcept
-        : impl_{name, detail::make_format_value(value)}
+    constexpr format_arg(string_view name, Formattable&& value) noexcept
+        : impl_{name, detail::make_format_value(std::forward<Formattable>(value))}
     {
     }
 };
@@ -393,6 +398,81 @@ public:
 using format_context = basic_format_context<std::string>;
 
 /**
+ * \brief (EXPERIMENTAL) The return type of \ref sequence.
+ * \details
+ * Contains a range view (as an interator/sentinel pair), a formatter function, and a glue string.
+ * This type satisfies the `Formattable` concept. See \ref sequence for a detailed
+ * description of what formatting this class does.
+ * \n
+ * Don't instantiate this class directly - use \ref sequence, instead.
+ * The exact definition may vary between releases.
+ */
+template <class It, class Sentinel, class FormatFn>
+struct format_sequence_view
+#ifndef BOOST_MYSQL_DOXYGEN
+{
+    It it;
+    Sentinel sentinel;
+    FormatFn fn;
+    constant_string_view glue;
+}
+#endif
+;
+
+/**
+ * \brief Makes a range formattable by supplying a per-element formatter function.
+ * \details
+ * Objects returned by this function satisfy `Formattable`.
+ * When formatted, the formatter function `fn` is invoked for each element
+ * in the range. The glue string `glue` is output raw (as per \ref format_context_base::append_raw)
+ * between consecutive invocations of the formatter function, generating an effect
+ * similar to `std::ranges::views::join`.
+ * \n
+ * \par Type requirements
+ *   - FormatFn should be move constructible.
+ *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
+ *     pair that can be compared for (in)equality.
+ *   - The expression `static_cast<const FormatFn&>(fn)(*std::begin(range), ctx)`
+ *     should be well formed, with `ctx` begin a `format_context_base&`.
+ *
+ * \par Object lifetimes
+ * The input range is stored in \ref format_sequence_view as a view, using an iterator/sentinel pair,
+ * and is never copied. The caller must make sure that the elements pointed by the obtained
+ * iterator/sentinel are kept alive until the view is formatted.
+ *
+ * \par Exception safety
+ * Strong-throw guarantee. Throws any exception that `std::begin`, `std::end`
+ * or move-constructing `FormatFn` may throw.
+ */
+template <class Range, class FormatFn>
+#if defined(BOOST_MYSQL_HAS_CONCEPTS)
+    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, Range>
+#endif
+auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
+    -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
+{
+    return {std::begin(range), std::end(range), std::move(fn), glue};
+}
+
+template <class It, class Sentinel, class FormatFn>
+struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
+{
+    const char* parse(const char* begin, const char*) { return begin; }
+
+    void format(const format_sequence_view<It, Sentinel, FormatFn>& value, format_context_base& ctx) const
+    {
+        bool is_first = true;
+        for (auto it = value.it; it != value.sentinel; ++it)
+        {
+            if (!is_first)
+                ctx.append_raw(value.glue);
+            is_first = false;
+            value.fn(*it, ctx);
+        }
+    }
+};
+
+/**
  * \brief (EXPERIMENTAL) Composes a SQL query client-side appending it to a format context.
  * \details
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
@@ -430,10 +510,10 @@ using format_context = basic_format_context<std::string>;
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-void format_sql_to(format_context_base& ctx, constant_string_view format_str, const Formattable&... args)
+void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args)
 {
     std::initializer_list<format_arg> args_il{
-        {string_view(), args}
+        {string_view(), std::forward<Formattable>(args)}
         ...
     };
     detail::vformat_sql_to(ctx, format_str.get(), args_il);
@@ -487,14 +567,10 @@ inline void format_sql_to(
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-std::string format_sql(
-    const format_options& opts,
-    constant_string_view format_str,
-    const Formattable&... args
-)
+std::string format_sql(const format_options& opts, constant_string_view format_str, Formattable&&... args)
 {
     std::initializer_list<format_arg> args_il{
-        {string_view(), args}
+        {string_view(), std::forward<Formattable>(args)}
         ...
     };
     return detail::vformat_sql(opts, format_str.get(), args_il);
@@ -517,6 +593,38 @@ inline std::string format_sql(
 
 }  // namespace mysql
 }  // namespace boost
+
+// Definitions
+#ifndef BOOST_MYSQL_DOXYGEN
+template <class T>
+bool boost::mysql::detail::format_custom_arg::do_format_range(
+    const void* obj,
+    const char* spec_begin,
+    const char* spec_end,
+    format_context_base& ctx
+)
+{
+    // Parse specifiers
+    auto res = detail::parse_range_specifiers(spec_begin, spec_end);
+    if (!res.first)
+        return false;
+    auto spec = runtime(res.second);
+
+    // Retrieve the object. T here may be the actual type U or const U
+    auto& value = *const_cast<T*>(static_cast<const T*>(obj));
+
+    // Output the sequence
+    bool is_first = true;
+    for (auto it = std::begin(value); it != std::end(value); ++it)
+    {
+        if (!is_first)
+            ctx.append_raw(", ");
+        is_first = false;
+        ctx.append_value(*it, spec);
+    }
+    return true;
+}
+#endif
 
 #ifdef BOOST_MYSQL_HEADER_ONLY
 #include <boost/mysql/impl/format_sql.ipp>

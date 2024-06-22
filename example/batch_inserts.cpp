@@ -12,7 +12,7 @@
 //[example_batch_inserts
 
 // Uses client-side SQL formatting to implement batch inserts
-// for a specific type. It makes use of format_context and format_sql_to.
+// for a specific type.
 // The program reads a JSON file containing a list of employees
 // and inserts it into the employee table.
 //
@@ -91,21 +91,12 @@ static std::string compose_batch_insert(
     // We need at least one employee to insert
     assert(!employees.empty());
 
-    // A format_context accumulates our query as we build it
-    boost::mysql::format_context ctx(opts);
-
-    // format_context::append_raw adds raw SQL to the output
-    ctx.append_raw("INSERT INTO employee (first_name, last_name, company_id, salary) VALUES ");
-
-    // Iterate over all employees, building a comma-separated list of values to insert
-    bool is_first = true;
-    for (const auto& emp : employees)
-    {
-        if (!is_first)
-            ctx.append_raw(", ");
-
+    // A function describing how to format a single employee object. Used with mysql::sequence.
+    auto format_employee_fn = [](const employee& emp, boost::mysql::format_context_base& ctx) {
+        // format_context_base can be used to build query strings incrementally.
+        // Used internally by the sequence() formatter
         // format_sql_to expands a format string, replacing {} fields,
-        // and appends the result to our context.
+        // and appends the result to the passed context.
         // When formatted, strings are quoted and escaped as string literals.
         // Doubles are formatted as number literals.
         boost::mysql::format_sql_to(
@@ -116,18 +107,16 @@ static std::string compose_batch_insert(
             emp.company_id,
             emp.salary
         );
-        is_first = false;
+    };
 
-        // If you find yourself repeating the formatting logic for a type
-        // like employee over and over, you can specialize boost::mysql::formatter<employee>
-        // employee objects usable as format arguments. See batch_inserts_generic for an example.
-    }
-
-    // fomat_context::get() returns the result of our formatting operation.
-    // Formatting can fail (e.g. if you supply strings with invalid UTF-8),
-    // so get() returns a boost::system::result<std::string>.
-    // Calling value() will retrieve the string or throw an exception on failure.
-    return std::move(ctx).get().value();
+    // sequence() takes a range and a formatter function.
+    // It will call the formatter function for each object in the sequence,
+    // adding commas between invocations.
+    return boost::mysql::format_sql(
+        opts,
+        "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
+        boost::mysql::sequence(employees, format_employee_fn)
+    );
 }
 
 void main_impl(int argc, char** argv)

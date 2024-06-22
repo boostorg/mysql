@@ -21,6 +21,7 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <array>
 #include <limits>
 #include <string>
 
@@ -396,6 +397,20 @@ BOOST_AUTO_TEST_CASE(blob_view_)
     BOOST_TEST(format_sql(opts, single_fmt, blob_view()) == "SELECT x'';");
 }
 
+BOOST_AUTO_TEST_CASE(blob_array)
+{
+    // Collections of unsigned char are formatted as blob if they're convertible to span<const unsigned char>
+    std::array<unsigned char, 4> arr{
+        {5, 1, 0, 0xab}
+    };
+    const std::array<unsigned char, 4> carr{
+        {0xde, 0xad, 0xbe, 0xef}
+    };
+
+    BOOST_TEST(format_sql(opts, single_fmt, arr) == "SELECT x'050100ab';");
+    BOOST_TEST(format_sql(opts, single_fmt, carr) == "SELECT x'deadbeef';");
+}
+
 BOOST_AUTO_TEST_CASE(date_)
 {
     BOOST_TEST(format_sql(opts, single_fmt, date(2021, 1, 20)) == "SELECT '2021-01-20';");
@@ -571,6 +586,8 @@ BOOST_AUTO_TEST_CASE(string_error)
     BOOST_TEST(format_single_error("SELECT {:>}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {::}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:id}", "abc") == spec_err);
+    BOOST_TEST(format_single_error("SELECT {:ir}", "abc") == spec_err);
+    BOOST_TEST(format_single_error("SELECT {:ri}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:sd}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i:}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i }", "abc") == spec_err);
