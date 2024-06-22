@@ -297,7 +297,7 @@ class format_state
 
     void do_field(format_arg arg, string_view format_spec)
     {
-        ctx_.format_arg(access::get_impl(access::get_impl(arg).value), format_spec);
+        ctx_.format_arg(access::get_impl(arg).value, format_spec);
     }
 
     BOOST_ATTRIBUTE_NODISCARD

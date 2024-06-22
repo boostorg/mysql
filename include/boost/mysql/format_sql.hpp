@@ -125,7 +125,7 @@ class format_arg
     struct
     {
         string_view name;
-        formattable_ref value;
+        detail::formattable_ref_impl value;
     } impl_;
 
     friend struct detail::access;
@@ -144,7 +144,10 @@ public:
      * \par Object lifetimes
      * Both `name` and `value` are stored as views.
      */
-    format_arg(string_view name, formattable_ref value) noexcept : impl_{name, value} {}
+    format_arg(string_view name, formattable_ref value) noexcept
+        : impl_{name, detail::access::get_impl(value)}
+    {
+    }
 };
 
 /**
@@ -228,8 +231,6 @@ public:
      * value is formatted according to its type, applying the passed format specifiers.
      * If formatting generates an error (for instance, a string with invalid encoding is passed),
      * the error state may be set.
-     * \n
-     * The supplied type must satisfy the `Formattable` concept.
      * \n
      * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
