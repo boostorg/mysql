@@ -127,155 +127,39 @@ concept format_fn_for_range = requires(const FormatFn& format_fn, Range&& range,
 
 #endif
 
-// A type-erased custom argument passed to format
-struct format_custom_arg
-{
-    const void* obj;
-    bool (*format_fn)(const void*, const char*, const char*, format_context_base&);
-
-    // To use with arguments with a custom formatter
-    template <class T>
-    static bool do_format(
-        const void* obj,
-        const char* spec_begin,
-        const char* spec_end,
-        format_context_base& ctx
-    )
-    {
-        formatter<T> fmt;
-        const char* it = fmt.parse(spec_begin, spec_end);
-        if (it != spec_end)
-        {
-            return false;
-        }
-        fmt.format(*static_cast<const T*>(obj), ctx);
-        return true;
-    }
-
-    template <class T>
-    static format_custom_arg create_custom_formatter(const T& obj) noexcept
-    {
-        return {&obj, &do_format<T>};
-    }
-
-    // To use with ranges
-    // Definition depends on format_context_base
-    template <class T>
-    static bool do_format_range(
-        const void* obj,
-        const char* spec_begin,
-        const char* spec_end,
-        format_context_base& ctx
-    );
-
-    // For const objects
-    template <class T>
-    static format_custom_arg create_range(const T& obj)
-    {
-        return {&obj, &do_format_range<const T>};
-    }
-
-    // For non-const objects (e.g. ranges::views::filter).
-    // The pointer is const void* but const-ness is casted
-    // away in do_format_range in this case
-    template <class T>
-    static format_custom_arg create_range(T& obj)
-    {
-        return {&obj, &do_format_range<T>};
-    }
-};
-
 // A type-erased argument passed to format. Built-in types are passed
 // directly in the struct (as a field_view), instead of by pointer,
 // to reduce the number of do_format instantiations
-struct format_arg_value
+struct formattable_ref_impl
 {
     enum class type_t
     {
         field,
         field_with_specs,
-        custom
+        fn_and_ptr
+    };
+
+    struct fn_and_ptr
+    {
+        const void* obj;
+        bool (*format_fn)(const void*, const char*, const char*, format_context_base&);
     };
 
     union data_t
     {
         field_view fv;
-        format_custom_arg custom;
+        fn_and_ptr custom;
 
         data_t(field_view fv) noexcept : fv(fv) {}
-        data_t(format_custom_arg v) noexcept : custom(v) {}
+        data_t(fn_and_ptr v) noexcept : custom(v) {}
     };
 
     type_t type;
     data_t data;
 };
 
-// make_format_value: creates a type erased format_arg_value from a typed value.
-// Used for types having is_writable_field<T>
-template <class T, bool is_rng>
-format_arg_value make_format_value_impl(
-    const T& v,
-    std::true_type,                        // is_writable_field
-    std::integral_constant<bool, is_rng>,  // is formattable range: we don't care
-    std::false_type                        // is formattable ref
-) noexcept
-{
-    // Only string types (and not field_views or optionals) support the string specifiers
-    return {
-        std::is_convertible<T, string_view>::value ? format_arg_value::type_t::field_with_specs
-                                                   : format_arg_value::type_t::field,
-        to_field(v)
-    };
-}
-
-// Used for types having is_formattable_range
 template <class T>
-format_arg_value make_format_value_impl(
-    T&& v,
-    std::false_type,  // writable field
-    std::true_type,   // is formattable range
-    std::false_type   // is formattable ref
-) noexcept
-{
-    return {format_arg_value::type_t::custom, format_custom_arg::create_range(v)};
-}
-
-// Used for types having !is_writable_field<T>
-template <class T>
-format_arg_value make_format_value_impl(
-    const T& v,
-    std::false_type,  // writable field
-    std::false_type,  // is formattable range
-    std::false_type   // is formattable ref
-) noexcept
-{
-    return {format_arg_value::type_t::custom, format_custom_arg::create_custom_formatter(v)};
-}
-
-// Used for formattable_ref
-// TODO: restructure
-inline format_arg_value make_format_value_impl(
-    formattable_ref v,
-    std::false_type,  // writable field
-    std::false_type,  // is formattable range
-    std::true_type    // is formattable ref
-) noexcept;
-
-template <class T>
-format_arg_value make_format_value(T&& v) noexcept
-{
-    static_assert(
-        is_formattable_type<T>(),
-        "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
-        "formattable"
-    );
-    return make_format_value_impl(
-        std::forward<T>(v),
-        is_writable_field_ref<T>(),
-        is_formattable_range<T>(),
-        is_formattable_ref<T>()
-    );
-}
+formattable_ref_impl make_formattable_ref(T&& v);
 
 BOOST_MYSQL_DECL
 void vformat_sql_to(format_context_base& ctx, string_view format_str, std::initializer_list<format_arg> args);
@@ -286,9 +170,6 @@ std::string vformat_sql(
     string_view format_str,
     std::initializer_list<format_arg> args
 );
-
-BOOST_MYSQL_DECL
-std::pair<bool, string_view> parse_range_specifiers(const char* spec_begin, const char* spec_end);
 
 }  // namespace detail
 }  // namespace mysql

@@ -89,7 +89,7 @@ struct formatter
 // TODO: document
 class formattable_ref
 {
-    detail::format_arg_value impl_;
+    detail::formattable_ref_impl impl_;
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
 #endif
@@ -104,7 +104,7 @@ public:
 #endif
         >
     formattable_ref(Formattable&& value) noexcept
-        : impl_(detail::make_format_value(std::forward<Formattable>(value)))
+        : impl_(detail::make_formattable_ref(std::forward<Formattable>(value)))
     {
     }
 };
@@ -179,7 +179,7 @@ class format_context_base
     friend class detail::format_state;
 #endif
 
-    BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg, string_view format_spec);
+    BOOST_MYSQL_DECL void format_arg(detail::formattable_ref_impl arg, string_view format_spec);
 
 protected:
     format_context_base(detail::output_string_ref out, format_options opts, error_code ec = {}) noexcept
@@ -612,48 +612,7 @@ inline std::string format_sql(
 }  // namespace mysql
 }  // namespace boost
 
-// Definitions
-#ifndef BOOST_MYSQL_DOXYGEN
-template <class T>
-bool boost::mysql::detail::format_custom_arg::do_format_range(
-    const void* obj,
-    const char* spec_begin,
-    const char* spec_end,
-    format_context_base& ctx
-)
-{
-    // Parse specifiers
-    auto res = detail::parse_range_specifiers(spec_begin, spec_end);
-    if (!res.first)
-        return false;
-    auto spec = runtime(res.second);
-
-    // Retrieve the object. T here may be the actual type U or const U
-    auto& value = *const_cast<T*>(static_cast<const T*>(obj));
-
-    // Output the sequence
-    bool is_first = true;
-    for (auto it = std::begin(value); it != std::end(value); ++it)
-    {
-        if (!is_first)
-            ctx.append_raw(", ");
-        is_first = false;
-        ctx.append_value(*it, spec);
-    }
-    return true;
-}
-
-boost::mysql::detail::format_arg_value boost::mysql::detail::make_format_value_impl(
-    formattable_ref v,
-    std::false_type,  // writable field
-    std::false_type,  // is formattable range
-    std::true_type    // is formattable ref
-) noexcept
-{
-    return access::get_impl(v);
-}
-#endif
-
+#include <boost/mysql/impl/format_sql.hpp>
 #ifdef BOOST_MYSQL_HEADER_ONLY
 #include <boost/mysql/impl/format_sql.ipp>
 #endif

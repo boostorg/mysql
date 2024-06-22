@@ -525,17 +525,17 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg, string_view format_spec)
+void boost::mysql::format_context_base::format_arg(detail::formattable_ref_impl arg, string_view format_spec)
 {
     switch (arg.type)
     {
-    case detail::format_arg_value::type_t::field:
+    case detail::formattable_ref_impl::type_t::field:
         detail::append_field_view(arg.data.fv, format_spec, false, *this);
         break;
-    case detail::format_arg_value::type_t::field_with_specs:
+    case detail::formattable_ref_impl::type_t::field_with_specs:
         detail::append_field_view(arg.data.fv, format_spec, true, *this);
         break;
-    case detail::format_arg_value::type_t::custom:
+    case detail::formattable_ref_impl::type_t::fn_and_ptr:
         if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec.begin(), format_spec.end(), *this))
         {
             add_error(client_errc::format_string_invalid_specifier);
