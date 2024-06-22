@@ -586,6 +586,8 @@ BOOST_AUTO_TEST_CASE(string_error)
     BOOST_TEST(format_single_error("SELECT {:>}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {::}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:id}", "abc") == spec_err);
+    BOOST_TEST(format_single_error("SELECT {:ir}", "abc") == spec_err);
+    BOOST_TEST(format_single_error("SELECT {:ri}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:sd}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i:}", "abc") == spec_err);
     BOOST_TEST(format_single_error("SELECT {:i }", "abc") == spec_err);
