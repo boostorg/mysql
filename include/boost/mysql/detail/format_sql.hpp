@@ -8,15 +8,12 @@
 #ifndef BOOST_MYSQL_DETAIL_FORMAT_SQL_HPP
 #define BOOST_MYSQL_DETAIL_FORMAT_SQL_HPP
 
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
-#include <initializer_list>
 #include <iterator>
-#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -32,8 +29,6 @@ template <class T>
 struct formatter;
 
 class format_context_base;
-class format_arg;
-struct format_options;
 class formattable_ref;
 
 namespace detail {
@@ -160,16 +155,6 @@ struct formattable_ref_impl
 
 template <class T>
 formattable_ref_impl make_formattable_ref(T&& v);
-
-BOOST_MYSQL_DECL
-void vformat_sql_to(format_context_base& ctx, string_view format_str, std::initializer_list<format_arg> args);
-
-BOOST_MYSQL_DECL
-std::string vformat_sql(
-    const format_options& opts,
-    string_view format_str,
-    std::initializer_list<format_arg> args
-);
 
 }  // namespace detail
 }  // namespace mysql

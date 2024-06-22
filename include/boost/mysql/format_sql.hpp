@@ -529,14 +529,7 @@ struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args)
-{
-    std::initializer_list<format_arg> args_il{
-        {string_view(), std::forward<Formattable>(args)}
-        ...
-    };
-    detail::vformat_sql_to(ctx, format_str.get(), args_il);
-}
+void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args);
 
 /**
  * \copydoc format_sql_to
@@ -544,14 +537,12 @@ void format_sql_to(format_context_base& ctx, constant_string_view format_str, Fo
  * \n
  * This overload allows using named arguments.
  */
-inline void format_sql_to(
+BOOST_MYSQL_DECL
+void format_sql_to(
     format_context_base& ctx,
     constant_string_view format_str,
     std::initializer_list<format_arg> args
-)
-{
-    detail::vformat_sql_to(ctx, format_str.get(), args);
-}
+);
 
 /**
  * \brief (EXPERIMENTAL) Composes a SQL query client-side.
@@ -586,14 +577,7 @@ inline void format_sql_to(
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-std::string format_sql(const format_options& opts, constant_string_view format_str, Formattable&&... args)
-{
-    std::initializer_list<format_arg> args_il{
-        {string_view(), std::forward<Formattable>(args)}
-        ...
-    };
-    return detail::vformat_sql(opts, format_str.get(), args_il);
-}
+std::string format_sql(format_options opts, constant_string_view format_str, Formattable&&... args);
 
 /**
  * \copydoc format_sql
@@ -601,14 +585,12 @@ std::string format_sql(const format_options& opts, constant_string_view format_s
  * \n
  * This overload allows using named arguments.
  */
-inline std::string format_sql(
-    const format_options& opts,
+BOOST_MYSQL_DECL
+std::string format_sql(
+    format_options opts,
     constant_string_view format_str,
     std::initializer_list<format_arg> args
-)
-{
-    return detail::vformat_sql(opts, format_str.get(), args);
-}
+);
 
 }  // namespace mysql
 }  // namespace boost

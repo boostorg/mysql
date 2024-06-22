@@ -545,23 +545,23 @@ void boost::mysql::format_context_base::format_arg(detail::formattable_ref_impl 
     }
 }
 
-void boost::mysql::detail::vformat_sql_to(
+void boost::mysql::format_sql_to(
     format_context_base& ctx,
-    string_view format_str,
+    constant_string_view format_str,
     std::initializer_list<format_arg> args
 )
 {
-    detail::format_state(ctx, {args.begin(), args.end()}).format(format_str);
+    detail::format_state(ctx, {args.begin(), args.end()}).format(format_str.get());
 }
 
-std::string boost::mysql::detail::vformat_sql(
-    const format_options& opts,
-    string_view format_str,
+std::string boost::mysql::format_sql(
+    format_options opts,
+    constant_string_view format_str,
     std::initializer_list<format_arg> args
 )
 {
     format_context ctx(opts);
-    detail::vformat_sql_to(ctx, format_str, args);
+    format_sql_to(ctx, format_str, args);
     return std::move(ctx).get().value();
 }
 
