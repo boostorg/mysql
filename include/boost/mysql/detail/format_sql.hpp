@@ -153,6 +153,7 @@ struct formattable_ref_impl
     data_t data;
 };
 
+// Create a type-erased formattable_ref_impl from a formattable value
 template <class T>
 formattable_ref_impl make_formattable_ref(T&& v);
 

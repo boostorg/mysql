@@ -136,7 +136,6 @@ public:
      * \brief Constructor.
      * \details
      * Constructs an argument from a name and a value.
-     * value must satisfy the `Formattable` concept.
      *
      * \par Exception safety
      * No-throw guarantee.

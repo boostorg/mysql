@@ -12,6 +12,8 @@
 
 #include <boost/mysql/format_sql.hpp>
 
+#include <boost/mysql/detail/format_sql.hpp>
+
 #include <type_traits>
 
 namespace boost {
@@ -65,31 +67,40 @@ bool do_format_range(const void* obj, const char* spec_begin, const char* spec_e
     return true;
 }
 
-// make_format_value: creates a type erased format_arg_value from a typed value.
-// Used for types having is_writable_field<T>
-template <class T, bool is_rng>
-formattable_ref_impl make_format_value_impl(
-    const T& v,
-    std::true_type,                        // is_writable_field
-    std::integral_constant<bool, is_rng>,  // is formattable range: we don't care
-    std::false_type                        // is formattable ref
+// Make formattable_ref formattable
+inline formattable_ref_impl make_formattable_ref_custom(
+    formattable_ref v,
+    std::true_type  // is format ref
 )
 {
-    // Only string types (and not field_views or optionals) support the string specifiers
+    return access::get_impl(v);
+}
+
+// Make types with custom formatters formattable
+template <class T>
+formattable_ref_impl make_formattable_ref_custom(
+    const T& v,
+    std::false_type  // is format ref
+)
+{
+    // If you're getting an error here, it means that you're passing a type
+    // that is not formattable to a SQL formatting function.
+    static_assert(
+        has_specialized_formatter<T>(),
+        "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
+        "formattable"
+    );
     return {
-        std::is_convertible<T, string_view>::value ? formattable_ref_impl::type_t::field_with_specs
-                                                   : formattable_ref_impl::type_t::field,
-        to_field(v)
+        formattable_ref_impl::type_t::fn_and_ptr,
+        formattable_ref_impl::fn_and_ptr{&v, &do_format_custom_formatter<T>}
     };
 }
 
-// Used for types having is_formattable_range
+// Make ranges formattable
 template <class T>
-formattable_ref_impl make_format_value_impl(
+formattable_ref_impl make_formattable_ref_range(
     T&& v,
-    std::false_type,  // writable field
-    std::true_type,   // is formattable range
-    std::false_type   // is formattable ref
+    std::true_type  // formattable range
 )
 {
     // Although everything is passed as const void*, do_format_range
@@ -100,31 +111,37 @@ formattable_ref_impl make_format_value_impl(
     };
 }
 
-// Used for types having !is_writable_field<T>
 template <class T>
-formattable_ref_impl make_format_value_impl(
+formattable_ref_impl make_formattable_ref_range(
     const T& v,
-    std::false_type,  // writable field
-    std::false_type,  // is formattable range
-    std::false_type   // is formattable ref
+    std::false_type  // formattable range
 )
 {
+    return make_formattable_ref_custom(v, is_formattable_ref<T>());
+}
+
+// Used for types having is_writable_field<T>
+template <class T>
+formattable_ref_impl make_formattable_ref_writable(
+    const T& v,
+    std::true_type  // is_writable_field
+)
+{
+    // Only string types (and not field_views or optionals) support the string specifiers
     return {
-        formattable_ref_impl::type_t::fn_and_ptr,
-        formattable_ref_impl::fn_and_ptr{&v, &do_format_custom_formatter<T>}
+        std::is_convertible<T, string_view>::value ? formattable_ref_impl::type_t::field_with_specs
+                                                   : formattable_ref_impl::type_t::field,
+        to_field(v)
     };
 }
 
-// Used for formattable_ref
-// TODO: restructure
-inline formattable_ref_impl make_format_value_impl(
-    formattable_ref v,
-    std::false_type,  // writable field
-    std::false_type,  // is formattable range
-    std::true_type    // is formattable ref
+template <class T>
+formattable_ref_impl make_formattable_ref_writable(
+    T&& v,
+    std::false_type  // is_writable_field
 )
 {
-    return access::get_impl(v);
+    return make_formattable_ref_range(std::forward<T>(v), is_formattable_range<T>());
 }
 
 }  // namespace detail
@@ -134,17 +151,11 @@ inline formattable_ref_impl make_format_value_impl(
 template <class T>
 boost::mysql::detail::formattable_ref_impl boost::mysql::detail::make_formattable_ref(T&& v)
 {
-    static_assert(
-        is_formattable_type<T>(),
-        "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
-        "formattable"
-    );
-    return make_format_value_impl(
-        std::forward<T>(v),
-        is_writable_field_ref<T>(),
-        is_formattable_range<T>(),
-        is_formattable_ref<T>()
-    );
+    // Hierarchy:
+    //    1. writable field?
+    //    2. formattable range?
+    //    3. custom formatter or formattable_ref?
+    return make_formattable_ref_writable(std::forward<T>(v), is_writable_field_ref<T>());
 }
 
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
