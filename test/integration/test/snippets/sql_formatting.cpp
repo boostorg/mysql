@@ -15,7 +15,6 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/config.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/system/result.hpp>
 #include <boost/test/unit_test.hpp>

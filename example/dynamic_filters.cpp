@@ -72,7 +72,7 @@ string_view op_type_to_sql(op_type value)
     case op_type::eq: return "=";
     case op_type::gte: return ">=";
     case op_type::gt: return ">";
-    default: assert(false); return "";
+    default: assert(false); return "=";
     }
 }
 
@@ -188,18 +188,20 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
 }
 
 // Composes a SELECT query to retrieve employees according to the passed filters.
-//
 std::string compose_get_employees_query(
     boost::mysql::format_options opts,
     const std::vector<filter>& filts,
     boost::optional<string_view> order_by
 )
 {
-    // A format context allows composing queries incrementally
+    // A format context allows composing queries incrementally.
+    // This is required because we need to add the ORDER BY clause conditionally
     boost::mysql::format_context ctx(opts);
 
     // Adds an individual filter to the context. Used by sequence()
     auto filter_format_fn = [](filter item, boost::mysql::format_context_base& elm_ctx) {
+        // {:i} formats a string as a SQL identifier. {:r} outputs raw SQL.
+        // filter{"key", op_type::eq, field_view(42)} would get formatted as "`key` = 42"
         boost::mysql::format_sql_to(
             elm_ctx,
             "{:i} {:r} {}",
@@ -223,7 +225,7 @@ std::string compose_get_employees_query(
     {
         // identifier formats a string as a SQL identifier, instead of a string literal.
         // For instance, this may generate "ORDER BY `first_name`"
-        boost::mysql::format_sql_to(ctx, "ORDER BY {:i}", *order_by);
+        boost::mysql::format_sql_to(ctx, " ORDER BY {:i}", *order_by);
     }
 
     // Get our generated query

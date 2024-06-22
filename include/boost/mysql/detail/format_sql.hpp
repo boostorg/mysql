@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_DETAIL_FORMAT_SQL_HPP
 #define BOOST_MYSQL_DETAIL_FORMAT_SQL_HPP
 
-#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -160,12 +159,16 @@ struct format_custom_arg
         format_context_base& ctx
     );
 
+    // For const objects
     template <class T>
     static format_custom_arg create_range(const T& obj)
     {
         return {&obj, &do_format_range<const T>};
     }
 
+    // For non-const objects (e.g. ranges::views::filter).
+    // The pointer is const void* but const-ness is casted
+    // away in do_format_range in this case
     template <class T>
     static format_custom_arg create_range(T& obj)
     {
