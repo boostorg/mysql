@@ -12,6 +12,8 @@
 
 #include <boost/mysql/character_set.hpp>
 
+#include <boost/assert.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
