@@ -426,6 +426,19 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
         ]
         []
     ]
+    [
+        [[reflink formattable_ref]]
+        [
+            Formats the underlying value. Can represent any of the types above.[br]
+            Accepts the same format specifiers as the underlying type.
+        ]
+        [
+            ```
+            format_sql(opts, "SELECT {}", formattable_ref(42)) == "SELECT 42"
+            format_sql(opts, "SELECT * FROM {:i}", formattable_ref("employee")) == "SELECT * FROM `employee`"
+            ```
+        ]
+    ]
 ]
 
 [endsect]

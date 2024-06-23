@@ -111,7 +111,7 @@ public:
      * `Formattable` type.
      * \n
      * This constructor participates in overload resolution only if
-     * the passed value meets the `Formattable` type requirements and
+     * the passed value meets the `Formattable` concept and
      * is not a `formattable_ref` or a reference to one.
      *
      * \par Exception safety

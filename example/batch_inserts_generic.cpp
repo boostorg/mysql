@@ -101,7 +101,7 @@ struct insert_struct_format_fn
     void operator()(const T& value, boost::mysql::format_context_base& ctx) const
     {
         // Convert the struct into a std::array of formattable_ref
-        // formattable_ref is a view type that can hold anything that can be formatted
+        // formattable_ref is a view type that can hold any type that can be formatted
         auto args = mp11::tuple_apply(
             [&value](auto... descriptors) {
                 return std::array<boost::mysql::formattable_ref, num_public_members<T>>{
