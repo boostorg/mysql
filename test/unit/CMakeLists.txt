@@ -83,6 +83,7 @@ add_executable(
     test/format_sql/formattable.cpp
     test/format_sql/basic_format_context.cpp
     test/format_sql/individual_value.cpp
+    test/format_sql/formattable_ref.cpp
     test/format_sql/ranges.cpp
     test/format_sql/sequence.cpp
     test/format_sql/custom_formatter.cpp
