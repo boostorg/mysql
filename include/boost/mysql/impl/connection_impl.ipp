@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/character_set.hpp>
+
 #include <boost/mysql/detail/connection_impl.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state.hpp>
@@ -51,10 +53,10 @@ boost::mysql::diagnostics& boost::mysql::detail::connection_impl::shared_diag()
 boost::system::result<boost::mysql::character_set> boost::mysql::detail::connection_impl::
     current_character_set() const
 {
-    const auto* res = st_->data().charset_ptr();
-    if (res == nullptr)
+    character_set charset = st_->data().current_charset;
+    if (charset.name == nullptr)
         return client_errc::unknown_character_set;
-    return *res;
+    return charset;
 }
 
 template <class AlgoParams>
