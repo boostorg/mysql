@@ -24,18 +24,21 @@
 #include <boost/core/span.hpp>
 #include <boost/throw_exception.hpp>
 
-#include <cstdint>
 #include <stdexcept>
-#include <vector>
 
-namespace boost {
-namespace mysql {
-namespace detail {
+boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_execute(string_view query)
+{
+    impl_.stages_.push_back({
+        detail::pipeline_stage_kind::execute,
+        detail::serialize_top_level(detail::query_command{query}, impl_.buffer_),
+        detail::resultset_encoding::text,
+    });
+    return *this;
+}
 
-inline std::uint8_t serialize_execute_statement(
+boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_execute_range(
     statement stmt,
-    span<const field_view> params,
-    std::vector<std::uint8_t>& buff
+    span<const field_view> params
 )
 {
     if (params.size() != stmt.num_params())
@@ -44,115 +47,57 @@ inline std::uint8_t serialize_execute_statement(
             std::invalid_argument("Wrong number of actual parameters supplied to a prepared statement")
         );
     }
-    return serialize_top_level(execute_stmt_command{stmt.id(), params}, buff);
+    impl_.stages_.push_back({
+        detail::pipeline_stage_kind::execute,
+        detail::serialize_top_level(detail::execute_stmt_command{stmt.id(), params}, impl_.buffer_),
+        detail::resultset_encoding::binary,
+    });
+    return *this;
 }
 
-// TODO: consider using Boost.Container (or adding tests)
-inline std::uint8_t serialize_execute_stmt_tuple(
-    statement stmt,
-    span<const execute_stage::statement_param_arg> params,
-    std::vector<std::uint8_t>& buff
-)
+boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_prepare_statement(string_view stmt_sql)
 {
-    constexpr std::size_t stack_fields = 64u;
-    if (params.size() <= stack_fields)
-    {
-        std::array<field_view, stack_fields> storage;
-        for (std::size_t i = 0; i < params.size(); ++i)
-            storage[i] = access::get_impl(params[i]);
-        return detail::serialize_execute_statement(stmt, {storage.data(), params.size()}, buff);
-    }
-    else
-    {
-        std::vector<field_view> storage;
-        storage.reserve(params.size());
-        for (auto p : params)
-            storage.push_back(access::get_impl(p));
-        return detail::serialize_execute_statement(stmt, storage, buff);
-    }
-}
-
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
-
-boost::mysql::detail::pipeline_request_stage boost::mysql::execute_stage::create(
-    std::vector<std::uint8_t>& buff
-) const
-{
-    switch (type_)
-    {
-    case type_query:
-        return {
-            detail::pipeline_stage_kind::execute,
-            detail::serialize_top_level(detail::query_command{data_.query}, buff),
-            detail::resultset_encoding::text
-        };
-    case type_stmt_tuple:
-    {
-        return {
-            detail::pipeline_stage_kind::execute,
-            detail::serialize_execute_stmt_tuple(data_.stmt_tuple.stmt, data_.stmt_tuple.params, buff),
-            detail::resultset_encoding::binary
-        };
-    }
-    case type_stmt_range:
-        return {
-            detail::pipeline_stage_kind::execute,
-            detail::serialize_execute_statement(data_.stmt_range.stmt, data_.stmt_range.params, buff),
-            detail::resultset_encoding::binary
-        };
-    default: BOOST_ASSERT(false); return {};
-    }
-}
-
-boost::mysql::detail::pipeline_request_stage boost::mysql::prepare_statement_stage::create(
-    std::vector<std::uint8_t>& buffer
-) const
-{
-    return {
+    impl_.stages_.push_back({
         detail::pipeline_stage_kind::prepare_statement,
-        detail::serialize_top_level(detail::prepare_stmt_command{stmt_sql_}, buffer),
-        {}
-    };
+        detail::serialize_top_level(detail::prepare_stmt_command{stmt_sql}, impl_.buffer_),
+        {},
+    });
+    return *this;
 }
 
-boost::mysql::detail::pipeline_request_stage boost::mysql::close_statement_stage::create(
-    std::vector<std::uint8_t>& buffer
-) const
+boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_close_statement(statement stmt)
 {
-    return {
+    impl_.stages_.push_back({
         detail::pipeline_stage_kind::close_statement,
-        detail::serialize_top_level(detail::close_stmt_command{stmt_id_}, buffer),
-        {}
-    };
+        detail::serialize_top_level(detail::close_stmt_command{stmt.id()}, impl_.buffer_),
+        {},
+    });
+    return *this;
 }
 
-boost::mysql::detail::pipeline_request_stage boost::mysql::reset_connection_stage::create(
-    std::vector<std::uint8_t>& buffer
-) const
+boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_reset_connection()
 {
-    return {
+    impl_.stages_.push_back({
         detail::pipeline_stage_kind::reset_connection,
-        detail::serialize_top_level(detail::reset_connection_command{}, buffer),
-        {}
-    };
+        detail::serialize_top_level(detail::reset_connection_command{}, impl_.buffer_),
+        {},
+    });
+    return *this;
 }
 
-boost::mysql::detail::pipeline_request_stage boost::mysql::set_character_set_stage::create(
-    std::vector<std::uint8_t>& buffer
-) const
+boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_set_character_set(character_set charset)
 {
-    auto q = detail::compose_set_names(charset_);
+    auto q = detail::compose_set_names(charset);
     if (q.has_error())
     {
         BOOST_THROW_EXCEPTION(std::invalid_argument("Invalid character set name"));
     }
-    return {
+    impl_.stages_.push_back({
         detail::pipeline_stage_kind::set_character_set,
-        detail::serialize_top_level(detail::query_command{*q}, buffer),
-        charset_
-    };
+        detail::serialize_top_level(detail::query_command{*q}, impl_.buffer_),
+        charset,
+    });
+    return *this;
 }
 
 void boost::mysql::any_stage_response::check_has_results() const

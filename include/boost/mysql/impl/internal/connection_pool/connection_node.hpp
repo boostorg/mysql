@@ -31,6 +31,7 @@
 
 #include <chrono>
 #include <utility>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -58,10 +59,6 @@ struct conn_shared_state
     diagnostics last_diag;
 };
 
-// Helper to create the reset pipeline (reset + set names utf8mb4)
-using reset_pipeline_req_t = static_pipeline_request<reset_connection_stage, set_character_set_stage>;
-inline reset_pipeline_req_t make_reset_pipeline() { return reset_pipeline_req_t({}, {utf8mb4_charset}); }
-
 // The templated type is never exposed to the user. We template
 // so tests can inject mocks.
 template <class IoTraits>
@@ -80,8 +77,8 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     diagnostics connect_diag_;
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
-    const reset_pipeline_req_t* reset_pipeline_req_;
-    reset_pipeline_req_t::response_type reset_pipeline_res_;
+    const pipeline_request* reset_pipeline_req_;
+    std::vector<any_stage_response> reset_pipeline_res_;
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -184,7 +181,7 @@ public:
         boost::asio::any_io_executor ex,
         boost::asio::any_io_executor conn_ex,
         conn_shared_state<IoTraits>& shared_st,
-        const reset_pipeline_req_t* reset_pipeline_req
+        const pipeline_request* reset_pipeline_req
     )
         : params_(&params),
           shared_st_(&shared_st),

@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <boost/mysql/pipeline.hpp>
+
 #include <boost/mysql/detail/connection_impl.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state.hpp>
@@ -55,6 +57,16 @@ boost::system::result<boost::mysql::character_set> boost::mysql::detail::connect
     if (res == nullptr)
         return client_errc::unknown_character_set;
     return *res;
+}
+
+boost::mysql::detail::run_pipeline_algo_params boost::mysql::detail::connection_impl::make_params_pipeline(
+    const pipeline_request& req,
+    std::vector<any_stage_response>& response,
+    diagnostics& diag
+)
+{
+    const auto& req_impl = access::get_impl(req);
+    return {&diag, req_impl.buffer_, req_impl.stages_, &response};
 }
 
 template <class AlgoParams>

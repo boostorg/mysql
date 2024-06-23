@@ -27,7 +27,6 @@
 #include <boost/mysql/detail/connection_impl.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
-#include <boost/mysql/detail/pipeline_concepts.hpp>
 #include <boost/mysql/detail/ssl_fwd.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
@@ -39,6 +38,7 @@
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -46,6 +46,9 @@ namespace mysql {
 // Forward declarations
 template <class... StaticRow>
 class static_execution_state;
+
+class pipeline_request;
+class any_stage_response;
 
 /**
  * \brief (EXPERIMENTAL) Configuration parameters that can be passed to \ref any_connection's constructor.
@@ -1042,7 +1045,7 @@ public:
         );
     }
 
-    /**
+    /** TODO: review
      * \brief Runs a set of pipelined requests.
      * \details
      * Runs the pipeline described by `req` and stores its response in `res`.
@@ -1061,10 +1064,9 @@ public:
      * Successive stages will be marked as failed with the fatal error. The server may or may
      * not have processed such stages.
      */
-    template <BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType>
     void run_pipeline(
-        const PipelineRequestType& req,
-        typename PipelineRequestType::response_type& res,
+        const pipeline_request& req,
+        std::vector<any_stage_response>& res,
         error_code& err,
         diagnostics& diag
     )
@@ -1073,8 +1075,7 @@ public:
     }
 
     /// \copydoc run_pipeline
-    template <BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType>
-    void run_pipeline(const PipelineRequestType& req, typename PipelineRequestType::response_type& res)
+    void run_pipeline(const pipeline_request& req, std::vector<any_stage_response>& res)
     {
         error_code err;
         diagnostics diag;
@@ -1092,12 +1093,10 @@ public:
      * The request and response objects must be kept alive and should not be modified
      * until the operation completes.
      */
-    template <
-        BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_run_pipeline(
-        const PipelineRequestType& req,
-        typename PipelineRequestType::response_type& res,
+        const pipeline_request& req,
+        std::vector<any_stage_response>& res,
         CompletionToken&& token
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
     {
@@ -1105,12 +1104,10 @@ public:
     }
 
     /// \copydoc async_run_pipeline
-    template <
-        BOOST_MYSQL_PIPELINE_REQUEST_TYPE PipelineRequestType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_run_pipeline(
-        const PipelineRequestType& req,
-        typename PipelineRequestType::response_type& res,
+        const pipeline_request& req,
+        std::vector<any_stage_response>& res,
         diagnostics& diag,
         CompletionToken&& token
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
