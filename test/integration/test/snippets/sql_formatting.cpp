@@ -604,6 +604,21 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         );
         //->
         //]
+
+        //[sql_formatting_reference_formattable_ref
+        //<-
+        BOOST_TEST(
+            //->
+            format_sql(opts, "SELECT {}", formattable_ref(42)) == "SELECT 42"
+            //<-
+        );
+        BOOST_TEST(
+            //->
+            format_sql(opts, "SELECT {:i} FROM t", formattable_ref("salary")) == "SELECT `salary` FROM t"
+            //<-
+        );
+        //->
+        //]
     }
 
     // Advanced section

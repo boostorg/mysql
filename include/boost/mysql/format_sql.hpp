@@ -35,48 +35,6 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) A named format argument, to be used in initializer lists.
- * \details
- * Represents a name, value pair to be passed to a formatting function.
- * This type should only be used in initializer lists, as a function argument.
- *
- * \par Object lifetimes
- * This is a non-owning type. Both the argument name and value are stored
- * as views.
- */
-class format_arg
-{
-#ifndef BOOST_MYSQL_DOXYGEN
-    struct
-    {
-        string_view name;
-        detail::format_arg_value value;
-    } impl_;
-
-    friend struct detail::access;
-#endif
-
-public:
-    /**
-     * \brief Constructor.
-     * \details
-     * Constructs an argument from a name and a value.
-     * value must satisfy the `Formattable` concept.
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     *
-     * \par Object lifetimes
-     * Both `name` and `value` are stored as views.
-     */
-    template <BOOST_MYSQL_FORMATTABLE Formattable>
-    constexpr format_arg(string_view name, Formattable&& value) noexcept
-        : impl_{name, detail::make_format_value(std::forward<Formattable>(value))}
-    {
-    }
-};
-
-/**
  * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
  * \details
  * This type can be specialized for custom types to make them formattable.
@@ -129,6 +87,96 @@ struct formatter
 ;
 
 /**
+ * \brief (EXPERIMENTAL) A type-erased reference to a `Formattable` value.
+ * \details
+ * This type can hold references to any value that satisfies the `Formattable`
+ * concept. The `formattable_ref` type itself satisfies `Formattable`,
+ * and can thus be used as an argument to format functions.
+ *
+ * \par Object lifetimes
+ * This is a non-owning type. It should be only used as a function argument,
+ * to avoid lifetime issues.
+ */
+class formattable_ref
+{
+    detail::formattable_ref_impl impl_;
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+public:
+    /**
+     * \brief Constructor.
+     * \details
+     * Constructs a type-erased formattable reference from a concrete
+     * `Formattable` type.
+     * \n
+     * This constructor participates in overload resolution only if
+     * the passed value meets the `Formattable` concept and
+     * is not a `formattable_ref` or a reference to one.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * value is potentially stored as a view, although some cheap-to-copy
+     * types may be stored as values.
+     */
+    template <
+        BOOST_MYSQL_FORMATTABLE Formattable
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
+        class = typename std::enable_if<
+            detail::is_formattable_type<Formattable>() &&
+            !detail::is_formattable_ref<Formattable>::value>::type
+#endif
+        >
+    formattable_ref(Formattable&& value) noexcept
+        : impl_(detail::make_formattable_ref(std::forward<Formattable>(value)))
+    {
+    }
+};
+
+/**
+ * \brief (EXPERIMENTAL) A named format argument, to be used in initializer lists.
+ * \details
+ * Represents a name, value pair to be passed to a formatting function.
+ * This type should only be used in initializer lists, as a function argument.
+ *
+ * \par Object lifetimes
+ * This is a non-owning type. Both the argument name and value are stored
+ * as views.
+ */
+class format_arg
+{
+#ifndef BOOST_MYSQL_DOXYGEN
+    struct
+    {
+        string_view name;
+        detail::formattable_ref_impl value;
+    } impl_;
+
+    friend struct detail::access;
+#endif
+
+public:
+    /**
+     * \brief Constructor.
+     * \details
+     * Constructs an argument from a name and a value.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * Both `name` and `value` are stored as views.
+     */
+    format_arg(string_view name, formattable_ref value) noexcept
+        : impl_{name, detail::access::get_impl(value)}
+    {
+    }
+};
+
+/**
  * \brief (EXPERIMENTAL) Base class for concrete format contexts.
  * \details
  * Conceptually, a format context contains: \n
@@ -160,7 +208,7 @@ class format_context_base
     friend class detail::format_state;
 #endif
 
-    BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg, string_view format_spec);
+    BOOST_MYSQL_DECL void format_arg(detail::formattable_ref_impl arg, string_view format_spec);
 
 protected:
     format_context_base(detail::output_string_ref out, format_options opts, error_code ec = {}) noexcept
@@ -210,8 +258,6 @@ public:
      * If formatting generates an error (for instance, a string with invalid encoding is passed),
      * the error state may be set.
      * \n
-     * The supplied type must satisfy the `Formattable` concept.
-     * \n
      * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
@@ -226,13 +272,12 @@ public:
      *          specifiers not supported by the type being formatted.
      * \li Any other error code that user-supplied formatter specializations may add using \ref add_error.
      */
-    template <BOOST_MYSQL_FORMATTABLE Formattable>
     format_context_base& append_value(
-        const Formattable& value,
+        formattable_ref value,
         constant_string_view format_specifiers = string_view()
     )
     {
-        format_arg(detail::make_format_value(value), format_specifiers.get());
+        format_arg(detail::access::get_impl(value), format_specifiers.get());
         return *this;
     }
 
@@ -510,14 +555,7 @@ struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args)
-{
-    std::initializer_list<format_arg> args_il{
-        {string_view(), std::forward<Formattable>(args)}
-        ...
-    };
-    detail::vformat_sql_to(ctx, format_str.get(), args_il);
-}
+void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args);
 
 /**
  * \copydoc format_sql_to
@@ -525,14 +563,12 @@ void format_sql_to(format_context_base& ctx, constant_string_view format_str, Fo
  * \n
  * This overload allows using named arguments.
  */
-inline void format_sql_to(
+BOOST_MYSQL_DECL
+void format_sql_to(
     format_context_base& ctx,
     constant_string_view format_str,
     std::initializer_list<format_arg> args
-)
-{
-    detail::vformat_sql_to(ctx, format_str.get(), args);
-}
+);
 
 /**
  * \brief (EXPERIMENTAL) Composes a SQL query client-side.
@@ -567,14 +603,7 @@ inline void format_sql_to(
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-std::string format_sql(const format_options& opts, constant_string_view format_str, Formattable&&... args)
-{
-    std::initializer_list<format_arg> args_il{
-        {string_view(), std::forward<Formattable>(args)}
-        ...
-    };
-    return detail::vformat_sql(opts, format_str.get(), args_il);
-}
+std::string format_sql(format_options opts, constant_string_view format_str, Formattable&&... args);
 
 /**
  * \copydoc format_sql
@@ -582,50 +611,17 @@ std::string format_sql(const format_options& opts, constant_string_view format_s
  * \n
  * This overload allows using named arguments.
  */
-inline std::string format_sql(
-    const format_options& opts,
+BOOST_MYSQL_DECL
+std::string format_sql(
+    format_options opts,
     constant_string_view format_str,
     std::initializer_list<format_arg> args
-)
-{
-    return detail::vformat_sql(opts, format_str.get(), args);
-}
+);
 
 }  // namespace mysql
 }  // namespace boost
 
-// Definitions
-#ifndef BOOST_MYSQL_DOXYGEN
-template <class T>
-bool boost::mysql::detail::format_custom_arg::do_format_range(
-    const void* obj,
-    const char* spec_begin,
-    const char* spec_end,
-    format_context_base& ctx
-)
-{
-    // Parse specifiers
-    auto res = detail::parse_range_specifiers(spec_begin, spec_end);
-    if (!res.first)
-        return false;
-    auto spec = runtime(res.second);
-
-    // Retrieve the object. T here may be the actual type U or const U
-    auto& value = *const_cast<T*>(static_cast<const T*>(obj));
-
-    // Output the sequence
-    bool is_first = true;
-    for (auto it = std::begin(value); it != std::end(value); ++it)
-    {
-        if (!is_first)
-            ctx.append_raw(", ");
-        is_first = false;
-        ctx.append_value(*it, spec);
-    }
-    return true;
-}
-#endif
-
+#include <boost/mysql/impl/format_sql.hpp>
 #ifdef BOOST_MYSQL_HEADER_ONLY
 #include <boost/mysql/impl/format_sql.ipp>
 #endif

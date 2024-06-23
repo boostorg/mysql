@@ -426,6 +426,16 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
         ]
         []
     ]
+    [
+        [[reflink formattable_ref]]
+        [
+            Formats the underlying value. Can represent any of the types above.[br]
+            Accepts the same format specifiers as the underlying type.
+        ]
+        [
+            [sql_formatting_reference_formattable_ref]
+        ]
+    ]
 ]
 
 [endsect]

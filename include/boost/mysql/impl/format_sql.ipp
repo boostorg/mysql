@@ -525,17 +525,17 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg, string_view format_spec)
+void boost::mysql::format_context_base::format_arg(detail::formattable_ref_impl arg, string_view format_spec)
 {
     switch (arg.type)
     {
-    case detail::format_arg_value::type_t::field:
+    case detail::formattable_ref_impl::type_t::field:
         detail::append_field_view(arg.data.fv, format_spec, false, *this);
         break;
-    case detail::format_arg_value::type_t::field_with_specs:
+    case detail::formattable_ref_impl::type_t::field_with_specs:
         detail::append_field_view(arg.data.fv, format_spec, true, *this);
         break;
-    case detail::format_arg_value::type_t::custom:
+    case detail::formattable_ref_impl::type_t::fn_and_ptr:
         if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec.begin(), format_spec.end(), *this))
         {
             add_error(client_errc::format_string_invalid_specifier);
@@ -545,23 +545,23 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg,
     }
 }
 
-void boost::mysql::detail::vformat_sql_to(
+void boost::mysql::format_sql_to(
     format_context_base& ctx,
-    string_view format_str,
+    constant_string_view format_str,
     std::initializer_list<format_arg> args
 )
 {
-    detail::format_state(ctx, {args.begin(), args.end()}).format(format_str);
+    detail::format_state(ctx, {args.begin(), args.end()}).format(format_str.get());
 }
 
-std::string boost::mysql::detail::vformat_sql(
-    const format_options& opts,
-    string_view format_str,
+std::string boost::mysql::format_sql(
+    format_options opts,
+    constant_string_view format_str,
     std::initializer_list<format_arg> args
 )
 {
     format_context ctx(opts);
-    detail::vformat_sql_to(ctx, format_str, args);
+    format_sql_to(ctx, format_str, args);
     return std::move(ctx).get().value();
 }
 
