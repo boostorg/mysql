@@ -86,7 +86,17 @@ struct formatter
 #endif
 ;
 
-// TODO: document
+/**
+ * \brief (EXPERIMENTAL) A type-erased reference to a `Formattable` value.
+ * \details
+ * This type can hold references to any value that satisfies the `Formattable`
+ * concept. The `formattable_ref` type itself satisfies `Formattable`,
+ * and can thus be used as an argument to format functions.
+ *
+ * \par Object lifetimes
+ * This is a non-owning type. It should be only used as a function argument,
+ * to avoid lifetime issues.
+ */
 class formattable_ref
 {
     detail::formattable_ref_impl impl_;
@@ -94,6 +104,23 @@ class formattable_ref
     friend struct detail::access;
 #endif
 public:
+    /**
+     * \brief Constructor.
+     * \details
+     * Constructs a type-erased formattable reference from a concrete
+     * `Formattable` type.
+     * \n
+     * This constructor participates in overload resolution only if
+     * the passed value meets the `Formattable` type requirements and
+     * is not a `formattable_ref` or a reference to one.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * value is potentially stored as a view, although some cheap-to-copy
+     * types may be stored as values.
+     */
     template <
         BOOST_MYSQL_FORMATTABLE Formattable
 #ifndef BOOST_MYSQL_DOXYGEN
