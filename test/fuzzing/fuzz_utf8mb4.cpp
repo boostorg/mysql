@@ -10,6 +10,7 @@
 #include <boost/mysql/impl/internal/call_next_char.hpp>
 
 #include <cstddef>
+#include <stdint.h>
 
 using namespace boost::mysql;
 

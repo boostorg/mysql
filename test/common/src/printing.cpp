@@ -21,6 +21,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 
+#include <cstring>
 #include <ostream>
 
 #include "test_common/printing.hpp"
@@ -82,12 +83,18 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, ssl_mode v) { return os
 // character set
 bool boost::mysql::operator==(const character_set& lhs, const character_set& rhs)
 {
-    return lhs.name == rhs.name;
+    if (lhs.name == nullptr || rhs.name == nullptr)
+        return lhs.name == rhs.name;
+    return std::strcmp(lhs.name, rhs.name) == 0 && lhs.next_char == rhs.next_char;
 }
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, const character_set& v)
 {
-    return os << "character_set(\"" << v.name << "\")";
+    if (v.name == nullptr)
+        return os << "character_set()";
+    else
+        return os << "character_set(\"" << v.name << "\", .next_char? = " << static_cast<bool>(v.next_char)
+                  << ")";
 }
 
 // errcode_with_diagnostics

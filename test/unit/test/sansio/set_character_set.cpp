@@ -51,11 +51,10 @@ BOOST_AUTO_TEST_CASE(compose_set_names_error)
     struct
     {
         string_view name;
-        string_view charset_name;
+        const char* charset_name;
     } test_cases[] = {
-        {"utf8",           "test-\xc3\xb1"     }, // anything non-ascii is rejected
-        {"non_utf8",       "test-\xb1-abc"     },
-        {"null_character", makesv("with\0null")}, // NULL characters not allowed
+        {"utf8",     "test-\xc3\xb1"}, // anything non-ascii is rejected
+        {"non_utf8", "test-\xb1-abc"},
     };
 
     for (const auto& tc : test_cases)
@@ -91,7 +90,7 @@ BOOST_AUTO_TEST_CASE(read_response_success)
     algo_test().expect_read(create_ok_frame(29, ok_builder().build())).check(fix);
 
     // The charset was updated
-    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
 }
 
 BOOST_AUTO_TEST_CASE(read_response_success_previous_charset)
@@ -104,7 +103,7 @@ BOOST_AUTO_TEST_CASE(read_response_success_previous_charset)
     algo_test().expect_read(create_ok_frame(29, ok_builder().build())).check(fix);
 
     // The charset was updated
-    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
 }
 
 BOOST_AUTO_TEST_CASE(read_response_error_network)
@@ -130,7 +129,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
         .check(fix, common_server_errc::er_unknown_character_set, create_server_diag("Unknown charset"));
 
     // The current character set was not updated
-    BOOST_TEST(fix.st.charset_ptr() == nullptr);
+    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 //
@@ -155,7 +154,7 @@ BOOST_AUTO_TEST_CASE(set_charset_success)
         .check(fix);
 
     // The charset was updated
-    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
 }
 
 // Ensure we don't create vulnerabilities when composing SET NAMES
@@ -181,7 +180,7 @@ BOOST_AUTO_TEST_CASE(set_charset_error_composing_request)
     algo_test().check(fix, client_errc::invalid_encoding);
 
     // The current character set was not updated
-    BOOST_TEST(fix.st.charset_ptr()->name == "ascii");
+    BOOST_TEST(fix.st.current_charset == ascii_charset);
 }
 
 BOOST_AUTO_TEST_CASE(set_charset_error_network)
