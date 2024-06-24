@@ -281,10 +281,6 @@ public:
      */
     pipeline_request() = default;
 
-    // TODO: document
-    std::size_t size() const noexcept { return impl_.stages_.size(); }
-    bool empty() const noexcept { return impl_.stages_.empty(); }
-
     /** TODO: review
      * \brief Constructs a stage to execute a text query.
      * \details
