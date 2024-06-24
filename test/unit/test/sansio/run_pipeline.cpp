@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -41,7 +42,6 @@
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_prepare_statement_response.hpp"
 #include "test_unit/create_row_message.hpp"
-#include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -77,6 +77,13 @@ struct fixture : algo_fixture_base
     fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req_buffer = mock_request)
         : algo({&diag, req_buffer, stages, &resp})
     {
+        // Verify that we clear the response correctly
+        any_stage_response elm;
+        detail::access::get_impl(elm).set_error(
+            client_errc::extra_bytes,
+            create_client_diag("Diag not cleared")
+        );
+        resp.push_back(std::move(elm));
     }
 
     // Verify that all stages succeeded
@@ -123,12 +130,12 @@ BOOST_AUTO_TEST_CASE(execute_success)
     fix.check_all_stages_succeeded();
 
     // Check results
-    const auto& res0 = fix.resp[0].as_results();
+    const auto& res0 = fix.resp.at(0).as_results();
     BOOST_TEST(res0.rows() == rows(), per_element());
     BOOST_TEST(res0.info() == "1st");
     BOOST_TEST(detail::access::get_impl(res0).encoding() == resultset_encoding::binary);
 
-    const auto& res1 = fix.resp[1].as_results();
+    const auto& res1 = fix.resp.at(1).as_results();
     BOOST_TEST(res1.rows() == makerows(1, 42, 43), per_element());
     BOOST_TEST(res1.info() == "2nd");
     BOOST_TEST(detail::access::get_impl(res1).encoding() == resultset_encoding::text);
@@ -160,11 +167,11 @@ BOOST_AUTO_TEST_CASE(prepare_statement_success)
     fix.check_all_stages_succeeded();
 
     // Check the resulting statements
-    auto stmt0 = fix.resp[0].as_statement();
+    auto stmt0 = fix.resp.at(0).as_statement();
     BOOST_TEST(stmt0.id() == 7u);
     BOOST_TEST(stmt0.num_params() == 2u);
 
-    auto stmt1 = fix.resp[1].as_statement();
+    auto stmt1 = fix.resp.at(1).as_statement();
     BOOST_TEST(stmt1.id() == 9u);
     BOOST_TEST(stmt1.num_params() == 1u);
 }
@@ -290,8 +297,8 @@ BOOST_AUTO_TEST_CASE(combination)
     // The pipeline had its intended effect
     BOOST_TEST(fix.st.backslash_escapes == true);
     BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
-    BOOST_TEST(fix.resp.items.at(3).stmt.id() == 3u);
-    BOOST_TEST(fix.resp.items.at(4).stmt.id() == 1u);
+    BOOST_TEST(fix.resp.at(3).as_statement().id() == 3u);
+    BOOST_TEST(fix.resp.at(4).as_statement().id() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(no_requests)
@@ -302,8 +309,8 @@ BOOST_AUTO_TEST_CASE(no_requests)
     // Run the test. We complete immediately
     algo_test().check(fix);
 
-    // Setup was called correctly
-    fix.check_setup({});
+    // The response was cleared
+    BOOST_TEST(fix.resp.size() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(error_writing_request)
@@ -321,10 +328,8 @@ BOOST_AUTO_TEST_CASE(error_writing_request)
     // Run the test. No response reading is attempted
     algo_test().expect_write(mock_request, asio::error::eof).check(fix, asio::error::eof);
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // All requests were marked as failed
+    BOOST_TEST(fix.resp.size() == stages.size());
     fix.check_stage_error(0, {asio::error::eof, {}});
     fix.check_stage_error(1, {asio::error::eof, {}});
     fix.check_stage_error(2, {asio::error::eof, {}});
@@ -359,16 +364,14 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors)
                          .build_frame())
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // Stage errors
+    BOOST_TEST(fix.resp.size() == stages.size());
     fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
     fix.check_stage_error(1, {error_code(), {}});
     fix.check_stage_error(2, {common_server_errc::er_bad_field_error, create_server_diag("other_msg")});
 
     // The operation that succeeded had its result set
-    BOOST_TEST(fix.resp.items.at(1).stmt.id() == 3u);
+    BOOST_TEST(fix.resp.at(1).as_statement().id() == 3u);
 }
 
 BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
@@ -396,10 +399,8 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
         .expect_read(create_ok_frame(10, ok_builder().no_backslash_escapes(true).build()))
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // Stage errors
+    BOOST_TEST(fix.resp.size() == stages.size());
     fix.check_stage_error(0, {});
     fix.check_stage_error(1, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
     fix.check_stage_error(2, {});
@@ -426,10 +427,8 @@ BOOST_AUTO_TEST_CASE(fatal_error_first)
         .expect_read(asio::error::network_reset)
         .check(fix, asio::error::network_reset);
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // All subsequent requests were marked as failed
+    BOOST_TEST(fix.resp.size() == stages.size());
     fix.check_stage_error(0, {asio::error::network_reset, {}});
     fix.check_stage_error(1, {asio::error::network_reset, {}});
     fix.check_stage_error(2, {asio::error::network_reset, {}});
@@ -454,10 +453,8 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
         .expect_read(asio::error::network_reset)
         .check(fix, asio::error::network_reset);
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // All subsequent requests were marked as failed
+    BOOST_TEST(fix.resp.size() == stages.size());
     fix.check_stage_error(0, {});
     fix.check_stage_error(1, {asio::error::network_reset, {}});
     fix.check_stage_error(2, {asio::error::network_reset, {}});
@@ -487,10 +484,8 @@ BOOST_AUTO_TEST_CASE(nonfatal_then_fatal_error)
         .expect_read(asio::error::already_connected)
         .check(fix, asio::error::already_connected);
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // Stage results
+    BOOST_TEST(fix.resp.size() == stages.size());
     fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
     fix.check_stage_error(1, {asio::error::already_connected, {}});
     fix.check_stage_error(2, {asio::error::already_connected, {}});
@@ -522,10 +517,8 @@ BOOST_AUTO_TEST_CASE(fatal_error_with_diag)
                          .build_frame())
         .check(fix, common_server_errc::er_aborting_connection, create_server_diag("aborting connection"));
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // Stage results
+    BOOST_TEST(fix.resp.size() == stages.size());
     fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("bad db")});
     fix.check_stage_error(
         1,
