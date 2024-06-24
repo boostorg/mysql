@@ -455,14 +455,14 @@ auto pipeline_fn = netfun_maker_mem<
     void,
     any_connection,
     const pipeline_request&,
-    pipeline_request::response_type&>::async_errinfo(&any_connection::async_run_pipeline);
+    std::vector<any_stage_response>&>::async_errinfo(&any_connection::async_run_pipeline);
 
 // empty pipelines complete immediately, posting adequately
-BOOST_FIXTURE_TEST_CASE(empty_dynamic_pipeline, test_any_connection_fixture)
+BOOST_FIXTURE_TEST_CASE(empty_pipeline, test_any_connection_fixture)
 {
     // Setup
     pipeline_request req;
-    pipeline_request::response_type res;
+    std::vector<any_stage_response> res;
 
     // Run it. It should complete immediately, posting to the correct executor (verified by the testing
     // infrastructure)
@@ -475,8 +475,8 @@ BOOST_FIXTURE_TEST_CASE(pipeline_fatal_error, test_any_connection_fixture)
 {
     // Setup
     pipeline_request req;
-    pipeline_request::response_type res;
-    req.add(execute_stage("SELECT 1")).add(execute_stage("SELECT 2"));
+    std::vector<any_stage_response> res;
+    req.add_execute("SELECT 1").add_execute("SELECT 2");
 
     // The first read will fail
     stream().set_fail_count(fail_count(1, boost::asio::error::network_reset));
