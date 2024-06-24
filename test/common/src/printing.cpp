@@ -13,6 +13,7 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/ssl_mode.hpp>
