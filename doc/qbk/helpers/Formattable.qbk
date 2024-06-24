@@ -23,6 +23,7 @@ Formally, let `T` be any type, and `U` the result of stripping cv-qualifiers and
       type or have a custom formatted defined, but must not be a range.
     * `U` does not satisfy [reflink2 WritableFieldTuple WritableField] (i.e. `vector<unsigned char>` is
         formatted as a blob, not as a sequence).
+* `U` is [reflink formattable_ref].
 
 For a reference table on built-in formattable types, see [link mysql.sql_formatting.reference this section].
 

@@ -41,6 +41,7 @@
           <member><link linkend="mysql.ref.boost__mysql__field_view">field_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_arg">format_arg</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_context_base">format_context_base</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__formattable_ref">formattable_ref</link></member>
           <member><link linkend="mysql.ref.boost__mysql__formatter">formatter</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_options">format_options</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_sequence_view">format_sequence_view</link></member>

@@ -100,12 +100,12 @@ struct insert_struct_format_fn
     template <class T>
     void operator()(const T& value, boost::mysql::format_context_base& ctx) const
     {
-        // Convert the struct into a std::array of field_view's
-        // TODO: this doesn't work for optionals or things with custom formatters
+        // Convert the struct into a std::array of formattable_ref
+        // formattable_ref is a view type that can hold any type that can be formatted
         auto args = mp11::tuple_apply(
             [&value](auto... descriptors) {
-                return std::array<boost::mysql::field_view, num_public_members<T>>{
-                    {boost::mysql::field_view(value.*descriptors.pointer)...}
+                return std::array<boost::mysql::formattable_ref, num_public_members<T>>{
+                    {value.*descriptors.pointer...}
                 };
             },
             mp11::mp_rename<public_members<T>, std::tuple>()
