@@ -1045,14 +1045,16 @@ public:
         );
     }
 
-    /** TODO: review
+    /**
      * \brief Runs a set of pipelined requests.
      * \details
      * Runs the pipeline described by `req` and stores its response in `res`.
+     * After the operation completes, `res` will have as many elements as stages
+     * were in `req`, even if the operation fails.
      * \n
      * Request stages are seen by the server as a series of unrelated requests.
      * As a consequence, all stages are always run, even if previous stages fail.
-     *
+     * \n
      * If all stages succeed, the operation completes successfully. Thus, there is no need to check
      * the per-stage error code in `res` if this operation completed successfully.
      * \n
