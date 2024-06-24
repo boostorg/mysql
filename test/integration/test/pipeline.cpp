@@ -74,9 +74,8 @@ BOOST_FIXTURE_TEST_CASE(success, fixture)
     req.clear();
     req.add_set_character_set(utf8mb4_charset)
         .add_execute(stmt, 0)
-        .add_execute(stmt, 1)
+        .add_execute_range(stmt, std::vector<field_view>{field_view(1)})
         .add_close_statement(stmt);
-    // TODO: add a test for statement range
 
     // Run it
     result = create_initial_netresult<void>();
