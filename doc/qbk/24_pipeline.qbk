@@ -52,38 +52,21 @@ If you're not sure, don't use this feature.
 
 [heading Pipeline requests and responses]
 
-There are two interfaces to pipelines: dynamic ([reflink pipeline_request]) and static
-([reflink static_pipeline_request]). Both are C++11 compatible.
+To run a pipeline, create a [reflink pipeline_request] object describing what should the pipeline do:
 
-To run a dynamic pipeline, create a request object describing what should the pipeline do:
+[pipeline_request]
 
-[pipeline_dynamic_request]
-
-Use [refmem pipeline_request add] with any of the [link mysql.pipeline.reference available stage types]
-to add stages your pipeline.
+We're using [refmemunq pipeline_request add_execute] and [refmemunq pipeline_request add_prepare_statement]
+to add stages to our pipeline. You can find all available stage types in the [link mysql.pipeline.reference reference section].
 
 To actually run the pipeline, create a response object and call
 [refmem any_connection run_pipeline] or [refmemunq any_connection async_run_pipeline]:
 
-[pipeline_dynamic_run]
+[pipeline_run]
 
 Finally, you can access the statements using:
 
-[pipeline_dynamic_results]
-
-
-
-
-[heading Static pipelines]
-
-If the type and number of stages in your pipeline is known at compile-time, you can use
-static pipelines, instead. The mechanics are similar, except that some checks are moved
-to compile-time. The pipeline in the previous example can be rewritten as:
-
-[pipeline_static]
-
-
-
+[pipeline_results]
 
 
 
@@ -97,9 +80,7 @@ is considered failed. This means that [*if `run_pipipeline` completed successful
 [*all stages are always run, regardless of the outcome of previous stages]. 
 
 If `run_pipipeline` fails, you can check which stages succeeded and failed by inspecting responses.
-Response types like [refmem prepare_statement_stage response_type] are aliases for
-[link mysql.error_handling.system_result `boost::system::result`], a vocabulary type that
-can contain either a value or an error. For instance:
+[refmem any_stage_response error] will return error information about failed steps. For instance:
 
 [pipeline_errors]
 
@@ -142,8 +123,9 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            [reflink execute_stage][br][br]
-            Behaves like [refmem any_connection execute]
+            *Execute*: behaves like [refmem any_connection execute][br][br]
+            [refmem pipeline_request add_execute][br]
+            [refmem pipeline_request add_execute_range]
         ]
         [[pipeline_reference_execute]]
         [[pipeline_reference_execute_equivalent]]
@@ -153,8 +135,9 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            [reflink prepare_statement_stage][br][br]
-            Behaves like [refmem any_connection prepare_statement]
+            *Prepare statement*: behaves like [refmem any_connection prepare_statement][br][br]
+            [refmem pipeline_request add_prepare_statement]
+            
         ]
         [[pipeline_reference_prepare_statement]]
         [[pipeline_reference_prepare_statement_equivalent]]
@@ -164,8 +147,8 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            [reflink close_statement_stage][br][br]
-            Behaves like [refmem any_connection close_statement]
+            *Close statement*: behaves like [refmem any_connection close_statement][br][br]
+            [refmem pipeline_request add_close_statement]
         ]
         [[pipeline_reference_close_statement]]
         [[pipeline_reference_close_statement_equivalent]]
@@ -175,8 +158,8 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            [reflink reset_connection_stage][br][br]
-            Behaves like [refmem any_connection reset_connection]
+            *Reset connection*: behaves like [refmem any_connection reset_connection][br][br]
+            [refmem pipeline_request add_reset_connection]
         ]
         [[pipeline_reference_reset_connection]]
         [[pipeline_reference_reset_connection_equivalent]]
@@ -186,8 +169,8 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            [reflink set_character_set_stage][br][br]
-            Behaves like [refmem any_connection set_character_set]
+            *Set character set*: behaves like [refmem any_connection set_character_set][br][br]
+            [refmem pipeline_request add_set_character_set]
         ]
         [[pipeline_reference_set_character_set]]
         [[pipeline_reference_set_character_set_equivalent]]
