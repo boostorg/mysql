@@ -82,6 +82,8 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, ssl_mode v) { return os
 // character set
 bool boost::mysql::operator==(const character_set& lhs, const character_set& rhs)
 {
+    if (lhs.name == nullptr || rhs.name == nullptr)
+        return lhs.name == rhs.name;
     return std::strcmp(lhs.name, rhs.name) == 0 && lhs.next_char == rhs.next_char;
 }
 
