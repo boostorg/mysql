@@ -32,12 +32,8 @@ namespace detail {
 // Securely compose a SET NAMES statement
 inline system::result<std::string> compose_set_names(character_set charset)
 {
-    // The character set should have a non-empty name (should not be default-constructed)
-    BOOST_ASSERT(!charset.name.empty());
-
-    // NULL characters cause MySQL to truncate the character set name string
-    if (charset.name.contains('\0'))
-        return client_errc::invalid_encoding;
+    // The character set should not be default-constructed
+    BOOST_ASSERT(charset.name != nullptr);
 
     // For security, if the character set has non-ascii characters in it name, reject it.
     format_context ctx(format_options{ascii_charset, true});

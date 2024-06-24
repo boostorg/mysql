@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE(reset_connection)
     fix.check_all_stages_succeeded();
 
     // The current character set was reset
-    BOOST_TEST(fix.st.charset_ptr() == nullptr);
+    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 BOOST_AUTO_TEST_CASE(set_character_set)
@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_CASE(set_character_set)
     fix.check_all_stages_succeeded();
 
     // The current character set was set
-    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
 }
 
 BOOST_AUTO_TEST_CASE(ping)
@@ -352,7 +352,7 @@ BOOST_AUTO_TEST_CASE(combination)
 
     // The pipeline had its intended effect
     BOOST_TEST(fix.st.backslash_escapes == true);
-    BOOST_TEST(fix.st.charset_ptr()->name == "utf8mb4");
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
     BOOST_TEST(fix.resp.items.at(3).stmt.id() == 3u);
     BOOST_TEST(fix.resp.items.at(4).stmt.id() == 1u);
 }
