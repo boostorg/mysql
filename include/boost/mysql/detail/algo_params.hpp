@@ -27,7 +27,7 @@ namespace mysql {
 class rows_view;
 class diagnostics;
 class statement;
-class any_stage_response;
+class stage_response;
 
 namespace detail {
 
@@ -153,7 +153,7 @@ struct run_pipeline_algo_params
     diagnostics* diag;
     span<const std::uint8_t> request_buffer;
     span<const pipeline_request_stage> request_stages;
-    std::vector<any_stage_response>* response;
+    std::vector<stage_response>* response;
 
     using result_type = void;
 };

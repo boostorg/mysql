@@ -72,13 +72,13 @@ re-using responses
 struct fixture : algo_fixture_base
 {
     detail::run_pipeline_algo algo;
-    std::vector<any_stage_response> resp;
+    std::vector<stage_response> resp;
 
     fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req_buffer = mock_request)
         : algo({&diag, req_buffer, stages, &resp})
     {
         // Verify that we clear the response correctly
-        any_stage_response elm;
+        stage_response elm;
         detail::access::get_impl(elm).set_error(
             client_errc::extra_bytes,
             create_client_diag("Diag not cleared")

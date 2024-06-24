@@ -53,7 +53,7 @@ class run_pipeline_algo
     diagnostics* diag_;
     span<const std::uint8_t> request_buffer_;
     span<const pipeline_request_stage> stages_;
-    std::vector<any_stage_response>* response_;
+    std::vector<stage_response>* response_;
 
     int resume_point_{0};
     std::size_t current_stage_index_{0};

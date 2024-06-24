@@ -34,7 +34,7 @@
 namespace boost {
 namespace mysql {
 
-/** TODO: rename to stage_response?
+/**
  * \brief (EXPERIMENTAL) A variant-like type holding the response of a single pipeline stage.
  * \details
  * This is a variant-like type, similar to `boost::system::result`. At any point in time,
@@ -48,7 +48,7 @@ namespace mysql {
  * This part of the API is experimental, and may change in successive
  * releases without previous notice.
  */
-class any_stage_response
+class stage_response
 {
 #ifndef BOOST_MYSQL_DOXYGEN
     struct errcode_with_diagnostics
@@ -91,7 +91,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    any_stage_response() = default;
+    stage_response() = default;
 
     /**
      * \brief Returns true if the object contains a statement.
@@ -254,7 +254,7 @@ public:
  * If the number of stages and their type is known at compile time, prefer using
  * \ref static_pipeline_request, instead.
  * \n
- * Stage responses are read into a vector of \ref any_stage_response, which is variant-like.
+ * Stage responses are read into a vector of \ref stage_response, which is variant-like.
  *
  * \par Experimental
  * This part of the API is experimental, and may change in successive

@@ -48,7 +48,7 @@ template <class... StaticRow>
 class static_execution_state;
 
 class pipeline_request;
-class any_stage_response;
+class stage_response;
 
 /**
  * \brief (EXPERIMENTAL) Configuration parameters that can be passed to \ref any_connection's constructor.
@@ -1066,7 +1066,7 @@ public:
      */
     void run_pipeline(
         const pipeline_request& req,
-        std::vector<any_stage_response>& res,
+        std::vector<stage_response>& res,
         error_code& err,
         diagnostics& diag
     )
@@ -1075,7 +1075,7 @@ public:
     }
 
     /// \copydoc run_pipeline
-    void run_pipeline(const pipeline_request& req, std::vector<any_stage_response>& res)
+    void run_pipeline(const pipeline_request& req, std::vector<stage_response>& res)
     {
         error_code err;
         diagnostics diag;
@@ -1096,7 +1096,7 @@ public:
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_run_pipeline(
         const pipeline_request& req,
-        std::vector<any_stage_response>& res,
+        std::vector<stage_response>& res,
         CompletionToken&& token
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
     {
@@ -1107,7 +1107,7 @@ public:
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_run_pipeline(
         const pipeline_request& req,
-        std::vector<any_stage_response>& res,
+        std::vector<stage_response>& res,
         diagnostics& diag,
         CompletionToken&& token
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)

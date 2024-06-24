@@ -608,7 +608,7 @@ public:
     BOOST_MYSQL_DECL
     static run_pipeline_algo_params make_params_pipeline(
         const pipeline_request& req,
-        std::vector<any_stage_response>& response,
+        std::vector<stage_response>& response,
         diagnostics& diag
     );
 };

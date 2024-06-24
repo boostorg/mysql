@@ -18,7 +18,6 @@
           <member><link linkend="mysql.ref.boost__mysql__any_address">any_address</link></member>
           <member><link linkend="mysql.ref.boost__mysql__any_connection">any_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__any_connection_params">any_connection_params</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__any_stage_response">any_stage_response</link></member>
           <member><link linkend="mysql.ref.boost__mysql__bad_field_access">bad_field_access</link></member>
           <member><link linkend="mysql.ref.boost__mysql__basic_format_context">basic_format_context</link></member>
           <member><link linkend="mysql.ref.boost__mysql__bound_statement_tuple">bound_statement_tuple</link></member>
@@ -58,6 +57,7 @@
           <member><link linkend="mysql.ref.boost__mysql__row_view">row_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows">rows</link></member>
           <member><link linkend="mysql.ref.boost__mysql__rows_view">rows_view</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__stage_response">stage_response</link></member>
           <member><link linkend="mysql.ref.boost__mysql__statement">statement</link></member>
           <member><link linkend="mysql.ref.boost__mysql__static_execution_state">static_execution_state</link></member>
           <member><link linkend="mysql.ref.boost__mysql__static_results">static_results</link></member>

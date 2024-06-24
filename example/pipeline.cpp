@@ -59,8 +59,8 @@ asio::awaitable<std::vector<boost::mysql::statement>> batch_prepare(
 
     // Run the pipeline. Using as_tuple prevents async_run_pipeline from throwing.
     // This allows us to include the diagnostics object diag in the thrown exception.
-    // any_stage_response is a variant-like type that can hold the response of any stage type.
-    std::vector<boost::mysql::any_stage_response> pipe_res;
+    // stage_response is a variant-like type that can hold the response of any stage type.
+    std::vector<boost::mysql::stage_response> pipe_res;
     boost::mysql::diagnostics diag;
     auto [ec] = co_await conn.async_run_pipeline(req, pipe_res, diag, asio::as_tuple(asio::deferred));
     boost::mysql::throw_on_error(ec, diag);
@@ -144,7 +144,7 @@ void main_impl(int argc, char** argv)
                 .add_execute(stmts.at(0), company_id, "Pepito", "Rodriguez")
                 .add_execute(stmts.at(0), company_id, "Someone", "Random")
                 .add_execute(stmts.at(1), "Inserted 3 new emplyees");
-            std::vector<boost::mysql::any_stage_response> res;
+            std::vector<boost::mysql::stage_response> res;
 
             // Execute the pipeline
             std::tie(ec) = co_await conn.async_run_pipeline(req, res, diag, tok);

@@ -57,12 +57,12 @@ static auto stmt_exc_validator = [](const std::invalid_argument& exc) {
     return true;
 };
 
-BOOST_AUTO_TEST_SUITE(any_stage_response_)
+BOOST_AUTO_TEST_SUITE(stage_response_)
 
 BOOST_AUTO_TEST_CASE(default_ctor)
 {
     // Construct
-    any_stage_response r;
+    stage_response r;
 
     // Contains an empty error
     BOOST_TEST(!r.has_results());
@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(default_ctor)
 BOOST_AUTO_TEST_CASE(underlying_error)
 {
     // Setup
-    any_stage_response r;
+    stage_response r;
     detail::access::get_impl(r).set_error(client_errc::invalid_encoding, create_server_diag("my_message"));
 
     // Check
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(underlying_error)
 BOOST_AUTO_TEST_CASE(underlying_statement)
 {
     // Setup
-    any_stage_response r;
+    stage_response r;
     detail::access::get_impl(r).set_result(statement_builder().id(3).build());
 
     // Check
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(underlying_statement)
 BOOST_AUTO_TEST_CASE(underlying_results)
 {
     // Setup
-    any_stage_response r;
+    stage_response r;
     detail::access::get_impl(r).emplace_results();
     add_ok(detail::access::get_impl(r).get_processor(), ok_builder().info("some_info").build());
 
@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE(underlying_results)
 BOOST_AUTO_TEST_CASE(as_results_error)
 {
     // Empty error
-    any_stage_response r;
+    stage_response r;
     BOOST_CHECK_THROW(r.as_results(), std::invalid_argument);
     BOOST_CHECK_THROW(std::move(r).as_results(), std::invalid_argument);
 
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(as_results_error)
 BOOST_AUTO_TEST_CASE(as_statement_error)
 {
     // Empty error
-    any_stage_response r;
+    stage_response r;
     BOOST_CHECK_THROW(r.as_statement(), std::invalid_argument);
 
     // Non-empty error
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(as_statement_error)
 
 BOOST_AUTO_TEST_CASE(change_type)
 {
-    any_stage_response r;
+    stage_response r;
 
     // Set results
     detail::access::get_impl(r).emplace_results();

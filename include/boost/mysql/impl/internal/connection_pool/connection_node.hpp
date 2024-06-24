@@ -78,7 +78,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
     const pipeline_request* reset_pipeline_req_;
-    std::vector<any_stage_response> reset_pipeline_res_;
+    std::vector<stage_response> reset_pipeline_res_;
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};

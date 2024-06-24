@@ -100,22 +100,22 @@ boost::mysql::pipeline_request& boost::mysql::pipeline_request::add_set_characte
     return *this;
 }
 
-void boost::mysql::any_stage_response::check_has_results() const
+void boost::mysql::stage_response::check_has_results() const
 {
     if (!has_results())
     {
         BOOST_THROW_EXCEPTION(
-            std::invalid_argument("any_stage_response::as_results: object doesn't contain results")
+            std::invalid_argument("stage_response::as_results: object doesn't contain results")
         );
     }
 }
 
-boost::mysql::statement boost::mysql::any_stage_response::as_statement() const
+boost::mysql::statement boost::mysql::stage_response::as_statement() const
 {
     if (!has_statement())
     {
         BOOST_THROW_EXCEPTION(
-            std::invalid_argument("any_stage_response::as_statement: object doesn't contain a statement")
+            std::invalid_argument("stage_response::as_statement: object doesn't contain a statement")
         );
     }
     return variant2::unsafe_get<1>(impl_.value);

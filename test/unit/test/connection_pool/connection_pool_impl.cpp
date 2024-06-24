@@ -205,7 +205,7 @@ class mock_connection
         BOOST_TEST(detail::access::get_impl(req).stages_ == expected_stages, per_element());
     }
 
-    static void set_response(std::vector<any_stage_response>& res)
+    static void set_response(std::vector<stage_response>& res)
     {
         // Response should have two items, set to empty errors
         res.resize(2);
@@ -240,7 +240,7 @@ public:
     template <class CompletionToken>
     auto async_run_pipeline(
         const pipeline_request& req,
-        std::vector<any_stage_response>& res,
+        std::vector<stage_response>& res,
         CompletionToken&& token
     ) -> decltype(impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token)))
     {

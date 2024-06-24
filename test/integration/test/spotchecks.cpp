@@ -550,7 +550,7 @@ using run_pipeline_netmaker = netfun_maker_mem<
     void,
     any_connection,
     const pipeline_request&,
-    std::vector<any_stage_response>&>;
+    std::vector<stage_response>&>;
 
 struct
 {
@@ -577,7 +577,7 @@ BOOST_AUTO_TEST_CASE(run_pipeline_success)
             req.add_set_character_set(ascii_charset)
                 .add_execute("SET @myvar = 42")
                 .add_execute("SELECT @myvar");
-            std::vector<any_stage_response> res;
+            std::vector<stage_response> res;
 
             // Issue the pipeline
             fns.run_pipeline(conn, req, res).validate_no_error();
@@ -607,7 +607,7 @@ BOOST_AUTO_TEST_CASE(run_pipeline_error)
             req.add_execute("SET @myvar = 42")
                 .add_prepare_statement("SELECT * FROM bad_table")
                 .add_execute("SELECT @myvar");
-            std::vector<any_stage_response> res;
+            std::vector<stage_response> res;
 
             // Issue the command
             fns.run_pipeline(conn, req, res)

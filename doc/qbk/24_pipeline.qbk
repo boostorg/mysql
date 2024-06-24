@@ -80,7 +80,7 @@ is considered failed. This means that [*if `run_pipipeline` completed successful
 [*all stages are always run, regardless of the outcome of previous stages]. 
 
 If `run_pipipeline` fails, you can check which stages succeeded and failed by inspecting responses.
-[refmem any_stage_response error] will return error information about failed steps. For instance:
+[refmem stage_response error] and [refmem stage_response diag] will return error information about failed steps. For instance:
 
 [pipeline_errors]
 

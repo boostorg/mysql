@@ -46,9 +46,9 @@ BOOST_AUTO_TEST_CASE(section_pipeline)
 
     //[pipeline_run
     // Run the pipeline request req, and store responses into res
-    // any_stage_response is a variant-like type that can store the response
+    // stage_response is a variant-like type that can store the response
     // of any stage type (including results and statements).
-    std::vector<any_stage_response> res;
+    std::vector<stage_response> res;
     conn.run_pipeline(req, res);
     //]
 
@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(section_pipeline_errors)
         .add_prepare_statement("INSERT INTO bad_table (t, msg) VALUES (?, ?)")  // will fail
         .add_prepare_statement("INSERT INTO employee (company_id, first_name, last_name) VALUES (?, ?, ?)");
 
-    std::vector<any_stage_response> res;
+    std::vector<stage_response> res;
     error_code ec;
     diagnostics diag;
 
@@ -109,7 +109,7 @@ BOOST_AUTO_TEST_CASE(section_pipeline_pitfalls)
             .add_execute("COMMIT");
         //]
 
-        std::vector<any_stage_response> res;
+        std::vector<stage_response> res;
         error_code ec;
         diagnostics diag;
         conn.run_pipeline(req, res, ec, diag);
@@ -143,7 +143,7 @@ BOOST_AUTO_TEST_CASE(section_pipeline_reference)
 {
     auto& conn = get_any_connection();
     results result;
-    std::vector<any_stage_response> pipe_res;
+    std::vector<stage_response> pipe_res;
 
     // Execute
     {

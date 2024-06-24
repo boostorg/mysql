@@ -47,7 +47,7 @@ BOOST_FIXTURE_TEST_CASE(success, fixture)
 {
     // Setup
     pipeline_request req;
-    std::vector<any_stage_response> res;
+    std::vector<stage_response> res;
 
     // Populate the request
     req.add_reset_connection()
@@ -101,7 +101,7 @@ BOOST_FIXTURE_TEST_CASE(errors, fixture)
 {
     // Setup
     pipeline_request req;
-    std::vector<any_stage_response> res;
+    std::vector<stage_response> res;
 
     // Populate the request with some successes and some errors
     req.add_execute("SET @myvar = 42")                                                   // OK
