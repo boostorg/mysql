@@ -245,16 +245,11 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) A dynamic pipeline request.
+ * \brief (EXPERIMENTAL) A pipeline request.
  * \details
  * Contains a collection of pipeline stages, fully describing the work to be performed
- * by a pipeline operation. The number of stages and their type is determined at runtime.
+ * by a pipeline operation.
  * Call any of the `add_xxx` functions to append new stages to the request.
- * \n
- * If the number of stages and their type is known at compile time, prefer using
- * \ref static_pipeline_request, instead.
- * \n
- * Stage responses are read into a vector of \ref stage_response, which is variant-like.
  *
  * \par Experimental
  * This part of the API is experimental, and may change in successive
@@ -282,43 +277,45 @@ public:
      */
     pipeline_request() = default;
 
-    /** TODO: review
-     * \brief Constructs a stage to execute a text query.
+    /**
+     * \brief Adds a stage that executes a text query.
      * \details
-     * Adding `*this` to a pipeline creates a stage that will run
-     * `query` as a SQL query, as per \ref any_connection::execute.
+     * Creates a stage that will run `query` as a SQL query,
+     * like \ref any_connection::execute.
      *
      * \par Exception safety
-     * No-throw guarantee.
+     * Strong guarantee. Memory allocations may throw.
      *
      * \par Object lifetimes
-     * No copies of `query` are performed. This type should only be used
-     * as a function argument to avoid lifetime issues.
+     * query is copied into the request and need not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
     pipeline_request& add_execute(string_view query);
 
-    /** TODO: review
-     * \brief Constructs a stage to execute a prepared statement.
+    /**
+     * \brief Adds a stage that executes a prepared statement.
      * \details
-     * Adding `*this` to a pipeline creates a stage that will run
-     * `stmt` bound to any parameters passed in `params`, as per \ref any_connection::execute
-     * and \ref statement::bind. For example, `execute_stage(stmt, {42, "John"})` has
+     * Creates a stage that runs
+     * `stmt` bound to any parameters passed in `params`, like \ref any_connection::execute
+     * and \ref statement::bind. For example, `add_execute(stmt, 42, "John")` has
      * effects equivalent to `conn.execute(stmt.bind(42, "John"))`.
-     * \n
-     * If your statement doesn't take any parameters, pass an empty initializer list
-     * as `params`.
      *
      * \par Exception safety
-     * No-throw guarantee. \n
-     * If the supplied number of parameters doesn't match the statement's number of parameters
-     * (i.e. `stmt.num_params() != params.size()`), a `std::invalid_argument` exception will
-     * be thrown when the stage is added to the pipeline (\ref pipeline_request::add or
-     * \ref static_pipeline_request::static_pipeline_request).
+     * Strong guarantee. Throws if the supplied number of parameters doesn't match the number
+     * of parameters expected by the statement. Additionally, memory allocations may throw.
+     * \throws std::invalid_argument If `sizeof...(params) != stmt.num_params()`
+     *
+     * \par Preconditions
+     * The passed statement should be valid (`stmt.valid() == true`).
      *
      * \par Object lifetimes
-     * No copies of `params` or the values they point to are performed.
-     * This type should only be used as a function argument to avoid lifetime issues.
+     * Any objects pointed to by `params` are copied into the request and
+     * need not be kept alive after this function returns.
+     *
+     * \par Type requirements
+     * Any type satisfying `WritableField` can be used as a parameter.
+     * This includes all types that can be used with \ref statement::bind,
+     * including scalar types, strings, blobs and optionals.
      */
     template <BOOST_MYSQL_WRITABLE_FIELD... WritableField>
     pipeline_request& add_execute(statement stmt, const WritableField&... params)
@@ -327,82 +324,84 @@ public:
         return add_execute_range(stmt, params_arr);
     }
 
-    /** TODO: review
-     * \brief Constructs a stage to execute a prepared statement.
+    /**
+     * \brief Adds a stage that executes a prepared statement.
      * \details
-     * Adding `*this` to a pipeline creates a stage that will run
-     * `stmt` bound to the parameter range passed in `params`, as per \ref any_connection::execute
-     * and \ref statement::bind. For example, `execute_stage(stmt, params_array)` has
-     * effects equivalent to `conn.execute(stmt.bind(params_array.begin(), params_array.end()))`.
+     * Creates a stage that runs
+     * `stmt` bound to any parameters passed in `params`, like \ref any_connection::execute
+     * and \ref statement::bind. For example, `add_execute_range(stmt, params)` has
+     * effects equivalent to `conn.execute(stmt.bind(params.begin(), params.end()))`.
      * \n
-     * Use this signature when the number of parameters that your statement takes is not
-     * known at compile-time.
+     * This function can be used instead of \ref add_execute when the number of actual parameters
+     * of a statement is now known at compile time.
      *
      * \par Exception safety
-     * No-throw guarantee. \n
-     * If the supplied number of parameters doesn't match the statement's number of parameters
-     * (i.e. `stmt.num_params() != params.size()`), a `std::invalid_argument` exception will
-     * be raised when the stage is added to the pipeline (\ref pipeline_request::add or
-     * \ref static_pipeline_request::static_pipeline_request).
+     * Strong guarantee. Throws if the supplied number of parameters doesn't match the number
+     * of parameters expected by the statement. Additionally, memory allocations may throw.
+     * \throws std::invalid_argument If `params.size() != stmt.num_params()`
+     *
+     * \par Preconditions
+     * The passed statement should be valid (`stmt.valid() == true`).
      *
      * \par Object lifetimes
-     * No copies of `params` or the values they point to are performed.
-     * This type should only be used as a function argument to avoid lifetime issues.
+     * The `params` range is copied into the request and
+     * needs not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
     pipeline_request& add_execute_range(statement stmt, span<const field_view> params);
 
-    /** TODO: review
-     * \brief Constructor.
+    /**
+     * \brief Adds a prepare statement stage.
      * \details
-     * Adding a `prepare_statement_stage(stmt_sql)` to a pipeline
-     * creates a stage with effects equivalent to `conn.prepare_statement(stmt_sql)`.
+     * Creates a stage that prepares a statement server-side. The resulting
+     * stage has effects equivalent to `conn.prepare_statement(stmt_sql)`.
      *
      * \par Exception safety
-     * No-throw guarantee.
+     * Strong guarantee. Memory allocations may throw.
      *
      * \par Object lifetimes
-     * No copies of `stmt_sql` are performed. This type should only be used
-     * as a function argument to avoid lifetime issues.
+     * stmt_sql is copied into the request and need not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
     pipeline_request& add_prepare_statement(string_view stmt_sql);
 
-    /** TODO: review
-     * \brief Constructor.
+    /**
+     * \brief Adds a close statement stage.
      * \details
-     * Adding a `close_statement_stage(stmt)` to a pipeline
-     * creates a stage with effects equivalent to `conn.close_statement(stmt)`.
+     * Creates a stage that closes a prepared statement. The resulting
+     * stage has effects equivalent to `conn.close_statement(stmt)`.
      *
      * \par Exception safety
-     * No-throw guarantee.
+     * Strong guarantee. Memory allocations may throw.
      */
     BOOST_MYSQL_DECL pipeline_request& add_close_statement(statement stmt);
 
-    /** TODO: review
-     * \brief Constructor.
+    /**
+     * \brief Adds a reset connection stage.
      * \details
-     * Adding a `reset_connection_stage()` to a pipeline
-     * creates a stage with effects equivalent to `conn.reset_connection()`.
+     * Creates a stage that resets server-side session state. The resulting
+     * stage has effects equivalent to `conn.reset_connection()`.
      *
      * \par Exception safety
-     * No-throw guarantee.
+     * Strong guarantee. Memory allocations may throw.
      */
     BOOST_MYSQL_DECL pipeline_request& add_reset_connection();
 
-    /** TODO: review
-     * \brief Constructor.
+    /**
+     * \brief Adds a set character set stage.
      * \details
-     * Adding `*this` to a pipeline creates a stage with effects
-     * equivalent to `conn.set_character_set(charset)`.
+     * Creates a stage that sets the connection's character set.
+     * The resulting stage has effects equivalent to `conn.set_character_set(charset)`.
      *
      * \par Exception safety
-     * No-throw guarantee. \n
-     * If the supplied character set name is not valid (i.e. `charset.name` contains
-     * non-ASCII characters), a `std::invalid_argument` exception will
-     * be raised when the stage is added to the pipeline (\ref pipeline_request::add or
-     * \ref static_pipeline_request::static_pipeline_request). This never happens with
-     * the character sets provided by the library. The check is performed as a hardening measure.
+     * Strong guarantee. Throws if the supplied character set name is not valid
+     * (i.e. `charset.name` contains non-ASCII characters).
+     * The check is performed as a hardening measure, and never happens with
+     * the character sets provided by this library.
+     *
+     * Additionally, memory allocations may throw.
+     * \throws std::invalid_argument If `charset.name` contains non-ASCII characters.
+     *
      */
     BOOST_MYSQL_DECL pipeline_request& add_set_character_set(character_set charset);
 
