@@ -9,8 +9,10 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/statement.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
@@ -19,6 +21,7 @@
 
 #include <boost/asio/error.hpp>
 #include <boost/core/span.hpp>
+#include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <array>
@@ -27,6 +30,7 @@
 #include <vector>
 
 #include "test_common/buffer_concat.hpp"
+#include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
@@ -49,103 +53,43 @@ using detail::pipeline_request_stage;
 using detail::pipeline_stage_kind;
 using detail::resultset_encoding;
 
-namespace boost {
-namespace mysql {
-namespace test {
-
-struct mock_pipeline_response
-{
-    struct item
-    {
-        mock_execution_processor proc;
-        statement stmt;
-        errcode_with_diagnostics err;
-    };
-
-    std::size_t setup_num_calls{0u};
-    span<const detail::pipeline_request_stage> setup_args;
-    std::vector<item> items;
-};
-
-}  // namespace test
-
-namespace detail {
-
-template <>
-struct pipeline_response_traits<test::mock_pipeline_response>
-{
-    using response_type = test::mock_pipeline_response;
-
-    static void setup(response_type& self, span<const pipeline_request_stage> request)
-    {
-        ++self.setup_num_calls;
-        self.setup_args = request;
-        self.items.resize(request.size());
-    }
-
-    static execution_processor& get_processor(response_type& self, std::size_t idx)
-    {
-        // This function is only defined for execute stages
-        BOOST_TEST_REQUIRE(idx < self.items.size());
-        BOOST_TEST(self.setup_args[idx].kind == pipeline_stage_kind::execute);
-        return self.items[idx].proc;
-    }
-
-    static void set_result(response_type& self, std::size_t idx, statement stmt)
-    {
-        // This function is only defined for prepare statement stages
-        BOOST_TEST_REQUIRE(idx < self.items.size());
-        BOOST_TEST(self.setup_args[idx].kind == pipeline_stage_kind::prepare_statement);
-        self.items[idx].stmt = stmt;
-    }
-
-    static void set_error(response_type& self, std::size_t idx, error_code ec, diagnostics&& diag)
-    {
-        BOOST_TEST_REQUIRE(idx < self.items.size());
-        self.items[idx].err = {ec, std::move(diag)};
-    }
-};
-
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
-
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
 const std::vector<std::uint8_t> mock_request{1, 2, 3, 4, 5, 6, 7, 9, 21};
 
+/**
+TODO: tests without a response
+    close statement success, error
+    set character set success, error
+    reset connection success, error
+    ping success, error
+    any of the above after a fatal error
+re-using responses
+    changing type from/to execute
+    increasing/decreasing size
+ */
+
 struct fixture : algo_fixture_base
 {
     detail::run_pipeline_algo algo;
-    mock_pipeline_response resp;
+    std::vector<any_stage_response> resp;
 
     fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req_buffer = mock_request)
-        : algo({
-              &diag,
-              detail::pipeline_request_view{req_buffer, stages},
-              detail::pipeline_response_ref(resp)
-    })
+        : algo({&diag, req_buffer, stages, &resp})
     {
-    }
-
-    // Verify that the stages we passed match the ones used in setup
-    void check_setup(span<const pipeline_request_stage> stages)
-    {
-        BOOST_TEST(resp.setup_num_calls == 1u);
-        BOOST_TEST(resp.setup_args == stages, per_element());
     }
 
     // Verify that all stages succeeded
     void check_all_stages_succeeded()
     {
-        for (const auto& item : resp.items)
-            BOOST_TEST(item.err == errcode_with_diagnostics{});
+        for (const auto& item : resp)
+            BOOST_TEST(item.error() == errcode_with_diagnostics{});
     }
 
     // Verify that a certain step failed
     void check_stage_error(std::size_t i, const errcode_with_diagnostics& expected)
     {
-        BOOST_TEST(resp.items.at(i).err == expected);
+        BOOST_TEST(resp.at(i).error() == expected);
     }
 };
 
@@ -174,27 +118,20 @@ BOOST_AUTO_TEST_CASE(execute_success)
                          .build())
         .check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
-    // Check each processor calls
-    auto& proc0 = fix.resp.items.at(0).proc;
-    proc0.num_calls().reset(1).on_head_ok_packet(1).validate();
-    BOOST_TEST(proc0.info() == "1st");
-    BOOST_TEST(proc0.encoding() == resultset_encoding::binary);
+    // Check results
+    const auto& res0 = fix.resp[0].as_results();
+    BOOST_TEST(res0.rows() == rows(), per_element());
+    BOOST_TEST(res0.info() == "1st");
+    BOOST_TEST(detail::access::get_impl(res0).encoding() == resultset_encoding::binary);
 
-    auto& proc1 = fix.resp.items.at(1).proc;
-    proc1.num_calls()
-        .reset(1)
-        .on_num_meta(1)
-        .on_meta(1)
-        .on_row_batch_start(1)
-        .on_row(2)
-        .on_row_batch_finish(1)
-        .on_row_ok_packet(1)
-        .validate();
-    BOOST_TEST(proc1.info() == "2nd");
+    const auto& res1 = fix.resp[1].as_results();
+    BOOST_TEST(res1.rows() == makerows(1, 42, 43), per_element());
+    BOOST_TEST(res1.info() == "2nd");
+    BOOST_TEST(detail::access::get_impl(res1).encoding() == resultset_encoding::text);
 }
 
 BOOST_AUTO_TEST_CASE(prepare_statement_success)
@@ -218,16 +155,16 @@ BOOST_AUTO_TEST_CASE(prepare_statement_success)
         .expect_read(create_coldef_frame(12, meta_builder().name("aaa").build_coldef()))
         .check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // Check the resulting statements
-    auto stmt0 = fix.resp.items.at(0).stmt;
+    auto stmt0 = fix.resp[0].as_statement();
     BOOST_TEST(stmt0.id() == 7u);
     BOOST_TEST(stmt0.num_params() == 2u);
 
-    auto stmt1 = fix.resp.items.at(1).stmt;
+    auto stmt1 = fix.resp[1].as_statement();
     BOOST_TEST(stmt1.id() == 9u);
     BOOST_TEST(stmt1.num_params() == 1u);
 }
@@ -246,8 +183,8 @@ BOOST_AUTO_TEST_CASE(close_statement_success)
     // Run the test. Close statement doesn't have a response
     algo_test().expect_write(mock_request).check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 }
 
@@ -265,8 +202,8 @@ BOOST_AUTO_TEST_CASE(reset_connection)
     // Run the test
     algo_test().expect_write(mock_request).expect_read(create_ok_frame(3, ok_builder().build())).check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // The current character set was reset
@@ -286,8 +223,8 @@ BOOST_AUTO_TEST_CASE(set_character_set)
     // Run the test
     algo_test().expect_write(mock_request).expect_read(create_ok_frame(19, ok_builder().build())).check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // The current character set was set
@@ -310,8 +247,8 @@ BOOST_AUTO_TEST_CASE(ping)
         .expect_read(create_ok_frame(32, ok_builder().no_backslash_escapes(true).build()))
         .check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // The OK packet was processed successfully
@@ -346,8 +283,8 @@ BOOST_AUTO_TEST_CASE(combination)
         .expect_read(prepare_stmt_response_builder().seqnum(1).id(1).num_columns(0).num_params(0).build())
         .check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // The pipeline had its intended effect
