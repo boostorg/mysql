@@ -69,6 +69,7 @@ BOOST_AUTO_TEST_CASE(default_ctor)
     BOOST_TEST(!r.has_statement());
     BOOST_TEST(r.error() == error_code());
     BOOST_TEST(r.diag() == diagnostics());
+    BOOST_TEST(std::move(r).diag() == diagnostics());
 }
 
 BOOST_AUTO_TEST_CASE(underlying_error)
@@ -82,8 +83,7 @@ BOOST_AUTO_TEST_CASE(underlying_error)
     BOOST_TEST(!r.has_statement());
     BOOST_TEST(r.error() == client_errc::invalid_encoding);
     BOOST_TEST(r.diag() == create_server_diag("my_message"));
-
-    // TODO: test the rvalue diag accessor
+    BOOST_TEST(std::move(r).diag() == create_server_diag("my_message"));
 }
 
 BOOST_AUTO_TEST_CASE(underlying_statement)
@@ -101,6 +101,7 @@ BOOST_AUTO_TEST_CASE(underlying_statement)
     // error(), diag() can be called and return empty objects
     BOOST_TEST(r.error() == error_code());
     BOOST_TEST(r.diag() == diagnostics());
+    BOOST_TEST(std::move(r).diag() == diagnostics());
 }
 
 BOOST_AUTO_TEST_CASE(underlying_results)
@@ -125,6 +126,7 @@ BOOST_AUTO_TEST_CASE(underlying_results)
     // error(), diag() can be called and return empty objects
     BOOST_TEST(r.error() == error_code());
     BOOST_TEST(r.diag() == diagnostics());
+    BOOST_TEST(std::move(r).diag() == diagnostics());
 }
 
 BOOST_AUTO_TEST_CASE(as_results_error)

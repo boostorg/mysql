@@ -140,7 +140,7 @@ public:
         return has_error() ? variant2::unsafe_get<0>(impl_.value).diag : diagnostics();
     }
 
-    /** TODO: are we really moving here?
+    /**
      * \brief Retrieves the contained diagnostics (rvalue reference accessor).
      * \details
      * If `*this` contains an error, retrieves the associated diagnostic information
