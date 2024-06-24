@@ -55,7 +55,7 @@ asio::awaitable<std::vector<boost::mysql::statement>> batch_prepare(
     // There must be one prepare_statement_stage per statement to prepare
     boost::mysql::pipeline_request req;
     for (auto stmt_sql : statements)
-        req.add(boost::mysql::prepare_statement_stage(stmt_sql));
+        req.add_prepare_statement(stmt_sql);
 
     // Run the pipeline. Using as_tuple prevents async_run_pipeline from throwing.
     // This allows us to include the diagnostics object diag in the thrown exception.
@@ -133,42 +133,37 @@ void main_impl(int argc, char** argv)
             };
             std::vector<boost::mysql::statement> stmts = co_await batch_prepare(conn, stmt_sql);
 
-            // Create a request to execute them, this time using the static interface.
+            // Create a pipeline request to execute them.
             // Warning: do NOT include the COMMIT statement in this pipeline.
             // COMMIT must only be executed if all the previous statements succeeded.
             // In a pipeline, all stages get executed, regardless of the outcome of previous stages.
             // We say that COMMIT has a dependency on the result of previous stages.
-            boost::mysql::static_pipeline_request req(
-                boost::mysql::execute_stage("START TRANSACTION"),
-                boost::mysql::execute_stage(stmts.at(0), {company_id, "Juan", "Lopez"}),
-                boost::mysql::execute_stage(stmts.at(0), {company_id, "Pepito", "Rodriguez"}),
-                boost::mysql::execute_stage(stmts.at(0), {company_id, "Someone", "Random"}),
-                boost::mysql::execute_stage(stmts.at(1), {"Inserted 3 new emplyees"})
-            );
-            decltype(req)::response_type res;
+            boost::mysql::pipeline_request req;
+            req.add_execute("START TRANSACTION")
+                .add_execute(stmts.at(0), company_id, "Juan", "Lopez")
+                .add_execute(stmts.at(0), company_id, "Pepito", "Rodriguez")
+                .add_execute(stmts.at(0), company_id, "Someone", "Random")
+                .add_execute(stmts.at(1), "Inserted 3 new emplyees");
+            std::vector<boost::mysql::any_stage_response> res;
 
-            // Execute the static pipeline
+            // Execute the pipeline
             std::tie(ec) = co_await conn.async_run_pipeline(req, res, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
 
             // If we got here, all stages executed successfully.
             // Since they were execution stages, the response contains a results object.
             // Get the IDs of the newly created employees
-            auto id1 = std::get<1>(res)->last_insert_id();
-            auto id2 = std::get<2>(res)->last_insert_id();
-            auto id3 = std::get<3>(res)->last_insert_id();
+            auto id1 = res.at(1).as_results().last_insert_id();
+            auto id2 = res.at(2).as_results().last_insert_id();
+            auto id3 = res.at(3).as_results().last_insert_id();
 
             // We can now commit our transaction and close the statements.
-            // Create the request to do so
-            boost::mysql::static_pipeline_request pipe2{
-                boost::mysql::execute_stage("COMMIT"),
-                boost::mysql::close_statement_stage(stmts.at(0)),
-                boost::mysql::close_statement_stage(stmts.at(1))
-            };
-            decltype(pipe2)::response_type res2;
+            // Clear the request and populate it again
+            req.clear();
+            req.add_execute("COMMIT").add_close_statement(stmts.at(0)).add_close_statement(stmts.at(1));
 
             // Run it
-            std::tie(ec) = co_await conn.async_run_pipeline(pipe2, res2, diag, tok);
+            std::tie(ec) = co_await conn.async_run_pipeline(req, res, diag, tok);
             boost::mysql::throw_on_error(ec, diag);
 
             // If we got here, our insertions got committed.
