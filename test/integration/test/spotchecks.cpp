@@ -21,8 +21,9 @@
 
 #include <boost/mysql/detail/config.hpp>
 
+#include <vector>
+
 #include "test_common/create_basic.hpp"
-#include "test_common/create_diagnostics.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
@@ -549,7 +550,7 @@ using run_pipeline_netmaker = netfun_maker_mem<
     void,
     any_connection,
     const pipeline_request&,
-    pipeline_request::response_type&>;
+    std::vector<any_stage_response>&>;
 
 struct
 {
