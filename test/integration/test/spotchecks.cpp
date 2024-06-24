@@ -574,10 +574,10 @@ BOOST_AUTO_TEST_CASE(run_pipeline_success)
             any_connection conn(ctx);
             conn.connect(default_connect_params(ssl_mode::disable));
             pipeline_request req;
-            req.add(set_character_set_stage(ascii_charset))
-                .add(execute_stage("SET @myvar = 42"))
-                .add(execute_stage("SELECT @myvar"));
-            pipeline_request::response_type res;
+            req.add_set_character_set(ascii_charset)
+                .add_execute("SET @myvar = 42")
+                .add_execute("SELECT @myvar");
+            std::vector<any_stage_response> res;
 
             // Issue the pipeline
             fns.run_pipeline(conn, req, res).validate_no_error();
@@ -603,10 +603,10 @@ BOOST_AUTO_TEST_CASE(run_pipeline_error)
             any_connection conn(ctx);
             conn.connect(default_connect_params(ssl_mode::disable));
             pipeline_request req;
-            req.add(execute_stage("SET @myvar = 42"))
-                .add(prepare_statement_stage("SELECT * FROM bad_table"))
-                .add(execute_stage("SELECT @myvar"));
-            pipeline_request::response_type res;
+            req.add_execute("SET @myvar = 42")
+                .add_prepare_statement("SELECT * FROM bad_table")
+                .add_execute("SELECT @myvar");
+            std::vector<any_stage_response> res;
 
             // Issue the command
             fns.run_pipeline(conn, req, res)
