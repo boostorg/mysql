@@ -38,10 +38,6 @@ struct character_set;
 bool operator==(const character_set& lhs, const character_set& rhs);
 std::ostream& operator<<(std::ostream& os, const character_set& v);
 
-struct errcode_with_diagnostics;
-bool operator==(const errcode_with_diagnostics& lhs, const errcode_with_diagnostics& rhs);
-std::ostream& operator<<(std::ostream& os, const errcode_with_diagnostics& v);
-
 }  // namespace mysql
 }  // namespace boost
 

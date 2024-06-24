@@ -61,7 +61,8 @@ BOOST_FIXTURE_TEST_CASE(success, fixture)
 
     // Check results
     BOOST_TEST_REQUIRE(res.size() == 3u);
-    BOOST_TEST(res[0].error() == errcode_with_diagnostics{});
+    BOOST_TEST(res[0].error() == error_code());
+    BOOST_TEST(res[0].diag() == diagnostics());
     BOOST_TEST(!res[0].has_results());
     BOOST_TEST(!res[0].has_statement());
     BOOST_TEST(res[1].has_results());
@@ -84,12 +85,14 @@ BOOST_FIXTURE_TEST_CASE(success, fixture)
 
     // Check results
     BOOST_TEST_REQUIRE(res.size() == 4u);
-    BOOST_TEST(res[0].error() == errcode_with_diagnostics{});
+    BOOST_TEST(res[0].error() == error_code());
+    BOOST_TEST(res[0].diag() == diagnostics());
     BOOST_TEST(!res[0].has_results());
     BOOST_TEST(!res[0].has_statement());
     BOOST_TEST(res[1].as_results().rows() == rows(), per_element());
     BOOST_TEST(res[2].as_results().rows() == makerows(2, 1, "f0"), per_element());
-    BOOST_TEST(res[3].error() == errcode_with_diagnostics{});
+    BOOST_TEST(res[3].error() == error_code());
+    BOOST_TEST(res[3].diag() == diagnostics());
     BOOST_TEST(!res[3].has_results());
     BOOST_TEST(!res[3].has_statement());
 }
@@ -119,23 +122,13 @@ BOOST_FIXTURE_TEST_CASE(errors, fixture)
     // Check results
     BOOST_TEST_REQUIRE(res.size() == 6u);
     BOOST_TEST(res[0].has_results());
-    BOOST_TEST(
-        res[1].error() == (errcode_with_diagnostics{
-                              common_server_errc::er_no_such_table,
-                              create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
-                          })
-    );
-    BOOST_TEST(
-        res[2].error() ==
-        (errcode_with_diagnostics{common_server_errc::er_empty_query, create_server_diag("Query was empty")})
-    );
+    BOOST_TEST(res[1].error() == common_server_errc::er_no_such_table);
+    BOOST_TEST(res[1].diag() == create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist"));
+    BOOST_TEST(res[2].error() == common_server_errc::er_empty_query);
+    BOOST_TEST(res[2].diag() == create_server_diag("Query was empty"));
     BOOST_TEST(res[3].as_results().rows() == makerows(1, 42), per_element());
-    BOOST_TEST(
-        res[4].error() == (errcode_with_diagnostics{
-                              common_server_errc::er_unknown_character_set,
-                              create_server_diag("Unknown character set: 'bad_charset'")
-                          })
-    );
+    BOOST_TEST(res[4].error() == common_server_errc::er_unknown_character_set);
+    BOOST_TEST(res[4].diag() == create_server_diag("Unknown character set: 'bad_charset'"));
     BOOST_TEST(res[5].as_results().rows() == makerows(1, "abc"), per_element());
 }
 

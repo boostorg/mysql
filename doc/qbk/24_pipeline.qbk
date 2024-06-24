@@ -84,9 +84,6 @@ If `run_pipipeline` fails, you can check which stages succeeded and failed by in
 
 [pipeline_errors]
 
-The module uses [reflink errcode_with_diagnostics] as the error type,
-which contains an `error_code` and a [reflink diagnostics] object.
-
 
 
 
@@ -130,7 +127,7 @@ In the table below, the following variables are assumed:
         [[pipeline_reference_execute]]
         [[pipeline_reference_execute_equivalent]]
         [
-            [reflink results] or [reflink errcode_with_diagnostics]
+            [reflink results] or an error
         ]
     ]
     [
@@ -142,7 +139,7 @@ In the table below, the following variables are assumed:
         [[pipeline_reference_prepare_statement]]
         [[pipeline_reference_prepare_statement_equivalent]]
         [
-            [reflink statement] or [reflink errcode_with_diagnostics]
+            [reflink statement] or an error
         ]
     ]
     [
@@ -153,7 +150,7 @@ In the table below, the following variables are assumed:
         [[pipeline_reference_close_statement]]
         [[pipeline_reference_close_statement_equivalent]]
         [
-            Possibly empty [reflink errcode_with_diagnostics]
+            Possibly empty error
         ]
     ]
     [
@@ -164,7 +161,7 @@ In the table below, the following variables are assumed:
         [[pipeline_reference_reset_connection]]
         [[pipeline_reference_reset_connection_equivalent]]
         [
-            Possibly empty [reflink errcode_with_diagnostics]
+            Possibly empty error
         ]
     ]
     [
@@ -175,7 +172,7 @@ In the table below, the following variables are assumed:
         [[pipeline_reference_set_character_set]]
         [[pipeline_reference_set_character_set_equivalent]]
         [
-            Possibly empty [reflink errcode_with_diagnostics]
+            Possibly empty error
         ]
     ]
 ]

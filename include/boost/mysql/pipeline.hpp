@@ -34,36 +34,14 @@
 namespace boost {
 namespace mysql {
 
-/** TODO: we can probably get rid of this
- * \brief A custom error type to be used with system::result.
- * \details
- * A custom error type containing an error code and a diagnostics object.
- * It can be used as the second template parameter of `boost::system::result`
- * (`boost::system::result<T, errcode_with_diagnostics>`).
- * \n
- * When `system::result::value()` throws, the exception type is \ref error_with_diagnostics,
- * containing the error code and diagnostics contained in this type.
- */
-struct errcode_with_diagnostics
-{
-    /// The error code.
-    error_code code;
-
-    /// The diagnostics object.
-    diagnostics diag;
-};
-
 /** TODO: rename to stage_response?
  * \brief (EXPERIMENTAL) A variant-like type holding the response of a single pipeline stage.
  * \details
- * When running dynamic pipelines with \ref pipeline_request, this type is used
- * to hold individual stage responses.
- * \n
  * This is a variant-like type, similar to `boost::system::result`. At any point in time,
  * it can contain: \n
  *   \li A \ref statement. Will happen if the stage was a prepare statement that succeeded.
  *   \li A \ref results. Will happen if the stage was a query or statement execution that succeeded.
- *   \li A \ref errcode_with_diagnostics. Will happen if the stage failed, or if it succeeded but
+ *   \li An \ref error_code, \ref diagnostics pair. Will happen if the stage failed, or if it succeeded but
  *       it doesn't yield a value (as in close statement, reset connection and set character set).
  *
  * \par Experimental
@@ -73,6 +51,12 @@ struct errcode_with_diagnostics
 class any_stage_response
 {
 #ifndef BOOST_MYSQL_DOXYGEN
+    struct errcode_with_diagnostics
+    {
+        error_code ec;
+        diagnostics diag;
+    };
+
     struct
     {
         variant2::variant<errcode_with_diagnostics, statement, results> value;
@@ -102,7 +86,7 @@ public:
     /**
      * \brief Default constructor.
      * \details
-     * Constructs an object containing an empty error (a default-constructed \ref errcode_with_diagnostics).
+     * Constructs an object containing an empty error code and diagnostics.
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -126,33 +110,50 @@ public:
     bool has_results() const noexcept { return impl_.value.index() == 2u; }
 
     /**
-     * \brief Retrieves the contained error (const lvalue reference accessor).
+     * \brief Retrieves the contained error code.
      * \details
-     * If `*this` contains an error, retrieves it by copying it.
+     * If `*this` contains an error, retrieves it.
      * Otherwise (if `this->has_statement() || this->has_results()`),
-     * returns an empty (default-constructed) error.
+     * returns an empty (default-constructed) error code.
      *
      * \par Exception safety
-     * Strong guarantee. Memory allocations when copying the error's diagnostics may throw.
+     * No-throw guarantee.
      */
-    errcode_with_diagnostics error() const& noexcept
+    error_code error() const noexcept
     {
-        return has_error() ? variant2::unsafe_get<0>(impl_.value) : errcode_with_diagnostics();
+        return has_error() ? variant2::unsafe_get<0>(impl_.value).ec : error_code();
     }
 
     /**
-     * \brief Retrieves the contained error (rvalue reference accessor).
+     * \brief Retrieves the contained diagnostics (lvalue reference accessor).
      * \details
-     * If `*this` contains an error, retrieves it by moving it.
+     * If `*this` contains an error, retrieves the associated diagnostic information
+     * by copying it.
+     * Otherwise (if `this->has_statement() || this->has_results()`),
+     * returns an empty diagnostics object.
+     *
+     * \par Exception safety
+     * Strong guarantee: memory allocations may throw.
+     */
+    diagnostics diag() const&
+    {
+        return has_error() ? variant2::unsafe_get<0>(impl_.value).diag : diagnostics();
+    }
+
+    /** TODO: are we really moving here?
+     * \brief Retrieves the contained diagnostics (rvalue reference accessor).
+     * \details
+     * If `*this` contains an error, retrieves the associated diagnostic information
+     * by moving it.
      * Otherwise (if `this->has_statement() || this->has_results()`),
      * returns an empty (default-constructed) error.
      *
      * \par Exception safety
      * No-throw guarantee.
      */
-    errcode_with_diagnostics error() && noexcept
+    diagnostics diag() && noexcept
     {
-        return has_error() ? variant2::unsafe_get<0>(std::move(impl_.value)) : errcode_with_diagnostics();
+        return has_error() ? variant2::unsafe_get<0>(std::move(impl_.value)).diag : diagnostics();
     }
 
     /**

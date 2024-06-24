@@ -67,7 +67,8 @@ BOOST_AUTO_TEST_CASE(default_ctor)
     // Contains an empty error
     BOOST_TEST(!r.has_results());
     BOOST_TEST(!r.has_statement());
-    BOOST_TEST(r.error() == errcode_with_diagnostics{});
+    BOOST_TEST(r.error() == error_code());
+    BOOST_TEST(r.diag() == diagnostics());
 }
 
 BOOST_AUTO_TEST_CASE(underlying_error)
@@ -79,10 +80,10 @@ BOOST_AUTO_TEST_CASE(underlying_error)
     // Check
     BOOST_TEST(!r.has_results());
     BOOST_TEST(!r.has_statement());
-    BOOST_TEST(
-        r.error() ==
-        (errcode_with_diagnostics{client_errc::invalid_encoding, create_server_diag("my_message")})
-    );
+    BOOST_TEST(r.error() == client_errc::invalid_encoding);
+    BOOST_TEST(r.diag() == create_server_diag("my_message"));
+
+    // TODO: test the rvalue diag accessor
 }
 
 BOOST_AUTO_TEST_CASE(underlying_statement)
@@ -97,8 +98,9 @@ BOOST_AUTO_TEST_CASE(underlying_statement)
     BOOST_TEST(r.as_statement().id() == 3u);
     BOOST_TEST(r.get_statement().id() == 3u);
 
-    // error() can be called and returns an empty error
-    BOOST_TEST(r.error() == errcode_with_diagnostics{});
+    // error(), diag() can be called and return empty objects
+    BOOST_TEST(r.error() == error_code());
+    BOOST_TEST(r.diag() == diagnostics());
 }
 
 BOOST_AUTO_TEST_CASE(underlying_results)
@@ -120,8 +122,9 @@ BOOST_AUTO_TEST_CASE(underlying_results)
     boost::ignore_unused(ref1);
     boost::ignore_unused(ref2);
 
-    // error() can be called and returns an empty error
-    BOOST_TEST(r.error() == errcode_with_diagnostics{});
+    // error(), diag() can be called and return empty objects
+    BOOST_TEST(r.error() == error_code());
+    BOOST_TEST(r.diag() == diagnostics());
 }
 
 BOOST_AUTO_TEST_CASE(as_results_error)
@@ -168,11 +171,13 @@ BOOST_AUTO_TEST_CASE(change_type)
     // Set an error
     detail::access::get_impl(r).set_error(client_errc::extra_bytes, create_client_diag("abc"));
     BOOST_TEST(!r.has_results());
-    BOOST_TEST(r.error() == (errcode_with_diagnostics{client_errc::extra_bytes, create_client_diag("abc")}));
+    BOOST_TEST(r.error() == client_errc::extra_bytes);
+    BOOST_TEST(r.diag() == create_client_diag("abc"));
 
     // Reset the error
     detail::access::get_impl(r).emplace_error();
-    BOOST_TEST(r.error() == errcode_with_diagnostics{});
+    BOOST_TEST(r.error() == error_code());
+    BOOST_TEST(r.diag() == diagnostics());
 
     // Set a statement
     detail::access::get_impl(r).set_result(statement_builder().build());

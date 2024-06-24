@@ -79,10 +79,14 @@ BOOST_AUTO_TEST_CASE(section_pipeline_errors)
     diagnostics diag;
 
     conn.run_pipeline(req, res, ec, diag);
+
+    // The overall operation failed
     BOOST_TEST(ec == common_server_errc::er_no_such_table);
-    BOOST_TEST(res[0].error().code == error_code());
-    BOOST_TEST(res[1].error().code == common_server_errc::er_no_such_table);
-    BOOST_TEST(res[2].error().code == error_code());
+
+    // You can check which stages failed using .error()
+    BOOST_TEST(res[0].error() == error_code());
+    BOOST_TEST(res[1].error() == common_server_errc::er_no_such_table);
+    BOOST_TEST(res[2].error() == error_code());
     //]
 }
 

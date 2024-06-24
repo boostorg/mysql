@@ -32,7 +32,6 @@
           <member><link linkend="mysql.ref.boost__mysql__date">date</link></member>
           <member><link linkend="mysql.ref.boost__mysql__datetime">datetime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__diagnostics">diagnostics</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__errcode_with_diagnostics">errcode_with_diagnostics</link></member>
           <member><link linkend="mysql.ref.boost__mysql__error_with_diagnostics">error_with_diagnostics</link></member>
           <member><link linkend="mysql.ref.boost__mysql__execution_state">execution_state</link></member>
           <member><link linkend="mysql.ref.boost__mysql__field">field</link></member>

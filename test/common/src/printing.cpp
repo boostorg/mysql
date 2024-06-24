@@ -96,14 +96,3 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, const character_set& v)
         return os << "character_set(\"" << v.name << "\", .next_char? = " << static_cast<bool>(v.next_char)
                   << ")";
 }
-
-// errcode_with_diagnostics
-bool boost::mysql::operator==(const errcode_with_diagnostics& lhs, const errcode_with_diagnostics& rhs)
-{
-    return lhs.code == rhs.code && lhs.diag == rhs.diag;
-}
-
-std::ostream& boost::mysql::operator<<(std::ostream& os, const errcode_with_diagnostics& v)
-{
-    return os << "errcode_with_diagnostics{ .code = " << v.code << ", .diag = " << v.diag << " }";
-}
