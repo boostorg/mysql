@@ -163,7 +163,7 @@ public:
      * retrieves it. Otherwise, throws an exception.
      *
      * \par Exception safety
-     * Strong guarantee.
+     * Strong guarantee. Throws on invalid input.
      * \throws std::invalid_argument If `*this` does not contain a statement.
      */
     BOOST_MYSQL_DECL
@@ -333,7 +333,7 @@ public:
      * effects equivalent to `conn.execute(stmt.bind(params.begin(), params.end()))`.
      * \n
      * This function can be used instead of \ref add_execute when the number of actual parameters
-     * of a statement is now known at compile time.
+     * of a statement is not known at compile time.
      *
      * \par Exception safety
      * Strong guarantee. Throws if the supplied number of parameters doesn't match the number
@@ -373,6 +373,9 @@ public:
      *
      * \par Exception safety
      * Strong guarantee. Memory allocations may throw.
+     *
+     * \par Preconditions
+     * The passed statement should be valid (`stmt.valid() == true`).
      */
     BOOST_MYSQL_DECL pipeline_request& add_close_statement(statement stmt);
 
@@ -402,6 +405,9 @@ public:
      * Additionally, memory allocations may throw.
      * \throws std::invalid_argument If `charset.name` contains non-ASCII characters.
      *
+     * \par Preconditions
+     * The passed character set should not be default-constructed
+     * (`charset.name != nullptr`).
      */
     BOOST_MYSQL_DECL pipeline_request& add_set_character_set(character_set charset);
 
