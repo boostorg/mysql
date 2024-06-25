@@ -36,8 +36,12 @@ namespace detail {
 class message_reader
 {
 public:
-    message_reader(std::size_t initial_buffer_size, std::size_t max_frame_size = max_packet_size)
-        : buffer_(initial_buffer_size), max_frame_size_(max_frame_size)
+    message_reader(
+        std::size_t initial_buffer_size,
+        std::size_t max_buffer_size = static_cast<std::size_t>(-1),
+        std::size_t max_frame_size = max_packet_size
+    )
+        : buffer_(initial_buffer_size, max_buffer_size), max_frame_size_(max_frame_size)
     {
     }
 
@@ -83,11 +87,14 @@ public:
 
     // Removes old messages stored in the buffer, and resizes it, if required, to accomodate
     // the message currently being parsed.
-    void prepare_buffer()
+    error_code prepare_buffer()
     {
         buffer_.remove_reserved();
-        buffer_.grow_to_fit(state_.required_size);
+        auto ec = buffer_.grow_to_fit(state_.required_size);
+        if (ec)
+            return ec;
         state_.required_size = 0;
+        return error_code();
     }
 
     // The main operation. Call it after reading bytes against buffer(),

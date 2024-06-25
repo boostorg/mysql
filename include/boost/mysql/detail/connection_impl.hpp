@@ -348,7 +348,11 @@ class connection_impl
     };
 
 public:
-    BOOST_MYSQL_DECL connection_impl(std::size_t read_buff_size, std::unique_ptr<engine> eng);
+    BOOST_MYSQL_DECL connection_impl(
+        std::size_t read_buff_size,
+        std::size_t max_buffer_size,
+        std::unique_ptr<engine> eng
+    );
 
     BOOST_MYSQL_DECL metadata_mode meta_mode() const;
     BOOST_MYSQL_DECL void set_meta_mode(metadata_mode m);

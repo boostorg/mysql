@@ -32,6 +32,7 @@
 
 #include <boost/assert.hpp>
 
+#include <cstddef>
 #include <type_traits>
 #include <utility>
 
@@ -100,7 +101,11 @@ public:
         class... Args,
         class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
     connection(const buffer_params& buff_params, Args&&... args)
-        : impl_(buff_params.initial_read_size(), detail::make_engine<Stream>(std::forward<Args>(args)...))
+        : impl_(
+              buff_params.initial_read_size(),
+              static_cast<std::size_t>(-1),
+              detail::make_engine<Stream>(std::forward<Args>(args)...)
+          )
     {
     }
 

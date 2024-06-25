@@ -83,6 +83,9 @@ struct any_connection_params
      * returned by \ref any_connection::read_some_rows.
      */
     std::size_t initial_read_buffer_size{default_initial_read_buffer_size};
+
+    // TODO: document
+    std::size_t max_buffer_size{0xffffff};
 };
 
 /**
@@ -122,8 +125,12 @@ class any_connection
     static std::unique_ptr<detail::engine> create_engine(asio::any_io_executor ex, asio::ssl::context* ctx);
 
     // Used by tests
-    any_connection(std::size_t initial_read_buffer_size, std::unique_ptr<detail::engine> eng)
-        : impl_(initial_read_buffer_size, std::move(eng))
+    any_connection(
+        std::size_t initial_read_buffer_size,
+        std::size_t max_buffer_size,
+        std::unique_ptr<detail::engine> eng
+    )
+        : impl_(initial_read_buffer_size, max_buffer_size, std::move(eng))
     {
     }
 
@@ -138,7 +145,11 @@ public:
      * an \ref any_connection_params object to this constructor.
      */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
-        : any_connection(params.initial_read_buffer_size, create_engine(std::move(ex), params.ssl_context))
+        : any_connection(
+              params.initial_read_buffer_size,
+              params.max_buffer_size,
+              create_engine(std::move(ex), params.ssl_context)
+          )
     {
     }
 
