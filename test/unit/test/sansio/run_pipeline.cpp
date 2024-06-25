@@ -57,33 +57,27 @@ BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
 const std::vector<std::uint8_t> mock_request{1, 2, 3, 4, 5, 6, 7, 9, 21};
 
-/**
-TODO: tests without a response
-    close statement success, error
-    set character set success, error
-    reset connection success, error
-    ping success, error
-    any of the above after a fatal error
-re-using responses
-    changing type from/to execute
-    increasing/decreasing size
- */
-
-struct fixture : algo_fixture_base
+struct fixture_base : algo_fixture_base
 {
     detail::run_pipeline_algo algo;
+
+    fixture_base(
+        span<const pipeline_request_stage> stages,
+        span<const std::uint8_t> req_buffer = mock_request,
+        std::vector<stage_response>* response = nullptr
+    )
+        : algo({&diag, req_buffer, stages, response})
+    {
+    }
+};
+
+struct fixture : fixture_base
+{
     std::vector<stage_response> resp;
 
     fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req_buffer = mock_request)
-        : algo({&diag, req_buffer, stages, &resp})
+        : fixture_base(stages, req_buffer, &resp)
     {
-        // Verify that we clear the response correctly
-        stage_response elm;
-        detail::access::get_impl(elm).set_error(
-            client_errc::extra_bytes,
-            create_client_diag("Diag not cleared")
-        );
-        resp.push_back(std::move(elm));
     }
 
     // Verify that all stages succeeded
@@ -535,5 +529,132 @@ BOOST_AUTO_TEST_CASE(fatal_error_with_diag)
         create_server_diag("aborting connection")
     );
 }
+
+// Running a pipeline without a response should work for
+// close statement, set character set, reset connection and ping
+BOOST_AUTO_TEST_CASE(no_response_success)
+{
+    // Setup. One stage of each type
+    const std::array<pipeline_request_stage, 4> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::close_statement, 10u, {}},
+         {pipeline_stage_kind::ping, 0u, {}},
+         }
+    };
+    fixture_base fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(create_ok_frame(32, ok_builder().build()))
+        .expect_read(create_ok_frame(16, ok_builder().build()))
+        .expect_read(create_ok_frame(0, ok_builder().build()))
+        .check(fix);
+
+    // The pipeline had its intended effect
+    BOOST_TEST(fix.st.backslash_escapes == true);
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
+}
+
+BOOST_AUTO_TEST_CASE(no_response_error_1)
+{
+    // Setup. One stage of each type
+    const std::array<pipeline_request_stage, 4> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::close_statement, 10u, {}},
+         {pipeline_stage_kind::ping, 0u, {}},
+         }
+    };
+    fixture_base fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(err_builder()
+                         .seqnum(32)
+                         .code(common_server_errc::er_bad_db_error)
+                         .message("my_message")
+                         .build_frame())
+        .expect_read(create_ok_frame(16, ok_builder().build()))
+        .expect_read(err_builder()
+                         .seqnum(0)
+                         .code(common_server_errc::er_bad_table_error)
+                         .message("other_msg")
+                         .build_frame())
+        .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+
+    // The stages that succeeded had their intended effect
+    BOOST_TEST(fix.st.backslash_escapes == true);
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
+}
+
+BOOST_AUTO_TEST_CASE(no_response_error_2)
+{
+    // Setup. One stage of each type
+    const std::array<pipeline_request_stage, 4> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::close_statement, 10u, {}},
+         {pipeline_stage_kind::ping, 0u, {}},
+         }
+    };
+    fixture_base fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(create_ok_frame(32, ok_builder().build()))
+        .expect_read(err_builder()
+                         .seqnum(16)
+                         .code(common_server_errc::er_unknown_character_set)
+                         .message("bad_charset")
+                         .build_frame())
+        .expect_read(create_ok_frame(0, ok_builder().build()))
+        .check(fix, common_server_errc::er_unknown_character_set, create_server_diag("bad_charset"));
+
+    // The stages that succeeded had their intended effect
+    BOOST_TEST(fix.st.backslash_escapes == true);
+    BOOST_TEST(fix.st.current_charset == character_set());
+}
+
+BOOST_AUTO_TEST_CASE(no_response_fatal_error)
+{
+    // Setup. One stage of each type, plus an initial stage for the fatal error
+    const std::array<pipeline_request_stage, 5> stages{
+        {
+         {pipeline_stage_kind::ping, 7, {}},
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::close_statement, 10u, {}},
+         {pipeline_stage_kind::ping, 0u, {}},
+         }
+    };
+    fixture_base fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(asio::error::network_reset)
+        .check(fix, asio::error::network_reset);
+
+    // Nothing was modified
+    BOOST_TEST(fix.st.backslash_escapes == false);
+    BOOST_TEST(fix.st.current_charset == character_set());
+}
+
+/**
+re-using responses
+    changing type from/to execute
+    increasing/decreasing size
+ */
 
 BOOST_AUTO_TEST_SUITE_END()
