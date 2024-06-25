@@ -120,7 +120,7 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            *Execute*: behaves like [refmem any_connection execute][br][br]
+            [*Execute]: behaves like [refmem any_connection execute][br][br]
             [refmem pipeline_request add_execute][br]
             [refmem pipeline_request add_execute_range]
         ]
@@ -132,7 +132,7 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            *Prepare statement*: behaves like [refmem any_connection prepare_statement][br][br]
+            [*Prepare statement]: behaves like [refmem any_connection prepare_statement][br][br]
             [refmem pipeline_request add_prepare_statement]
             
         ]
@@ -144,7 +144,7 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            *Close statement*: behaves like [refmem any_connection close_statement][br][br]
+            [*Close statement]: behaves like [refmem any_connection close_statement][br][br]
             [refmem pipeline_request add_close_statement]
         ]
         [[pipeline_reference_close_statement]]
@@ -155,7 +155,7 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            *Reset connection*: behaves like [refmem any_connection reset_connection][br][br]
+            [*Reset connection]: behaves like [refmem any_connection reset_connection][br][br]
             [refmem pipeline_request add_reset_connection]
         ]
         [[pipeline_reference_reset_connection]]
@@ -166,7 +166,7 @@ In the table below, the following variables are assumed:
     ]
     [
         [
-            *Set character set*: behaves like [refmem any_connection set_character_set][br][br]
+            [*Set character set]: behaves like [refmem any_connection set_character_set][br][br]
             [refmem pipeline_request add_set_character_set]
         ]
         [[pipeline_reference_set_character_set]]
