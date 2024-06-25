@@ -64,11 +64,12 @@ To actually run the pipeline, create a response object and call
 
 [pipeline_run]
 
-Finally, you can access the statements using:
+Finally, you can access the statements using [refmem stage_response as_statement]:
 
 [pipeline_results]
 
-
+If your pipeline contains an execution stage, it will generate a `results` object
+that can be accessed using [refmem stage_response as_results].
 
 
 
