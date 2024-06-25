@@ -42,6 +42,7 @@
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_prepare_statement_response.hpp"
 #include "test_unit/create_row_message.hpp"
+#include "test_unit/create_statement.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -651,10 +652,31 @@ BOOST_AUTO_TEST_CASE(no_response_fatal_error)
     BOOST_TEST(fix.st.current_charset == character_set());
 }
 
-/**
-re-using responses
-    changing type from/to execute
-    increasing/decreasing size
- */
+BOOST_AUTO_TEST_CASE(reusing_responses)
+{
+    // Setup
+    const std::array<pipeline_request_stage, 2> stages{
+        {
+         {pipeline_stage_kind::ping, 7, {}},
+         {pipeline_stage_kind::execute, 32u, resultset_encoding::text},
+         }
+    };
+    std::vector<stage_response> resp(3);                  // an extra item that should be removed
+    detail::access::get_impl(resp[0]).emplace_results();  // results to error
+    detail::access::get_impl(resp[1]).set_result(statement_builder().build());  // statement to results
+    fixture_base fix(stages, mock_request, &resp);
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(create_ok_frame(7, ok_builder().build()))
+        .expect_read(create_ok_frame(32, ok_builder().info("msg").build()))
+        .check(fix);
+
+    BOOST_TEST(resp.size() == 2u);
+    BOOST_TEST(resp.at(0).error() == error_code());
+    BOOST_TEST(resp.at(0).diag() == diagnostics());
+    BOOST_TEST(resp.at(1).as_results().info() == "msg");
+}
 
 BOOST_AUTO_TEST_SUITE_END()
