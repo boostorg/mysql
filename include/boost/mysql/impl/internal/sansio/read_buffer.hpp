@@ -14,11 +14,10 @@
 #include <boost/assert.hpp>
 #include <boost/core/span.hpp>
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <vector>
+#include <memory>
 
 namespace boost {
 namespace mysql {
@@ -33,17 +32,29 @@ namespace detail {
 //   - Free area: free space for more bytes to be read.
 class read_buffer
 {
-    std::vector<std::uint8_t> buffer_;
+    std::unique_ptr<std::uint8_t[]> buffer_;
+    std::size_t size_;
+    std::size_t max_size_;
     std::size_t current_message_offset_{0};
     std::size_t pending_offset_{0};
     std::size_t free_offset_{0};
-    std::size_t max_size_{};  // TODO: check that size <= max_size
+
+    void do_grow_buffer(std::size_t new_size)
+    {
+        // TODO: we can implement a better growth strategy here
+        BOOST_ASSERT(new_size > size_);
+        std::unique_ptr<std::uint8_t[]> new_buffer{new std::uint8_t[new_size]};
+        std::memcpy(new_buffer.get(), buffer_.get(), free_offset_);  // Don't copy the free area
+        buffer_ = std::move(new_buffer);
+        size_ = new_size;
+    }
 
 public:
     read_buffer(std::size_t size, std::size_t max_size = static_cast<std::size_t>(-1))
-        : buffer_(size, std::uint8_t(0)), max_size_(max_size)
+        : buffer_(size > 0 ? new std::uint8_t[size] : nullptr), size_(size), max_size_(max_size)
     {
-        buffer_.resize(buffer_.capacity());
+        // TODO: check that size <= max_size in the caller
+        BOOST_ASSERT(size_ <= max_size_);
     }
 
     void reset() noexcept
@@ -54,26 +65,26 @@ public:
     }
 
     // Whole buffer accessors
-    const std::uint8_t* first() const noexcept { return buffer_.data(); }
-    std::size_t size() const noexcept { return buffer_.size(); }
+    const std::uint8_t* first() const noexcept { return buffer_.get(); }
+    std::size_t size() const noexcept { return size_; }
 
     // Area accessors
-    std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
-    const std::uint8_t* reserved_first() const noexcept { return buffer_.data(); }
-    std::uint8_t* current_message_first() noexcept { return buffer_.data() + current_message_offset_; }
+    std::uint8_t* reserved_first() noexcept { return buffer_.get(); }
+    const std::uint8_t* reserved_first() const noexcept { return buffer_.get(); }
+    std::uint8_t* current_message_first() noexcept { return buffer_.get() + current_message_offset_; }
     const std::uint8_t* current_message_first() const noexcept
     {
-        return buffer_.data() + current_message_offset_;
+        return buffer_.get() + current_message_offset_;
     }
-    std::uint8_t* pending_first() noexcept { return buffer_.data() + pending_offset_; }
-    const std::uint8_t* pending_first() const noexcept { return buffer_.data() + pending_offset_; }
-    std::uint8_t* free_first() noexcept { return buffer_.data() + free_offset_; }
-    const std::uint8_t* free_first() const noexcept { return buffer_.data() + free_offset_; }
+    std::uint8_t* pending_first() noexcept { return buffer_.get() + pending_offset_; }
+    const std::uint8_t* pending_first() const noexcept { return buffer_.get() + pending_offset_; }
+    std::uint8_t* free_first() noexcept { return buffer_.get() + free_offset_; }
+    const std::uint8_t* free_first() const noexcept { return buffer_.get() + free_offset_; }
 
     std::size_t reserved_size() const noexcept { return current_message_offset_; }
     std::size_t current_message_size() const noexcept { return pending_offset_ - current_message_offset_; }
     std::size_t pending_size() const noexcept { return free_offset_ - pending_offset_; }
-    std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
+    std::size_t free_size() const noexcept { return size_ - free_offset_; }
 
     span<const std::uint8_t> reserved_area() const noexcept { return {reserved_first(), reserved_size()}; }
     span<const std::uint8_t> current_message() const noexcept
@@ -123,7 +134,7 @@ public:
         if (reserved_size() > 0)
         {
             // If reserved_size() > 0, these ptrs should never be NULL
-            void* to = buffer_.data();
+            void* to = buffer_.get();
             const void* from = current_message_first();
             BOOST_ASSERT(to != nullptr);
             BOOST_ASSERT(from != nullptr);
@@ -141,12 +152,10 @@ public:
     {
         if (free_size() < n)
         {
-            // TODO: capacity can still surpass max_size_
-            std::size_t new_size = buffer_.size() + n - free_size();
+            std::size_t new_size = size_ + n - free_size();
             if (new_size > max_size_)
                 return client_errc::max_buffer_size_exceeded;
-            buffer_.resize(new_size);
-            buffer_.resize((std::min)(buffer_.capacity(), max_size_));
+            do_grow_buffer(new_size);
         }
         return error_code();
     }
