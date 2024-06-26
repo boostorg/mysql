@@ -41,7 +41,7 @@ public:
     std::uint8_t seqnum{42};
 
     reader_fixture(std::vector<std::uint8_t> contents, std::size_t buffsize = 512)
-        : reader(buffsize, 64),  // max frame size is 64
+        : reader(buffsize, static_cast<std::size_t>(-1), 64),  // max frame size is 64, no buffer limit
           contents_(std::move(contents)),
           buffer_first_(reader.internal_buffer().first())
     {

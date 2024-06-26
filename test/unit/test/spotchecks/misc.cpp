@@ -438,6 +438,7 @@ struct test_any_connection_fixture
     test_any_connection_fixture()
         : conn(detail::access::construct<any_connection>(
               default_initial_read_buffer_size,
+              static_cast<std::size_t>(-1),  // no buffer limit
               std::unique_ptr<detail::engine>(
                   new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>()
               )
