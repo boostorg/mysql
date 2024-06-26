@@ -14,6 +14,7 @@
 #include <boost/assert.hpp>
 #include <boost/core/span.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -145,7 +146,7 @@ public:
             if (new_size > max_size_)
                 return client_errc::max_buffer_size_exceeded;
             buffer_.resize(new_size);
-            buffer_.resize(buffer_.capacity());
+            buffer_.resize((std::min)(buffer_.capacity(), max_size_));
         }
         return error_code();
     }
