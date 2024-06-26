@@ -24,8 +24,6 @@
     'FieldViewFwdIterator',
     'Formattable',
     'OutputString',
-    'PipelineRequestType',
-    'PipelineStageType',
     'ResultsType',
     'SocketStream',
     'StaticRow',

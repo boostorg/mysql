@@ -27,7 +27,6 @@
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/core/ignore_unused.hpp>
@@ -49,6 +48,7 @@ template <class... StaticRow>
 class static_execution_state;
 
 struct character_set;
+class pipeline_request;
 
 namespace detail {
 
@@ -604,16 +604,13 @@ public:
     // Close connection
     close_connection_algo_params make_params_close(diagnostics& diag) const { return {&diag}; }
 
-    // Run pipeline
-    template <class PipelineRequestType>
+    // Run pipeline. Separately compiled to avoid including the pipeline header here
+    BOOST_MYSQL_DECL
     static run_pipeline_algo_params make_params_pipeline(
-        const PipelineRequestType& req,
-        typename PipelineRequestType::response_type& response,
+        const pipeline_request& req,
+        std::vector<stage_response>& response,
         diagnostics& diag
-    )
-    {
-        return {&diag, access::get_impl(req).to_view(), pipeline_response_ref(response)};
-    }
+    );
 };
 
 // To use some completion tokens, like deferred, in C++11, the old macros
