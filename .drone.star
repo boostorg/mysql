@@ -84,8 +84,29 @@ def _pipeline(
     os,
     command,
     db,
-    arch='amd64'
+    arch='amd64',
+    disable_aslr=False
 ):
+    steps = []
+    if disable_aslr:
+        steps.append({
+            "name": "Disable ASLR",
+            "image": image,
+            "pull": "if-not-exists",
+            "privileged": True,
+            "commands": ["echo 0 | tee /proc/sys/kernel/randomize_va_space"]
+        })
+    steps.append({
+        "name": "Build and run",
+        "image": image,
+        "pull": "if-not-exists",
+        "volumes":[{
+            "name": "mysql-socket",
+            "path": "/var/run/mysqld"
+        }] if db != None else [],
+        "commands": [command]
+    })
+
     return {
         "name": name,
         "kind": "pipeline",
@@ -99,16 +120,7 @@ def _pipeline(
             "retries": 5
         },
         "node": {},
-        "steps": [{
-            "name": "Everything",
-            "image": image,
-            "pull": "if-not-exists",
-            "volumes":[{
-                "name": "mysql-socket",
-                "path": "/var/run/mysqld"
-            }] if db != None else [],
-            "commands": [command]
-        }],
+        "steps": steps,
         "services": [{
             "name": "mysql",
             "image": _image(db),
@@ -161,7 +173,8 @@ def linux_b2(
         os='linux',
         command=command,
         db='mysql8',
-        arch=arch
+        arch=arch,
+        disable_aslr=True
     )
 
 
