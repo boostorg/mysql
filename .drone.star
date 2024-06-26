@@ -91,6 +91,8 @@ def _pipeline(
     if disable_aslr:
         steps.append({
             "name": "Disable ASLR",
+            "image": image,
+            "pull": "if-not-exists",
             "privileged": True,
             "commands": ["echo 0 | sudo tee /proc/sys/kernel/randomize_va_space"]
         })
