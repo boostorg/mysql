@@ -12,7 +12,6 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
-#include <boost/mysql/detail/pipeline.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
@@ -77,8 +76,9 @@ inline run_pipeline_algo_params setup_reset_connection_pipeline(
     };
     return {
         params.diag,
-        pipeline_request_view{st.write_buffer, {st.shared_pipeline_stages.data(), 1}},
-        pipeline_response_ref()
+        st.write_buffer,
+        {st.shared_pipeline_stages.data(), 1},
+        nullptr
     };
 }
 

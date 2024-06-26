@@ -21,8 +21,9 @@
 
 #include <boost/mysql/detail/config.hpp>
 
+#include <vector>
+
 #include "test_common/create_basic.hpp"
-#include "test_common/create_diagnostics.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
@@ -549,7 +550,7 @@ using run_pipeline_netmaker = netfun_maker_mem<
     void,
     any_connection,
     const pipeline_request&,
-    pipeline_request::response_type&>;
+    std::vector<stage_response>&>;
 
 struct
 {
@@ -573,10 +574,10 @@ BOOST_AUTO_TEST_CASE(run_pipeline_success)
             any_connection conn(ctx);
             conn.connect(default_connect_params(ssl_mode::disable));
             pipeline_request req;
-            req.add(set_character_set_stage(ascii_charset))
-                .add(execute_stage("SET @myvar = 42"))
-                .add(execute_stage("SELECT @myvar"));
-            pipeline_request::response_type res;
+            req.add_set_character_set(ascii_charset)
+                .add_execute("SET @myvar = 42")
+                .add_execute("SELECT @myvar");
+            std::vector<stage_response> res;
 
             // Issue the pipeline
             fns.run_pipeline(conn, req, res).validate_no_error();
@@ -584,7 +585,8 @@ BOOST_AUTO_TEST_CASE(run_pipeline_success)
             // Success
             BOOST_TEST(conn.current_character_set().value() == ascii_charset);
             BOOST_TEST_REQUIRE(res.size() == 3u);
-            BOOST_TEST(res.at(0).error() == errcode_with_diagnostics());
+            BOOST_TEST(res.at(0).error() == error_code());
+            BOOST_TEST(res.at(0).diag() == diagnostics());
             BOOST_TEST(res.at(1).as_results().rows().empty());
             BOOST_TEST(res.at(2).as_results().rows() == makerows(1, 42));
         }
@@ -602,10 +604,10 @@ BOOST_AUTO_TEST_CASE(run_pipeline_error)
             any_connection conn(ctx);
             conn.connect(default_connect_params(ssl_mode::disable));
             pipeline_request req;
-            req.add(execute_stage("SET @myvar = 42"))
-                .add(prepare_statement_stage("SELECT * FROM bad_table"))
-                .add(execute_stage("SELECT @myvar"));
-            pipeline_request::response_type res;
+            req.add_execute("SET @myvar = 42")
+                .add_prepare_statement("SELECT * FROM bad_table")
+                .add_execute("SELECT @myvar");
+            std::vector<stage_response> res;
 
             // Issue the command
             fns.run_pipeline(conn, req, res)
@@ -617,12 +619,9 @@ BOOST_AUTO_TEST_CASE(run_pipeline_error)
             // Stages 0 and 2 were executed successfully
             BOOST_TEST(res.size() == 3u);
             BOOST_TEST(res[0].as_results().rows().size() == 0u);
+            BOOST_TEST(res[1].error() == common_server_errc::er_no_such_table);
             BOOST_TEST(
-                res[1].error() ==
-                (errcode_with_diagnostics{
-                    common_server_errc::er_no_such_table,
-                    create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
-                })
+                res[1].diag() == create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
             );
             BOOST_TEST(res[2].as_results().rows() == makerows(1, 42));
         }

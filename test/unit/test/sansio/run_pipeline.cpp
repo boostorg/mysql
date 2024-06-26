@@ -6,11 +6,14 @@
 //
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/statement.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
@@ -19,6 +22,7 @@
 
 #include <boost/asio/error.hpp>
 #include <boost/core/span.hpp>
+#include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <array>
@@ -27,6 +31,7 @@
 #include <vector>
 
 #include "test_common/buffer_concat.hpp"
+#include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
@@ -37,7 +42,7 @@
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_prepare_statement_response.hpp"
 #include "test_unit/create_row_message.hpp"
-#include "test_unit/mock_execution_processor.hpp"
+#include "test_unit/create_statement.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -49,103 +54,48 @@ using detail::pipeline_request_stage;
 using detail::pipeline_stage_kind;
 using detail::resultset_encoding;
 
-namespace boost {
-namespace mysql {
-namespace test {
-
-struct mock_pipeline_response
-{
-    struct item
-    {
-        mock_execution_processor proc;
-        statement stmt;
-        errcode_with_diagnostics err;
-    };
-
-    std::size_t setup_num_calls{0u};
-    span<const detail::pipeline_request_stage> setup_args;
-    std::vector<item> items;
-};
-
-}  // namespace test
-
-namespace detail {
-
-template <>
-struct pipeline_response_traits<test::mock_pipeline_response>
-{
-    using response_type = test::mock_pipeline_response;
-
-    static void setup(response_type& self, span<const pipeline_request_stage> request)
-    {
-        ++self.setup_num_calls;
-        self.setup_args = request;
-        self.items.resize(request.size());
-    }
-
-    static execution_processor& get_processor(response_type& self, std::size_t idx)
-    {
-        // This function is only defined for execute stages
-        BOOST_TEST_REQUIRE(idx < self.items.size());
-        BOOST_TEST(self.setup_args[idx].kind == pipeline_stage_kind::execute);
-        return self.items[idx].proc;
-    }
-
-    static void set_result(response_type& self, std::size_t idx, statement stmt)
-    {
-        // This function is only defined for prepare statement stages
-        BOOST_TEST_REQUIRE(idx < self.items.size());
-        BOOST_TEST(self.setup_args[idx].kind == pipeline_stage_kind::prepare_statement);
-        self.items[idx].stmt = stmt;
-    }
-
-    static void set_error(response_type& self, std::size_t idx, error_code ec, diagnostics&& diag)
-    {
-        BOOST_TEST_REQUIRE(idx < self.items.size());
-        self.items[idx].err = {ec, std::move(diag)};
-    }
-};
-
-}  // namespace detail
-}  // namespace mysql
-}  // namespace boost
-
 BOOST_AUTO_TEST_SUITE(test_run_pipeline)
 
 const std::vector<std::uint8_t> mock_request{1, 2, 3, 4, 5, 6, 7, 9, 21};
 
-struct fixture : algo_fixture_base
+struct fixture_base : algo_fixture_base
 {
     detail::run_pipeline_algo algo;
-    mock_pipeline_response resp;
 
-    fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req_buffer = mock_request)
-        : algo({
-              &diag,
-              detail::pipeline_request_view{req_buffer, stages},
-              detail::pipeline_response_ref(resp)
-    })
+    fixture_base(
+        span<const pipeline_request_stage> stages,
+        span<const std::uint8_t> req_buffer = mock_request,
+        std::vector<stage_response>* response = nullptr
+    )
+        : algo({&diag, req_buffer, stages, response})
     {
     }
+};
 
-    // Verify that the stages we passed match the ones used in setup
-    void check_setup(span<const pipeline_request_stage> stages)
+struct fixture : fixture_base
+{
+    std::vector<stage_response> resp;
+
+    fixture(span<const pipeline_request_stage> stages, span<const std::uint8_t> req_buffer = mock_request)
+        : fixture_base(stages, req_buffer, &resp)
     {
-        BOOST_TEST(resp.setup_num_calls == 1u);
-        BOOST_TEST(resp.setup_args == stages, per_element());
     }
 
     // Verify that all stages succeeded
     void check_all_stages_succeeded()
     {
-        for (const auto& item : resp.items)
-            BOOST_TEST(item.err == errcode_with_diagnostics{});
+        for (const auto& item : resp)
+        {
+            BOOST_TEST(item.error() == error_code());
+            BOOST_TEST(item.diag() == diagnostics());
+        }
     }
 
     // Verify that a certain step failed
-    void check_stage_error(std::size_t i, const errcode_with_diagnostics& expected)
+    void check_stage_error(std::size_t i, error_code expected_ec, const diagnostics& expected_diag)
     {
-        BOOST_TEST(resp.items.at(i).err == expected);
+        BOOST_TEST(resp.at(i).error() == expected_ec);
+        BOOST_TEST(resp.at(i).diag() == expected_diag);
     }
 };
 
@@ -174,27 +124,20 @@ BOOST_AUTO_TEST_CASE(execute_success)
                          .build())
         .check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
-    // Check each processor calls
-    auto& proc0 = fix.resp.items.at(0).proc;
-    proc0.num_calls().reset(1).on_head_ok_packet(1).validate();
-    BOOST_TEST(proc0.info() == "1st");
-    BOOST_TEST(proc0.encoding() == resultset_encoding::binary);
+    // Check results
+    const auto& res0 = fix.resp.at(0).as_results();
+    BOOST_TEST(res0.rows() == rows(), per_element());
+    BOOST_TEST(res0.info() == "1st");
+    BOOST_TEST(detail::access::get_impl(res0).encoding() == resultset_encoding::binary);
 
-    auto& proc1 = fix.resp.items.at(1).proc;
-    proc1.num_calls()
-        .reset(1)
-        .on_num_meta(1)
-        .on_meta(1)
-        .on_row_batch_start(1)
-        .on_row(2)
-        .on_row_batch_finish(1)
-        .on_row_ok_packet(1)
-        .validate();
-    BOOST_TEST(proc1.info() == "2nd");
+    const auto& res1 = fix.resp.at(1).as_results();
+    BOOST_TEST(res1.rows() == makerows(1, 42, 43), per_element());
+    BOOST_TEST(res1.info() == "2nd");
+    BOOST_TEST(detail::access::get_impl(res1).encoding() == resultset_encoding::text);
 }
 
 BOOST_AUTO_TEST_CASE(prepare_statement_success)
@@ -218,16 +161,16 @@ BOOST_AUTO_TEST_CASE(prepare_statement_success)
         .expect_read(create_coldef_frame(12, meta_builder().name("aaa").build_coldef()))
         .check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // Check the resulting statements
-    auto stmt0 = fix.resp.items.at(0).stmt;
+    auto stmt0 = fix.resp.at(0).as_statement();
     BOOST_TEST(stmt0.id() == 7u);
     BOOST_TEST(stmt0.num_params() == 2u);
 
-    auto stmt1 = fix.resp.items.at(1).stmt;
+    auto stmt1 = fix.resp.at(1).as_statement();
     BOOST_TEST(stmt1.id() == 9u);
     BOOST_TEST(stmt1.num_params() == 1u);
 }
@@ -246,8 +189,8 @@ BOOST_AUTO_TEST_CASE(close_statement_success)
     // Run the test. Close statement doesn't have a response
     algo_test().expect_write(mock_request).check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 }
 
@@ -265,8 +208,8 @@ BOOST_AUTO_TEST_CASE(reset_connection)
     // Run the test
     algo_test().expect_write(mock_request).expect_read(create_ok_frame(3, ok_builder().build())).check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // The current character set was reset
@@ -286,8 +229,8 @@ BOOST_AUTO_TEST_CASE(set_character_set)
     // Run the test
     algo_test().expect_write(mock_request).expect_read(create_ok_frame(19, ok_builder().build())).check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // The current character set was set
@@ -310,8 +253,8 @@ BOOST_AUTO_TEST_CASE(ping)
         .expect_read(create_ok_frame(32, ok_builder().no_backslash_escapes(true).build()))
         .check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // The OK packet was processed successfully
@@ -346,15 +289,15 @@ BOOST_AUTO_TEST_CASE(combination)
         .expect_read(prepare_stmt_response_builder().seqnum(1).id(1).num_columns(0).num_params(0).build())
         .check(fix);
 
-    // Setup was called correctly and all stages succeeded
-    fix.check_setup(stages);
+    // All stages succeeded
+    BOOST_TEST_REQUIRE(fix.resp.size() == stages.size());
     fix.check_all_stages_succeeded();
 
     // The pipeline had its intended effect
     BOOST_TEST(fix.st.backslash_escapes == true);
     BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
-    BOOST_TEST(fix.resp.items.at(3).stmt.id() == 3u);
-    BOOST_TEST(fix.resp.items.at(4).stmt.id() == 1u);
+    BOOST_TEST(fix.resp.at(3).as_statement().id() == 3u);
+    BOOST_TEST(fix.resp.at(4).as_statement().id() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(no_requests)
@@ -365,8 +308,8 @@ BOOST_AUTO_TEST_CASE(no_requests)
     // Run the test. We complete immediately
     algo_test().check(fix);
 
-    // Setup was called correctly
-    fix.check_setup({});
+    // The response was cleared
+    BOOST_TEST(fix.resp.size() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(error_writing_request)
@@ -384,13 +327,11 @@ BOOST_AUTO_TEST_CASE(error_writing_request)
     // Run the test. No response reading is attempted
     algo_test().expect_write(mock_request, asio::error::eof).check(fix, asio::error::eof);
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // All requests were marked as failed
-    fix.check_stage_error(0, {asio::error::eof, {}});
-    fix.check_stage_error(1, {asio::error::eof, {}});
-    fix.check_stage_error(2, {asio::error::eof, {}});
+    BOOST_TEST(fix.resp.size() == stages.size());
+    fix.check_stage_error(0, asio::error::eof, {});
+    fix.check_stage_error(1, asio::error::eof, {});
+    fix.check_stage_error(2, asio::error::eof, {});
 }
 
 BOOST_AUTO_TEST_CASE(nonfatal_errors)
@@ -422,16 +363,14 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors)
                          .build_frame())
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // Stage errors
-    fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
-    fix.check_stage_error(1, {error_code(), {}});
-    fix.check_stage_error(2, {common_server_errc::er_bad_field_error, create_server_diag("other_msg")});
+    BOOST_TEST(fix.resp.size() == stages.size());
+    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+    fix.check_stage_error(1, {}, {});
+    fix.check_stage_error(2, common_server_errc::er_bad_field_error, create_server_diag("other_msg"));
 
     // The operation that succeeded had its result set
-    BOOST_TEST(fix.resp.items.at(1).stmt.id() == 3u);
+    BOOST_TEST(fix.resp.at(1).as_statement().id() == 3u);
 }
 
 BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
@@ -459,13 +398,11 @@ BOOST_AUTO_TEST_CASE(nonfatal_errors_middle)
         .expect_read(create_ok_frame(10, ok_builder().no_backslash_escapes(true).build()))
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // Stage errors
-    fix.check_stage_error(0, {});
-    fix.check_stage_error(1, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
-    fix.check_stage_error(2, {});
+    BOOST_TEST(fix.resp.size() == stages.size());
+    fix.check_stage_error(0, {}, {});
+    fix.check_stage_error(1, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+    fix.check_stage_error(2, {}, {});
 
     // We processed the OK packet correctly
     BOOST_TEST(fix.st.backslash_escapes == false);
@@ -489,13 +426,11 @@ BOOST_AUTO_TEST_CASE(fatal_error_first)
         .expect_read(asio::error::network_reset)
         .check(fix, asio::error::network_reset);
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // All subsequent requests were marked as failed
-    fix.check_stage_error(0, {asio::error::network_reset, {}});
-    fix.check_stage_error(1, {asio::error::network_reset, {}});
-    fix.check_stage_error(2, {asio::error::network_reset, {}});
+    BOOST_TEST(fix.resp.size() == stages.size());
+    fix.check_stage_error(0, asio::error::network_reset, {});
+    fix.check_stage_error(1, asio::error::network_reset, {});
+    fix.check_stage_error(2, asio::error::network_reset, {});
 }
 
 BOOST_AUTO_TEST_CASE(fatal_error_middle)
@@ -517,13 +452,11 @@ BOOST_AUTO_TEST_CASE(fatal_error_middle)
         .expect_read(asio::error::network_reset)
         .check(fix, asio::error::network_reset);
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // All subsequent requests were marked as failed
-    fix.check_stage_error(0, {});
-    fix.check_stage_error(1, {asio::error::network_reset, {}});
-    fix.check_stage_error(2, {asio::error::network_reset, {}});
+    BOOST_TEST(fix.resp.size() == stages.size());
+    fix.check_stage_error(0, {}, {});
+    fix.check_stage_error(1, asio::error::network_reset, {});
+    fix.check_stage_error(2, asio::error::network_reset, {});
 }
 
 // If there are fatal and non-fatal errors, the fatal one is the result of the operation
@@ -550,13 +483,11 @@ BOOST_AUTO_TEST_CASE(nonfatal_then_fatal_error)
         .expect_read(asio::error::already_connected)
         .check(fix, asio::error::already_connected);
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // Stage results
-    fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("my_message")});
-    fix.check_stage_error(1, {asio::error::already_connected, {}});
-    fix.check_stage_error(2, {asio::error::already_connected, {}});
+    BOOST_TEST(fix.resp.size() == stages.size());
+    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+    fix.check_stage_error(1, asio::error::already_connected, {});
+    fix.check_stage_error(2, asio::error::already_connected, {});
 }
 
 // Edge case: fatal error with non-empty diagnostics
@@ -585,19 +516,167 @@ BOOST_AUTO_TEST_CASE(fatal_error_with_diag)
                          .build_frame())
         .check(fix, common_server_errc::er_aborting_connection, create_server_diag("aborting connection"));
 
-    // Setup was called correctly
-    fix.check_setup(stages);
-
     // Stage results
-    fix.check_stage_error(0, {common_server_errc::er_bad_db_error, create_server_diag("bad db")});
+    BOOST_TEST(fix.resp.size() == stages.size());
+    fix.check_stage_error(0, common_server_errc::er_bad_db_error, create_server_diag("bad db"));
     fix.check_stage_error(
         1,
-        {common_server_errc::er_aborting_connection, create_server_diag("aborting connection")}
+        common_server_errc::er_aborting_connection,
+        create_server_diag("aborting connection")
     );
     fix.check_stage_error(
         2,
-        {common_server_errc::er_aborting_connection, create_server_diag("aborting connection")}
+        common_server_errc::er_aborting_connection,
+        create_server_diag("aborting connection")
     );
+}
+
+// Running a pipeline without a response should work for
+// close statement, set character set, reset connection and ping
+BOOST_AUTO_TEST_CASE(no_response_success)
+{
+    // Setup. One stage of each type
+    const std::array<pipeline_request_stage, 4> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::close_statement, 10u, {}},
+         {pipeline_stage_kind::ping, 0u, {}},
+         }
+    };
+    fixture_base fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(create_ok_frame(32, ok_builder().build()))
+        .expect_read(create_ok_frame(16, ok_builder().build()))
+        .expect_read(create_ok_frame(0, ok_builder().build()))
+        .check(fix);
+
+    // The pipeline had its intended effect
+    BOOST_TEST(fix.st.backslash_escapes == true);
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
+}
+
+BOOST_AUTO_TEST_CASE(no_response_error_1)
+{
+    // Setup. One stage of each type
+    const std::array<pipeline_request_stage, 4> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::close_statement, 10u, {}},
+         {pipeline_stage_kind::ping, 0u, {}},
+         }
+    };
+    fixture_base fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(err_builder()
+                         .seqnum(32)
+                         .code(common_server_errc::er_bad_db_error)
+                         .message("my_message")
+                         .build_frame())
+        .expect_read(create_ok_frame(16, ok_builder().build()))
+        .expect_read(err_builder()
+                         .seqnum(0)
+                         .code(common_server_errc::er_bad_table_error)
+                         .message("other_msg")
+                         .build_frame())
+        .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
+
+    // The stages that succeeded had their intended effect
+    BOOST_TEST(fix.st.backslash_escapes == true);
+    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
+}
+
+BOOST_AUTO_TEST_CASE(no_response_error_2)
+{
+    // Setup. One stage of each type
+    const std::array<pipeline_request_stage, 4> stages{
+        {
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::close_statement, 10u, {}},
+         {pipeline_stage_kind::ping, 0u, {}},
+         }
+    };
+    fixture_base fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(create_ok_frame(32, ok_builder().build()))
+        .expect_read(err_builder()
+                         .seqnum(16)
+                         .code(common_server_errc::er_unknown_character_set)
+                         .message("bad_charset")
+                         .build_frame())
+        .expect_read(create_ok_frame(0, ok_builder().build()))
+        .check(fix, common_server_errc::er_unknown_character_set, create_server_diag("bad_charset"));
+
+    // The stages that succeeded had their intended effect
+    BOOST_TEST(fix.st.backslash_escapes == true);
+    BOOST_TEST(fix.st.current_charset == character_set());
+}
+
+BOOST_AUTO_TEST_CASE(no_response_fatal_error)
+{
+    // Setup. One stage of each type, plus an initial stage for the fatal error
+    const std::array<pipeline_request_stage, 5> stages{
+        {
+         {pipeline_stage_kind::ping, 7, {}},
+         {pipeline_stage_kind::reset_connection, 32u, {}},
+         {pipeline_stage_kind::set_character_set, 16u, utf8mb4_charset},
+         {pipeline_stage_kind::close_statement, 10u, {}},
+         {pipeline_stage_kind::ping, 0u, {}},
+         }
+    };
+    fixture_base fix(stages);
+    fix.st.backslash_escapes = false;
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(asio::error::network_reset)
+        .check(fix, asio::error::network_reset);
+
+    // Nothing was modified
+    BOOST_TEST(fix.st.backslash_escapes == false);
+    BOOST_TEST(fix.st.current_charset == character_set());
+}
+
+BOOST_AUTO_TEST_CASE(reusing_responses)
+{
+    // Setup
+    const std::array<pipeline_request_stage, 2> stages{
+        {
+         {pipeline_stage_kind::ping, 7, {}},
+         {pipeline_stage_kind::execute, 32u, resultset_encoding::text},
+         }
+    };
+    std::vector<stage_response> resp(3);                  // an extra item that should be removed
+    detail::access::get_impl(resp[0]).emplace_results();  // results to error
+    detail::access::get_impl(resp[1]).set_result(statement_builder().build());  // statement to results
+    fixture_base fix(stages, mock_request, &resp);
+
+    // Run the test
+    algo_test()
+        .expect_write(mock_request)
+        .expect_read(create_ok_frame(7, ok_builder().build()))
+        .expect_read(create_ok_frame(32, ok_builder().info("msg").build()))
+        .check(fix);
+
+    BOOST_TEST(resp.size() == 2u);
+    BOOST_TEST(resp.at(0).error() == error_code());
+    BOOST_TEST(resp.at(0).diag() == diagnostics());
+    BOOST_TEST(resp.at(1).as_results().info() == "msg");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

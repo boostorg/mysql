@@ -12,6 +12,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/is_fatal_error.hpp>
+#include <boost/mysql/pipeline.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
@@ -25,10 +26,11 @@
 #include <boost/mysql/impl/internal/sansio/reset_connection.hpp>
 #include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
 
+#include <boost/assert.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
-#include <cstdint>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -51,7 +53,7 @@ class run_pipeline_algo
     diagnostics* diag_;
     span<const std::uint8_t> request_buffer_;
     span<const pipeline_request_stage> stages_;
-    pipeline_response_ref response_;
+    std::vector<stage_response>* response_;
 
     int resume_point_{0};
     std::size_t current_stage_index_{0};
@@ -59,6 +61,27 @@ class run_pipeline_algo
     bool has_hatal_error_{};  // If true, fail further stages with pipeline_ec_
     any_read_algo read_response_algo_;
     diagnostics temp_diag_;
+
+    void setup_response()
+    {
+        if (response_)
+        {
+            // Create as many response items as request stages
+            response_->resize(stages_.size());
+
+            // Setup them
+            for (std::size_t i = 0u; i < stages_.size(); ++i)
+            {
+                // Execution stages need to be initialized to results objects.
+                // Otherwise, clear any previous content
+                auto& impl = access::get_impl((*response_)[i]);
+                if (stages_[i].kind == pipeline_stage_kind::execute)
+                    impl.emplace_results();
+                else
+                    impl.emplace_error();
+            }
+        }
+    }
 
     void setup_current_stage(const connection_state_data& st)
     {
@@ -71,7 +94,8 @@ class run_pipeline_algo
         {
         case pipeline_stage_kind::execute:
         {
-            auto& processor = response_.get_processor(current_stage_index_);
+            BOOST_ASSERT(response_ != nullptr);  // we don't support execution ignoring the response
+            auto& processor = access::get_impl((*response_)[current_stage_index_]).get_processor();
             processor.reset(stage.stage_specific.enc, st.meta_mode);
             processor.sequence_number() = stage.seqnum;
             read_response_algo_.execute = {&temp_diag_, &processor};
@@ -95,6 +119,14 @@ class run_pipeline_algo
         }
     }
 
+    void set_stage_error(error_code ec, diagnostics&& diag)
+    {
+        if (response_)
+        {
+            access::get_impl((*response_)[current_stage_index_]).set_error(ec, std::move(diag));
+        }
+    }
+
     void on_stage_finished(const connection_state_data& st, error_code stage_ec)
     {
         if (stage_ec)
@@ -115,15 +147,19 @@ class run_pipeline_algo
             }
 
             // Propagate the error
-            response_.set_error(current_stage_index_, stage_ec, std::move(temp_diag_));
+            if (response_ != nullptr)
+            {
+                set_stage_error(stage_ec, std::move(temp_diag_));
+            }
         }
         else
         {
             if (stages_[current_stage_index_].kind == pipeline_stage_kind::prepare_statement)
             {
-                // Propagate results. We don't support prepare statements
-                // with responses having has_value() == false
-                response_.set_result(current_stage_index_, read_response_algo_.prepare_statement.result(st));
+                // Propagate results. We don't support prepare statements ignoring the response
+                BOOST_ASSERT(response_ != nullptr);
+                access::get_impl((*response_)[current_stage_index_])
+                    .set_result(read_response_algo_.prepare_statement.result(st));
             }
         }
     }
@@ -148,8 +184,8 @@ class run_pipeline_algo
 public:
     run_pipeline_algo(run_pipeline_algo_params params) noexcept
         : diag_(params.diag),
-          request_buffer_(params.request.buffer),
-          stages_(params.request.stages),
+          request_buffer_(params.request_buffer),
+          stages_(params.request_stages),
           response_(params.response)
     {
     }
@@ -164,7 +200,7 @@ public:
 
             // Clear previous state
             diag_->clear();
-            response_.setup(stages_);
+            setup_response();
 
             // If the request is empty, don't do anything
             if (stages_.empty())
@@ -186,7 +222,7 @@ public:
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    response_.set_error(current_stage_index_, pipeline_ec_, diagnostics(*diag_));
+                    set_stage_error(pipeline_ec_, diagnostics(*diag_));
                     continue;
                 }
 

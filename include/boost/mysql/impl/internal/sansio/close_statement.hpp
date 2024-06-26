@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CLOSE_STATEMENT_HPP
 
 #include <boost/mysql/detail/algo_params.hpp>
-#include <boost/mysql/detail/pipeline.hpp>
 
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
@@ -29,11 +28,7 @@ inline run_pipeline_algo_params setup_close_statement_pipeline(
     st.shared_pipeline_stages = {
         {{pipeline_stage_kind::close_statement, seqnum1, {}}, {pipeline_stage_kind::ping, seqnum2, {}}}
     };
-    return {
-        params.diag,
-        pipeline_request_view{st.write_buffer, st.shared_pipeline_stages},
-        pipeline_response_ref{}
-    };
+    return {params.diag, st.write_buffer, st.shared_pipeline_stages, nullptr};
 }
 
 }  // namespace detail
