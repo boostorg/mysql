@@ -94,7 +94,7 @@ def _pipeline(
             "image": image,
             "pull": "if-not-exists",
             "privileged": True,
-            "commands": ["echo 0 | sudo tee /proc/sys/kernel/randomize_va_space"]
+            "commands": ["echo 0 | tee /proc/sys/kernel/randomize_va_space"]
         })
     steps.append({
         "name": "Build and run",
