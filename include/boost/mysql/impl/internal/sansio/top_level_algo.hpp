@@ -86,7 +86,7 @@ public:
                     {
                         ec = st_->reader.prepare_buffer();
                         if (ec)
-                            return ec;
+                            break;
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             1,
