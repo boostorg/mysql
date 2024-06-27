@@ -43,8 +43,18 @@ class read_buffer
     {
         // TODO: we can implement a better growth strategy here
         BOOST_ASSERT(new_size > size_);
+
+        // Create the new buffer
         std::unique_ptr<std::uint8_t[]> new_buffer{new std::uint8_t[new_size]};
-        std::memcpy(new_buffer.get(), buffer_.get(), free_offset_);  // Don't copy the free area
+
+        // Copy the old buffer contents, if any.
+        // Don't copy the free area
+        if (buffer_.get())
+        {
+            std::memcpy(new_buffer.get(), buffer_.get(), free_offset_);
+        }
+
+        // Set the data members
         buffer_ = std::move(new_buffer);
         size_ = new_size;
     }
