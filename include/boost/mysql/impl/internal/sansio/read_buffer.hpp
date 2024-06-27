@@ -23,6 +23,56 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Vector-like buffer, but size-limited, with size == capacity, and optimized for u8
+class size_limited_buffer
+{
+    std::unique_ptr<std::uint8_t[]> buffer_;
+    std::size_t size_;
+    std::size_t max_size_;
+
+    void do_grow(std::size_t new_size, std::size_t copy_offset)
+    {
+        BOOST_ASSERT(new_size > size_);
+        BOOST_ASSERT(new_size <= max_size_);
+        BOOST_ASSERT(copy_offset <= size_);
+
+        // Create the new buffer
+        // TODO: we can implement a better growth strategy here
+        std::unique_ptr<std::uint8_t[]> new_buffer{new std::uint8_t[new_size]};
+
+        // Copy the old buffer contents, if any, up to copy_offset
+        if (buffer_.get())
+        {
+            std::memcpy(new_buffer.get(), buffer_.get(), copy_offset);
+        }
+
+        // Set the data members
+        buffer_ = std::move(new_buffer);
+        size_ = new_size;
+    }
+
+public:
+    size_limited_buffer(std::size_t size, std::size_t max_size)
+        : buffer_(size > 0 ? new std::uint8_t[size] : nullptr), size_(size), max_size_(max_size)
+    {
+        // TODO: check that size <= max_size in the caller
+        BOOST_ASSERT(size_ <= max_size_);
+    }
+
+    std::uint8_t* data() { return buffer_.get(); }
+    const std::uint8_t* data() const { return buffer_.get(); }
+    std::size_t size() const { return size_; }
+    std::size_t max_size() const { return max_size_; }
+
+    error_code grow(std::size_t new_size, std::size_t copy_offset)
+    {
+        if (new_size > max_size_)
+            return client_errc::max_buffer_size_exceeded;
+        do_grow(new_size, copy_offset);
+        return error_code();
+    }
+};
+
 // Custom buffer type optimized for read operations performed in the MySQL protocol.
 // The buffer is a single, resizable chunk of memory with four areas:
 //   - Reserved area: messages that have already been read but are kept alive,
@@ -32,39 +82,15 @@ namespace detail {
 //   - Free area: free space for more bytes to be read.
 class read_buffer
 {
-    std::unique_ptr<std::uint8_t[]> buffer_;
-    std::size_t size_;
-    std::size_t max_size_;
+    size_limited_buffer buffer_;
     std::size_t current_message_offset_{0};
     std::size_t pending_offset_{0};
     std::size_t free_offset_{0};
 
-    void do_grow_buffer(std::size_t new_size)
-    {
-        // TODO: we can implement a better growth strategy here
-        BOOST_ASSERT(new_size > size_);
-
-        // Create the new buffer
-        std::unique_ptr<std::uint8_t[]> new_buffer{new std::uint8_t[new_size]};
-
-        // Copy the old buffer contents, if any.
-        // Don't copy the free area
-        if (buffer_.get())
-        {
-            std::memcpy(new_buffer.get(), buffer_.get(), free_offset_);
-        }
-
-        // Set the data members
-        buffer_ = std::move(new_buffer);
-        size_ = new_size;
-    }
-
 public:
     read_buffer(std::size_t size, std::size_t max_size = static_cast<std::size_t>(-1))
-        : buffer_(size > 0 ? new std::uint8_t[size] : nullptr), size_(size), max_size_(max_size)
+        : buffer_(size, max_size)
     {
-        // TODO: check that size <= max_size in the caller
-        BOOST_ASSERT(size_ <= max_size_);
     }
 
     void reset() noexcept
@@ -75,26 +101,26 @@ public:
     }
 
     // Whole buffer accessors
-    const std::uint8_t* first() const noexcept { return buffer_.get(); }
-    std::size_t size() const noexcept { return size_; }
+    const std::uint8_t* first() const noexcept { return buffer_.data(); }
+    std::size_t size() const noexcept { return buffer_.size(); }
 
     // Area accessors
-    std::uint8_t* reserved_first() noexcept { return buffer_.get(); }
-    const std::uint8_t* reserved_first() const noexcept { return buffer_.get(); }
-    std::uint8_t* current_message_first() noexcept { return buffer_.get() + current_message_offset_; }
+    std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
+    const std::uint8_t* reserved_first() const noexcept { return buffer_.data(); }
+    std::uint8_t* current_message_first() noexcept { return buffer_.data() + current_message_offset_; }
     const std::uint8_t* current_message_first() const noexcept
     {
-        return buffer_.get() + current_message_offset_;
+        return buffer_.data() + current_message_offset_;
     }
-    std::uint8_t* pending_first() noexcept { return buffer_.get() + pending_offset_; }
-    const std::uint8_t* pending_first() const noexcept { return buffer_.get() + pending_offset_; }
-    std::uint8_t* free_first() noexcept { return buffer_.get() + free_offset_; }
-    const std::uint8_t* free_first() const noexcept { return buffer_.get() + free_offset_; }
+    std::uint8_t* pending_first() noexcept { return buffer_.data() + pending_offset_; }
+    const std::uint8_t* pending_first() const noexcept { return buffer_.data() + pending_offset_; }
+    std::uint8_t* free_first() noexcept { return buffer_.data() + free_offset_; }
+    const std::uint8_t* free_first() const noexcept { return buffer_.data() + free_offset_; }
 
     std::size_t reserved_size() const noexcept { return current_message_offset_; }
     std::size_t current_message_size() const noexcept { return pending_offset_ - current_message_offset_; }
     std::size_t pending_size() const noexcept { return free_offset_ - pending_offset_; }
-    std::size_t free_size() const noexcept { return size_ - free_offset_; }
+    std::size_t free_size() const noexcept { return buffer_.size() - free_offset_; }
 
     span<const std::uint8_t> reserved_area() const noexcept { return {reserved_first(), reserved_size()}; }
     span<const std::uint8_t> current_message() const noexcept
@@ -144,7 +170,7 @@ public:
         if (reserved_size() > 0)
         {
             // If reserved_size() > 0, these ptrs should never be NULL
-            void* to = buffer_.get();
+            void* to = buffer_.data();
             const void* from = current_message_first();
             BOOST_ASSERT(to != nullptr);
             BOOST_ASSERT(from != nullptr);
@@ -162,10 +188,8 @@ public:
     {
         if (free_size() < n)
         {
-            std::size_t new_size = size_ + n - free_size();
-            if (new_size > max_size_)
-                return client_errc::max_buffer_size_exceeded;
-            do_grow_buffer(new_size);
+            std::size_t new_size = buffer_.size() + n - free_size();
+            return buffer_.grow(new_size, free_offset_);
         }
         return error_code();
     }
