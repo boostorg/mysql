@@ -17,6 +17,7 @@
 #include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/config.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -87,6 +88,7 @@ public:
 
     // Removes old messages stored in the buffer, and resizes it, if required, to accomodate
     // the message currently being parsed.
+    BOOST_ATTRIBUTE_NODISCARD
     error_code prepare_buffer()
     {
         buffer_.remove_reserved();

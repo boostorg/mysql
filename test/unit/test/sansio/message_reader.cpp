@@ -59,7 +59,8 @@ public:
     {
         while (!reader.done() && remaining_bytes())
         {
-            reader.prepare_buffer();
+            auto ec = reader.prepare_buffer();
+            BOOST_TEST(ec == error_code());
             std::size_t bytes_to_copy = (std::min)(reader.buffer().size(), contents_.size() - bytes_written_);
             read_bytes(bytes_to_copy);
         }
@@ -365,7 +366,8 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_not_enough_space)
     BOOST_TEST(fix.buffsize() == 0u);
 
     // Resize the buffer
-    fix.reader.prepare_buffer();
+    auto ec = fix.reader.prepare_buffer();
+    BOOST_TEST(ec == error_code());
     fix.record_buffer_first();
     BOOST_TEST(fix.buffsize() >= 4u);
     BOOST_TEST(fix.buffsize() < 50u);
@@ -376,7 +378,8 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_not_enough_space)
     fix.check_buffer_stability();
 
     // Resize the buffer again
-    fix.reader.prepare_buffer();
+    ec = fix.reader.prepare_buffer();
+    BOOST_TEST(ec == error_code());
     fix.record_buffer_first();
     BOOST_TEST(fix.buffsize() >= 50u);
 

@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/error_code.hpp>
+
 #include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -18,6 +20,7 @@
 #include "test_common/assert_buffer_equals.hpp"
 
 using namespace boost::mysql::detail;
+using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_read_buffer)
 
@@ -138,7 +141,8 @@ BOOST_AUTO_TEST_CASE(zero_initial_size)
     buff.move_to_current_message(0);
     buff.move_to_reserved(0);
     buff.remove_reserved();
-    buff.grow_to_fit(0);
+    auto ec = buff.grow_to_fit(0);
+    BOOST_TEST(ec == error_code());
     check_empty_buffer(buff);
 }
 
@@ -418,7 +422,8 @@ BOOST_AUTO_TEST_CASE(not_enough_space)
     copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
-    buff.grow_to_fit(100);
+    auto ec = buff.grow_to_fit(100);
+    BOOST_TEST(ec == error_code());
 
     BOOST_TEST(buff.free_size() >= 100u);
     check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
@@ -434,7 +439,8 @@ BOOST_AUTO_TEST_CASE(one_missing_byte)
     buff.move_to_current_message(6);
 
     std::size_t required_size = buff.size() - 8 + 1;
-    buff.grow_to_fit(required_size);
+    auto ec = buff.grow_to_fit(required_size);
+    BOOST_TEST(ec == error_code());
 
     BOOST_TEST(buff.free_size() >= required_size);
     check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
@@ -448,7 +454,8 @@ BOOST_AUTO_TEST_CASE(enough_space)
     copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
-    buff.grow_to_fit(8);
+    auto ec = buff.grow_to_fit(8);
+    BOOST_TEST(ec == error_code());
 
     check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_stability();
@@ -461,7 +468,8 @@ BOOST_AUTO_TEST_CASE(zero_bytes)
     copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
     buff.move_to_pending(8);
     buff.move_to_current_message(6);
-    buff.grow_to_fit(0);
+    auto ec = buff.grow_to_fit(0);
+    BOOST_TEST(ec == error_code());
 
     check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08});
     checker.check_stability();

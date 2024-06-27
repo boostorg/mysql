@@ -12,6 +12,7 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/assert.hpp>
+#include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -64,6 +65,7 @@ public:
     std::size_t size() const { return size_; }
     std::size_t max_size() const { return max_size_; }
 
+    BOOST_ATTRIBUTE_NODISCARD
     error_code grow(std::size_t new_size, std::size_t copy_offset)
     {
         if (new_size > max_size_)
@@ -184,6 +186,7 @@ public:
     }
 
     // Makes sure the free size is at least n bytes long; resizes the buffer if required
+    BOOST_ATTRIBUTE_NODISCARD
     error_code grow_to_fit(std::size_t n)
     {
         if (free_size() < n)
