@@ -18,62 +18,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <memory>
+#include <vector>
 
 namespace boost {
 namespace mysql {
 namespace detail {
-
-// Vector-like buffer, but size-limited, with size == capacity, and optimized for u8
-class size_limited_buffer
-{
-    std::unique_ptr<std::uint8_t[]> buffer_;
-    std::size_t size_;
-    std::size_t max_size_;
-
-    void do_grow(std::size_t new_size, std::size_t copy_offset)
-    {
-        BOOST_ASSERT(new_size > size_);
-        BOOST_ASSERT(new_size <= max_size_);
-        BOOST_ASSERT(copy_offset <= size_);
-
-        // Create the new buffer
-        // TODO: we can implement a better growth strategy here
-        std::unique_ptr<std::uint8_t[]> new_buffer{new std::uint8_t[new_size]};
-
-        // Copy the old buffer contents, if any, up to copy_offset
-        if (buffer_.get())
-        {
-            std::memcpy(new_buffer.get(), buffer_.get(), copy_offset);
-        }
-
-        // Set the data members
-        buffer_ = std::move(new_buffer);
-        size_ = new_size;
-    }
-
-public:
-    size_limited_buffer(std::size_t size, std::size_t max_size)
-        : buffer_(size > 0 ? new std::uint8_t[size] : nullptr), size_(size), max_size_(max_size)
-    {
-        // TODO: check that size <= max_size in the caller
-        BOOST_ASSERT(size_ <= max_size_);
-    }
-
-    std::uint8_t* data() { return buffer_.get(); }
-    const std::uint8_t* data() const { return buffer_.get(); }
-    std::size_t size() const { return size_; }
-    std::size_t max_size() const { return max_size_; }
-
-    BOOST_ATTRIBUTE_NODISCARD
-    error_code grow(std::size_t new_size, std::size_t copy_offset)
-    {
-        if (new_size > max_size_)
-            return client_errc::max_buffer_size_exceeded;
-        do_grow(new_size, copy_offset);
-        return error_code();
-    }
-};
 
 // Custom buffer type optimized for read operations performed in the MySQL protocol.
 // The buffer is a single, resizable chunk of memory with four areas:
@@ -84,15 +33,18 @@ public:
 //   - Free area: free space for more bytes to be read.
 class read_buffer
 {
-    size_limited_buffer buffer_;
+    std::vector<std::uint8_t> buffer_;
     std::size_t current_message_offset_{0};
     std::size_t pending_offset_{0};
     std::size_t free_offset_{0};
+    std::size_t max_size_;
 
 public:
     read_buffer(std::size_t size, std::size_t max_size = static_cast<std::size_t>(-1))
-        : buffer_(size, max_size)
+        : buffer_(size), max_size_(max_size)
     {
+        // TODO: check that size <= max_size in the caller
+        BOOST_ASSERT(size <= max_size_);
     }
 
     void reset() noexcept
@@ -105,6 +57,7 @@ public:
     // Whole buffer accessors
     const std::uint8_t* first() const noexcept { return buffer_.data(); }
     std::size_t size() const noexcept { return buffer_.size(); }
+    std::size_t max_size() const { return max_size_; }
 
     // Area accessors
     std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
@@ -192,7 +145,9 @@ public:
         if (free_size() < n)
         {
             std::size_t new_size = buffer_.size() + n - free_size();
-            return buffer_.grow(new_size, free_offset_);
+            if (new_size > max_size_)
+                return client_errc::max_buffer_size_exceeded;
+            buffer_.resize(new_size);
         }
         return error_code();
     }
