@@ -481,44 +481,48 @@ BOOST_AUTO_TEST_SUITE(reset)
 
 BOOST_AUTO_TEST_CASE(zero_size_buffer)
 {
-    read_buffer buff(0);
+    read_buffer buff(0, 1024);
     buff.reset();
     BOOST_TEST(buff.size() == 0u);
+    BOOST_TEST(buff.max_size() == 1024u);
 }
 
 BOOST_AUTO_TEST_CASE(free_buffer)
 {
-    read_buffer buff(16);
+    read_buffer buff(16, 1024);
     stability_checker checker(buff);
     buff.reset();
     check_buffer(buff, {}, {}, {});
     checker.check_stability();
+    BOOST_TEST(buff.max_size() == 1024u);
 }
 
 BOOST_AUTO_TEST_CASE(pending_bytes)
 {
-    read_buffer buff(16);
+    read_buffer buff(16, 512);
     stability_checker checker(buff);
     buff.move_to_pending(4);
     buff.reset();
     check_buffer(buff, {}, {}, {});
     checker.check_stability();
+    BOOST_TEST(buff.max_size() == 512u);
 }
 
 BOOST_AUTO_TEST_CASE(current_message_bytes)
 {
-    read_buffer buff(16);
+    read_buffer buff(16, 512);
     stability_checker checker(buff);
     buff.move_to_pending(4);
     buff.move_to_current_message(4);
     buff.reset();
     check_buffer(buff, {}, {}, {});
     checker.check_stability();
+    BOOST_TEST(buff.max_size() == 512u);
 }
 
 BOOST_AUTO_TEST_CASE(reserved_bytes)
 {
-    read_buffer buff(16);
+    read_buffer buff(16, 512u);
     stability_checker checker(buff);
     buff.move_to_pending(4);
     buff.move_to_current_message(4);
@@ -526,11 +530,12 @@ BOOST_AUTO_TEST_CASE(reserved_bytes)
     buff.reset();
     check_buffer(buff, {}, {}, {});
     checker.check_stability();
+    BOOST_TEST(buff.max_size() == 512u);
 }
 
 BOOST_AUTO_TEST_CASE(bytes_in_all_areas)
 {
-    read_buffer buff(16);
+    read_buffer buff(16, 1024);
     stability_checker checker(buff);
     buff.move_to_pending(10);
     buff.move_to_current_message(8);
@@ -538,6 +543,7 @@ BOOST_AUTO_TEST_CASE(bytes_in_all_areas)
     buff.reset();
     check_buffer(buff, {}, {}, {});
     checker.check_stability();
+    BOOST_TEST(buff.max_size() == 1024u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
