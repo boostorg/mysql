@@ -110,8 +110,11 @@ public:
                     // Check buffer size. TODO: we should check this before
                     // resizing the buffer. This yields the right user-facing behavior
                     // until we implement the buffer unification (TODO: link story)
-                    if (bytes_to_write_.size() > st_->max_buffer_size)
-                        return error_code(client_errc::max_buffer_size_exceeded);
+                    if (bytes_to_write_.size() > st_->max_buffer_size())
+                    {
+                        ec = client_errc::max_buffer_size_exceeded;
+                        continue;
+                    }
 
                     while (!bytes_to_write_.empty() && !ec)
                     {

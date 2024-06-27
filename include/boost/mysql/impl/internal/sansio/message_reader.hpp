@@ -52,6 +52,8 @@ public:
         state_ = parse_state();
     }
 
+    std::size_t max_buffer_size() const { return buffer_.max_size(); }
+
     // Prepares a read operation. sequence_number should be kept alive until
     // the next read is prepared or no more calls to resume() are expected.
     // If keep_state=true, and the op is not complete, parsing state is preserved

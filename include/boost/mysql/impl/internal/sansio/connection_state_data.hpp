@@ -77,9 +77,7 @@ struct connection_state_data
     // Reader
     message_reader reader;
 
-    // The max buffer size
-    std::size_t max_buffer_size;
-
+    std::size_t max_buffer_size() const { return reader.max_buffer_size(); }
     bool ssl_active() const { return ssl == ssl_state::active; }
     bool supports_ssl() const { return ssl != ssl_state::unsupported; }
 
@@ -89,8 +87,7 @@ struct connection_state_data
         bool transport_supports_ssl = false
     )
         : ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported),
-          reader(read_buffer_size, max_buff_size),
-          max_buffer_size(max_buff_size)
+          reader(read_buffer_size, max_buff_size)
     {
     }
 
