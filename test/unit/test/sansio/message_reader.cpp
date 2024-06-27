@@ -11,7 +11,6 @@
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 #include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
 
-#include <boost/test/tools/interface.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <algorithm>
@@ -369,8 +368,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_not_enough_space)
     auto ec = fix.reader.prepare_buffer();
     BOOST_TEST(ec == error_code());
     fix.record_buffer_first();
-    BOOST_TEST(fix.buffsize() >= 4u);
-    BOOST_TEST(fix.buffsize() < 50u);
+    BOOST_TEST(fix.buffsize() == 4u);
 
     // Read the header. The buffer didn't reallocate
     fix.read_bytes(4);
@@ -381,7 +379,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_not_enough_space)
     ec = fix.reader.prepare_buffer();
     BOOST_TEST(ec == error_code());
     fix.record_buffer_first();
-    BOOST_TEST(fix.buffsize() >= 50u);
+    BOOST_TEST(fix.buffsize() == 50u);
 
     // Finish reading
     fix.read_bytes(50);
@@ -403,8 +401,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_old_messages_removed)
     fix.check_message(u8vec(60, 0x04));
 
     // Record size, as this should not increase
-    const std::size_t old_size = fix.buffsize();
-    BOOST_TEST(old_size >= 60u);
+    BOOST_TEST(fix.buffsize() == 60u);
 
     // Parse new messages
     for (std::uint8_t i = 0u; i < 100u; ++i)
@@ -427,7 +424,7 @@ BOOST_AUTO_TEST_CASE(buffer_resizing_old_messages_removed)
     }
 
     // Buffer size should be the same
-    BOOST_TEST(fix.buffsize() == old_size);
+    BOOST_TEST(fix.buffsize() == 60u);
 }
 
 // Keep parsing state
