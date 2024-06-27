@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/impl/internal/sansio/read_buffer.hpp>
@@ -18,8 +19,10 @@
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/printing.hpp"
 
 using namespace boost::mysql::detail;
+using boost::mysql::client_errc;
 using boost::mysql::error_code;
 
 BOOST_AUTO_TEST_SUITE(test_read_buffer)
@@ -144,6 +147,26 @@ BOOST_AUTO_TEST_CASE(zero_initial_size)
     auto ec = buff.grow_to_fit(0);
     BOOST_TEST(ec == error_code());
     check_empty_buffer(buff);
+}
+
+BOOST_AUTO_TEST_CASE(initial_size_eq_max_size)
+{
+    read_buffer buff(16, 16);
+    check_buffer(buff, {}, {}, {}, 16);
+    BOOST_TEST(buff.max_size() == 16u);
+
+    // Using the buffer works normally
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04});
+    buff.move_to_pending(4);
+    buff.move_to_current_message(3);
+    buff.move_to_reserved(1);
+    check_buffer(buff, {0x01}, {0x02, 0x03}, {0x04}, 12);
+
+    // Growing works
+    auto ec = buff.grow_to_fit(12);
+    BOOST_TEST(ec == error_code());
+    ec = buff.grow_to_fit(13);
+    BOOST_TEST(ec == client_errc::max_buffer_size_exceeded);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -470,6 +493,95 @@ BOOST_AUTO_TEST_CASE(zero_bytes)
 
     check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 8);
     checker.check_stability();
+}
+
+BOOST_AUTO_TEST_CASE(from_size_0)
+{
+    // Regression check: growing from size 0 works
+    read_buffer buff(0, 1024);
+    check_empty_buffer(buff);
+
+    auto ec = buff.grow_to_fit(16);
+    BOOST_TEST(ec == error_code());
+    check_buffer(buff, {}, {}, {}, 16);
+}
+
+BOOST_AUTO_TEST_CASE(lt_max_size)
+{
+    read_buffer buff(8, 16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
+    buff.move_to_pending(8);
+    buff.move_to_current_message(6);
+
+    // Grow past the current size, but not reaching max size
+    auto ec = buff.grow_to_fit(7);
+    BOOST_TEST(ec == error_code());
+
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 7);
+    checker.check_reallocation();
+}
+
+BOOST_AUTO_TEST_CASE(eq_max_size)
+{
+    read_buffer buff(8, 16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
+    buff.move_to_pending(8);
+    buff.move_to_current_message(6);
+
+    // Grow past the current size, reaching max_size
+    auto ec = buff.grow_to_fit(8);
+    BOOST_TEST(ec == error_code());
+
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 8);
+    checker.check_reallocation();
+}
+
+BOOST_AUTO_TEST_CASE(gt_max_size)
+{
+    read_buffer buff(8, 16);
+    stability_checker checker(buff);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
+    buff.move_to_pending(8);
+    buff.move_to_current_message(6);
+
+    // Try to grow past max size
+    auto ec = buff.grow_to_fit(10);
+    BOOST_TEST(ec == client_errc::max_buffer_size_exceeded);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 0);
+    checker.check_stability();
+}
+
+BOOST_AUTO_TEST_CASE(several_grows)
+{
+    read_buffer buff(8, 16);
+    copy_to_free_area(buff, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08});
+    buff.move_to_pending(8);
+    buff.move_to_current_message(6);
+
+    // Grow with reallocation
+    auto ec = buff.grow_to_fit(4);
+    BOOST_TEST(ec == error_code());
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08}, 4);
+
+    // Place some more bytes in the buffer
+    copy_to_free_area(buff, {0x09, 0x0a});
+    buff.move_to_pending(2);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a}, 2);
+
+    // Grow without reallocation
+    ec = buff.grow_to_fit(2);
+    BOOST_TEST(ec == error_code());
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a}, 2);
+    copy_to_free_area(buff, {0x0b, 0x0c});
+    buff.move_to_pending(2);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c}, 0);
+
+    // Fail when attempting to grow past max size
+    ec = buff.grow_to_fit(5);
+    BOOST_TEST(ec == client_errc::max_buffer_size_exceeded);
+    check_buffer(buff, {}, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}, {0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c}, 0);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
