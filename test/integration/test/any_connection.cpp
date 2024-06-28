@@ -6,9 +6,12 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -18,9 +21,13 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 
+#include <string>
+
+#include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
+#include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/server_ca.hpp"
 
@@ -29,6 +36,7 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
+using boost::test_tools::per_element;
 
 BOOST_AUTO_TEST_SUITE(test_any_connection)
 
@@ -219,6 +227,53 @@ BOOST_AUTO_TEST_CASE(backslash_escapes)
     connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
     BOOST_TEST(conn.backslash_escapes());
     BOOST_TEST(conn.format_opts()->backslash_escapes);
+}
+
+// Max buffer sizes
+BOOST_AUTO_TEST_CASE(max_buffer_size)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection_params params;
+    params.initial_read_buffer_size = 512u;
+    params.max_buffer_size = 512u;
+    any_connection conn(ctx, params);
+
+    // Connect
+    connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
+
+    // Reading and writing almost 512 bytes works
+    results r;
+    auto q = format_sql(conn.format_opts().value(), "SELECT {}", std::string(450, 'a'));
+    execute_fn(conn, q, r).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, std::string(450, 'a')), per_element());
+
+    // Trying to write more than 512 bytes fails
+    q = format_sql(conn.format_opts().value(), "SELECT LENGTH({})", std::string(512, 'a'));
+    execute_fn(conn, q, r).validate_error_exact(client_errc::max_buffer_size_exceeded);
+
+    // Trying to read more than 512 bytes fails
+    execute_fn(conn, "SELECT REPEAT('a', 512)", r)
+        .validate_error_exact(client_errc::max_buffer_size_exceeded);
+}
+
+BOOST_AUTO_TEST_CASE(increasing_max_buffer_size)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection_params params;
+    params.max_buffer_size = 0xffffff * 2;
+    any_connection conn(ctx, params);
+
+    // Connect
+    connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
+
+    // Reading more than one frame works
+    // Just reading the string triggers an ambiguity bug (TODO: link)
+    execution_state st;
+    conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
+    auto rws = conn.read_some_rows(st);
+    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x1000000);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
