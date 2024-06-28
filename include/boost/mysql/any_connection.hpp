@@ -81,13 +81,22 @@ struct any_connection_params
     asio::ssl::context* ssl_context{};
 
     /**
-     * \brief The initial size of the connection's buffer.
+     * \brief The initial size of the connection's buffer, in bytes.
      * \details A bigger read buffer can increase the number of rows
      * returned by \ref any_connection::read_some_rows.
      */
     std::size_t initial_buffer_size{default_initial_read_buffer_size};
 
-    // TODO: document
+    /**
+     * \brief The maximum size of the connection's buffer, in bytes (16MB by default).
+     * \details
+     * Attempting to read or write a protocol packet bigger than this size
+     * will fail with a \ref client_errc::max_buffer_size_exceeded error.
+     * \n
+     * This effectively means that that all requests sent to the server, and each
+     * individual row received from the server, must be smaller than this
+     * size, or an error will be generated.
+     */
     std::size_t max_buffer_size{0xffffff};
 };
 

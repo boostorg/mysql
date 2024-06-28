@@ -105,7 +105,8 @@ enum class client_errc : int
     /// set_character_set or async_set_character_set before invoking operations that require a known charset.
     unknown_character_set,
 
-    // TODO: document
+    /// (EXPERIMENTAL) An operation attempted to read or write a packet larger than the maximum buffer size.
+    /// Try increasing \ref any_connection_params::max_buffer_size.
     max_buffer_size_exceeded,
 };
 
