@@ -25,11 +25,13 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/netfun_helpers.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/server_ca.hpp"
+#include "test_integration/tcp_network_fixture.hpp"
 
 // Additional spotchecks for any_connection
 
@@ -257,6 +259,23 @@ BOOST_AUTO_TEST_CASE(max_buffer_size)
         .validate_error_exact(client_errc::max_buffer_size_exceeded);
 }
 
+BOOST_AUTO_TEST_CASE(default_max_buffer_size)
+{
+    // Create the connection
+    boost::asio::io_context ctx;
+    any_connection conn(ctx);
+
+    // Connect
+    connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
+
+    // Trying to read more than 0xffffff bytes fails
+    auto netres = create_initial_netresult<void>();
+    execution_state st;
+    conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
+    conn.read_some_rows(st, netres.err, *netres.diag);
+    netres.validate_error_exact(client_errc::max_buffer_size_exceeded);
+}
+
 BOOST_AUTO_TEST_CASE(increasing_max_buffer_size)
 {
     // Create the connection
@@ -270,6 +289,18 @@ BOOST_AUTO_TEST_CASE(increasing_max_buffer_size)
 
     // Reading more than one frame works
     // Just reading the string triggers an ambiguity bug (TODO: link)
+    execution_state st;
+    conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
+    auto rws = conn.read_some_rows(st);
+    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x1000000);
+}
+
+// Old connection is not limited by default
+BOOST_FIXTURE_TEST_CASE(connection_max_buffer_size, tcp_network_fixture)
+{
+    connect();
+
+    // Reading more than one frame works
     execution_state st;
     conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
     auto rws = conn.read_some_rows(st);
