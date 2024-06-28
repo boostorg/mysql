@@ -113,8 +113,8 @@ struct pool_params
      */
     bool multi_queries{false};
 
-    /// Initial size (in bytes) of the internal read buffer for the connections created by the pool.
-    std::size_t initial_read_buffer_size{default_initial_read_buffer_size};
+    /// Initial size (in bytes) of the internal buffer for the connections created by the pool.
+    std::size_t initial_buffer_size{default_initial_read_buffer_size};
 
     /**
      * \brief Initial number of connections to create.

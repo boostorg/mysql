@@ -568,7 +568,7 @@ BOOST_FIXTURE_TEST_CASE(custom_ctor_params, fixture)
         auto params = create_pool_params();
         params.ssl = ssl_mode::require;
         params.ssl_ctx.emplace(asio::ssl::context::sslv23_client);
-        params.initial_read_buffer_size = 16u;
+        params.initial_buffer_size = 16u;
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool_guard grd(&pool);

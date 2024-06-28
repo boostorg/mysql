@@ -1349,7 +1349,7 @@ BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
                 auto ctor_params = pool_.nodes().front().connection().ctor_params;
                 BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
                 BOOST_TEST(ctor_params.ssl_context->native_handle() == expected_handle);
-                BOOST_TEST(ctor_params.initial_read_buffer_size == 16u);
+                BOOST_TEST(ctor_params.initial_buffer_size == 16u);
             }
         }
     };
@@ -1357,7 +1357,7 @@ BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
     // Pass a custom ssl context and buffer size
     pool_params params;
     params.ssl_ctx.emplace(boost::asio::ssl::context::tlsv12_client);
-    params.initial_read_buffer_size = 16u;
+    params.initial_buffer_size = 16u;
 
     // SSL context matching is performed using the underlying handle
     // because ssl::context provides no way to query the options previously set

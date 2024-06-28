@@ -35,7 +35,7 @@ inline connection_state* new_connection_state(
     if (initial_buffer_size > max_buffer_size)
     {
         BOOST_THROW_EXCEPTION(std::invalid_argument(
-            "any_connection::any_connection: initial_read_buffer_size should be <= max_buffer_size"
+            "any_connection::any_connection: initial_buffer_size should be <= max_buffer_size"
         ));
     }
     return new connection_state(initial_buffer_size, max_buffer_size, engine_supports_ssl);

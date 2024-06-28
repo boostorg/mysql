@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE(max_buffer_size)
     // Create the connection
     boost::asio::io_context ctx;
     any_connection_params params;
-    params.initial_read_buffer_size = 512u;
+    params.initial_buffer_size = 512u;
     params.max_buffer_size = 512u;
     any_connection conn(ctx, params);
 
