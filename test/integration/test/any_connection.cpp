@@ -292,7 +292,7 @@ BOOST_AUTO_TEST_CASE(increasing_max_buffer_size)
     execution_state st;
     conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
     auto rws = conn.read_some_rows(st);
-    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x1000000);
+    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x1000000u);
 }
 
 // Old connection is not limited by default
@@ -304,7 +304,7 @@ BOOST_FIXTURE_TEST_CASE(connection_max_buffer_size, tcp_network_fixture)
     execution_state st;
     conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
     auto rws = conn.read_some_rows(st);
-    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x1000000);
+    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x1000000u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
