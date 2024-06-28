@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(max_buffer_size)
         .validate_error_exact(client_errc::max_buffer_size_exceeded);
 }
 
-BOOST_AUTO_TEST_CASE(default_max_buffer_size)
+BOOST_AUTO_TEST_CASE(default_max_buffer_size_success)
 {
     // Create the connection
     boost::asio::io_context ctx;
@@ -268,43 +268,26 @@ BOOST_AUTO_TEST_CASE(default_max_buffer_size)
     // Connect
     connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
 
-    // Trying to read more than 0xffffff bytes fails
-    auto netres = create_initial_netresult<void>();
+    // Reading almost max_buffer_size works
     execution_state st;
-    conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
-    conn.read_some_rows(st, netres.err, *netres.diag);
-    netres.validate_error_exact(client_errc::max_buffer_size_exceeded);
+    conn.start_execution("SELECT 1, REPEAT('a', 0x3f00000)", st);
+    auto rws = conn.read_some_rows(st);
+    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x3f00000u);
 }
 
-BOOST_AUTO_TEST_CASE(increasing_max_buffer_size)
+BOOST_AUTO_TEST_CASE(default_max_buffer_size_error)
 {
     // Create the connection
     boost::asio::io_context ctx;
-    any_connection_params params;
-    params.max_buffer_size = 0xffffff * 2;
-    any_connection conn(ctx, params);
+    any_connection conn(ctx);
 
     // Connect
     connect_fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
 
-    // Reading more than one frame works
-    // Just reading the string triggers an ambiguity bug (TODO: link)
-    execution_state st;
-    conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
-    auto rws = conn.read_some_rows(st);
-    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x1000000u);
-}
-
-// Old connection is not limited by default
-BOOST_FIXTURE_TEST_CASE(connection_max_buffer_size, tcp_network_fixture)
-{
-    connect();
-
-    // Reading more than one frame works
-    execution_state st;
-    conn.start_execution("SELECT 1, REPEAT('a', 0x1000000)", st);
-    auto rws = conn.read_some_rows(st);
-    BOOST_TEST(rws.at(0).at(1).as_string().size() == 0x1000000u);
+    // Trying to read more than max_buffer_size bytes fails
+    results r;
+    execute_fn(conn, "SELECT 1, REPEAT('a', 0x4000000)", r)
+        .validate_error_exact(client_errc::max_buffer_size_exceeded);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -88,7 +88,7 @@ struct any_connection_params
     std::size_t initial_buffer_size{default_initial_read_buffer_size};
 
     /**
-     * \brief The maximum size of the connection's buffer, in bytes (16MB by default).
+     * \brief The maximum size of the connection's buffer, in bytes (64MB by default).
      * \details
      * Attempting to read or write a protocol packet bigger than this size
      * will fail with a \ref client_errc::max_buffer_size_exceeded error.
@@ -98,8 +98,13 @@ struct any_connection_params
      *   - Each individual row received from the server must be smaller than this value.
      *     Note that when using `execute` or `async_execute`, results objects may
      *     allocate memory beyond this limit if the total number of rows is high.
+     * \n
+     * If you need to send or receive larger packets, you may need to adjust
+     * your server's <a
+     * href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_max_allowed_packet">`max_allowed_packet`</a>
+     * system variable, too.
      */
-    std::size_t max_buffer_size{0xffffff};
+    std::size_t max_buffer_size{0x4000000};
 };
 
 /**
