@@ -93,9 +93,11 @@ struct any_connection_params
      * Attempting to read or write a protocol packet bigger than this size
      * will fail with a \ref client_errc::max_buffer_size_exceeded error.
      * \n
-     * This effectively means that that all requests sent to the server, and each
-     * individual row received from the server, must be smaller than this
-     * size, or an error will be generated.
+     * This effectively means: \n
+     *   - Each request sent to the server must be smaller than this value.
+     *   - Each individual row received from the server must be smaller than this value.
+     *     Note that when using `execute` or `async_execute`, results objects may
+     *     allocate memory beyond this limit if the total number of rows is high.
      */
     std::size_t max_buffer_size{0xffffff};
 };
