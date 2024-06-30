@@ -43,7 +43,6 @@ public:
     read_buffer(std::size_t size, std::size_t max_size = static_cast<std::size_t>(-1))
         : buffer_(size), max_size_(max_size)
     {
-        // TODO: check that size <= max_size in the caller
         BOOST_ASSERT(size <= max_size_);
     }
 

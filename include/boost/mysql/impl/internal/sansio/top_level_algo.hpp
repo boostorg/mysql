@@ -107,9 +107,11 @@ public:
                     // Write until a complete message was written
                     bytes_to_write_ = act.write_args().buffer;
 
-                    // Check buffer size. TODO: we should check this before
-                    // resizing the buffer. This yields the right user-facing behavior
-                    // until we implement the buffer unification (TODO: link story)
+                    // Check buffer size. We should check this before
+                    // resizing the buffer, but requires non-trivial changes.
+                    // For now, this yields the right user-facing behavior.
+                    // https://github.com/boostorg/mysql/issues/297
+                    // https://github.com/boostorg/mysql/issues/279
                     if (bytes_to_write_.size() > st_->max_buffer_size())
                     {
                         ec = client_errc::max_buffer_size_exceeded;
