@@ -24,6 +24,7 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/core/span.hpp>
@@ -181,19 +182,20 @@ void main_impl(int argc, char** argv)
     // Instead of running every statement separately, we activated params.multi_queries,
     // which allows semicolon-separated statements.
     // As in std::format, we can use explicit indices like {0} and {1} to reference arguments.
-    std::string query = boost::mysql::format_sql(
-        conn.format_opts().value(),
-        "START TRANSACTION; "
-        "UPDATE employee SET {0} WHERE id = {1}; "
-        "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
-        "COMMIT",
-        boost::mysql::sequence(args.updates, update_format_fn),
-        args.employee_id
-    );
-
     // Execute the query as usual.
+    // TODO: review this
     boost::mysql::results result;
-    conn.execute(query, result);
+    conn.execute(
+        boost::mysql::with_params(
+            "START TRANSACTION; "
+            "UPDATE employee SET {0} WHERE id = {1}; "
+            "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
+            "COMMIT",
+            boost::mysql::sequence(args.updates, update_format_fn),
+            args.employee_id
+        ),
+        result
+    );
 
     // We ran 4 queries, so the results object will hold 4 resultsets.
     // Get the rows retrieved by the SELECT (the 3rd one).

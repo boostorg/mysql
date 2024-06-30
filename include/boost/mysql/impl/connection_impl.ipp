@@ -71,9 +71,9 @@ void boost::mysql::detail::connection_impl::set_meta_mode(metadata_mode v) { st_
 
 bool boost::mysql::detail::connection_impl::ssl_active() const { return st_->data().ssl_active(); }
 
-bool boost::mysql::detail::connection_impl::backslash_escapes() const
+bool boost::mysql::detail::connection_impl::backslash_escapes(const connection_state& st)
 {
-    return st_->data().backslash_escapes;
+    return st.data().backslash_escapes;
 }
 
 boost::mysql::diagnostics& boost::mysql::detail::connection_impl::shared_diag()
@@ -82,9 +82,9 @@ boost::mysql::diagnostics& boost::mysql::detail::connection_impl::shared_diag()
 }
 
 boost::system::result<boost::mysql::character_set> boost::mysql::detail::connection_impl::
-    current_character_set() const
+    current_character_set(const connection_state& st)
 {
-    character_set charset = st_->data().current_charset;
+    character_set charset = st.data().current_charset;
     if (charset.name == nullptr)
         return client_errc::unknown_character_set;
     return charset;

@@ -13,6 +13,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 
+#include <cstddef>
 #include <type_traits>
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -29,6 +30,11 @@ class static_results;
 
 class execution_state;
 class results;
+
+template <std::size_t N>
+struct with_params_t;
+
+struct with_params_range;
 
 namespace detail {
 
@@ -61,6 +67,7 @@ template <class T>
 concept results_type = std::is_same_v<T, results> || is_static_results<T>::value;
 
 // Execution request
+// TODO: we can rewrite this simpler
 template <class T>
 struct is_bound_statement_tuple : std::false_type
 {
@@ -82,12 +89,24 @@ struct is_bound_statement_range<bound_statement_iterator_range<T>> : std::true_t
 };
 
 template <class T>
+struct is_with_params : std::false_type
+{
+};
+
+template <std::size_t N>
+struct is_with_params<with_params_t<N>> : std::true_type
+{
+};
+
+template <class T>
 struct is_execution_request
 {
     using without_cvref = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
     static constexpr bool value = std::is_convertible<T, string_view>::value ||
                                   is_bound_statement_tuple<without_cvref>::value ||
-                                  is_bound_statement_range<without_cvref>::value;
+                                  is_bound_statement_range<without_cvref>::value ||
+                                  is_with_params<without_cvref>::value ||
+                                  std::is_same<without_cvref, with_params_range>::value;
 };
 
 template <class T>

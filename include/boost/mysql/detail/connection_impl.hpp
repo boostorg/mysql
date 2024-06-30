@@ -9,16 +9,19 @@
 #define BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 
 #include <boost/mysql/any_address.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
@@ -37,8 +40,10 @@
 #include <cstddef>
 #include <cstring>
 #include <memory>
+#include <string>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -86,51 +91,6 @@ template <class... T>
 std::array<field_view, sizeof...(T)> tuple_to_array(const std::tuple<T...>& t) noexcept
 {
     return tuple_to_array_impl(t, mp11::make_index_sequence<sizeof...(T)>());
-}
-
-struct query_request_getter
-{
-    any_execution_request value;
-    any_execution_request get() const noexcept { return value; }
-};
-inline query_request_getter make_request_getter(string_view q, std::vector<field_view>&) noexcept
-{
-    return query_request_getter{q};
-}
-
-struct stmt_it_request_getter
-{
-    statement stmt;
-    span<const field_view> params;  // Points into the connection state's shared fields
-
-    any_execution_request get() const noexcept { return any_execution_request(stmt, params); }
-};
-
-template <class FieldViewFwdIterator>
-inline stmt_it_request_getter make_request_getter(
-    const bound_statement_iterator_range<FieldViewFwdIterator>& req,
-    std::vector<field_view>& shared_fields
-)
-{
-    auto& impl = access::get_impl(req);
-    shared_fields.assign(impl.first, impl.last);
-    return {impl.stmt, shared_fields};
-}
-
-template <std::size_t N>
-struct stmt_tuple_request_getter
-{
-    statement stmt;
-    std::array<field_view, N> params;
-
-    any_execution_request get() const noexcept { return any_execution_request(stmt, params); }
-};
-template <class WritableFieldTuple>
-stmt_tuple_request_getter<std::tuple_size<WritableFieldTuple>::value>
-make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, std::vector<field_view>&)
-{
-    auto& impl = access::get_impl(req);
-    return {impl.stmt, tuple_to_array(impl.params)};
 }
 
 //
@@ -189,6 +149,63 @@ class connection_impl
 {
     std::unique_ptr<engine> engine_;
     std::unique_ptr<connection_state, connection_state_deleter> st_;
+
+    // Execution helpers
+    static any_execution_request make_request(string_view q, connection_state&) noexcept { return q; }
+
+    // TODO: we can make this more efficient by expanding the query to the connection's buffer
+    // TODO: this lacks proper error handling
+    struct with_params_request_proxy
+    {
+        std::string q;
+        operator any_execution_request() const { return any_execution_request(q); }
+    };
+
+    static with_params_request_proxy make_request(with_params_range req, connection_state& st)
+    {
+        // TODO: this is duplicate
+        format_options opts{current_character_set(st).value(), backslash_escapes(st)};
+
+        format_context ctx(opts);
+        vformat_sql_to(ctx, req.query, req.args);
+
+        return {std::move(ctx).get().value()};
+    }
+
+    template <std::size_t N>
+    static with_params_request_proxy make_request(const with_params_t<N>& req, connection_state& st)
+    {
+        return make_request(with_params_range{req.query, req.args}, st);
+    }
+
+    template <class FieldViewFwdIterator>
+    inline any_execution_request make_request(
+        const bound_statement_iterator_range<FieldViewFwdIterator>& req,
+        connection_state& st
+    )
+    {
+        auto& impl = access::get_impl(req);
+        auto& shared_fields = get_shared_fields(st);
+        shared_fields.assign(impl.first, impl.last);
+        return {impl.stmt, shared_fields};
+    }
+
+    template <std::size_t N>
+    struct stmt_tuple_request_proxy
+    {
+        statement stmt;
+        std::array<field_view, N> params;
+
+        operator any_execution_request() const { return any_execution_request(stmt, params); }
+    };
+
+    template <class WritableFieldTuple>
+    stmt_tuple_request_proxy<std::tuple_size<WritableFieldTuple>::value>
+    make_request(const bound_statement_tuple<WritableFieldTuple>& req, connection_state&)
+    {
+        auto& impl = access::get_impl(req);
+        return {impl.stmt, tuple_to_array(impl.params)};
+    }
 
     // Generic algorithm
     template <class AlgoParams>
@@ -314,11 +331,10 @@ class connection_impl
             diagnostics* diag
         )
         {
-            auto getter = make_request_getter(req, get_shared_fields(*st));
             async_run_impl(
                 *eng,
                 *st,
-                execute_algo_params{diag, getter.get(), proc},
+                execute_algo_params{diag, make_request(req, *st), proc},
                 std::forward<Handler>(handler)
             );
         }
@@ -337,15 +353,20 @@ class connection_impl
             diagnostics* diag
         )
         {
-            auto getter = make_request_getter(req, get_shared_fields(*st));
             async_run_impl(
                 *eng,
                 *st,
-                start_execution_algo_params{diag, getter.get(), proc},
+                start_execution_algo_params{diag, make_request(req, st), proc},
                 std::forward<Handler>(handler)
             );
         }
     };
+
+    BOOST_MYSQL_DECL
+    static bool backslash_escapes(const connection_state& st);
+
+    BOOST_MYSQL_DECL
+    static system::result<character_set> current_character_set(const connection_state& st);
 
 public:
     BOOST_MYSQL_DECL connection_impl(
@@ -357,8 +378,11 @@ public:
     BOOST_MYSQL_DECL metadata_mode meta_mode() const;
     BOOST_MYSQL_DECL void set_meta_mode(metadata_mode m);
     BOOST_MYSQL_DECL bool ssl_active() const;
-    BOOST_MYSQL_DECL bool backslash_escapes() const;
-    BOOST_MYSQL_DECL system::result<character_set> current_character_set() const;
+    BOOST_MYSQL_DECL bool backslash_escapes() const { return backslash_escapes(*st_); }
+    BOOST_MYSQL_DECL system::result<character_set> current_character_set() const
+    {
+        return current_character_set(*st_);
+    }
     BOOST_MYSQL_DECL diagnostics& shared_diag();  // TODO: get rid of this
 
     engine& get_engine()
@@ -477,8 +501,8 @@ public:
     template <class ExecutionRequest, class ResultsType>
     void execute(const ExecutionRequest& req, ResultsType& result, error_code& err, diagnostics& diag)
     {
-        auto getter = make_request_getter(req, get_shared_fields(*st_));
-        run(execute_algo_params{&diag, getter.get(), &access::get_impl(result).get_interface()}, err);
+        run(execute_algo_params{&diag, make_request(req, *st_), &access::get_impl(result).get_interface()},
+            err);
     }
 
     template <class ExecutionRequest, class ResultsType, class CompletionToken>
@@ -518,9 +542,14 @@ public:
         diagnostics& diag
     )
     {
-        auto getter = make_request_getter(req, get_shared_fields(*st_));
-        run(start_execution_algo_params{&diag, getter.get(), &access::get_impl(exec_st).get_interface()},
-            err);
+        run(
+            start_execution_algo_params{
+                &diag,
+                make_request(req, *st_),
+                &access::get_impl(exec_st).get_interface()
+            },
+            err
+        );
     }
 
     template <class ExecutionRequest, class ExecutionStateType, class CompletionToken>

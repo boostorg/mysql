@@ -28,6 +28,7 @@
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/core/span.hpp>
@@ -75,50 +76,6 @@ static std::string read_file(const char* file_name)
     return std::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
 }
 
-// Composes an INSERT SQL query suitable to be sent to the server.
-// For instance, when inserting two employees, something like the following may be generated:
-// INSERT INTO employee (first_name, last_name, company_id, salary)
-//     VALUES ('John', 'Doe', 'HGS', 20000), ('Rick', 'Smith', 'LLC', 50000)
-static std::string compose_batch_insert(
-    // Connection config options required for the formatting.
-    // This includes the character set currently in use.
-    boost::mysql::format_options opts,
-
-    // The list of employees to insert, as read from the JSON file
-    const std::vector<employee>& employees
-)
-{
-    // We need at least one employee to insert
-    assert(!employees.empty());
-
-    // A function describing how to format a single employee object. Used with mysql::sequence.
-    auto format_employee_fn = [](const employee& emp, boost::mysql::format_context_base& ctx) {
-        // format_context_base can be used to build query strings incrementally.
-        // Used internally by the sequence() formatter
-        // format_sql_to expands a format string, replacing {} fields,
-        // and appends the result to the passed context.
-        // When formatted, strings are quoted and escaped as string literals.
-        // Doubles are formatted as number literals.
-        boost::mysql::format_sql_to(
-            ctx,
-            "({}, {}, {}, {})",
-            emp.first_name,
-            emp.last_name,
-            emp.company_id,
-            emp.salary
-        );
-    };
-
-    // sequence() takes a range and a formatter function.
-    // It will call the formatter function for each object in the sequence,
-    // adding commas between invocations.
-    return boost::mysql::format_sql(
-        opts,
-        "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
-        boost::mysql::sequence(employees, format_employee_fn)
-    );
-}
-
 void main_impl(int argc, char** argv)
 {
     if (argc != 5)
@@ -156,19 +113,43 @@ void main_impl(int argc, char** argv)
     params.password = argv[2];
     params.database = "boost_mysql_examples";
 
+    // A results object to hold the result of executing our SQL query
+    boost::mysql::results result;
+
     // Connect to the server
     conn.connect(params);
 
-    // Compose the query. format_opts() returns a system::result<format_options>,
-    // containing the options required by format_context. format_opts() may return
-    // an error if the connection doesn't know which character set is using -
-    // use set_character_set if this happens.
-    std::string query = compose_batch_insert(conn.format_opts().value(), values);
+    // A function describing how to format a single employee object. Used with mysql::sequence.
+    auto format_employee_fn = [](const employee& emp, boost::mysql::format_context_base& ctx) {
+        // format_context_base can be used to build query strings incrementally.
+        // Used internally by the sequence() formatter
+        // format_sql_to expands a format string, replacing {} fields,
+        // and appends the result to the passed context.
+        // When formatted, strings are quoted and escaped as string literals.
+        // Doubles are formatted as number literals.
+        boost::mysql::format_sql_to(
+            ctx,
+            "({}, {}, {}, {})",
+            emp.first_name,
+            emp.last_name,
+            emp.company_id,
+            emp.salary
+        );
+    };
 
-    // Execute the query as usual. Note that, unlike with prepared statements,
-    // formatting happened in the client, and not in the server.
-    boost::mysql::results result;
-    conn.execute(query, result);
+    // TODO: review
+    // Composes an INSERT SQL query suitable to be sent to the server.
+    // For instance, when inserting two employees, something like the following may be generated:
+    // INSERT INTO employee (first_name, last_name, company_id, salary)
+    //     VALUES ('John', 'Doe', 'HGS', 20000), ('Rick', 'Smith', 'LLC', 50000)
+    // Execute the query
+    conn.execute(
+        boost::mysql::with_params(
+            "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
+            boost::mysql::sequence(values, format_employee_fn)
+        ),
+        result
+    );
     std::cout << "Done\n";
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
