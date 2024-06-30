@@ -9,19 +9,17 @@
 #define BOOST_MYSQL_DETAIL_CONNECTION_IMPL_HPP
 
 #include <boost/mysql/any_address.hpp>
-#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/with_params.hpp>
+#include <boost/mysql/with_params.hpp>  // TODO: could we get rid of this dependency?
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
@@ -40,7 +38,6 @@
 #include <cstddef>
 #include <cstring>
 #include <memory>
-#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -153,29 +150,15 @@ class connection_impl
     // Execution helpers
     static any_execution_request make_request(string_view q, connection_state&) noexcept { return q; }
 
-    // TODO: we can make this more efficient by expanding the query to the connection's buffer
-    // TODO: this lacks proper error handling
-    struct with_params_request_proxy
+    static any_execution_request make_request(with_params_range req, connection_state&)
     {
-        std::string q;
-        operator any_execution_request() const { return any_execution_request(q); }
-    };
-
-    static with_params_request_proxy make_request(with_params_range req, connection_state& st)
-    {
-        // TODO: this is duplicate
-        format_options opts{current_character_set(st).value(), backslash_escapes(st)};
-
-        format_context ctx(opts);
-        vformat_sql_to(ctx, req.query, req.args);
-
-        return {std::move(ctx).get().value()};
+        return {req.query, req.args};
     }
 
     template <std::size_t N>
-    static with_params_request_proxy make_request(const with_params_t<N>& req, connection_state& st)
+    static any_execution_request make_request(const with_params_t<N>& req, connection_state&)
     {
-        return make_request(with_params_range{req.query, req.args}, st);
+        return {req.query, req.args};
     }
 
     template <class FieldViewFwdIterator>
@@ -362,12 +345,6 @@ class connection_impl
         }
     };
 
-    BOOST_MYSQL_DECL
-    static bool backslash_escapes(const connection_state& st);
-
-    BOOST_MYSQL_DECL
-    static system::result<character_set> current_character_set(const connection_state& st);
-
 public:
     BOOST_MYSQL_DECL connection_impl(
         std::size_t read_buff_size,
@@ -378,11 +355,8 @@ public:
     BOOST_MYSQL_DECL metadata_mode meta_mode() const;
     BOOST_MYSQL_DECL void set_meta_mode(metadata_mode m);
     BOOST_MYSQL_DECL bool ssl_active() const;
-    BOOST_MYSQL_DECL bool backslash_escapes() const { return backslash_escapes(*st_); }
-    BOOST_MYSQL_DECL system::result<character_set> current_character_set() const
-    {
-        return current_character_set(*st_);
-    }
+    BOOST_MYSQL_DECL bool backslash_escapes() const;
+    BOOST_MYSQL_DECL system::result<character_set> current_character_set() const;
     BOOST_MYSQL_DECL diagnostics& shared_diag();  // TODO: get rid of this
 
     engine& get_engine()

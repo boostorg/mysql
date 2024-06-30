@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_DETAIL_ANY_EXECUTION_REQUEST_HPP
 #define BOOST_MYSQL_DETAIL_ANY_EXECUTION_REQUEST_HPP
 
-#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -16,27 +16,50 @@
 
 namespace boost {
 namespace mysql {
+
+class field_view;
+class format_arg;
+
 namespace detail {
 
 struct any_execution_request
 {
+    enum class type_t
+    {
+        query,
+        query_with_params,
+        stmt
+    };
+
     union data_t
     {
         string_view query;
-        struct
+        struct query_with_params_t
+        {
+            constant_string_view query;
+            span<const format_arg> args;
+        } query_with_params;
+        struct stmt_t
         {
             statement stmt;
             span<const field_view> params;
         } stmt;
 
         data_t(string_view q) noexcept : query(q) {}
-        data_t(statement s, span<const field_view> params) noexcept : stmt{s, params} {}
-    } data;
-    bool is_query;
+        data_t(query_with_params_t v) noexcept : query_with_params(v) {}
+        data_t(stmt_t v) noexcept : stmt(v) {}
+    };
 
-    any_execution_request(string_view q) noexcept : data(q), is_query(true) {}
+    type_t type;
+    data_t data;
+
+    any_execution_request(string_view q) noexcept : type(type_t::query), data(q) {}
+    any_execution_request(constant_string_view q, span<const format_arg> args) noexcept
+        : type(type_t::query_with_params), data({q, args})
+    {
+    }
     any_execution_request(statement s, span<const field_view> params) noexcept
-        : data(s, params), is_query(false)
+        : type(type_t::stmt), data({s, params})
     {
     }
 };
