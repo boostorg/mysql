@@ -17,6 +17,34 @@
 
 #include <boost/mysql/impl/internal/sansio/connection_state.hpp>
 
+#include <boost/throw_exception.hpp>
+
+#include <cstddef>
+#include <stdexcept>
+
+namespace boost {
+namespace mysql {
+namespace detail {
+
+inline connection_state* new_connection_state(
+    std::size_t initial_buffer_size,
+    std::size_t max_buffer_size,
+    bool engine_supports_ssl
+)
+{
+    if (initial_buffer_size > max_buffer_size)
+    {
+        BOOST_THROW_EXCEPTION(std::invalid_argument(
+            "any_connection::any_connection: initial_buffer_size should be <= max_buffer_size"
+        ));
+    }
+    return new connection_state(initial_buffer_size, max_buffer_size, engine_supports_ssl);
+}
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
 void boost::mysql::detail::connection_state_deleter::operator()(connection_state* st) const { delete st; }
 
 std::vector<boost::mysql::field_view>& boost::mysql::detail::get_shared_fields(connection_state& st)
@@ -26,9 +54,11 @@ std::vector<boost::mysql::field_view>& boost::mysql::detail::get_shared_fields(c
 
 boost::mysql::detail::connection_impl::connection_impl(
     std::size_t read_buff_size,
+    std::size_t max_buffer_size,
     std::unique_ptr<engine> eng
 )
-    : engine_(std::move(eng)), st_(new connection_state(read_buff_size, engine_->supports_ssl()))
+    : engine_(std::move(eng)),
+      st_(new_connection_state(read_buff_size, max_buffer_size, engine_->supports_ssl()))
 {
 }
 

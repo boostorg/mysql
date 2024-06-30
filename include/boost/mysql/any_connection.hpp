@@ -81,11 +81,30 @@ struct any_connection_params
     asio::ssl::context* ssl_context{};
 
     /**
-     * \brief The initial size of the connection's read buffer.
+     * \brief The initial size of the connection's buffer, in bytes.
      * \details A bigger read buffer can increase the number of rows
      * returned by \ref any_connection::read_some_rows.
      */
-    std::size_t initial_read_buffer_size{default_initial_read_buffer_size};
+    std::size_t initial_buffer_size{default_initial_read_buffer_size};
+
+    /**
+     * \brief The maximum size of the connection's buffer, in bytes (64MB by default).
+     * \details
+     * Attempting to read or write a protocol packet bigger than this size
+     * will fail with a \ref client_errc::max_buffer_size_exceeded error.
+     * \n
+     * This effectively means: \n
+     *   - Each request sent to the server must be smaller than this value.
+     *   - Each individual row received from the server must be smaller than this value.
+     *     Note that when using `execute` or `async_execute`, results objects may
+     *     allocate memory beyond this limit if the total number of rows is high.
+     * \n
+     * If you need to send or receive larger packets, you may need to adjust
+     * your server's <a
+     * href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_max_allowed_packet">`max_allowed_packet`</a>
+     * system variable, too.
+     */
+    std::size_t max_buffer_size{0x4000000};
 };
 
 /**
@@ -125,8 +144,12 @@ class any_connection
     static std::unique_ptr<detail::engine> create_engine(asio::any_io_executor ex, asio::ssl::context* ctx);
 
     // Used by tests
-    any_connection(std::size_t initial_read_buffer_size, std::unique_ptr<detail::engine> eng)
-        : impl_(initial_read_buffer_size, std::move(eng))
+    any_connection(
+        std::size_t initial_buffer_size,
+        std::size_t max_buffer_size,
+        std::unique_ptr<detail::engine> eng
+    )
+        : impl_(initial_buffer_size, max_buffer_size, std::move(eng))
     {
     }
 
@@ -141,7 +164,11 @@ public:
      * an \ref any_connection_params object to this constructor.
      */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
-        : any_connection(params.initial_read_buffer_size, create_engine(std::move(ex), params.ssl_context))
+        : any_connection(
+              params.initial_buffer_size,
+              params.max_buffer_size,
+              create_engine(std::move(ex), params.ssl_context)
+          )
     {
     }
 
@@ -623,7 +650,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
@@ -661,7 +688,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
@@ -698,7 +725,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
@@ -746,7 +773,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n

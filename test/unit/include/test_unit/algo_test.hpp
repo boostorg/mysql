@@ -78,7 +78,8 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
             std::size_t bytes_transferred = 0;
             while (!st.reader.done() && bytes_transferred < op.bytes.size())
             {
-                st.reader.prepare_buffer();
+                auto ec = st.reader.prepare_buffer();
+                BOOST_TEST_REQUIRE(ec == error_code());
                 auto buff = st.reader.buffer();
                 std::size_t size_to_copy = (std::min)(op.bytes.size() - bytes_transferred, buff.size());
                 std::memcpy(buff.data(), op.bytes.data() + bytes_transferred, size_to_copy);

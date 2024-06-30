@@ -8,7 +8,11 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_READ_BUFFER_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_READ_BUFFER_HPP
 
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/error_code.hpp>
+
 #include <boost/assert.hpp>
+#include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -33,9 +37,14 @@ class read_buffer
     std::size_t current_message_offset_{0};
     std::size_t pending_offset_{0};
     std::size_t free_offset_{0};
+    std::size_t max_size_;
 
 public:
-    read_buffer(std::size_t size) : buffer_(size, std::uint8_t(0)) { buffer_.resize(buffer_.capacity()); }
+    read_buffer(std::size_t size, std::size_t max_size = static_cast<std::size_t>(-1))
+        : buffer_(size), max_size_(max_size)
+    {
+        BOOST_ASSERT(size <= max_size_);
+    }
 
     void reset() noexcept
     {
@@ -47,6 +56,7 @@ public:
     // Whole buffer accessors
     const std::uint8_t* first() const noexcept { return buffer_.data(); }
     std::size_t size() const noexcept { return buffer_.size(); }
+    std::size_t max_size() const { return max_size_; }
 
     // Area accessors
     std::uint8_t* reserved_first() noexcept { return buffer_.data(); }
@@ -128,13 +138,17 @@ public:
     }
 
     // Makes sure the free size is at least n bytes long; resizes the buffer if required
-    void grow_to_fit(std::size_t n)
+    BOOST_ATTRIBUTE_NODISCARD
+    error_code grow_to_fit(std::size_t n)
     {
         if (free_size() < n)
         {
-            buffer_.resize(buffer_.size() + n - free_size());
-            buffer_.resize(buffer_.capacity());
+            std::size_t new_size = buffer_.size() + n - free_size();
+            if (new_size > max_size_)
+                return client_errc::max_buffer_size_exceeded;
+            buffer_.resize(new_size);
         }
+        return error_code();
     }
 };
 
