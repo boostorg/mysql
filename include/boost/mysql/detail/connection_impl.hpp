@@ -10,10 +10,12 @@
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connect_params.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -90,6 +92,21 @@ std::array<field_view, sizeof...(T)> tuple_to_array(const std::tuple<T...>& t) n
     return tuple_to_array_impl(t, mp11::make_index_sequence<sizeof...(T)>());
 }
 
+// TODO: can we move this?
+// TODO: mutable ranges
+template <class TupleType, std::size_t... I>
+std::array<format_arg, std::tuple_size<TupleType>::value> ftuple_to_array_impl(const TupleType& t, mp11::index_sequence<I...>)
+{
+    boost::ignore_unused(t);  // MSVC gets confused for tuples of size 0
+    return {{{string_view(), std::get<I>(t)}...}};
+}
+
+template <class TupleType>
+std::array<format_arg, std::tuple_size<TupleType>::value> ftuple_to_array(const TupleType& t)
+{
+    return ftuple_to_array_impl(t, mp11::make_index_sequence<std::tuple_size<TupleType>::value>());
+}
+
 //
 // helpers to run algos
 //
@@ -150,15 +167,20 @@ class connection_impl
     // Execution helpers
     static any_execution_request make_request(string_view q, connection_state&) noexcept { return q; }
 
-    static any_execution_request make_request(with_params_range req, connection_state&)
-    {
-        return {req.query, req.args};
-    }
-
     template <std::size_t N>
-    static any_execution_request make_request(const with_params_t<N>& req, connection_state&)
+    struct with_params_proxy
     {
-        return {req.query, req.args};
+        constant_string_view query;
+        std::array<format_arg, N> params;
+
+        operator any_execution_request() const { return any_execution_request(query, params); }
+    };
+
+    // TODO: this does not support mutable ranges
+    template <class... T>
+    static with_params_proxy<sizeof...(T)> make_request(const with_params_t<T...>& req, connection_state&)
+    {
+        return {req.query, ftuple_to_array(req.args)};
     }
 
     template <class FieldViewFwdIterator>

@@ -16,41 +16,24 @@
 
 #include <boost/core/span.hpp>
 
-#include <array>
-#include <cstddef>
-#include <initializer_list>
+#include <tuple>
 #include <utility>
 
 namespace boost {
 namespace mysql {
 
-template <std::size_t N>
+template <class... Formattable>
 struct with_params_t
 {
     // TODO: make private
     constant_string_view query;
-    std::array<format_arg, N> args;
+    std::tuple<Formattable...> args;
 };
 
-struct with_params_range
+template <BOOST_MYSQL_FORMATTABLE... Formattable>
+with_params_t<Formattable...> with_params(constant_string_view query, Formattable&&... args)
 {
-    // TODO: make private
-    constant_string_view query;
-    span<const format_arg> args;
-};
-
-template <BOOST_MYSQL_FORMATTABLE... Args>
-with_params_t<sizeof...(Args)> with_params(constant_string_view query, Args&&... args)
-{
-    return {query, {{{string_view(), std::forward<Args>(args)}...}}};
-}
-
-inline with_params_range with_params(constant_string_view query, std::initializer_list<format_arg> args)
-{
-    return {
-        query,
-        {args.begin(), args.size()}
-    };
+    return {query, std::make_tuple(std::forward<Formattable>(args)...)};
 }
 
 }  // namespace mysql

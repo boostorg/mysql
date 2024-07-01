@@ -31,10 +31,8 @@ class static_results;
 class execution_state;
 class results;
 
-template <std::size_t N>
+template <class... T>
 struct with_params_t;
-
-struct with_params_range;
 
 namespace detail {
 
@@ -93,8 +91,8 @@ struct is_with_params : std::false_type
 {
 };
 
-template <std::size_t N>
-struct is_with_params<with_params_t<N>> : std::true_type
+template <class... T>
+struct is_with_params<with_params_t<T...>> : std::true_type
 {
 };
 
@@ -105,8 +103,7 @@ struct is_execution_request
     static constexpr bool value = std::is_convertible<T, string_view>::value ||
                                   is_bound_statement_tuple<without_cvref>::value ||
                                   is_bound_statement_range<without_cvref>::value ||
-                                  is_with_params<without_cvref>::value ||
-                                  std::is_same<without_cvref, with_params_range>::value;
+                                  is_with_params<without_cvref>::value;
 };
 
 template <class T>
