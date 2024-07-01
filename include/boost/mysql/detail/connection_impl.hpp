@@ -29,6 +29,7 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/engine.hpp>
+#include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
@@ -41,6 +42,7 @@
 #include <cstring>
 #include <memory>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -90,21 +92,6 @@ template <class... T>
 std::array<field_view, sizeof...(T)> tuple_to_array(const std::tuple<T...>& t) noexcept
 {
     return tuple_to_array_impl(t, mp11::make_index_sequence<sizeof...(T)>());
-}
-
-// TODO: can we move this?
-// TODO: mutable ranges
-template <class TupleType, std::size_t... I>
-std::array<format_arg, std::tuple_size<TupleType>::value> ftuple_to_array_impl(const TupleType& t, mp11::index_sequence<I...>)
-{
-    boost::ignore_unused(t);  // MSVC gets confused for tuples of size 0
-    return {{{string_view(), std::get<I>(t)}...}};
-}
-
-template <class TupleType>
-std::array<format_arg, std::tuple_size<TupleType>::value> ftuple_to_array(const TupleType& t)
-{
-    return ftuple_to_array_impl(t, mp11::make_index_sequence<std::tuple_size<TupleType>::value>());
 }
 
 //
@@ -176,11 +163,14 @@ class connection_impl
         operator any_execution_request() const { return any_execution_request(query, params); }
     };
 
-    // TODO: this does not support mutable ranges
-    template <class... T>
-    static with_params_proxy<sizeof...(T)> make_request(const with_params_t<T...>& req, connection_state&)
+    // TODO: make this concept more generic
+    // TODO: c++11
+    template <
+        class T,
+        class = typename std::enable_if<is_with_params<typename std::decay<T>::type>::value>::type>
+    static auto make_request(T&& req, connection_state&)
     {
-        return {req.query, ftuple_to_array(req.args)};
+        return access::get_impl(std::forward<T>(req)).make_request();
     }
 
     template <class FieldViewFwdIterator>
