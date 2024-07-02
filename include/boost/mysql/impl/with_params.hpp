@@ -74,7 +74,7 @@ struct boost::mysql::with_params_t
 
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
 auto boost::mysql::with_params(constant_string_view query, Formattable&&... args)
-    -> with_params_t<decltype(std::get<0>(std::make_tuple(args)))...>
+    -> mp11::mp_rename<decltype(std::make_tuple(std::forward<Formattable>(args)...)), with_params_t>
 {
     return {
         {query, std::make_tuple(std::forward<Formattable>(args)...)}
