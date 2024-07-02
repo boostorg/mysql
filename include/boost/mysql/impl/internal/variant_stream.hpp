@@ -63,6 +63,7 @@ enum class vsconnect_action_type
     none,
     resolve,
     connect,
+    immediate,  // we'll be performing an immediate completion
 };
 
 struct vsconnect_action
@@ -84,6 +85,11 @@ struct vsconnect_action
         data_t(span<const asio::generic::stream_protocol::endpoint> v) noexcept : connect(v) {}
     } data;
 
+    struct immediate_tag
+    {
+    };
+
+    vsconnect_action(immediate_tag) noexcept : type(vsconnect_action_type::immediate), data(error_code()) {}
     vsconnect_action(error_code v = {}) noexcept : type(vsconnect_action_type::none), data(v) {}
     vsconnect_action(data_t::resolve_t v) noexcept : type(vsconnect_action_type::resolve), data(v) {}
     vsconnect_action(span<const asio::generic::stream_protocol::endpoint> v) noexcept
@@ -148,7 +154,8 @@ public:
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
                 endpoints_.push_back(asio::local::stream_protocol::endpoint(address()));
 #else
-                return asio::error::operation_not_supported;
+                BOOST_MYSQL_YIELD(resume_point_, 3, vsconnect_action::immediate_tag{});
+                return vsconnect_action(asio::error::operation_not_supported);
 #endif
             }
 
@@ -283,6 +290,7 @@ public:
                 resolver_results = algo.resolver()
                                        .resolve(*act.data.resolve.hostname, *act.data.resolve.service, ec);
                 break;
+            case vsconnect_action_type::immediate: break;  // has effect only for async
             case vsconnect_action_type::none: output_ec = act.data.err; return;
             default: BOOST_ASSERT(false);
             }
@@ -310,24 +318,11 @@ private:
 
     struct connect_op
     {
-        struct impl
+        std::unique_ptr<variant_stream_connect_algo> algo_;
+
+        connect_op(variant_stream& this_obj)
+            : algo_(new variant_stream_connect_algo(this_obj.st_, *this_obj.address_))
         {
-            variant_stream_connect_algo algo;
-            error_code stored_ec;
-            bool has_done_io{};
-
-            impl(variant_stream& this_obj) : algo(this_obj.st_, *this_obj.address_) {}
-        };
-
-        std::unique_ptr<impl> impl_;
-
-        connect_op(variant_stream& this_obj) : impl_(new impl(this_obj)) {}
-
-        template <class Self>
-        void do_complete(Self& self, error_code ec)
-        {
-            impl_.release();
-            self.complete(ec);
         }
 
         template <class Self>
@@ -337,37 +332,25 @@ private:
             const asio::ip::tcp::resolver::results_type& resolver_results = {}
         )
         {
-            if (impl_->stored_ec)
-            {
-                do_complete(self, impl_->stored_ec);
-                return;
-            }
-
-            auto act = impl_->algo.resume(ec, &resolver_results);
+            auto act = algo_->resume(ec, &resolver_results);
             switch (act.type)
             {
             case vsconnect_action_type::connect:
-                impl_->has_done_io = true;
-                asio::async_connect(impl_->algo.socket(), act.data.connect, std::move(self));
+                asio::async_connect(algo_->socket(), act.data.connect, std::move(self));
                 break;
             case vsconnect_action_type::resolve:
-                impl_->has_done_io = true;
-                impl_->algo.resolver()
+                algo_->resolver()
                     .async_resolve(*act.data.resolve.hostname, *act.data.resolve.service, std::move(self));
                 break;
+            case vsconnect_action_type::immediate:
+                asio::dispatch(
+                    asio::get_associated_immediate_executor(self, self.get_io_executor()),
+                    std::move(self)
+                );  // TODO: should probably be get_executor, but this doesn't compile
+                break;
             case vsconnect_action_type::none:
-                if (impl_->has_done_io)
-                {
-                    do_complete(self, act.data.err);
-                }
-                else
-                {
-                    impl_->stored_ec = ec;
-                    asio::dispatch(
-                        asio::get_associated_immediate_executor(self, self.get_io_executor()),
-                        std::move(self)
-                    );  // TODO: should probably be get_executor, but this doesn't compile
-                }
+                algo_.reset();
+                self.complete(ec);
                 break;
             default: BOOST_ASSERT(false);
             }
