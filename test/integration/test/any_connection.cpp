@@ -16,8 +16,14 @@
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/engine_impl.hpp>
+
+#include <boost/mysql/impl/internal/variant_stream.hpp>
+
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 
@@ -286,6 +292,41 @@ BOOST_AUTO_TEST_CASE(default_max_buffer_size_error)
     results r;
     execute_fn(conn, "SELECT 1, REPEAT('a', 0x4000000)", r)
         .validate_error_exact(client_errc::max_buffer_size_exceeded);
+}
+
+BOOST_AUTO_TEST_CASE(naggle_disabled)
+{
+    struct
+    {
+        string_view name;
+        netmaker_connect::signature fn;
+    } test_cases[] = {
+        {"sync",  netmaker_connect::sync_errc(&any_connection::connect)},
+        {"async", connect_fn                                           },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Create the connection
+            boost::asio::io_context ctx;
+            any_connection conn(ctx);
+
+            // Connect
+            tc.fn(conn, default_connect_params(ssl_mode::disable)).validate_no_error();
+
+            // Naggle's algorithm was disabled
+            asio::ip::tcp::no_delay opt;
+            static_cast<detail::engine_impl<detail::variant_stream>&>(
+                detail::access::get_impl(conn).get_engine()
+            )
+                .stream()
+                .tcp_socket()
+                .get_option(opt);
+            BOOST_TEST(opt.value() == true);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
