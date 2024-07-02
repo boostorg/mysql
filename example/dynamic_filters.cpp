@@ -188,6 +188,7 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
 }
 
 // Composes a SELECT query to retrieve employees according to the passed filters.
+// TODO: emphasize in format_options in this example, as it's the only one showing it now
 std::string compose_get_employees_query(
     boost::mysql::format_options opts,
     const std::vector<filter>& filts,

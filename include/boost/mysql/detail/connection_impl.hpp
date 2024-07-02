@@ -26,6 +26,7 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/engine.hpp>
+#include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
@@ -38,7 +39,9 @@
 #include <cstring>
 #include <memory>
 #include <tuple>
+#include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -86,51 +89,6 @@ template <class... T>
 std::array<field_view, sizeof...(T)> tuple_to_array(const std::tuple<T...>& t) noexcept
 {
     return tuple_to_array_impl(t, mp11::make_index_sequence<sizeof...(T)>());
-}
-
-struct query_request_getter
-{
-    any_execution_request value;
-    any_execution_request get() const noexcept { return value; }
-};
-inline query_request_getter make_request_getter(string_view q, std::vector<field_view>&) noexcept
-{
-    return query_request_getter{q};
-}
-
-struct stmt_it_request_getter
-{
-    statement stmt;
-    span<const field_view> params;  // Points into the connection state's shared fields
-
-    any_execution_request get() const noexcept { return any_execution_request(stmt, params); }
-};
-
-template <class FieldViewFwdIterator>
-inline stmt_it_request_getter make_request_getter(
-    const bound_statement_iterator_range<FieldViewFwdIterator>& req,
-    std::vector<field_view>& shared_fields
-)
-{
-    auto& impl = access::get_impl(req);
-    shared_fields.assign(impl.first, impl.last);
-    return {impl.stmt, shared_fields};
-}
-
-template <std::size_t N>
-struct stmt_tuple_request_getter
-{
-    statement stmt;
-    std::array<field_view, N> params;
-
-    any_execution_request get() const noexcept { return any_execution_request(stmt, params); }
-};
-template <class WritableFieldTuple>
-stmt_tuple_request_getter<std::tuple_size<WritableFieldTuple>::value>
-make_request_getter(const bound_statement_tuple<WritableFieldTuple>& req, std::vector<field_view>&)
-{
-    auto& impl = access::get_impl(req);
-    return {impl.stmt, tuple_to_array(impl.params)};
 }
 
 //
@@ -189,6 +147,47 @@ class connection_impl
 {
     std::unique_ptr<engine> engine_;
     std::unique_ptr<connection_state, connection_state_deleter> st_;
+
+    // Execution helpers
+    static any_execution_request make_request(string_view q, connection_state&) noexcept { return q; }
+
+    // Used for any type with make_request() in its impl type
+    // TODO: use this for statements, too
+    template <class T>
+    static auto make_request(T&& req, connection_state&)
+        -> decltype(access::get_impl(std::forward<T>(req)).make_request())
+    {
+        return access::get_impl(std::forward<T>(req)).make_request();
+    }
+
+    template <class FieldViewFwdIterator>
+    static any_execution_request make_request(
+        const bound_statement_iterator_range<FieldViewFwdIterator>& req,
+        connection_state& st
+    )
+    {
+        auto& impl = access::get_impl(req);
+        auto& shared_fields = get_shared_fields(st);
+        shared_fields.assign(impl.first, impl.last);
+        return {impl.stmt, shared_fields};
+    }
+
+    template <std::size_t N>
+    struct stmt_tuple_request_proxy
+    {
+        statement stmt;
+        std::array<field_view, N> params;
+
+        operator any_execution_request() const { return any_execution_request(stmt, params); }
+    };
+
+    template <class WritableFieldTuple>
+    static stmt_tuple_request_proxy<std::tuple_size<WritableFieldTuple>::value>
+    make_request(const bound_statement_tuple<WritableFieldTuple>& req, connection_state&)
+    {
+        auto& impl = access::get_impl(req);
+        return {impl.stmt, tuple_to_array(impl.params)};
+    }
 
     // Generic algorithm
     template <class AlgoParams>
@@ -314,11 +313,10 @@ class connection_impl
             diagnostics* diag
         )
         {
-            auto getter = make_request_getter(req, get_shared_fields(*st));
             async_run_impl(
                 *eng,
                 *st,
-                execute_algo_params{diag, getter.get(), proc},
+                execute_algo_params{diag, make_request(req, *st), proc},
                 std::forward<Handler>(handler)
             );
         }
@@ -337,11 +335,10 @@ class connection_impl
             diagnostics* diag
         )
         {
-            auto getter = make_request_getter(req, get_shared_fields(*st));
             async_run_impl(
                 *eng,
                 *st,
-                start_execution_algo_params{diag, getter.get(), proc},
+                start_execution_algo_params{diag, make_request(req, *st), proc},
                 std::forward<Handler>(handler)
             );
         }
@@ -477,8 +474,8 @@ public:
     template <class ExecutionRequest, class ResultsType>
     void execute(const ExecutionRequest& req, ResultsType& result, error_code& err, diagnostics& diag)
     {
-        auto getter = make_request_getter(req, get_shared_fields(*st_));
-        run(execute_algo_params{&diag, getter.get(), &access::get_impl(result).get_interface()}, err);
+        run(execute_algo_params{&diag, make_request(req, *st_), &access::get_impl(result).get_interface()},
+            err);
     }
 
     template <class ExecutionRequest, class ResultsType, class CompletionToken>
@@ -518,9 +515,14 @@ public:
         diagnostics& diag
     )
     {
-        auto getter = make_request_getter(req, get_shared_fields(*st_));
-        run(start_execution_algo_params{&diag, getter.get(), &access::get_impl(exec_st).get_interface()},
-            err);
+        run(
+            start_execution_algo_params{
+                &diag,
+                make_request(req, *st_),
+                &access::get_impl(exec_st).get_interface()
+            },
+            err
+        );
     }
 
     template <class ExecutionRequest, class ExecutionStateType, class CompletionToken>

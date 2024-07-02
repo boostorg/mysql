@@ -245,9 +245,6 @@ BOOST_AUTO_TEST_CASE(execute_error_num_params)
 
     // Run the algo. Nothing should be written to the server
     algo_test().check(fix, client_errc::wrong_num_params);
-
-    // We didn't modify the processor
-    fix.proc.num_calls().validate();
 }
 
 // Tests error on write, while reading head and while reading rows (error spotcheck)

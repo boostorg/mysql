@@ -66,5 +66,6 @@
 #include <boost/mysql/underlying_row.hpp>
 #include <boost/mysql/unix.hpp>
 #include <boost/mysql/unix_ssl.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #endif

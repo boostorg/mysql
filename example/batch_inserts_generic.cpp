@@ -8,6 +8,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/describe/class.hpp>
 #include <boost/mp11/list.hpp>
@@ -170,16 +171,16 @@ void main_impl(int argc, char** argv)
     // Recall that format_opts() returns a system::result<format_options>,
     // which can contain an error if the connection doesn't know which character set is using.
     // Use set_character_set if this happens.
-    std::string query = boost::mysql::format_sql(
-        conn.format_opts().value(),
-        "INSERT INTO employee ({::i}) VALUES {}",
-        get_field_names<employee>(),
-        boost::mysql::sequence(values, insert_struct_format_fn())
-    );
-
-    // Execute the query as usual.
+    // TODO: review this
     boost::mysql::results result;
-    conn.execute(query, result);
+    conn.execute(
+        boost::mysql::with_params(
+            "INSERT INTO employee ({::i}) VALUES {}",
+            get_field_names<employee>(),
+            boost::mysql::sequence(values, insert_struct_format_fn())
+        ),
+        result
+    );
     std::cout << "Done\n";
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
