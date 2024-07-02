@@ -322,7 +322,7 @@ BOOST_AUTO_TEST_CASE(naggle_disabled)
                 detail::access::get_impl(conn).get_engine()
             )
                 .stream()
-                .tcp_socket()
+                .socket()
                 .get_option(opt);
             BOOST_TEST(opt.value() == true);
         }

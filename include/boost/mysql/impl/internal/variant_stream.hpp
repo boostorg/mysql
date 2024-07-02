@@ -100,31 +100,7 @@ class variant_stream_connect_algo
     int resume_point_{0};
 
     const std::string& address() const { return access::get_impl(*addr_).address; }
-
-    error_code setup_stream()
-    {
-#ifndef BOOST_ASIO_HAS_LOCAL_SOCKETS
-        if (addr_->type() == address_type::unix_path)
-        {
-            return asio::error::operation_not_supported;
-        }
-#endif
-
-        // The executor is the one we're already using
-        auto ex = st_->sock.get_executor();
-
-        // Emplace the resolver only if required
-        if (addr_->type() == address_type::host_and_port)
-        {
-            resolv_.emplace(ex);
-        }
-
-        // Clean up any previous state
-        st_->sock = asio::generic::stream_protocol::socket(std::move(ex));
-
-        // Done
-        return error_code();
-    }
+    asio::any_io_executor get_executor() const { return st_->sock.get_executor(); }
 
 public:
     variant_stream_connect_algo(variant_stream_state& st, const any_address& addr) : st_(&st), addr_(&addr) {}
@@ -141,15 +117,17 @@ public:
         switch (resume_point_)
         {
         case 0:
-            // Setup the stream
-            ec = setup_stream();
-            if (ec)
-                return ec;
 
-            // Populate the endpoints vector
+            // Clean up any previous state
+            st_->sock = asio::generic::stream_protocol::socket(get_executor());
+
+            // Set up the endpoints vector
             if (addr_->type() == address_type::host_and_port)
             {
-                // Resolve the endpoints if required
+                // Emplace the resolver
+                resolv_.emplace(get_executor());
+
+                // Resolve the endpoints
                 service_ = std::to_string(addr_->port());
                 BOOST_MYSQL_YIELD(resume_point_, 1, vsconnect_action({&address(), &service_}));
 
@@ -164,11 +142,11 @@ public:
             }
             else
             {
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
                 BOOST_ASSERT(addr_->type() == address_type::unix_path);
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
                 endpoints_.push_back(asio::local::stream_protocol::endpoint(address()));
 #else
-                BOOST_ASSERT(false);
+                return asio::error::operation_not_supported;
 #endif
             }
 
@@ -322,7 +300,7 @@ public:
     }
 
     // Exposed for testing
-    const asio::generic::stream_protocol::socket& tcp_socket() const { return st_.sock; }
+    const asio::generic::stream_protocol::socket& socket() const { return st_.sock; }
 
 private:
     const any_address* address_{};
