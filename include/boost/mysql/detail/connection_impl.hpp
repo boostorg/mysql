@@ -163,18 +163,17 @@ class connection_impl
         operator any_execution_request() const { return any_execution_request(query, params); }
     };
 
-    // TODO: make this concept more generic
-    // TODO: c++11
-    template <
-        class T,
-        class = typename std::enable_if<is_with_params<typename std::decay<T>::type>::value>::type>
+    // Used for any type with make_request() in its impl type
+    // TODO: use this for statements, too
+    template <class T>
     static auto make_request(T&& req, connection_state&)
+        -> decltype(access::get_impl(std::forward<T>(req)).make_request())
     {
         return access::get_impl(std::forward<T>(req)).make_request();
     }
 
     template <class FieldViewFwdIterator>
-    inline any_execution_request make_request(
+    static any_execution_request make_request(
         const bound_statement_iterator_range<FieldViewFwdIterator>& req,
         connection_state& st
     )
@@ -195,7 +194,7 @@ class connection_impl
     };
 
     template <class WritableFieldTuple>
-    stmt_tuple_request_proxy<std::tuple_size<WritableFieldTuple>::value>
+    static stmt_tuple_request_proxy<std::tuple_size<WritableFieldTuple>::value>
     make_request(const bound_statement_tuple<WritableFieldTuple>& req, connection_state&)
     {
         auto& impl = access::get_impl(req);
