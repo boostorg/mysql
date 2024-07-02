@@ -211,6 +211,11 @@ public:
 
             // Connect stream
             asio::connect(tcp_sock.sock, std::move(endpoints), ec);
+            if (ec)
+                return;
+
+            // Disable Naggle's algorithm
+            set_tcp_nodelay();
         }
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
         else
@@ -243,6 +248,9 @@ public:
         }
 #endif
     }
+
+    // Exposed for testing
+    const asio::ip::tcp::socket& tcp_socket() const { return variant2::get<socket_and_resolver>(sock_).sock; }
 
 private:
     struct socket_and_resolver
@@ -291,6 +299,8 @@ private:
 
         return error_code();
     }
+
+    void set_tcp_nodelay() { variant2::unsafe_get<1u>(sock_).sock.set_option(asio::ip::tcp::no_delay(true)); }
 
     void create_ssl_stream()
     {
@@ -384,6 +394,11 @@ private:
         template <class Self>
         void operator()(Self& self, error_code ec, asio::ip::tcp::endpoint)
         {
+            if (!ec)
+            {
+                // Disable Naggle's algorithm
+                this_obj_.set_tcp_nodelay();
+            }
             self.complete(ec);
         }
     };
