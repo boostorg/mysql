@@ -10,18 +10,15 @@
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connect_params.hpp>
-#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/with_params.hpp>  // TODO: could we get rid of this dependency?
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
@@ -153,15 +150,6 @@ class connection_impl
 
     // Execution helpers
     static any_execution_request make_request(string_view q, connection_state&) noexcept { return q; }
-
-    template <std::size_t N>
-    struct with_params_proxy
-    {
-        constant_string_view query;
-        std::array<format_arg, N> params;
-
-        operator any_execution_request() const { return any_execution_request(query, params); }
-    };
 
     // Used for any type with make_request() in its impl type
     // TODO: use this for statements, too
