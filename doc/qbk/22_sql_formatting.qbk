@@ -8,16 +8,204 @@
 [section:sql_formatting (Experimental) Client-side SQL query formatting]
 [nochunk]
 
-When issuing queries that contain untrusted input, prepared statement are usually
-the way to go. However, some use cases like dynamic filters or batch inserts
-are not attainable using them.
-
-The functions described in this section can be used to compose SQL query
-strings dynamically client-side while keeping your application secure.
+* Queries with parameters containing untrusted input, two options: statements (server side) and client-side SQL (client-side).
+* This module provides an alternative to statements that's usually easier to use and more versatile. See comparison.
+* Provides the required mechanisms to defend against SQL injections. See security considerations.
 
 [note
     This feature is experimental. Its API may change in subsequent releases.
 ]
+
+
+
+
+
+
+[heading Simple queries]
+
+Use [reflink with_params], together with [refmem any_connection execute]
+or [refmemunq any_connection async_execute], to run a client-side formatted query.
+`with_params` must be passed a query string and a set of parameters:
+
+[sql_formatting_simple]
+
+
+All fundamental types can be used with query formatting. This includes integers, floating point types,
+strings, blobs, dates and times:
+
+[sql_formatting_other_scalars]
+
+`std::optional<T>` and `boost::optional<T>` can also be used:
+
+[sql_formatting_optionals]
+
+Collections and ranges are supported, as long as its elements can be formatted:
+
+[sql_formatting_ranges]
+
+See [link mysql.sql_formatting.ranges this section] for more on formatting ranges,
+and [link mysql.sql_formatting.reference this table] for a reference of types
+that have built-in support for SQL formatting.
+
+[note
+  Like with `std::format`, the query string passed to `with_params` must be known at
+  compile-time. You can skip this check using the [reflink runtime] function.
+]
+
+Like `std::format`, you can use arguments with explicit indices:
+
+[sql_formatting_manual_indices]
+
+See [link mysql.sql_formatting_advanced.format_string_syntax this section] for an in-depth
+explanation on format strings.
+
+
+
+
+
+
+[heading Common errors and how to fix them]
+
+Using client-side SQL formatting can yield some extra errors. Here are the most common:
+
+- `client_errc::invalid_encoding`
+    - Cause: one of your string parameters contains invalid code points.
+      With the default character set, this means that it contains invalid UTF-8.
+    - Solution: sanitize or reject such values.
+    - TODO: link learn more.
+- `client_errc::unformattable_value`
+    - Cause: one of your parameters contains an invalid value. For instance, a `double`
+      contains a `NaN` or an `Inf`, unsupported by MySQL.
+    - Solution: reject such values, or replace them by `NULL` before passing them to client-side SQL formatting.
+- `client_errc::unknown_character_set`
+    - Cause: your connection doesn't know the character set you're using. Can happen after calling [refmemunq reset_connection]
+      or if you used a custom [refmem connect_params connection_collation] when connecting.
+    - Solution:
+        - Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set] after calling `reset_connection`.
+        - Use [reflink connection_pool] instead of manually resetting connections.
+        - Use the default `connection_collation` when connecting.
+    - TODO: link learn more.
+      
+
+
+
+
+
+
+[heading Formatting queries without executing them]
+
+`with_params` is convenient, but some cases may require you to directly
+format a query string without executing it. Useful for more complex cases
+and testing.
+
+Anything that can be used with `with_params` can be used with `format_sql`
+and `format_sql_to` too - we say that such types satisfy the [reflink Formattable] concept.
+
+These APIs don't involve communication with the server.
+
+[reflink format_sql] is the simplest. Takes a query string and a set of parameters, expands it to a `std::string`:
+
+<TODO: example>
+
+In order to work, `format_sql` requires a [reflink format_options] instance describing
+connection configuration, like the character set currently in use.
+[refmem any_connection format_opts] provides an easy way to retrieve these.
+
+
+Some use cases, usually involving conditionals, may not be
+expressible in terms of a single format string. In such cases, you can
+use [reflink format_context] and [reflink format_sql_to] to
+build query strings incrementally:
+
+[sql_formatting_incremental_fn]
+[sql_formatting_incremental_use]
+
+[reflink sequence] uses this feature to make formatting ranges easier.
+
+
+
+
+
+
+
+[heading:ranges Formatting ranges with sequence]
+
+The [reflink sequence] function can be used when the default range formatting isn't sufficient.
+If the elements in your range are not formattable, you can pass a user-defined function to `sequence`
+describing how to format each element:
+
+[sql_formatting_sequence_1]
+
+By default, elements are separated by commas, but this is configurable:
+
+[sql_formatting_sequence_2]
+
+You may use `sequence` and [reflink with_params] together.
+
+
+
+
+
+
+
+
+
+[heading Format specifiers]
+
+Some types, like strings, can be formatted in multiple ways. As with
+`std::format`, you can select how to format them using format specifiers.
+
+As we've seen, strings are formatted as single-quoted values by default.
+If you use the `{:i}` specifier, you can obtain dynamic SQL identifiers, instead:
+
+[sql_formatting_specifiers]
+
+Specifiers are compatible with explicit indices and named arguments, too.
+This is equivalent to the previous snippet:
+
+[sql_formatting_specifiers_explicit_indices]
+
+
+
+
+
+
+[heading Prepared statements vs. client-side SQL formatting]
+
+
+* May seem similar in the surface, but work differently. Client-side gets expanded in the
+  client, and gets sent to the server as a SQL string. Statements get parsed and expanded by the server.
+* Client-side SQL does not understand your query strings. They are just text that gets expanded.
+  Statements are parsed before being expanded. Client-side SQL yields more flexibility, but you need
+  more care to make sure your queries expand to valid SQL.
+* Some use cases are only possible with client-side SQL
+
+
+* Client-formatted SQL entails [*less round-trips to the server]. For prepared statements, you usually need
+  a call to prepare the statement, another one to execute it, and possibly a final one to close it.
+  Client-formatted SQL only requires the execution round-trip. This performance gain increases with network
+  latency and if you are using TLS.
+
+
+Both client-side SQL formatting and prepared statements have pros and cons efficiency-wise:
+
+
+
+* Prepared statements always entail a [*mutation of session state], while client-formatted SQL may not.
+  If you're using a [reflink connection_pool] with prepared statements, you can't use
+  [refmem pooled_connection return_without_reset], as this will leak the statement.
+  With client-formatted queries, reset may not be required if your SQL doesn't mutate session state.
+* Client-formatted SQL queries use a usually [*less efficient text-based protocol], while prepared statements
+  use a more compact binary protocol. This is relevant if you're retrieving lots of data that is
+  slow to convert to and from text (like doubles).
+* [*Prepared statements can be re-used]. If you need to execute a query several times,
+  prepared statements will only be parsed once.
+* Client-formatted SQL allows [*more efficient patterns] than prepared statements,
+  like batch inserts.
+* You can use client-formatted SQL to generate several [*semicolon-separated queries]
+  to be run in batch.
+
+
 
 
 
@@ -50,102 +238,22 @@ queries and make mistakes, attackers may exploit logic errors in your formatting
 
 
 
-[heading Formatting simple queries]
-
-You can use [reflink format_sql] to generate a SQL query from a format string
-and a set of parameters, using a notation similar to `std::format`:
-
-[sql_formatting_simple]
-
-[reflink format_sql] doesn't involve communication with the server.
-In order to work, it requires a [reflink format_options] instance describing
-connection configuration, like the character set currently in use.
-[refmem any_connection format_opts] provides an easy way to retrieve these.
-
-[note
-  Getting an `unknown_character_set` error? Have a look at [link mysql.sql_formatting.unknown_character_set this section].
-]
-
-All fundamental types can be used with query formatting. This includes integers, floating point types,
-strings, blobs, dates and times:
-
-[sql_formatting_other_scalars]
-
-`std::optional<T>` and `boost::optional<T>` can also be used:
-
-[sql_formatting_optionals]
-
-Collections and ranges are supported, as long as its elements can be formatted:
-
-[sql_formatting_ranges]
-
-See [link mysql.sql_formatting.ranges this section] for more on formatting ranges,
-and [link mysql.sql_formatting.reference this table] for a reference of types
-that have built-in support for SQL formatting.
-
-[note
-  Like with `std::format`, the format string passed to `format_sql` must be known at
-  compile-time. You can skip this check using the [reflink runtime] function.
-]
-
-Like `std::format`, you can use arguments with explicit indices:
-
-[sql_formatting_manual_indices]
-
-You can also use named arguments, using the initializer list overload:
-
-[sql_formatting_named_args]
-
-See [link mysql.sql_formatting_advanced.format_string_syntax this section] for an in-depth
-explanation on format strings.
-
-
-
-
-
-[heading Format specifiers]
-
-Some types, like strings, can be formatted in multiple ways. As with
-`std::format`, you can select how to format them using format specifiers.
-
-As we've seen, strings are formatted as single-quoted values by default.
-If you use the `{:i}` specifier, you can obtain dynamic SQL identifiers, instead:
-
-[sql_formatting_specifiers]
-
-Specifiers are compatible with explicit indices and named arguments, too.
-This is equivalent to the previous snippet:
-
-[sql_formatting_specifiers_explicit_indices]
-
-
-
-[heading Building SQL strings incrementally using format_sql_to]
-
-Some use cases, usually involving conditionals, may not be
-expressible in terms of a single format string. In such cases, you can
-use [reflink format_context] and [reflink format_sql_to] to
-build query strings incrementally:
-
-[sql_formatting_incremental_fn]
-[sql_formatting_incremental_use]
 
 
 
 
 
 
-[heading:ranges Formatting ranges with sequence]
 
-The [reflink sequence] function can be used when the default range formatting isn't sufficient.
-If the elements in your range are not formattable, you can pass a user-defined function to `sequence`
-describing how to format each element:
 
-[sql_formatting_sequence_1]
 
-By default, elements are separated by commas, but this is configurable:
 
-[sql_formatting_sequence_2]
+
+
+
+
+
+
 
 
 
@@ -199,29 +307,6 @@ it happened and reject the input. Other types may also produce format errors.
 
 
 
-
-
-[heading:efficiency Efficiency considerations]
-
-Both client-side SQL formatting and prepared statements have pros and cons efficiency-wise:
-
-* Client-formatted SQL entails [*less round-trips to the server]. For prepared statements, you usually need
-  a call to prepare the statement, another one to execute it, and possibly a final one to close it.
-  Client-formatted SQL only requires the execution round-trip. This performance gain increases with network
-  latency and if you are using TLS.
-* Prepared statements always entail a [*mutation of session state], while client-formatted SQL may not.
-  If you're using a [reflink connection_pool] with prepared statements, you can't use
-  [refmem pooled_connection return_without_reset], as this will leak the statement.
-  With client-formatted queries, reset may not be required if your SQL doesn't mutate session state.
-* Client-formatted SQL queries use a usually [*less efficient text-based protocol], while prepared statements
-  use a more compact binary protocol. This is relevant if you're retrieving lots of data that is
-  slow to convert to and from text (like doubles).
-* [*Prepared statements can be re-used]. If you need to execute a query several times,
-  prepared statements will only be parsed once.
-* Client-formatted SQL allows [*more efficient patterns] than prepared statements,
-  like batch inserts.
-* You can use client-formatted SQL to generate several [*semicolon-separated queries]
-  to be run in batch.
 
 
 
