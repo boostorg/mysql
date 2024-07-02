@@ -211,7 +211,7 @@ bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_conte
     // TODO: review
     mysql::static_results<std::tuple<>> empty_result;
     conn->async_execute(
-        mysql::with_params("DELETE FROM notes WHERE id = ?", note_id),
+        mysql::with_params("DELETE FROM notes WHERE id = {}", note_id),
         empty_result,
         diag,
         yield[ec]
