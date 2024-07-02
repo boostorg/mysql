@@ -350,7 +350,7 @@ class connection_impl
             async_run_impl(
                 *eng,
                 *st,
-                start_execution_algo_params{diag, make_request(req, st), proc},
+                start_execution_algo_params{diag, make_request(req, *st), proc},
                 std::forward<Handler>(handler)
             );
         }

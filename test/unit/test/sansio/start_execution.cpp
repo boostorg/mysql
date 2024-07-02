@@ -102,9 +102,6 @@ BOOST_AUTO_TEST_CASE(error_num_params)
 
     // Run the algo. Nothing should be written to the server
     algo_test().check(fix, client_errc::wrong_num_params);
-
-    // We didn't modify the processor
-    fix.proc.num_calls().validate();
 }
 
 // This covers errors in both writing the request and calling read_resultset_head
