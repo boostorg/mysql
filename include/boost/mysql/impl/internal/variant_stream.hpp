@@ -12,8 +12,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/connect_params_helpers.hpp>
+#include <boost/mysql/detail/access.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/ssl_context_with_default.hpp>
@@ -22,40 +21,178 @@
 #include <boost/asio/compose.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/error.hpp>
+#include <boost/asio/generic/stream_protocol.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
-#include <boost/asio/post.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/core/span.hpp>
 #include <boost/optional/optional.hpp>
-#include <boost/variant2/variant.hpp>
 
+#include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// Asio defines a "string view parameter" to be either const std::string&,
-// std::experimental::string_view or std::string_view. Casting from the Boost
-// version doesn't work for std::experimental::string_view
-#if defined(BOOST_ASIO_HAS_STD_STRING_VIEW)
-inline std::string_view cast_asio_sv_param(string_view input) noexcept { return input; }
-#elif defined(BOOST_ASIO_HAS_STD_EXPERIMENTAL_STRING_VIEW)
-inline std::experimental::string_view cast_asio_sv_param(string_view input) noexcept
+struct variant_stream_state
 {
-    return {input.data(), input.size()};
-}
-#else
-inline std::string cast_asio_sv_param(string_view input) { return input; }
+    asio::generic::stream_protocol::socket sock;
+    ssl_context_with_default ssl_ctx;
+    boost::optional<asio::ssl::stream<asio::generic::stream_protocol::socket&>> ssl;
+
+    variant_stream_state(asio::any_io_executor ex, asio::ssl::context* ctx) : sock(ex), ssl_ctx(ctx) {}
+
+    asio::ssl::stream<asio::generic::stream_protocol::socket&>& create_ssl_stream()
+    {
+        // The stream object must be re-created even if it already exists, since
+        // once used for a connection (anytime after ssl::stream::handshake is called),
+        // it can't be re-used for any subsequent connections
+        ssl.emplace(sock, ssl_ctx.get());
+        return *ssl;
+    }
+};
+
+enum class vsconnect_action_type
+{
+    none,
+    resolve,
+    connect,
+};
+
+struct vsconnect_action
+{
+    vsconnect_action_type type;
+
+    union data_t
+    {
+        error_code err;
+        struct resolve_t
+        {
+            const std::string* hostname;
+            const std::string* service;
+        } resolve;
+        span<const asio::generic::stream_protocol::endpoint> connect;
+
+        data_t(error_code v) noexcept : err(v) {}
+        data_t(resolve_t v) noexcept : resolve(v) {}
+        data_t(span<const asio::generic::stream_protocol::endpoint> v) noexcept : connect(v) {}
+    } data;
+
+    vsconnect_action(error_code v = {}) noexcept : type(vsconnect_action_type::none), data(v) {}
+    vsconnect_action(data_t::resolve_t v) noexcept : type(vsconnect_action_type::resolve), data(v) {}
+    vsconnect_action(span<const asio::generic::stream_protocol::endpoint> v) noexcept
+        : type(vsconnect_action_type::connect), data(v)
+    {
+    }
+};
+
+class variant_stream_connect_algo
+{
+    variant_stream_state* st_;
+    const any_address* addr_;
+    boost::optional<asio::ip::tcp::resolver> resolv_;
+    std::vector<asio::generic::stream_protocol::endpoint> endpoints_;
+    std::string service_;
+    int resume_point_{0};
+
+    const std::string& address() const { return access::get_impl(*addr_).address; }
+
+    error_code setup_stream()
+    {
+#ifndef BOOST_ASIO_HAS_LOCAL_SOCKETS
+        if (addr_->type() == address_type::unix_path)
+        {
+            return asio::error::operation_not_supported;
+        }
 #endif
+
+        // The executor is the one we're already using
+        auto ex = st_->sock.get_executor();
+
+        // Emplace the resolver only if required
+        if (addr_->type() == address_type::host_and_port)
+        {
+            resolv_.emplace(ex);
+        }
+
+        // Clean up any previous state
+        st_->sock = asio::generic::stream_protocol::socket(std::move(ex));
+
+        // Done
+        return error_code();
+    }
+
+public:
+    variant_stream_connect_algo(variant_stream_state& st, const any_address& addr) : st_(&st), addr_(&addr) {}
+
+    asio::ip::tcp::resolver& resolver() { return *resolv_; }
+    asio::generic::stream_protocol::socket& socket() { return st_->sock; }
+
+    vsconnect_action resume(error_code ec, const asio::ip::tcp::resolver::results_type* resolver_results)
+    {
+        // All errors are considered fatal
+        if (ec)
+            return ec;
+
+        switch (resume_point_)
+        {
+        case 0:
+            // Setup the stream
+            ec = setup_stream();
+            if (ec)
+                return ec;
+
+            // Populate the endpoints vector
+            if (addr_->type() == address_type::host_and_port)
+            {
+                // Resolve the endpoints if required
+                service_ = std::to_string(addr_->port());
+                BOOST_MYSQL_YIELD(resume_point_, 1, vsconnect_action({&address(), &service_}));
+
+                // Convert them to a vector of type-erased endpoints.
+                // This workarounds https://github.com/chriskohlhoff/asio/issues/1502
+                // and makes connect() uniform for TCP and UNIX
+                endpoints_.reserve(resolver_results->size());
+                for (const auto& entry : *resolver_results)
+                {
+                    endpoints_.push_back(entry.endpoint());
+                }
+            }
+            else
+            {
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+                BOOST_ASSERT(addr_->type() == address_type::unix_path);
+                endpoints_.push_back(asio::local::stream_protocol::endpoint(address()));
+#else
+                BOOST_ASSERT(false);
+#endif
+            }
+
+            // Actually connect
+            BOOST_MYSQL_YIELD(resume_point_, 2, vsconnect_action{endpoints_});
+
+            // If we're doing TCP, disable Naggle's algorithm
+            if (addr_->type() == address_type::host_and_port)
+            {
+                st_->sock.set_option(asio::ip::tcp::no_delay(true));
+            }
+
+            // Done
+        }
+
+        return {};
+    }
+};
 
 // Implements the EngineStream concept (see stream_adaptor)
 class variant_stream
 {
 public:
-    variant_stream(asio::any_io_executor ex, asio::ssl::context* ctx) : ex_(std::move(ex)), ssl_ctx_(ctx) {}
+    variant_stream(asio::any_io_executor ex, asio::ssl::context* ctx) : st_(std::move(ex), ctx) {}
 
     bool supports_ssl() const { return true; }
 
@@ -63,33 +200,32 @@ public:
 
     // Executor
     using executor_type = asio::any_io_executor;
-    executor_type get_executor() { return ex_; }
+    executor_type get_executor() { return st_.sock.get_executor(); }
 
     // SSL
     void ssl_handshake(error_code& ec)
     {
-        create_ssl_stream();
-        ssl_->handshake(asio::ssl::stream_base::client, ec);
+        st_.create_ssl_stream().handshake(asio::ssl::stream_base::client, ec);
     }
 
     template <class CompletionToken>
     void async_ssl_handshake(CompletionToken&& token)
     {
-        create_ssl_stream();
-        ssl_->async_handshake(asio::ssl::stream_base::client, std::forward<CompletionToken>(token));
+        st_.create_ssl_stream();
+        st_.ssl->async_handshake(asio::ssl::stream_base::client, std::forward<CompletionToken>(token));
     }
 
     void ssl_shutdown(error_code& ec)
     {
-        BOOST_ASSERT(ssl_.has_value());
-        ssl_->shutdown(ec);
+        BOOST_ASSERT(st_.ssl.has_value());
+        st_.ssl->shutdown(ec);
     }
 
     template <class CompletionToken>
     void async_ssl_shutdown(CompletionToken&& token)
     {
-        BOOST_ASSERT(ssl_.has_value());
-        ssl_->async_shutdown(std::forward<CompletionToken>(token));
+        BOOST_ASSERT(st_.ssl.has_value());
+        st_.ssl->async_shutdown(std::forward<CompletionToken>(token));
     }
 
     // Reading
@@ -97,23 +233,12 @@ public:
     {
         if (use_ssl)
         {
-            BOOST_ASSERT(ssl_.has_value());
-            return ssl_->read_some(buff, ec);
+            BOOST_ASSERT(st_.ssl.has_value());
+            return st_.ssl->read_some(buff, ec);
         }
-        else if (auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_))
-        {
-            return tcp_sock->sock.read_some(buff, ec);
-        }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-        else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
-        {
-            return unix_sock->read_some(buff, ec);
-        }
-#endif
         else
         {
-            BOOST_ASSERT(false);
-            return 0u;
+            return st_.sock.read_some(buff, ec);
         }
     }
 
@@ -122,22 +247,12 @@ public:
     {
         if (use_ssl)
         {
-            BOOST_ASSERT(ssl_.has_value());
-            ssl_->async_read_some(buff, std::forward<CompletionToken>(token));
+            BOOST_ASSERT(st_.ssl.has_value());
+            st_.ssl->async_read_some(buff, std::forward<CompletionToken>(token));
         }
-        else if (auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_))
-        {
-            tcp_sock->sock.async_read_some(buff, std::forward<CompletionToken>(token));
-        }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-        else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
-        {
-            unix_sock->async_read_some(buff, std::forward<CompletionToken>(token));
-        }
-#endif
         else
         {
-            BOOST_ASSERT(false);
+            st_.sock.async_read_some(buff, std::forward<CompletionToken>(token));
         }
     }
 
@@ -146,23 +261,12 @@ public:
     {
         if (use_ssl)
         {
-            BOOST_ASSERT(ssl_.has_value());
-            return ssl_->write_some(buff, ec);
+            BOOST_ASSERT(st_.ssl.has_value());
+            return st_.ssl->write_some(buff, ec);
         }
-        else if (auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_))
-        {
-            return tcp_sock->sock.write_some(buff, ec);
-        }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-        else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
-        {
-            return unix_sock->write_some(buff, ec);
-        }
-#endif
         else
         {
-            BOOST_ASSERT(false);
-            return 0u;
+            return st_.sock.write_some(buff, ec);
         }
     }
 
@@ -171,235 +275,106 @@ public:
     {
         if (use_ssl)
         {
-            BOOST_ASSERT(ssl_.has_value());
-            return ssl_->async_write_some(buff, std::forward<CompletionToken>(token));
+            BOOST_ASSERT(st_.ssl.has_value());
+            return st_.ssl->async_write_some(buff, std::forward<CompletionToken>(token));
         }
-        else if (auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_))
-        {
-            return tcp_sock->sock.async_write_some(buff, std::forward<CompletionToken>(token));
-        }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-        else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
-        {
-            return unix_sock->async_write_some(buff, std::forward<CompletionToken>(token));
-        }
-#endif
         else
         {
-            BOOST_ASSERT(false);
+            return st_.sock.async_write_some(buff, std::forward<CompletionToken>(token));
         }
     }
 
     // Connect and close
-    void connect(error_code& ec)
+    void connect(error_code& output_ec)
     {
-        ec = setup_stream();
-        if (ec)
-            return;
+        // Setup
+        variant_stream_connect_algo algo(st_, *address_);
+        error_code ec;
+        asio::ip::tcp::resolver::results_type resolver_results;
 
-        if (address_->type() == address_type::host_and_port)
+        // Run until complete
+        while (true)
         {
-            // Resolve endpoints
-            auto& tcp_sock = variant2::unsafe_get<1>(sock_);
-            auto endpoints = tcp_sock.resolv.resolve(
-                cast_asio_sv_param(address_->hostname()),
-                std::to_string(address_->port()),
-                ec
-            );
-            if (ec)
-                return;
-
-            // Connect stream
-            asio::connect(tcp_sock.sock, std::move(endpoints), ec);
-            if (ec)
-                return;
-
-            // Disable Naggle's algorithm
-            set_tcp_nodelay();
+            auto act = algo.resume(ec, &resolver_results);
+            switch (act.type)
+            {
+            case vsconnect_action_type::connect: asio::connect(st_.sock, act.data.connect, ec); break;
+            case vsconnect_action_type::resolve:
+                resolver_results = algo.resolver()
+                                       .resolve(*act.data.resolve.hostname, *act.data.resolve.service, ec);
+                break;
+            case vsconnect_action_type::none: output_ec = act.data.err; return;
+            default: BOOST_ASSERT(false);
+            }
         }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-        else
-        {
-            BOOST_ASSERT(address_->type() == address_type::unix_path);
-
-            // Just connect the stream
-            auto& unix_sock = variant2::unsafe_get<2>(sock_);
-            unix_sock.connect(cast_asio_sv_param(address_->unix_socket_path()), ec);
-        }
-#endif
     }
 
     template <class CompletionToken>
     void async_connect(CompletionToken&& token)
     {
-        asio::async_compose<CompletionToken, void(error_code)>(connect_op(*this), token, ex_);
+        asio::async_compose<CompletionToken, void(error_code)>(connect_op(*this), token, get_executor());
     }
 
     void close(error_code& ec)
     {
-        if (auto* tcp_sock = variant2::get_if<socket_and_resolver>(&sock_))
-        {
-            tcp_sock->sock.close(ec);
-        }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-        else if (auto* unix_sock = variant2::get_if<unix_socket>(&sock_))
-        {
-            unix_sock->close(ec);
-        }
-#endif
+        st_.sock.shutdown(asio::generic::stream_protocol::socket::shutdown_both, ec);
+        st_.sock.close(ec);
     }
 
     // Exposed for testing
-    const asio::ip::tcp::socket& tcp_socket() const { return variant2::get<socket_and_resolver>(sock_).sock; }
+    const asio::generic::stream_protocol::socket& tcp_socket() const { return st_.sock; }
 
 private:
-    struct socket_and_resolver
-    {
-        asio::ip::tcp::socket sock;
-        asio::ip::tcp::resolver resolv;
-
-        socket_and_resolver(asio::any_io_executor ex) : sock(ex), resolv(std::move(ex)) {}
-    };
-
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-    using unix_socket = asio::local::stream_protocol::socket;
-#endif
-
     const any_address* address_{};
-    asio::any_io_executor ex_;
-    variant2::variant<
-        variant2::monostate,
-        socket_and_resolver
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-        ,
-        unix_socket
-#endif
-        >
-        sock_;
-    ssl_context_with_default ssl_ctx_;
-    boost::optional<asio::ssl::stream<asio::ip::tcp::socket&>> ssl_;
-
-    error_code setup_stream()
-    {
-        if (address_->type() == address_type::host_and_port)
-        {
-            // Clean up any previous state
-            sock_.emplace<socket_and_resolver>(ex_);
-        }
-
-        else if (address_->type() == address_type::unix_path)
-        {
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-            // Clean up any previous state
-            sock_.emplace<unix_socket>(ex_);
-#else
-            return asio::error::operation_not_supported;
-#endif
-        }
-
-        return error_code();
-    }
-
-    void set_tcp_nodelay() { variant2::unsafe_get<1u>(sock_).sock.set_option(asio::ip::tcp::no_delay(true)); }
-
-    void create_ssl_stream()
-    {
-        // The stream object must be re-created even if it already exists, since
-        // once used for a connection (anytime after ssl::stream::handshake is called),
-        // it can't be re-used for any subsequent connections
-        BOOST_ASSERT(variant2::holds_alternative<socket_and_resolver>(sock_));
-        ssl_.emplace(variant2::unsafe_get<1>(sock_).sock, ssl_ctx_.get());
-    }
+    variant_stream_state st_;
 
     struct connect_op
     {
-        int resume_point_{0};
-        variant_stream& this_obj_;
-        error_code stored_ec_;
+        struct impl
+        {
+            variant_stream_connect_algo algo;
+            error_code stored_ec;
+        };
 
-        connect_op(variant_stream& this_obj) noexcept : this_obj_(this_obj) {}
+        std::unique_ptr<impl> impl_;
+
+        // clang-format off
+        connect_op(variant_stream& this_obj)
+            : impl_(new impl{{this_obj.st_, *this_obj.address_}, {}})
+        {
+        }
+        // clang-format on
 
         template <class Self>
-        void operator()(Self& self, error_code ec = {}, asio::ip::tcp::resolver::results_type endpoints = {})
+        void operator()(
+            Self& self,
+            error_code ec = {},
+            const asio::ip::tcp::resolver::results_type& resolver_results = {}
+        )
         {
-            if (ec)
+            auto act = impl_->algo.resume(ec, &resolver_results);
+            switch (act.type)
             {
-                self.complete(ec);
-                return;
-            }
-
-            switch (resume_point_)
-            {
-            case 0:
-
-                // Setup stream
-                stored_ec_ = this_obj_.setup_stream();
-                if (stored_ec_)
-                {
-                    BOOST_MYSQL_YIELD(resume_point_, 1, asio::post(this_obj_.ex_, std::move(self)))
-                    self.complete(stored_ec_);
-                    return;
-                }
-
-                if (this_obj_.address_->type() == address_type::host_and_port)
-                {
-                    // Resolve endpoints
-                    BOOST_MYSQL_YIELD(
-                        resume_point_,
-                        2,
-                        variant2::unsafe_get<1>(this_obj_.sock_)
-                            .resolv.async_resolve(
-                                cast_asio_sv_param(this_obj_.address_->hostname()),
-                                std::to_string(this_obj_.address_->port()),
-                                std::move(self)
-                            )
-                    )
-
-                    // Connect stream
-                    BOOST_MYSQL_YIELD(
-                        resume_point_,
-                        3,
-                        asio::async_connect(
-                            variant2::unsafe_get<1>(this_obj_.sock_).sock,
-                            std::move(endpoints),
-                            std::move(self)
-                        )
-                    )
-
-                    // The final handler requires a void(error_code, tcp::endpoint signature),
-                    // which this function can't implement. See operator() overload below.
-                }
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-                else
-                {
-                    BOOST_ASSERT(this_obj_.address_->type() == address_type::unix_path);
-
-                    // Just connect the stream
-                    BOOST_MYSQL_YIELD(
-                        resume_point_,
-                        4,
-                        variant2::unsafe_get<2>(this_obj_.sock_)
-                            .async_connect(
-                                cast_asio_sv_param(this_obj_.address_->unix_socket_path()),
-                                std::move(self)
-                            )
-                    )
-
-                    self.complete(error_code());
-                }
-#endif
+            case vsconnect_action_type::connect:
+                asio::async_connect(impl_->algo.socket(), act.data.connect, std::move(self));
+                break;
+            case vsconnect_action_type::resolve:
+                impl_->algo.resolver()
+                    .async_resolve(*act.data.resolve.hostname, *act.data.resolve.service, std::move(self));
+                break;
+            case vsconnect_action_type::none:
+                // TODO: immediate completions
+                self.complete(act.data.err);
+                break;
+            default: BOOST_ASSERT(false);
             }
         }
 
+        // Signature for range connect
         template <class Self>
-        void operator()(Self& self, error_code ec, asio::ip::tcp::endpoint)
+        void operator()(Self& self, error_code ec, asio::generic::stream_protocol::endpoint)
         {
-            if (!ec)
-            {
-                // Disable Naggle's algorithm
-                this_obj_.set_tcp_nodelay();
-            }
-            self.complete(ec);
+            (*this)(self, ec, asio::ip::tcp::resolver::results_type{});
         }
     };
 };
