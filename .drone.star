@@ -6,7 +6,7 @@
 #
 
 _triggers = { "branch": [ "master", "develop" ] }
-_container_tag = '252732b3d7af7f78618e877479b85d4d611a61f4'
+_container_tag = 'f14e0a6d336717b58359ee1500c4da7b35ba2689'
 _win_container_tag = 'ca0db5925a497b70e7d6b303c81d56b70c06f9ef'
 
 
@@ -279,11 +279,11 @@ def docs(name):
 def main(ctx):
     return [
         # CMake Linux
-        linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang14'), db='mysql5', build_shared_libs=0),
-        linux_cmake('Linux CMake MariaDB',        _image('build-clang14'), db='mariadb', build_shared_libs=1),
+        linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang18'), db='mysql5', build_shared_libs=0),
+        linux_cmake('Linux CMake MariaDB',        _image('build-clang18'), db='mariadb', build_shared_libs=1),
         linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11', install_test=0),
-        linux_cmake('Linux CMake gcc Release',    _image('build-gcc11'), cmake_build_type='Release'),
-        linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc13'), cmake_build_type='MinSizeRel'),
+        linux_cmake('Linux CMake gcc Release',    _image('build-gcc14'), cmake_build_type='Release'),
+        linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc14'), cmake_build_type='MinSizeRel'),
         linux_cmake_noopenssl('Linux CMake no OpenSSL'),
         linux_cmake_nointeg('Linux CMake without integration tests'),
 
@@ -314,8 +314,9 @@ def main(ctx):
         linux_b2('Linux B2 gcc-11-arm64',         _image('build-gcc11'),         toolset='gcc-11',    cxxstd='11,20', arch='arm64', variant='release'),
         linux_b2('Linux B2 gcc-11-arm64-sanit',   _image('build-gcc11'),         toolset='gcc-11',    cxxstd='20',    arch='arm64', variant='debug'),
         linux_b2('Linux B2 gcc-13',               _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='release'),
-        linux_b2('Linux B2 gcc-13-sanit',         _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 gcc-13-valgrind',      _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', valgrind=1),
+        linux_b2('Linux B2 gcc-14',               _image('build-gcc14'),         toolset='gcc-14',    cxxstd='23', variant='release'),
+        linux_b2('Linux B2 gcc-14-sanit',         _image('build-gcc14'),         toolset='gcc-14',    cxxstd='23', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 gcc-14-valgrind',      _image('build-gcc14'),         toolset='gcc-14',    cxxstd='23', variant='debug', valgrind=1),
         linux_b2('Linux B2 noopenssl',            _image('build-noopenssl'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
 
         # B2 Windows
