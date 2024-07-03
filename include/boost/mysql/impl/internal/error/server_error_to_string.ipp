@@ -1849,6 +1849,7 @@ const char* boost::mysql::detail::mysql_error_to_string(int v)
     case 4163: return "er_user_lock_overlong_name";
     case 4164: return "er_warn_no_space_version_comment";
     case 4165: return "er_validate_password_insufficient_changed_characters";
+    case 4166: return "er_warn_deprecated_with_note";
 
     default: return "<unknown MySQL-specific server error>";
     }
