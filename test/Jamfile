@@ -59,6 +59,9 @@ local requirements =
         # GCC13 doesn't understand view types and issues array bound warnings that don't make sense.
         <toolset>gcc-13:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds"
         <toolset>gcc:<cxxflags>-Wno-implicit-fallthrough # Required by Asio SSL components
+        # gcc-13+ complains about TSAN not supporting std::atomic_thread_fence,
+        # used by Asio old net-ts type-erased executors.
+        <toolset>gcc:<cxxflags>-Wno-tsan
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
