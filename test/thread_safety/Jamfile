@@ -17,12 +17,10 @@ if $(hostname) = ""
 # TSAN can't be enabled in our ARM CIs, since they fail
 # the personality() syscall to disable address space layout randomization.
 # In OSX, tsan reports a race condition in Asio's kqueue reactor. Ignore this for now.
-# gcc-13 complains about TSAN not supporting std::atomic_thread_fence, which is used by Asio.
-# However, this doesn't seem to affect TSAN results
 rule tsan_if_not_arm ( properties * )
 {
     local result ;
-    if ! <architecture>arm in $(properties) && ! <target-os>darwin in $(properties) && ! <toolset-gcc:version>13 in $(properties)
+    if ! <architecture>arm in $(properties) && ! <target-os>darwin in $(properties)
     {
         result += <thread-sanitizer>norecover ;
     }
@@ -35,5 +33,8 @@ run
     : requirements
         <testing.arg>$(hostname)
         <conditional>@tsan_if_not_arm
+        # gcc-13+ complains about TSAN not supporting std::atomic_thread_fence.
+        # Used by Asio old net-ts type-erased executors. Doesn't affect us.
+        <toolset>gcc:<cxxflags>-Wno-tsan
     : target-name boost_mysql_thread_safety
 ;
