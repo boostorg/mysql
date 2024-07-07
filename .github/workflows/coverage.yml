@@ -21,12 +21,12 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/anarthal-containers/build-gcc13
+      image: ghcr.io/anarthal-containers/build-gcc13:252732b3d7af7f78618e877479b85d4d611a61f4
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
       mysql:
-        image: ghcr.io/anarthal-containers/mysql8
+        image: ghcr.io/anarthal-containers/mysql8:252732b3d7af7f78618e877479b85d4d611a61f4
         ports:
           - 3306:3306
         volumes:
