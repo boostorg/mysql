@@ -279,8 +279,8 @@ def docs(name):
 def main(ctx):
     return [
         # CMake Linux
-        linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang18'), db='mysql5', build_shared_libs=0),
-        linux_cmake('Linux CMake MariaDB',        _image('build-clang18'), db='mariadb', build_shared_libs=1),
+        linux_cmake('Linux CMake MySQL 5.x',      _image('build-gcc14'), db='mysql5', build_shared_libs=0),
+        linux_cmake('Linux CMake MariaDB',        _image('build-gcc14'), db='mariadb', build_shared_libs=1),
         linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11', install_test=0),
         linux_cmake('Linux CMake gcc Release',    _image('build-gcc14'), cmake_build_type='Release'),
         linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc14'), cmake_build_type='MinSizeRel'),
