@@ -20,12 +20,12 @@ jobs:
   fuzz:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/anarthal-containers/build-clang18
+      image: ghcr.io/anarthal-containers/build-clang18:c3f5316cc19bf3c0f7a83e31dec58139581f5764
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
       mysql:
-        image: ghcr.io/anarthal-containers/mysql8:e7bd656c3515263f9b3c69a2d73d045f6a0fed72
+        image: ghcr.io/anarthal-containers/mysql8:c3f5316cc19bf3c0f7a83e31dec58139581f5764
         ports:
           - 3306:3306
         volumes:
