@@ -21,9 +21,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          brew --prefix openssl
-          realpath $(brew --prefix openssl)
-          find $(realpath $(brew --prefix openssl))
           unlink /usr/local/bin/python || echo "/usr/local/bin/python not found"
           ln -s /usr/local/bin/python3 /usr/local/bin/python
           cp tools/user-config-osx-gha.jam ~/user-config.jam
