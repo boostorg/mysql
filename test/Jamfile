@@ -56,9 +56,12 @@ local requirements =
         <toolset>msvc:<define>_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
-        # GCC13 doesn't understand view types and issues array bound warnings that don't make sense.
-        <toolset>gcc-13:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds"
-        <toolset>gcc:<cxxflags>-Wno-implicit-fallthrough # Required by Asio SSL components
+        # gcc-13+ doesn't understand view types and issues array bound warnings that don't make sense.
+        # -Wno-implicit-fallthrough is required by Asio SSL components
+        <toolset>gcc:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds -Wno-implicit-fallthrough"
+        # gcc-13+ complains about TSAN not supporting std::atomic_thread_fence,
+        # used by Asio old net-ts type-erased executors.
+        <toolset>gcc,<thread-sanitizer>norecover:<cxxflags>-Wno-tsan
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
@@ -118,7 +121,14 @@ alias common_test_sources
 
 # Boost.Context causes failures with warnings-as-errors
 # under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
-alias boost_context_lib : /boost/context//boost_context/<warnings-as-errors>off ;
+alias boost_context_lib
+    :
+        /boost/context//boost_context/<warnings-as-errors>off
+    : usage-requirements
+        # gcc-14+ seem to enable CET by default, which causes warnings with Boost.Context.
+        # Disable CET until https://github.com/boostorg/context/issues/263 gets fixed
+        <toolset>gcc-14:<cxxflags>-fcf-protection=none
+    ;
 
 alias boost_mysql_test
     :
