@@ -121,7 +121,14 @@ alias common_test_sources
 
 # Boost.Context causes failures with warnings-as-errors
 # under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
-alias boost_context_lib : /boost/context//boost_context/<warnings-as-errors>off ;
+alias boost_context_lib
+    :
+        /boost/context//boost_context/<warnings-as-errors>off
+    : usage-requirements
+        # gcc-14+ seem to enable CET by default, which causes warnings with Boost.Context.
+        # Disable CET until https://github.com/boostorg/context/issues/263 gets fixed
+        <toolset>gcc-14:<cxxflags>-fcf-protection=none
+    ;
 
 alias boost_mysql_test
     :
