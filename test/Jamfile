@@ -56,9 +56,9 @@ local requirements =
         <toolset>msvc:<define>_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
-        # GCC13 doesn't understand view types and issues array bound warnings that don't make sense.
-        <toolset>gcc-13:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds"
-        <toolset>gcc:<cxxflags>-Wno-implicit-fallthrough # Required by Asio SSL components
+        # gcc-13+ doesn't understand view types and issues array bound warnings that don't make sense.
+        # -Wno-implicit-fallthrough is required by Asio SSL components
+        <toolset>gcc:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds -Wno-implicit-fallthrough"
         # gcc-13+ complains about TSAN not supporting std::atomic_thread_fence,
         # used by Asio old net-ts type-erased executors.
         <toolset>gcc,<thread-sanitizer>norecover:<cxxflags>-Wno-tsan
