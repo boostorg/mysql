@@ -51,7 +51,7 @@ jobs:
         run: |
           SOURCE_DIR=$(pwd)
           cd ~/boost-root
-          gcov-13 -r -p $(find bin.v2/ -name '*.gcda') > /dev/null
+          gcov-14 -r -p $(find bin.v2/ -name '*.gcda') > /dev/null
           mkdir $GCOV_REPORT_DIR
           cp boost#mysql#*.gcov $GCOV_REPORT_DIR
       
