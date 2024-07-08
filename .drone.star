@@ -100,6 +100,7 @@ def _pipeline(
         "name": "Build and run",
         "image": image,
         "pull": "if-not-exists",
+        "privileged": arch == "arm64",
         "volumes":[{
             "name": "mysql-socket",
             "path": "/var/run/mysqld"
