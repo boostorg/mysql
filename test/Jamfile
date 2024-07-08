@@ -61,7 +61,7 @@ local requirements =
         <toolset>gcc:<cxxflags>-Wno-implicit-fallthrough # Required by Asio SSL components
         # gcc-13+ complains about TSAN not supporting std::atomic_thread_fence,
         # used by Asio old net-ts type-erased executors.
-        <toolset>gcc:<cxxflags>-Wno-tsan
+        <toolset>gcc,<thread-sanitizer>norecover:<cxxflags>-Wno-tsan
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
