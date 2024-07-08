@@ -15,8 +15,6 @@ if $(hostname) = ""
 }
 
 
-# TSAN can't be enabled in our ARM CIs, since they fail
-# the personality() syscall to disable address space layout randomization.
 # In OSX, tsan reports a race condition in Asio's kqueue reactor. Ignore this for now.
 # Net TS executors use std::atomic_thread_fence, unsupported by TSAN, which yields false positives.
 run
@@ -24,7 +22,6 @@ run
         connection_pool.cpp
     : requirements
         <testing.arg>$(hostname)
-        <architecture>arm:<build>no
         <target-os>darwin:<build>no
         <boost.mysql.use-ts-executor>on:<build>no
         <thread-sanitizer>norecover
