@@ -15,6 +15,10 @@
 # MySQL and MariaDB often rename, deprecate, etc. codes. To attempt to maintain sanity,
 # we generate a CSV file with what we did for the previous version. We load it and combine it
 # with the new errors, and we only perform backwards-compatible changes.
+#
+# To update the codes for a new release:
+#   - MySQL: https://dev.mysql.com/downloads/mysql/
+#   - MariaDB: https://mariadb.org/connector-c/all-releases/
 
 import pandas as pd
 from os import path
@@ -371,7 +375,7 @@ def invoke_file_headers() -> None:
 
 def main():
     old_codes = load_csv()
-    new_codes = parse_headers(REPO_BASE.joinpath('private', 'errors', '1.84'))
+    new_codes = parse_headers(REPO_BASE.joinpath('private', 'errors', '1.86'))
     codes = merge_new_codes(old_codes, new_codes)
     write_csv(codes)
     write_headers(codes)
