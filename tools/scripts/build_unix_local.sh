@@ -10,9 +10,9 @@ set -e
 
 repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
-BK=docs
-IMAGE=build-docs
-SHA=252732b3d7af7f78618e877479b85d4d611a61f4
+BK=b2
+IMAGE=build-gcc14
+SHA=c3f5316cc19bf3c0f7a83e31dec58139581f5764
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
 DB=mysql8
@@ -35,8 +35,8 @@ db_args="--server-host=$DB --db=$DB"
 case $BK in
     b2) cmd="$db_args
             --toolset=gcc
-            --cxxstd=20
-            --variant=debug
+            --cxxstd=23
+            --variant=release
             --stdlib=native
             --address-model=64
             --separate-compilation=1
