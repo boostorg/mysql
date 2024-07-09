@@ -57,8 +57,8 @@ static test::server_features do_get_server_features()
     // Parse the disabled features list
     auto disabled_features = split_list(disabled_features_str);
 
-    // Match disabled features against the possible set
-    struct possible_feature_t
+    // The list of possible features
+    const struct possible_feature_t
     {
         string_view name;
         test::server_feature_t ptr;
@@ -69,7 +69,15 @@ static test::server_features do_get_server_features()
         {"regex-error-codes",     &test::server_features::regex_error_codes    },
         {"dup-query-error-codes", &test::server_features::dup_query_error_codes},
     };
+
+    // All features are enabled, by default
     test::server_features res;
+    for (const auto feature : possible_features)
+    {
+        res.*feature.ptr = true;
+    }
+
+    // Match disabled features against the possible set
     for (auto feature : disabled_features)
     {
         auto it = std::find_if(
