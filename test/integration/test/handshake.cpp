@@ -23,6 +23,7 @@
 #include "test_integration/get_endpoint.hpp"
 #include "test_integration/network_test.hpp"
 #include "test_integration/server_ca.hpp"
+#include "test_integration/server_features.hpp"
 #include "test_integration/streams.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
@@ -180,8 +181,7 @@ struct caching_sha2_user_creator : tcp_network_fixture
     }
 };
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
 BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_sha2_user_creator>())
 
 struct caching_sha2_fixture : handshake_fixture
@@ -348,8 +348,7 @@ BOOST_MYSQL_NETWORK_TEST(no_database, handshake_fixture, net_samples_both)
     do_handshake_ok();
 }
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
 BOOST_MYSQL_NETWORK_TEST(unknown_auth_plugin, handshake_fixture, net_samples_ssl)
 {
     // Note: sha256_password is not supported, so it's an unknown plugin to us

@@ -35,6 +35,7 @@
 #include "test_integration/get_endpoint.hpp"
 #include "test_integration/network_test.hpp"
 #include "test_integration/run_stackful_coro.hpp"
+#include "test_integration/server_features.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -237,7 +238,7 @@ BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp, change_stream_type_fixture)
 }
 
 // UNIX cases. Note that some sync cases are not included, to save testing time
-BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_FIXTURE_TEST_CASE(change_stream_type_unix, change_stream_type_fixture)
 {
     // UNIX connect params

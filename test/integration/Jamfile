@@ -39,6 +39,7 @@ run
         /boost/mysql/test//launch_with_valgrind
  
         # Utilities
+        src/server_features.cpp
         src/get_endpoint.cpp
         src/metadata_validator.cpp
         src/er_network_variant.cpp

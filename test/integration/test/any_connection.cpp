@@ -26,6 +26,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
+#include <boost/test/tree/decorator.hpp>
 
 #include <string>
 
@@ -36,6 +37,7 @@
 #include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/server_ca.hpp"
+#include "test_integration/server_features.hpp"
 
 // Additional spotchecks for any_connection
 
@@ -117,7 +119,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_mode_enable)
 }
 
 // UNIX connections never use SSL
-BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_AUTO_TEST_CASE(unix_ssl)
 {
     // Create the connection
@@ -137,8 +139,7 @@ BOOST_AUTO_TEST_CASE(unix_ssl)
 }
 
 // Spotcheck: users can log-in using the caching_sha2_password auth plugin
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
 BOOST_AUTO_TEST_CASE(tcp_caching_sha2_password)
 {
     // Create the connection
@@ -157,9 +158,7 @@ BOOST_AUTO_TEST_CASE(tcp_caching_sha2_password)
 
 // Users can log-in using the caching_sha2_password auth plugin
 // even if they're using UNIX sockets.
-BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::sha256, &server_features::unix_sockets))
 BOOST_AUTO_TEST_CASE(unix_caching_sha2_password)
 {
     // Setup

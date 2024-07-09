@@ -9,6 +9,7 @@ add_executable(
     boost_mysql_integrationtests
 
     # Utilities
+    src/server_features.cpp
     src/get_endpoint.cpp
     src/metadata_validator.cpp
     src/er_network_variant.cpp
