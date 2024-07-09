@@ -44,6 +44,7 @@ jobs:
             --toolset=gcc \
             --cxxstd=20 \
             --variant=debug \
+            --disable-local-sockets=off,on \
             --coverage=1
       
       - name: Generate coverage reports
