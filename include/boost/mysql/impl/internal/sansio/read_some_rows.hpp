@@ -15,10 +15,9 @@
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 #include <cstddef>
 
@@ -26,10 +25,17 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class read_some_rows_algo : public sansio_algorithm, asio::coroutine
+class read_some_rows_algo
 {
-    read_some_rows_algo_params params_;
-    std::size_t rows_read_{0};
+    diagnostics* diag_;
+    execution_processor* proc_;
+    output_ref output_;
+
+    struct state_t
+    {
+        int resume_point{0};
+        std::size_t rows_read{0};
+    } state_;
 
     BOOST_ATTRIBUTE_NODISCARD static std::pair<error_code, std::size_t> process_some_rows(
         connection_state_data& st,
@@ -87,29 +93,32 @@ class read_some_rows_algo : public sansio_algorithm, asio::coroutine
         return {error_code(), read_rows};
     }
 
-    execution_processor& processor() noexcept { return *params_.proc; }
-
 public:
-    read_some_rows_algo(connection_state_data& st, read_some_rows_algo_params params) noexcept
-        : sansio_algorithm(st), params_(params)
+    read_some_rows_algo(read_some_rows_algo_params params) noexcept
+        : diag_(params.diag), proc_(params.proc), output_(params.output)
     {
     }
 
-    read_some_rows_algo_params params() const noexcept { return params_; }
+    void reset() { state_ = state_t{}; }
 
-    next_action resume(error_code ec)
+    const execution_processor& processor() const { return *proc_; }
+    execution_processor& processor() { return *proc_; }
+
+    next_action resume(connection_state_data& st, error_code ec)
     {
         if (ec)
             return ec;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (state_.resume_point)
         {
+        case 0:
+
             // Clear diagnostics
-            params_.diag->clear();
+            diag_->clear();
 
             // Clear any previous use of shared fields.
             // Required for the dynamic version to work.
-            st_->shared_fields.clear();
+            st.shared_fields.clear();
 
             // If we are not reading rows, return
             if (!processor().is_reading_rows())
@@ -117,17 +126,17 @@ public:
 
             // Read at least one message. Keep parsing state, in case a previous message
             // was parsed partially
-            BOOST_ASIO_CORO_YIELD return read(processor().sequence_number(), true);
+            BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number(), true))
 
             // Process messages
-            std::tie(ec, rows_read_) = process_some_rows(*st_, processor(), params_.output, *params_.diag);
+            std::tie(ec, state_.rows_read) = process_some_rows(st, *proc_, output_, *diag_);
             return ec;
         }
 
         return next_action();
     }
 
-    std::size_t result() const noexcept { return rows_read_; }
+    std::size_t result(const connection_state_data&) const { return state_.rows_read; }
 };
 
 }  // namespace detail

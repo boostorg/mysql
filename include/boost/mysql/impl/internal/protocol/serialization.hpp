@@ -8,380 +8,253 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_SERIALIZATION_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_SERIALIZATION_HPP
 
-#include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/basic_types.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
+#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/binary_protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/null_bitmap.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include <boost/assert.hpp>
-#include <boost/core/span.hpp>
-#include <boost/endian/conversion.hpp>
-#include <boost/endian/detail/endian_load.hpp>
-#include <boost/endian/detail/endian_store.hpp>
 
-#include <cstddef>
 #include <cstdint>
-#include <cstring>
-#include <type_traits>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-// We operate with this enum directly in the deserialization routines for efficiency, then transform it to an
-// actual error code
-enum class deserialize_errc
+// quit
+struct quit_command
 {
-    ok = 0,
-    incomplete_message = 1,
-    protocol_value_error,
-    server_unsupported
+    void serialize(serialization_context& ctx) const { ctx.add(0x01); }
 };
-inline error_code to_error_code(deserialize_errc v) noexcept
-{
-    switch (v)
-    {
-    case deserialize_errc::ok: return error_code();
-    case deserialize_errc::incomplete_message: return error_code(client_errc::incomplete_message);
-    case deserialize_errc::protocol_value_error: return error_code(client_errc::protocol_value_error);
-    case deserialize_errc::server_unsupported: return error_code(client_errc::server_unsupported);
-    default: BOOST_ASSERT(false); return error_code();  // avoid warnings
-    }
-}
 
-class serialization_context
+// ping
+struct ping_command
 {
-    std::uint8_t* first_;
+    void serialize(serialization_context& ctx) const { ctx.add(0x0e); }
+};
 
-public:
-    explicit serialization_context(std::uint8_t* first) noexcept : first_(first) {}
-    std::uint8_t* first() const noexcept { return first_; }
-    void advance(std::size_t size) noexcept { first_ += size; }
-    void write(const void* buffer, std::size_t size) noexcept
+// reset_connection
+struct reset_connection_command
+{
+    void serialize(serialization_context& ctx) const { ctx.add(0x1f); }
+};
+
+// query
+struct query_command
+{
+    string_view query;
+
+    void serialize(serialization_context& ctx) const
     {
-        if (size)
-        {
-            BOOST_ASSERT(buffer != nullptr);
-            std::memcpy(first_, buffer, size);
-            advance(size);
-        }
-    }
-    void write(std::uint8_t elm) noexcept
-    {
-        *first_ = elm;
-        ++first_;
+        ctx.add(0x03);
+        string_eof{query}.serialize_checked(ctx);
     }
 };
 
-class deserialization_context
+// prepare_statement
+struct prepare_stmt_command
 {
-    const std::uint8_t* first_;
-    const std::uint8_t* last_;
+    string_view stmt;
 
-public:
-    deserialization_context(span<const std::uint8_t> data) noexcept
-        : deserialization_context(data.data(), data.size())
+    void serialize(serialization_context& ctx) const
     {
+        ctx.add(0x16);
+        string_eof{stmt}.serialize(ctx);
     }
-    deserialization_context(const std::uint8_t* first, std::size_t size) noexcept
-        : first_(first), last_(first + size){};
-    const std::uint8_t* first() const noexcept { return first_; }
-    const std::uint8_t* last() const noexcept { return last_; }
-    void advance(std::size_t sz) noexcept
-    {
-        first_ += sz;
-        BOOST_ASSERT(last_ >= first_);
-    }
-    void rewind(std::size_t sz) noexcept { first_ -= sz; }
-    std::size_t size() const noexcept { return last_ - first_; }
-    bool empty() const noexcept { return last_ == first_; }
-    bool enough_size(std::size_t required_size) const noexcept { return size() >= required_size; }
-    deserialize_errc copy(void* to, std::size_t sz) noexcept
-    {
-        if (!enough_size(sz))
-            return deserialize_errc::incomplete_message;
-        memcpy(to, first_, sz);
-        advance(sz);
-        return deserialize_errc::ok;
-    }
-    string_view get_string(std::size_t sz) const noexcept
-    {
-        return string_view(reinterpret_cast<const char*>(first_), sz);
-    }
-    error_code check_extra_bytes() const noexcept
-    {
-        return empty() ? error_code() : error_code(client_errc::extra_bytes);
-    }
-    span<const std::uint8_t> to_span() const noexcept { return span<const std::uint8_t>(first_, size()); }
 };
 
-// integers
-template <class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
-deserialize_errc deserialize(deserialization_context& ctx, T& output) noexcept
+// execute statement
+struct execute_stmt_command
 {
-    constexpr std::size_t sz = sizeof(T);
-    if (!ctx.enough_size(sz))
+    std::uint32_t statement_id;
+    span<const field_view> params;
+
+    inline void serialize(serialization_context& ctx) const;
+};
+
+// close statement
+struct close_stmt_command
+{
+    std::uint32_t statement_id;
+    void serialize(serialization_context& ctx) const
     {
-        return deserialize_errc::incomplete_message;
+        ctx.add(0x19);
+        int4{statement_id}.serialize(ctx);
     }
-    output = endian::endian_load<T, sz, boost::endian::order::little>(ctx.first());
-    ctx.advance(sz);
-    return deserialize_errc::ok;
-}
+};
 
-template <class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
-void serialize(serialization_context& ctx, T input) noexcept
+// Login request
+struct login_request
 {
-    endian::endian_store<T, sizeof(T), endian::order::little>(ctx.first(), input);
-    ctx.advance(sizeof(T));
-}
+    capabilities negotiated_capabilities;  // capabilities
+    std::uint32_t max_packet_size;
+    std::uint32_t collation_id;
+    string_view username;
+    span<const std::uint8_t> auth_response;
+    string_view database;
+    string_view auth_plugin_name;
 
-template <class T, class = typename std::enable_if<std::is_integral<T>::value>::type>
-constexpr std::size_t get_size(T) noexcept
-{
-    return sizeof(T);
-}
+    inline void serialize(serialization_context& ctx) const;
+};
 
-// int3
-inline deserialize_errc deserialize(deserialization_context& ctx, int3& output) noexcept
+// SSL request
+struct ssl_request
 {
-    if (!ctx.enough_size(3))
-        return deserialize_errc::incomplete_message;
-    output.value = endian::load_little_u24(ctx.first());
-    ctx.advance(3);
-    return deserialize_errc::ok;
-}
-inline void serialize(serialization_context& ctx, int3 input) noexcept
-{
-    endian::store_little_u24(ctx.first(), input.value);
-    ctx.advance(3);
-}
-constexpr std::size_t get_size(int3) noexcept { return 3; }
+    capabilities negotiated_capabilities;
+    std::uint32_t max_packet_size;
+    std::uint32_t collation_id;
 
-// int_lenenc
-inline deserialize_errc deserialize(deserialization_context& ctx, int_lenenc& output) noexcept
-{
-    std::uint8_t first_byte = 0;
-    auto err = deserialize(ctx, first_byte);
-    if (err != deserialize_errc::ok)
-    {
-        return err;
-    }
+    inline void serialize(serialization_context& ctx) const;
+};
 
-    if (first_byte == 0xFC)
-    {
-        std::uint16_t value = 0;
-        err = deserialize(ctx, value);
-        output.value = value;
-    }
-    else if (first_byte == 0xFD)
-    {
-        int3 value{};
-        err = deserialize(ctx, value);
-        output.value = value.value;
-    }
-    else if (first_byte == 0xFE)
-    {
-        std::uint64_t value = 0;
-        err = deserialize(ctx, value);
-        output.value = value;
-    }
-    else
-    {
-        err = deserialize_errc::ok;
-        output.value = first_byte;
-    }
-    return err;
-}
-inline void serialize(serialization_context& ctx, int_lenenc input) noexcept
+// Auth switch response
+struct auth_switch_response
 {
-    if (input.value < 251)
-    {
-        serialize(ctx, static_cast<std::uint8_t>(input.value));
-    }
-    else if (input.value < 0x10000)
-    {
-        ctx.write(0xfc);
-        serialize(ctx, static_cast<std::uint16_t>(input.value));
-    }
-    else if (input.value < 0x1000000)
-    {
-        ctx.write(0xfd);
-        serialize(ctx, int3{static_cast<std::uint32_t>(input.value)});
-    }
-    else
-    {
-        ctx.write(0xfe);
-        serialize(ctx, static_cast<std::uint64_t>(input.value));
-    }
-}
-inline std::size_t get_size(int_lenenc input) noexcept
-{
-    if (input.value < 251)
-        return 1;
-    else if (input.value < 0x10000)
-        return 3;
-    else if (input.value < 0x1000000)
-        return 4;
-    else
-        return 9;
-}
+    span<const std::uint8_t> auth_plugin_data;
 
-// protocol_field_type
-inline deserialize_errc deserialize(deserialization_context& ctx, protocol_field_type& output) noexcept
-{
-    std::underlying_type<protocol_field_type>::type value = 0;
-    auto err = deserialize(ctx, value);
-    output = static_cast<protocol_field_type>(value);
-    return err;
-}
-inline void serialize(serialization_context& ctx, protocol_field_type input) noexcept
-{
-    serialize(ctx, static_cast<std::underlying_type<protocol_field_type>::type>(input));
-}
-constexpr std::size_t get_size(protocol_field_type) noexcept { return sizeof(protocol_field_type); }
+    void serialize(serialization_context& ctx) const { ctx.add(auth_plugin_data); }
+};
 
-// string_fixed
-template <std::size_t N>
-deserialize_errc deserialize(deserialization_context& ctx, string_fixed<N>& output) noexcept
+// Serialize a complete message
+template <class Serializable>
+inline std::uint8_t serialize_top_level(
+    const Serializable& input,
+    std::vector<std::uint8_t>& to,
+    std::uint8_t seqnum = 0,
+    std::size_t frame_size = max_packet_size
+)
 {
-    if (!ctx.enough_size(N))
-        return deserialize_errc::incomplete_message;
-    memcpy(output.value.data(), ctx.first(), N);
-    ctx.advance(N);
-    return deserialize_errc::ok;
-}
-
-template <std::size_t N>
-void serialize(serialization_context& ctx, const string_fixed<N>& input) noexcept
-{
-    ctx.write(input.value.data(), N);
-}
-
-template <std::size_t N>
-constexpr std::size_t get_size(const string_fixed<N>&) noexcept
-{
-    return N;
-}
-
-// string_null
-inline deserialize_errc deserialize(deserialization_context& ctx, string_null& output) noexcept
-{
-    auto string_end = std::find(ctx.first(), ctx.last(), 0);
-    if (string_end == ctx.last())
-    {
-        return deserialize_errc::incomplete_message;
-    }
-    std::size_t length = string_end - ctx.first();
-    output.value = ctx.get_string(length);
-    ctx.advance(length + 1);  // skip the null terminator
-    return deserialize_errc::ok;
-}
-inline void serialize(serialization_context& ctx, string_null input) noexcept
-{
-    ctx.write(input.value.data(), input.value.size());
-    ctx.write(0);  // null terminator
-}
-inline std::size_t get_size(string_null input) noexcept { return input.value.size() + 1; }
-
-// string_eof
-inline deserialize_errc deserialize(deserialization_context& ctx, string_eof& output) noexcept
-{
-    std::size_t size = ctx.size();
-    output.value = ctx.get_string(size);
-    ctx.advance(size);
-    return deserialize_errc::ok;
-}
-inline void serialize(serialization_context& ctx, string_eof input) noexcept
-{
-    ctx.write(input.value.data(), input.value.size());
-}
-inline std::size_t get_size(string_eof input) noexcept { return input.value.size(); }
-
-// string_lenenc
-inline deserialize_errc deserialize(deserialization_context& ctx, string_lenenc& output) noexcept
-{
-    int_lenenc length;
-    auto err = deserialize(ctx, length);
-    if (err != deserialize_errc::ok)
-    {
-        return err;
-    }
-    if (length.value > (std::numeric_limits<std::size_t>::max)())
-    {
-        return deserialize_errc::protocol_value_error;
-    }
-    auto len = static_cast<std::size_t>(length.value);
-    if (!ctx.enough_size(len))
-    {
-        return deserialize_errc::incomplete_message;
-    }
-
-    output.value = ctx.get_string(len);
-    ctx.advance(len);
-    return deserialize_errc::ok;
-}
-inline void serialize(serialization_context& ctx, string_lenenc input) noexcept
-{
-    serialize(ctx, int_lenenc{input.value.size()});
-    ctx.write(input.value.data(), input.value.size());
-}
-inline std::size_t get_size(string_lenenc input) noexcept
-{
-    return get_size(int_lenenc{input.value.size()}) + input.value.size();
-}
-
-// serialize, deserialize, and get size of multiple fields at the same time
-template <class FirstType, class SecondType, class... Rest>
-deserialize_errc deserialize(
-    deserialization_context& ctx,
-    FirstType& first,
-    SecondType& second,
-    Rest&... tail
-) noexcept
-{
-    deserialize_errc err = deserialize(ctx, first);
-    if (err == deserialize_errc::ok)
-    {
-        err = deserialize(ctx, second, tail...);
-    }
-    return err;
-}
-
-template <class FirstType, class SecondType, class... Rest>
-void serialize(
-    serialization_context& ctx,
-    const FirstType& first,
-    const SecondType& second,
-    const Rest&... rest
-) noexcept
-{
-    serialize(ctx, first);
-    serialize(ctx, second, rest...);
-}
-
-template <class FirstType, class SecondType, class... Rest>
-std::size_t get_size(const FirstType& first, const SecondType& second, const Rest&... rest) noexcept
-{
-    return get_size(first) + get_size(second, rest...);
-}
-
-// helpers
-inline string_view to_string(span<const std::uint8_t> v) noexcept
-{
-    return string_view(reinterpret_cast<const char*>(v.data()), v.size());
-}
-inline span<const std::uint8_t> to_span(string_view v) noexcept
-{
-    return span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(v.data()), v.size());
+    serialization_context ctx(to, frame_size);
+    input.serialize(ctx);
+    return ctx.write_frame_headers(seqnum);
 }
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
+
+//
+// Implementations
+//
+
+namespace boost {
+namespace mysql {
+namespace detail {
+
+// Maps from an actual value to a protocol_field_type (for execute statement)
+inline protocol_field_type to_protocol_field_type(field_kind kind)
+{
+    switch (kind)
+    {
+    case field_kind::null: return protocol_field_type::null;
+    case field_kind::int64: return protocol_field_type::longlong;
+    case field_kind::uint64: return protocol_field_type::longlong;
+    case field_kind::string: return protocol_field_type::string;
+    case field_kind::blob: return protocol_field_type::blob;
+    case field_kind::float_: return protocol_field_type::float_;
+    case field_kind::double_: return protocol_field_type::double_;
+    case field_kind::date: return protocol_field_type::date;
+    case field_kind::datetime: return protocol_field_type::datetime;
+    case field_kind::time: return protocol_field_type::time;
+    default: BOOST_ASSERT(false); return protocol_field_type::null;
+    }
+}
+
+// Returns the collation ID's first byte (for login packets)
+inline std::uint8_t get_collation_first_byte(std::uint32_t collation_id)
+{
+    return static_cast<std::uint8_t>(collation_id % 0xff);
+}
+
+}  // namespace detail
+}  // namespace mysql
+}  // namespace boost
+
+void boost::mysql::detail::execute_stmt_command::serialize(serialization_context& ctx) const
+{
+    // The wire layout is as follows:
+    //  command ID
+    //  std::uint32_t statement_id;
+    //  std::uint8_t flags;
+    //  std::uint32_t iteration_count;
+    //  if num_params > 0:
+    //      NULL bitmap
+    //      std::uint8_t new_params_bind_flag;
+    //      array<meta_packet, num_params> meta;
+    //          protocol_field_type type;
+    //          std::uint8_t unsigned_flag;
+    //      array<field_view, num_params> params;
+
+    constexpr int1 command_id{0x17};
+    constexpr int1 flags{0};
+    constexpr int4 iteration_count{1};
+    constexpr int1 new_params_bind_flag{1};
+
+    // header
+    ctx.serialize(command_id, int4{statement_id}, flags, iteration_count);
+
+    // Number of parameters
+    auto num_params = params.size();
+
+    if (num_params > 0)
+    {
+        // NULL bitmap
+        null_bitmap_generator null_gen(params);
+        while (!null_gen.done())
+            ctx.add(null_gen.next());
+
+        // new parameters bind flag
+        new_params_bind_flag.serialize(ctx);
+
+        // value metadata
+        for (field_view param : params)
+        {
+            field_kind kind = param.kind();
+            protocol_field_type type = to_protocol_field_type(kind);
+            std::uint8_t unsigned_flag = kind == field_kind::uint64 ? std::uint8_t(0x80) : std::uint8_t(0);
+            ctx.add(static_cast<std::uint8_t>(type));
+            ctx.add(unsigned_flag);
+        }
+
+        // actual values
+        for (field_view param : params)
+        {
+            serialize_binary_field(ctx, param);
+        }
+    }
+}
+
+void boost::mysql::detail::login_request::serialize(serialization_context& ctx) const
+{
+    ctx.serialize(
+        int4{negotiated_capabilities.get()},           // client_flag
+        int4{max_packet_size},                         // max_packet_size
+        int1{get_collation_first_byte(collation_id)},  //  character_set
+        string_fixed<23>{},                            // filler (all zeros)
+        string_null{username},
+        string_lenenc{to_string(auth_response)}  // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
+    );
+    if (negotiated_capabilities.has(CLIENT_CONNECT_WITH_DB))
+    {
+        string_null{database}.serialize(ctx);  // database
+    }
+    string_null{auth_plugin_name}.serialize(ctx);  //  client_plugin_name
+}
+
+void boost::mysql::detail::ssl_request::serialize(serialization_context& ctx) const
+{
+    ctx.serialize(
+        int4{negotiated_capabilities.get()},           // client_flag
+        int4{max_packet_size},                         // max_packet_size
+        int1{get_collation_first_byte(collation_id)},  // character_set,
+        string_fixed<23>{}                             // filler, all zeros
+    );
+}
 
 #endif

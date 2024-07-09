@@ -13,6 +13,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/pipeline.hpp>
 
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
@@ -30,6 +31,7 @@
 
 #include <chrono>
 #include <utility>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -75,6 +77,8 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     diagnostics connect_diag_;
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
                                    // conditions not harmful
+    const pipeline_request* reset_pipeline_req_;
+    std::vector<stage_response> reset_pipeline_res_;
 
     // Thread-safe
     std::atomic<collection_state> collection_state_{collection_state::none};
@@ -127,7 +131,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
             case next_connection_action::connect:
                 run_with_timeout(
                     node_.conn_
-                        .async_connect(&node_.params_->connect_config, node_.connect_diag_, asio::deferred),
+                        .async_connect(node_.params_->connect_config, node_.connect_diag_, asio::deferred),
                     node_.timer_,
                     node_.params_->connect_timeout,
                     std::move(self)
@@ -147,7 +151,11 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 break;
             case next_connection_action::reset:
                 run_with_timeout(
-                    access::get_impl(node_.conn_).async_reset_with_charset(utf8mb4_charset, asio::deferred),
+                    node_.conn_.async_run_pipeline(
+                        *node_.reset_pipeline_req_,
+                        node_.reset_pipeline_res_,
+                        asio::deferred
+                    ),
                     node_.timer_,
                     node_.params_->ping_timeout,
                     std::move(self)
@@ -172,13 +180,15 @@ public:
         internal_pool_params& params,
         boost::asio::any_io_executor ex,
         boost::asio::any_io_executor conn_ex,
-        conn_shared_state<IoTraits>& shared_st
+        conn_shared_state<IoTraits>& shared_st,
+        const pipeline_request* reset_pipeline_req
     )
         : params_(&params),
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
           timer_(ex),
-          collection_timer_(ex, (std::chrono::steady_clock::time_point::max)())
+          collection_timer_(ex, (std::chrono::steady_clock::time_point::max)()),
+          reset_pipeline_req_(reset_pipeline_req)
     {
     }
 
@@ -191,8 +201,8 @@ public:
 
     // This initiation must be invoked within the pool's executor
     template <class CompletionToken>
-    auto async_run(CompletionToken&& token)
-        -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
+    auto async_run(CompletionToken&& token
+    ) -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
     {
         return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token);
     }

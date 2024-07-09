@@ -10,8 +10,10 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connection.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
@@ -19,8 +21,11 @@
 
 #include <boost/mysql/detail/config.hpp>
 
+#include <vector>
+
 #include "test_common/create_basic.hpp"
 #include "test_common/netfun_maker.hpp"
+#include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/er_connection.hpp"
 #include "test_integration/network_test.hpp"
@@ -68,26 +73,6 @@ BOOST_MYSQL_NETWORK_TEST(connect_error, network_fixture, err_net_samples)
     BOOST_TEST(!conn->is_open());
 }
 
-// Start query (legacy)
-BOOST_MYSQL_NETWORK_TEST(start_query_legacy_success, network_fixture, all_network_samples())
-{
-    setup_and_connect(sample.net);
-
-    execution_state st;
-    conn->start_query("SELECT * FROM empty_table", st).get();
-    BOOST_TEST(st.should_read_rows());
-    validate_2fields_meta(st.meta(), "empty_table");
-}
-
-BOOST_MYSQL_NETWORK_TEST(start_query_legacy_error, network_fixture, err_net_samples)
-{
-    setup_and_connect(sample.net);
-
-    execution_state st;
-    conn->start_query("SELECT field_varchar, field_bad FROM one_row_table", st)
-        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
-}
-
 // Start execution (query)
 BOOST_MYSQL_NETWORK_TEST(start_execution_query_success, network_fixture, all_network_samples())
 {
@@ -105,27 +90,6 @@ BOOST_MYSQL_NETWORK_TEST(start_execution_query_error, network_fixture, err_net_s
 
     execution_state st;
     conn->start_execution("SELECT field_varchar, field_bad FROM one_row_table", st)
-        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
-}
-
-// Query (legacy)
-BOOST_MYSQL_NETWORK_TEST(query_legacy_success, network_fixture, all_network_samples())
-{
-    setup_and_connect(sample.net);
-
-    results result;
-    conn->query("SELECT 'hello', 42", result).get();
-    BOOST_TEST(result.rows().size() == 1u);
-    BOOST_TEST(result.rows()[0] == makerow("hello", 42));
-    BOOST_TEST(result.meta().size() == 2u);
-}
-
-BOOST_MYSQL_NETWORK_TEST(query_legacy_error, network_fixture, err_net_samples)
-{
-    setup_and_connect(sample.net);
-
-    results result;
-    conn->query("SELECT field_varchar, field_bad FROM one_row_table", result)
         .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
 }
 
@@ -167,42 +131,7 @@ BOOST_MYSQL_NETWORK_TEST(prepare_statement_error, network_fixture, err_net_sampl
         .validate_error(common_server_errc::er_no_such_table, {"table", "doesn't exist", "bad_table"});
 }
 
-// Start statement execution (legacy, iterator)
-BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_it_success, network_fixture, all_network_samples())
-{
-    setup_and_connect(sample.net);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Execute
-    execution_state st;
-    std::forward_list<field_view> stmt_params{field_view("item"), field_view(42)};
-    conn->start_statement_execution(stmt, stmt_params.begin(), stmt_params.end(), st).validate_no_error();
-    validate_2fields_meta(st.meta(), "empty_table");
-    BOOST_TEST(st.should_read_rows());
-}
-
-BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_it_error, network_fixture, err_net_samples)
-{
-    setup_and_connect(sample.net);
-    start_transaction();
-
-    // Prepare
-    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)")
-                    .get();
-
-    // Execute
-    execution_state st;
-    std::forward_list<field_view> stmt_params{field_view("f0"), field_view("bad_date")};
-    conn->start_statement_execution(stmt, stmt_params.begin(), stmt_params.end(), st)
-        .validate_error(
-            common_server_errc::er_truncated_wrong_value,
-            {"field_date", "bad_date", "incorrect date value"}
-        );
-}
-
-// Start execution (statement, iterator). No error spotcheck, since it's the same underlying function
+// Start execution (statement, iterator)
 BOOST_MYSQL_NETWORK_TEST(start_execution_stmt_it_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
@@ -218,26 +147,7 @@ BOOST_MYSQL_NETWORK_TEST(start_execution_stmt_it_success, network_fixture, all_n
     BOOST_TEST(st.should_read_rows());
 }
 
-// Start statement execution (legacy, tuple)
-BOOST_MYSQL_NETWORK_TEST(
-    start_statement_execution_legacy_tuple_success,
-    network_fixture,
-    all_network_samples()
-)
-{
-    setup_and_connect(sample.net);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Execute
-    execution_state st;
-    conn->start_statement_execution(stmt, field_view(42), field_view(40), st).validate_no_error();
-    validate_2fields_meta(st.meta(), "empty_table");
-    BOOST_TEST(st.should_read_rows());
-}
-
-BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_tuple_error, network_fixture, err_net_samples)
+BOOST_MYSQL_NETWORK_TEST(start_execution_stmt_it_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -248,14 +158,15 @@ BOOST_MYSQL_NETWORK_TEST(start_statement_execution_legacy_tuple_error, network_f
 
     // Execute
     execution_state st;
-    conn->start_statement_execution(stmt, field_view("abc"), field_view("bad_date"), st)
+    std::forward_list<field_view> stmt_params{field_view("f0"), field_view("bad_date")};
+    conn->start_execution(stmt.bind(stmt_params.cbegin(), stmt_params.cend()), st)
         .validate_error(
             common_server_errc::er_truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
         );
 }
 
-// start execution (statement, tuple). No error spotcheck since it's the same underlying fn
+// start execution (statement, tuple)
 BOOST_MYSQL_NETWORK_TEST(start_execution_statement_tuple_success, network_fixture, all_network_samples())
 {
     setup_and_connect(sample.net);
@@ -270,21 +181,7 @@ BOOST_MYSQL_NETWORK_TEST(start_execution_statement_tuple_success, network_fixtur
     BOOST_TEST(st.should_read_rows());
 }
 
-// Execute statement (legacy)
-BOOST_MYSQL_NETWORK_TEST(execute_statement_legacy_success, network_fixture, all_network_samples())
-{
-    setup_and_connect(sample.net);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Execute
-    results result;
-    conn->execute_statement(stmt, field_view("item"), field_view(42), result).validate_no_error();
-    BOOST_TEST(result.rows().size() == 0u);
-}
-
-BOOST_MYSQL_NETWORK_TEST(execute_statement_legacy_error, network_fixture, err_net_samples)
+BOOST_MYSQL_NETWORK_TEST(start_execution_statement_tuple_error, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
     start_transaction();
@@ -294,15 +191,15 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_legacy_error, network_fixture, err_ne
                     .get();
 
     // Execute
-    results result;
-    conn->execute_statement(stmt, field_view("f0"), field_view("bad_date"), result)
+    execution_state st;
+    conn->start_execution(stmt.bind(field_view("abc"), field_view("bad_date")), st)
         .validate_error(
             common_server_errc::er_truncated_wrong_value,
             {"field_date", "bad_date", "incorrect date value"}
         );
 }
 
-// Execute (statement, iterator). No error spotcheck since it's the same underlying fn
+// Execute (statement, iterator)
 BOOST_MYSQL_NETWORK_TEST(execute_statement_iterator_success, network_fixture, err_net_samples)
 {
     setup_and_connect(sample.net);
@@ -315,6 +212,24 @@ BOOST_MYSQL_NETWORK_TEST(execute_statement_iterator_success, network_fixture, er
     std::forward_list<field_view> stmt_params{field_view("item"), field_view(42)};
     conn->execute(stmt.bind(stmt_params.cbegin(), stmt_params.cend()), result).validate_no_error();
     BOOST_TEST(result.rows().size() == 0u);
+}
+
+BOOST_MYSQL_NETWORK_TEST(execute_statement_error, network_fixture, err_net_samples)
+{
+    setup_and_connect(sample.net);
+    start_transaction();
+
+    // Prepare
+    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)")
+                    .get();
+
+    // Execute
+    results result;
+    conn->execute(stmt.bind(field_view("f0"), field_view("bad_date")), result)
+        .validate_error(
+            common_server_errc::er_truncated_wrong_value,
+            {"field_date", "bad_date", "incorrect date value"}
+        );
 }
 
 // Execute (statement, tuple). No error spotcheck since it's the same underlying fn
@@ -344,7 +259,7 @@ BOOST_MYSQL_NETWORK_TEST(close_statement_success, network_fixture, all_network_s
 
     // The statement is no longer valid
     results result;
-    conn->execute_statement(stmt, field_view("a"), field_view("b"), result).validate_any_error();
+    conn->execute(stmt.bind(field_view("a"), field_view("b")), result).validate_any_error();
 }
 
 // Read some rows: no server error spotcheck
@@ -354,7 +269,7 @@ BOOST_MYSQL_NETWORK_TEST(read_some_rows_success, network_fixture, all_network_sa
 
     // Generate an execution state
     execution_state st;
-    conn->start_query("SELECT * FROM one_row_table", st);
+    conn->start_execution("SELECT * FROM one_row_table", st);
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read once. st may or may not be complete, depending
@@ -381,7 +296,7 @@ BOOST_MYSQL_NETWORK_TEST(read_resultset_head_success, network_fixture, all_netwo
 
     // Generate an execution state
     execution_state st;
-    conn->start_query("SELECT * FROM empty_table; SELECT * FROM one_row_table", st);
+    conn->start_execution("SELECT * FROM empty_table; SELECT * FROM one_row_table", st);
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read the OK packet to finish 1st resultset
@@ -408,7 +323,7 @@ BOOST_MYSQL_NETWORK_TEST(read_resultset_head_error, network_fixture, all_network
 
     // Generate an execution state
     execution_state st;
-    conn->start_query("SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st);
+    conn->start_execution("SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st);
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read the OK packet to finish 1st resultset
@@ -478,7 +393,7 @@ BOOST_MYSQL_NETWORK_TEST(close_connection_success, network_fixture, all_network_
 
     // We are no longer able to query
     boost::mysql::results result;
-    conn->query("SELECT 1", result).validate_any_error();
+    conn->execute("SELECT 1", result).validate_any_error();
 
     // The stream is closed
     BOOST_TEST(!conn->is_open());
@@ -586,7 +501,7 @@ struct
     },
 };
 
-BOOST_AUTO_TEST_CASE(spotcheck_success)
+BOOST_AUTO_TEST_CASE(set_character_set_success)
 {
     for (const auto& fns : set_charset_all_fns)
     {
@@ -606,7 +521,7 @@ BOOST_AUTO_TEST_CASE(spotcheck_success)
     }
 }
 
-BOOST_AUTO_TEST_CASE(spotcheck_error)
+BOOST_AUTO_TEST_CASE(set_character_set_error)
 {
     for (const auto& fns : set_charset_all_fns)
     {
@@ -626,6 +541,89 @@ BOOST_AUTO_TEST_CASE(spotcheck_error)
 
             // The character set was not modified
             BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
+        }
+    }
+}
+
+// same for run_pipeline
+using run_pipeline_netmaker = netfun_maker_mem<
+    void,
+    any_connection,
+    const pipeline_request&,
+    std::vector<stage_response>&>;
+
+struct
+{
+    string_view name;
+    run_pipeline_netmaker::signature run_pipeline;
+} run_pipeline_all_fns[] = {
+    {"sync_errc", run_pipeline_netmaker::sync_errc(&any_connection::run_pipeline)},
+    {"sync_exc", run_pipeline_netmaker::sync_exc(&any_connection::run_pipeline)},
+    {"async_errinfo", run_pipeline_netmaker::async_errinfo(&any_connection::async_run_pipeline, false)},
+    {"async_noerrinfo", run_pipeline_netmaker::async_noerrinfo(&any_connection::async_run_pipeline, false)},
+};
+
+BOOST_AUTO_TEST_CASE(run_pipeline_success)
+{
+    for (const auto& fns : run_pipeline_all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            // Setup
+            boost::asio::io_context ctx;
+            any_connection conn(ctx);
+            conn.connect(default_connect_params(ssl_mode::disable));
+            pipeline_request req;
+            req.add_set_character_set(ascii_charset)
+                .add_execute("SET @myvar = 42")
+                .add_execute("SELECT @myvar");
+            std::vector<stage_response> res;
+
+            // Issue the pipeline
+            fns.run_pipeline(conn, req, res).validate_no_error();
+
+            // Success
+            BOOST_TEST(conn.current_character_set().value() == ascii_charset);
+            BOOST_TEST_REQUIRE(res.size() == 3u);
+            BOOST_TEST(res.at(0).error() == error_code());
+            BOOST_TEST(res.at(0).diag() == diagnostics());
+            BOOST_TEST(res.at(1).as_results().rows().empty());
+            BOOST_TEST(res.at(2).as_results().rows() == makerows(1, 42));
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(run_pipeline_error)
+{
+    for (const auto& fns : run_pipeline_all_fns)
+    {
+        BOOST_TEST_CONTEXT(fns.name)
+        {
+            // Setup
+            boost::asio::io_context ctx;
+            any_connection conn(ctx);
+            conn.connect(default_connect_params(ssl_mode::disable));
+            pipeline_request req;
+            req.add_execute("SET @myvar = 42")
+                .add_prepare_statement("SELECT * FROM bad_table")
+                .add_execute("SELECT @myvar");
+            std::vector<stage_response> res;
+
+            // Issue the command
+            fns.run_pipeline(conn, req, res)
+                .validate_error_exact(
+                    common_server_errc::er_no_such_table,
+                    "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+                );
+
+            // Stages 0 and 2 were executed successfully
+            BOOST_TEST(res.size() == 3u);
+            BOOST_TEST(res[0].as_results().rows().size() == 0u);
+            BOOST_TEST(res[1].error() == common_server_errc::er_no_such_table);
+            BOOST_TEST(
+                res[1].diag() == create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
+            );
+            BOOST_TEST(res[2].as_results().rows() == makerows(1, 42));
         }
     }
 }

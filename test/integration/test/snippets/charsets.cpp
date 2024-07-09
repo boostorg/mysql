@@ -23,7 +23,7 @@ namespace {
 // utf8mb4 character set and return the size of the first character,
 // or 0 if the byte sequence does not represent a valid character.
 // It must not throw exceptions.
-std::size_t utf8mb4_next_char(boost::span<const unsigned char> input) noexcept
+std::size_t utf8mb4_next_char(boost::span<const unsigned char> input)
 {
     // Input strings are never empty - they always have 1 byte, at least.
     assert(!input.empty());

@@ -11,7 +11,7 @@
 
 # Install the DB
 brew install mysql@8.0
-export PATH="/usr/local/opt/mysql@8.0/bin:$PATH"
+export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
 
 # Copy config files and set up paths
 cp tools/osx-ci.cnf ~/.my.cnf
@@ -21,4 +21,4 @@ sudo mkdir -p /var/run/mysqld/
 sudo chmod 777 /var/run/mysqld/
 
 # Start the server
-mysql.server start
+brew services start mysql@8.0

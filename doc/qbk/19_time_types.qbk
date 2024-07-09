@@ -14,16 +14,18 @@ on how to use them.
 
 [heading The date type]
 
-[reflink date] represents MySQL __DATE__ in C++. `date` holds the year, month and day components of a date.
+[reflink date] represents MySQL __DATE__ in C++. `date` holds the year, month and day components of a date,
+without any time zone information.
 It is a type close to the protocol, rather than a vocabulary type. The main reason for using `date` instead
 of a `std::chrono::time_point` type is that, under certain configurations, MySQL allows storing invalid
 dates, such as `2020-00-01`. These are not representable as a `std::chrono::time_point`.
-
 Unless dealing with these special values, we recommend converting `date`s to a `time_point` before using them.
-The member type [refmem date time_point] is a system-clock `time_point` that can represent the entire
-MySQL `DATE` range without problems. You can use [refmem date as_time_point] to perform the cast:
 
-[time_types_date_as_time_point]
+Since `date` represents a local time point, `std::chrono::local_time` is the most accurate representation for it.
+If your compiler supports C++20 calendar types (as per `__cpp_lib_chrono >= 201907L`), you can use
+[refmem date as_local_time_point] to perform the cast:
+
+[time_types_date_as_local_time_point]
 
 If the date is not valid, `as_time_point` will throw an exception.
 
@@ -31,25 +33,32 @@ You can query whether a `date` contains a valid date or not using [refmem date v
 
 [time_types_date_valid]
 
-You can combine it with [refmem date get_time_point], which performs an unchecked
+You can combine it with [refmem date get_local_time_point], which performs an unchecked
 conversion:
 
-[time_types_date_get_time_point]
+[time_types_date_get_local_time_point]
 
-You can also construct a `date` from a `time_point`. If the `time_point` is
-out of range, an exception is thrown.
+[note
+  Using `std::chrono` time zone functionality under MSVC can cause your tooling to report
+  memory leaks. This is [@https://github.com/microsoft/STL/issues/2047 an issue in MSVC's standard library].
+  See [@https://github.com/microsoft/STL/issues/2504 this suggestion] for a possible workaround.
+]
+
+If your compiler doesn't support local times, you can use [refmem date get_time_point]
+or [refmem date as_time_point], instead. These return [refmem date time_point] objects,
+which are `time_points` that use the system clock. These time points should be interpreted
+as local times, rather than UTC:
+
+[time_types_date_as_time_point]
+
+
 
 
 
 [heading The datetime type]
 
 [reflink datetime] represents MySQL __DATETIME__ and __TIMESTAMP__ in C++. `datetime` represents a broken time point,
-having year, month, day, hour, minute, second and microseconds.
-
-MySQL also accepts invalid datetimes (like `2020-00-10 10:20:59.000000`). The same considerations for
-`date` apply:
-
-[time_types_datetime]
+having year, month, day, hour, minute, second and microsecond.
 
 The `datetime` object doesn't carry any time zone information with it. The time zone semantics
 depend on the actual MySQL type:
@@ -63,7 +72,19 @@ depend on the actual MySQL type:
   __time_zone__ variable. As this variable can be changed programmatically from SQL, without
   the library knowing it, we represent `TIMESTAMP`'s using the `datetime` object, which doesn't include time zone information.
 
-When using `TIMESTAMP`, we recommend setting the __time_zone__ to a known value. To illustrate this,
+MySQL also accepts invalid datetimes (like `2020-00-10 10:20:59.000000`).
+
+As with `date`, you can use [refmem datetime as_local_time_point], [refmemunq datetime get_local_time_point]
+and [refmemunq datetime valid] (or [refmemunq datetime as_time_point] and [refmemunq datetime get_time_point],
+if your compiler doesn't support C++20 calendar types):
+
+[time_types_datetime]
+
+
+
+[heading TIMESTAMP considerations]
+
+When using `TIMESTAMP`, we recommend setting the __time_zone__ session variable to a known value. To illustrate this,
 consider an event-logging system with the following table definition:
 
 [time_types_timestamp_setup]

@@ -14,26 +14,16 @@ if $(hostname) = ""
     hostname = "127.0.0.1" ;
 }
 
-# TSAN can't be enabled in our ARM CIs, since they fail
-# the personality() syscall to disable address space layout randomization.
-# In OSX, tsan reports a race condition in Asio's kqueue reactor. Ignore this for now.
-# gcc-13 complains about TSAN not supporting std::atomic_thread_fence, which is used by Asio.
-# However, this doesn't seem to affect TSAN results
-rule tsan_if_not_arm ( properties * )
-{
-    local result ;
-    if ! <architecture>arm in $(properties) && ! <target-os>darwin in $(properties) && ! <toolset-gcc:version>13 in $(properties)
-    {
-        result += <thread-sanitizer>norecover ;
-    }
-    return $(result) ;
-}
 
+# In OSX, tsan reports a race condition in Asio's kqueue reactor. Ignore this for now.
+# Net TS executors use std::atomic_thread_fence, unsupported by TSAN, which yields false positives.
 run
         /boost/mysql/test//boost_mysql_compiled
         connection_pool.cpp
     : requirements
         <testing.arg>$(hostname)
-        <conditional>@tsan_if_not_arm
+        <target-os>darwin:<build>no
+        <boost.mysql.use-ts-executor>on:<build>no
+        <thread-sanitizer>norecover
     : target-name boost_mysql_thread_safety
 ;

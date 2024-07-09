@@ -28,8 +28,6 @@ cpp-pch pch
         pch.hpp
         /boost/mysql/test//boost_mysql_test
         /boost/mysql/test//boost_context_lib
-    : requirements 
-        <define>BOOST_ALLOW_DEPRECATED # Integration tests still exercise the old execution interface
     ;
 
 
@@ -61,6 +59,7 @@ run
         test/reconnect.cpp
         test/any_connection.cpp
         test/character_set_tracking.cpp
+        test/pipeline.cpp
         test/connection_pool.cpp
         test/db_specific.cpp
         test/database_types.cpp
@@ -78,11 +77,12 @@ run
         test/snippets/any_connection.cpp
         test/snippets/connection_pool.cpp
         test/snippets/sql_formatting.cpp
+        test/snippets/sql_formatting_custom.cpp
+        test/snippets/pipeline.cpp
 
     : requirements
         <testing.arg>$(test_command)
         <include>include
-        <define>BOOST_ALLOW_DEPRECATED # Integration tests still exercise the old execution interface
     : target-name boost_mysql_integrationtests
     ;
 

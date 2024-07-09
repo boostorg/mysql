@@ -12,6 +12,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/error.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/test/unit_test.hpp>

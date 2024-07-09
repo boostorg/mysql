@@ -25,15 +25,18 @@
 #include <string>
 #include <utility>
 
-#include "test_common/ci_server.hpp"
+#include "test_common/has_ranges.hpp"
 #include "test_common/printing.hpp"
-#include "test_integration/snippets/credentials.hpp"
+#include "test_integration/snippets/get_any_connection.hpp"
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
 #endif
 #ifdef __cpp_lib_polymorphic_allocator
 #include <memory_resource>
+#endif
+#ifdef BOOST_MYSQL_HAS_RANGES
+#include <ranges>
 #endif
 
 using namespace boost::mysql;
@@ -45,43 +48,27 @@ static std::string get_name() { return "John"; }
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 //[sql_formatting_incremental_fn
-// Compose an update query that sets first_name, last_name, or both
-std::string compose_update_query(
+// Compose a query that retrieves all employees in a company,
+// with an optional limit
+std::string compose_select_query(
     boost::mysql::format_options opts,
-    std::int64_t employee_id,
-    std::optional<std::string> new_first_name,
-    std::optional<std::string> new_last_name
+    string_view company_id,
+    std::optional<long> limit
 )
 {
-    // There should be at least one update
-    assert(new_first_name || new_last_name);
-
     // format_context will accumulate the query as we compose it
     boost::mysql::format_context ctx(opts);
 
-    // append_raw adds raw SQL to the generated query, without quoting or escaping.
-    // You can only pass strings known at compile-time to append_raw,
-    // unless you use the runtime function.
-    ctx.append_raw("UPDATE employee SET ");
+    // format_sql_to expands a format string and appends the result
+    // to a format context. This way, we can build our query in smaller pieces
+    // Add all the query except for the LIMIT clause
+    boost::mysql::format_sql_to(ctx, "SELECT * FROM employee WHERE company_id = {}", company_id);
 
-    if (new_first_name)
+    if (limit)
     {
-        // format_sql_to expands a format string and appends the result
-        // to a format context. This way, we can build our query in small pieces
-        // Add the first_name update clause
-        boost::mysql::format_sql_to(ctx, "first_name = {}", *new_first_name);
+        // Add the LIMIT clause
+        boost::mysql::format_sql_to(ctx, " LIMIT {}", *limit);
     }
-    if (new_last_name)
-    {
-        if (new_first_name)
-            ctx.append_raw(", ");
-
-        // Add the last_name update clause
-        boost::mysql::format_sql_to(ctx, "last_name = {}", *new_last_name);
-    }
-
-    // Add the where clause
-    boost::mysql::format_sql_to(ctx, " WHERE id = {}", employee_id);
 
     // Retrieve the generated query string
     return std::move(ctx).get().value();
@@ -106,13 +93,24 @@ namespace mysql {
 template <>
 struct formatter<employee>
 {
-    // formatter<T> should define, at least, a function with signature:
-    //    static void format(const T&, format_context_base&)
-    // This function must use format_sql_to, format_context_base::append_raw
-    // or format_context_base::append_value to format the passed value.
-    // We will make this suitable for INSERT statements
-    static void format(const employee& emp, format_context_base& ctx)
+    // formatter<T> should define the following functions:
+    //    const char* parse(const char* first, const char*);
+    //    void format(const T&, format_context_base&) const;
+
+    const char* parse(const char* begin, const char* /* end */)
     {
+        // Parse any format specifiers for this type.
+        // [begin, end) points to the range of characters holding the format specifier string
+        // We should return a pointer to the first unparsed character.
+        // We don't support any specifiers for this type, so we return the begin pointer.
+        return begin;
+    }
+
+    void format(const employee& emp, format_context_base& ctx) const
+    {
+        // Perform the actual formatting by appending characters to ctx.
+        // We usually use format_sql_to to achieve this.
+        // We will make this suitable for INSERT statements
         format_sql_to(ctx, "{}, {}, {}", emp.first_name, emp.last_name, emp.company_id);
     }
 };
@@ -123,55 +121,10 @@ struct formatter<employee>
 
 namespace {
 
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-//[sql_formatting_unit_test
-// For reference, the function under test
-std::string compose_update_query(
-    boost::mysql::format_options opts,
-    std::int64_t employee_id,
-    std::optional<std::string> new_first_name,
-    std::optional<std::string> new_last_name
-);
-
-// Your test body
-void test_compose_update_query()
-{
-    // You can safely use these format_options for testing,
-    // since they are the most common ones.
-    boost::mysql::format_options opts{boost::mysql::utf8mb4_charset, true};
-
-    // Test for the different cases
-    BOOST_TEST(
-        compose_update_query(opts, 42, "Bob", {}) == "UPDATE employee SET first_name = 'Bob' WHERE id = 42"
-    );
-    BOOST_TEST(
-        compose_update_query(opts, 42, {}, "Alice") == "UPDATE employee SET last_name = 'Alice' WHERE id = 42"
-    );
-    BOOST_TEST(
-        compose_update_query(opts, 0, "Bob", "Alice") ==
-        "UPDATE employee SET first_name = 'Bob', last_name = 'Alice' WHERE id = 0"
-    );
-}
-//]
-#endif
-
 BOOST_AUTO_TEST_CASE(section_sql_formatting)
 {
-    auto server_hostname = get_hostname();
-
-    connect_params params;
-    params.server_address.emplace_host_and_port(server_hostname);
-    params.username = mysql_username;
-    params.password = mysql_password;
-    params.database = "boost_mysql_examples";
-    params.multi_queries = true;
-    params.ssl = ssl_mode::disable;
-
-    boost::asio::io_context ioc;
-    any_connection conn(ioc);
+    auto& conn = get_any_connection();
     results r;
-
-    conn.connect(params);
 
     {
         //[sql_formatting_simple
@@ -230,6 +183,18 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
     }
 #endif
     {
+        //[sql_formatting_ranges
+        std::vector<long> ids{1, 5, 20};
+        std::string query = format_sql(
+            conn.format_opts().value(),
+            "SELECT * FROM employee WHERE id IN ({})",
+            ids
+        );
+        BOOST_TEST(query == "SELECT * FROM employee WHERE id IN (1, 5, 20)");
+        //]
+        conn.execute(query, r);
+    }
+    {
         //[sql_formatting_manual_indices
         // Recall that you need to set connect_params::multi_queries to true when connecting
         // before running semicolon-separated queries.
@@ -272,11 +237,11 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         conn.execute(query, r);
     }
     {
-        //[sql_formatting_identifiers
+        //[sql_formatting_specifiers
         std::string query = boost::mysql::format_sql(
             conn.format_opts().value(),
-            "SELECT id, last_name FROM employee ORDER BY {} DESC",
-            boost::mysql::identifier("company_id")
+            "SELECT id, last_name FROM employee ORDER BY {:i} DESC",
+            "company_id"
         );
 
         BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
@@ -285,39 +250,86 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         conn.execute(query, r);
     }
     {
-        //[sql_formatting_qualified_identifiers
+        //[sql_formatting_specifiers_explicit_indices
         std::string query = boost::mysql::format_sql(
             conn.format_opts().value(),
-            "SELECT salary, tax_id FROM employee "
-            "INNER JOIN company ON employee.company_id = company.id "
-            "ORDER BY {} DESC",
-            boost::mysql::identifier("company", "id")
+            "SELECT id, last_name FROM employee ORDER BY {0:i} DESC",
+            "company_id"
         );
-        // SELECT ... ORDER BY `company`.`id` DESC
         //]
 
-        BOOST_TEST(
-            query ==
-            "SELECT salary, tax_id FROM employee "
-            "INNER JOIN company ON employee.company_id = company.id "
-            "ORDER BY `company`.`id` DESC"
-        );
+        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
         conn.execute(query, r);
     }
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
     {
         //[sql_formatting_incremental_use
-        std::string query = compose_update_query(conn.format_opts().value(), 42, "John", {});
+        std::string query = compose_select_query(conn.format_opts().value(), "HGS", {});
+        BOOST_TEST(query == "SELECT * FROM employee WHERE company_id = 'HGS'");
+        //<-
+        conn.execute(query, r);
+        //->
 
-        BOOST_TEST(query == "UPDATE employee SET first_name = 'John' WHERE id = 42");
+        query = compose_select_query(conn.format_opts().value(), "HGS", 50);
+        BOOST_TEST(query == "SELECT * FROM employee WHERE company_id = 'HGS' LIMIT 50");
         //]
 
         conn.execute(query, r);
     }
-    {
-        test_compose_update_query();
-    }
 #endif
+    {
+        //[sql_formatting_sequence_1
+        // Employee is a plain struct, not formattable by default
+        std::vector<employee> employees{
+            {"John", "Doe",   "HGS"},
+            {"Kate", "Smith", "AWC"},
+        };
+        std::string query = format_sql(
+            conn.format_opts().value(),
+            "INSERT INTO employee (first_name, last_name, company_id) VALUES {}",
+            sequence(
+                employees,
+                [](const employee& e, format_context_base& ctx) {
+                    // This function will be called for each element in employees,
+                    // and should format a single element into the passed ctx.
+                    // Commas will be inserted separating elements.
+                    format_sql_to(ctx, "({}, {}, {})", e.first_name, e.last_name, e.company_id);
+                }
+            )
+        );
+        BOOST_TEST(
+            query ==
+            "INSERT INTO employee (first_name, last_name, company_id) VALUES "
+            "('John', 'Doe', 'HGS'), ('Kate', 'Smith', 'AWC')"
+        );
+        //]
+        conn.execute(query, r);
+    }
+    {
+        //[sql_formatting_sequence_2
+        // A collection of filters to apply to a query
+        std::vector<std::pair<string_view, string_view>> filters{
+            {"company_id", "HGS" },
+            {"first_name", "John"},
+        };
+
+        std::string query = format_sql(
+            conn.format_opts().value(),
+            "SELECT * FROM employee WHERE {}",
+            sequence(
+                filters,
+                [](const std::pair<string_view, string_view>& f, format_context_base& ctx) {
+                    // Compose a single filter
+                    format_sql_to(ctx, "{:i} = {}", f.first, f.second);
+                },
+                " AND "  // glue string: separate each element with AND clauses
+            )
+        );
+
+        BOOST_TEST(query == "SELECT * FROM employee WHERE `company_id` = 'HGS' AND `first_name` = 'John'");
+        //]
+        conn.execute(query, r);
+    }
     {
         try
         {
@@ -383,22 +395,47 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         //->
         //]
 
+        // clang-format off
         //[sql_formatting_reference_string
+        // Without format specifier: escaped, quoted string value
         //<-
         BOOST_TEST(
-            //->
-            format_sql(opts, "SELECT {}", "Hello world") == "SELECT 'Hello world'"
-            //<-
+        //->
+        format_sql(opts, "SELECT {}", "Hello world") == "SELECT 'Hello world'"
+        //<-
+        );
+        BOOST_TEST(
+        //->
+        format_sql(opts, "SELECT {}", "Hello 'world'") == R"(SELECT 'Hello \'world\'')"
+        //<-
         );
         //->
+
+        // {:i}: escaped, quoted dynamic identifier
         //<-
         BOOST_TEST(
-            //->
-            format_sql(opts, "SELECT {}", "Hello 'world'") == R"(SELECT 'Hello \'world\'')"
-            //<-
+        //->
+        format_sql(opts, "SELECT {:i} FROM t", "salary") == "SELECT `salary` FROM t"
+        //<-
+        );
+        BOOST_TEST(
+        //->
+        format_sql(opts, "SELECT {:i} FROM t", "sal`ary") == "SELECT `sal``ary` FROM t"
+        //<-
+        );
+        //->
+
+        // {:r}: raw, unescaped SQL. WARNING: incorrect use can cause vulnerabilities
+        //<-
+        BOOST_TEST(
+        //->
+        format_sql(opts, "SELECT * FROM t WHERE id = 42 {:r} salary > 20000", "OR") ==
+            "SELECT * FROM t WHERE id = 42 OR salary > 20000"
+        //<-
         );
         //->
         //]
+        // clang-format on
 
         //[sql_formatting_reference_blob
         //<-
@@ -515,37 +552,70 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         //->
         //]
 
-        //[sql_formatting_reference_identifier
+        //[sql_formatting_reference_ranges
         //<-
         BOOST_TEST(
             //->
-            format_sql(opts, "SELECT {} FROM t", identifier("salary")) == "SELECT `salary` FROM t"
+            // long is a WritableField
+            format_sql(opts, "SELECT {}", std::vector<long>{1, 5, 20}) == "SELECT 1, 5, 20"
+            //<-
+        );
+//->
+
+//<-
+#ifdef BOOST_MYSQL_HAS_RANGES
+        BOOST_TEST(
+            //->
+            // C++20 ranges and other custom ranges accepted
+            format_sql(opts, "SELECT {}", std::vector<long>{1, 5, 20} | std::ranges::views::take(2)) ==
+            "SELECT 1, 5"
+            //<-
+        );
+#endif
+        //->
+
+        //<-
+        BOOST_TEST(
+            //->
+            // Apply the 'i' specifier to each element in the sequence
+            format_sql(
+                opts,
+                "SELECT {::i} FROM employee",
+                std::vector<string_view>{"first_name", "last_name"}
+            ) == "SELECT `first_name`, `last_name` FROM employee"
             //<-
         );
         //->
+        //]
+
+        //[sql_formatting_reference_sequence
         //<-
         BOOST_TEST(
             //->
-            format_sql(opts, "SELECT {} FROM t", identifier("sal`ary")) == "SELECT `sal``ary` FROM t"
+            format_sql(
+                opts,
+                "SELECT {}",
+                sequence(
+                    std::vector<int>{1, 5, 20},
+                    [](int val, format_context_base& ctx) { format_sql_to(ctx, "{}+1", val); }
+                )
+            ) == "SELECT 1+1, 5+1, 20+1"
             //<-
         );
         //->
+        //]
+
+        //[sql_formatting_reference_formattable_ref
         //<-
         BOOST_TEST(
-            // clang-format off
             //->
-            format_sql(opts, "SELECT {} FROM t", identifier("mytable", "myfield")) == "SELECT `mytable`.`myfield` FROM t"
+            format_sql(opts, "SELECT {}", formattable_ref(42)) == "SELECT 42"
             //<-
-            // clang-format on
         );
-        //->
-        //<-
         BOOST_TEST(
-            // clang-format off
             //->
-            format_sql(opts, "SELECT {} FROM t", identifier("mydb", "mytable", "myfield")) == "SELECT `mydb`.`mytable`.`myfield` FROM t"
+            format_sql(opts, "SELECT {:i} FROM t", formattable_ref("salary")) == "SELECT `salary` FROM t"
             //<-
-            // clang-format on
         );
         //->
         //]

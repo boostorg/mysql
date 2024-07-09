@@ -8,118 +8,79 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_RESET_CONNECTION_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_RESET_CONNECTION_HPP
 
-#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/coroutine.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-#include <boost/mysql/impl/internal/sansio/set_character_set.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class reset_connection_algo : public sansio_algorithm, asio::coroutine
+class read_reset_connection_response_algo
 {
+    int resume_point_{0};
     diagnostics* diag_;
-    character_set charset_;
-    std::uint8_t reset_seqnum_{0};
-    std::uint8_t set_names_seqnum_{0};
-    error_code stored_ec_;
-
-    // true if we need to pipeline a SET NAMES with the reset request
-    bool has_charset() const noexcept { return !charset_.name.empty(); }
-
-    next_action compose_request()
-    {
-        if (has_charset())
-        {
-            // Compose the SET NAMES statement
-            auto query = compose_set_names(charset_);
-            if (query.has_error())
-                return query.error();
-
-            // Compose the pipeline
-            st_->writer.prepare_pipelined_write(
-                reset_connection_command{},
-                reset_seqnum_,
-                query_command{query.value()},
-                set_names_seqnum_
-            );
-
-            // Success
-            return next_action::write({});
-        }
-        else
-        {
-            // Just compose the reset connection request
-            return write(reset_connection_command{}, reset_seqnum_);
-        }
-    }
+    std::uint8_t seqnum_{0};
 
 public:
-    reset_connection_algo(connection_state_data& st, reset_connection_algo_params params) noexcept
-        : sansio_algorithm(st), diag_(params.diag), charset_(params.charset)
+    read_reset_connection_response_algo(diagnostics* diag, std::uint8_t seqnum) noexcept
+        : diag_(diag), seqnum_(seqnum)
     {
     }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
-        if (ec)
-            return ec;
-
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
-            // Clear diagnostics
-            diag_->clear();
-
-            // Send the request
-            BOOST_ASIO_CORO_YIELD return compose_request();
+        case 0:
 
             // Read the reset response
-            BOOST_ASIO_CORO_YIELD return read(reset_seqnum_);
+            BOOST_MYSQL_YIELD(resume_point_, 1, st.read(seqnum_))
+            if (ec)
+                return ec;
 
             // Verify it's what we expected
-            stored_ec_ = st_->deserialize_ok(*diag_);
-
-            if (!stored_ec_)
+            ec = st.deserialize_ok(*diag_);
+            if (!ec)
             {
                 // Reset was successful. Resetting changes the connection's character set
                 // to the server's default, which is an unknown value that doesn't have to match
                 // what was specified in handshake. As a safety measure, clear the current charset
-                st_->current_charset = character_set{};
+                st.current_charset = character_set{};
             }
 
-            if (has_charset())
-            {
-                // We issued a SET NAMES too, read its response
-                BOOST_ASIO_CORO_YIELD return read(set_names_seqnum_);
-
-                // Verify it's what we expected. Don't overwrite diagnostics if reset failed
-                ec = st_->deserialize_ok(stored_ec_ ? st_->shared_diag : *diag_);
-                if (!ec)
-                {
-                    // Set the character set to the new known value
-                    st_->current_charset = charset_;
-                }
-
-                // Set the return value if there is no error code already stored
-                if (!stored_ec_)
-                    stored_ec_ = ec;
-            }
-
-            return stored_ec_;
+            // Done
+            return ec;
         }
 
         return next_action();
     }
 };
+
+inline run_pipeline_algo_params setup_reset_connection_pipeline(
+    connection_state_data& st,
+    reset_connection_algo_params params
+)
+{
+    st.write_buffer.clear();
+    st.shared_pipeline_stages[0] = {
+        pipeline_stage_kind::reset_connection,
+        serialize_top_level(reset_connection_command{}, st.write_buffer),
+        {}
+    };
+    return {
+        params.diag,
+        st.write_buffer,
+        {st.shared_pipeline_stages.data(), 1},
+        nullptr
+    };
+}
 
 }  // namespace detail
 }  // namespace mysql

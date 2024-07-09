@@ -43,7 +43,6 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     std::array<row1, 3> storage;
     detail::read_some_rows_algo algo{
-        st,
         {&diag, &proc, ref()}
     };
 
@@ -66,6 +65,8 @@ struct fixture : algo_fixture_base
         for (std::size_t i = 0; i < num_rows; ++i)
             BOOST_TEST(proc.refs()[i].offset() == i);
     }
+
+    std::size_t result() const { return algo.result(st); }
 };
 
 BOOST_AUTO_TEST_CASE(eof)
@@ -80,7 +81,7 @@ BOOST_AUTO_TEST_CASE(eof)
         )
         .check(fix);
 
-    BOOST_TEST(fix.algo.result() == 0u);  // num read rows
+    BOOST_TEST(fix.result() == 0u);  // num read rows
     BOOST_TEST(fix.proc.is_reading_head());
     BOOST_TEST(fix.proc.affected_rows() == 1u);
     BOOST_TEST(fix.proc.info() == "1st");
@@ -97,7 +98,7 @@ BOOST_AUTO_TEST_CASE(eof_no_backslash_escapes)
         .expect_read(create_eof_frame(42, ok_builder().no_backslash_escapes(true).more_results(true).build()))
         .check(fix);
 
-    BOOST_TEST(fix.algo.result() == 0u);  // num read rows
+    BOOST_TEST(fix.result() == 0u);  // num read rows
     BOOST_TEST(fix.proc.is_reading_head());
     BOOST_TEST(!fix.st.backslash_escapes);
 }
@@ -116,7 +117,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows)
         .check(fix);
 
     // Validate
-    BOOST_TEST(fix.algo.result() == 2u);  // num read rows
+    BOOST_TEST(fix.result() == 2u);  // num read rows
     BOOST_TEST(fix.proc.is_reading_rows());
     fix.validate_refs(2);
     fix.proc.num_calls()
@@ -147,7 +148,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
         .check(fix);
 
     // Validate
-    BOOST_TEST(fix.algo.result() == 2u);  // num read rows
+    BOOST_TEST(fix.result() == 2u);  // num read rows
     BOOST_TEST_REQUIRE(fix.proc.is_reading_head());
     BOOST_TEST(fix.proc.affected_rows() == 1u);
     BOOST_TEST(fix.proc.info() == "1st");
@@ -182,7 +183,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof_multiresult)
         .check(fix);
 
     // Validate
-    BOOST_TEST(fix.algo.result() == 1u);  // num read rows
+    BOOST_TEST(fix.result() == 1u);  // num read rows
     BOOST_TEST_REQUIRE(fix.proc.is_reading_head());
     BOOST_TEST(fix.proc.affected_rows() == 1u);
     BOOST_TEST(fix.proc.info() == "1st");
@@ -214,7 +215,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_out_of_span_space)
         .check(fix);
 
     // Validate
-    BOOST_TEST(fix.algo.result() == 3u);  // num read rows
+    BOOST_TEST(fix.result() == 3u);  // num read rows
     fix.validate_refs(3);
     BOOST_TEST(fix.proc.is_reading_rows());
     fix.proc.num_calls()
@@ -242,7 +243,7 @@ BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
         .check(fix);
 
     // Validate
-    BOOST_TEST(fix.algo.result() == 2u);  // num read rows
+    BOOST_TEST(fix.result() == 2u);  // num read rows
     fix.validate_refs(2);
     BOOST_TEST(fix.proc.is_reading_rows());
     fix.proc.num_calls()
@@ -254,14 +255,14 @@ BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
         .validate();
 
     // Run the algo again
-    fix.algo = detail::read_some_rows_algo(fix.st, fix.algo.params());
+    fix.algo.reset();
     fix.diag = create_server_diag("Diagnostics not cleared");
     algo_test()
         .expect_read(buffer_builder().add(boost::span<const std::uint8_t>(eof).subspan(6)).build())
         .check(fix);
 
     // Validate
-    BOOST_TEST(fix.algo.result() == 0u);  // num read rows
+    BOOST_TEST(fix.result() == 0u);  // num read rows
     BOOST_TEST(fix.proc.is_complete());
     fix.proc.num_calls()
         .on_num_meta(1)
@@ -286,7 +287,7 @@ BOOST_AUTO_TEST_CASE(state_complete)
     algo_test().check(fix);
 
     // Validate
-    BOOST_TEST(fix.algo.result() == 0u);  // num read rows
+    BOOST_TEST(fix.result() == 0u);  // num read rows
     BOOST_TEST(fix.proc.is_complete());
     fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).validate();
 }
@@ -301,7 +302,7 @@ BOOST_AUTO_TEST_CASE(state_reading_head)
     algo_test().check(fix);
 
     // Validate
-    BOOST_TEST(fix.algo.result() == 0u);  // num read rows
+    BOOST_TEST(fix.result() == 0u);  // num read rows
     BOOST_TEST(fix.proc.is_reading_head());
     fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).validate();
 }
@@ -374,6 +375,45 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
 
     // Validate
     fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_batch_start(1).validate();
+}
+
+BOOST_AUTO_TEST_CASE(reset)
+{
+    // Setup
+    fixture fix;
+
+    // Run the algo. Read a row
+    algo_test().expect_read(create_text_row_message(42, "abc")).check(fix);
+
+    // Validate
+    BOOST_TEST(fix.result() == 1u);  // num read rows
+    BOOST_TEST(fix.proc.is_reading_rows());
+    fix.validate_refs(1);
+    fix.proc.num_calls()
+        .on_num_meta(1)
+        .on_meta(1)
+        .on_row_batch_start(1)
+        .on_row(1)
+        .on_row_batch_finish(1)
+        .validate();
+
+    // Reset
+    fix.algo.reset();
+
+    // Run the algo again. Read an OK packet
+    algo_test().expect_read(create_eof_frame(43, ok_builder().build())).check(fix);
+
+    // Check
+    BOOST_TEST(fix.result() == 0u);  // num read rows
+    BOOST_TEST(fix.proc.is_complete());
+    fix.proc.num_calls()
+        .on_num_meta(1)
+        .on_meta(1)
+        .on_row_batch_start(2)
+        .on_row(1)
+        .on_row_batch_finish(2)
+        .on_row_ok_packet(1)
+        .validate();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

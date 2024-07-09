@@ -11,17 +11,17 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <cstddef>
 #include <cstdint>
-#include <sstream>
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"
-#include "test_common/printing.hpp"
 #include "test_common/stringize.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+
+// Don't attempt to print std::chrono values
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 BOOST_AUTO_TEST_SUITE(test_field)
 

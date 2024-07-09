@@ -17,8 +17,6 @@
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
-
 #include <boost/config.hpp>
 #include <boost/test/unit_test.hpp>
 

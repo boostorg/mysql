@@ -22,9 +22,8 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
-#include <boost/mysql/detail/any_stream.hpp>
-#include <boost/mysql/detail/any_stream_impl.hpp>
 #include <boost/mysql/detail/connection_impl.hpp>
+#include <boost/mysql/detail/engine_stream_adaptor.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/rebind_executor.hpp>
 #include <boost/mysql/detail/socket_stream.hpp>
@@ -33,7 +32,7 @@
 
 #include <boost/assert.hpp>
 
-#include <memory>
+#include <cstddef>
 #include <type_traits>
 #include <utility>
 
@@ -102,7 +101,11 @@ public:
         class... Args,
         class EnableIf = typename std::enable_if<std::is_constructible<Stream, Args...>::value>::type>
     connection(const buffer_params& buff_params, Args&&... args)
-        : impl_(buff_params.initial_read_size(), detail::make_stream<Stream>(std::forward<Args>(args)...))
+        : impl_(
+              buff_params.initial_read_size(),
+              static_cast<std::size_t>(-1),
+              detail::make_engine<Stream>(std::forward<Args>(args)...)
+          )
     {
     }
 
@@ -137,7 +140,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    Stream& stream() noexcept { return detail::cast<Stream>(impl_.stream()); }
+    Stream& stream() noexcept { return detail::stream_from_engine<Stream>(impl_.get_engine()); }
 
     /**
      * \brief Retrieves the underlying Stream object.
@@ -146,7 +149,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    const Stream& stream() const noexcept { return detail::cast<Stream>(impl_.stream()); }
+    const Stream& stream() const noexcept { return detail::stream_from_engine<Stream>(impl_.get_engine()); }
 
     /**
      * \brief Returns whether the connection negotiated the use of SSL or not.
@@ -548,150 +551,6 @@ public:
     }
 
     /**
-     * \brief (Deprecated - will be removed in Boost 1.86) Executes a SQL text query.
-     * \details
-     * Sends `query_string` to the server for execution and reads the response into `result`.
-     * query_string should be encoded using the connection's character set.
-     * \n
-     * After this operation completes successfully, `result.has_value() == true`.
-     * \n
-     * Metadata in `result` will be populated according to `this->meta_mode()`.
-     * \n
-     * \par Security
-     * If you compose `query_string` by concatenating strings manually, <b>your code is
-     * vulnerable to SQL injection attacks</b>. If your query contains patameters unknown at
-     * compile time, use prepared statements instead of this function.
-     *
-     * \par Deprecation warning
-     * This function is deprecated and will be removed in Boost 1.86. Please
-     * use \ref execute or \ref async_execute instead.
-     */
-    BOOST_DEPRECATED("query is deprecated and will be removed in Boost 1.86. Use execute, instead")
-    void query(string_view query_string, results& result, error_code& err, diagnostics& diag)
-    {
-        execute(query_string, result, err, diag);
-    }
-
-    /// \copydoc query
-    BOOST_DEPRECATED("query is deprecated and will be removed in Boost 1.86. Use execute, instead")
-    void query(string_view query_string, results& result) { execute(query_string, result); }
-
-    /**
-     * \copydoc query
-     * \details
-     * \par Object lifetimes
-     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
-     * pointed to by `query_string` must be kept alive by the caller until the operation is
-     * initiated.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_DEPRECATED("async_query is deprecated and will be removed in Boost 1.86. Use async_execute, instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_query(
-        string_view query_string,
-        results& result,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_query(query_string, result, impl_.shared_diag(), std::forward<CompletionToken>(token));
-    }
-
-    /// \copydoc async_query
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_DEPRECATED("async_query is deprecated and will be removed in Boost 1.86. Use async_execute, instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_query(
-        string_view query_string,
-        results& result,
-        diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_execute(query_string, result, diag, std::forward<CompletionToken>(token));
-    }
-
-    /**
-     * \brief (Deprecated - will be removed in Boost 1.86) Starts a text query as a multi-function operation.
-     * \details
-     * Writes the query request and reads the initial server response and the column
-     * metadata, but not the generated rows or subsequent resultsets, if any.
-     * After this operation completes, `st` will have
-     * \ref execution_state::meta populated.
-     * Metadata will be populated according to `this->meta_mode()`.
-     * \n
-     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
-     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
-     * Otherwise, the results are undefined.
-     * \n
-     * `query_string` should be encoded using the connection's character set.
-     *
-     * \par Deprecation warning
-     * This function is deprecated and will be removed in Boost 1.86. Please
-     * use \ref execute or \ref async_execute instead.
-     */
-    BOOST_DEPRECATED(
-        "start_query is deprecated and will be removed in Boost 1.86. Use start_execution, instead"
-    )
-    void start_query(string_view query_string, execution_state& st, error_code& err, diagnostics& diag)
-    {
-        start_execution(query_string, st, err, diag);
-    }
-
-    /// \copydoc start_query
-    BOOST_DEPRECATED(
-        "start_query is deprecated and will be removed in Boost 1.86. Use start_execution, instead"
-    )
-    void start_query(string_view query_string, execution_state& st) { start_execution(query_string, st); }
-
-    /**
-     * \copydoc start_query
-     * \details
-     * \par Object lifetimes
-     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
-     * pointed to by `query_string` must be kept alive by the caller until the operation is
-     * initiated.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_DEPRECATED(
-        "async_start_query is deprecated and will be removed in Boost 1.86. Use async_start_execution, "
-        "instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_query(
-        string_view query_string,
-        execution_state& st,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_start_query(query_string, st, impl_.shared_diag(), std::forward<CompletionToken>(token));
-    }
-
-    /// \copydoc async_start_query
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-                  CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_DEPRECATED(
-        "async_start_query is deprecated and will be removed in Boost 1.86. Use async_start_execution, "
-        "instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_query(
-        string_view query_string,
-        execution_state& st,
-        diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_start_execution(query_string, st, diag, std::forward<CompletionToken>(token));
-    }
-
-    /**
      * \brief Prepares a statement server-side.
      * \details
      * `stmt` should be encoded using the connection's character set.
@@ -745,362 +604,6 @@ public:
     {
         return impl_.async_run(
             detail::prepare_statement_algo_params{&diag, stmt},
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    /**
-     * \brief (Deprecated - will be removed in Boost 1.86) Executes a prepared statement.
-     * \details
-     * Executes a statement with the given parameters and reads the response into `result`.
-     * \n
-     * After this operation completes successfully, `result.has_value() == true`.
-     * \n
-     * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
-     * See the `WritableFieldTuple` concept defition for more info. You should pass exactly as many
-     * parameters as `this->num_params()`, or the operation will fail with an error.
-     * String parameters should be encoded using the connection's character set.
-     * \n
-     * Metadata in `result` will be populated according to `conn.meta_mode()`, where `conn`
-     * is the connection that prepared this statement.
-     *
-     * \par Deprecation warning
-     * This function is deprecated and will be removed in Boost 1.86. Please
-     * use \ref execute or \ref async_execute instead.
-     *
-     * \par Preconditions
-     *    `stmt.valid() == true`
-     */
-    template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
-        class EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_DEPRECATED("execute_statement is deprecated and will be removed in Boost 1.86. Use execute, instead"
-    )
-    void execute_statement(
-        const statement& stmt,
-        const WritableFieldTuple& params,
-        results& result,
-        error_code& err,
-        diagnostics& diag
-    )
-    {
-        execute(stmt.bind(params), result, err, diag);
-    }
-
-    /// \copydoc execute_statement
-    template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
-        class EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_DEPRECATED("execute_statement is deprecated and will be removed in Boost 1.86. Use execute, instead"
-    )
-    void execute_statement(const statement& stmt, const WritableFieldTuple& params, results& result)
-    {
-        execute(stmt.bind(params), result);
-    }
-
-    /**
-     * \copydoc execute_statement
-     * \par Object lifetimes
-     * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
-     * type (like `string_view`), the caller must keep the values pointed by these references alive
-     * until the operation is initiated. Value types will be copied/moved as required, so don't need
-     * to be kept alive. It's not required to keep `stmt` alive, either.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_DEPRECATED(
-        "async_execute_statement is deprecated and will be removed in Boost 1.86. Use async_execute, instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_execute_statement(
-        const statement& stmt,
-        WritableFieldTuple&& params,
-        results& result,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_execute_statement(
-            stmt,
-            std::forward<WritableFieldTuple>(params),
-            result,
-            impl_.shared_diag(),
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    /// \copydoc async_execute_statement
-    template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_DEPRECATED(
-        "async_execute_statement is deprecated and will be removed in Boost 1.86. Use async_execute, instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_execute_statement(
-        const statement& stmt,
-        WritableFieldTuple&& params,
-        results& result,
-        diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_execute(
-            stmt.bind(std::forward<WritableFieldTuple>(params)),
-            result,
-            diag,
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    /**
-     * \brief (Deprecated - will be removed in Boost 1.86) Starts a statement execution
-     *        as a multi-function operation.
-     * \details
-     * Writes the execute request and reads the initial server response and the column
-     * metadata, but not the generated rows or subsequent resultsets, if any. After this operation completes,
-     * `st` will have \ref execution_state::meta populated. Metadata will be populated according to
-     * `this->meta_mode()`.
-     * \n
-     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
-     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
-     * Otherwise, the results are undefined.
-     * \n
-     * The statement actual parameters (`params`) are passed as a `std::tuple` of elements.
-     * String parameters should be encoded using the connection's character set.
-     *
-     * \par Deprecation warning
-     * This function is deprecated and will be removed in Boost 1.86. Please
-     * use \ref execute or \ref async_execute instead.
-     *
-     * \par Preconditions
-     *    `stmt.valid() == true`
-     */
-    template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
-        class EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_DEPRECATED(
-        "start_statement_execution is deprecated and will be removed in Boost 1.86. Use start_execution, "
-        "instead"
-    )
-    void start_statement_execution(
-        const statement& stmt,
-        const WritableFieldTuple& params,
-        execution_state& st,
-        error_code& err,
-        diagnostics& diag
-    )
-    {
-        start_execution(stmt.bind(params), st, err, diag);
-    }
-
-    /// \copydoc start_statement_execution(const statement&,const WritableFieldTuple&,execution_state&,error_code&,diagnostics&)
-    template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
-        class EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_DEPRECATED(
-        "start_statement_execution is deprecated and will be removed in Boost 1.86. Use start_execution, "
-        "instead"
-    )
-    void start_statement_execution(
-        const statement& stmt,
-        const WritableFieldTuple& params,
-        execution_state& st
-    )
-    {
-        start_execution(stmt.bind(params), st);
-    }
-
-    /**
-     * \copydoc start_statement_execution(const statement&,const WritableFieldTuple&,execution_state&,error_code&,diagnostics&)
-     * \details
-     * \par Object lifetimes
-     * If `CompletionToken` is deferred (like `use_awaitable`), and `params` contains any reference
-     * type (like `string_view`), the caller must keep the values pointed by these references alive
-     * until the operation is initiated. Value types will be copied/moved as required, so don't need
-     * to be kept alive. It's not required to keep `stmt` alive, either.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_DEPRECATED(
-        "async_start_statement_execution is deprecated and will be removed in Boost 1.86. Use "
-        "async_start_execution, instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_statement_execution(
-        const statement& stmt,
-        WritableFieldTuple&& params,
-        execution_state& st,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_start_statement_execution(
-            stmt,
-            std::forward<WritableFieldTuple>(params),
-            st,
-            impl_.shared_diag(),
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    /// \copydoc async_start_statement_execution(const statement&,WritableFieldTuple&&,execution_state&,CompletionToken&&)
-    template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type),
-        class EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
-    BOOST_DEPRECATED(
-        "async_start_statement_execution is deprecated and will be removed in Boost 1.86. Use "
-        "async_start_execution, instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_statement_execution(
-        const statement& stmt,
-        WritableFieldTuple&& params,
-        execution_state& st,
-        diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_start_execution(
-            stmt.bind(std::forward<WritableFieldTuple>(params)),
-            st,
-            diag,
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    /**
-     * \brief (Deprecated - will be removed in Boost 1.86) Starts a statement execution as a multi-function
-     *        operation.
-     *
-     * \details
-     * Writes the execute request and reads the initial server response and the column
-     * metadata, but not the generated rows or any subsequent resultsets, if any. After this operation
-     * completes, `st` will have \ref execution_state::meta populated.
-     * \n
-     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
-     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
-     * Otherwise, the results are undefined.
-     * \n
-     * The statement actual parameters are passed as an iterator range.
-     * String parameters should be encoded using the connection's character set.
-     *
-     * \par Deprecation warning
-     * This function is deprecated and will be removed in Boost 1.86. Please
-     * use \ref execute or \ref async_execute instead.
-     *
-     * \par Preconditions
-     *    `stmt.valid() == true`
-     */
-    template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
-    BOOST_DEPRECATED(
-        "start_statement_execution is deprecated and will be removed in Boost 1.86. Use start_execution, "
-        "instead"
-    )
-    void start_statement_execution(
-        const statement& stmt,
-        FieldViewFwdIterator params_first,
-        FieldViewFwdIterator params_last,
-        execution_state& st,
-        error_code& ec,
-        diagnostics& diag
-    )
-    {
-        start_execution(stmt.bind(params_first, params_last), st, ec, diag);
-    }
-
-    /// \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,diagnostics&)
-    template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
-    BOOST_DEPRECATED(
-        "start_statement_execution is deprecated and will be removed in Boost 1.86. Use start_execution, "
-        "instead"
-    )
-    void start_statement_execution(
-        const statement& stmt,
-        FieldViewFwdIterator params_first,
-        FieldViewFwdIterator params_last,
-        execution_state& st
-    )
-    {
-        start_execution(stmt.bind(params_first, params_last), st);
-    }
-
-    /**
-     * \copydoc start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,error_code&,diagnostics&)
-     * \details
-     * \par Object lifetimes
-     * If `CompletionToken` is deferred (like `use_awaitable`), the caller must keep objects in
-     * the iterator range alive until the  operation is initiated.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <
-        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_DEPRECATED(
-        "async_start_statement_execution is deprecated and will be removed in Boost 1.86. Use "
-        "async_start_execution, instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_statement_execution(
-        const statement& stmt,
-        FieldViewFwdIterator params_first,
-        FieldViewFwdIterator params_last,
-        execution_state& st,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_start_statement_execution(
-            stmt,
-            params_first,
-            params_last,
-            st,
-            impl_.shared_diag(),
-            std::forward<CompletionToken>(token)
-        );
-    }
-
-    /// \copydoc async_start_statement_execution(const statement&,FieldViewFwdIterator,FieldViewFwdIterator,execution_state&,CompletionToken&&)
-    template <
-        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
-            CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
-    BOOST_DEPRECATED(
-        "async_start_statement_execution is deprecated and will be removed in Boost 1.86. Use "
-        "async_start_execution, instead"
-    )
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code)) async_start_statement_execution(
-        const statement& stmt,
-        FieldViewFwdIterator params_first,
-        FieldViewFwdIterator params_last,
-        execution_state& st,
-        diagnostics& diag,
-        CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
-    )
-    {
-        return async_start_execution(
-            stmt.bind(params_first, params_last),
-            st,
-            diag,
             std::forward<CompletionToken>(token)
         );
     }
@@ -1172,7 +675,7 @@ public:
      * has still rows to read, at least one will be read. If there are no more rows, or
      * `st.should_read_rows() == false`, returns an empty `rows_view`.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be
      * grown bigger by other read operations, if required.
@@ -1241,7 +744,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
@@ -1280,7 +783,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
@@ -1318,7 +821,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
@@ -1368,7 +871,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.

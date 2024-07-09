@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TIME_HPP
 #define BOOST_MYSQL_TIME_HPP
 
+#include <boost/config.hpp>
+
 #include <chrono>
 
 namespace boost {
@@ -17,10 +19,10 @@ namespace mysql {
 using time = std::chrono::microseconds;
 
 /// The minimum allowed value for \ref time.
-constexpr time min_time = -std::chrono::hours(839);
+BOOST_INLINE_CONSTEXPR time min_time = -std::chrono::hours(839);
 
 /// The maximum allowed value for \ref time.
-constexpr time max_time = std::chrono::hours(839);
+BOOST_INLINE_CONSTEXPR time max_time = std::chrono::hours(839);
 
 }  // namespace mysql
 }  // namespace boost

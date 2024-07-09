@@ -33,9 +33,12 @@ BOOST_AUTO_TEST_CASE(coverage)
 {
     // Check that no value causes problems.
     // Ensure that all branches of the switch/case are covered
-    for (int i = 0; i < 20; ++i)
+    for (int i = 1; i <= 25; ++i)
     {
-        BOOST_CHECK_NO_THROW(error_code(static_cast<client_errc>(i)).message());
+        BOOST_TEST_CONTEXT(i)
+        {
+            BOOST_TEST(error_code(static_cast<client_errc>(i)).message() != "<unknown MySQL client error>");
+        }
     }
 }
 BOOST_AUTO_TEST_SUITE_END()  // error_to_string_

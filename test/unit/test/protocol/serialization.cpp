@@ -5,261 +5,334 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/error_code.hpp>
+#include <boost/mysql/datetime.hpp>
+#include <boost/mysql/field_view.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <array>
 #include <cstdint>
-#include <memory>
+#include <vector>
 
-#include "operators.hpp"
 #include "serialization_test.hpp"
-#include "test_common/buffer_concat.hpp"
+#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_unit/mock_message.hpp"
 
 using namespace boost::mysql::detail;
 using namespace boost::mysql::test;
-using boost::mysql::client_errc;
-using boost::mysql::error_code;
+namespace collations = boost::mysql::mysql_collations;
+using boost::span;
+using boost::mysql::date;
+using boost::mysql::datetime;
+using boost::mysql::field_view;
 using boost::mysql::string_view;
 
 BOOST_AUTO_TEST_SUITE(test_serialization)
 
-template <std::size_t N>
-const char* get_string_N()
+// spotcheck: multi-frame messages handled correctly by serialize_top_level
+BOOST_AUTO_TEST_CASE(serialize_top_level_)
 {
-    static std::string res(N, 'a');
-    return res.c_str();
-}
-
-template <std::size_t N>
-string_fixed<N> makesfixed(const char (&value)[N + 1])
-{
-    static_assert(N >= 1, "Expected a C-array literal");
-    string_fixed<N> res;
-    std::memcpy(res.value.data(), value, N);
-    return res;
-}
-
-class test_case
-{
-    const char* name_;
-
-public:
-    test_case(const char* name) noexcept : name_(name) {}
-    virtual ~test_case() {}
-    virtual void serialize_test() = 0;
-    virtual void deserialize_test() = 0;
-    virtual void deserialize_space_test() = 0;
-    virtual void deserialize_not_enough_space_test() = 0;
-    const char* name() const noexcept { return name_; }
-};
-
-template <class T>
-class test_case_impl final : public test_case
-{
-    T value_;
-    std::vector<std::uint8_t> serialized_;
-    bool do_space_;
-
-public:
-    test_case_impl(const char* name, T value, std::vector<std::uint8_t> serialized, bool do_space = true)
-        : test_case(name), value_(value), serialized_(std::move(serialized)), do_space_(do_space)
-    {
-    }
-    void serialize_test() override final { do_serialize_test(value_, serialized_); }
-    void deserialize_test() override final { do_deserialize_test(value_, serialized_); }
-    void deserialize_space_test() override final
-    {
-        if (do_space_)
-            do_deserialize_extra_space_test(value_, serialized_);
-    }
-    void deserialize_not_enough_space_test() override final
-    {
-        if (do_space_)
-            do_deserialize_not_enough_space_test<T>(serialized_);
-    }
-};
-
-template <class T>
-std::shared_ptr<test_case> make_test(
-    const char* name,
-    T value,
-    std::vector<std::uint8_t> serialized,
-    bool do_space = true
-)
-{
-    return std::make_shared<test_case_impl<T>>(name, value, std::move(serialized), do_space);
-}
-
-std::vector<std::shared_ptr<test_case>> make_all_cases()
-{
-    return {
-        // basic integers
-        make_test("int1", std::uint8_t(0xff), {0xff}),
-        make_test("int2", std::uint16_t(0xfeff), {0xff, 0xfe}),
-        make_test("int3", int3{0xfdfeff}, {0xff, 0xfe, 0xfd}),
-        make_test("int4", std::uint32_t(0xfcfdfeff), {0xff, 0xfe, 0xfd, 0xfc}),
-        make_test(
-            "int8",
-            std::uint64_t(0xf8f9fafbfcfdfeff),
-            {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}
-        ),
-        make_test("sint1_positive", std::int8_t(0x01), {0x01}),
-        make_test("sint1_negative", std::int8_t(-1), {0xff}),
-        make_test("sint2_positive", std::int16_t(0x0201), {0x01, 0x02}),
-        make_test("sint2_negative", std::int16_t(-0x101), {0xff, 0xfe}),
-        make_test("sint4_positive", std::int32_t(0x04030201), {0x01, 0x02, 0x03, 0x04}),
-        make_test("sint4_negative", std::int32_t(-0x3020101), {0xff, 0xfe, 0xfd, 0xfc}),
-        make_test(
-            "sint8_positive",
-            std::int64_t(0x0807060504030201),
-            {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08}
-        ),
-        make_test(
-            "sint8_negative",
-            std::int64_t(-0x0706050403020101),
-            {0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}
-        ),
-
-        // int_lenenc
-        make_test("int_lenenc_1_byte_regular", int_lenenc{1}, {0x01}),
-        make_test("int_lenenc_1_byte_max", int_lenenc{250}, {0xfa}),
-        make_test("int_lenenc_2_bytes_regular", int_lenenc{0xfeb7}, {0xfc, 0xb7, 0xfe}),
-        make_test("int_lenenc_2_bytes_max", int_lenenc{0xffff}, {0xfc, 0xff, 0xff}),
-        make_test("int_lenenc_3_bytes_regular", int_lenenc{0xa0feff}, {0xfd, 0xff, 0xfe, 0xa0}),
-        make_test("int_lenenc_3_bytes_max", int_lenenc{0xffffff}, {0xfd, 0xff, 0xff, 0xff}),
-        make_test(
-            "int_lenenc_8_bytes_regular",
-            int_lenenc{0xf8f9fafbfcfdfeff},
-            {0xfe, 0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8}
-        ),
-        make_test(
-            "int_lenenc_8_bytes_max",
-            int_lenenc{0xffffffffffffffff},
-            {0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}
-        ),
-
-        // protocol_field_type
-        make_test("protoft_decimal", protocol_field_type::decimal, {0x00}),
-        make_test("protoft_time", protocol_field_type::time, {0x0b}),
-        make_test("protoft_geometry", protocol_field_type::geometry, {0xff}),
-
-        // string_fixed
-        make_test("4c_regular_characters", makesfixed<4>("abde"), {0x61, 0x62, 0x64, 0x65}),
-        make_test("3c_null_characters", makesfixed<3>("\0\1a"), {0x00, 0x01, 0x61}),
-        make_test("3c_utf8_characters", string_fixed<3>{{{'\xc3', '\xb1', 'a'}}}, {0xc3, 0xb1, 0x61}),
-        make_test("1c_regular_characters", makesfixed<1>("a"), {0x61}),
-
-        // string_null
-        make_test("regular_characters", string_null{"abc"}, {0x61, 0x62, 0x63, 0x00}),
-        make_test("utf8_characters", string_null{"\xc3\xb1"}, {0xc3, 0xb1, 0x00}),
-        make_test("empty", string_null{""}, {0x00}),
-
-        // string_lenenc
-        make_test("empty", string_lenenc{""}, {0x00}),
-        make_test("1_byte_size_regular_characters", string_lenenc{"abc"}, {0x03, 0x61, 0x62, 0x63}),
-        make_test("1_byte_size_null_characters", string_lenenc{makesv("a\0b")}, {0x03, 0x61, 0x00, 0x62}),
-        make_test(
-            "1_byte_size_max",
-            string_lenenc{get_string_N<250>()},
-            concat_copy({250}, std::vector<std::uint8_t>(250, 0x61))
-        ),
-        make_test(
-            "2_byte_size_min",
-            string_lenenc{get_string_N<251>()},
-            concat_copy({0xfc, 251, 0}, std::vector<std::uint8_t>(251, 0x61))
-        ),
-        make_test(
-            "2_byte_size_max",
-            string_lenenc{get_string_N<0xffff>()},
-            concat_copy({0xfc, 0xff, 0xff}, std::vector<std::uint8_t>(0xffff, 0x61))
-        ),
-        make_test(
-            "3_byte_size_min",
-            string_lenenc{get_string_N<0x10000>()},
-            concat_copy({0xfd, 0x00, 0x00, 0x01}, std::vector<std::uint8_t>(0x10000, 0x61))
-        ),
+    constexpr std::size_t frame_size = 8u;
+    const std::array<std::uint8_t, 11> payload{
+        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
     };
+    const std::vector<std::uint8_t> expected{80, 81, 82, 83, 85, 8, 0, 0, 42, 1, 2,  3,
+                                             4,  5,  6,  7,  8,  3, 0, 0, 43, 9, 10, 11};
+
+    std::vector<std::uint8_t> buff{80, 81, 82, 83, 85};
+    std::uint8_t seqnum = serialize_top_level(mock_message{payload}, buff, 42, frame_size);
+    BOOST_TEST(seqnum == 44u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
 }
 
-std::vector<std::shared_ptr<test_case>> all_cases()
+BOOST_AUTO_TEST_CASE(quit)
 {
-    static auto res = make_all_cases();
-    return res;
+    quit_command cmd;
+    const std::uint8_t serialized[] = {0x01};
+    do_serialize_test(cmd, serialized);
 }
 
-BOOST_AUTO_TEST_CASE(serialize)
+BOOST_AUTO_TEST_CASE(ping)
 {
-    for (const auto& sample : all_cases())
-    {
-        BOOST_TEST_CONTEXT(sample->name()) { sample->serialize_test(); }
-    }
+    ping_command cmd;
+    const std::uint8_t serialized[] = {0x0e};
+    do_serialize_test(cmd, serialized);
 }
 
-BOOST_AUTO_TEST_CASE(deserialize)
+BOOST_AUTO_TEST_CASE(reset_connection)
 {
-    for (const auto& sample : all_cases())
-    {
-        BOOST_TEST_CONTEXT(sample->name()) { sample->deserialize_test(); }
-    }
+    reset_connection_command cmd;
+    const std::uint8_t serialized[] = {0x1f};
+    do_serialize_test(cmd, serialized);
 }
 
-BOOST_AUTO_TEST_CASE(deserialize_extra_space)
+BOOST_AUTO_TEST_CASE(query)
 {
-    for (const auto& sample : all_cases())
-    {
-        BOOST_TEST_CONTEXT(sample->name()) { sample->deserialize_space_test(); }
-    }
-}
-BOOST_AUTO_TEST_CASE(deserialize_not_enough_space)
-{
-    for (const auto& sample : all_cases())
-    {
-        BOOST_TEST_CONTEXT(sample->name()) { sample->deserialize_not_enough_space_test(); }
-    }
+    query_command cmd{"show databases"};
+    const std::uint8_t serialized[] =
+        {0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x73};
+    do_serialize_test(cmd, serialized);
 }
 
-// string_eof can be serialized/deserialized, but is space sensitive, so extra space/not enough space tests
-// shouldn't be performed
-BOOST_AUTO_TEST_CASE(string_eof_)
+// Query strings may be large. We consider framing when serializing them
+BOOST_AUTO_TEST_CASE(query_framing)
 {
+    query_command cmd{"show databases"};
+    const std::uint8_t serialized[] = {
+        0, 0, 0, 0, 0x03, 0x73, 0x68, 0x6f, 0x77, 0x20, 0x64, 0x61,  // frame 1
+        0, 0, 0, 0, 0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x73         // frame 2
+    };
+    do_serialize_test(cmd, serialized, 8u);
+}
+
+BOOST_AUTO_TEST_CASE(prepare_statement)
+{
+    prepare_stmt_command cmd{"SELECT * from three_rows_table WHERE id = ?"};
+    const std::uint8_t serialized[] = {0x16, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x2a, 0x20, 0x66,
+                                       0x72, 0x6f, 0x6d, 0x20, 0x74, 0x68, 0x72, 0x65, 0x65, 0x5f, 0x72,
+                                       0x6f, 0x77, 0x73, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x20, 0x57,
+                                       0x48, 0x45, 0x52, 0x45, 0x20, 0x69, 0x64, 0x20, 0x3d, 0x20, 0x3f};
+    do_serialize_test(cmd, serialized);
+}
+
+BOOST_AUTO_TEST_CASE(execute_statement)
+{
+    constexpr std::uint8_t blob_buffer[] = {0x70, 0x00, 0x01, 0xff};
+
     struct
     {
         const char* name;
-        string_eof value;
+        std::uint32_t stmt_id;
+        std::vector<field_view> params;
         std::vector<std::uint8_t> serialized;
     } test_cases[] = {
-        {"regular_characters", string_eof{"abc"},          {0x61, 0x62, 0x63}},
-        {"null_characters",    string_eof{makesv("a\0b")}, {0x61, 0x00, 0x62}},
-        {"empty",              string_eof{""},             {}                },
+        // clang-format off
+        {
+            "uint64_t",
+            1,
+            make_fv_vector(std::uint64_t(0xabffffabacadae)),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x08, 0x80, 0xae, 0xad, 0xac, 0xab, 0xff, 0xff, 0xab, 0x00},
+        },
+        {
+            "int64_t",
+            1,
+            make_fv_vector(std::int64_t(-0xabffffabacadae)),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x08, 0x00, 0x52, 0x52, 0x53, 0x54, 0x00, 0x00, 0x54, 0xff}
+        },
+        {
+            "string",
+            1,
+            make_fv_vector(string_view("test")),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0xfe, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74}
+        },
+        {
+            "blob",
+            1,
+            make_fv_vector(span<const std::uint8_t>(blob_buffer)),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0xfc, 0x00, 0x04, 0x70, 0x00, 0x01, 0xff}
+        },
+        {
+            "float",
+            1,
+            make_fv_vector(3.14e20f),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x04, 0x00, 0x01, 0x2d, 0x88, 0x61}
+        },
+        {
+            "double",
+            1,
+            make_fv_vector(2.1e214),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x05, 0x00, 0x56, 0xc0, 0xee, 0xa6, 0x95, 0x30, 0x6f, 0x6c}
+        },
+        {
+            "date",
+            1,
+            make_fv_vector(date(2010u, 9u, 3u)),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x0a, 0x00, 0x04, 0xda, 0x07, 0x09, 0x03}
+        },
+        {
+            "datetime",
+            1,
+            make_fv_vector(datetime(2010u, 9u, 3u, 10u, 30u, 59u, 231800u)),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x0c, 0x00, 0x0b, 0xda, 0x07, 0x09, 0x03, 0x0a, 0x1e, 0x3b,
+            0x78, 0x89, 0x03, 0x00}
+        },
+        {
+            "time",
+            1,
+            make_fv_vector(maket(230, 30, 59, 231800)),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
+            0x01, 0x0b, 0x00, 0x0c, 0x00, 0x09, 0x00, 0x00, 0x00, 0x0e, 0x1e,
+            0x3b, 0x78, 0x89, 0x03, 0x00}
+        },
+        {
+            "null",
+            1,
+            make_fv_vector(nullptr),
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x01, 0x06, 0x00}
+        },
+        {
+            "several_params",
+            2,
+            make_fv_vector(
+                std::uint64_t(0xabffffabacadae),
+                std::int64_t(-0xabffffabacadae),
+                string_view("test"),
+                nullptr,
+                2.1e214,
+                date(2010u, 9u, 3u),
+                datetime(2010u, 9u, 3u, 10u, 30u, 59u, 231800u),
+                maket(230, 30, 59, 231800),
+                nullptr
+            ),
+            {0x17, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x01,
+            0x01, 0x08, 0x80, 0x08, 0x00, 0xfe, 0x00, 0x06, 0x00, 0x05, 0x00, 0x0a,
+            0x00, 0x0c, 0x00, 0x0b, 0x00, 0x06, 0x00, 0xae, 0xad, 0xac, 0xab, 0xff,
+            0xff, 0xab, 0x00, 0x52, 0x52, 0x53, 0x54, 0x00, 0x00, 0x54, 0xff, 0x04,
+            0x74, 0x65, 0x73, 0x74, 0x56, 0xc0, 0xee, 0xa6, 0x95, 0x30, 0x6f, 0x6c,
+            0x04, 0xda, 0x07, 0x09, 0x03, 0x0b, 0xda, 0x07, 0x09, 0x03, 0x0a, 0x1e,
+            0x3b, 0x78, 0x89, 0x03, 0x00, 0x0c, 0x00, 0x09, 0x00, 0x00, 0x00, 0x0e,
+            0x1e, 0x3b, 0x78, 0x89, 0x03, 0x00}
+        },
+        {
+            "empty",
+            1,
+            {},
+            {0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00}
+        }
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
     {
-        BOOST_TEST_CONTEXT(tc.name << ", serialization") { do_serialize_test(tc.value, tc.serialized); }
-        BOOST_TEST_CONTEXT(tc.name << ", deserialization") { do_deserialize_test(tc.value, tc.serialized); }
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            execute_stmt_command cmd{tc.stmt_id, tc.params};
+            do_serialize_test(cmd, tc.serialized);
+        }
     }
 }
 
-// going from deserialize_errc to error code
-BOOST_AUTO_TEST_CASE(to_error_code_)
+BOOST_AUTO_TEST_CASE(close_statement)
 {
-    BOOST_TEST(to_error_code(deserialize_errc::ok) == error_code());
-    BOOST_TEST(
-        to_error_code(deserialize_errc::incomplete_message) == error_code(client_errc::incomplete_message)
-    );
-    BOOST_TEST(
-        to_error_code(deserialize_errc::protocol_value_error) == error_code(client_errc::protocol_value_error)
-    );
-    BOOST_TEST(
-        to_error_code(deserialize_errc::server_unsupported) == error_code(client_errc::server_unsupported)
-    );
+    close_stmt_command cmd{1};
+    const std::uint8_t serialized[] = {0x19, 0x01, 0x00, 0x00, 0x00};
+    do_serialize_test(cmd, serialized);
+}
+
+BOOST_AUTO_TEST_CASE(login_request_)
+{
+    constexpr std::array<std::uint8_t, 20> auth_data{
+        {0xfe, 0xc6, 0x2c, 0x9f, 0xab, 0x43, 0x69, 0x46, 0xc5, 0x51,
+         0x35, 0xa5, 0xff, 0xdb, 0x3f, 0x48, 0xe6, 0xfc, 0x34, 0xc9}
+    };
+
+    constexpr std::uint32_t caps = CLIENT_LONG_PASSWORD | CLIENT_LONG_FLAG | CLIENT_LOCAL_FILES |
+                                   CLIENT_PROTOCOL_41 | CLIENT_INTERACTIVE | CLIENT_TRANSACTIONS |
+                                   CLIENT_SECURE_CONNECTION | CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS |
+                                   CLIENT_PS_MULTI_RESULTS | CLIENT_PLUGIN_AUTH | CLIENT_CONNECT_ATTRS |
+                                   CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
+                                   CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS | CLIENT_SESSION_TRACK |
+                                   CLIENT_DEPRECATE_EOF;
+
+    struct
+    {
+        const char* name;
+        login_request value;
+        std::vector<std::uint8_t> serialized;
+    } test_cases[] = {
+        {
+         "without_db", {
+                capabilities(caps),
+                16777216,  // max packet size
+                collations::utf8_general_ci,
+                "root",  // username
+                auth_data,
+                "",                       // database; irrelevant, not using connect with DB capability
+                "mysql_native_password",  // auth plugin name
+            }, {0x85, 0xa6, 0xff, 0x01, 0x00, 0x00, 0x00, 0x01, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+             0x72, 0x6f, 0x6f, 0x74, 0x00, 0x14, 0xfe, 0xc6, 0x2c, 0x9f, 0xab, 0x43, 0x69, 0x46, 0xc5, 0x51,
+             0x35, 0xa5, 0xff, 0xdb, 0x3f, 0x48, 0xe6, 0xfc, 0x34, 0xc9, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f,
+             0x6e, 0x61, 0x74, 0x69, 0x76, 0x65, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00},
+         },
+        {
+         "with_db",            {
+                capabilities(caps | CLIENT_CONNECT_WITH_DB),
+                16777216,  // max packet size
+                collations::utf8_general_ci,
+                "root",  // username
+                auth_data,
+                "database",               // DB name
+                "mysql_native_password",  // auth plugin name
+            },                                    {0x8d, 0xa6, 0xff, 0x01, 0x00, 0x00, 0x00, 0x01, 0x21, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0x72, 0x6f, 0x6f, 0x74, 0x00, 0x14, 0xfe, 0xc6, 0x2c, 0x9f, 0xab, 0x43, 0x69,
+             0x46, 0xc5, 0x51, 0x35, 0xa5, 0xff, 0xdb, 0x3f, 0x48, 0xe6, 0xfc, 0x34, 0xc9, 0x64, 0x61,
+             0x74, 0x61, 0x62, 0x61, 0x73, 0x65, 0x00, 0x6d, 0x79, 0x73, 0x71, 0x6c, 0x5f, 0x6e, 0x61,
+             0x74, 0x69, 0x76, 0x65, 0x5f, 0x70, 0x61, 0x73, 0x73, 0x77, 0x6f, 0x72, 0x64, 0x00},
+         },
+    };
+
+    // TODO: test case with collation > 0xff
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name) { do_serialize_test(tc.value, tc.serialized); }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(ssl_request_)
+{
+    constexpr std::uint32_t caps = CLIENT_LONG_FLAG | CLIENT_LOCAL_FILES | CLIENT_PROTOCOL_41 |
+                                   CLIENT_INTERACTIVE | CLIENT_SSL | CLIENT_TRANSACTIONS |
+                                   CLIENT_SECURE_CONNECTION | CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS |
+                                   CLIENT_PS_MULTI_RESULTS | CLIENT_PLUGIN_AUTH | CLIENT_CONNECT_ATTRS |
+                                   CLIENT_SESSION_TRACK | (1UL << 29);
+
+    // Data
+    ssl_request value{
+        capabilities(caps),
+        0x1000000,  // max packet size
+        collations::utf8mb4_general_ci,
+    };
+
+    const std::uint8_t serialized[] = {0x84, 0xae, 0x9f, 0x20, 0x00, 0x00, 0x00, 0x01, 0x2d, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+
+    do_serialize_test(value, serialized);
+
+    // TODO: test case with collation > 0xff
+}
+
+BOOST_AUTO_TEST_CASE(auth_switch_response_)
+{
+    constexpr std::array<std::uint8_t, 20> auth_data{
+        {0xba, 0x55, 0x9c, 0xc5, 0x9c, 0xbf, 0xca, 0x06, 0x91, 0xff,
+         0xaa, 0x72, 0x59, 0xfc, 0x53, 0xdf, 0x88, 0x2d, 0xf9, 0xcf}
+    };
+
+    auth_switch_response value{auth_data};
+
+    constexpr std::array<std::uint8_t, 20> serialized{
+        {0xba, 0x55, 0x9c, 0xc5, 0x9c, 0xbf, 0xca, 0x06, 0x91, 0xff,
+         0xaa, 0x72, 0x59, 0xfc, 0x53, 0xdf, 0x88, 0x2d, 0xf9, 0xcf}
+    };
+
+    do_serialize_test(value, serialized);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

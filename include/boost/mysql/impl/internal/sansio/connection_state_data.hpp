@@ -13,13 +13,17 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
+#include <boost/mysql/detail/next_action.hpp>
+#include <boost/mysql/detail/pipeline.hpp>
+
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
-#include <boost/mysql/impl/internal/sansio/message_writer.hpp>
 
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace boost {
@@ -51,6 +55,9 @@ struct connection_state_data
     // Temporary field storage, re-used by several ops
     std::vector<field_view> shared_fields;
 
+    // Temporary pipeline stage storage, re-used by several ops
+    std::array<pipeline_request_stage, 2> shared_pipeline_stages;
+
     // Do we want to retain metadata strings or not? Used to save allocations
     metadata_mode meta_mode{metadata_mode::minimal};
 
@@ -64,20 +71,23 @@ struct connection_state_data
     // The current character set, or a default-constructed character set (will all nullptrs) if unknown
     character_set current_charset{};
 
-    // Reader and writer
+    // The write buffer
+    std::vector<std::uint8_t> write_buffer;
+
+    // Reader
     message_reader reader;
-    message_writer writer;
 
-    bool ssl_active() const noexcept { return ssl == ssl_state::active; }
-    bool supports_ssl() const noexcept { return ssl != ssl_state::unsupported; }
+    std::size_t max_buffer_size() const { return reader.max_buffer_size(); }
+    bool ssl_active() const { return ssl == ssl_state::active; }
+    bool supports_ssl() const { return ssl != ssl_state::unsupported; }
 
-    const character_set* charset_ptr() const noexcept
-    {
-        return current_charset.name.empty() ? nullptr : &current_charset;
-    }
-
-    connection_state_data(std::size_t read_buffer_size, bool transport_supports_ssl = false)
-        : ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported), reader(read_buffer_size)
+    connection_state_data(
+        std::size_t read_buffer_size,
+        std::size_t max_buff_size = static_cast<std::size_t>(-1),
+        bool transport_supports_ssl = false
+    )
+        : ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported),
+          reader(read_buffer_size, max_buff_size)
     {
     }
 
@@ -96,9 +106,26 @@ struct connection_state_data
     }
 
     // Reads an OK packet from the reader. This operation is repeated in several places.
-    error_code deserialize_ok(diagnostics& diag) noexcept
+    error_code deserialize_ok(diagnostics& diag)
     {
         return deserialize_ok_response(reader.message(), flavor, diag, backslash_escapes);
+    }
+
+    // Helpers for sans-io algorithms
+    next_action read(std::uint8_t& seqnum, bool keep_parsing_state = false)
+    {
+        // buffer is attached by top_level_algo
+        reader.prepare_read(seqnum, keep_parsing_state);
+        return next_action::read({});
+    }
+
+    template <class Serializable>
+    next_action write(const Serializable& msg, std::uint8_t& seqnum)
+    {
+        // use_ssl is attached by top_level_algo
+        write_buffer.clear();
+        seqnum = serialize_top_level(msg, write_buffer, seqnum);
+        return next_action::write({write_buffer, false});
     }
 };
 

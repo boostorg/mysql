@@ -22,8 +22,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-BOOST_MYSQL_STATIC_OR_INLINE
-const char* error_to_string(client_errc error) noexcept
+inline const char* error_to_string(client_errc error)
 {
     switch (error)
     {
@@ -68,24 +67,28 @@ const char* error_to_string(client_errc error) noexcept
     case client_errc::unformattable_value:
         return "A formatting operation could not format one of its arguments.";
     case client_errc::format_string_invalid_syntax:
-        return "A format string with an invalid byte sequence was provided to a SQL formatting function.";
+        return "A format string with invalid syntax was provided to a SQL formatting function.";
     case client_errc::format_string_invalid_encoding:
         return "A format string with an invalid byte sequence was provided to a SQL formatting function.";
     case client_errc::format_string_manual_auto_mix:
         return "A format string mixes manual (e.g. {0}) and automatic (e.g. {}) indexing.";
+    case client_errc::format_string_invalid_specifier:
+        return "The supplied format specifier is not supported by the type being formatted.";
     case client_errc::format_arg_not_found:
         return "A format argument referenced by a format string was not found. Check the number of format "
                "arguments passed and their names.";
     case client_errc::unknown_character_set:
         return "The character set used by the connection is not known by the client. Use set_character_set "
                "or async_set_character_set before invoking operations that require a known charset.";
+    case client_errc::max_buffer_size_exceeded:
+        return "An operation attempted to read or write a packet larger than the maximum buffer size. "
+               "Try increasing any_connection_params::max_buffer_size.";
 
     default: return "<unknown MySQL client error>";
     }
 }
 
-BOOST_MYSQL_STATIC_OR_INLINE
-const char* error_to_string(common_server_errc v) noexcept
+inline const char* error_to_string(common_server_errc v)
 {
     const char* res = detail::common_error_to_string(static_cast<int>(v));
     return res ? res : "<unknown server error>";

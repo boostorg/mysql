@@ -22,13 +22,119 @@
 #include <boost/core/span.hpp>
 #include <boost/system/result.hpp>
 
-#include <cstddef>
 #include <initializer_list>
+#include <iterator>
 #include <string>
 #include <type_traits>
+#include <utility>
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+#include <concepts>
+#endif
 
 namespace boost {
 namespace mysql {
+
+/**
+ * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
+ * \details
+ * This type can be specialized for custom types to make them formattable.
+ * This makes them satisfy the `Formattable` concept, and thus usable in
+ * \ref format_sql and similar functions.
+ * \n
+ * A `formatter` specialization for a type `T` should have the following form:
+ * ```
+ * template <>
+ * struct formatter<T>
+ * {
+ *     const char* parse(const char* begin, const char* end); // parse format specs
+ *     void format(const T& value, format_context_base& ctx) const; // perform the actual formatting
+ * };
+ * ```
+ * \n
+ * When a value with a custom formatter is formatted (using \ref format_sql or a similar
+ * function), the library performs the following actions: \n
+ *   - An instance of `formatter<T>` is default-constructed, where `T` is the type of the
+ *     value being formatted after removing const and references.
+ *   - The `parse` function is invoked on the constructed instance,
+ *     with `[begin, end)` pointing to the format specifier
+ *     that the current replacement field has. If `parse` finds specifiers it understands, it should
+ *     remember them, usually setting some flag in the `formatter` instance.
+ *     `parse` must return an iterator to the first
+ *     unparsed character in the range (or the `end` iterator, if everything was parsed).
+ *     Some examples of what would get passed to `parse`:
+ *       - In `"SELECT {}"`, the range would be empty.
+ *       - In `"SELECT {:abc}"`, the range would be `"abc"`.
+ *       - In `"SELECT {0:i}"`, the range would be `"i"`.
+ *   - If `parse` didn't manage to parse all the passed specifiers (i.e. if it returned an iterator
+ *     different to the passed's end), a \ref client_errc::format_string_invalid_specifier
+ *     is emitted and the format operation finishes.
+ *   - Otherwise, `format` is invoked on the formatter instance, passing the value to be formatted
+ *     and the \ref format_context_base where format operation is running.
+ *     This function should perform the actual formatting, usually calling
+ *     \ref format_sql_to on the passed context.
+ *
+ * \n
+ * Don't specialize `formatter` for built-in types, like `int`, `std::string` or
+ * optionals (formally, any type satisfying `WritableField`), as the specializations will be ignored.
+ */
+template <class T>
+struct formatter
+#ifndef BOOST_MYSQL_DOXYGEN
+    : detail::formatter_is_unspecialized
+{
+}
+#endif
+;
+
+/**
+ * \brief (EXPERIMENTAL) A type-erased reference to a `Formattable` value.
+ * \details
+ * This type can hold references to any value that satisfies the `Formattable`
+ * concept. The `formattable_ref` type itself satisfies `Formattable`,
+ * and can thus be used as an argument to format functions.
+ *
+ * \par Object lifetimes
+ * This is a non-owning type. It should be only used as a function argument,
+ * to avoid lifetime issues.
+ */
+class formattable_ref
+{
+    detail::formattable_ref_impl impl_;
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+public:
+    /**
+     * \brief Constructor.
+     * \details
+     * Constructs a type-erased formattable reference from a concrete
+     * `Formattable` type.
+     * \n
+     * This constructor participates in overload resolution only if
+     * the passed value meets the `Formattable` concept and
+     * is not a `formattable_ref` or a reference to one.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Object lifetimes
+     * value is potentially stored as a view, although some cheap-to-copy
+     * types may be stored as values.
+     */
+    template <
+        BOOST_MYSQL_FORMATTABLE Formattable
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
+        class = typename std::enable_if<
+            detail::is_formattable_type<Formattable>() &&
+            !detail::is_formattable_ref<Formattable>::value>::type
+#endif
+        >
+    formattable_ref(Formattable&& value) noexcept
+        : impl_(detail::make_formattable_ref(std::forward<Formattable>(value)))
+    {
+    }
+};
 
 /**
  * \brief (EXPERIMENTAL) A named format argument, to be used in initializer lists.
@@ -46,7 +152,7 @@ class format_arg
     struct
     {
         string_view name;
-        detail::format_arg_value value;
+        detail::formattable_ref_impl value;
     } impl_;
 
     friend struct detail::access;
@@ -57,7 +163,6 @@ public:
      * \brief Constructor.
      * \details
      * Constructs an argument from a name and a value.
-     * value must satisfy the `Formattable` concept.
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -65,106 +170,11 @@ public:
      * \par Object lifetimes
      * Both `name` and `value` are stored as views.
      */
-    template <BOOST_MYSQL_FORMATTABLE Formattable>
-    constexpr format_arg(string_view name, const Formattable& value) noexcept
-        : impl_{name, detail::make_format_value(value)}
+    format_arg(string_view name, formattable_ref value) noexcept
+        : impl_{name, detail::access::get_impl(value)}
     {
     }
 };
-
-/**
- * \brief (EXPERIMENTAL) A SQL identifier to use for client-side SQL formatting.
- * \details
- * Represents a possibly-qualified SQL identifier.
- *
- * \par Object lifetimes
- * This type is non-owning, and should only be used as an argument to SQL formatting
- * functions.
- */
-class identifier
-{
-    struct impl_t
-    {
-        std::size_t qual_level;
-        string_view ids[3];
-
-        constexpr impl_t(std::size_t qual_level, string_view id1, string_view id2, string_view id3) noexcept
-            : qual_level(qual_level), ids{id1, id2, id3}
-        {
-        }
-    } impl_;
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    friend struct detail::access;
-#endif
-
-public:
-    /**
-     * \brief Constructs an unqualified identifier.
-     * \details
-     * Unqualified identifiers are usually field, table or database names,
-     * and get formatted as: \code "`column_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr explicit identifier(string_view id) noexcept : impl_(1u, id, {}, {}) {}
-
-    /**
-     * \brief Constructs an identifier with a single qualifier.
-     * \details
-     * Identifiers with one qualifier are used for field, table and view names.
-     * The qualifier identifies the parent object. For instance,
-     * `identifier("table_name", "field_name")` maps to: \code "`table_name`.`field_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr identifier(string_view qualifier, string_view id) noexcept : impl_(2u, qualifier, id, {}) {}
-
-    /**
-     * \brief Constructs an identifier with two qualifiers.
-     * \details
-     * Identifiers with two qualifier are used for field names.
-     * The first qualifier identifies the database, the second, the table name.
-     * For instance, `identifier("db", "table_name", "field_name")` maps to:
-     * \code "`db`.`table_name`.`field_name`" \endcode
-     *
-     * \par Exception safety
-     * No-throw guarantee.
-     */
-    constexpr identifier(string_view qual1, string_view qual2, string_view id) noexcept
-        : impl_(3u, qual1, qual2, id)
-    {
-    }
-};
-
-/**
- * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
- * \details
- * This type can be specialized for custom types to make them formattable.
- * This makes them satisfy the `Formattable` concept, and usable in
- * \ref format_sql and \ref format_context_base::append_value.
- * \n
- * A `formatter` specialization for a type `T` should have the following form:
- * ```
- * template <> struct formatter<MyType> {
- *     static void format(const MyType&, format_context_base&);
- * }
- * ```
- * \n
- * Don't specialize `formatter` for built-in types, like `int`, `std::string` or
- * optionals (formally, any type satisfying `WritableField`). This is not supported
- * and will result in a compile-time error.
- */
-template <class T>
-struct formatter
-#ifndef BOOST_MYSQL_DOXYGEN
-    : detail::formatter_is_unspecialized
-{
-}
-#endif
-;
 
 /**
  * \brief (EXPERIMENTAL) Base class for concrete format contexts.
@@ -198,7 +208,7 @@ class format_context_base
     friend class detail::format_state;
 #endif
 
-    BOOST_MYSQL_DECL void format_arg(detail::format_arg_value arg);
+    BOOST_MYSQL_DECL void format_arg(detail::formattable_ref_impl arg, string_view format_spec);
 
 protected:
     format_context_base(detail::output_string_ref out, format_options opts, error_code ec = {}) noexcept
@@ -220,12 +230,14 @@ protected:
 
 public:
     /**
-     * \brief Adds raw SQL to the output string.
+     * \brief Adds raw SQL to the output string (low level).
      * \details
      * Adds raw, unescaped SQL to the output string. Doesn't alter the error state.
      * \n
      * By default, the passed SQL should be available at compile-time.
      * Use \ref runtime if you need to use runtime values.
+     * \n
+     * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
@@ -240,13 +252,13 @@ public:
     }
 
     /**
-     * \brief Formats a value and adds it to the output string.
+     * \brief Formats a value and adds it to the output string (low level).
      * \details
-     * value is formatted according to its type. If formatting
-     * generates an error (for instance, a string with invalid encoding is passed),
+     * value is formatted according to its type, applying the passed format specifiers.
+     * If formatting generates an error (for instance, a string with invalid encoding is passed),
      * the error state may be set.
      * \n
-     * The supplied type must satisfy the `Formattable` concept.
+     * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
@@ -256,12 +268,16 @@ public:
      * \li \ref client_errc::invalid_encoding if a string with byte sequences that can't be decoded
      *          with the current character set is passed.
      * \li \ref client_errc::unformattable_value if a NaN or infinity `float` or `double` is passed.
+     * \li \ref client_errc::format_string_invalid_specifier if `format_specifiers` includes
+     *          specifiers not supported by the type being formatted.
      * \li Any other error code that user-supplied formatter specializations may add using \ref add_error.
      */
-    template <BOOST_MYSQL_FORMATTABLE Formattable>
-    format_context_base& append_value(const Formattable& v)
+    format_context_base& append_value(
+        formattable_ref value,
+        constant_string_view format_specifiers = string_view()
+    )
     {
-        format_arg(detail::make_format_value(v));
+        format_arg(detail::access::get_impl(value), format_specifiers.get());
         return *this;
     }
 
@@ -426,11 +442,79 @@ public:
  */
 using format_context = basic_format_context<std::string>;
 
-template <>
-struct formatter<identifier>
+/**
+ * \brief (EXPERIMENTAL) The return type of \ref sequence.
+ * \details
+ * Contains a range view (as an interator/sentinel pair), a formatter function, and a glue string.
+ * This type satisfies the `Formattable` concept. See \ref sequence for a detailed
+ * description of what formatting this class does.
+ * \n
+ * Don't instantiate this class directly - use \ref sequence, instead.
+ * The exact definition may vary between releases.
+ */
+template <class It, class Sentinel, class FormatFn>
+struct format_sequence_view
+#ifndef BOOST_MYSQL_DOXYGEN
 {
-    BOOST_MYSQL_DECL
-    static void format(const identifier& value, format_context_base& ctx);
+    It it;
+    Sentinel sentinel;
+    FormatFn fn;
+    constant_string_view glue;
+}
+#endif
+;
+
+/**
+ * \brief Makes a range formattable by supplying a per-element formatter function.
+ * \details
+ * Objects returned by this function satisfy `Formattable`.
+ * When formatted, the formatter function `fn` is invoked for each element
+ * in the range. The glue string `glue` is output raw (as per \ref format_context_base::append_raw)
+ * between consecutive invocations of the formatter function, generating an effect
+ * similar to `std::ranges::views::join`.
+ * \n
+ * \par Type requirements
+ *   - FormatFn should be move constructible.
+ *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
+ *     pair that can be compared for (in)equality.
+ *   - The expression `static_cast<const FormatFn&>(fn)(*std::begin(range), ctx)`
+ *     should be well formed, with `ctx` begin a `format_context_base&`.
+ *
+ * \par Object lifetimes
+ * The input range is stored in \ref format_sequence_view as a view, using an iterator/sentinel pair,
+ * and is never copied. The caller must make sure that the elements pointed by the obtained
+ * iterator/sentinel are kept alive until the view is formatted.
+ *
+ * \par Exception safety
+ * Strong-throw guarantee. Throws any exception that `std::begin`, `std::end`
+ * or move-constructing `FormatFn` may throw.
+ */
+template <class Range, class FormatFn>
+#if defined(BOOST_MYSQL_HAS_CONCEPTS)
+    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, Range>
+#endif
+auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
+    -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
+{
+    return {std::begin(range), std::end(range), std::move(fn), glue};
+}
+
+template <class It, class Sentinel, class FormatFn>
+struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
+{
+    const char* parse(const char* begin, const char*) { return begin; }
+
+    void format(const format_sequence_view<It, Sentinel, FormatFn>& value, format_context_base& ctx) const
+    {
+        bool is_first = true;
+        for (auto it = value.it; it != value.sentinel; ++it)
+        {
+            if (!is_first)
+                ctx.append_raw(value.glue);
+            is_first = false;
+            value.fn(*it, ctx);
+        }
+    }
 };
 
 /**
@@ -458,6 +542,8 @@ struct formatter<identifier>
  *     that can't be decoded with the current character set.
  * \li \ref client_errc::unformattable_value if `args` contains a floating-point value
  *     that is NaN or infinity.
+ * \li \ref client_errc::format_string_invalid_specifier if a replacement field includes
+ *          a specifier not supported by the type being formatted.
  * \li Any other error generated by user-defined \ref formatter specializations.
  * \li \ref client_errc::format_string_invalid_syntax if `format_str` can't be parsed as
  *     a format string.
@@ -469,14 +555,7 @@ struct formatter<identifier>
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-void format_sql_to(format_context_base& ctx, constant_string_view format_str, const Formattable&... args)
-{
-    std::initializer_list<format_arg> args_il{
-        {string_view(), args}
-        ...
-    };
-    detail::vformat_sql_to(ctx, format_str.get(), args_il);
-}
+void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args);
 
 /**
  * \copydoc format_sql_to
@@ -484,14 +563,12 @@ void format_sql_to(format_context_base& ctx, constant_string_view format_str, co
  * \n
  * This overload allows using named arguments.
  */
-inline void format_sql_to(
+BOOST_MYSQL_DECL
+void format_sql_to(
     format_context_base& ctx,
     constant_string_view format_str,
     std::initializer_list<format_arg> args
-)
-{
-    detail::vformat_sql_to(ctx, format_str.get(), args);
-}
+);
 
 /**
  * \brief (EXPERIMENTAL) Composes a SQL query client-side.
@@ -513,6 +590,8 @@ inline void format_sql_to(
  *     that can't be decoded with the current character set.
  * \li \ref client_errc::unformattable_value if `args` contains a floating-point value
  *     that is NaN or infinity.
+ * \li \ref client_errc::format_string_invalid_specifier if a replacement field includes
+ *          a specifier not supported by the type being formatted.
  * \li Any other error generated by user-defined \ref formatter specializations.
  * \li \ref client_errc::format_string_invalid_syntax if `format_str` can't be parsed as
  *     a format string.
@@ -524,18 +603,7 @@ inline void format_sql_to(
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-std::string format_sql(
-    const format_options& opts,
-    constant_string_view format_str,
-    const Formattable&... args
-)
-{
-    std::initializer_list<format_arg> args_il{
-        {string_view(), args}
-        ...
-    };
-    return detail::vformat_sql(opts, format_str.get(), args_il);
-}
+std::string format_sql(format_options opts, constant_string_view format_str, Formattable&&... args);
 
 /**
  * \copydoc format_sql
@@ -543,18 +611,17 @@ std::string format_sql(
  * \n
  * This overload allows using named arguments.
  */
-inline std::string format_sql(
-    const format_options& opts,
+BOOST_MYSQL_DECL
+std::string format_sql(
+    format_options opts,
     constant_string_view format_str,
     std::initializer_list<format_arg> args
-)
-{
-    return detail::vformat_sql(opts, format_str.get(), args);
-}
+);
 
 }  // namespace mysql
 }  // namespace boost
 
+#include <boost/mysql/impl/format_sql.hpp>
 #ifdef BOOST_MYSQL_HEADER_ONLY
 #include <boost/mysql/impl/format_sql.ipp>
 #endif

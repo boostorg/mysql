@@ -15,9 +15,11 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
@@ -30,11 +32,14 @@
 #include <boost/core/span.hpp>
 #include <boost/optional/optional.hpp>
 
+#include <cassert>
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <vector>
 
 using boost::mysql::error_code;
+using boost::mysql::field_view;
 using boost::mysql::string_view;
 
 // Prints an employee row to stdout
@@ -47,23 +52,38 @@ void print_employee(boost::mysql::row_view employee)
               << ", salary: " << employee.at(4) << '\n';              // field 4: salary
 }
 
-// The dynamic filters to use
-struct filters
+// An operator to use in a filter
+enum class op_type
 {
-    // If company_id.has_value(), filter by company ID
-    boost::optional<string_view> company_id;
+    lt,   // <
+    lte,  // <=
+    eq,   // =
+    gt,   // >
+    gte,  // >=
+};
 
-    // If first_name.has_value(), filter by first name
-    boost::optional<string_view> first_name;
+// Returns the SQL operator for the given op_type
+string_view op_type_to_sql(op_type value)
+{
+    switch (value)
+    {
+    case op_type::lt: return "<";
+    case op_type::lte: return "<=";
+    case op_type::eq: return "=";
+    case op_type::gte: return ">=";
+    case op_type::gt: return ">";
+    default: assert(false); return "=";
+    }
+}
 
-    // If last_name.has_value(), filter by last name
-    boost::optional<string_view> last_name;
-
-    // If min_salary.has_value(), return only employees with *min_salary or more
-    boost::optional<double> min_salary;
-
-    // If order_by.has_value(), order employees using the given field
-    boost::optional<string_view> order_by;
+// An individual filter to apply.
+// For example, filter{"salary", op_type::gt, field_view(20000)} should generate a
+// `salary` > 20000 condition
+struct filter
+{
+    string_view field_name;  // The database column name
+    op_type op;              // The operator to apply
+    field_view field_value;  // The value to check. field_view can hold any MySQL type
 };
 
 // Command line arguments
@@ -79,7 +99,10 @@ struct cmdline_args
     string_view server_hostname;
 
     // The filters to apply
-    filters filts;
+    std::vector<filter> filts;
+
+    // If order_by.has_value(), order employees using the given field
+    boost::optional<string_view> order_by;
 };
 
 // Parses the command line
@@ -116,19 +139,23 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
         // Attempt to match the argument against each prefix
         if (arg.starts_with(company_id_prefix))
         {
-            res.filts.company_id = arg.substr(company_id_prefix.size());
+            auto value = arg.substr(company_id_prefix.size());
+            res.filts.push_back({"company_id", op_type::eq, field_view(value)});
         }
         else if (arg.starts_with(first_name_prefix))
         {
-            res.filts.first_name = arg.substr(first_name_prefix.size());
+            auto value = arg.substr(first_name_prefix.size());
+            res.filts.push_back({"first_name", op_type::eq, field_view(value)});
         }
         else if (arg.starts_with(last_name_prefix))
         {
-            res.filts.last_name = arg.substr(last_name_prefix.size());
+            auto value = arg.substr(last_name_prefix.size());
+            res.filts.push_back({"last_name", op_type::eq, field_view(value)});
         }
         else if (arg.starts_with(min_salary_prefix))
         {
-            res.filts.min_salary = std::stod(arg.substr(min_salary_prefix.size()));
+            auto value = std::stod(arg.substr(min_salary_prefix.size()));
+            res.filts.push_back({"salary", op_type::gte, field_view(value)});
         }
         else if (arg.starts_with(order_by_prefix))
         {
@@ -141,7 +168,7 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
                 std::cerr << "Order-by: invalid field " << field_name << std::endl;
                 print_usage_and_exit();
             }
-            res.filts.order_by = field_name;
+            res.order_by = field_name;
         }
         else
         {
@@ -151,7 +178,7 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
     }
 
     // We should have at least one filter
-    if (!res.filts.company_id && !res.filts.first_name && !res.filts.last_name && !res.filts.min_salary)
+    if (res.filts.empty())
     {
         std::cerr << "At least one filter should be specified" << std::endl;
         print_usage_and_exit();
@@ -161,72 +188,44 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
 }
 
 // Composes a SELECT query to retrieve employees according to the passed filters.
-//
-std::string compose_get_employees_query(boost::mysql::format_options opts, const filters& filts)
+std::string compose_get_employees_query(
+    boost::mysql::format_options opts,
+    const std::vector<filter>& filts,
+    boost::optional<string_view> order_by
+)
 {
-    // A format context allows composing queries incrementally
+    // A format context allows composing queries incrementally.
+    // This is required because we need to add the ORDER BY clause conditionally
     boost::mysql::format_context ctx(opts);
 
-    // Keep track of whether we have already added a filter clause.
-    // We need to separate filter clauses by AND keywords
-    bool has_prev = false;
+    // Adds an individual filter to the context. Used by sequence()
+    auto filter_format_fn = [](filter item, boost::mysql::format_context_base& elm_ctx) {
+        // {:i} formats a string as a SQL identifier. {:r} outputs raw SQL.
+        // filter{"key", op_type::eq, field_view(42)} would get formatted as "`key` = 42"
+        boost::mysql::format_sql_to(
+            elm_ctx,
+            "{:i} {:r} {}",
+            item.field_name,
+            op_type_to_sql(item.op),
+            item.field_value
+        );
+    };
 
-    // append_raw adds raw SQL to the context's output, without any escaping.
-    ctx.append_raw("SELECT id, first_name, last_name, company_id, salary FROM employee WHERE ");
-
-    // Add the first_name clause
-    if (filts.first_name)
-    {
-        has_prev = true;
-
-        // format_sql_to expands the given format string and appends it to
-        // the context's output. The {} field will be replaced by *filts.first_name.
-        // first_name will be quoted and escaped adequately to prevent SQL injection attacks.
-        boost::mysql::format_sql_to(ctx, "first_name = {}", *filts.first_name);
-    }
-
-    // Add the last_name clause
-    if (filts.last_name)
-    {
-        // AND separator
-        if (has_prev)
-            ctx.append_raw(" AND ");
-        has_prev = true;
-
-        // Clause
-        boost::mysql::format_sql_to(ctx, "last_name = {}", *filts.last_name);
-    }
-
-    // Add the company_id clause
-    if (filts.company_id)
-    {
-        // AND separator
-        if (has_prev)
-            ctx.append_raw(" AND ");
-        has_prev = true;
-
-        // Clause
-        boost::mysql::format_sql_to(ctx, "company_id = {}", *filts.company_id);
-    }
-
-    // Add the min_salary clause
-    if (filts.min_salary)
-    {
-        // AND separator
-        if (has_prev)
-            ctx.append_raw(" AND ");
-        has_prev = true;
-
-        // Clause
-        boost::mysql::format_sql_to(ctx, "salary >= {}", *filts.min_salary);
-    }
+    // Add the query with the filters to ctx.
+    // sequence() will invoke filter_format_fn for each element in filts,
+    // using the string " AND " as glue, to separate filters
+    boost::mysql::format_sql_to(
+        ctx,
+        "SELECT id, first_name, last_name, company_id, salary FROM employee WHERE {}",
+        boost::mysql::sequence(filts, filter_format_fn, " AND ")
+    );
 
     // Add the order by
-    if (filts.order_by)
+    if (order_by)
     {
         // identifier formats a string as a SQL identifier, instead of a string literal.
         // For instance, this may generate "ORDER BY `first_name`"
-        boost::mysql::format_sql_to(ctx, "ORDER BY {}", boost::mysql::identifier(*filts.order_by));
+        boost::mysql::format_sql_to(ctx, " ORDER BY {:i}", *order_by);
     }
 
     // Get our generated query
@@ -275,7 +274,11 @@ void main_impl(int argc, char** argv)
             // containing the options required by format_context. format_opts() may return
             // an error if the connection doesn't know which character set is using -
             // use async_set_character_set if this happens.
-            std::string query = compose_get_employees_query(conn.format_opts().value(), args.filts);
+            std::string query = compose_get_employees_query(
+                conn.format_opts().value(),
+                args.filts,
+                args.order_by
+            );
 
             // Execute the query as usual. Note that, unlike with prepared statements,
             // formatting happened in the client, and not in the server.

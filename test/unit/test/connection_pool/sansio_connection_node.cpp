@@ -14,7 +14,7 @@
 
 #include <cstddef>
 
-#include "test_unit/pool_printing.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql::detail;
 using boost::mysql::client_errc;

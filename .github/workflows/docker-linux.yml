@@ -32,11 +32,13 @@ jobs:
           - { image: build-gcc10,        dockerfile: build-gcc10,        platforms: "linux/amd64",                }
           - { image: build-gcc11,        dockerfile: build-gcc11,        platforms: "linux/amd64, linux/arm64/v8" }
           - { image: build-gcc13,        dockerfile: build-gcc13,        platforms: "linux/amd64"                 }
+          - { image: build-gcc14,        dockerfile: build-gcc14,        platforms: "linux/amd64"                 }
           - { image: build-cmake3_8,     dockerfile: build-cmake3_8,     platforms: "linux/amd64",                }
           - { image: build-noopenssl,    dockerfile: build-noopenssl,    platforms: "linux/amd64",                }
           - { image: build-docs,         dockerfile: build-docs,         platforms: "linux/amd64",                }
           - { image: mysql5,             dockerfile: mysql5,             platforms: "linux/amd64",                }
           - { image: mysql8,             dockerfile: mysql8,             platforms: "linux/amd64, linux/arm64/v8" }
+          - { image: mysql9,             dockerfile: mysql9,             platforms: "linux/amd64, linux/arm64/v8" }
           - { image: mariadb,            dockerfile: mariadb,            platforms: "linux/amd64, linux/arm64/v8" }
 
     permissions:
@@ -47,23 +49,23 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
       
       - name: Log in to the Container registry
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: anarthal-containers
           password: ${{ secrets.ANARTHAL_CONTAINERS_TOKEN }}
 
       - name: Build and push
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v6
         with:
           context: .
           push: true

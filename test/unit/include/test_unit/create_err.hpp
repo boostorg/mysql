@@ -11,14 +11,30 @@
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/deserialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include "test_unit/create_frame.hpp"
-#include "test_unit/serialization.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
+
+inline std::vector<std::uint8_t> serialize_err_impl(detail::err_view pack, bool with_header)
+{
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, detail::disable_framing);
+    if (with_header)
+        ctx.add(0xff);  // header
+    ctx.serialize(
+        detail::int2{pack.error_code},
+        detail::string_fixed<1>{},  // SQL state marker
+        detail::string_fixed<5>{},  // SQL state
+        detail::string_eof{pack.error_message}
+    );
+    return buff;
+}
 
 class err_builder
 {
@@ -43,8 +59,8 @@ public:
         seqnum_ = v;
         return *this;
     }
-    std::vector<std::uint8_t> build_body_without_header() const { return serialize_err_without_header(err_); }
-    std::vector<std::uint8_t> build_body() const { return serialize_err(err_); }
+    std::vector<std::uint8_t> build_body_without_header() const { return serialize_err_impl(err_, false); }
+    std::vector<std::uint8_t> build_body() const { return serialize_err_impl(err_, true); }
     std::vector<std::uint8_t> build_frame() const { return create_frame(seqnum_, build_body()); }
 };
 

@@ -34,7 +34,7 @@ class handshake_params
 
 public:
     /// The default collation to use with the connection (`utf8mb4_general_ci` on both MySQL and MariaDB).
-    static constexpr std::uint16_t default_collation = 45;
+    static BOOST_INLINE_CONSTEXPR std::uint16_t default_collation = 45;
 
     /**
      * \brief Initializing constructor.

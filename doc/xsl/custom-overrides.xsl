@@ -28,6 +28,7 @@
     'SocketStream',
     'StaticRow',
     'Stream',
+    'WritableField',
     'WritableFieldTuple'
   "/>
 

@@ -8,11 +8,8 @@
 #ifndef BOOST_MYSQL_CHARACTER_SET_HPP
 #define BOOST_MYSQL_CHARACTER_SET_HPP
 
-#include <boost/mysql/string_view.hpp>
-
 #include <boost/mysql/detail/character_set.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/make_string_view.hpp>
 
 #include <boost/core/span.hpp>
 
@@ -31,13 +28,13 @@ namespace mysql {
 struct character_set
 {
     /**
-     * \brief The character set name.
+     * \brief The character set name, as a NULL-terminated string.
      * \details
      * This should match the character set name in MySQL. This is the string
      * you specify when issuing `SET NAMES` statements. You can find available
      * character sets using the `SHOW CHARACTER SET` statement.
      */
-    string_view name;
+    const char* name;
 
     /**
      * \brief Obtains the size of the first character of a string.
@@ -55,22 +52,22 @@ struct character_set
      * \n
      * \par Function signature
      * The function signature should be:
-     * `std::size_t (*next_char)(boost::span<const unsigned char> r) noexcept`.
+     * `std::size_t (*next_char)(boost::span<const unsigned char> r)`.
      */
-    std::size_t (*next_char)(span<const unsigned char>) noexcept;
+    std::size_t (*next_char)(span<const unsigned char>);
 };
 
 /// (EXPERIMENTAL) The utf8mb4 character set (the one you should use by default).
-constexpr character_set utf8mb4_charset
+BOOST_INLINE_CONSTEXPR character_set utf8mb4_charset
 #ifndef BOOST_MYSQL_DOXYGEN
-    {detail::make_string_view("utf8mb4"), detail::next_char_utf8mb4}
+    {"utf8mb4", detail::next_char_utf8mb4}
 #endif
 ;
 
 /// (EXPERIMENTAL) The ascii character set.
-constexpr character_set ascii_charset
+BOOST_INLINE_CONSTEXPR character_set ascii_charset
 #ifndef BOOST_MYSQL_DOXYGEN
-    {detail::make_string_view("ascii"), detail::next_char_ascii};
+    {"ascii", detail::next_char_ascii};
 #endif
 ;
 

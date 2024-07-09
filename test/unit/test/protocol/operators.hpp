@@ -8,9 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_OPERATORS_HPP
 #define BOOST_MYSQL_TEST_UNIT_TEST_PROTOCOL_OPERATORS_HPP
 
-#include <boost/mysql/impl/internal/protocol/basic_types.hpp>
-#include <boost/mysql/impl/internal/protocol/protocol_field_type.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/deserialization_context.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 
 #include <cstring>
 #include <ostream>
@@ -32,6 +31,19 @@ inline std::ostream& operator<<(std::ostream& os, deserialize_errc v)
     }
 }
 
+// int_holder
+template <class T>
+inline bool operator==(int_holder<T> lhs, int_holder<T> rhs) noexcept
+{
+    return lhs.value == rhs.value;
+}
+
+template <class T>
+inline std::ostream& operator<<(std::ostream& os, int_holder<T> value)
+{
+    return os << value.value;
+}
+
 // int3
 inline bool operator==(int3 lhs, int3 rhs) noexcept { return lhs.value == rhs.value; }
 inline std::ostream& operator<<(std::ostream& os, int3 value) { return os << value.value; }
@@ -39,41 +51,6 @@ inline std::ostream& operator<<(std::ostream& os, int3 value) { return os << val
 // int_lenenc
 inline bool operator==(int_lenenc lhs, int_lenenc rhs) noexcept { return lhs.value == rhs.value; }
 inline std::ostream& operator<<(std::ostream& os, int_lenenc value) { return os << value.value; }
-
-// protocol_field_type
-inline std::ostream& operator<<(std::ostream& os, protocol_field_type t)
-{
-    switch (t)
-    {
-    case detail::protocol_field_type::decimal: return os << "decimal";
-    case detail::protocol_field_type::tiny: return os << "tiny";
-    case detail::protocol_field_type::short_: return os << "short_";
-    case detail::protocol_field_type::long_: return os << "long_";
-    case detail::protocol_field_type::float_: return os << "float_";
-    case detail::protocol_field_type::double_: return os << "double_";
-    case detail::protocol_field_type::null: return os << "null";
-    case detail::protocol_field_type::timestamp: return os << "timestamp";
-    case detail::protocol_field_type::longlong: return os << "longlong";
-    case detail::protocol_field_type::int24: return os << "int24";
-    case detail::protocol_field_type::date: return os << "date";
-    case detail::protocol_field_type::time: return os << "time";
-    case detail::protocol_field_type::datetime: return os << "datetime";
-    case detail::protocol_field_type::year: return os << "year";
-    case detail::protocol_field_type::varchar: return os << "varchar";
-    case detail::protocol_field_type::bit: return os << "bit";
-    case detail::protocol_field_type::newdecimal: return os << "newdecimal";
-    case detail::protocol_field_type::enum_: return os << "enum_";
-    case detail::protocol_field_type::set: return os << "set";
-    case detail::protocol_field_type::tiny_blob: return os << "tiny_blob";
-    case detail::protocol_field_type::medium_blob: return os << "medium_blob";
-    case detail::protocol_field_type::long_blob: return os << "long_blob";
-    case detail::protocol_field_type::blob: return os << "blob";
-    case detail::protocol_field_type::var_string: return os << "var_string";
-    case detail::protocol_field_type::string: return os << "string";
-    case detail::protocol_field_type::geometry: return os << "geometry";
-    default: return os << "unknown";
-    }
-}
 
 // string_fixed
 template <std::size_t N>

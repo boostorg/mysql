@@ -10,9 +10,9 @@
 
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/any_stream_impl.hpp>
-
+#include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/buffer.hpp>
 #include <boost/core/span.hpp>
 
 #include <cstddef>
@@ -70,8 +70,8 @@ public:
     void async_read_some(asio::mutable_buffer, asio::any_completion_handler<void(error_code, std::size_t)>);
 
     // Writing
-    std::size_t write_some(boost::asio::const_buffer, error_code& ec);
-    void async_write_some(boost::asio::const_buffer, asio::any_completion_handler<void(error_code, std::size_t)>);
+    std::size_t write_some(asio::const_buffer, error_code& ec);
+    void async_write_some(asio::const_buffer, asio::any_completion_handler<void(error_code, std::size_t)>);
 
 private:
     std::vector<std::uint8_t> bytes_to_read_;
@@ -90,12 +90,8 @@ private:
     struct write_op;
 };
 
-using test_any_stream = detail::any_stream_impl<test_stream>;
-
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
-
-extern template class boost::mysql::detail::any_stream_impl<boost::mysql::test::test_stream>;
 
 #endif

@@ -22,7 +22,7 @@ namespace mysql {
 namespace detail {
 
 // Helpers
-constexpr unsigned char last_month_day_arr[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+BOOST_INLINE_CONSTEXPR unsigned char last_month_day_arr[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 constexpr bool is_leap(std::uint16_t y) noexcept { return y % 4 == 0 && (y % 100 != 0 || y % 400 == 0); }
 
@@ -32,13 +32,13 @@ constexpr inline std::uint8_t last_month_day(std::uint16_t y, std::uint8_t m) no
 }
 
 // Interface
-constexpr std::uint16_t max_year = 9999;
-constexpr std::uint8_t max_month = 12;
-constexpr std::uint8_t max_day = 31;
-constexpr std::uint8_t max_hour = 23;
-constexpr std::uint8_t max_min = 59;
-constexpr std::uint8_t max_sec = 59;
-constexpr std::uint32_t max_micro = 999999;
+BOOST_INLINE_CONSTEXPR std::uint16_t max_year = 9999;
+BOOST_INLINE_CONSTEXPR std::uint8_t max_month = 12;
+BOOST_INLINE_CONSTEXPR std::uint8_t max_day = 31;
+BOOST_INLINE_CONSTEXPR std::uint8_t max_hour = 23;
+BOOST_INLINE_CONSTEXPR std::uint8_t max_min = 59;
+BOOST_INLINE_CONSTEXPR std::uint8_t max_sec = 59;
+BOOST_INLINE_CONSTEXPR std::uint32_t max_micro = 999999;
 
 constexpr inline bool is_valid(std::uint16_t years, std::uint8_t month, std::uint8_t day) noexcept
 {

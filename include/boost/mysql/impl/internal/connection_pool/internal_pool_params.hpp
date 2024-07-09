@@ -32,7 +32,7 @@ struct internal_pool_params
 {
     connect_params connect_config;
     optional<asio::ssl::context> ssl_ctx;
-    std::size_t initial_read_buffer_size;
+    std::size_t initial_buffer_size;
     std::size_t initial_size;
     std::size_t max_size;
     std::chrono::steady_clock::duration connect_timeout;
@@ -44,7 +44,7 @@ struct internal_pool_params
     {
         any_connection_params res;
         res.ssl_context = ssl_ctx.get_ptr();
-        res.initial_read_buffer_size = initial_read_buffer_size;
+        res.initial_buffer_size = initial_buffer_size;
         return res;
     }
 };
@@ -86,7 +86,7 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
     return {
         std::move(connect_prms),
         std::move(params.ssl_ctx),
-        params.initial_read_buffer_size,
+        params.initial_buffer_size,
         params.initial_size,
         params.max_size,
         params.connect_timeout,

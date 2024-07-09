@@ -7,6 +7,7 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>

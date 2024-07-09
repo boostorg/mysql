@@ -8,40 +8,37 @@
 #ifndef BOOST_MYSQL_ANY_CONNECTION_HPP
 #define BOOST_MYSQL_ANY_CONNECTION_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/results.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
-#include <boost/mysql/detail/any_stream.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/connection_impl.hpp>
+#include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_concepts.hpp>
+#include <boost/mysql/detail/ssl_fwd.hpp>
 #include <boost/mysql/detail/throw_on_error_loc.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/consign.hpp>
-#include <boost/asio/execution_context.hpp>
-#include <boost/asio/ssl/context.hpp>
 #include <boost/assert.hpp>
 #include <boost/system/result.hpp>
-#include <boost/variant2/variant.hpp>
 
 #include <cstddef>
 #include <memory>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -49,6 +46,9 @@ namespace mysql {
 // Forward declarations
 template <class... StaticRow>
 class static_execution_state;
+
+class pipeline_request;
+class stage_response;
 
 /**
  * \brief (EXPERIMENTAL) Configuration parameters that can be passed to \ref any_connection's constructor.
@@ -81,11 +81,30 @@ struct any_connection_params
     asio::ssl::context* ssl_context{};
 
     /**
-     * \brief The initial size of the connection's read buffer.
+     * \brief The initial size of the connection's buffer, in bytes.
      * \details A bigger read buffer can increase the number of rows
      * returned by \ref any_connection::read_some_rows.
      */
-    std::size_t initial_read_buffer_size{default_initial_read_buffer_size};
+    std::size_t initial_buffer_size{default_initial_read_buffer_size};
+
+    /**
+     * \brief The maximum size of the connection's buffer, in bytes (64MB by default).
+     * \details
+     * Attempting to read or write a protocol packet bigger than this size
+     * will fail with a \ref client_errc::max_buffer_size_exceeded error.
+     * \n
+     * This effectively means: \n
+     *   - Each request sent to the server must be smaller than this value.
+     *   - Each individual row received from the server must be smaller than this value.
+     *     Note that when using `execute` or `async_execute`, results objects may
+     *     allocate memory beyond this limit if the total number of rows is high.
+     * \n
+     * If you need to send or receive larger packets, you may need to adjust
+     * your server's <a
+     * href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_max_allowed_packet">`max_allowed_packet`</a>
+     * system variable, too.
+     */
+    std::size_t max_buffer_size{0x4000000};
 };
 
 /**
@@ -122,15 +141,17 @@ class any_connection
 #endif
 
     BOOST_MYSQL_DECL
-    static std::unique_ptr<detail::any_stream> create_stream(
-        asio::any_io_executor ex,
-        asio::ssl::context* ctx
-    );
+    static std::unique_ptr<detail::engine> create_engine(asio::any_io_executor ex, asio::ssl::context* ctx);
 
-    template <class CompletionToken>
-    using async_connect_owning_t = detail::async_connect_t<
-        detail::any_address_view,
-        decltype(asio::consign(std::declval<CompletionToken>(), std::unique_ptr<char[]>()))>;
+    // Used by tests
+    any_connection(
+        std::size_t initial_buffer_size,
+        std::size_t max_buffer_size,
+        std::unique_ptr<detail::engine> eng
+    )
+        : impl_(initial_buffer_size, max_buffer_size, std::move(eng))
+    {
+    }
 
 public:
     /**
@@ -143,7 +164,11 @@ public:
      * an \ref any_connection_params object to this constructor.
      */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
-        : impl_(params.initial_read_buffer_size, create_stream(std::move(ex), params.ssl_context))
+        : any_connection(
+              params.initial_buffer_size,
+              params.max_buffer_size,
+              create_engine(std::move(ex), params.ssl_context)
+          )
     {
     }
 
@@ -205,7 +230,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    executor_type get_executor() noexcept { return impl_.stream().get_executor(); }
+    executor_type get_executor() noexcept { return impl_.get_engine().get_executor(); }
 
     /**
      * \brief Returns whether the connection negotiated the use of SSL or not.
@@ -344,7 +369,7 @@ public:
      */
     void connect(const connect_params& params, error_code& ec, diagnostics& diag)
     {
-        impl_.connect(detail::make_view(params.server_address), detail::make_hparams(params), ec, diag);
+        impl_.connect_v2(params, ec, diag);
     }
 
     /// \copydoc connect
@@ -360,61 +385,25 @@ public:
      * \copydoc connect
      *
      * \par Object lifetimes
-     * The implementation will copy `params` as required, so it needs not be
-     * kept alive.
+     * params needs to be kept alive until the operation completes, as no
+     * copies will be made by the library.
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_connect(const connect_params& params, diagnostics& diag, CompletionToken&& token)
-        BOOST_MYSQL_RETURN_TYPE(async_connect_owning_t<CompletionToken&&>)
+        BOOST_MYSQL_RETURN_TYPE(detail::async_connect_v2_t<CompletionToken&&>)
     {
-        auto stable_prms = detail::make_stable(params);
-        return impl_.async_connect(
-            stable_prms.address,
-            stable_prms.hparams,
-            diag,
-            asio::consign(std::forward<CompletionToken>(token), std::move(stable_prms.string_buffer))
-        );
+        return impl_.async_connect_v2(params, diag, std::forward<CompletionToken>(token));
     }
 
     /// \copydoc async_connect
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
     auto async_connect(const connect_params& params, CompletionToken&& token)
-        BOOST_MYSQL_RETURN_TYPE(async_connect_owning_t<CompletionToken&&>)
+        BOOST_MYSQL_RETURN_TYPE(detail::async_connect_v2_t<CompletionToken&&>)
     {
         return async_connect(params, impl_.shared_diag(), std::forward<CompletionToken>(token));
-    }
-
-    /**
-     * \copydoc connect
-     * This function has the same behavior as the other `async_connect` overloads,
-     * but perform less copies.
-     * \par Object lifetimes
-     * Zero-copy overload: no copies of the value pointed to by `params`
-     * will be made. It must be kept alive for the duration of the operation,
-     * until the final completion handler is called. If you are in doubt,
-     * prefer the overloads taking a `const connect_params&`, which will ensure
-     * lifetime correctness for you.
-     *
-     * \par Preconditions
-     * `params != nullptr`
-     *
-     * \par Handler signature
-     * The handler signature for this operation is `void(boost::mysql::error_code)`.
-     */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
-    auto async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
-        BOOST_MYSQL_RETURN_TYPE(detail::async_connect_t<detail::any_address_view, CompletionToken&&>)
-    {
-        BOOST_ASSERT(params != nullptr);
-        return impl_.async_connect(
-            detail::make_view(params->server_address),
-            detail::make_hparams(*params),
-            diag,
-            std::forward<CompletionToken>(token)
-        );
     }
 
     /// \copydoc connection::execute
@@ -661,7 +650,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
@@ -699,7 +688,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
@@ -736,7 +725,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
@@ -784,7 +773,7 @@ public:
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
      * \n
-     * The number of rows that will be read depends on the input buffer size. The bigger the buffer,
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in the
      * constructor. The buffer may be grown bigger by other read operations, if required.
      * \n
@@ -1079,6 +1068,81 @@ public:
     {
         return this->impl_.async_run(
             this->impl_.make_params_close(diag),
+            std::forward<CompletionToken>(token)
+        );
+    }
+
+    /**
+     * \brief Runs a set of pipelined requests.
+     * \details
+     * Runs the pipeline described by `req` and stores its response in `res`.
+     * After the operation completes, `res` will have as many elements as stages
+     * were in `req`, even if the operation fails.
+     * \n
+     * Request stages are seen by the server as a series of unrelated requests.
+     * As a consequence, all stages are always run, even if previous stages fail.
+     * \n
+     * If all stages succeed, the operation completes successfully. Thus, there is no need to check
+     * the per-stage error code in `res` if this operation completed successfully.
+     * \n
+     * If any stage fails with a non-fatal error (as per \ref is_fatal_error), the result of the operation
+     * is the first encountered error. You can check which stages succeeded and which ones didn't by
+     * inspecting each stage in `res`.
+     * \n
+     * If any stage fails with a fatal error, the result of the operation is the fatal error.
+     * Successive stages will be marked as failed with the fatal error. The server may or may
+     * not have processed such stages.
+     */
+    void run_pipeline(
+        const pipeline_request& req,
+        std::vector<stage_response>& res,
+        error_code& err,
+        diagnostics& diag
+    )
+    {
+        impl_.run(impl_.make_params_pipeline(req, res, diag), err);
+    }
+
+    /// \copydoc run_pipeline
+    void run_pipeline(const pipeline_request& req, std::vector<stage_response>& res)
+    {
+        error_code err;
+        diagnostics diag;
+        run_pipeline(req, res, err, diag);
+        detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
+    }
+
+    /**
+     * \copydoc run_pipeline
+     * \details
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Object lifetimes
+     * The request and response objects must be kept alive and should not be modified
+     * until the operation completes.
+     */
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    auto async_run_pipeline(
+        const pipeline_request& req,
+        std::vector<stage_response>& res,
+        CompletionToken&& token
+    ) BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
+    {
+        return async_run_pipeline(req, res, impl_.shared_diag(), std::forward<CompletionToken>(token));
+    }
+
+    /// \copydoc async_run_pipeline
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+    auto async_run_pipeline(
+        const pipeline_request& req,
+        std::vector<stage_response>& res,
+        diagnostics& diag,
+        CompletionToken&& token
+    ) BOOST_MYSQL_RETURN_TYPE(detail::async_run_pipeline_t<CompletionToken&&>)
+    {
+        return this->impl_.async_run(
+            impl_.make_params_pipeline(req, res, diag),
             std::forward<CompletionToken>(token)
         );
     }

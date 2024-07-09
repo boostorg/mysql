@@ -21,10 +21,12 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"
-#include "test_common/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+
+// Don't attempt to print std::chrono values
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 BOOST_AUTO_TEST_SUITE(test_field_view)
 
@@ -645,7 +647,7 @@ BOOST_AUTO_TEST_CASE(operator_stream)
         field_view input;
         string_view expected;
     } test_cases[] = {
-  // Field views holding values
+        // Field views holding values
         {"null", field_view(), "<NULL>"},
         {"i64_positive", field_view(std::int64_t(42)), "42"},
         {"i64_negative", field_view(std::int64_t(-90)), "-90"},
@@ -666,7 +668,7 @@ BOOST_AUTO_TEST_CASE(operator_stream)
         {"datetime", field_view(datetime(2020, 1, 19, 11, 30, 21, 98765)), "2020-01-19 11:30:21.098765"},
         {"time", field_view(-maket(12, 1, 5, 345)), "-12:01:05.000345"},
 
- // Field views holding pointers to fields
+        // Field views holding pointers to fields
         {"ref_null", field_view(owning_fields.f_null), "<NULL>"},
         {"ref_int64", field_view(owning_fields.f_int64), "-1"},
         {"ref_uint64", field_view(owning_fields.f_uint64), "50"},

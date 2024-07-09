@@ -5,14 +5,20 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-FROM mariadb:11.3.2
+FROM mariadb:11.4.2
 
 ENV MYSQL_ALLOW_EMPTY_PASSWORD=1
 ENV MYSQL_ROOT_PASSWORD=
 
-COPY tools/docker/mariadb_entrypoint.sh /
 COPY tools/docker/unix-socket.cnf /etc/mysql/conf.d/
 COPY tools/docker/ssl.cnf /etc/mysql/conf.d/
 COPY tools/ssl/*.pem /etc/ssl/certs/mysql/
+
+# Custom entry point to correctly set UNIX socket permissions, even if using volumes
+RUN <<EOF cat > /mariadb_entrypoint.sh
+chown -R mysql:mysql /var/run/mysqld
+/bin/bash /usr/local/bin/docker-entrypoint.sh mariadbd
+EOF
+
 
 ENTRYPOINT ["/bin/bash", "/mariadb_entrypoint.sh"]

@@ -29,6 +29,7 @@ add_executable(
     test/reconnect.cpp
     test/any_connection.cpp
     test/character_set_tracking.cpp
+    test/pipeline.cpp
     test/connection_pool.cpp
     test/db_specific.cpp
     test/database_types.cpp
@@ -46,6 +47,8 @@ add_executable(
     test/snippets/any_connection.cpp
     test/snippets/connection_pool.cpp
     test/snippets/sql_formatting.cpp
+    test/snippets/sql_formatting_custom.cpp
+    test/snippets/pipeline.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests
@@ -57,11 +60,6 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
     Boost::context
-)
-target_compile_definitions(
-    boost_mysql_integrationtests
-    PRIVATE
-    BOOST_ALLOW_DEPRECATED # Integration tests still exercise the old execution interface
 )
 boost_mysql_common_target_settings(boost_mysql_integrationtests)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)

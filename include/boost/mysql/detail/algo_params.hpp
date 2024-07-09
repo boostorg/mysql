@@ -9,23 +9,31 @@
 #define BOOST_MYSQL_DETAIL_ALGO_PARAMS_HPP
 
 #include <boost/mysql/character_set.hpp>
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/rows_view.hpp>
-#include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
+
+#include <boost/core/span.hpp>
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace boost {
 namespace mysql {
 
+class rows_view;
+class diagnostics;
+class statement;
+class stage_response;
+
 namespace detail {
+
+class execution_processor;
+class execution_state_impl;
+struct pipeline_request_stage;
 
 struct connect_algo_params
 {
@@ -114,7 +122,6 @@ struct ping_algo_params
 struct reset_connection_algo_params
 {
     diagnostics* diag;
-    character_set charset;  // set a non-empty character set to pipeline a SET NAMES with the reset request
 
     using result_type = void;
 };
@@ -141,11 +148,15 @@ struct close_connection_algo_params
     using result_type = void;
 };
 
-template <class AlgoParams>
-constexpr bool has_void_result() noexcept
+struct run_pipeline_algo_params
 {
-    return std::is_same<typename AlgoParams::result_type, void>::value;
-}
+    diagnostics* diag;
+    span<const std::uint8_t> request_buffer;
+    span<const pipeline_request_stage> request_stages;
+    std::vector<stage_response>* response;
+
+    using result_type = void;
+};
 
 }  // namespace detail
 }  // namespace mysql

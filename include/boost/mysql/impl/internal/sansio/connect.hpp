@@ -12,53 +12,54 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/handshake.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class connect_algo : public sansio_algorithm, asio::coroutine
+class connect_algo
 {
+    int resume_point_{0};
     handshake_algo handshake_;
     error_code stored_ec_;
 
 public:
-    connect_algo(connection_state_data& st, connect_algo_params params) noexcept
-        : sansio_algorithm(st), handshake_(st, {params.diag, params.hparams, params.secure_channel})
+    connect_algo(connect_algo_params params) noexcept
+        : handshake_({params.diag, params.hparams, params.secure_channel})
     {
     }
 
-    next_action resume(error_code ec)
+    next_action resume(connection_state_data& st, error_code ec)
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
+        case 0:
+
             // Clear diagnostics
             handshake_.diag().clear();
 
             // Physical connect
-            BOOST_ASIO_CORO_YIELD return next_action::connect();
+            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::connect())
             if (ec)
                 return ec;
 
             // Handshake
-            while (!(act = handshake_.resume(ec)).is_done())
-                BOOST_ASIO_CORO_YIELD return act;
+            while (!(act = handshake_.resume(st, ec)).is_done())
+                BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
             // If handshake failed, close the stream ignoring the result
             // and return handshake's error code
             if (act.error())
             {
                 stored_ec_ = act.error();
-                BOOST_ASIO_CORO_YIELD return next_action::close();
+                BOOST_MYSQL_YIELD(resume_point_, 3, next_action::close())
                 return stored_ec_;
             }
 

@@ -53,6 +53,7 @@ docca.reference reference.qbk
             \"BOOST_MYSQL_RETURN_TYPE(...)=\" \\
             \"protected=private\" \\
             \"BOOST_CXX14_CONSTEXPR=constexpr\" \\
+            \"BOOST_INLINE_CONSTEXPR=inline constexpr\" \\
             \"BOOST_MYSQL_CONSTEVAL=consteval\" \\
             \"BOOST_MYSQL_CXX14\" \\
             \"BOOST_MYSQL_WRITABLE_FIELD_TUPLE=class\" \\
@@ -63,7 +64,12 @@ docca.reference reference.qbk
             \"BOOST_MYSQL_OUTPUT_STRING=class\" \\
             \"BOOST_MYSQL_FORMATTABLE=class\" \\
             \"BOOST_MYSQL_STATIC_ROW=class\" \\
+            \"BOOST_MYSQL_PIPELINE_REQUEST_TYPE=class\" \\
+            \"BOOST_MYSQL_PIPELINE_STAGE_TYPE=class\" \\
+            \"BOOST_MYSQL_WRITABLE_FIELD=class\" \\
             \"BOOST_MYSQL_DECL=\" \\
+            \"BOOST_MYSQL_HAS_LOCAL_TIME=\" \\
+            \"BOOST_NO_CXX17_DEDUCTION_GUIDES=\" \\
             "
         <doxygen:param>SKIP_FUNCTION_MACROS=NO
         <doxygen:param>OUTPUT_LANGUAGE=English

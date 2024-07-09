@@ -5,4 +5,4 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-using openssl : : <include>/usr/local/opt/openssl/include <search>/usr/local/opt/openssl/lib ;
+using openssl : : <include>/opt/homebrew/opt/openssl@3/include <search>/opt/homebrew/opt/openssl@3/lib ;

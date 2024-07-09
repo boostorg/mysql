@@ -8,77 +8,37 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_PRINTING_HPP
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_PRINTING_HPP
 
-#include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/common_server_errc.hpp>
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/row.hpp>
-#include <boost/mysql/row_view.hpp>
-#include <boost/mysql/ssl_mode.hpp>
-
-#include <boost/test/unit_test.hpp>
-
-#include <ostream>
+#include <iosfwd>
 
 namespace boost {
 namespace mysql {
 
-inline std::ostream& operator<<(std::ostream& os, client_errc v)
-{
-    return os << get_client_category().message(static_cast<int>(v));
-}
+enum class client_errc;
+std::ostream& operator<<(std::ostream& os, client_errc v);
 
-inline std::ostream& operator<<(std::ostream& os, common_server_errc v)
-{
-    return os << get_common_server_category().message(static_cast<int>(v));
-}
+enum class common_server_errc;
+std::ostream& operator<<(std::ostream& os, common_server_errc v);
 
-inline std::ostream& operator<<(std::ostream& os, const diagnostics& diag)
-{
-    return os << diag.server_message();
-}
+class diagnostics;
+std::ostream& operator<<(std::ostream& os, const diagnostics& v);
 
-inline std::ostream& operator<<(std::ostream& os, const row_view& value)
-{
-    os << '{';
-    if (!value.empty())
-    {
-        os << value[0];
-        for (auto it = std::next(value.begin()); it != value.end(); ++it)
-        {
-            os << ", " << *it;
-        }
-    }
-    return os << '}';
-}
+class row_view;
+std::ostream& operator<<(std::ostream& os, const row_view& v);
 
-inline std::ostream& operator<<(std::ostream& os, const row& r) { return os << row_view(r); }
+class row;
+std::ostream& operator<<(std::ostream& os, const row& v);
 
-inline std::ostream& operator<<(std::ostream& os, metadata_mode v)
-{
-    switch (v)
-    {
-    case metadata_mode::full: return os << "full";
-    case metadata_mode::minimal: return os << "minimal";
-    default: return os << "<unknown metadata_mode>";
-    }
-}
+enum class metadata_mode;
+std::ostream& operator<<(std::ostream& os, metadata_mode v);
 
-inline std::ostream& operator<<(std::ostream& os, ssl_mode v)
-{
-    switch (v)
-    {
-    case ssl_mode::disable: return os << "disable";
-    case ssl_mode::enable: return os << "enable";
-    case ssl_mode::require: return os << "require";
-    default: return os << "<unknown ssl_mode>";
-    }
-}
+enum class ssl_mode;
+std::ostream& operator<<(std::ostream& os, ssl_mode v);
+
+struct character_set;
+bool operator==(const character_set& lhs, const character_set& rhs);
+std::ostream& operator<<(std::ostream& os, const character_set& v);
 
 }  // namespace mysql
 }  // namespace boost
-
-BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::mysql::time)
 
 #endif

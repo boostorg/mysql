@@ -10,25 +10,27 @@ add_executable(
 
     # Helpers
     src/test_stream.cpp
-    src/serialization.cpp
+    src/printing.cpp
 
     # Actual tests
     test/auth/auth.cpp
 
     test/protocol/static_buffer.cpp
     test/protocol/capabilities.cpp
-    test/protocol/null_bitmap_traits.cpp
+    test/protocol/null_bitmap.cpp
     test/protocol/protocol_field_type.cpp
+    test/protocol/frame_header.cpp
+    test/protocol/serialization_context.cpp
+    test/protocol/deserialization_context.cpp
+    test/protocol/protocol_types.cpp
+    test/protocol/text_protocol.cpp
+    test/protocol/binary_protocol.cpp
     test/protocol/serialization.cpp
-    test/protocol/binary_serialization.cpp
-    test/protocol/deserialize_text_field.cpp
-    test/protocol/deserialize_binary_field.cpp
-    test/protocol/protocol.cpp
+    test/protocol/deserialization.cpp
 
     test/sansio/read_buffer.cpp
-    test/sansio/message_writer.cpp
     test/sansio/message_reader.cpp
-    test/sansio/algo_runner.cpp
+    test/sansio/top_level_algo.cpp
 
     test/sansio/read_resultset_head.cpp
     test/sansio/start_execution.cpp
@@ -39,7 +41,8 @@ add_executable(
     test/sansio/set_character_set.cpp
     test/sansio/ping.cpp
     test/sansio/reset_connection.cpp
-    test/network_algorithms/run_algo_impl.cpp
+    test/sansio/prepare_statement.cpp
+    test/sansio/run_pipeline.cpp
 
     test/execution_processor/execution_processor.cpp
     test/execution_processor/execution_state_impl.cpp
@@ -61,6 +64,7 @@ add_executable(
     test/detail/socket_stream.cpp
     test/detail/connect_params_helpers.cpp
     test/detail/output_string.cpp
+    test/detail/engine_impl.cpp
 
     test/detail/typing/meta_check_context.cpp
     test/detail/typing/pos_map.cpp
@@ -79,6 +83,10 @@ add_executable(
     test/format_sql/formattable.cpp
     test/format_sql/basic_format_context.cpp
     test/format_sql/individual_value.cpp
+    test/format_sql/formattable_ref.cpp
+    test/format_sql/ranges.cpp
+    test/format_sql/sequence.cpp
+    test/format_sql/custom_formatter.cpp
     test/format_sql/format_strings.cpp
     test/format_sql/api.cpp
 
@@ -92,6 +100,7 @@ add_executable(
     test/common_server_errc.cpp
     test/mysql_server_errc.cpp
     test/mariadb_server_errc.cpp
+    test/is_fatal_error.cpp
     test/connection.cpp
     test/date.cpp
     test/datetime.cpp
@@ -113,6 +122,7 @@ add_executable(
     test/escape_string.cpp
     test/constant_string_view.cpp
     test/pfr.cpp
+    test/pipeline.cpp
 )
 target_include_directories(
     boost_mysql_unittests
@@ -123,11 +133,6 @@ target_link_libraries(
     boost_mysql_unittests
     PRIVATE
     boost_mysql_testing
-)
-target_compile_definitions(
-    boost_mysql_unittests
-    PRIVATE
-    BOOST_ALLOW_DEPRECATED # Unit tests still exercise the old execution interface
 )
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
@@ -142,4 +147,3 @@ add_test(
     NAME boost_mysql_unittests
     COMMAND boost_mysql_unittests
 )
-add_dependencies(tests boost_mysql_unittests)

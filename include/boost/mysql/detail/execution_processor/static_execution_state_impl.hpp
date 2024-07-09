@@ -218,7 +218,7 @@ constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)> create_e
 }
 
 template <class... StaticRow>
-constexpr std::array<execst_resultset_descriptor, sizeof...(StaticRow)>
+BOOST_INLINE_CONSTEXPR std::array<execst_resultset_descriptor, sizeof...(StaticRow)>
     execst_resultset_descriptor_table = create_execst_resultset_descriptors<StaticRow...>();
 
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>

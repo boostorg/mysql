@@ -8,71 +8,31 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CLOSE_STATEMENT_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CLOSE_STATEMENT_HPP
 
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
-#include <boost/mysql/statement.hpp>
-
 #include <boost/mysql/detail/algo_params.hpp>
 
-#include <boost/mysql/impl/internal/protocol/protocol.hpp>
+#include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/next_action.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
-
-#include <boost/asio/coroutine.hpp>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class close_statement_algo : public sansio_algorithm, asio::coroutine
+inline run_pipeline_algo_params setup_close_statement_pipeline(
+    connection_state_data& st,
+    close_statement_algo_params params
+)
 {
-    diagnostics* diag_;
-    std::uint32_t stmt_id_;
-    std::uint8_t close_seqnum_{0};
-    std::uint8_t ping_seqnum_{0};
-
-public:
-    close_statement_algo(connection_state_data& st, close_statement_algo_params params) noexcept
-        : sansio_algorithm(st), diag_(params.diag), stmt_id_(params.stmt_id)
-    {
-    }
-
-    next_action resume(error_code ec)
-    {
-        if (ec)
-            return ec;
-
-        BOOST_ASIO_CORO_REENTER(*this)
-        {
-            // Clear diagnostics
-            diag_->clear();
-
-            // Compose the requests. We pipeline a ping with the close statement
-            // to force the server send a response. Otherwise, the client ends up waiting
-            // for the next TCP ACK, which takes some milliseconds to be sent
-            // (see https://github.com/boostorg/mysql/issues/181)
-            st_->writer.prepare_pipelined_write(
-                close_stmt_command{stmt_id_},
-                close_seqnum_,
-                ping_command{},
-                ping_seqnum_
-            );
-            BOOST_ASIO_CORO_YIELD return next_action::write({});
-
-            // Read ping response
-            BOOST_ASIO_CORO_YIELD return read(ping_seqnum_);
-
-            // Process the OK packet
-            return st_->deserialize_ok(*diag_);
-        }
-
-        return next_action();
-    }
-};
+    st.write_buffer.clear();
+    auto seqnum1 = serialize_top_level(close_stmt_command{params.stmt_id}, st.write_buffer);
+    auto seqnum2 = serialize_top_level(ping_command{}, st.write_buffer);
+    st.shared_pipeline_stages = {
+        {{pipeline_stage_kind::close_statement, seqnum1, {}}, {pipeline_stage_kind::ping, seqnum2, {}}}
+    };
+    return {params.diag, st.write_buffer, st.shared_pipeline_stages, nullptr};
+}
 
 }  // namespace detail
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_BOOST_MYSQL_DETAIL_NETWORK_ALGORITHMS_CLOSE_STATEMENT_HPP_ */
+#endif

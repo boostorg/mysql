@@ -15,70 +15,99 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
+#include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 #include <boost/mysql/impl/internal/sansio/read_some_rows.hpp>
-#include <boost/mysql/impl/internal/sansio/sansio_algorithm.hpp>
 #include <boost/mysql/impl/internal/sansio/start_execution.hpp>
-
-#include <boost/asio/coroutine.hpp>
-
-#include <cstddef>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-class execute_algo : public sansio_algorithm, asio::coroutine
+class read_execute_response_algo
 {
-    start_execution_algo start_execution_st_;
+    int resume_point_{0};
     read_resultset_head_algo read_head_st_;
     read_some_rows_algo read_some_rows_st_;
 
-    diagnostics& diag() noexcept { return *read_head_st_.params().diag; }
-    execution_processor& processor() noexcept { return *read_head_st_.params().proc; }
-
 public:
-    execute_algo(connection_state_data& st, execute_algo_params params) noexcept
-        : sansio_algorithm(st),
-          start_execution_st_(st, start_execution_algo_params{params.diag, params.req, params.proc}),
-          read_head_st_(st, read_resultset_head_algo_params{params.diag, params.proc}),
-          read_some_rows_st_(st, read_some_rows_algo_params{params.diag, params.proc, output_ref()})
+    read_execute_response_algo(diagnostics* diag, execution_processor* proc) noexcept
+        : read_head_st_(read_resultset_head_algo_params{diag, proc}),
+          read_some_rows_st_(read_some_rows_algo_params{diag, proc, output_ref()})
     {
     }
 
-    next_action resume(error_code ec)
+    diagnostics& diag() { return read_head_st_.diag(); }
+    execution_processor& processor() { return read_head_st_.processor(); }
+
+    next_action resume(connection_state_data& st, error_code ec)
     {
         next_action act;
 
-        BOOST_ASIO_CORO_REENTER(*this)
+        switch (resume_point_)
         {
-            // Send request and read the first response
-            while (!(act = start_execution_st_.resume(ec)).is_done())
-                BOOST_ASIO_CORO_YIELD return act;
-            if (act.error())
-                return act;
+        case 0:
 
-            // Read anything else
             while (!processor().is_complete())
             {
                 if (processor().is_reading_head())
                 {
-                    read_head_st_ = read_resultset_head_algo(*st_, read_head_st_.params());
-                    while (!(act = read_head_st_.resume(ec)).is_done())
-                        BOOST_ASIO_CORO_YIELD return act;
+                    read_head_st_.reset();
+                    while (!(act = read_head_st_.resume(st, ec)).is_done())
+                        BOOST_MYSQL_YIELD(resume_point_, 1, act)
                     if (act.error())
                         return act;
                 }
                 else if (processor().is_reading_rows())
                 {
-                    read_some_rows_st_ = read_some_rows_algo(*st_, read_some_rows_st_.params());
-                    while (!(act = read_some_rows_st_.resume(ec)).is_done())
-                        BOOST_ASIO_CORO_YIELD return act;
+                    read_some_rows_st_.reset();
+                    while (!(act = read_some_rows_st_.resume(st, ec)).is_done())
+                        BOOST_MYSQL_YIELD(resume_point_, 2, act)
                     if (act.error())
                         return act;
                 }
             }
+        }
+
+        return next_action();
+    }
+};
+
+class execute_algo
+{
+    int resume_point_{0};
+    start_execution_algo start_execution_st_;
+    read_execute_response_algo read_response_st_;
+
+    diagnostics& diag() { return read_response_st_.diag(); }
+    execution_processor& processor() { return read_response_st_.processor(); }
+
+public:
+    execute_algo(execute_algo_params params) noexcept
+        : start_execution_st_(start_execution_algo_params{params.diag, params.req, params.proc}),
+          read_response_st_(params.diag, params.proc)
+    {
+    }
+
+    next_action resume(connection_state_data& st, error_code ec)
+    {
+        next_action act;
+
+        switch (resume_point_)
+        {
+        case 0:
+
+            // Send request and read the first response
+            while (!(act = start_execution_st_.resume(st, ec)).is_done())
+                BOOST_MYSQL_YIELD(resume_point_, 1, act)
+            if (act.error())
+                return act;
+
+            // Read anything else
+            while (!(act = read_response_st_.resume(st, ec)).is_done())
+                BOOST_MYSQL_YIELD(resume_point_, 2, act)
+            return act;
         }
 
         return next_action();

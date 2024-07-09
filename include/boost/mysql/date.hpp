@@ -27,23 +27,44 @@ namespace mysql {
 
 /**
  * \brief Type representing MySQL `DATE` data type.
- * \details Represents a broken date by its year, month and day components.
- * This type is close to the protocol and should not be used as a vocabulary type.
- * Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point
- * or \ref get_time_point.
+ * \details
+ * Represents a Gregorian date broken by its year, month and day components, without a time zone.
  * \n
- * As opposed to `time_point`, this type allows representing invalid and zero dates.
+ * This type is close to the protocol and should not be used as a vocabulary type.
+ * Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point,
+ * \ref get_time_point, \ref as_local_time_point or \ref get_local_time_point.
+ * \n
+ * Dates retrieved from MySQL don't include any time zone information. Determining the time zone
+ * is left to the application. Thus, any time point obtained from this class should be
+ * interpreted as a local time in an unspecified time zone, like `std::chrono::local_time`.
+ * For compatibility with older compilers, \ref as_time_point and \ref get_time_point return
+ * `system_clock` time points. These should be interpreted as local times rather
+ * than UTC. Prefer using \ref as_local_time_point or \ref get_local_time_point
+ * if your compiler supports them, as they provide more accurate semantics.
+ * \n
+ * As opposed to `time_point`, this type allows representing MySQL invalid and zero dates.
+ * These values are allowed by MySQL but don't represent real dates.
+ * \n
+ * Note: using `std::chrono` time zone functionality under MSVC may cause memory leaks to be reported.
+ * See <a href="https://github.com/microsoft/STL/issues/2047">this issue</a> for an explanation and
+ * <a href="https://github.com/microsoft/STL/issues/2504">this other issue</a> for a workaround.
  */
 class date
 {
 public:
-    /// A `std::chrono::time_point` that can represent any valid `date`.
+    /**
+     * \brief A `std::chrono::time_point` that can represent any valid `date`.
+     * \details
+     * Time points used by this class are always local times, even if defined
+     * to use the system clock.
+     */
     using time_point = std::chrono::time_point<std::chrono::system_clock, days>;
 
     /**
      * \brief Constructs a zero date.
      * \details
      * Results in a date with all of its components set to zero.
+     * The resulting object has `this->valid() == false`.
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -52,6 +73,10 @@ public:
 
     /**
      * \brief Constructs a date from its year, month and date components.
+     * \details
+     * Component values that yield invalid dates (like zero or out-of-range
+     * values) are allowed, resulting in an object with `this->valid() == false`.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -62,6 +87,9 @@ public:
 
     /**
      * \brief Constructs a date from a `time_point`.
+     * \details
+     * The time point is interpreted as a local time. No time zone conversion is performed.
+     *
      * \par Exception safety
      * Strong guarantee. Throws on invalid input.
      * \throws std::out_of_range If the resulting `date` would be
@@ -74,22 +102,52 @@ public:
             BOOST_THROW_EXCEPTION(std::out_of_range("date::date: time_point was out of range"));
     }
 
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    /**
+     * \brief Constructs a date from a local time point.
+     * \details
+     * Equivalent to constructing a `date` from a `time_point` with the same
+     * `time_since_epoch()` as `tp`.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Exception safety
+     * Strong guarantee. Throws on invalid input.
+     * \throws std::out_of_range If the resulting `date` would be
+     * out of the [\ref min_date, \ref max_date] range.
+     */
+    constexpr explicit date(std::chrono::local_days tp) : date(time_point(tp.time_since_epoch())) {}
+#endif
+
     /**
      * \brief Retrieves the year component.
+     * \details
+     * Represents the year number in the Gregorian calendar.
+     * If `this->valid() == true`, this value is within the `[0, 9999]` range.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
     constexpr std::uint16_t year() const noexcept { return year_; }
 
     /**
-     * \brief Retrieves the month component.
+     * \brief Retrieves the month component (1-based).
+     * \details
+     * A value of 1 represents January.
+     * If `this->valid() == true`, this value is within the `[1, 12]` range.
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
     constexpr std::uint8_t month() const noexcept { return month_; }
 
     /**
-     * \brief Retrieves the day component.
+     * \brief Retrieves the day component (1-based).
+     * \details
+     * A value of 1 represents the first day of the month.
+     * If `this->valid() == true`, this value is within the `[1, last_month_day]` range
+     * (where `last_month_day` is the last day of the month).
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -108,6 +166,10 @@ public:
 
     /**
      * \brief Converts `*this` into a `time_point` (unchecked access).
+     * \details
+     * If your compiler supports it, prefer using \ref get_local_time_point,
+     * as it provides more accurate semantics.
+     *
      * \par Preconditions
      * `this->valid() == true` (if violated, results in undefined behavior).
      *
@@ -117,11 +179,15 @@ public:
     BOOST_CXX14_CONSTEXPR time_point get_time_point() const noexcept
     {
         BOOST_ASSERT(valid());
-        return unch_get_time_point();
+        return time_point(unch_get_days());
     }
 
     /**
      * \brief Converts `*this` into a `time_point` (checked access).
+     * \details
+     * If your compiler supports it, prefer using \ref as_local_time_point,
+     * as it provides more accurate semantics.
+     *
      * \par Exception safety
      * Strong guarantee.
      * \throws std::invalid_argument If `!this->valid()`.
@@ -130,8 +196,51 @@ public:
     {
         if (!valid())
             BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_time_point: invalid date"));
-        return unch_get_time_point();
+        return time_point(unch_get_days());
     }
+
+#ifdef BOOST_MYSQL_HAS_LOCAL_TIME
+    /**
+     * \brief Converts `*this` into a local time point (unchecked access).
+     * \details
+     * The returned object has the same `time_since_epoch()` as `this->get_time_point()`,
+     * but uses the `std::chrono::local_t` pseudo-clock to better represent
+     * the absence of time zone information.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Preconditions
+     * `this->valid() == true` (if violated, results in undefined behavior).
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    constexpr std::chrono::local_days get_local_time_point() const noexcept
+    {
+        BOOST_ASSERT(valid());
+        return std::chrono::local_days(unch_get_days());
+    }
+
+    /**
+     * \brief Converts `*this` into a local time point (checked access).
+     * \details
+     * The returned object has the same `time_since_epoch()` as `this->as_time_point()`,
+     * but uses the `std::chrono::local_t` pseudo-clock to better represent
+     * the absence of time zone information.
+     * \n
+     * Requires C++20 calendar types.
+     *
+     * \par Exception safety
+     * Strong guarantee.
+     * \throws std::invalid_argument If `!this->valid()`.
+     */
+    constexpr std::chrono::local_days as_local_time_point() const
+    {
+        if (!valid())
+            BOOST_THROW_EXCEPTION(std::invalid_argument("date::as_local_time_point: invalid date"));
+        return std::chrono::local_days(unch_get_days());
+    }
+#endif
 
     /**
      * \brief Tests for equality.
@@ -170,9 +279,9 @@ private:
     std::uint8_t month_{};
     std::uint8_t day_{};
 
-    BOOST_CXX14_CONSTEXPR time_point unch_get_time_point() const noexcept
+    BOOST_CXX14_CONSTEXPR days unch_get_days() const
     {
-        return time_point(days(detail::ymd_to_days(year_, month_, day_)));
+        return days(detail::ymd_to_days(year_, month_, day_));
     }
 };
 
@@ -185,10 +294,10 @@ BOOST_MYSQL_DECL
 std::ostream& operator<<(std::ostream& os, const date& v);
 
 /// The minimum allowed value for \ref date.
-constexpr date min_date{0u, 1u, 1u};
+BOOST_INLINE_CONSTEXPR date min_date{0u, 1u, 1u};
 
 /// The maximum allowed value for \ref date.
-constexpr date max_date{9999u, 12u, 31u};
+BOOST_INLINE_CONSTEXPR date max_date{9999u, 12u, 31u};
 
 }  // namespace mysql
 }  // namespace boost
