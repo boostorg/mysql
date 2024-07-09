@@ -304,7 +304,7 @@ def main(ctx):
         linux_b2('Linux B2 clang-14-libc++',      _image('build-clang14'),       toolset='clang-14',  cxxstd='20', stdlib='libc++'),
         linux_b2('Linux B2 clang-14-arm64',       _image('build-clang14'),       toolset='clang-14',  cxxstd='20', arch='arm64'),
         linux_b2('Linux B2 clang-16-sanit',       _image('build-clang16'),       toolset='clang-16',  cxxstd='20', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-16-i386-sanit',  _image('build-clang16-i386'),  toolset='clang-16',  cxxstd='20', address_model=32, address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-16-i386-sanit',  _image('build-clang16-i386'),  toolset='clang-16',  cxxstd='20', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-17',             _image('build-clang17'),       toolset='clang-17',  cxxstd='20'),
         linux_b2('Linux B2 clang-18',             _image('build-clang18'),       toolset='clang-18',  cxxstd='23'),
         linux_b2('Linux B2 gcc-5',                _image('build-gcc5'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
