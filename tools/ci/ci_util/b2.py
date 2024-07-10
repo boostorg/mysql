@@ -43,7 +43,6 @@ def b2_build(
     stdlib: str,
     address_model: str,
     boost_branch: str,
-    db: str,
     server_host: str,
     separate_compilation: bool,
     address_sanitizer: bool,
@@ -65,7 +64,7 @@ def b2_build(
     )
 
     # Setup DB
-    db_setup(source_dir, db, server_host)
+    db_setup(source_dir, server_host)
 
     # Invoke b2
     _conditional_run([

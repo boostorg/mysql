@@ -21,21 +21,41 @@ class _DbSystemType(Enum):
     mariadb = 3
 
 
-def _parse_db_version(version: str) -> _DbSystemType:
+def _run_piped_stdin(args: List[str], fname: Path) -> None:
+    with open(str(fname), 'rt', encoding='utf8') as f:
+        content = f.read()
+    print('+ ', args, '(with < {})'.format(fname), flush=True)
+    subprocess.run(args, input=content.encode(), check=True)
+
+
+def _run_piped_stdout(args: List[str]) -> str:
+    print('+ ', args, flush=True)
+    return subprocess.check_output(args).decode()
+
+
+def _run_sql_file(fname: Path) -> None:
+    _run_piped_stdin(['mysql', '-u', 'root'], fname)
+
+
+def _get_server_version() -> str:
+    return _run_piped_stdout([
+        'mysql', '-u', 'root', '--column-names=0',  '--batch', '-e', 'SELECT VERSION()'
+    ])
+
+
+def _parse_db_version(db: str) -> _DbSystemType:
     # Parse the version string
-    match = re.match('([a-zA-Z0-9_]*)\\-([0-9]*)\\.[0-9]*\\.[0-9]*', version)
+    match = re.match(r'([0-9]*)\.[0-9]*\.[0-9]*(\-MariaDB)?.*', db, re.IGNORECASE)
     if match is None:
-        raise ValueError('Bad DB version: {} (should be: dbflavor-vmajor.vminor.vpatch)'.format(version))
-    flavor = match.group(1)
-    vmaj = int(match.group(2))
+        raise ValueError('Bad DB version: {}'.format(db))
+    vmaj = int(match.group(1))
+    is_mariadb = match.group(2) is not None
 
     # Perform the matching
-    if flavor == 'mysql':
-        return _DbSystemType.mysql8 if vmaj >= 8 else _DbSystemType.mysql5
-    elif flavor == 'mariadb':
+    if is_mariadb:
         return _DbSystemType.mariadb
     else:
-        raise ValueError('Bad DB flavor: {} - full version: {}', flavor, version)
+        return _DbSystemType.mysql8 if vmaj >= 8 else _DbSystemType.mysql5
 
 
 def _compute_disabled_features(db: _DbSystemType) -> Dict[str, bool]:
@@ -57,23 +77,14 @@ def _compute_disabled_features(db: _DbSystemType) -> Dict[str, bool]:
     }
 
 
-
-def _run_piped_stdin(args: List[str], fname: Path) -> None:
-    with open(str(fname), 'rt', encoding='utf8') as f:
-        content = f.read()
-    print('+ ', args, '(with < {})'.format(fname), flush=True)
-    subprocess.run(args, input=content.encode(), check=True)
-
-
-def _run_sql_file(fname: Path) -> None:
-    _run_piped_stdin(['mysql', '-u', 'root'], fname)
-
-
 def db_setup(
     source_dir: Path,
-    db: str,
     server_host: str,
 ) -> None:
+    # Get the server version
+    db = _get_server_version()
+    print(' + Server version: {}'.format(db), flush=True)
+
     # Get the disabled server features
     disabled_features = _compute_disabled_features(_parse_db_version(db))
     disabled_features_str = ' '.join(feature for feature, disabled in disabled_features.items() if disabled)
