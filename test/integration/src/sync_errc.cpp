@@ -9,6 +9,7 @@
 
 #include "er_impl_common.hpp"
 #include "test_common/netfun_helpers.hpp"
+#include "test_integration/server_features.hpp"
 #include "test_integration/streams.hpp"
 
 using namespace boost::mysql::test;
@@ -85,9 +86,12 @@ void boost::mysql::test::add_sync_errc(std::vector<er_network_variant*>& output)
     add_sync_errc_variant<tcp_ssl_socket>(output);
     add_variant_any<address_type::host_and_port, any_sync_errc_connection>(output);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    add_sync_errc_variant<unix_socket>(output);
-    add_sync_errc_variant<unix_ssl_socket>(output);
-    add_variant_any<address_type::unix_path, any_sync_errc_connection>(output);
+    if (get_server_features().unix_sockets)
+    {
+        add_sync_errc_variant<unix_socket>(output);
+        add_sync_errc_variant<unix_ssl_socket>(output);
+        add_variant_any<address_type::unix_path, any_sync_errc_connection>(output);
+    }
 #endif
 }
 

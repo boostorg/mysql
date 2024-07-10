@@ -18,6 +18,7 @@
 #include "test_common/netfun_helpers.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_integration/er_connection.hpp"
+#include "test_integration/server_features.hpp"
 #include "test_integration/streams.hpp"
 
 using namespace boost::mysql::test;
@@ -92,7 +93,10 @@ void boost::mysql::test::add_async_callback(std::vector<er_network_variant*>& ou
     add_async_callback_variant<tcp_ssl_socket>(output);
     add_variant_any<address_type::host_and_port, any_async_callback_connection>(output);
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    add_async_callback_variant<unix_socket>(output);
-    add_variant_any<address_type::unix_path, any_async_callback_connection>(output);
+    if (get_server_features().unix_sockets)
+    {
+        add_async_callback_variant<unix_socket>(output);
+        add_variant_any<address_type::unix_path, any_async_callback_connection>(output);
+    }
 #endif
 }
