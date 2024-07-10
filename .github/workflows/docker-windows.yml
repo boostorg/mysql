@@ -24,8 +24,8 @@ jobs:
           - { image: build-msvc14_3, base-image: "cppalliance/dronevs2022:1" }
 
     permissions:
-      contents: read
-      packages: write
+      contents: read  # checkout
+      packages: write # publish Docker packages
 
     runs-on: windows-2019
 
@@ -41,11 +41,11 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: anarthal-containers
-          password: ${{ secrets.ANARTHAL_CONTAINERS_TOKEN }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Build and push Docker image
         run: |
-          FULL_IMAGE=ghcr.io/anarthal-containers/${{ matrix.image }}
+          FULL_IMAGE=${{ github.repository }}/${{ matrix.image }}
           docker build -f tools/docker/build-msvc.dockerfile --build-arg BASE_IMAGE=${{ matrix.base-image }} -t $FULL_IMAGE:$GITHUB_SHA -t $FULL_IMAGE:latest .
           docker push $FULL_IMAGE --all-tags
