@@ -122,7 +122,7 @@ def _pipeline(
         "steps": steps,
         "services": [{
             "name": "mysql",
-            "image": "ghcr.io/anarthal-containers/ci_db:{}-{}".format(db, _container_tag),
+            "image": "ghcr.io/anarthal-containers/ci-db:{}-{}".format(db, _container_tag),
             "volumes": [{
                 "name": "mysql-socket",
                 "path": "/var/run/mysqld"
