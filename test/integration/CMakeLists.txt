@@ -71,18 +71,11 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     )
 endif()
 
-# Compose the test filter
-set (DB_SYSTEM $ENV{BOOST_MYSQL_TEST_DB})
-if ("${DB_SYSTEM}" STREQUAL "")
-    set(DB_SYSTEM "mysql8")
-endif()
-set(TEST_FILTER "!@skip_${DB_SYSTEM}")
-
-if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
-    set(TEST_FILTER "${TEST_FILTER}:!@unix")
-endif()
+# Compose the command line arguments. Disabled features must be provided as a whitespace-separated list
+string(REPLACE ";" " " DISABLED_FEATURES_WHITESPACE ${BOOST_MYSQL_DISABLED_SERVER_FEATURES})
+message("DISABLED_FEATURES_WHITESPACE: ${DISABLED_FEATURES_WHITESPACE}")
 
 add_test(
     NAME boost_mysql_integrationtests
-    COMMAND boost_mysql_integrationtests "-t" ${TEST_FILTER}
+    COMMAND boost_mysql_integrationtests -- "--disabled-server-features=${DISABLED_FEATURES_WHITESPACE}"
 )
