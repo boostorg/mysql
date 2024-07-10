@@ -22,6 +22,7 @@
 #include "test_integration/common.hpp"
 #include "test_integration/er_network_variant.hpp"
 #include "test_integration/get_endpoint.hpp"
+#include "test_integration/network_samples.hpp"
 #include "test_integration/server_ca.hpp"
 #include "test_integration/server_features.hpp"
 #include "test_integration/streams.hpp"
@@ -39,17 +40,17 @@ using boost::mysql::tcp_ssl_connection;
 
 namespace {
 
-auto net_samples_ssl = get_network_variants({
+auto net_samples_ssl = network_samples({
     "tcp_ssl_sync_errc",
     "tcp_ssl_async_callback",
 });
 
-auto net_samples_nossl = get_network_variants({
+auto net_samples_nossl = network_samples({
     "tcp_sync_errc",
     "tcp_async_callback",
 });
 
-auto net_samples_both = get_network_variants({
+auto net_samples_both = network_samples({
     "tcp_ssl_sync_errc",
     "tcp_ssl_async_callback",
     "tcp_sync_exc",

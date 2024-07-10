@@ -30,6 +30,7 @@
 #include "test_common/printing.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/er_connection.hpp"
+#include "test_integration/network_samples.hpp"
 #include "test_integration/static_rows.hpp"
 
 using namespace boost::mysql;
@@ -37,22 +38,25 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_spotchecks)
 
-auto err_net_samples = get_network_variants({
+auto err_samples = network_samples({
     "tcp_sync_errc",
     "tcp_sync_exc",
     "tcp_async_callback",
     "tcp_async_coroutines",
 });
 
+auto samples_with_handshake = network_samples::all_with_handshake();
+auto all_samples = network_samples::all();
+
 // Handshake
-BOOST_DATA_TEST_CASE_F(network_fixture, handshake_success, all_variants_with_handshake())
+BOOST_DATA_TEST_CASE_F(network_fixture, handshake_success, samples_with_handshake)
 {
     setup_and_physical_connect(sample);
     conn->handshake(params).validate_no_error();
     BOOST_TEST(conn->uses_ssl() == var->supports_ssl());
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, handshake_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, handshake_error, err_samples)
 {
     setup_and_physical_connect(sample);
     params.set_database("bad_database");
@@ -63,7 +67,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, handshake_error, err_net_samples)
 }
 
 // Connect: success is already widely tested throughout integ tests
-BOOST_DATA_TEST_CASE_F(network_fixture, connect_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, connect_error, err_samples)
 {
     setup(sample);
     set_credentials("integ_user", "bad_password");
@@ -75,7 +79,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, connect_error, err_net_samples)
 }
 
 // Start execution (query)
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_query_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_query_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -85,7 +89,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_query_success, all_varia
     validate_2fields_meta(st.meta(), "empty_table");
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_query_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_query_error, err_samples)
 {
     setup_and_connect(sample);
 
@@ -95,7 +99,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_query_error, err_net_sam
 }
 
 // execute (query)
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -106,7 +110,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_success, all_variants())
     BOOST_TEST(result.meta().size() == 2u);
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_error, err_samples)
 {
     setup_and_connect(sample);
 
@@ -116,7 +120,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_error, err_net_samples)
 }
 
 // Prepare statement
-BOOST_DATA_TEST_CASE_F(network_fixture, prepare_statement_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, prepare_statement_success, all_samples)
 {
     setup_and_connect(sample);
     auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
@@ -125,7 +129,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, prepare_statement_success, all_variants(
     BOOST_TEST(stmt.num_params() == 2u);
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, prepare_statement_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, prepare_statement_error, err_samples)
 {
     setup_and_connect(sample);
     conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)")
@@ -133,7 +137,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, prepare_statement_error, err_net_samples
 }
 
 // Start execution (statement, iterator)
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_stmt_it_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_stmt_it_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -148,7 +152,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_stmt_it_success, all_var
     BOOST_TEST(st.should_read_rows());
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_stmt_it_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_stmt_it_error, err_samples)
 {
     setup_and_connect(sample);
     start_transaction();
@@ -168,7 +172,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_stmt_it_error, err_net_s
 }
 
 // start execution (statement, tuple)
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_statement_tuple_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_statement_tuple_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -182,7 +186,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_statement_tuple_success,
     BOOST_TEST(st.should_read_rows());
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_statement_tuple_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_statement_tuple_error, err_samples)
 {
     setup_and_connect(sample);
     start_transaction();
@@ -201,7 +205,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_statement_tuple_error, e
 }
 
 // Execute (statement, iterator)
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_iterator_success, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_iterator_success, err_samples)
 {
     setup_and_connect(sample);
 
@@ -215,7 +219,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_iterator_success, err_
     BOOST_TEST(result.rows().size() == 0u);
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_error, err_samples)
 {
     setup_and_connect(sample);
     start_transaction();
@@ -234,7 +238,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_error, err_net_samples
 }
 
 // Execute (statement, tuple). No error spotcheck since it's the same underlying fn
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_tuple_success, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_tuple_success, err_samples)
 {
     setup_and_connect(sample);
 
@@ -248,7 +252,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_tuple_success, err_net
 }
 
 // Close statement: no server error spotcheck
-BOOST_DATA_TEST_CASE_F(network_fixture, close_statement_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, close_statement_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -264,7 +268,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, close_statement_success, all_variants())
 }
 
 // Read some rows: no server error spotcheck
-BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -290,7 +294,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_success, all_variants())
 }
 
 // Read resultset head
-BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_success, all_samples)
 {
     params.set_multi_queries(true);
     setup_and_connect(sample);
@@ -317,7 +321,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_success, all_variant
     BOOST_TEST((rows == makerows(2, 1, "f0")));
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_error, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_error, all_samples)
 {
     params.set_multi_queries(true);
     setup_and_connect(sample);
@@ -339,14 +343,14 @@ BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_error, all_variants(
 }
 
 // Ping
-BOOST_DATA_TEST_CASE_F(network_fixture, ping_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, ping_success, all_samples)
 {
     setup_and_connect(sample);
     conn->ping().validate_no_error();
 }
 
 // TODO
-BOOST_DATA_TEST_CASE_F(network_fixture, ping_error, all_variants_with_handshake())
+BOOST_DATA_TEST_CASE_F(network_fixture, ping_error, samples_with_handshake)
 {
     setup(sample);
 
@@ -355,7 +359,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, ping_error, all_variants_with_handshake(
 }
 
 // Reset connection: no server error spotcheck.
-BOOST_DATA_TEST_CASE_F(network_fixture, reset_connection_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, reset_connection_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -372,7 +376,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, reset_connection_success, all_variants()
 }
 
 // Quit connection: no server error spotcheck
-BOOST_DATA_TEST_CASE_F(network_fixture, quit_success, all_variants_with_handshake())
+BOOST_DATA_TEST_CASE_F(network_fixture, quit_success, samples_with_handshake)
 {
     setup_and_connect(sample);
 
@@ -385,7 +389,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, quit_success, all_variants_with_handshak
 
 // Close connection: no server error spotcheck
 // TODO: all_variants_with_handshake
-BOOST_DATA_TEST_CASE_F(network_fixture, close_connection_success, all_variants_with_handshake())
+BOOST_DATA_TEST_CASE_F(network_fixture, close_connection_success, samples_with_handshake)
 {
     setup_and_connect(sample);
 
@@ -407,7 +411,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, close_connection_success, all_variants_w
 }
 
 // TODO: move this to a unit test
-BOOST_DATA_TEST_CASE_F(network_fixture, not_open_connection, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, not_open_connection, err_samples)
 {
     setup(sample);
     conn->close().validate_no_error();
@@ -416,7 +420,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, not_open_connection, err_net_samples)
 
 #ifdef BOOST_MYSQL_CXX14
 // Execute (static) - errors are already covered by the other tests
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_static_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, execute_static_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -427,7 +431,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, execute_static_success, all_variants())
 }
 
 // start_execution, read_resultset_head, read_some_rows success
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_and_followups_static_success, all_variants())
+BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_and_followups_static_success, all_samples)
 {
     setup_and_connect(sample);
 
@@ -469,7 +473,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_and_followups_static_suc
 }
 
 // read_some_rows failure (the other error cases are already widely tested)
-BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_error, err_net_samples)
+BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_error, err_samples)
 {
     setup_and_connect(sample);
 

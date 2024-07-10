@@ -37,10 +37,10 @@ public:
 };
 std::ostream& operator<<(std::ostream& os, const er_network_variant& var);
 
-boost::span<std::reference_wrapper<er_network_variant>> all_variants();
-boost::span<std::reference_wrapper<er_network_variant>> all_variants_with_handshake();
+std::vector<std::reference_wrapper<er_network_variant>> all_variants();
+std::vector<std::reference_wrapper<er_network_variant>> all_variants_with_handshake();
 std::vector<std::reference_wrapper<er_network_variant>> get_network_variants(
-    std::initializer_list<const char*> names
+    boost::span<const string_view> names
 );
 
 }  // namespace test

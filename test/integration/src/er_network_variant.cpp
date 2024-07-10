@@ -6,7 +6,6 @@
 //
 
 #include <functional>
-#include <initializer_list>
 #include <unordered_map>
 #include <vector>
 
@@ -16,7 +15,15 @@
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
 
-static std::vector<std::reference_wrapper<er_network_variant>> make_all_variants()
+static std::unordered_map<std::string, er_network_variant*> make_variants_map()
+{
+    std::unordered_map<std::string, er_network_variant*> res;
+    for (er_network_variant& var : all_variants())
+        res[var.name()] = &var;
+    return res;
+}
+
+std::vector<std::reference_wrapper<er_network_variant>> boost::mysql::test::all_variants()
 {
     std::vector<std::reference_wrapper<er_network_variant>> res;
     add_sync_errc(res);
@@ -27,15 +34,7 @@ static std::vector<std::reference_wrapper<er_network_variant>> make_all_variants
     return res;
 }
 
-static std::unordered_map<std::string, er_network_variant*> make_variants_map()
-{
-    std::unordered_map<std::string, er_network_variant*> res;
-    for (er_network_variant& var : all_variants())
-        res[var.name()] = &var;
-    return res;
-}
-
-static std::vector<std::reference_wrapper<er_network_variant>> make_all_variants_with_handshake()
+std::vector<std::reference_wrapper<er_network_variant>> boost::mysql::test::all_variants_with_handshake()
 {
     std::vector<std::reference_wrapper<er_network_variant>> res;
     for (er_network_variant& var : all_variants())
@@ -46,25 +45,13 @@ static std::vector<std::reference_wrapper<er_network_variant>> make_all_variants
     return res;
 }
 
-boost::span<std::reference_wrapper<er_network_variant>> boost::mysql::test::all_variants()
-{
-    static auto res = make_all_variants();
-    return res;
-}
-
-boost::span<std::reference_wrapper<er_network_variant>> boost::mysql::test::all_variants_with_handshake()
-{
-    static auto res = make_all_variants_with_handshake();
-    return res;
-}
-
 std::vector<std::reference_wrapper<er_network_variant>> boost::mysql::test::get_network_variants(
-    std::initializer_list<const char*> names
+    boost::span<const string_view> names
 )
 {
     static auto by_name = make_variants_map();
     std::vector<std::reference_wrapper<er_network_variant>> res;
-    for (const char* name : names)
+    for (auto name : names)
     {
         std::string name_str(name);
         auto it = by_name.find(name_str);

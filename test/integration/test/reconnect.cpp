@@ -34,6 +34,7 @@
 #include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/get_endpoint.hpp"
+#include "test_integration/network_samples.hpp"
 #include "test_integration/run_stackful_coro.hpp"
 #include "test_integration/server_features.hpp"
 
@@ -46,7 +47,7 @@ using boost::asio::experimental::wait_for_one;
 namespace {
 
 // clang-format off
-auto samples_with_reconnection = get_network_variants({
+auto samples_with_reconnection = network_samples({
     "tcp_sync_errc",
     "tcp_async_callback",
     "any_tcp_sync_errc",
@@ -56,7 +57,7 @@ auto samples_with_reconnection = get_network_variants({
 #endif
 });
 
-auto samples_any = get_network_variants({
+auto samples_any = network_samples({
     "any_tcp_sync_errc",
     "any_tcp_async_callback",
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
