@@ -86,8 +86,9 @@ run
     unix_socket.cpp
     /boost/mysql/test//boost_mysql_compiled
 :
-    <testing.arg>"example_user example_password"
-    <target-os>windows:<build>no
+    requirements
+        <target-os>windows:<build>no
+        <testing.arg>"example_user example_password"
 ;
 
 # Source script
