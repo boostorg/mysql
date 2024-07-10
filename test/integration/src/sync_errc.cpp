@@ -70,7 +70,7 @@ public:
 };
 
 template <class Stream>
-void add_sync_errc_variant(std::vector<er_network_variant*>& output)
+void add_sync_errc_variant(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     add_variant<sync_errc_connection<Stream>>(output);
 }
@@ -79,7 +79,7 @@ void add_sync_errc_variant(std::vector<er_network_variant*>& output)
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::test::add_sync_errc(std::vector<er_network_variant*>& output)
+void boost::mysql::test::add_sync_errc(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     // Verify that all streams work
     add_sync_errc_variant<tcp_socket>(output);

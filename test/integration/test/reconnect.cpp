@@ -46,7 +46,7 @@ using boost::asio::experimental::wait_for_one;
 namespace {
 
 // clang-format off
-auto samples_with_reconnection = create_network_samples({
+auto samples_with_reconnection = get_network_variants({
     "tcp_sync_errc",
     "tcp_async_callback",
     "any_tcp_sync_errc",
@@ -56,7 +56,7 @@ auto samples_with_reconnection = create_network_samples({
 #endif
 });
 
-auto samples_any = create_network_samples({
+auto samples_any = get_network_variants({
     "any_tcp_sync_errc",
     "any_tcp_async_callback",
 #if BOOST_ASIO_HAS_LOCAL_SOCKETS
@@ -79,7 +79,7 @@ struct reconnect_fixture : network_fixture
 
 BOOST_DATA_TEST_CASE_F(reconnect_fixture, reconnect_after_close, samples_with_reconnection)
 {
-    setup(sample.net);
+    setup(sample);
 
     // Connect and use the connection
     connect();
@@ -95,7 +95,7 @@ BOOST_DATA_TEST_CASE_F(reconnect_fixture, reconnect_after_close, samples_with_re
 
 BOOST_DATA_TEST_CASE_F(reconnect_fixture, reconnect_after_handshake_error, samples_with_reconnection)
 {
-    setup(sample.net);
+    setup(sample);
 
     // Error during server handshake
     params.set_database("bad_database");
@@ -112,7 +112,7 @@ BOOST_DATA_TEST_CASE_F(reconnect_fixture, reconnect_after_handshake_error, sampl
 
 BOOST_DATA_TEST_CASE_F(reconnect_fixture, reconnect_while_connected, samples_any)
 {
-    setup(sample.net);
+    setup(sample);
 
     // Connect and use the connection
     connect();

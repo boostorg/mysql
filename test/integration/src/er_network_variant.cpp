@@ -5,19 +5,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "test_integration/er_network_variant.hpp"
-
-#include <exception>
+#include <functional>
+#include <initializer_list>
 #include <unordered_map>
+#include <vector>
 
 #include "er_impl_common.hpp"
+#include "test_integration/er_network_variant.hpp"
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
 
-static std::vector<er_network_variant*> make_all_variants()
+static std::vector<std::reference_wrapper<er_network_variant>> make_all_variants()
 {
-    std::vector<er_network_variant*> res;
+    std::vector<std::reference_wrapper<er_network_variant>> res;
     add_sync_errc(res);
     add_sync_exc(res);
     add_async_callback(res);
@@ -29,40 +30,52 @@ static std::vector<er_network_variant*> make_all_variants()
 static std::unordered_map<std::string, er_network_variant*> make_variants_map()
 {
     std::unordered_map<std::string, er_network_variant*> res;
-    for (auto* var : all_variants())
-        res[var->name()] = var;
+    for (er_network_variant& var : all_variants())
+        res[var.name()] = &var;
     return res;
 }
 
-static std::vector<er_network_variant*> make_all_variants_with_handshake()
+static std::vector<std::reference_wrapper<er_network_variant>> make_all_variants_with_handshake()
 {
-    std::vector<er_network_variant*> res;
-    for (auto* var : all_variants())
+    std::vector<std::reference_wrapper<er_network_variant>> res;
+    for (er_network_variant& var : all_variants())
     {
-        if (var->supports_handshake())
+        if (var.supports_handshake())
             res.push_back(var);
     }
     return res;
 }
 
-boost::span<er_network_variant*> boost::mysql::test::all_variants()
+boost::span<std::reference_wrapper<er_network_variant>> boost::mysql::test::all_variants()
 {
     static auto res = make_all_variants();
     return res;
 }
 
-boost::span<er_network_variant*> boost::mysql::test::all_variants_with_handshake()
+boost::span<std::reference_wrapper<er_network_variant>> boost::mysql::test::all_variants_with_handshake()
 {
     static auto res = make_all_variants_with_handshake();
     return res;
 }
 
-er_network_variant* boost::mysql::test::get_variant(string_view name)
+std::vector<std::reference_wrapper<er_network_variant>> boost::mysql::test::get_network_variants(
+    std::initializer_list<const char*> names
+)
 {
     static auto by_name = make_variants_map();
-    std::string name_str(name);
-    auto it = by_name.find(name_str);
-    if (it == by_name.end())
-        throw std::out_of_range("Unknown network variant: " + name_str);
-    return it->second;
+    std::vector<std::reference_wrapper<er_network_variant>> res;
+    for (const char* name : names)
+    {
+        std::string name_str(name);
+        auto it = by_name.find(name_str);
+        if (it == by_name.end())
+            throw std::out_of_range("Unknown network variant: " + name_str);
+        res.push_back(*it->second);
+    }
+    return res;
+}
+
+std::ostream& boost::mysql::test::operator<<(std::ostream& os, const er_network_variant& value)
+{
+    return os << value.stream_name() << "_" << value.variant_name();
 }

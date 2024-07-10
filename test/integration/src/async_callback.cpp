@@ -77,7 +77,7 @@ public:
 };
 
 template <class Stream>
-void add_async_callback_variant(std::vector<er_network_variant*>& output)
+void add_async_callback_variant(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     add_variant<async_callback_connection<Stream>>(output);
 }
@@ -86,7 +86,7 @@ void add_async_callback_variant(std::vector<er_network_variant*>& output)
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::test::add_async_callback(std::vector<er_network_variant*>& output)
+void boost::mysql::test::add_async_callback(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     // Spotcheck for both streams
     add_async_callback_variant<tcp_socket>(output);

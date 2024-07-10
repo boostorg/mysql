@@ -62,22 +62,22 @@ struct network_fixture : network_fixture_base
         }
     }
 
-    void setup(er_network_variant* variant)
+    void setup(er_network_variant& variant)
     {
-        var = variant;
+        var = &variant;
         conn = var->create_connection(ctx.get_executor(), ssl_ctx);
         conn->set_metadata_mode(metadata_mode::full);
     }
 
-    void setup_and_physical_connect(er_network_variant* net)
+    void setup_and_physical_connect(er_network_variant& net)
     {
         setup(net);
         conn->physical_connect();
     }
 
-    void setup_and_connect(er_network_variant* variant, ssl_mode m = ssl_mode::require)
+    void setup_and_connect(er_network_variant& net, ssl_mode m = ssl_mode::require)
     {
-        setup(variant);
+        setup(net);
         connect(m);
     }
 
@@ -120,52 +120,7 @@ struct network_fixture : network_fixture_base
     }
 };
 
-// To be used as sample in data driven tests, when a test case should be run
-// over all different network variants
-struct network_sample
-{
-    er_network_variant* net;
-
-    network_sample(er_network_variant* var) : net(var) {}
-};
-
-inline std::ostream& operator<<(std::ostream& os, const network_sample& value)
-{
-    return os << value.net->stream_name() << "_" << value.net->variant_name();
-}
-
-inline std::vector<network_sample> create_network_samples(std::initializer_list<const char*> names)
-{
-    std::vector<network_sample> res;
-    for (const char* name : names)
-        res.emplace_back(get_variant(name));
-    return res;
-}
-
-inline std::vector<network_sample> create_all_network_samples()
-{
-    std::vector<network_sample> res;
-    for (auto* var : all_variants())
-        res.emplace_back(var);
-    return res;
-}
-
-inline const std::vector<network_sample>& all_network_samples()
-{
-    static std::vector<network_sample> res = create_all_network_samples();
-    return res;
-}
-
-inline std::vector<network_sample> all_network_samples_with_handshake()
-{
-    std::vector<network_sample> res;
-    for (auto* var : all_variants_with_handshake())
-        res.emplace_back(var);
-    return res;
-}
-
 inline void validate_2fields_meta(const metadata_collection_view& fields, const std::string& table)
-
 {
     validate_meta(
         fields,
