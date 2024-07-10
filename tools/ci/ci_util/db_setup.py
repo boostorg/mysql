@@ -25,7 +25,7 @@ def _parse_db_version(version: str) -> _DbSystemType:
     # Parse the version string
     match = re.match('([a-zA-Z0-9_]*)\\-([0-9]*)\\.[0-9]*\\.[0-9]*', version)
     if match is None:
-        raise ValueError('Bad DB version: {} (should be: dbflavor-vmajor.vminor.vpatch)', version)
+        raise ValueError('Bad DB version: {} (should be: dbflavor-vmajor.vminor.vpatch)'.format(version))
     flavor = match.group(1)
     vmaj = int(match.group(2))
 
