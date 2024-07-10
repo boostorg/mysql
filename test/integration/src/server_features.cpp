@@ -58,14 +58,8 @@ static test::server_features do_get_server_features()
         {"dup-query-error-codes", &test::server_features::dup_query_error_codes},
     };
 
-    // All features are enabled, by default
-    test::server_features res;
-    for (const auto feature : possible_features)
-    {
-        res.*feature.ptr = true;
-    }
-
     // Match disabled features against the possible set
+    test::server_features res;
     for (auto feature : disabled_features)
     {
         auto it = std::find_if(

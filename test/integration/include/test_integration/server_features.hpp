@@ -19,20 +19,20 @@ namespace test {
 struct server_features
 {
     // Is the server listening on a UNIX socket?
-    bool unix_sockets;
+    bool unix_sockets{true};
 
     // Does the server support sha256 authentication methods?
     // Includes caching_sha2_password and sha256_password
-    bool sha256;
+    bool sha256{true};
 
     // Does the server support the dedicated JSON type?
-    bool json_type;
+    bool json_type{true};
 
     // Does the server support MySQL8+ specific regex error codes?
-    bool regex_error_codes;
+    bool regex_error_codes{true};
 
     // Does the server support MariaDB specific dup_query error codes?
-    bool dup_query_error_codes;
+    bool dup_query_error_codes{true};
 };
 
 using server_feature_t = bool server_features::*;
