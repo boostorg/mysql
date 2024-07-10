@@ -121,25 +121,12 @@ struct network_fixture : network_fixture_base
 };
 
 // To be used as sample in data driven tests, when a test case should be run
-// over all different network_function's.
+// over all different network variants
 struct network_sample
 {
     er_network_variant* net;
 
     network_sample(er_network_variant* var) : net(var) {}
-
-    void set_test_attributes(boost::unit_test::test_case& test) const
-    {
-        if (net->supports_ssl())
-        {
-            test.add_label("ssl");
-        }
-        if (net->is_unix_socket())
-        {
-            test.add_label("unix");
-        }
-        test.add_label(net->variant_name());
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const network_sample& value)

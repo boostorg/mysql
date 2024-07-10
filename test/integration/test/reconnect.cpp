@@ -25,6 +25,7 @@
 #include <boost/asio/post.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/core/span.hpp>
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
@@ -33,7 +34,6 @@
 #include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/get_endpoint.hpp"
-#include "test_integration/network_test.hpp"
 #include "test_integration/run_stackful_coro.hpp"
 #include "test_integration/server_features.hpp"
 
@@ -77,7 +77,7 @@ struct reconnect_fixture : network_fixture
     }
 };
 
-BOOST_MYSQL_NETWORK_TEST(reconnect_after_close, reconnect_fixture, samples_with_reconnection)
+BOOST_DATA_TEST_CASE_F(reconnect_fixture, reconnect_after_close, samples_with_reconnection)
 {
     setup(sample.net);
 
@@ -93,7 +93,7 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_after_close, reconnect_fixture, samples_with_
     do_query_ok();
 }
 
-BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, samples_with_reconnection)
+BOOST_DATA_TEST_CASE_F(reconnect_fixture, reconnect_after_handshake_error, samples_with_reconnection)
 {
     setup(sample.net);
 
@@ -110,7 +110,7 @@ BOOST_MYSQL_NETWORK_TEST(reconnect_after_handshake_error, reconnect_fixture, sam
     do_query_ok();
 }
 
-BOOST_MYSQL_NETWORK_TEST(reconnect_while_connected, reconnect_fixture, samples_any)
+BOOST_DATA_TEST_CASE_F(reconnect_fixture, reconnect_while_connected, samples_any)
 {
     setup(sample.net);
 
