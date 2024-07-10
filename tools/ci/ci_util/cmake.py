@@ -84,7 +84,8 @@ def cmake_build(
     )
 
     # Setup DB
-    db_setup(source_dir, db, server_host)
+    disabled_features = db_setup(source_dir, db, server_host)
+    disabled_features_str = ';'.join(feature for feature, is_disabled in disabled_features if is_disabled)
 
     # Build the library, run the tests, and install, as the Boost superproject does
     bin_dir = BOOST_ROOT.joinpath('__build')
@@ -99,6 +100,7 @@ def cmake_build(
             'BUILD_TESTING': 'ON',
             'CMAKE_INSTALL_MESSAGE': 'NEVER',
             'BOOST_MYSQL_INTEGRATION_TESTS': 'ON',
+            'BOOST_MYSQL_DISABLED_SERVER_FEATURES': disabled_features_str,
             **({ 'CMAKE_CXX_STANDARD': cxxstd } if cxxstd else {})
         }
     )
