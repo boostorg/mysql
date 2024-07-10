@@ -15,9 +15,6 @@ from enum import Enum
 import re
 
 
-DisabledServerFeatures = Dict[str, bool]
-
-
 class _DbSystemType(Enum):
     mysql5 = 1
     mysql8 = 2
@@ -41,7 +38,7 @@ def _parse_db_version(version: str) -> _DbSystemType:
         raise ValueError('Bad DB flavor: {} - full version: {}', flavor, version)
 
 
-def _compute_disabled_features(db: _DbSystemType) -> DisabledServerFeatures:
+def _compute_disabled_features(db: _DbSystemType) -> Dict[str, bool]:
     return {
         # UNIX sockets. Only Windows CI servers don't have them enabled
         'unix-sockets': IS_WINDOWS,
@@ -76,19 +73,19 @@ def db_setup(
     source_dir: Path,
     db: str,
     server_host: str,
-) -> DisabledServerFeatures:
+) -> None:
     # Get the disabled server features
     disabled_features = _compute_disabled_features(_parse_db_version(db))
-    has_sha256 = disabled_features['sha256'] == False
+    disabled_features_str = ' '.join(feature for feature, disabled in disabled_features.items() if disabled)
+    print(' + Disabled server features: {}'.format(disabled_features_str))
 
     # Source files
     _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))
     _run_sql_file(source_dir.joinpath('example', 'order_management', 'db_setup.sql'))
     _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
-    if has_sha256:
+    if not disabled_features['sha256']:
         _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))
     
     # Setup environment variables
     os.environ['BOOST_MYSQL_SERVER_HOST'] = server_host
-
-    return disabled_features
+    os.environ['BOOST_MYSQL_DISABLED_SERVER_FEATURES'] = disabled_features_str

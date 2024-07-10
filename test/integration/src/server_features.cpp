@@ -1,18 +1,22 @@
 //
+// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
 
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/core/span.hpp>
-#include <boost/function/function_base.hpp>
 #include <boost/test/framework.hpp>
 #include <boost/test/tools/assertion_result.hpp>
 
 #include <algorithm>
 #include <iostream>
 #include <iterator>
-#include <map>
 #include <vector>
 
+#include "test_common/ci_server.hpp"
 #include "test_integration/server_features.hpp"
 
 using namespace boost::mysql;
@@ -35,24 +39,8 @@ static std::vector<string_view> split_list(string_view s)
 
 static test::server_features do_get_server_features()
 {
-    // Get the command line arguments
-    const auto& suite = boost::unit_test::framework::master_test_suite();
-    BOOST_ASSERT(suite.argc >= 1);
-
-    // Attempt to find the parameter we want. Fail if we find unknown arguments.
-    // Note that argv[0] is the program name
-    const string_view prefix = "--disabled-server-features=";
-    string_view disabled_features_str;
-    for (int i = 1; i < suite.argc; ++i)
-    {
-        string_view arg = suite.argv[1];
-        if (!arg.starts_with(prefix))
-        {
-            std::cerr << "Unknown command line argument: " << arg << '\n';
-            exit(1);
-        }
-        disabled_features_str = arg.substr(prefix.size());
-    }
+    // Get the disabled feature list from the environment variable
+    auto disabled_features_str = test::safe_getenv("BOOST_MYSQL_DISABLED_SERVER_FEATURES", "");
 
     // Parse the disabled features list
     auto disabled_features = split_list(disabled_features_str);

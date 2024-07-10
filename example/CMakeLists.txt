@@ -107,9 +107,8 @@ endforeach()
 add_example_coroutines(async_coroutines)
 add_example_coroutines(any_connection)
 
-# UNIX sockets. Check if they're supported by the CI server
-list(FIND BOOST_MYSQL_DISABLED_SERVER_FEATURES "unix-sockets" UNIX_DISABLED)
-if (UNIX_DISABLED EQUAL -1)
+# UNIX sockets. Don't run the example on Windows machines
+if (NOT WIN32)
     add_example(
         boost_mysql_example_unix_socket
         unix_socket.cpp

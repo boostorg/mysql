@@ -71,11 +71,7 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     )
 endif()
 
-# Compose the command line arguments. Disabled features must be provided as a whitespace-separated list
-string(REPLACE ";" " " DISABLED_FEATURES_WHITESPACE ${BOOST_MYSQL_DISABLED_SERVER_FEATURES})
-message("DISABLED_FEATURES_WHITESPACE: ${DISABLED_FEATURES_WHITESPACE}")
-
 add_test(
     NAME boost_mysql_integrationtests
-    COMMAND boost_mysql_integrationtests -- "--disabled-server-features=${DISABLED_FEATURES_WHITESPACE}"
+    COMMAND boost_mysql_integrationtests
 )

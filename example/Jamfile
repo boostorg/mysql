@@ -81,15 +81,14 @@ run_python_example dynamic_filters : run_dynamic_filters.py : dynamic_filters.cp
 run_python_example batch_inserts : run_batch_inserts.py : batch_inserts.cpp /boost/json//boost_json ;
 run_python_example batch_inserts_generic : run_batch_inserts.py : batch_inserts_generic.cpp /boost/json//boost_json ;
 
-# UNIX. Honor BOOST_MYSQL_NO_UNIX_SOCKET_TESTS for homogeneity with cmake
-if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] = "" {
-    run
-        unix_socket.cpp
-        /boost/mysql/test//boost_mysql_compiled
-    :
-        <testing.arg>"example_user example_password"
-    ;
-}
+# UNIX. Don't run under Windows systems
+run
+    unix_socket.cpp
+    /boost/mysql/test//boost_mysql_compiled
+:
+    <testing.arg>"example_user example_password"
+    <target-os>windows:<build>no
+;
 
 # Source script
 run
