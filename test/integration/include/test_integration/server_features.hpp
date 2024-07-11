@@ -39,6 +39,8 @@ using server_feature_t = bool server_features::*;
 
 server_features get_server_features();
 
+// Decorators to skip tests if the given features are not enabled.
+// This is lazy because get_server_features requires access to getenv, not legal from global initializers.
 unit_test::precondition run_if(server_feature_t feature);
 unit_test::precondition run_if(server_feature_t feature1, server_feature_t feature2);
 

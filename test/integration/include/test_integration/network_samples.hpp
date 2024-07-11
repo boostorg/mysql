@@ -23,6 +23,9 @@ namespace boost {
 namespace mysql {
 namespace test {
 
+// A Boost.Test dataset of er_network_variant samples that are lazily computed.
+// Laziness is required because creating the variants requires access to
+// the enabled server features (and thus getenv), and that's not legal from global initializers.
 class network_samples
 {
     using col_t = std::vector<std::reference_wrapper<er_network_variant>>;
