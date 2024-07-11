@@ -107,7 +107,9 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::test::add_async_coroutinescpp20(std::vector<er_network_variant*>& output)
+void boost::mysql::test::add_async_coroutinescpp20(
+    std::vector<std::reference_wrapper<er_network_variant>>& output
+)
 {
     add_variant<async_coroutinecpp20_connection<tcp_ssl_socket>>(output);
     add_variant_any<address_type::host_and_port, any_async_coroutinecpp20_connection>(output);
@@ -115,6 +117,8 @@ void boost::mysql::test::add_async_coroutinescpp20(std::vector<er_network_varian
 
 #else
 
-void boost::mysql::test::add_async_coroutinescpp20(std::vector<er_network_variant*>&) {}
+void boost::mysql::test::add_async_coroutinescpp20(std::vector<std::reference_wrapper<er_network_variant>>&)
+{
+}
 
 #endif

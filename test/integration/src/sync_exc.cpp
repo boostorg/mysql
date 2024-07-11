@@ -79,7 +79,7 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::test::add_sync_exc(std::vector<er_network_variant*>& output)
+void boost::mysql::test::add_sync_exc(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     // Spotcheck
     add_variant<sync_exc_connection<tcp_socket>>(output);

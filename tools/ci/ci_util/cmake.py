@@ -68,7 +68,6 @@ def cmake_build(
     build_shared_libs: bool,
     build_type: str,
     cxxstd: str,
-    db: str,
     server_host: str,
     install_test: bool,
 ) -> None:
@@ -84,7 +83,7 @@ def cmake_build(
     )
 
     # Setup DB
-    db_setup(source_dir, db, server_host)
+    db_setup(source_dir, server_host)
 
     # Build the library, run the tests, and install, as the Boost superproject does
     bin_dir = BOOST_ROOT.joinpath('__build')

@@ -42,11 +42,11 @@ namespace mysql {
 namespace test {
 
 // Variants
-void add_sync_errc(std::vector<er_network_variant*>&);
-void add_sync_exc(std::vector<er_network_variant*>&);
-void add_async_callback(std::vector<er_network_variant*>&);
-void add_async_coroutines(std::vector<er_network_variant*>&);
-void add_async_coroutinescpp20(std::vector<er_network_variant*>&);
+void add_sync_errc(std::vector<std::reference_wrapper<er_network_variant>>&);
+void add_sync_exc(std::vector<std::reference_wrapper<er_network_variant>>&);
+void add_async_callback(std::vector<std::reference_wrapper<er_network_variant>>&);
+void add_async_coroutines(std::vector<std::reference_wrapper<er_network_variant>>&);
+void add_async_coroutinescpp20(std::vector<std::reference_wrapper<er_network_variant>>&);
 
 // Helpers
 template <class Stream>
@@ -428,17 +428,17 @@ inline void rethrow_on_failure(std::exception_ptr ptr)
 }
 
 template <class ErConnection>
-void add_variant(std::vector<er_network_variant*>& output)
+void add_variant(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     static er_network_variant_impl<ErConnection> obj;
-    output.push_back(&obj);
+    output.push_back(obj);
 }
 
 template <address_type addr_type, class ErConnection>
-void add_variant_any(std::vector<er_network_variant*>& output)
+void add_variant_any(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     static er_network_variant_any_impl<addr_type, ErConnection> obj;
-    output.push_back(&obj);
+    output.push_back(obj);
 }
 
 }  // namespace test

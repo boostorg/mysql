@@ -5,7 +5,9 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-FROM mariadb:11.4.2
+ARG BASE_IMAGE_VERSION
+
+FROM mariadb:${BASE_IMAGE_VERSION}
 
 ENV MYSQL_ALLOW_EMPTY_PASSWORD=1
 ENV MYSQL_ROOT_PASSWORD=
