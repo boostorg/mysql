@@ -15,6 +15,7 @@
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/deferred.hpp>
@@ -33,6 +34,7 @@
 
 #include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
+#include "test_integration/er_network_variant.hpp"
 #include "test_integration/get_endpoint.hpp"
 #include "test_integration/network_samples.hpp"
 #include "test_integration/run_stackful_coro.hpp"
@@ -46,25 +48,39 @@ using boost::asio::experimental::wait_for_one;
 
 namespace {
 
-// clang-format off
-auto samples_with_reconnection = network_samples({
-    "tcp_sync_errc",
-    "tcp_async_callback",
-    "any_tcp_sync_errc",
-    "any_tcp_async_callback",
-#if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    "any_unix_sync_errc",
+auto samples_with_reconnection = network_samples([]() {
+    const string_view variant_names[] = {
+        "tcp_sync_errc",
+        "tcp_async_callback",
+        "any_tcp_sync_errc",
+        "any_tcp_async_callback",
+    };
+
+    auto res = get_network_variants(variant_names);
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+    if (get_server_features().unix_sockets)
+    {
+        res.push_back(get_network_variant("any_unix_sync_errc"));
+    }
 #endif
+    return res;
 });
 
-auto samples_any = network_samples({
-    "any_tcp_sync_errc",
-    "any_tcp_async_callback",
-#if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    "any_unix_sync_errc",
+auto samples_any = network_samples([]() {
+    const string_view variant_names[] = {
+        "any_tcp_sync_errc",
+        "any_tcp_async_callback",
+    };
+
+    auto res = get_network_variants(variant_names);
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+    if (get_server_features().unix_sockets)
+    {
+        res.push_back(get_network_variant("any_unix_sync_errc"));
+    }
 #endif
+    return res;
 });
-// clang-format on
 
 BOOST_AUTO_TEST_SUITE(test_reconnect)
 

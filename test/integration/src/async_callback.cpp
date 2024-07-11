@@ -92,7 +92,7 @@ void boost::mysql::test::add_async_callback(std::vector<std::reference_wrapper<e
     add_async_callback_variant<tcp_socket>(output);
     add_async_callback_variant<tcp_ssl_socket>(output);
     add_variant_any<address_type::host_and_port, any_async_callback_connection>(output);
-#if BOOST_ASIO_HAS_LOCAL_SOCKETS
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
     if (get_server_features().unix_sockets)
     {
         add_async_callback_variant<unix_socket>(output);

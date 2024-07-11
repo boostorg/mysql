@@ -39,6 +39,7 @@ std::ostream& operator<<(std::ostream& os, const er_network_variant& var);
 
 std::vector<std::reference_wrapper<er_network_variant>> all_variants();
 std::vector<std::reference_wrapper<er_network_variant>> all_variants_with_handshake();
+er_network_variant& get_network_variant(string_view name);
 std::vector<std::reference_wrapper<er_network_variant>> get_network_variants(
     boost::span<const string_view> names
 );

@@ -45,20 +45,23 @@ std::vector<std::reference_wrapper<er_network_variant>> boost::mysql::test::all_
     return res;
 }
 
+er_network_variant& boost::mysql::test::get_network_variant(string_view name)
+{
+    static auto by_name = make_variants_map();
+    std::string name_str(name);
+    auto it = by_name.find(name_str);
+    if (it == by_name.end())
+        throw std::out_of_range("Unknown network variant: " + name_str);
+    return *it->second;
+}
+
 std::vector<std::reference_wrapper<er_network_variant>> boost::mysql::test::get_network_variants(
     boost::span<const string_view> names
 )
 {
-    static auto by_name = make_variants_map();
     std::vector<std::reference_wrapper<er_network_variant>> res;
     for (auto name : names)
-    {
-        std::string name_str(name);
-        auto it = by_name.find(name_str);
-        if (it == by_name.end())
-            throw std::out_of_range("Unknown network variant: " + name_str);
-        res.push_back(*it->second);
-    }
+        res.push_back(get_network_variant(name));
     return res;
 }
 
