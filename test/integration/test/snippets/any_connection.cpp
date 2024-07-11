@@ -63,7 +63,8 @@ BOOST_AUTO_TEST_CASE(section_any_connection_tcp)
     create_and_connect(get_hostname(), mysql_username, mysql_password, "boost_mysql_examples");
 }
 
-// Intentionally not run, since it creates problems in Windows CIs
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+
 //[any_connection_unix
 void create_and_connect_unix(string_view username, string_view password, string_view database)
 {
@@ -93,6 +94,7 @@ BOOST_AUTO_TEST_CASE(section_any_connection_unix)
 {
     create_and_connect_unix(mysql_username, mysql_password, "boost_mysql_examples");
 }
+#endif
 
 //[any_connection_reconnect
 error_code connect_with_retries(

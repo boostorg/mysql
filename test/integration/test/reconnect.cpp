@@ -254,6 +254,7 @@ BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp, change_stream_type_fixture)
     run(test_cases);
 }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 // UNIX cases. Note that some sync cases are not included, to save testing time
 BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_FIXTURE_TEST_CASE(change_stream_type_unix, change_stream_type_fixture)
@@ -270,6 +271,7 @@ BOOST_FIXTURE_TEST_CASE(change_stream_type_unix, change_stream_type_fixture)
     };
     run(test_cases);
 }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()  // test_reconnect
 
