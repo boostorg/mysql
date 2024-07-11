@@ -153,7 +153,7 @@ implement a minimal order management system for an online store.
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
-This examples requires you to run [link_to_file example/order_management/db_setup.sql].
+This example requires you to run [link_to_file example/order_management/db_setup.sql].
 You can find table definitions there.
 
 [import ../../example/order_management/prepared_statements_cpp11.cpp]
@@ -173,7 +173,7 @@ implement a minimal order management system for an online store.
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
-This examples requires you to run [link_to_file example/order_management/db_setup.sql].
+This example requires you to run [link_to_file example/order_management/db_setup.sql].
 You can find table definitions there.
 
 [import ../../example/order_management/prepared_statements_cpp14.cpp]
@@ -193,7 +193,7 @@ implement a minimal order management system for an online store.
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
-This examples requires you to run [link_to_file example/order_management/db_setup.sql].
+This example requires you to run [link_to_file example/order_management/db_setup.sql].
 You can find table and procedure definitions there.
 
 [import ../../example/order_management/stored_procedures_cpp11.cpp]
@@ -213,7 +213,7 @@ implement a minimal order management system for an online store.
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
-This examples requires you to run [link_to_file example/order_management/db_setup.sql].
+This example requires you to run [link_to_file example/order_management/db_setup.sql].
 You can find table and procedure definitions there.
 
 [import ../../example/order_management/stored_procedures_cpp14.cpp]
