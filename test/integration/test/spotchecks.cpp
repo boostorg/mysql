@@ -430,7 +430,8 @@ BOOST_DATA_TEST_CASE_F(network_fixture, execute_static_success, all_samples)
     er_connection::static_results_t result;
     conn->execute("CALL sp_spotchecks()", result).get();
     BOOST_TEST(result.rows<0>().size() == 1u);
-    BOOST_TEST((result.rows<0>()[0] == row_multifield{1.1f, 11, "aaa"}));
+    row_multifield expected{boost::optional<float>(1.1f), 11, std::string("aaa")};
+    BOOST_TEST(result.rows<0>()[0] == expected);
 }
 
 // start_execution, read_resultset_head, read_some_rows success
