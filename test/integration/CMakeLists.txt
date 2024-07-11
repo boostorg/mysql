@@ -9,6 +9,7 @@ add_executable(
     boost_mysql_integrationtests
 
     # Utilities
+    src/server_features.cpp
     src/get_endpoint.cpp
     src/metadata_validator.cpp
     src/er_network_variant.cpp
@@ -70,18 +71,7 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     )
 endif()
 
-# Compose the test filter
-set (DB_SYSTEM $ENV{BOOST_MYSQL_TEST_DB})
-if ("${DB_SYSTEM}" STREQUAL "")
-    set(DB_SYSTEM "mysql8")
-endif()
-set(TEST_FILTER "!@skip_${DB_SYSTEM}")
-
-if (NOT "$ENV{BOOST_MYSQL_NO_UNIX_SOCKET_TESTS}" STREQUAL "")
-    set(TEST_FILTER "${TEST_FILTER}:!@unix")
-endif()
-
 add_test(
     NAME boost_mysql_integrationtests
-    COMMAND boost_mysql_integrationtests "-t" ${TEST_FILTER}
+    COMMAND boost_mysql_integrationtests
 )

@@ -21,6 +21,7 @@
 #include <thread>
 
 #include "test_common/ci_server.hpp"
+#include "test_integration/server_features.hpp"
 #include "test_integration/snippets/credentials.hpp"
 
 using namespace boost::mysql;
@@ -87,7 +88,7 @@ void create_and_connect_unix(string_view username, string_view password, string_
 }
 //]
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_AUTO_TEST_CASE(section_any_connection_unix)
 {
     create_and_connect_unix(mysql_username, mysql_password, "boost_mysql_examples");

@@ -18,6 +18,7 @@
 #include "test_common/netfun_helpers.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_integration/er_connection.hpp"
+#include "test_integration/server_features.hpp"
 #include "test_integration/streams.hpp"
 
 using namespace boost::mysql::test;
@@ -76,7 +77,7 @@ public:
 };
 
 template <class Stream>
-void add_async_callback_variant(std::vector<er_network_variant*>& output)
+void add_async_callback_variant(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     add_variant<async_callback_connection<Stream>>(output);
 }
@@ -85,14 +86,17 @@ void add_async_callback_variant(std::vector<er_network_variant*>& output)
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::test::add_async_callback(std::vector<er_network_variant*>& output)
+void boost::mysql::test::add_async_callback(std::vector<std::reference_wrapper<er_network_variant>>& output)
 {
     // Spotcheck for both streams
     add_async_callback_variant<tcp_socket>(output);
     add_async_callback_variant<tcp_ssl_socket>(output);
     add_variant_any<address_type::host_and_port, any_async_callback_connection>(output);
-#if BOOST_ASIO_HAS_LOCAL_SOCKETS
-    add_async_callback_variant<unix_socket>(output);
-    add_variant_any<address_type::unix_path, any_async_callback_connection>(output);
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+    if (get_server_features().unix_sockets)
+    {
+        add_async_callback_variant<unix_socket>(output);
+        add_variant_any<address_type::unix_path, any_async_callback_connection>(output);
+    }
 #endif
 }

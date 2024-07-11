@@ -18,7 +18,6 @@ from .install_boost import install_boost
 def fuzz_build(
     source_dir: Path,
     boost_branch: str,
-    db: str,
     server_host: str,
 ) -> None:
     # Config
@@ -43,7 +42,7 @@ def fuzz_build(
     generate_seed_corpus()
 
     # Setup DB (required for injection testing)
-    db_setup(source_dir, db, server_host)
+    db_setup(source_dir, server_host)
 
     # Build and run the fuzzing targets
     run([

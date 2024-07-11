@@ -46,10 +46,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include "test_common/ci_server.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/metadata_validator.hpp"
+#include "test_integration/server_features.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
 using namespace boost::mysql::test;
@@ -336,7 +336,7 @@ struct int_table_row
 using tinyint_row = int_table_row<int8_t, uint8_t>;
 BOOST_DESCRIBE_STRUCT(tinyint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
-table_ptr types_tinyint()
+static table_ptr types_tinyint()
 {
     auto res = make_table<tinyint_row>("types_tinyint");
     int_table_columns(*res, column_type::tinyint);
@@ -354,7 +354,7 @@ table_ptr types_tinyint()
 using smallint_row = int_table_row<int16_t, uint16_t>;
 BOOST_DESCRIBE_STRUCT(smallint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
-table_ptr types_smallint()
+static table_ptr types_smallint()
 {
     auto res = make_table<smallint_row>("types_smallint");
     int_table_columns(*res, column_type::smallint);
@@ -372,7 +372,7 @@ table_ptr types_smallint()
 using int_row = int_table_row<int32_t, uint32_t>;
 BOOST_DESCRIBE_STRUCT(int_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
-table_ptr types_mediumint()
+static table_ptr types_mediumint()
 {
     auto res = make_table<int_row>("types_mediumint");
     int_table_columns(*res, column_type::mediumint);
@@ -387,7 +387,7 @@ table_ptr types_mediumint()
 }
 
 // INT
-table_ptr types_int()
+static table_ptr types_int()
 {
     auto res = make_table<int_row>("types_int");
     int_table_columns(*res, column_type::int_);
@@ -405,7 +405,7 @@ table_ptr types_int()
 using bigint_row = int_table_row<int64_t, uint64_t>;
 BOOST_DESCRIBE_STRUCT(bigint_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
-table_ptr types_bigint()
+static table_ptr types_bigint()
 {
     auto res = make_table<bigint_row>("types_bigint");
     int_table_columns(*res, column_type::bigint);
@@ -427,7 +427,7 @@ struct year_row
 };
 BOOST_DESCRIBE_STRUCT(year_row, (), (id, field_default))
 
-table_ptr types_year()
+static table_ptr types_year()
 {
     auto res = make_table<year_row>("types_year");
     res->add_meta("field_default", column_type::year, flags_zerofill);
@@ -449,7 +449,7 @@ struct bool_row
 };
 BOOST_DESCRIBE_STRUCT(bool_row, (), (id, field_default))
 
-table_ptr types_bool()
+static table_ptr types_bool()
 {
     auto res = make_table<bool_row>("types_bool");
     res->add_meta("field_default", column_type::tinyint);
@@ -492,7 +492,7 @@ BOOST_DESCRIBE_STRUCT(
      field_64)
 )
 
-table_ptr types_bit()
+static table_ptr types_bit()
 {
     auto res = make_table<bit_row>("types_bit");
     const char* columns[] = {
@@ -530,7 +530,7 @@ struct float_row
 };
 BOOST_DESCRIBE_STRUCT(float_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
-table_ptr types_float()
+static table_ptr types_float()
 {
     auto res = make_table<float_row>("types_float");
     res->add_meta("field_signed", column_type::float_, no_flags, 31);
@@ -564,7 +564,7 @@ struct double_row
 };
 BOOST_DESCRIBE_STRUCT(double_row, (), (id, field_signed, field_unsigned, field_width, field_zerofill))
 
-table_ptr types_double()
+static table_ptr types_double()
 {
     auto res = make_table<double_row>("types_double");
     res->add_meta("field_signed", column_type::double_, no_flags, 31);
@@ -595,7 +595,7 @@ struct date_row
 };
 BOOST_DESCRIBE_STRUCT(date_row, (), (id, field_date))
 
-table_ptr types_date()
+static table_ptr types_date()
 {
     auto res = make_table<date_row>("types_date");
     res->add_meta("field_date", column_type::date);
@@ -658,7 +658,7 @@ void datetime_timestamp_common_rows(table<datetime_row>& res)
     // clang-format on
 }
 
-table_ptr types_datetime()
+static table_ptr types_datetime()
 {
     auto res = make_table<datetime_row>("types_datetime");
     res->add_meta("field_0", column_type::datetime, no_flags, 0, flags_unsigned);
@@ -708,7 +708,7 @@ table_ptr types_datetime()
     return table_ptr(std::move(res));
 }
 
-table_ptr types_timestamp()
+static table_ptr types_timestamp()
 {
     auto res = make_table<datetime_row>("types_timestamp");
     res->add_meta("field_0", column_type::timestamp, no_flags, 0, flags_unsigned);
@@ -743,7 +743,7 @@ struct time_row
 };
 BOOST_DESCRIBE_STRUCT(time_row, (), (id, field_0, field_1, field_2, field_3, field_4, field_5, field_6))
 
-table_ptr types_time()
+static table_ptr types_time()
 {
     auto res = make_table<time_row>("types_time");
     res->add_meta("field_0", column_type::time, no_flags, 0, flags_unsigned);
@@ -853,7 +853,7 @@ BOOST_DESCRIBE_STRUCT(
      field_set)
 )
 
-table_ptr types_string()
+static table_ptr types_string()
 {
     auto res = make_table<string_row>("types_string");
     res->add_meta("field_char", column_type::char_);
@@ -884,19 +884,19 @@ struct json_row
 };
 BOOST_DESCRIBE_STRUCT(json_row, (), (id, field_json))
 
-table_ptr types_json()
+static table_ptr types_json()
 {
     // MariaDB doesn't have a dedicated column type, so there is a difference in metadata.
     // Values should be the same, though.
     auto res = make_table<json_row>("types_json");
-    res->add_meta("field_json", is_mariadb() ? column_type::text : column_type::json);
+    res->add_meta("field_json", get_server_features().json_type ? column_type::json : column_type::text);
 
     using std::string;
 
     // clang-format off
     res->add_row("regular",        string(R"([null, 42, false, "abc", {"key": "value"}])"));
-    res->add_row("unicode_escape", string(R"(["\\u0000value\\u0000"])"));
-    res->add_row("utf8",           string("[\"adi\xc3\xb3os\"]"));
+    res->add_row("unicode_escape", string(R"(["\u0000value\u0000"])"));
+    res->add_row("utf8",           string("[\"adi\xc3\xb3s\"]"));
     res->add_row("empty",          string("{}"));
     // clang-format on
     return table_ptr(std::move(res));
@@ -919,7 +919,7 @@ BOOST_DESCRIBE_STRUCT(
     (id, field_binary, field_varbinary, field_tinyblob, field_blob, field_mediumblob, field_longblob)
 )
 
-table_ptr types_binary()
+static table_ptr types_binary()
 {
     auto res = make_table<binary_row>("types_binary");
     res->add_meta("field_binary", column_type::binary);
@@ -947,7 +947,7 @@ struct not_implemented_row
 };
 BOOST_DESCRIBE_STRUCT(not_implemented_row, (), (id, field_decimal, field_geometry))
 
-table_ptr types_not_implemented()
+static table_ptr types_not_implemented()
 {
     auto res = make_table<not_implemented_row>("types_not_implemented");
     res->add_meta("field_decimal", column_type::decimal);
@@ -976,7 +976,7 @@ BOOST_DESCRIBE_STRUCT(
     (id, field_timestamp, field_primary_key, field_not_null, field_unique, field_indexed)
 )
 
-table_ptr types_flags()
+static table_ptr types_flags()
 {
     auto res = make_table<flags_row>("types_flags");
     res->add_meta(
@@ -1017,6 +1017,7 @@ std::vector<table_ptr> make_all_tables()
     res.push_back(types_timestamp());
     res.push_back(types_time());
     res.push_back(types_string());
+    res.push_back(types_json());
     res.push_back(types_binary());
     res.push_back(types_not_implemented());
     res.push_back(types_flags());

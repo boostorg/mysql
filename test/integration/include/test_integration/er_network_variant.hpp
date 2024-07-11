@@ -14,6 +14,9 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/core/span.hpp>
 
+#include <functional>
+#include <iosfwd>
+
 #include "test_integration/er_connection.hpp"
 
 namespace boost {
@@ -32,10 +35,14 @@ public:
     std::string name() const { return std::string(stream_name()) + '_' + variant_name(); }
     virtual er_connection_ptr create_connection(boost::asio::any_io_executor, boost::asio::ssl::context&) = 0;
 };
+std::ostream& operator<<(std::ostream& os, const er_network_variant& var);
 
-boost::span<er_network_variant*> all_variants();
-boost::span<er_network_variant*> all_variants_with_handshake();
-er_network_variant* get_variant(string_view name);
+std::vector<std::reference_wrapper<er_network_variant>> all_variants();
+std::vector<std::reference_wrapper<er_network_variant>> all_variants_with_handshake();
+er_network_variant& get_network_variant(string_view name);
+std::vector<std::reference_wrapper<er_network_variant>> get_network_variants(
+    boost::span<const string_view> names
+);
 
 }  // namespace test
 }  // namespace mysql
