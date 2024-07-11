@@ -83,12 +83,12 @@ def db_setup(
 ) -> None:
     # Get the server version
     db = _get_server_version()
-    print(' + Server version: {}'.format(db), flush=True)
+    print('+ Server version: {}'.format(db), flush=True)
 
     # Get the disabled server features
     disabled_features = _compute_disabled_features(_parse_db_version(db))
     disabled_features_str = ' '.join(feature for feature, disabled in disabled_features.items() if disabled)
-    print(' + Disabled server features: {}'.format(disabled_features_str))
+    print('+ Disabled server features: {}'.format(disabled_features_str))
 
     # Source files
     _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))

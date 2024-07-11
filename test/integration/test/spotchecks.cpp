@@ -36,6 +36,7 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using boost::test_tools::per_element;
 
 BOOST_AUTO_TEST_SUITE(test_spotchecks)
 
@@ -107,7 +108,7 @@ BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_success, all_samples)
     results result;
     conn->execute("SELECT 'hello', 42", result).get();
     BOOST_TEST(result.rows().size() == 1u);
-    BOOST_TEST(result.rows()[0] == makerow("hello", 42));
+    BOOST_TEST(result.rows()[0] == makerow("hello", 42), per_element());
     BOOST_TEST(result.meta().size() == 2u);
 }
 
