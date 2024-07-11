@@ -21,6 +21,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 
+#include <boost/optional/optional.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -446,8 +447,9 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_and_followups_static_suc
     // Read r1 rows
     std::array<row_multifield, 2> storage;
     std::size_t num_rows = conn->read_some_rows(st, storage).get();
+    row_multifield expected_multifield{boost::optional<float>(1.1f), 11, std::string("aaa")};  // MSVC 14.1
     BOOST_TEST(num_rows == 1u);
-    BOOST_TEST((storage[0] == row_multifield{1.1f, 11, "aaa"}));
+    BOOST_TEST(storage[0] == expected_multifield);
 
     // Ensure we're in the next resultset
     num_rows = conn->read_some_rows(st, storage).get();
@@ -462,7 +464,8 @@ BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_and_followups_static_suc
     std::array<row_2fields, 2> storage2;
     num_rows = conn->read_some_rows(st, storage2).get();
     BOOST_TEST(num_rows == 1u);
-    BOOST_TEST((storage2[0] == row_2fields{1, std::string("f0")}));
+    row_2fields expected_2fields{1, std::string("f0")};
+    BOOST_TEST(storage2[0] == expected_2fields);
 
     // Ensure we're in the next resultset
     num_rows = conn->read_some_rows(st, storage2).get();
