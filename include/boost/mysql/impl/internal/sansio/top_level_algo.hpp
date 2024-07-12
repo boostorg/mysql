@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_TOP_LEVEL_ALGO_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_TOP_LEVEL_ALGO_HPP
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/next_action.hpp>
@@ -83,7 +84,9 @@ public:
                     // (may be zero times if cached)
                     while (!st_->reader.done() && !ec)
                     {
-                        st_->reader.prepare_buffer();
+                        ec = st_->reader.prepare_buffer();
+                        if (ec)
+                            break;
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             1,
@@ -103,6 +106,18 @@ public:
                 {
                     // Write until a complete message was written
                     bytes_to_write_ = act.write_args().buffer;
+
+                    // Check buffer size. We should check this before
+                    // resizing the buffer, but requires non-trivial changes.
+                    // For now, this yields the right user-facing behavior.
+                    // https://github.com/boostorg/mysql/issues/297
+                    // https://github.com/boostorg/mysql/issues/279
+                    if (bytes_to_write_.size() > st_->max_buffer_size())
+                    {
+                        ec = client_errc::max_buffer_size_exceeded;
+                        continue;
+                    }
+
                     while (!bytes_to_write_.empty() && !ec)
                     {
                         BOOST_MYSQL_YIELD(

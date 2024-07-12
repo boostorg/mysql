@@ -75,7 +75,12 @@ strings, blobs, dates and times:
 
 [sql_formatting_optionals]
 
-See [link mysql.sql_formatting.reference this table] for a reference of types
+Collections and ranges are supported, as long as its elements can be formatted:
+
+[sql_formatting_ranges]
+
+See [link mysql.sql_formatting.ranges this section] for more on formatting ranges,
+and [link mysql.sql_formatting.reference this table] for a reference of types
 that have built-in support for SQL formatting.
 
 [note
@@ -93,6 +98,8 @@ You can also use named arguments, using the initializer list overload:
 
 See [link mysql.sql_formatting_advanced.format_string_syntax this section] for an in-depth
 explanation on format strings.
+
+
 
 
 
@@ -115,7 +122,7 @@ This is equivalent to the previous snippet:
 
 [heading Building SQL strings incrementally using format_sql_to]
 
-Many use cases, including batch inserts and dynamic filters, may not be
+Some use cases, usually involving conditionals, may not be
 expressible in terms of a single format string. In such cases, you can
 use [reflink format_context] and [reflink format_sql_to] to
 build query strings incrementally:
@@ -127,15 +134,18 @@ build query strings incrementally:
 
 
 
-[heading:unit_test Unit testing]
 
-If you are composing very complex queries, it's very advisable to unit test them.
-For instance:
+[heading:ranges Formatting ranges with sequence]
 
-[sql_formatting_unit_test]
+The [reflink sequence] function can be used when the default range formatting isn't sufficient.
+If the elements in your range are not formattable, you can pass a user-defined function to `sequence`
+describing how to format each element:
 
-In tests, it's safe to manually create a [reflink format_options] value like the one above.
-But don't do it in production code!
+[sql_formatting_sequence_1]
+
+By default, elements are separated by commas, but this is configurable:
+
+[sql_formatting_sequence_2]
 
 
 
@@ -255,8 +265,8 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     ]
     [
         [
-            String types:[br][br]
-            `std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`)[br][br]
+            String types (convertible to [reflink string_view]), including:[br][br]
+            `std::string`[br][br]
             [reflink string_view][br][br]
             `std::string_view`[br][br]
             `const char*`[br][br]
@@ -272,8 +282,10 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     ]
     [
         [
-            `std::basic_vector<unsigned char, Allocator>` (including [reflink blob])[br][br]
-            [reflink blob_view]
+            Blob types (convertible to `span<const unsigned char>`), including:[br][br]
+            [reflink blob] (`std::vector<unsigned char>`)[br][br]
+            [reflink blob_view] (`span<const unsigned char>`)[br][br]
+            `std::array<unsigned char, N>`
         ]
         [
             Hex string literal[br]
@@ -350,7 +362,7 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
     [
         [
             `boost::optional<T>` and `std::optional<T>`, `T` being one of the fundamental types above.[br]
-            Not applicable to custom types.[br]
+            Not applicable to custom types or ranges.[br]
             No format specifiers allowed
         ]
         [
@@ -372,12 +384,57 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
         ]
     ]
     [
+        [
+            Range of formattable elements. Informally, such ranges support
+            `std::begin()` and `std::end()`, and its iterator `operator*`
+            must yield one of the following:
+
+                * A [reflink2 WritableFieldTuple WritableField] (i.e. one of the fundamental types above).
+                * A type with a custom formatter.
+
+            Ranges of ranges are not supported.
+            Note that `vector<unsigned char>` and similar types are formatted as blobs, not as sequences.
+            
+            See [reflink2 Formattable the Formattable concept reference] for a formal definition.
+        ]
+        [
+            Formats each element in the range, separating elements with commas.[br]
+            Specifiers can be applied to individual elements by prefixing them with a colon (`:`)
+        ]
+        [
+            [sql_formatting_reference_ranges]
+        ]
+    ]
+    [
+        [
+            [reflink format_sequence_view] (as returned by [reflink sequence])
+        ]
+        [
+            Formats each element in a range by calling a user-supplied function,
+            separating elements by a glue string (a comma by default).[br]
+            No format specifiers allowed
+        ]
+        [
+            [sql_formatting_reference_sequence]
+        ]
+    ]
+    [
         [Custom type that specializes [reflink formatter]]
         [
             Calls `formatter::parse` and `formatter::format`[br]
             May accept user-defined format specifiers.
         ]
         []
+    ]
+    [
+        [[reflink formattable_ref]]
+        [
+            Formats the underlying value. Can represent any of the types above.[br]
+            Accepts the same format specifiers as the underlying type.
+        ]
+        [
+            [sql_formatting_reference_formattable_ref]
+        ]
     ]
 ]
 

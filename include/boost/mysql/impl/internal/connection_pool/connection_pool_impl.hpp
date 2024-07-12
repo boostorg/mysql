@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_CONNECTION_POOL_CONNECTION_POOL_IMPL_HPP
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -41,6 +42,13 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+inline pipeline_request make_reset_pipeline()
+{
+    pipeline_request req;
+    req.add_reset_connection().add_set_character_set(utf8mb4_charset);
+    return req;
+}
+
 // Templating on ConnectionWrapper is useful for mocking in tests.
 // Production code always uses ConnectionWrapper = pooled_connection.
 template <class IoTraits, class ConnectionWrapper>
@@ -67,7 +75,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     shared_state_type shared_st_;
     wait_group wait_gp_;
     timer_type cancel_timer_;
-    const reset_pipeline_req_t reset_pipeline_req_{make_reset_pipeline()};
+    const pipeline_request reset_pipeline_req_{make_reset_pipeline()};
 
     std::shared_ptr<this_type> shared_from_this_wrapper()
     {
@@ -324,7 +332,7 @@ public:
     shared_state_type& shared_state() noexcept { return shared_st_; }
     internal_pool_params& params() noexcept { return params_; }
     asio::any_io_executor connection_ex() noexcept { return conn_ex_; }
-    const reset_pipeline_req_t& reset_pipeline_request() const { return reset_pipeline_req_; }
+    const pipeline_request& reset_pipeline_request() const { return reset_pipeline_req_; }
 };
 
 }  // namespace detail

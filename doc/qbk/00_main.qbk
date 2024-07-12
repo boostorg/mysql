@@ -42,8 +42,6 @@
 [def __FieldViewFwdIterator__ [reflink2 FieldViewFwdIterator ['FieldViewFwdIterator]]]
 [def __Formattable__ [reflink2 Formattable ['Formattable]]]
 [def __OutputString__ [reflink2 OutputString ['OutputString]]]
-[def __PipelineRequestType__ [reflink2 PipelineRequestType ['PipelineRequestType]]]
-[def __PipelineStageType__ [reflink2 PipelineStageType ['PipelineStageType]]]
 [def __ResultsType__ [reflink2 ResultsType ['ResultsType]]]
 [def __SocketStream__ [reflink2 SocketStream ['SocketStream]]]
 [def __StaticRow__ [reflink2 StaticRow ['StaticRow]]]
@@ -167,7 +165,6 @@ END
 [include 23_sql_formatting_advanced.qbk]
 [include 24_pipeline.qbk]
 [include 24_examples.qbk]
-[include 25_tests.qbk]
 
 
 [section:ref Reference]
@@ -179,8 +176,6 @@ END
 [include helpers/FieldViewFwdIterator.qbk]
 [include helpers/Formattable.qbk]
 [include helpers/OutputString.qbk]
-[include helpers/PipelineRequestType.qbk]
-[include helpers/PipelineStageType.qbk]
 [include helpers/ResultsType.qbk]
 [include helpers/SocketStream.qbk]
 [include helpers/StaticRow.qbk]

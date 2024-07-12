@@ -67,6 +67,9 @@ bool boost::mysql::is_fatal_error(error_code ec) noexcept
         case client_errc::extra_bytes:
         case client_errc::sequence_number_mismatch:
 
+        // Exceeding the max buffer size is not recoverable
+        case client_errc::max_buffer_size_exceeded:
+
         // These are produced by the static interface, and currently cause parsing
         // to stop, leaving unread packets in the network buffer.
         // See https://github.com/boostorg/mysql/issues/212

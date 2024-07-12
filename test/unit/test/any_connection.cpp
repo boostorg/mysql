@@ -10,11 +10,13 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/results.hpp>
 
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <stdexcept>
 #include <string>
 
 #include "test_common/printing.hpp"
@@ -43,9 +45,28 @@ BOOST_AUTO_TEST_CASE(init_ctor_with_buffer_size)
 {
     asio::io_context ctx;
     any_connection_params params;
-    params.initial_read_buffer_size = 512u;
+    params.initial_buffer_size = 512u;
     any_connection c{ctx.get_executor(), params};
     BOOST_TEST((c.get_executor() == ctx.get_executor()));
+}
+
+BOOST_AUTO_TEST_CASE(init_ctor_max_buffer_size_eq_size)
+{
+    asio::io_context ctx;
+    any_connection_params params;
+    params.initial_buffer_size = 512u;
+    params.max_buffer_size = 512u;
+    any_connection c{ctx.get_executor(), params};
+    BOOST_TEST((c.get_executor() == ctx.get_executor()));
+}
+
+BOOST_AUTO_TEST_CASE(init_ctor_error_max_buffer_size)
+{
+    asio::io_context ctx;
+    any_connection_params params;
+    params.initial_buffer_size = 513u;
+    params.max_buffer_size = 512u;
+    BOOST_CHECK_THROW(any_connection(ctx, params), std::invalid_argument);
 }
 
 // move ctor
@@ -105,7 +126,6 @@ void deferred_spotcheck()
 
     (void)conn.async_connect(params, deferred);
     (void)conn.async_connect(params, diag, deferred);
-    (void)conn.async_connect(&params, diag, deferred);
 
     (void)conn.async_execute("SELECT 1", result, deferred);
     (void)conn.async_execute(str, result, deferred);

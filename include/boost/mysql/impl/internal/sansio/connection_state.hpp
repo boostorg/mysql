@@ -86,8 +86,8 @@ public:
     // We initialize the algo state with a dummy value. This will be overwritten
     // by setup() before the first algorithm starts running. Doing this avoids
     // the need for a special null algo
-    connection_state(std::size_t read_buffer_size, bool transport_supports_ssl)
-        : st_data_(read_buffer_size, transport_supports_ssl),
+    connection_state(std::size_t read_buffer_size, std::size_t max_buffer_size, bool transport_supports_ssl)
+        : st_data_(read_buffer_size, max_buffer_size, transport_supports_ssl),
           algo_(top_level_algo<quit_connection_algo>(
               st_data_,
               quit_connection_algo_params{&st_data_.shared_diag}

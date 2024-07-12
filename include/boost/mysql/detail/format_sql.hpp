@@ -8,15 +8,18 @@
 #ifndef BOOST_MYSQL_DETAIL_FORMAT_SQL_HPP
 #define BOOST_MYSQL_DETAIL_FORMAT_SQL_HPP
 
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
-#include <initializer_list>
-#include <string>
+#include <iterator>
 #include <type_traits>
+#include <utility>
+
+#ifdef BOOST_MYSQL_HAS_CONCEPTS
+#include <concepts>
+#endif
 
 namespace boost {
 namespace mysql {
@@ -26,8 +29,7 @@ template <class T>
 struct formatter;
 
 class format_context_base;
-class format_arg;
-struct format_options;
+class formattable_ref;
 
 namespace detail {
 
@@ -38,16 +40,56 @@ struct formatter_is_unspecialized
 };
 
 template <class T>
-constexpr bool has_specialized_formatter() noexcept
+constexpr bool has_specialized_formatter()
 {
-    return !std::is_base_of<formatter_is_unspecialized, formatter<T>>::value;
+    return !std::is_base_of<formatter_is_unspecialized, formatter<typename std::decay<T>::type>>::value;
 }
 
-// Note: having the concept use separate atomic clauses improves diagnostics
+template <class T>
+struct is_writable_field_ref : is_writable_field<typename std::decay<T>::type>
+{
+};
+
+template <class T>
+struct is_formattable_ref : std::is_same<typename std::decay<T>::type, formattable_ref>
+{
+};
+
+// Is T suitable for being the element type of a formattable range?
+template <class T>
+constexpr bool is_formattable_range_elm_type()
+{
+    return is_writable_field_ref<T>::value || has_specialized_formatter<T>() || is_formattable_ref<T>::value;
+}
+
+template <class T, class = void>
+struct is_formattable_range : std::false_type
+{
+};
+
+// Note: T might be a reference.
+// Using T& + reference collapsing gets the right semantics for non-const ranges
+template <class T>
+struct is_formattable_range<
+    T,
+    typename std::enable_if<
+        // std::begin and std::end can be called on it, and we can compare values
+        std::is_convertible<decltype(std::begin(std::declval<T&>()) != std::end(std::declval<T&>())), bool>::
+            value &&
+
+        // value_type is either a writable field or a type with a specialized formatter.
+        // We don't support sequences of sequences out of the box (no known use case)
+        is_formattable_range_elm_type<decltype(*std::begin(std::declval<T&>()))>()
+
+        // end of conditions
+        >::type> : std::true_type
+{
+};
+
 template <class T>
 constexpr bool is_formattable_type()
 {
-    return is_writable_field<T>::value || has_specialized_formatter<T>();
+    return is_formattable_range_elm_type<T>() || is_formattable_range<T>::value;
 }
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -57,9 +99,20 @@ constexpr bool is_formattable_type()
 template <class T>
 concept formattable =
     // This covers basic types and optionals
-    is_writable_field<T>::value ||
+    is_writable_field_ref<T>::value ||
     // This covers custom types that specialized boost::mysql::formatter
-    has_specialized_formatter<T>();
+    has_specialized_formatter<T>() ||
+    // This covers ranges of formattable types
+    is_formattable_range<T>::value ||
+    // This covers passing formattable_ref as a format argument
+    is_formattable_ref<T>::value;
+
+template <class FormatFn, class Range>
+concept format_fn_for_range = requires(const FormatFn& format_fn, Range&& range, format_context_base& ctx) {
+    { std::begin(range) != std::end(range) } -> std::convertible_to<bool>;
+    format_fn(*std::begin(range), ctx);
+    std::end(range);
+};
 
 #define BOOST_MYSQL_FORMATTABLE ::boost::mysql::detail::formattable
 
@@ -69,119 +122,40 @@ concept formattable =
 
 #endif
 
-// A type-erased custom argument passed to format, invoking formatter<T>::format
-struct format_custom_arg
-{
-    const void* obj;
-    bool (*format_fn)(const void*, const char*, const char*, format_context_base&);
-
-    template <class T>
-    static format_custom_arg create(const T& obj) noexcept
-    {
-        return {&obj, &do_format<T>};
-    }
-
-    template <class T>
-    static bool do_format(
-        const void* obj,
-        const char* spec_begin,
-        const char* spec_end,
-        format_context_base& ctx
-    )
-    {
-        formatter<T> fmt;
-        const char* it = fmt.parse(spec_begin, spec_end);
-        if (it != spec_end)
-        {
-            return false;
-        }
-        fmt.format(*static_cast<const T*>(obj), ctx);
-        return true;
-    }
-};
-
 // A type-erased argument passed to format. Built-in types are passed
 // directly in the struct (as a field_view), instead of by pointer,
 // to reduce the number of do_format instantiations
-struct format_arg_value
+struct formattable_ref_impl
 {
     enum class type_t
     {
-        string,
         field,
-        custom
+        field_with_specs,
+        fn_and_ptr
+    };
+
+    struct fn_and_ptr
+    {
+        const void* obj;
+        bool (*format_fn)(const void*, const char*, const char*, format_context_base&);
     };
 
     union data_t
     {
-        string_view s;
         field_view fv;
-        format_custom_arg custom;
+        fn_and_ptr custom;
 
-        data_t(string_view v) noexcept : s(v) {}
         data_t(field_view fv) noexcept : fv(fv) {}
-        data_t(format_custom_arg v) noexcept : custom(v) {}
+        data_t(fn_and_ptr v) noexcept : custom(v) {}
     };
 
     type_t type;
     data_t data;
 };
 
-// make_format_value: creates a type erased format_arg_value from a typed value.
-// Used for types convertible to string view. We must differentiate this from
-// field_views and optionals because supported specifiers are different
+// Create a type-erased formattable_ref_impl from a formattable value
 template <class T>
-format_arg_value make_format_value_impl(
-    const T& v,
-    std::true_type,  // convertible to string view
-    std::true_type   // if it's convertible to string_view, it will be a writable field, too
-) noexcept
-{
-    return {format_arg_value::type_t::string, string_view(v)};
-}
-
-// Used for types having is_writable_field<T>
-template <class T>
-format_arg_value make_format_value_impl(
-    const T& v,
-    std::false_type,  // convertible to string view
-    std::true_type    // is_writable_field
-) noexcept
-{
-    return {format_arg_value::type_t::field, to_field(v)};
-}
-
-// Used for types having !is_writable_field<T>
-template <class T>
-format_arg_value make_format_value_impl(
-    const T& v,
-    std::false_type,  // convertible to string view
-    std::false_type   // writable field
-) noexcept
-{
-    return {format_arg_value::type_t::custom, format_custom_arg::create(v)};
-}
-
-template <class T>
-format_arg_value make_format_value(const T& v) noexcept
-{
-    static_assert(
-        is_formattable_type<T>(),
-        "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
-        "formattable"
-    );
-    return make_format_value_impl(v, std::is_convertible<T, string_view>(), is_writable_field<T>());
-}
-
-BOOST_MYSQL_DECL
-void vformat_sql_to(format_context_base& ctx, string_view format_str, std::initializer_list<format_arg> args);
-
-BOOST_MYSQL_DECL
-std::string vformat_sql(
-    const format_options& opts,
-    string_view format_str,
-    std::initializer_list<format_arg> args
-);
+formattable_ref_impl make_formattable_ref(T&& v);
 
 }  // namespace detail
 }  // namespace mysql

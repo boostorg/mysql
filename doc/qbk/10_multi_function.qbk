@@ -86,7 +86,7 @@ Some remarks:
 * The final `row_batch` may or may not be empty, depending on the number of rows and their size.
 * Calling `read_some_rows` after reading the final OK packet returns an empty batch.
 
-`read_some_rows` returns a [reflink rows_view] object pointing into the connection's internal buffers.
+`read_some_rows` returns a [reflink rows_view] object pointing into the connection's internal buffer.
 This view is valid until the connection performs any other operation involving a network transfer. 
 
 Note that there is no need to distinguish between ['case 1] and ['case 2] in the diagram above in our code,
@@ -208,20 +208,20 @@ multi-queries to run an arbitrary SQL script file.
 [heading:read_some_rows More on read_some_rows]
 
 To properly understand `read_some_rows`, we need to know that every [reflink connection]
-owns an internal *read buffer*, where packets sent by the server are stored.
+owns an *internal buffer*, where packets sent by the server are stored.
 It is a single, flat buffer, and you can configure its initial size when creating
 a `connection`, passing a [reflink buffer_params] object as the first argument to `connection`'s constructor.
-The read buffer may be grown under certain circumstances to accomodate large messages.
+The read buffer may be grown under certain circumstances to accommodate large messages.
 
-`read_some_rows` gets the maximum number of rows that fit in the read buffer (without growing it)
+`read_some_rows` gets the maximum number of rows that fit in the internal buffer (without growing it)
 performing a single `read_some` operation on the stream (or using cached data).
 If there are rows to read, `read_some_rows` guarantees to read at least one. This means that,
 if doing what we described yields no rows (e.g. because of a large row that doesn't fit
-into the read buffer), `read_some_rows` will grow the buffer or perform more reads until at least
+into the buffer), `read_some_rows` will grow the buffer or perform more reads until at least
 one row has been read. If you're using the static interface, the number of read rows is limited
 by the size of span you passed, too.
 
-If you want to get the most of `read_some_rows`, customize the initial read buffer size
+If you want to get the most of `read_some_rows`, customize the initial buffer size
 to maximize the number of rows that each batch retrieves.
 
 [endsect]

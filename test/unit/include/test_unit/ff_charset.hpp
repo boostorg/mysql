@@ -10,21 +10,19 @@
 
 #include <boost/mysql/character_set.hpp>
 
-#include <boost/mysql/detail/make_string_view.hpp>
-
 namespace boost {
 namespace mysql {
 namespace test {
 
 // A hypothetical character set with rules that may confuse formatting algorithms.
 // Some MySQL charsets (e.g. gbk) contain ASCII-compatible continuation characters, like this one.
-inline std::size_t ff_charset_next_char(boost::span<const unsigned char> r) noexcept
+inline std::size_t ff_charset_next_char(boost::span<const unsigned char> r)
 {
     if (r[0] == 0xff)  // 0xff marks a two-byte character
         return r.size() > 1u ? 2u : 0u;
     return 1u;
 };
-constexpr character_set ff_charset{detail::make_string_view("ff_charset"), ff_charset_next_char};
+constexpr character_set ff_charset{"ff_charset", ff_charset_next_char};
 
 }  // namespace test
 }  // namespace mysql

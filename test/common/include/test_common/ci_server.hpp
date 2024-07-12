@@ -39,7 +39,6 @@ constexpr const char* integ_user = "integ_user";
 constexpr const char* integ_passwd = "integ_password";
 constexpr const char* integ_db = "boost_mysql_integtests";
 constexpr const char* default_unix_path = "/var/run/mysqld/mysqld.sock";
-inline bool is_mariadb() { return safe_getenv("BOOST_MYSQL_TEST_DB", "mysql8") == "mariadb"; }
 
 }  // namespace test
 }  // namespace mysql

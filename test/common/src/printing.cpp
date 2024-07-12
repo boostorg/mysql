@@ -13,6 +13,7 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/ssl_mode.hpp>
@@ -20,6 +21,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 
+#include <cstring>
 #include <ostream>
 
 #include "test_common/printing.hpp"
@@ -81,21 +83,16 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, ssl_mode v) { return os
 // character set
 bool boost::mysql::operator==(const character_set& lhs, const character_set& rhs)
 {
-    return lhs.name == rhs.name;
+    if (lhs.name == nullptr || rhs.name == nullptr)
+        return lhs.name == rhs.name;
+    return std::strcmp(lhs.name, rhs.name) == 0 && lhs.next_char == rhs.next_char;
 }
 
 std::ostream& boost::mysql::operator<<(std::ostream& os, const character_set& v)
 {
-    return os << "character_set(\"" << v.name << "\")";
-}
-
-// errcode_with_diagnostics
-bool boost::mysql::operator==(const errcode_with_diagnostics& lhs, const errcode_with_diagnostics& rhs)
-{
-    return lhs.code == rhs.code && lhs.diag == rhs.diag;
-}
-
-std::ostream& boost::mysql::operator<<(std::ostream& os, const errcode_with_diagnostics& v)
-{
-    return os << "errcode_with_diagnostics{ .code = " << v.code << ", .diag = " << v.diag << " }";
+    if (v.name == nullptr)
+        return os << "character_set()";
+    else
+        return os << "character_set(\"" << v.name << "\", .next_char? = " << static_cast<bool>(v.next_char)
+                  << ")";
 }

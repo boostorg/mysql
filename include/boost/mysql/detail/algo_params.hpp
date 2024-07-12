@@ -14,12 +14,12 @@
 
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/pipeline.hpp>
 
 #include <boost/core/span.hpp>
 
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -27,11 +27,13 @@ namespace mysql {
 class rows_view;
 class diagnostics;
 class statement;
+class stage_response;
 
 namespace detail {
 
 class execution_processor;
 class execution_state_impl;
+struct pipeline_request_stage;
 
 struct connect_algo_params
 {
@@ -149,8 +151,9 @@ struct close_connection_algo_params
 struct run_pipeline_algo_params
 {
     diagnostics* diag;
-    detail::pipeline_request_view request;
-    detail::pipeline_response_ref response;
+    span<const std::uint8_t> request_buffer;
+    span<const pipeline_request_stage> request_stages;
+    std::vector<stage_response>* response;
 
     using result_type = void;
 };

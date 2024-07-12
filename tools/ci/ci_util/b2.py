@@ -43,7 +43,6 @@ def b2_build(
     stdlib: str,
     address_model: str,
     boost_branch: str,
-    db: str,
     server_host: str,
     separate_compilation: bool,
     address_sanitizer: bool,
@@ -65,7 +64,7 @@ def b2_build(
     )
 
     # Setup DB
-    db_setup(source_dir, db, server_host)
+    db_setup(source_dir, server_host)
 
     # Invoke b2
     _conditional_run([
@@ -82,8 +81,6 @@ def b2_build(
         _conditional('undefined-sanitizer=norecover', undefined_sanitizer),
         _conditional('coverage=on', coverage),
         _conditional('valgrind=on', valgrind),
-        # Workaround for https://github.com/bfgroup/b2/issues/368
-        _conditional('architecture=x86', address_model == '32' and not IS_WINDOWS),
         'warnings=extra',
         'warnings-as-errors=on',
         '-j4',

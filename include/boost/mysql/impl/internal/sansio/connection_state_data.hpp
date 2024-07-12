@@ -77,16 +77,17 @@ struct connection_state_data
     // Reader
     message_reader reader;
 
+    std::size_t max_buffer_size() const { return reader.max_buffer_size(); }
     bool ssl_active() const { return ssl == ssl_state::active; }
     bool supports_ssl() const { return ssl != ssl_state::unsupported; }
 
-    const character_set* charset_ptr() const
-    {
-        return current_charset.name.empty() ? nullptr : &current_charset;
-    }
-
-    connection_state_data(std::size_t read_buffer_size, bool transport_supports_ssl = false)
-        : ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported), reader(read_buffer_size)
+    connection_state_data(
+        std::size_t read_buffer_size,
+        std::size_t max_buff_size = static_cast<std::size_t>(-1),
+        bool transport_supports_ssl = false
+    )
+        : ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported),
+          reader(read_buffer_size, max_buff_size)
     {
     }
 

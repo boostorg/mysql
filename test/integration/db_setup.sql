@@ -9,6 +9,7 @@
 SET NAMES utf8;
 SET session sql_mode = 'ALLOW_INVALID_DATES'; -- allow zero and invalid dates
 SET session time_zone = '+02:00'; -- arbitrary, but should match whatever we use in database_types
+SET global max_allowed_packet = 83886080; -- 0x5000000 - for max packet size tests
 
 START TRANSACTION;
 
@@ -502,6 +503,10 @@ DROP USER IF EXISTS 'mysqlnp_empty_password_user'@'%';
 CREATE USER 'mysqlnp_empty_password_user'@'%' IDENTIFIED WITH 'mysql_native_password';
 ALTER USER 'mysqlnp_empty_password_user'@'%' IDENTIFIED BY '';
 GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'mysqlnp_empty_password_user'@'%';
+
+-- Some containers don't allow remote root access. Enable it.
+CREATE USER IF NOT EXISTS 'root'@'%' IDENTIFIED BY ''; 
+GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
 
 -- Stored procedures
 DELIMITER //

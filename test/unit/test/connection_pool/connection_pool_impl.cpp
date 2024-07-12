@@ -13,6 +13,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/mysql_collations.hpp>
+#include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
@@ -36,8 +37,10 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/core/span.hpp>
+#include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -57,6 +60,7 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
+using boost::test_tools::per_element;
 using detail::connection_status;
 using std::chrono::steady_clock;
 
@@ -192,7 +196,22 @@ class mock_connection
         }
     };
 
-    friend struct boost::mysql::detail::access;
+    static void check_stages(const pipeline_request& req)
+    {
+        const detail::pipeline_request_stage expected_stages[] = {
+            {detail::pipeline_stage_kind::reset_connection,  1, {}             },
+            {detail::pipeline_stage_kind::set_character_set, 1, utf8mb4_charset},
+        };
+        BOOST_TEST(detail::access::get_impl(req).stages_ == expected_stages, per_element());
+    }
+
+    static void set_response(std::vector<stage_response>& res)
+    {
+        // Response should have two items, set to empty errors
+        res.resize(2);
+        for (auto& item : res)
+            detail::access::get_impl(item).emplace_error();
+    }
 
 public:
     boost::mysql::any_connection_params ctor_params;
@@ -204,11 +223,10 @@ public:
     }
 
     template <class CompletionToken>
-    auto async_connect(const connect_params* params, diagnostics& diag, CompletionToken&& token)
+    auto async_connect(const connect_params& params, diagnostics& diag, CompletionToken&& token)
         -> decltype(impl_.op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token)))
     {
-        BOOST_TEST(params != nullptr);
-        last_connect_params = *params;
+        last_connect_params = params;
         return impl_.op_impl(fn_type::connect, &diag, std::forward<CompletionToken>(token));
     }
 
@@ -219,18 +237,15 @@ public:
         return impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token));
     }
 
-    template <class PipelineRequest, class CompletionToken>
+    template <class CompletionToken>
     auto async_run_pipeline(
-        const PipelineRequest& req,
-        typename PipelineRequest::response_type&,
+        const pipeline_request& req,
+        std::vector<stage_response>& res,
         CompletionToken&& token
     ) -> decltype(impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token)))
     {
-        auto req_view = detail::access::get_impl(req).to_view();
-        BOOST_TEST(req_view.stages.size() == 2u);
-        BOOST_TEST(req_view.stages[0].kind == detail::pipeline_stage_kind::reset_connection);
-        BOOST_TEST(req_view.stages[1].kind == detail::pipeline_stage_kind::set_character_set);
-        BOOST_TEST(req_view.stages[1].stage_specific.charset.name == "utf8mb4");
+        check_stages(req);
+        set_response(res);  // This should technically happen after initiation, but is enough for these tests
         return impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token));
     }
 
@@ -1334,7 +1349,7 @@ BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
                 auto ctor_params = pool_.nodes().front().connection().ctor_params;
                 BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
                 BOOST_TEST(ctor_params.ssl_context->native_handle() == expected_handle);
-                BOOST_TEST(ctor_params.initial_read_buffer_size == 16u);
+                BOOST_TEST(ctor_params.initial_buffer_size == 16u);
             }
         }
     };
@@ -1342,7 +1357,7 @@ BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
     // Pass a custom ssl context and buffer size
     pool_params params;
     params.ssl_ctx.emplace(boost::asio::ssl::context::tlsv12_client);
-    params.initial_read_buffer_size = 16u;
+    params.initial_buffer_size = 16u;
 
     // SSL context matching is performed using the underlying handle
     // because ssl::context provides no way to query the options previously set

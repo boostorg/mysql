@@ -36,6 +36,7 @@
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/run_stackful_coro.hpp"
+#include "test_integration/server_features.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -516,7 +517,7 @@ BOOST_FIXTURE_TEST_CASE(get_connection_timeout, fixture)
 }
 
 // Spotcheck: pool works with unix sockets, too
-BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_FIXTURE_TEST_CASE(unix_sockets, fixture)
 {
     run_stackful_coro([&](asio::yield_context yield) {
@@ -568,7 +569,7 @@ BOOST_FIXTURE_TEST_CASE(custom_ctor_params, fixture)
         auto params = create_pool_params();
         params.ssl = ssl_mode::require;
         params.ssl_ctx.emplace(asio::ssl::context::sslv23_client);
-        params.initial_read_buffer_size = 16u;
+        params.initial_buffer_size = 16u;
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool_guard grd(&pool);

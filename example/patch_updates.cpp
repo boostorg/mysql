@@ -13,10 +13,6 @@
 // as provided by command-line arguments, and leaving all other
 // fields unmodified.
 //
-// This example specializes formatter to make custom types
-// compatible with format_sql. It also uses multi-queries
-// to execute several queries at once.
-//
 // Note: client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
@@ -44,15 +40,7 @@ using boost::mysql::string_view;
  * Represents a single update as a name, value pair.
  * The idea is to use command-line arguments to compose
  * a std::vector<update_field> with the fields to be updated,
- * and make the following work:
- *
- *    std::vector<update_field> updates {
- *       { "fist_name", field_view("John") },
- *       { "salary", field_view(35000)     },
- *    };
- *    format_sql("UPDATE employee SET {} WHERE id = {}", opts, updates, 42);
- *
- * "UPDATE employee SET `first_name` = 'John', `salary` = 35000 WHERE id = 42"
+ * and use mysql::sequence() to join these with commas
  */
 struct update_field
 {
@@ -63,55 +51,6 @@ struct update_field
     // a variant-like type that can hold all types that MySQL supports.
     field_view field_value;
 };
-
-namespace boost {
-namespace mysql {
-
-// Specialize formatter so that format_sql accepts a std::vector<update_field>
-template <>
-struct formatter<std::vector<update_field>>
-{
-    // If your type supports custom format specifiers, parse them here
-    // and return an iterator to the first unparsed character.
-    // std::vector<update_field> doesn't support specifiers
-    const char* parse(const char* begin, const char* /* end */) { return begin; }
-
-    // The function performing the actual formatting. It should take
-    // our value as first argument, and a format_context_base& as the second.
-    // It should format the value into the context.
-    // format_context_base has append_raw and append_value, like format_context,
-    // and can be used with format_sql_to
-    void format(const std::vector<update_field>& value, format_context_base& ctx)
-    {
-        // We need one update field, at least. If this is not the case, we can use
-        // add_error to report the error and exit. This will cause format_sql to throw.
-        if (value.empty())
-        {
-            ctx.add_error(client_errc::unformattable_value);
-            return;
-        }
-
-        // Build a comma-separated list
-        bool is_first = true;
-        for (const auto& update : value)
-        {
-            // Comma separator
-            if (!is_first)
-            {
-                ctx.append_raw(", ");
-            }
-            is_first = false;
-
-            // Output the field's name, an equal sign, and the field's value.
-            // The 'i' specifier outputs a string as a SQL identifier
-            // (i.e. `first_name`, rather than 'first_name').
-            format_sql_to(ctx, "{:i} = {}", update.field_name, update.field_value);
-        }
-    }
-};
-
-}  // namespace mysql
-}  // namespace boost
 
 // Contains the parsed command-line arguments
 struct cmdline_args
@@ -193,6 +132,13 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
         }
     }
 
+    // There should be one update, at least
+    if (res.updates.empty())
+    {
+        std::cerr << "There should be one update, at least\n";
+        print_usage_and_exit();
+    }
+
     return res;
 }
 
@@ -221,8 +167,14 @@ void main_impl(int argc, char** argv)
     // Connect to the server
     conn.connect(params);
 
-    // Compose the query. We've managed to make all out types formattable,
-    // so we can use format_sql.
+    // Formats an individual update. Used by sequence().
+    // For update_field{"first_name", "John"}, it generates the string
+    // "`first_name` = 'John'"
+    auto update_format_fn = [](update_field upd, boost::mysql::format_context_base& ctx) {
+        boost::mysql::format_sql_to(ctx, "{:i} = {}", upd.field_name, upd.field_value);
+    };
+
+    // Compose the query. We use sequence() to output the update list separated by commas.
     // We want to update the employee and then retrieve it. MySQL doesn't support
     // the UPDATE ... RETURNING statement to update and retrieve data atomically,
     // so we will use a transaction to guarantee consistency.
@@ -235,7 +187,7 @@ void main_impl(int argc, char** argv)
         "UPDATE employee SET {0} WHERE id = {1}; "
         "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
         "COMMIT",
-        args.updates,
+        boost::mysql::sequence(args.updates, update_format_fn),
         args.employee_id
     );
 

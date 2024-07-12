@@ -21,12 +21,12 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/anarthal-containers/build-gcc13
+      image: ghcr.io/anarthal-containers/build-gcc14:b1f46a8305f62d0af54dda34231b199d76e945f1
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
       mysql:
-        image: ghcr.io/anarthal-containers/mysql8
+        image: ghcr.io/anarthal-containers/ci-db:mysql-8.4.1-b1f46a8305f62d0af54dda34231b199d76e945f1
         ports:
           - 3306:3306
         volumes:
@@ -51,7 +51,7 @@ jobs:
         run: |
           SOURCE_DIR=$(pwd)
           cd ~/boost-root
-          gcov-13 -r -p $(find bin.v2/ -name '*.gcda') > /dev/null
+          gcov-14 -r -p $(find bin.v2/ -name '*.gcda') > /dev/null
           mkdir $GCOV_REPORT_DIR
           cp boost#mysql#*.gcov $GCOV_REPORT_DIR
       

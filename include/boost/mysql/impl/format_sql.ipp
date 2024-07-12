@@ -215,9 +215,23 @@ inline void append_quoted_time(time t, format_context_base& ctx)
     access::get_impl(ctx).output.append(string_view(buffer, sz + 2));
 }
 
-inline void append_field_view(field_view fv, string_view format_spec, format_context_base& ctx)
+inline void append_field_view(
+    field_view fv,
+    string_view format_spec,
+    bool allow_specs,
+    format_context_base& ctx
+)
 {
-    // Types here don't allow specifiers, even if they're strings (e.g. optional<string>)
+    auto kind = fv.kind();
+
+    // String types may allow specs
+    if (allow_specs && kind == field_kind::string)
+    {
+        append_string(fv.get_string(), format_spec, ctx);
+        return;
+    }
+
+    // Reject specifiers if !allow_specs or for other types
     if (!format_spec.empty())
     {
         ctx.add_error(client_errc::format_string_invalid_specifier);
@@ -511,17 +525,17 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg, string_view format_spec)
+void boost::mysql::format_context_base::format_arg(detail::formattable_ref_impl arg, string_view format_spec)
 {
     switch (arg.type)
     {
-    case detail::format_arg_value::type_t::string:
-        detail::append_string(arg.data.s, format_spec, *this);
+    case detail::formattable_ref_impl::type_t::field:
+        detail::append_field_view(arg.data.fv, format_spec, false, *this);
         break;
-    case detail::format_arg_value::type_t::field:
-        detail::append_field_view(arg.data.fv, format_spec, *this);
+    case detail::formattable_ref_impl::type_t::field_with_specs:
+        detail::append_field_view(arg.data.fv, format_spec, true, *this);
         break;
-    case detail::format_arg_value::type_t::custom:
+    case detail::formattable_ref_impl::type_t::fn_and_ptr:
         if (!arg.data.custom.format_fn(arg.data.custom.obj, format_spec.begin(), format_spec.end(), *this))
         {
             add_error(client_errc::format_string_invalid_specifier);
@@ -531,24 +545,48 @@ void boost::mysql::format_context_base::format_arg(detail::format_arg_value arg,
     }
 }
 
-void boost::mysql::detail::vformat_sql_to(
+void boost::mysql::format_sql_to(
     format_context_base& ctx,
-    string_view format_str,
+    constant_string_view format_str,
     std::initializer_list<format_arg> args
 )
 {
-    detail::format_state(ctx, {args.begin(), args.end()}).format(format_str);
+    detail::format_state(ctx, {args.begin(), args.end()}).format(format_str.get());
 }
 
-std::string boost::mysql::detail::vformat_sql(
-    const format_options& opts,
-    string_view format_str,
+std::string boost::mysql::format_sql(
+    format_options opts,
+    constant_string_view format_str,
     std::initializer_list<format_arg> args
 )
 {
     format_context ctx(opts);
-    detail::vformat_sql_to(ctx, format_str, args);
+    format_sql_to(ctx, format_str, args);
     return std::move(ctx).get().value();
+}
+
+std::pair<bool, boost::mysql::string_view> boost::mysql::detail::parse_range_specifiers(
+    const char* spec_begin,
+    const char* spec_end
+)
+{
+    // range_format_spec ::=  [":" [underlying_spec]]
+    // Example: {::i} => format an array of strings as identifiers
+
+    // Empty: no specifiers
+    if (spec_begin == spec_end)
+        return {true, {}};
+
+    // If the first character is not a ':', the spec is invalid.
+    if (*spec_begin != ':')
+        return {false, {}};
+    ++spec_begin;
+
+    // Return the rest of the range
+    return {
+        true,
+        {spec_begin, spec_end}
+    };
 }
 
 #endif

@@ -10,18 +10,18 @@ set -e
 
 repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
-BK=docs
-IMAGE=build-docs
-SHA=252732b3d7af7f78618e877479b85d4d611a61f4
+BK=b2
+IMAGE=build-gcc5
+SHA=b1f46a8305f62d0af54dda34231b199d76e945f1
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
-DB=mysql8
+DB=mysql-8.4.1
 
 docker start $DB || docker run -d \
     --name $DB \
     -v /var/run/mysqld:/var/run/mysqld \
     -p 3306:3306 \
-    ghcr.io/anarthal-containers/$DB:$SHA
+    ghcr.io/anarthal-containers/ci-db:$DB-$SHA
 docker start $CONTAINER || docker run -dit \
     --name $CONTAINER \
     -v "$repo_base:/opt/boost-mysql" \
@@ -31,11 +31,11 @@ docker network connect my-net $DB || echo "DB already connected"
 docker network connect my-net $CONTAINER || echo "Network already connected"
 
 # Command line
-db_args="--server-host=$DB --db=$DB"
+db_args="--server-host=$DB"
 case $BK in
     b2) cmd="$db_args
             --toolset=gcc
-            --cxxstd=20
+            --cxxstd=11
             --variant=debug
             --stdlib=native
             --address-model=64

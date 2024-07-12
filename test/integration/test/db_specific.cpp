@@ -12,6 +12,7 @@
 #include <boost/mysql/mysql_server_errc.hpp>
 #include <boost/mysql/results.hpp>
 
+#include "test_integration/server_features.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
 using namespace boost::mysql::test;
@@ -23,8 +24,7 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_db_specific)
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::regex_error_codes))
 BOOST_FIXTURE_TEST_CASE(mysql_specific_error_code, tcp_network_fixture)
 {
     connect();
@@ -32,7 +32,7 @@ BOOST_FIXTURE_TEST_CASE(mysql_specific_error_code, tcp_network_fixture)
     diagnostics diag;
     results result;
 
-    // This is reported as a common, less desriptive error in MySQL5 and MariaDB
+    // This is reported as a common, less descriptive error in MySQL5 and MariaDB
     conn.execute("select * from one_row_table where field_varchar regexp '(('", result, ec, diag);
     error_code expected_ec(
         boost::mysql::mysql_server_errc::er_regexp_mismatched_paren,
@@ -41,8 +41,7 @@ BOOST_FIXTURE_TEST_CASE(mysql_specific_error_code, tcp_network_fixture)
     BOOST_TEST(ec == expected_ec);
 }
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql8"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::dup_query_error_codes))
 BOOST_FIXTURE_TEST_CASE(mariadb_specific_error_code, tcp_network_fixture)
 {
     connect();

@@ -6,8 +6,8 @@
 #
 
 _triggers = { "branch": [ "master", "develop" ] }
-_container_tag = '252732b3d7af7f78618e877479b85d4d611a61f4'
-_win_container_tag = 'ca0db5925a497b70e7d6b303c81d56b70c06f9ef'
+_container_tag = 'b1f46a8305f62d0af54dda34231b199d76e945f1'
+_win_container_tag = 'e7bd656c3515263f9b3c69a2d73d045f6a0fed72'
 
 
 def _image(name):
@@ -52,7 +52,6 @@ def _b2_command(
 def _cmake_command(
     source_dir,
     server_host='127.0.0.1',
-    db='mysql8',
     generator='Ninja',
     cmake_build_type='Debug',
     build_shared_libs=0,
@@ -63,7 +62,6 @@ def _cmake_command(
                 '--source-dir="{}" '.format(source_dir) + \
                 'cmake ' + \
                 '--server-host={} '.format(server_host) + \
-                '--db={} '.format(db) + \
                 '--generator="{}" '.format(generator) + \
                 '--cmake-build-type={} '.format(cmake_build_type) + \
                 '--build-shared-libs={} '.format(build_shared_libs) + \
@@ -84,8 +82,30 @@ def _pipeline(
     os,
     command,
     db,
-    arch='amd64'
+    arch='amd64',
+    disable_aslr=False
 ):
+    steps = []
+    if disable_aslr:
+        steps.append({
+            "name": "Disable ASLR",
+            "image": image,
+            "pull": "if-not-exists",
+            "privileged": True,
+            "commands": ["echo 0 | tee /proc/sys/kernel/randomize_va_space"]
+        })
+    steps.append({
+        "name": "Build and run",
+        "image": image,
+        "pull": "if-not-exists",
+        "privileged": arch == "arm64", # TSAN tests fail otherwise (personality syscall)
+        "volumes":[{
+            "name": "mysql-socket",
+            "path": "/var/run/mysqld"
+        }] if db != None else [],
+        "commands": [command]
+    })
+
     return {
         "name": name,
         "kind": "pipeline",
@@ -99,19 +119,10 @@ def _pipeline(
             "retries": 5
         },
         "node": {},
-        "steps": [{
-            "name": "Everything",
-            "image": image,
-            "pull": "if-not-exists",
-            "volumes":[{
-                "name": "mysql-socket",
-                "path": "/var/run/mysqld"
-            }] if db != None else [],
-            "commands": [command]
-        }],
+        "steps": steps,
         "services": [{
             "name": "mysql",
-            "image": _image(db),
+            "image": "ghcr.io/anarthal-containers/ci-db:{}-{}".format(db, _container_tag),
             "volumes": [{
                 "name": "mysql-socket",
                 "path": "/var/run/mysqld"
@@ -138,7 +149,8 @@ def linux_b2(
     undefined_sanitizer=0,
     valgrind=0,
     arch='amd64',
-    fail_if_no_openssl=1
+    fail_if_no_openssl=1,
+    db='mysql-8.4.1',
 ):
     command = _b2_command(
         source_dir='$(pwd)',
@@ -160,8 +172,9 @@ def linux_b2(
         image=image,
         os='linux',
         command=command,
-        db='mysql8',
-        arch=arch
+        db=db,
+        arch=arch,
+        disable_aslr=True
     )
 
 
@@ -189,10 +202,10 @@ def windows_b2(
 def linux_cmake(
     name,
     image,
+    db='mysql-8.4.1',
     build_shared_libs=0,
     cmake_build_type='Debug',
     cxxstd='20',
-    db='mysql8',
     install_test=1
 ):
     command = _cmake_command(
@@ -200,7 +213,6 @@ def linux_cmake(
         build_shared_libs=build_shared_libs,
         cmake_build_type=cmake_build_type,
         cxxstd=cxxstd,
-        db=db,
         server_host='mysql',
         install_test=install_test
     )
@@ -231,7 +243,6 @@ def windows_cmake(
         source_dir='$Env:DRONE_WORKSPACE',
         build_shared_libs=build_shared_libs,
         generator='Visual Studio 17 2022',
-        db='mysql8',
         server_host='127.0.0.1'
     )
     return _pipeline(
@@ -266,11 +277,11 @@ def docs(name):
 def main(ctx):
     return [
         # CMake Linux
-        linux_cmake('Linux CMake MySQL 5.x',      _image('build-clang14'), db='mysql5', build_shared_libs=0),
-        linux_cmake('Linux CMake MariaDB',        _image('build-clang14'), db='mariadb', build_shared_libs=1),
+        linux_cmake('Linux CMake MySQL 5.x',      _image('build-gcc14'), db='mysql-5.7.41',   build_shared_libs=0),
+        linux_cmake('Linux CMake MariaDB',        _image('build-gcc14'), db='mariadb-11.4.2', build_shared_libs=1),
         linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8'), cxxstd='11', install_test=0),
-        linux_cmake('Linux CMake gcc Release',    _image('build-gcc11'), cmake_build_type='Release'),
-        linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc13'), cmake_build_type='MinSizeRel'),
+        linux_cmake('Linux CMake gcc Release',    _image('build-gcc14'), cmake_build_type='Release'),
+        linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc14'), cmake_build_type='MinSizeRel'),
         linux_cmake_noopenssl('Linux CMake no OpenSSL'),
         linux_cmake_nointeg('Linux CMake without integration tests'),
 
@@ -290,7 +301,7 @@ def main(ctx):
         linux_b2('Linux B2 clang-14-libc++',      _image('build-clang14'),       toolset='clang-14',  cxxstd='20', stdlib='libc++'),
         linux_b2('Linux B2 clang-14-arm64',       _image('build-clang14'),       toolset='clang-14',  cxxstd='20', arch='arm64'),
         linux_b2('Linux B2 clang-16-sanit',       _image('build-clang16'),       toolset='clang-16',  cxxstd='20', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-16-i386-sanit',  _image('build-clang16-i386'),  toolset='clang-16',  cxxstd='20', address_model=32, address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-16-i386-sanit',  _image('build-clang16-i386'),  toolset='clang-16',  cxxstd='20', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-17',             _image('build-clang17'),       toolset='clang-17',  cxxstd='20'),
         linux_b2('Linux B2 clang-18',             _image('build-clang18'),       toolset='clang-18',  cxxstd='23'),
         linux_b2('Linux B2 gcc-5',                _image('build-gcc5'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
@@ -301,8 +312,9 @@ def main(ctx):
         linux_b2('Linux B2 gcc-11-arm64',         _image('build-gcc11'),         toolset='gcc-11',    cxxstd='11,20', arch='arm64', variant='release'),
         linux_b2('Linux B2 gcc-11-arm64-sanit',   _image('build-gcc11'),         toolset='gcc-11',    cxxstd='20',    arch='arm64', variant='debug'),
         linux_b2('Linux B2 gcc-13',               _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='release'),
-        linux_b2('Linux B2 gcc-13-sanit',         _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 gcc-13-valgrind',      _image('build-gcc13'),         toolset='gcc-13',    cxxstd='20', variant='debug', valgrind=1),
+        linux_b2('Linux B2 gcc-14',               _image('build-gcc14'),         toolset='gcc-14',    cxxstd='23', variant='release'),
+        linux_b2('Linux B2 gcc-14-sanit',         _image('build-gcc14'),         toolset='gcc-14',    cxxstd='23', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 gcc-14-valgrind',      _image('build-gcc14'),         toolset='gcc-14',    cxxstd='23', variant='debug', valgrind=1),
         linux_b2('Linux B2 noopenssl',            _image('build-noopenssl'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
 
         # B2 Windows

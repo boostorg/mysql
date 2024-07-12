@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(options_propagated)
 
 // In a character set with ASCII-compatible continuation characters, we correctly
 // interpret {} characters as continuations, rather than trying to expand them
-BOOST_AUTO_TEST_CASE(format_strings_brace_continuation)
+BOOST_AUTO_TEST_CASE(brace_continuation)
 {
     format_options custom_opts{test::ff_charset, true};
 
@@ -199,8 +199,10 @@ BOOST_AUTO_TEST_CASE(error)
         {"index_to_manual",          "SELECT {0}, {}",             client_errc::format_string_manual_auto_mix  },
         {"index_spec_nonascii",      "SELECT {0:\xff}",            client_errc::format_string_invalid_syntax   },
         {"index_spec_{",             "SELECT {0:i{}",              client_errc::format_string_invalid_syntax   },
+        {"index_spec_range_{",       "SELECT {0:i:{}",             client_errc::format_string_invalid_syntax   },
         {"index_spec_{}",            "SELECT {0:i{}}",             client_errc::format_string_invalid_syntax   },
         {"index_spec_eof",           "SELECT {0:eof",              client_errc::format_string_invalid_syntax   },
+        {"index_spec_range_eof",     "SELECT {0:i:",               client_errc::format_string_invalid_syntax   },
         {"index_spec_invalid",       "SELECT {0:i}",               client_errc::format_string_invalid_specifier},
 
         // Auto indexing problems

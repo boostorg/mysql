@@ -80,6 +80,9 @@ inline const char* error_to_string(client_errc error)
     case client_errc::unknown_character_set:
         return "The character set used by the connection is not known by the client. Use set_character_set "
                "or async_set_character_set before invoking operations that require a known charset.";
+    case client_errc::max_buffer_size_exceeded:
+        return "An operation attempted to read or write a packet larger than the maximum buffer size. "
+               "Try increasing any_connection_params::max_buffer_size.";
 
     default: return "<unknown MySQL client error>";
     }
