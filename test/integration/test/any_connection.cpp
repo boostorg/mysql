@@ -118,6 +118,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_mode_enable)
     BOOST_TEST(conn.uses_ssl());
 }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 // UNIX connections never use SSL
 BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_AUTO_TEST_CASE(unix_ssl)
@@ -137,6 +138,7 @@ BOOST_AUTO_TEST_CASE(unix_ssl)
     // no point in using SSL with UNIX sockets
     BOOST_TEST(!conn.uses_ssl());
 }
+#endif
 
 // Spotcheck: users can log-in using the caching_sha2_password auth plugin
 BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
@@ -156,6 +158,7 @@ BOOST_AUTO_TEST_CASE(tcp_caching_sha2_password)
     BOOST_TEST(conn.uses_ssl());
 }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 // Users can log-in using the caching_sha2_password auth plugin
 // even if they're using UNIX sockets.
 BOOST_TEST_DECORATOR(*run_if(&server_features::sha256, &server_features::unix_sockets))
@@ -185,6 +188,7 @@ BOOST_AUTO_TEST_CASE(unix_caching_sha2_password)
     connect_fn(conn, params).validate_no_error();
     BOOST_TEST(!conn.uses_ssl());
 }
+#endif
 
 network_result<void> create_net_result()
 {
