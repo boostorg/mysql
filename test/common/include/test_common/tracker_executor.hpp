@@ -9,23 +9,43 @@
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_TRACKER_EXECUTOR_HPP
 
 #include <boost/asio/any_io_executor.hpp>
-
-#include <cstddef>
+#include <boost/core/span.hpp>
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-struct executor_info
+// A tracker executor wraps an any_io_executor and tracks execute calls.
+// Every executor has a distinct ID. When an executor starts executing
+// a function, its ID is pushed to a thread-local call stack, and popped
+// when the function returns.
+// This allows us to reliable check whether "we're running in the context of executor X"
+struct tracker_executor_result
 {
-    std::size_t num_posts{};
-    std::size_t num_dispatches{};
-
-    std::size_t total() const noexcept { return num_dispatches + num_posts; }
+    int executor_id;
+    asio::any_io_executor ex;
 };
 
-asio::any_io_executor create_tracker_executor(asio::any_io_executor inner, executor_info* tracked_values);
-executor_info get_executor_info(const asio::any_io_executor& exec);
+// Create
+tracker_executor_result create_tracker_executor(asio::any_io_executor inner);
+
+// Get the ID of the executor we're currently running on, or -1 if none
+int current_executor_id();
+
+// We maintain a thread-local state variable that tracks whether we're running
+// in the context of an initiation function or not.
+// Use this guard when invoking initiation functions to set/clear the flag,
+// and the function below to check it.
+struct initiation_guard
+{
+    initiation_guard();
+    initiation_guard(const initiation_guard&) = delete;
+    initiation_guard(initiation_guard&&) = delete;
+    initiation_guard& operator=(const initiation_guard&) = delete;
+    initiation_guard& operator=(initiation_guard&&) = delete;
+    ~initiation_guard();
+};
+bool is_initiation_function();
 
 }  // namespace test
 }  // namespace mysql

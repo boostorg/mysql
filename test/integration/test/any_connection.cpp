@@ -52,8 +52,8 @@ using netmaker_connect = netfun_maker_mem<void, any_connection, const connect_pa
 using netmaker_execute = netfun_maker_mem<void, any_connection, const string_view&, results&>;
 
 // Don't validate executor info, since our I/O objects don't use tracker executors
-const auto connect_fn = netmaker_connect::async_errinfo(&any_connection::async_connect, false);
-const auto execute_fn = netmaker_execute::async_errinfo(&any_connection::async_execute, false);
+const auto connect_fn = netmaker_connect::async_errinfo(&any_connection::async_connect);
+const auto execute_fn = netmaker_execute::async_errinfo(&any_connection::async_execute);
 
 // Passing no SSL context to the constructor and using SSL works.
 // ssl_mode::require works

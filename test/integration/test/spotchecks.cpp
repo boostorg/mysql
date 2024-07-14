@@ -505,11 +505,10 @@ struct
     string_view name;
     set_charset_netmaker::signature set_character_set;
 } set_charset_all_fns[] = {
-    {"sync_errc", set_charset_netmaker::sync_errc(&any_connection::set_character_set)},
-    {"sync_exc", set_charset_netmaker::sync_exc(&any_connection::set_character_set)},
-    {"async_errinfo", set_charset_netmaker::async_errinfo(&any_connection::async_set_character_set, false)},
-    {"async_noerrinfo", set_charset_netmaker::async_noerrinfo(&any_connection::async_set_character_set, false)
-    },
+    {"sync_errc",       set_charset_netmaker::sync_errc(&any_connection::set_character_set)            },
+    {"sync_exc",        set_charset_netmaker::sync_exc(&any_connection::set_character_set)             },
+    {"async_errinfo",   set_charset_netmaker::async_errinfo(&any_connection::async_set_character_set)  },
+    {"async_noerrinfo", set_charset_netmaker::async_noerrinfo(&any_connection::async_set_character_set)},
 };
 
 BOOST_AUTO_TEST_CASE(set_character_set_success)
@@ -568,10 +567,10 @@ struct
     string_view name;
     run_pipeline_netmaker::signature run_pipeline;
 } run_pipeline_all_fns[] = {
-    {"sync_errc", run_pipeline_netmaker::sync_errc(&any_connection::run_pipeline)},
-    {"sync_exc", run_pipeline_netmaker::sync_exc(&any_connection::run_pipeline)},
-    {"async_errinfo", run_pipeline_netmaker::async_errinfo(&any_connection::async_run_pipeline, false)},
-    {"async_noerrinfo", run_pipeline_netmaker::async_noerrinfo(&any_connection::async_run_pipeline, false)},
+    {"sync_errc",       run_pipeline_netmaker::sync_errc(&any_connection::run_pipeline)            },
+    {"sync_exc",        run_pipeline_netmaker::sync_exc(&any_connection::run_pipeline)             },
+    {"async_errinfo",   run_pipeline_netmaker::async_errinfo(&any_connection::async_run_pipeline)  },
+    {"async_noerrinfo", run_pipeline_netmaker::async_noerrinfo(&any_connection::async_run_pipeline)},
 };
 
 BOOST_AUTO_TEST_CASE(run_pipeline_success)

@@ -14,12 +14,11 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/io_context.hpp>
 
-#include <cstddef>
-#include <functional>
 #include <type_traits>
 
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/network_result.hpp"
+#include "test_common/tracker_executor.hpp"
 
 // Helper functions and classes to implement netmakers
 // (the insfrastructure to run sync and async code as parameterized tests)
@@ -35,39 +34,52 @@ template <class R>
 class as_network_result
 {
     network_result<R>* netresult_;
-    asio::any_io_executor executor_;
+    tracker_executor_result ex_;
+
+    void check_executor() const
+    {
+        BOOST_TEST(!is_initiation_function());
+        BOOST_TEST(current_executor_id() == ex_.executor_id);
+    }
 
 public:
     as_network_result(network_result<R>& netresult, asio::any_io_executor exec)
-        : netresult_(&netresult), executor_(exec)
+        : netresult_(&netresult), ex_(create_tracker_executor(std::move(exec)))
     {
     }
 
     using executor_type = asio::any_io_executor;
-    asio::any_io_executor get_executor() const { return executor_; }
+    asio::any_io_executor get_executor() const { return ex_.ex; }
 
-    void operator()(error_code ec) const noexcept { netresult_->err = ec; }
+    void operator()(error_code ec) const
+    {
+        check_executor();
+        netresult_->err = ec;
+    }
 
     template <class Arg>
-    void operator()(error_code ec, Arg&& arg) const noexcept
+    void operator()(error_code ec, Arg&& arg) const
     {
+        check_executor();
         netresult_->err = ec;
         netresult_->value = std::forward<Arg>(arg);
     }
 };
 
 template <class Fn, class... Args>
-auto invoke_polyfill(Fn fn, Args&&... args) -> typename std::enable_if<
-    std::is_function<typename std::remove_pointer<Fn>::type>::value,
-    decltype(fn(std::forward<Args>(args)...))>::type
+auto invoke_polyfill(Fn fn, Args&&... args) ->
+    typename std::enable_if<
+        std::is_function<typename std::remove_pointer<Fn>::type>::value,
+        decltype(fn(std::forward<Args>(args)...))>::type
 {
     return fn(std::forward<Args>(args)...);
 }
 
 template <class Pmem, class Obj, class... Args>
-auto invoke_polyfill(Pmem fn, Obj& obj, Args&&... args) -> typename std::enable_if<
-    std::is_member_function_pointer<Pmem>::value,
-    decltype((obj.*fn)(std::forward<Args>(args)...))>::type
+auto invoke_polyfill(Pmem fn, Obj& obj, Args&&... args) ->
+    typename std::enable_if<
+        std::is_member_function_pointer<Pmem>::value,
+        decltype((obj.*fn)(std::forward<Args>(args)...))>::type
 {
     return (obj.*fn)(std::forward<Args>(args)...);
 }

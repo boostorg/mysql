@@ -30,12 +30,9 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
-#include <exception>
-
 #include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/er_network_variant.hpp"
-#include "test_integration/get_endpoint.hpp"
 #include "test_integration/network_samples.hpp"
 #include "test_integration/run_stackful_coro.hpp"
 #include "test_integration/server_features.hpp"
@@ -229,8 +226,8 @@ struct change_stream_type_fixture : network_fixture_base
     };
 
     functions_t async_fns{
-        netmaker_connect::async_errinfo(&any_connection::async_connect, false),
-        netmaker_ping::async_errinfo(&any_connection::async_ping, false),
+        netmaker_connect::async_errinfo(&any_connection::async_connect),
+        netmaker_ping::async_errinfo(&any_connection::async_ping),
     };
 
     connect_params tcp_params;
