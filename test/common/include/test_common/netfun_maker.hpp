@@ -168,14 +168,8 @@ public:
         return impl::sync_errc_noerrinfo(pfn);
     }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
-    static signature async_errinfo(sig_async_errinfo pfn, bool validate_exec_info = true)
-    {
-        return impl::async_errinfo(pfn, validate_exec_info);
-    }
-    static signature async_noerrinfo(sig_async_noerrinfo pfn, bool validate_exec_info = true)
-    {
-        return impl::async_noerrinfo(pfn, validate_exec_info);
-    }
+    static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
+    static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
 };
 
 }  // namespace test
