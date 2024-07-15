@@ -69,8 +69,8 @@ class read_resultset_head_algo
     } state_;
 
 public:
-    read_resultset_head_algo(read_resultset_head_algo_params params) noexcept
-        : diag_(params.diag), proc_(params.proc)
+    read_resultset_head_algo(diagnostics& diag, read_resultset_head_algo_params params) noexcept
+        : diag_(&diag), proc_(params.proc)
     {
     }
 

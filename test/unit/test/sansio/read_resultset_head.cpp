@@ -38,9 +38,7 @@ BOOST_AUTO_TEST_SUITE(test_read_resultset_head)
 struct fixture : algo_fixture_base
 {
     mock_execution_processor proc;
-    detail::read_resultset_head_algo algo{
-        {&diag, &proc}
-    };
+    detail::read_resultset_head_algo algo{diag, {&proc}};
 
     fixture()
     {

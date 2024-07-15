@@ -90,7 +90,8 @@ public:
         : st_data_(read_buffer_size, max_buffer_size, transport_supports_ssl),
           algo_(top_level_algo<quit_connection_algo>(
               st_data_,
-              quit_connection_algo_params{&st_data_.shared_diag}
+              st_data_.shared_diag,
+              quit_connection_algo_params{}
           ))
     {
     }
@@ -99,22 +100,26 @@ public:
     connection_state_data& data() { return st_data_; }
 
     template <class AlgoParams>
-    any_resumable_ref setup(AlgoParams params)
+    any_resumable_ref setup(diagnostics& diag, AlgoParams params)
     {
-        return any_resumable_ref(algo_.emplace<top_level_algo<get_algo_t<AlgoParams>>>(st_data_, params));
+        return any_resumable_ref(algo_.emplace<top_level_algo<get_algo_t<AlgoParams>>>(st_data_, diag, params)
+        );
     }
 
-    any_resumable_ref setup(close_statement_algo_params params)
+    any_resumable_ref setup(diagnostics& diag, close_statement_algo_params params)
     {
-        return setup(setup_close_statement_pipeline(st_data_, params));
+        return setup(diag, setup_close_statement_pipeline(st_data_, params));
     }
 
-    any_resumable_ref setup(reset_connection_algo_params params)
+    any_resumable_ref setup(diagnostics& diag, reset_connection_algo_params)
     {
-        return setup(setup_reset_connection_pipeline(st_data_, params));
+        return setup(diag, setup_reset_connection_pipeline(st_data_));
     }
 
-    any_resumable_ref setup(ping_algo_params params) { return setup(setup_ping_pipeline(st_data_, params)); }
+    any_resumable_ref setup(diagnostics& diag, ping_algo_params)
+    {
+        return setup(diag, setup_ping_pipeline(st_data_));
+    }
 
     template <typename AlgoParams>
     typename AlgoParams::result_type result() const

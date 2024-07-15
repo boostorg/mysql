@@ -25,7 +25,9 @@ class read_ping_response_algo
     std::uint8_t seqnum_{0};
 
 public:
-    read_ping_response_algo(diagnostics* diag, std::uint8_t seqnum) noexcept : diag_(diag), seqnum_(seqnum) {}
+    read_ping_response_algo(diagnostics& diag, std::uint8_t seqnum) noexcept : diag_(&diag), seqnum_(seqnum)
+    {
+    }
 
     next_action resume(connection_state_data& st, error_code ec)
     {
@@ -45,13 +47,12 @@ public:
     }
 };
 
-inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st, ping_algo_params params)
+inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st)
 {
     st.write_buffer.clear();
     auto seqnum = serialize_top_level(ping_command{}, st.write_buffer);
     st.shared_pipeline_stages[0] = {pipeline_stage_kind::ping, seqnum, {}};
     return {
-        params.diag,
         st.write_buffer,
         {st.shared_pipeline_stages.data(), 1},
         nullptr

@@ -11,6 +11,7 @@
 #pragma once
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/pipeline.hpp>
 
 #include <boost/mysql/detail/connection_impl.hpp>
@@ -92,21 +93,21 @@ boost::system::result<boost::mysql::character_set> boost::mysql::detail::connect
 
 boost::mysql::detail::run_pipeline_algo_params boost::mysql::detail::connection_impl::make_params_pipeline(
     const pipeline_request& req,
-    std::vector<stage_response>& response,
-    diagnostics& diag
+    std::vector<stage_response>& response
 )
 {
     const auto& req_impl = access::get_impl(req);
-    return {&diag, req_impl.buffer_, req_impl.stages_, &response};
+    return {req_impl.buffer_, req_impl.stages_, &response};
 }
 
 template <class AlgoParams>
 boost::mysql::detail::any_resumable_ref boost::mysql::detail::setup(
     connection_state& st,
+    diagnostics& diag,
     const AlgoParams& params
 )
 {
-    return st.setup(params);
+    return st.setup(diag, params);
 }
 
 template <class AlgoParams>
@@ -118,7 +119,7 @@ typename AlgoParams::result_type boost::mysql::detail::get_result(const connecti
 #ifdef BOOST_MYSQL_SEPARATE_COMPILATION
 
 #define BOOST_MYSQL_INSTANTIATE_SETUP(op_params_type) \
-    template any_resumable_ref setup<op_params_type>(connection_state&, const op_params_type&);
+    template any_resumable_ref setup<op_params_type>(connection_state&, diagnostics&, const op_params_type&);
 
 #define BOOST_MYSQL_INSTANTIATE_GET_RESULT(op_params_type) \
     template op_params_type::result_type get_result<op_params_type>(const connection_state&);
