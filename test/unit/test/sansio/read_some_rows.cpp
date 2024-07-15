@@ -22,7 +22,6 @@
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_execution_processor.hpp"
-#include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
@@ -43,7 +42,8 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     std::array<row1, 3> storage;
     detail::read_some_rows_algo algo{
-        {&diag, &proc, ref()}
+        diag,
+        {&proc, ref()}
     };
 
     output_ref ref() noexcept { return output_ref(span<row1>(storage), 0); }

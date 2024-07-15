@@ -49,8 +49,8 @@ class read_set_character_set_response_algo
     std::uint8_t seqnum_{0};
 
 public:
-    read_set_character_set_response_algo(diagnostics* diag, character_set charset, std::uint8_t seqnum)
-        : diag_(diag), charset_(charset), seqnum_(seqnum)
+    read_set_character_set_response_algo(diagnostics& diag, character_set charset, std::uint8_t seqnum)
+        : diag_(&diag), charset_(charset), seqnum_(seqnum)
     {
     }
     character_set charset() const { return charset_; }
@@ -97,8 +97,8 @@ class set_character_set_algo
     }
 
 public:
-    set_character_set_algo(set_character_set_algo_params params) noexcept
-        : read_response_st_(params.diag, params.charset, 0u)
+    set_character_set_algo(diagnostics& diag, set_character_set_algo_params params) noexcept
+        : read_response_st_(diag, params.charset, 0u)
     {
     }
 

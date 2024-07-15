@@ -32,9 +32,8 @@ class read_execute_response_algo
     read_some_rows_algo read_some_rows_st_;
 
 public:
-    read_execute_response_algo(diagnostics* diag, execution_processor* proc) noexcept
-        : read_head_st_(read_resultset_head_algo_params{diag, proc}),
-          read_some_rows_st_(read_some_rows_algo_params{diag, proc, output_ref()})
+    read_execute_response_algo(diagnostics& diag, execution_processor* proc) noexcept
+        : read_head_st_(diag, {proc}), read_some_rows_st_(diag, {proc, output_ref()})
     {
     }
 
@@ -84,9 +83,8 @@ class execute_algo
     execution_processor& processor() { return read_response_st_.processor(); }
 
 public:
-    execute_algo(execute_algo_params params) noexcept
-        : start_execution_st_(start_execution_algo_params{params.diag, params.req, params.proc}),
-          read_response_st_(params.diag, params.proc)
+    execute_algo(diagnostics& diag, execute_algo_params params) noexcept
+        : start_execution_st_(diag, {params.req, params.proc}), read_response_st_(diag, params.proc)
     {
     }
 

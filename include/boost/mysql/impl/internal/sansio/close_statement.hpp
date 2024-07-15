@@ -28,7 +28,7 @@ inline run_pipeline_algo_params setup_close_statement_pipeline(
     st.shared_pipeline_stages = {
         {{pipeline_stage_kind::close_statement, seqnum1, {}}, {pipeline_stage_kind::ping, seqnum2, {}}}
     };
-    return {params.diag, st.write_buffer, st.shared_pipeline_stages, nullptr};
+    return {st.write_buffer, st.shared_pipeline_stages, nullptr};
 }
 
 }  // namespace detail
