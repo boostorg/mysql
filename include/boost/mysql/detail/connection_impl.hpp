@@ -568,8 +568,11 @@ public:
 // BOOST_ASIO_INITFN_AUTO_RESULT_TYPE are no longer enough.
 // Helper typedefs to reduce duplication
 template <class AlgoParams, class CompletionToken>
-using async_run_t = decltype(std::declval<connection_impl&>()
-                                 .async_run(std::declval<AlgoParams>(), std::declval<CompletionToken>()));
+using async_run_t = decltype(std::declval<connection_impl&>().async_run(
+    std::declval<AlgoParams>(),
+    std::declval<diagnostics&>(),
+    std::declval<CompletionToken>()
+));
 
 template <class EndpointType, class CompletionToken>
 using async_connect_t = decltype(std::declval<connection_impl&>().async_connect(
