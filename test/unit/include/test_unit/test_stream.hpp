@@ -20,7 +20,6 @@
 #include <set>
 #include <vector>
 
-#include "test_common/tracker_executor.hpp"
 #include "test_unit/fail_count.hpp"
 
 namespace boost {
@@ -80,7 +79,6 @@ private:
     std::vector<std::uint8_t> bytes_written_;
     fail_count fail_count_;
     std::size_t write_break_size_{1024};  // max number of bytes to be written in each write_some
-    executor_info executor_info_{};
 
     std::size_t get_size_to_read(std::size_t buffer_size) const;
     std::size_t do_read(asio::mutable_buffer buff, error_code& ec);

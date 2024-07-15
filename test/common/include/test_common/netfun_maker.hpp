@@ -68,48 +68,59 @@ struct netfun_maker_impl
     }
 
     template <class Pfn>
-    static signature async_errinfo(Pfn fn, bool validate_exec_info = true)
+    static signature async_errinfo(Pfn fn)
     {
-        return [fn, validate_exec_info](IOObject& obj, Args... args) {
-            auto io_obj_executor = obj.get_executor();
-            executor_info exec_info{};
+        return [fn](IOObject& obj, Args... args) {
+            // Get the object's I/O executor
+            auto ex = obj.get_executor();
+
+            // Create the initial result
             auto res = create_initial_netresult<R>();
-            invoke_polyfill(
-                fn,
-                obj,
-                std::forward<Args>(args)...,
-                *res.diag,
-                as_network_result<R>(res, create_tracker_executor(obj.get_executor(), &exec_info))
-            );
-            run_until_completion(io_obj_executor);
-            if (validate_exec_info)
+
             {
-                BOOST_TEST(get_executor_info(io_obj_executor).num_posts > 0u);
-                BOOST_TEST(exec_info.num_dispatches > 0u);
+                // Mark ourselves as initiating
+                initiation_guard guard;
+
+                // Invoke the initiation function
+                invoke_polyfill(
+                    fn,
+                    obj,
+                    std::forward<Args>(args)...,
+                    *res.diag,
+                    as_network_result<R>(res, ex)
+                );
             }
+
+            // Run
+            run_until_completion(ex);
+
+            // Done
             return res;
         };
     }
 
     template <class Pfn>
-    static signature async_noerrinfo(Pfn fn, bool validate_exec_info = true)
+    static signature async_noerrinfo(Pfn fn)
     {
-        return [fn, validate_exec_info](IOObject& obj, Args... args) {
-            auto io_obj_executor = obj.get_executor();
-            executor_info exec_info{};
+        return [fn](IOObject& obj, Args... args) {
+            // Get the object's I/O executor
+            auto ex = obj.get_executor();
+
+            // Create the initial result
             auto res = create_initial_netresult<R>(false);
-            invoke_polyfill(
-                fn,
-                obj,
-                std::forward<Args>(args)...,
-                as_network_result<R>(res, create_tracker_executor(obj.get_executor(), &exec_info))
-            );
-            run_until_completion(io_obj_executor);
-            if (validate_exec_info)
+
             {
-                BOOST_TEST(get_executor_info(io_obj_executor).num_posts > 0u);
-                BOOST_TEST(exec_info.num_dispatches > 0u);
+                // Mark ourselves as initiating
+                initiation_guard guard;
+
+                // Invoke the initiation function
+                invoke_polyfill(fn, obj, std::forward<Args>(args)..., as_network_result<R>(res, ex));
             }
+
+            // Run until completion
+            run_until_completion(ex);
+
+            // Done
             return res;
         };
     }
@@ -134,14 +145,8 @@ public:
         return impl::sync_errc_noerrinfo(pfn);
     }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
-    static signature async_errinfo(sig_async_errinfo pfn, bool validate_exec_info = true)
-    {
-        return impl::async_errinfo(pfn, validate_exec_info);
-    }
-    static signature async_noerrinfo(sig_async_noerrinfo pfn, bool validate_exec_info = true)
-    {
-        return impl::async_noerrinfo(pfn, validate_exec_info);
-    }
+    static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
+    static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
 };
 
 template <class R, class... Args>
@@ -163,14 +168,8 @@ public:
         return impl::sync_errc_noerrinfo(pfn);
     }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
-    static signature async_errinfo(sig_async_errinfo pfn, bool validate_exec_info = true)
-    {
-        return impl::async_errinfo(pfn, validate_exec_info);
-    }
-    static signature async_noerrinfo(sig_async_noerrinfo pfn, bool validate_exec_info = true)
-    {
-        return impl::async_noerrinfo(pfn, validate_exec_info);
-    }
+    static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
+    static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
 };
 
 }  // namespace test
