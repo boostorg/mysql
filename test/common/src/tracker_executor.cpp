@@ -9,8 +9,7 @@
 #include <boost/asio/execution/relationship.hpp>
 #include <boost/asio/execution_context.hpp>
 #include <boost/asio/require.hpp>
-#include <boost/function/function_base.hpp>
-#include <boost/test/tools/interface.hpp>
+#include <boost/test/unit_test.hpp>
 
 #include <atomic>
 #include <type_traits>
