@@ -8,6 +8,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
@@ -21,14 +22,10 @@
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/statement.hpp>
-#include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp.hpp>
-#include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/mysql/detail/config.hpp>
-
-#include <boost/mysql/impl/statement.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -37,12 +34,11 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/tools/context.hpp>
+#include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <cstddef>
-#include <ostream>
-#include <tuple>
 #include <vector>
 
 #include "test_common/create_basic.hpp"
@@ -52,6 +48,7 @@
 #include "test_integration/common.hpp"
 #include "test_integration/er_connection.hpp"
 #include "test_integration/network_samples.hpp"
+#include "test_integration/spotchecks_helpers.hpp"
 #include "test_integration/static_rows.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
@@ -67,203 +64,6 @@ using boost::test_tools::per_element;
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_spotchecks)
-
-using static_results_t = static_results<row_multifield, row_2fields, empty>;
-using static_state_t = static_execution_state<row_multifield, row_2fields, empty>;
-
-// Netmakers
-template <class Conn>
-struct netmakers_common
-{
-    using prepare_statement = netfun_maker_mem<statement, Conn, string_view>;
-    using execute_query = netfun_maker_mem<void, Conn, const string_view&, results&>;
-    using execute_statement = netfun_maker_mem<
-        void,
-        Conn,
-        const bound_statement_tuple<std::tuple<int, int>>&,
-        results&>;
-    using start_execution = netfun_maker_mem<void, Conn, const string_view&, execution_state&>;
-    using close_statement = netfun_maker_mem<void, Conn, const statement&>;
-    using read_resultset_head = netfun_maker_mem<void, Conn, execution_state&>;
-    using read_some_rows = netfun_maker_mem<rows_view, Conn, execution_state&>;
-    using ping = netfun_maker_mem<void, Conn>;
-    using reset_connection = netfun_maker_mem<void, Conn>;
-    using close = netfun_maker_mem<void, Conn>;
-
-#ifdef BOOST_MYSQL_CXX14
-    using execute_static = netfun_maker_mem<void, Conn, const string_view&, static_results_t&>;
-    using start_execution_static = netfun_maker_mem<void, Conn, const string_view&, static_state_t&>;
-    using read_resultset_head_static = netfun_maker_mem<void, Conn, static_state_t&>;
-    using read_some_rows_static_1 = netfun_maker_mem<
-        std::size_t,
-        Conn,
-        static_state_t&,
-        boost::span<row_multifield>>;
-    using read_some_rows_static_2 = netfun_maker_mem<
-        std::size_t,
-        Conn,
-        static_state_t&,
-        boost::span<row_2fields>>;
-#endif
-};
-
-struct netmakers_connection : netmakers_common<tcp_connection>
-{
-    using handshake = netfun_maker_mem<void, tcp_connection, const handshake_params&>;
-    using connect = netfun_maker_mem<
-        void,
-        tcp_connection,
-        const asio::ip::tcp::endpoint&,
-        const handshake_params&>;
-    using quit = netfun_maker_mem<void, tcp_connection>;
-};
-
-struct netmakers_any : netmakers_common<any_connection>
-{
-    using connect = netfun_maker_mem<void, any_connection, const connect_params&>;
-    using set_character_set = netfun_maker_mem<void, any_connection, const character_set&>;
-    using run_pipeline = netfun_maker_mem<
-        void,
-        any_connection,
-        const pipeline_request&,
-        std::vector<stage_response>&>;
-};
-
-// Network functions
-#define BOOST_MYSQL_MAKE_NETFN(conn, netm, fn, i)                 \
-    (i == 0   ? netmakers::netm::sync_errc(&conn::fn)             \
-     : i == 1 ? netmakers::netm::sync_exc(&conn::fn)              \
-     : i == 2 ? netmakers::netm::async_errinfo(&conn::async_##fn) \
-              : netmakers::netm::async_noerrinfo(&conn::async_##fn))
-
-constexpr const char* fn_names[] = {"sync_errc", "sync_exc", "async_diag", "async_nodiag"};
-
-struct network_functions_connection
-{
-    using netmakers = netmakers_connection;
-
-    string_view name;
-    netmakers::prepare_statement::signature prepare_statement;
-    netmakers::execute_query::signature execute_query;
-    netmakers::execute_statement::signature execute_statement;
-    netmakers::start_execution::signature start_execution;
-    netmakers::close_statement::signature close_statement;
-    netmakers::read_resultset_head::signature read_resultset_head;
-    netmakers::read_some_rows::signature read_some_rows;
-    netmakers::ping::signature ping;
-    netmakers::reset_connection::signature reset_connection;
-    netmakers::close::signature close;
-#ifdef BOOST_MYSQL_CXX14
-    netmakers::execute_static::signature execute_static;
-    netmakers::start_execution_static::signature start_execution_static;
-    netmakers::read_resultset_head_static::signature read_resultset_head_static;
-    netmakers::read_some_rows_static_1::signature read_some_rows_static_1;
-    netmakers::read_some_rows_static_2::signature read_some_rows_static_2;
-#endif
-    netmakers::handshake::signature handshake;
-    netmakers::connect::signature connect;
-    netmakers::quit::signature quit;
-
-    static std::vector<network_functions_connection> all()
-    {
-        std::vector<network_functions_connection> res;
-
-        for (std::size_t i = 0; i < 4; ++i)
-        {
-            res.push_back({
-                fn_names[i],
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, prepare_statement, prepare_statement, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, execute_query, execute, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, execute_statement, execute, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, start_execution, start_execution, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, close_statement, close_statement, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_resultset_head, read_resultset_head, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_some_rows, read_some_rows, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, ping, ping, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, reset_connection, reset_connection, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, close, close, i),
-#ifdef BOOST_MYSQL_CXX14
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, execute_static, execute, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, start_execution_static, start_execution, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_resultset_head_static, read_resultset_head, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_some_rows_static_1, read_some_rows, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_some_rows_static_2, read_some_rows, i),
-#endif
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, handshake, handshake, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, connect, connect, i),
-                BOOST_MYSQL_MAKE_NETFN(tcp_connection, quit, quit, i),
-            });
-        }
-
-        return res;
-    }
-};
-inline std::ostream& operator<<(std::ostream& os, const network_functions_connection& v)
-{
-    return os << v.name;
-}
-
-struct network_functions_any
-{
-    using netmakers = netmakers_any;
-
-    string_view name;
-    netmakers::prepare_statement::signature prepare_statement;
-    netmakers::execute_query::signature execute_query;
-    netmakers::execute_statement::signature execute_statement;
-    netmakers::start_execution::signature start_execution;
-    netmakers::close_statement::signature close_statement;
-    netmakers::read_resultset_head::signature read_resultset_head;
-    netmakers::read_some_rows::signature read_some_rows;
-    netmakers::ping::signature ping;
-    netmakers::reset_connection::signature reset_connection;
-    netmakers::close::signature close;
-#ifdef BOOST_MYSQL_CXX14
-    netmakers::execute_static::signature execute_static;
-    netmakers::start_execution_static::signature start_execution_static;
-    netmakers::read_resultset_head_static::signature read_resultset_head_static;
-    netmakers::read_some_rows_static_1::signature read_some_rows_static_1;
-    netmakers::read_some_rows_static_2::signature read_some_rows_static_2;
-#endif
-    netmakers::connect::signature connect;
-    netmakers::set_character_set::signature set_character_set;
-    netmakers::run_pipeline::signature run_pipeline;
-
-    static std::vector<network_functions_any> all()
-    {
-        std::vector<network_functions_any> res;
-
-        for (std::size_t i = 0; i < 4; ++i)
-        {
-            res.push_back({
-                fn_names[i],
-                BOOST_MYSQL_MAKE_NETFN(any_connection, prepare_statement, prepare_statement, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, execute_query, execute, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, execute_statement, execute, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, start_execution, start_execution, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, close_statement, close_statement, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, read_resultset_head, read_resultset_head, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, read_some_rows, read_some_rows, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, ping, ping, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, reset_connection, reset_connection, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, close, close, i),
-#ifdef BOOST_MYSQL_CXX14
-                BOOST_MYSQL_MAKE_NETFN(any_connection, execute_static, execute, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, start_execution_static, start_execution, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, read_resultset_head_static, read_resultset_head, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, read_some_rows_static_1, read_some_rows, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, read_some_rows_static_2, read_some_rows, i),
-#endif
-                BOOST_MYSQL_MAKE_NETFN(any_connection, connect, connect, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, set_character_set, set_character_set, i),
-                BOOST_MYSQL_MAKE_NETFN(any_connection, run_pipeline, run_pipeline, i),
-            });
-        }
-
-        return res;
-    }
-};
-inline std::ostream& operator<<(std::ostream& os, const network_functions_any& v) { return os << v.name; }
 
 // Map from a connection to its network functions type
 template <class Conn>
@@ -452,32 +252,37 @@ BOOST_MYSQL_SPOTCHECK_TEST(close_statement_error)
 }
 
 // Read resultset head
-// BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_success)
-// {
-//     params.set_multi_queries(true);
-//     setup_and_connect(sample);
+BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_success)
+{
+    // Setup
+    fix.connect();
 
-//     // Generate an execution state
-//     execution_state st;
-//     conn->start_execution("SELECT * FROM empty_table; SELECT * FROM one_row_table", st);
-//     BOOST_TEST_REQUIRE(st.should_read_rows());
+    // Generate an execution state
+    execution_state st;
+    fn.start_execution(fix.conn, "CALL sp_select_2('abc', 42)", st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
-//     // Read the OK packet to finish 1st resultset
-//     conn->read_some_rows(st).validate_no_error();
-//     BOOST_TEST_REQUIRE(st.should_read_head());
+    // Read the 1st resultset
+    auto rws = fn.read_some_rows(fix.conn, st).get();
+    BOOST_TEST_REQUIRE(st.should_read_head());
+    BOOST_TEST(rws == makerows(2, 1, "f0"), per_element());
 
-//     // Read head
-//     conn->read_resultset_head(st).validate_no_error();
-//     BOOST_TEST_REQUIRE(st.should_read_rows());
+    // Read head
+    fn.read_resultset_head(fix.conn, st).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+    BOOST_TEST(st.meta()[0].type() == column_type::varchar);
+    BOOST_TEST(st.meta()[1].type() == column_type::bigint);
 
-//     // Reading head again does nothing
-//     conn->read_resultset_head(st).validate_no_error();
-//     BOOST_TEST_REQUIRE(st.should_read_rows());
+    // Reading head again does nothing
+    fn.read_resultset_head(fix.conn, st).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+    BOOST_TEST(st.meta()[0].type() == column_type::varchar);
+    BOOST_TEST(st.meta()[1].type() == column_type::bigint);
 
-//     // We can read rows now
-//     auto rows = conn->read_some_rows(st).get();
-//     BOOST_TEST((rows == makerows(2, 1, "f0")));
-// }
+    // We can read rows now
+    auto rows = fn.read_some_rows(fix.conn, st).get();
+    BOOST_TEST((rows == makerows(2, "abc", 42)));
+}
 
 BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_error, all_samples)
 {

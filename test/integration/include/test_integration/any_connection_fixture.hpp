@@ -24,7 +24,7 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-// TODO: move to compiled?
+// TODO: move to compiled? ctor is expensive
 struct any_connection_fixture
 {
     asio::io_context ctx;

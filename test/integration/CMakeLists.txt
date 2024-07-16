@@ -18,6 +18,7 @@ add_executable(
     src/async_callback.cpp
     src/async_coroutines.cpp
     src/async_coroutinescpp20.cpp
+    src/spotchecks_helpers.cpp
 
     # Actual tests
     test/spotchecks.cpp
