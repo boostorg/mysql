@@ -53,7 +53,6 @@ BOOST_AUTO_TEST_SUITE(test_handshake)
 // TODO: test that old tcp_ssl_connection can be passed a custom collation ID
 // TODO: update multi queries to test old/new connections
 // TODO: review connection termination tests
-// TODO: connect with database old connection
 struct handshake_fixture
 {
     asio::io_context ctx;
@@ -367,6 +366,22 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, handshake_fixture)
         .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
 }
 
+// Spotcheck: an invalid DB error after cache miss works
+BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, handshake_fixture)
+{
+    // Setup
+    auto params = default_connect_params(ssl_mode::require);
+    params.database = "bad_db";
+    clear_sha256_cache();
+
+    // Connect fails
+    conn.async_connect(params, as_netresult)
+        .validate_error(
+            common_server_errc::er_dbaccess_denied_error,
+            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+        );
+}
+
 // Spotcheck: caching_sha2_password works with old connection
 BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
 {
@@ -380,15 +395,11 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
     conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
 }
 
-// TODO: bad DB cache miss
-
 BOOST_AUTO_TEST_SUITE_END()  // caching_sha2_password
 
 // SSL certificate validation
 // Note that passing a custom SSL context req
 BOOST_AUTO_TEST_SUITE(ssl_certificate_validation)
-
-// Context changes need to be before setup
 
 BOOST_AUTO_TEST_CASE(certificate_valid)
 {
