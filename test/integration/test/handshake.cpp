@@ -32,6 +32,7 @@
 #include "test_common/as_netres.hpp"
 #include "test_common/ci_server.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/get_endpoint.hpp"
 #include "test_integration/server_ca.hpp"
@@ -49,25 +50,9 @@ namespace {
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
 // TODO: we can double-check SSL using 'SHOW STATUS LIKE 'ssl_version''
-// TODO: this should probably be shared between more tests
 // TODO: test that old tcp_ssl_connection can be passed a custom collation ID
 // TODO: update multi queries to test old/new connections
 // TODO: review connection termination tests
-struct handshake_fixture
-{
-    asio::io_context ctx;
-    any_connection conn{ctx};
-
-    static any_connection_params make_params(asio::ssl::context& ssl_ctx)
-    {
-        any_connection_params res;
-        res.ssl_context = &ssl_ctx;
-        return res;
-    }
-
-    handshake_fixture() = default;
-    handshake_fixture(asio::ssl::context& ssl_ctx) : conn(ctx, make_params(ssl_ctx)) {}
-};
 
 // Handshake is the most convoluted part of MySQL protocol,
 // and is in active development in current MySQL versions.
@@ -118,7 +103,7 @@ BOOST_AUTO_TEST_CASE(regular_password)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            handshake_fixture fix;
+            any_connection_fixture fix;
             auto params = tc.params;
             params.username = regular_user;
             params.password = regular_passwd;
@@ -137,7 +122,7 @@ BOOST_AUTO_TEST_CASE(empty_password)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            handshake_fixture fix;
+            any_connection_fixture fix;
             auto params = tc.params;
             params.username = empty_user;
             params.password = "";
@@ -156,7 +141,7 @@ BOOST_AUTO_TEST_CASE(bad_password)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            handshake_fixture fix;
+            any_connection_fixture fix;
             auto params = tc.params;
             params.username = regular_user;
             params.password = "bad_password";
@@ -189,7 +174,7 @@ BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 // (dummy table, used as a mutex) to avoid race conditions with other test runs
 // (which happens in b2 builds).
 // The sha256 cache is shared between all clients.
-struct caching_sha2_lock : handshake_fixture
+struct caching_sha2_lock : any_connection_fixture
 {
     caching_sha2_lock()
     {
@@ -222,7 +207,7 @@ BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_
 static void load_sha256_cache(string_view user, string_view password)
 {
     // Connecting as the given user loads the cache
-    handshake_fixture fix;
+    any_connection_fixture fix;
     auto params = default_connect_params();
     params.username = user;
     params.password = password;
@@ -233,7 +218,7 @@ static void load_sha256_cache(string_view user, string_view password)
 static void clear_sha256_cache()
 {
     // Issuing a FLUSH PRIVILEGES clears the cache
-    handshake_fixture fix;
+    any_connection_fixture fix;
     connect_params params;
     params.username = "root";
     params.password = "";
@@ -255,7 +240,7 @@ BOOST_AUTO_TEST_CASE(cache_hit)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            handshake_fixture fix;
+            any_connection_fixture fix;
             auto params = tc.params;
             params.username = regular_user;
             params.password = regular_passwd;
@@ -275,7 +260,7 @@ BOOST_AUTO_TEST_CASE(cache_miss_success)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            handshake_fixture fix;
+            any_connection_fixture fix;
             auto params = tc.params;
             params.username = regular_user;
             params.password = regular_passwd;
@@ -289,7 +274,7 @@ BOOST_AUTO_TEST_CASE(cache_miss_success)
 }
 
 // A cache miss would force us send a plaintext password over a non-TLS connection, so we fail
-BOOST_FIXTURE_TEST_CASE(cache_miss_error, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(cache_miss_error, any_connection_fixture)
 {
     // Setup
     auto params = default_connect_params(ssl_mode::disable);
@@ -312,7 +297,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_hit)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            handshake_fixture fix;
+            any_connection_fixture fix;
             auto params = tc.params;
             params.username = empty_user;
             params.password = "";
@@ -331,7 +316,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_miss)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            handshake_fixture fix;
+            any_connection_fixture fix;
             auto params = tc.params;
             params.username = empty_user;
             params.password = "";
@@ -344,7 +329,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_miss)
     }
 }
 
-BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, any_connection_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
     auto params = default_connect_params(ssl_mode::require);
@@ -355,7 +340,7 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, handshake_fixture)
         .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
 }
 
-BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, any_connection_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
     auto params = default_connect_params(ssl_mode::require);
@@ -367,7 +352,7 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, handshake_fixture)
 }
 
 // Spotcheck: an invalid DB error after cache miss works
-BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
 {
     // Setup
     auto params = default_connect_params(ssl_mode::require);
@@ -398,7 +383,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
 BOOST_AUTO_TEST_SUITE_END()  // caching_sha2_password
 
 // SSL certificate validation
-// Note that passing a custom SSL context req
+// This also tests that we can pass a custom ssl::context to connections
 BOOST_AUTO_TEST_SUITE(ssl_certificate_validation)
 
 BOOST_AUTO_TEST_CASE(certificate_valid)
@@ -407,7 +392,7 @@ BOOST_AUTO_TEST_CASE(certificate_valid)
     asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
-    handshake_fixture fix(ssl_ctx);
+    any_connection_fixture fix(ssl_ctx);
 
     // Connect works
     fix.conn.async_connect(default_connect_params(ssl_mode::require), as_netresult).validate_no_error();
@@ -419,7 +404,7 @@ BOOST_AUTO_TEST_CASE(certificate_invalid)
     // Setup
     asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
-    handshake_fixture fix(ssl_ctx);
+    any_connection_fixture fix(ssl_ctx);
 
     // Connect fails
     auto netres = fix.conn.async_connect(default_connect_params(ssl_mode::require), as_netresult);
@@ -434,7 +419,7 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_success)
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("mysql"));
-    handshake_fixture fix(ssl_ctx);
+    any_connection_fixture fix(ssl_ctx);
 
     // Connect succeeds
     fix.conn.async_connect(default_connect_params(ssl_mode::require), as_netresult).validate_no_error();
@@ -448,7 +433,7 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
-    handshake_fixture fix(ssl_ctx);
+    any_connection_fixture fix(ssl_ctx);
 
     // Connect fails
     auto netres = fix.conn.async_connect(default_connect_params(ssl_mode::require), as_netresult);
@@ -479,7 +464,7 @@ BOOST_AUTO_TEST_SUITE_END()  // ssl_certificate_validation
 BOOST_AUTO_TEST_SUITE(ssl_mode_)
 
 // All our CI servers support SSL, so enable should behave like required
-BOOST_FIXTURE_TEST_CASE(any_enable, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(any_enable, any_connection_fixture)
 {
     // Setup
     auto params = default_connect_params(ssl_mode::enable);
@@ -541,7 +526,7 @@ BOOST_AUTO_TEST_CASE(ssl_stream)
 BOOST_AUTO_TEST_SUITE_END()
 
 // Other handshake tests
-BOOST_FIXTURE_TEST_CASE(no_database, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(no_database, any_connection_fixture)
 {
     // Setup
     auto params = default_connect_params();
@@ -556,7 +541,7 @@ BOOST_FIXTURE_TEST_CASE(no_database, handshake_fixture)
     BOOST_TEST(r.rows() == makerows(1, nullptr), per_element());
 }
 
-BOOST_FIXTURE_TEST_CASE(bad_database, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(bad_database, any_connection_fixture)
 {
     // Setup
     auto params = default_connect_params();
@@ -571,7 +556,7 @@ BOOST_FIXTURE_TEST_CASE(bad_database, handshake_fixture)
 }
 
 BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
-BOOST_FIXTURE_TEST_CASE(unknown_auth_plugin, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(unknown_auth_plugin, any_connection_fixture)
 {
     // Note: sha256_password is not supported, so it's an unknown plugin to us
     // Setup
@@ -583,7 +568,7 @@ BOOST_FIXTURE_TEST_CASE(unknown_auth_plugin, handshake_fixture)
     conn.async_connect(params, as_netresult).validate_error(client_errc::unknown_auth_plugin);
 }
 
-BOOST_FIXTURE_TEST_CASE(bad_user, handshake_fixture)
+BOOST_FIXTURE_TEST_CASE(bad_user, any_connection_fixture)
 {
     // unreliable without SSL. If the default plugin requires SSL
     // (like SHA256), this would fail with 'ssl required'
