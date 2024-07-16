@@ -181,9 +181,17 @@ namespace asio {
 template <typename Signature>
 class async_result<mysql::test::as_netresult_t, Signature>
 {
+public:
     using R = typename mysql::test::sig_to_network_result_type<Signature>::type;
     using return_type = mysql::test::network_result_v2<R>;
 
+    template <typename Initiation, typename... Args>
+    static return_type initiate(Initiation&& initiation, mysql::test::as_netresult_t, Args&&... args)
+    {
+        return do_initiate(std::move(initiation), std::move(args)...);
+    }
+
+private:
     // initiate() is not allowed to inspect individual arguments
     template <typename Initiation, class IoObjectPtr, typename... Args>
     static return_type do_initiate(
@@ -211,13 +219,6 @@ class async_result<mysql::test::as_netresult_t, Signature>
         );
 
         return netres;
-    }
-
-public:
-    template <typename Initiation, typename... Args>
-    static return_type initiate(Initiation&& initiation, mysql::test::as_netresult_t, Args&&... args)
-    {
-        return do_initiate(std::move(initiation), std::move(args)...);
     }
 };
 

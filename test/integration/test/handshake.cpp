@@ -50,6 +50,11 @@ BOOST_AUTO_TEST_SUITE(test_handshake)
 
 // TODO: we can double-check SSL using 'SHOW STATUS LIKE 'ssl_version''
 // TODO: this should probably be shared between more tests
+// TODO: test that old tcp_ssl_connection can be passed a custom ssl context
+// TODO: test that old tcp_ssl_connection can be passed a custom collation ID
+// TODO: update multi queries to test old/new connections
+// TODO: review connection termination tests
+// TODO: connect with database old connection
 struct handshake_fixture
 {
     asio::io_context ctx;
@@ -162,6 +167,18 @@ BOOST_AUTO_TEST_CASE(bad_password)
                 );
         }
     }
+}
+
+// Spotcheck: mysql_native_password works with old connection
+BOOST_AUTO_TEST_CASE(tcp_connection_)
+{
+    // Setup
+    asio::io_context ctx;
+    tcp_connection conn(ctx);
+    handshake_params params("mysqlnp_user", "mysqlnp_password", integ_db);
+
+    // Connect succeeds
+    conn.async_connect(get_endpoint<tcp_connection::stream_type>(), params, as_netresult).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
@@ -349,6 +366,19 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, handshake_fixture)
         );
 }
 
+// Spotcheck: caching_sha2_password works with old connection
+BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
+{
+    // Setup
+    asio::io_context ctx;
+    asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
+    tcp_ssl_connection conn(ctx, ssl_ctx);
+    handshake_params params("csha2p_user", "csha2p_password", integ_db);
+
+    // Connect succeeds
+    conn.async_connect(get_endpoint<tcp_connection::stream_type>(), params, as_netresult).validate_no_error();
+}
+
 // TODO: bad DB cache miss
 
 BOOST_AUTO_TEST_SUITE_END()  // caching_sha2_password
@@ -435,7 +465,7 @@ BOOST_DATA_TEST_CASE(non_ssl_stream, data::make({ssl_mode::disable, ssl_mode::en
     // Setup
     asio::io_context ctx;
     tcp_connection conn(ctx);
-    handshake_params params(mysql_username, mysql_password);
+    handshake_params params(integ_user, integ_passwd, integ_db);
     params.set_ssl(sample);
 
     // Physical connect
