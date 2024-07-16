@@ -50,7 +50,6 @@ BOOST_AUTO_TEST_SUITE(test_handshake)
 
 // TODO: we can double-check SSL using 'SHOW STATUS LIKE 'ssl_version''
 // TODO: this should probably be shared between more tests
-// TODO: test that old tcp_ssl_connection can be passed a custom ssl context
 // TODO: test that old tcp_ssl_connection can be passed a custom collation ID
 // TODO: update multi queries to test old/new connections
 // TODO: review connection termination tests
@@ -182,7 +181,7 @@ BOOST_AUTO_TEST_CASE(tcp_connection_)
     handshake_params params(regular_user, regular_passwd, integ_db);
 
     // Connect succeeds
-    conn.async_connect(get_endpoint<tcp_connection::stream_type>(), params, as_netresult).validate_no_error();
+    conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
@@ -378,7 +377,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
     handshake_params params(regular_user, regular_passwd, integ_db);
 
     // Connect succeeds
-    conn.async_connect(get_endpoint<tcp_connection::stream_type>(), params, as_netresult).validate_no_error();
+    conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
 }
 
 // TODO: bad DB cache miss
@@ -446,6 +445,24 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
     BOOST_TEST(netres.error().message().find("certificate verify failed") != std::string::npos);
 }
 
+// Spotcheck: a custom SSL context can be used with old connections
+BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
+{
+    // Setup
+    asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
+    ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
+    ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
+    asio::io_context ctx;
+    tcp_ssl_connection conn(ctx, ssl_ctx);
+    handshake_params params(integ_user, integ_passwd, integ_db);
+
+    // Connect fails
+    auto netres = conn.async_connect(get_tcp_endpoint(), params, as_netresult);
+    netres.run();
+    BOOST_TEST(netres.error().message().find("certificate verify failed") != std::string::npos);
+}
+
 BOOST_AUTO_TEST_SUITE_END()  // ssl_certificate_validation
 
 BOOST_AUTO_TEST_SUITE(ssl_mode_)
@@ -471,7 +488,7 @@ BOOST_DATA_TEST_CASE(non_ssl_stream, data::make({ssl_mode::disable, ssl_mode::en
     params.set_ssl(sample);
 
     // Physical connect
-    conn.stream().connect(get_endpoint<tcp_connection::stream_type>());
+    conn.stream().connect(get_tcp_endpoint());
 
     // Handshake succeeds
     conn.async_handshake(params, as_netresult).validate_no_error();
@@ -503,11 +520,8 @@ BOOST_AUTO_TEST_CASE(ssl_stream)
             handshake_params params(mysql_username, mysql_password);
             params.set_ssl(tc.mode);
 
-            // Physical connect
-            conn.stream().lowest_layer().connect(get_endpoint<tcp_connection::stream_type>());
-
             // Handshake succeeds
-            conn.async_handshake(params, as_netresult).validate_no_error();
+            conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
             BOOST_TEST(conn.uses_ssl() == tc.expect_ssl);
         }
     }

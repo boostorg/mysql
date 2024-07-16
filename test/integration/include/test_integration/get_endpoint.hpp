@@ -40,6 +40,8 @@ typename Stream::lowest_layer_type::endpoint_type get_endpoint()
     return endpoint_getter<typename Stream::lowest_layer_type::protocol_type>()();
 }
 
+inline asio::ip::tcp::endpoint get_tcp_endpoint() { return get_endpoint<asio::ip::tcp::socket>(); }
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
