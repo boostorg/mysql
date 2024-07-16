@@ -43,6 +43,7 @@ struct any_connection_fixture
         conn.set_meta_mode(metadata_mode::full);
     }
     any_connection_fixture(asio::ssl::context& ssl_ctx) : any_connection_fixture(make_params(ssl_ctx)) {}
+    ~any_connection_fixture() { conn.async_close(as_netresult).validate_no_error(); }
 
     void connect(const connect_params& params, source_location loc = BOOST_CURRENT_LOCATION)
     {

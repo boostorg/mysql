@@ -9,37 +9,322 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/statement.hpp>
+#include <boost/mysql/static_results.hpp>
+#include <boost/mysql/string_view.hpp>
+#include <boost/mysql/tcp.hpp>
+#include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/mysql/detail/config.hpp>
 
+#include <boost/mysql/impl/statement.hpp>
+
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/core/span.hpp>
+#include <boost/mp11/detail/mp_list.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/test/data/test_case.hpp>
+#include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <array>
+#include <cstddef>
+#include <ostream>
+#include <tuple>
 #include <vector>
 
 #include "test_common/create_basic.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/printing.hpp"
+#include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/er_connection.hpp"
 #include "test_integration/network_samples.hpp"
 #include "test_integration/static_rows.hpp"
+#include "test_integration/tcp_network_fixture.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+namespace asio = boost::asio;
 using boost::test_tools::per_element;
 
+// These tests aim to cover the 4 overloads we have for each network function,
+// both for the old templated connection and for any_connection.
+// A success and an error case is included for each function.
+
+namespace {
+
 BOOST_AUTO_TEST_SUITE(test_spotchecks)
+
+using static_results_t = static_results<row_multifield, row_2fields, empty>;
+using static_state_t = static_execution_state<row_multifield, row_2fields, empty>;
+
+// Netmakers
+template <class Conn>
+struct netmakers_common
+{
+    using prepare_statement = netfun_maker_mem<statement, Conn, string_view>;
+    using execute_query = netfun_maker_mem<void, Conn, const string_view&, results&>;
+    using execute_statement = netfun_maker_mem<
+        void,
+        Conn,
+        const bound_statement_tuple<std::tuple<int, int>>&,
+        results&>;
+    using start_execution = netfun_maker_mem<void, Conn, const string_view&, execution_state&>;
+    using close_statement = netfun_maker_mem<void, Conn, const statement&>;
+    using read_resultset_head = netfun_maker_mem<void, Conn, execution_state&>;
+    using read_some_rows = netfun_maker_mem<rows_view, Conn, execution_state&>;
+    using ping = netfun_maker_mem<void, Conn>;
+    using reset_connection = netfun_maker_mem<void, Conn>;
+    using close = netfun_maker_mem<void, Conn>;
+
+#ifdef BOOST_MYSQL_CXX14
+    using execute_static = netfun_maker_mem<void, Conn, const string_view&, static_results_t&>;
+    using start_execution_static = netfun_maker_mem<void, Conn, const string_view&, static_state_t&>;
+    using read_resultset_head_static = netfun_maker_mem<void, Conn, static_state_t&>;
+    using read_some_rows_static_1 = netfun_maker_mem<
+        std::size_t,
+        Conn,
+        static_state_t&,
+        boost::span<row_multifield>>;
+    using read_some_rows_static_2 = netfun_maker_mem<
+        std::size_t,
+        Conn,
+        static_state_t&,
+        boost::span<row_2fields>>;
+#endif
+};
+
+struct netmakers_connection : netmakers_common<tcp_connection>
+{
+    using handshake = netfun_maker_mem<void, tcp_connection, const handshake_params&>;
+    using connect = netfun_maker_mem<
+        void,
+        tcp_connection,
+        const asio::ip::tcp::endpoint&,
+        const handshake_params&>;
+    using quit = netfun_maker_mem<void, tcp_connection>;
+};
+
+struct netmakers_any : netmakers_common<any_connection>
+{
+    using connect = netfun_maker_mem<void, any_connection, const connect_params&>;
+    using set_character_set = netfun_maker_mem<void, any_connection, const character_set&>;
+    using run_pipeline = netfun_maker_mem<
+        void,
+        any_connection,
+        const pipeline_request&,
+        std::vector<stage_response>&>;
+};
+
+// Network functions
+#define BOOST_MYSQL_MAKE_NETFN(conn, netm, fn, i)                 \
+    (i == 0   ? netmakers::netm::sync_errc(&conn::fn)             \
+     : i == 1 ? netmakers::netm::sync_exc(&conn::fn)              \
+     : i == 2 ? netmakers::netm::async_errinfo(&conn::async_##fn) \
+              : netmakers::netm::async_noerrinfo(&conn::async_##fn))
+
+constexpr const char* fn_names[] = {"sync_errc", "sync_exc", "async_diag", "async_nodiag"};
+
+struct network_functions_connection
+{
+    using netmakers = netmakers_connection;
+
+    string_view name;
+    netmakers::prepare_statement::signature prepare_statement;
+    netmakers::execute_query::signature execute_query;
+    netmakers::execute_statement::signature execute_statement;
+    netmakers::start_execution::signature start_execution;
+    netmakers::close_statement::signature close_statement;
+    netmakers::read_resultset_head::signature read_resultset_head;
+    netmakers::read_some_rows::signature read_some_rows;
+    netmakers::ping::signature ping;
+    netmakers::reset_connection::signature reset_connection;
+    netmakers::close::signature close;
+#ifdef BOOST_MYSQL_CXX14
+    netmakers::execute_static::signature execute_static;
+    netmakers::start_execution_static::signature start_execution_static;
+    netmakers::read_resultset_head_static::signature read_resultset_head_static;
+    netmakers::read_some_rows_static_1::signature read_some_rows_static_1;
+    netmakers::read_some_rows_static_2::signature read_some_rows_static_2;
+#endif
+    netmakers::handshake::signature handshake;
+    netmakers::connect::signature connect;
+    netmakers::quit::signature quit;
+
+    static std::vector<network_functions_connection> all()
+    {
+        std::vector<network_functions_connection> res;
+
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+            res.push_back({
+                fn_names[i],
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, prepare_statement, prepare_statement, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, execute_query, execute, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, execute_statement, execute, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, start_execution, start_execution, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, close_statement, close_statement, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_resultset_head, read_resultset_head, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_some_rows, read_some_rows, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, ping, ping, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, reset_connection, reset_connection, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, close, close, i),
+#ifdef BOOST_MYSQL_CXX14
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, execute_static, execute, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, start_execution_static, start_execution, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_resultset_head_static, read_resultset_head, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_some_rows_static_1, read_some_rows, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_some_rows_static_2, read_some_rows, i),
+#endif
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, handshake, handshake, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, connect, connect, i),
+                BOOST_MYSQL_MAKE_NETFN(tcp_connection, quit, quit, i),
+            });
+        }
+
+        return res;
+    }
+};
+inline std::ostream& operator<<(std::ostream& os, const network_functions_connection& v)
+{
+    return os << v.name;
+}
+
+struct network_functions_any
+{
+    using netmakers = netmakers_any;
+
+    string_view name;
+    netmakers::prepare_statement::signature prepare_statement;
+    netmakers::execute_query::signature execute_query;
+    netmakers::execute_statement::signature execute_statement;
+    netmakers::start_execution::signature start_execution;
+    netmakers::close_statement::signature close_statement;
+    netmakers::read_resultset_head::signature read_resultset_head;
+    netmakers::read_some_rows::signature read_some_rows;
+    netmakers::ping::signature ping;
+    netmakers::reset_connection::signature reset_connection;
+    netmakers::close::signature close;
+#ifdef BOOST_MYSQL_CXX14
+    netmakers::execute_static::signature execute_static;
+    netmakers::start_execution_static::signature start_execution_static;
+    netmakers::read_resultset_head_static::signature read_resultset_head_static;
+    netmakers::read_some_rows_static_1::signature read_some_rows_static_1;
+    netmakers::read_some_rows_static_2::signature read_some_rows_static_2;
+#endif
+    netmakers::connect::signature connect;
+    netmakers::set_character_set::signature set_character_set;
+    netmakers::run_pipeline::signature run_pipeline;
+
+    static std::vector<network_functions_any> all()
+    {
+        std::vector<network_functions_any> res;
+
+        for (std::size_t i = 0; i < 4; ++i)
+        {
+            res.push_back({
+                fn_names[i],
+                BOOST_MYSQL_MAKE_NETFN(any_connection, prepare_statement, prepare_statement, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, execute_query, execute, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, execute_statement, execute, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, start_execution, start_execution, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, close_statement, close_statement, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, read_resultset_head, read_resultset_head, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, read_some_rows, read_some_rows, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, ping, ping, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, reset_connection, reset_connection, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, close, close, i),
+#ifdef BOOST_MYSQL_CXX14
+                BOOST_MYSQL_MAKE_NETFN(any_connection, execute_static, execute, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, start_execution_static, start_execution, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, read_resultset_head_static, read_resultset_head, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, read_some_rows_static_1, read_some_rows, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, read_some_rows_static_2, read_some_rows, i),
+#endif
+                BOOST_MYSQL_MAKE_NETFN(any_connection, connect, connect, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, set_character_set, set_character_set, i),
+                BOOST_MYSQL_MAKE_NETFN(any_connection, run_pipeline, run_pipeline, i),
+            });
+        }
+
+        return res;
+    }
+};
+inline std::ostream& operator<<(std::ostream& os, const network_functions_any& v) { return os << v.name; }
+
+// Map from a connection to its network functions type
+template <class Conn>
+struct network_functions_type;
+
+template <>
+struct network_functions_type<tcp_connection>
+{
+    using type = network_functions_connection;
+};
+
+template <>
+struct network_functions_type<any_connection>
+{
+    using type = network_functions_any;
+};
+
+template <class Conn>
+using network_functions_t = typename network_functions_type<Conn>::type;
+
+template <class Conn>
+boost::span<const typename network_functions_type<Conn>::type> get_network_functions()
+{
+    static auto res = network_functions_type<Conn>::type::all();
+    return res;
+}
+
+// Fixtures
+template <class Conn>
+struct fixture_type;
+
+template <>
+struct fixture_type<tcp_connection>
+{
+    using type = tcp_network_fixture;
+};
+
+template <>
+struct fixture_type<any_connection>
+{
+    using type = any_connection_fixture;
+};
+
+template <class Conn>
+using fixture_type_t = typename fixture_type<Conn>::type;
+
+// Simplify defining test cases involving both connection types
+// The resulting test case gets the fixture (fix) and the network functions (fn) as args
+#define BOOST_MYSQL_SPOTCHECK_TEST(name)                                                                \
+    template <class Conn>                                                                               \
+    void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn);                     \
+    BOOST_DATA_TEST_CASE_F(tcp_network_fixture, name##_connection, network_functions_connection::all()) \
+    {                                                                                                   \
+        do_##name<tcp_connection>(*this, sample);                                                       \
+    }                                                                                                   \
+    BOOST_DATA_TEST_CASE_F(any_connection_fixture, name##_any, network_functions_any::all())            \
+    {                                                                                                   \
+        do_##name<any_connection>(*this, sample);                                                       \
+    }                                                                                                   \
+    template <class Conn>                                                                               \
+    void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn)
 
 auto err_samples = network_samples({
     "tcp_sync_errc",
@@ -51,6 +336,174 @@ auto err_samples = network_samples({
 auto samples_with_handshake = network_samples::all_with_handshake();
 auto all_samples = network_samples::all();
 
+// prepare statement
+BOOST_MYSQL_SPOTCHECK_TEST(prepare_statement_success)
+{
+    // Setup
+    fix.connect();
+
+    // Call the function
+    statement stmt = fn.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+
+    // Validate the result
+    BOOST_TEST_REQUIRE(stmt.valid());
+    BOOST_TEST(stmt.id() > 0u);
+    BOOST_TEST(stmt.num_params() == 2u);
+
+    // It can be executed
+    results result;
+    fn.execute_statement(fix.conn, stmt.bind(10, 20), result).validate_no_error();
+    BOOST_TEST(result.rows().empty());
+}
+
+BOOST_MYSQL_SPOTCHECK_TEST(prepare_statement_error)
+{
+    // Setup
+    fix.connect();
+
+    // Call the function
+    fn.prepare_statement(fix.conn, "SELECT * FROM bad_table WHERE id IN (?, ?)")
+        .validate_error(common_server_errc::er_no_such_table, {"table", "doesn't exist", "bad_table"});
+}
+
+// execute
+BOOST_MYSQL_SPOTCHECK_TEST(execute_success)
+{
+    // Setup
+    fix.connect();
+
+    // Call the function
+    results result;
+    fn.execute_query(fix.conn, "SELECT 'hello', 42", result).validate_no_error();
+
+    // Check results
+    BOOST_TEST(result.rows().size() == 1u);
+    BOOST_TEST(result.rows()[0] == makerow("hello", 42), per_element());
+    BOOST_TEST(result.meta().size() == 2u);
+}
+
+BOOST_MYSQL_SPOTCHECK_TEST(execute_error)
+{
+    // Setup
+    fix.connect();
+
+    // Call the function
+    results result;
+    fn.execute_query(fix.conn, "SELECT field_varchar, field_bad FROM one_row_table", result)
+        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
+}
+
+// Start execution
+BOOST_MYSQL_SPOTCHECK_TEST(start_execution_success)
+{
+    // Setup
+    fix.connect();
+
+    // Call the function
+    execution_state st;
+    fn.start_execution(fix.conn, "SELECT * FROM empty_table", st).validate_no_error();
+
+    // Check results
+    BOOST_TEST(st.should_read_rows());
+    validate_2fields_meta(st.meta(), "empty_table");
+}
+
+BOOST_MYSQL_SPOTCHECK_TEST(start_execution_error)
+{
+    // Setup
+    fix.connect();
+
+    // Call the function
+    execution_state st;
+    fn.start_execution(fix.conn, "SELECT field_varchar, field_bad FROM one_row_table", st)
+        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
+}
+
+// Close statement
+BOOST_MYSQL_SPOTCHECK_TEST(close_statement_success)
+{
+    // Setup
+    fix.connect();
+
+    // Prepare a statement
+    statement stmt = fn.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+
+    // Close the statement
+    fn.close_statement(fix.conn, stmt).validate_no_error();
+
+    // The statement is no longer valid
+    results result;
+    fn.execute_statement(fix.conn, stmt.bind(1, 2), result).validate_any_error();
+}
+
+BOOST_MYSQL_SPOTCHECK_TEST(close_statement_error)
+{
+    // Setup
+    fix.connect();
+
+    // Prepare a statement
+    statement stmt = fn.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+
+    // Close the connection
+    fn.close(fix.conn).validate_no_error();
+
+    // Close the statement fails, as it requires communication with the server
+    fn.close_statement(fix.conn, stmt).validate_any_error();
+}
+
+// Read resultset head
+// BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_success)
+// {
+//     params.set_multi_queries(true);
+//     setup_and_connect(sample);
+
+//     // Generate an execution state
+//     execution_state st;
+//     conn->start_execution("SELECT * FROM empty_table; SELECT * FROM one_row_table", st);
+//     BOOST_TEST_REQUIRE(st.should_read_rows());
+
+//     // Read the OK packet to finish 1st resultset
+//     conn->read_some_rows(st).validate_no_error();
+//     BOOST_TEST_REQUIRE(st.should_read_head());
+
+//     // Read head
+//     conn->read_resultset_head(st).validate_no_error();
+//     BOOST_TEST_REQUIRE(st.should_read_rows());
+
+//     // Reading head again does nothing
+//     conn->read_resultset_head(st).validate_no_error();
+//     BOOST_TEST_REQUIRE(st.should_read_rows());
+
+//     // We can read rows now
+//     auto rows = conn->read_some_rows(st).get();
+//     BOOST_TEST((rows == makerows(2, 1, "f0")));
+// }
+
+BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_error, all_samples)
+{
+    params.set_multi_queries(true);
+    setup_and_connect(sample);
+
+    // Generate an execution state
+    execution_state st;
+    conn->start_execution("SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // Read the OK packet to finish 1st resultset
+    conn->read_some_rows(st).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_head());
+
+    // Read head for the 2nd resultset. This one contains an error, which is detected when reading head.
+    conn->read_resultset_head(st).validate_error_exact(
+        common_server_errc::er_bad_field_error,
+        "Unknown column 'bad_field' in 'field list'"
+    );
+}
+
+//
+//
+//
+//
 // Handshake
 BOOST_DATA_TEST_CASE_F(network_fixture, handshake_success, samples_with_handshake)
 {
@@ -81,195 +534,6 @@ BOOST_DATA_TEST_CASE_F(network_fixture, connect_error, err_samples)
     BOOST_TEST(!conn->is_open());
 }
 
-// Start execution (query)
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_query_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    execution_state st;
-    conn->start_execution("SELECT * FROM empty_table", st).get();
-    BOOST_TEST(st.should_read_rows());
-    validate_2fields_meta(st.meta(), "empty_table");
-}
-
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_query_error, err_samples)
-{
-    setup_and_connect(sample);
-
-    execution_state st;
-    conn->start_execution("SELECT field_varchar, field_bad FROM one_row_table", st)
-        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
-}
-
-// execute (query)
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    results result;
-    conn->execute("SELECT 'hello', 42", result).get();
-    BOOST_TEST(result.rows().size() == 1u);
-    BOOST_TEST(result.rows()[0] == makerow("hello", 42), per_element());
-    BOOST_TEST(result.meta().size() == 2u);
-}
-
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_query_error, err_samples)
-{
-    setup_and_connect(sample);
-
-    results result;
-    conn->execute("SELECT field_varchar, field_bad FROM one_row_table", result)
-        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
-}
-
-// Prepare statement
-BOOST_DATA_TEST_CASE_F(network_fixture, prepare_statement_success, all_samples)
-{
-    setup_and_connect(sample);
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-    BOOST_TEST_REQUIRE(stmt.valid());
-    BOOST_TEST(stmt.id() > 0u);
-    BOOST_TEST(stmt.num_params() == 2u);
-}
-
-BOOST_DATA_TEST_CASE_F(network_fixture, prepare_statement_error, err_samples)
-{
-    setup_and_connect(sample);
-    conn->prepare_statement("SELECT * FROM bad_table WHERE id IN (?, ?)")
-        .validate_error(common_server_errc::er_no_such_table, {"table", "doesn't exist", "bad_table"});
-}
-
-// Start execution (statement, iterator)
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_stmt_it_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Execute
-    execution_state st;
-    std::forward_list<field_view> stmt_params{field_view("item"), field_view(42)};
-    conn->start_execution(stmt.bind(stmt_params.cbegin(), stmt_params.cend()), st).validate_no_error();
-    validate_2fields_meta(st.meta(), "empty_table");
-    BOOST_TEST(st.should_read_rows());
-}
-
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_stmt_it_error, err_samples)
-{
-    setup_and_connect(sample);
-    start_transaction();
-
-    // Prepare
-    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)")
-                    .get();
-
-    // Execute
-    execution_state st;
-    std::forward_list<field_view> stmt_params{field_view("f0"), field_view("bad_date")};
-    conn->start_execution(stmt.bind(stmt_params.cbegin(), stmt_params.cend()), st)
-        .validate_error(
-            common_server_errc::er_truncated_wrong_value,
-            {"field_date", "bad_date", "incorrect date value"}
-        );
-}
-
-// start execution (statement, tuple)
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_statement_tuple_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Execute
-    execution_state st;
-    conn->start_execution(stmt.bind(field_view(42), field_view(40)), st).validate_no_error();
-    validate_2fields_meta(st.meta(), "empty_table");
-    BOOST_TEST(st.should_read_rows());
-}
-
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_statement_tuple_error, err_samples)
-{
-    setup_and_connect(sample);
-    start_transaction();
-
-    // Prepare
-    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)")
-                    .get();
-
-    // Execute
-    execution_state st;
-    conn->start_execution(stmt.bind(field_view("abc"), field_view("bad_date")), st)
-        .validate_error(
-            common_server_errc::er_truncated_wrong_value,
-            {"field_date", "bad_date", "incorrect date value"}
-        );
-}
-
-// Execute (statement, iterator)
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_iterator_success, err_samples)
-{
-    setup_and_connect(sample);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Execute
-    results result;
-    std::forward_list<field_view> stmt_params{field_view("item"), field_view(42)};
-    conn->execute(stmt.bind(stmt_params.cbegin(), stmt_params.cend()), result).validate_no_error();
-    BOOST_TEST(result.rows().size() == 0u);
-}
-
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_error, err_samples)
-{
-    setup_and_connect(sample);
-    start_transaction();
-
-    // Prepare
-    auto stmt = conn->prepare_statement("INSERT INTO inserts_table (field_varchar, field_date) VALUES (?, ?)")
-                    .get();
-
-    // Execute
-    results result;
-    conn->execute(stmt.bind(field_view("f0"), field_view("bad_date")), result)
-        .validate_error(
-            common_server_errc::er_truncated_wrong_value,
-            {"field_date", "bad_date", "incorrect date value"}
-        );
-}
-
-// Execute (statement, tuple). No error spotcheck since it's the same underlying fn
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_statement_tuple_success, err_samples)
-{
-    setup_and_connect(sample);
-
-    // Prepare
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Execute
-    results result;
-    conn->execute(stmt.bind(field_view("item"), field_view(42)), result).validate_no_error();
-    BOOST_TEST(result.rows().size() == 0u);
-}
-
-// Close statement: no server error spotcheck
-BOOST_DATA_TEST_CASE_F(network_fixture, close_statement_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    // Prepare a statement
-    auto stmt = conn->prepare_statement("SELECT * FROM empty_table WHERE id IN (?, ?)").get();
-
-    // Close the statement
-    conn->close_statement(stmt).validate_no_error();
-
-    // The statement is no longer valid
-    results result;
-    conn->execute(stmt.bind(field_view("a"), field_view("b")), result).validate_any_error();
-}
-
 // Read some rows: no server error spotcheck
 BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_success, all_samples)
 {
@@ -294,55 +558,6 @@ BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_success, all_samples)
     rows = conn->read_some_rows(st).get();
     BOOST_TEST(rows.empty());
     validate_eof(st);
-}
-
-// Read resultset head
-BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_success, all_samples)
-{
-    params.set_multi_queries(true);
-    setup_and_connect(sample);
-
-    // Generate an execution state
-    execution_state st;
-    conn->start_execution("SELECT * FROM empty_table; SELECT * FROM one_row_table", st);
-    BOOST_TEST_REQUIRE(st.should_read_rows());
-
-    // Read the OK packet to finish 1st resultset
-    conn->read_some_rows(st).validate_no_error();
-    BOOST_TEST_REQUIRE(st.should_read_head());
-
-    // Read head
-    conn->read_resultset_head(st).validate_no_error();
-    BOOST_TEST_REQUIRE(st.should_read_rows());
-
-    // Reading head again does nothing
-    conn->read_resultset_head(st).validate_no_error();
-    BOOST_TEST_REQUIRE(st.should_read_rows());
-
-    // We can read rows now
-    auto rows = conn->read_some_rows(st).get();
-    BOOST_TEST((rows == makerows(2, 1, "f0")));
-}
-
-BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_error, all_samples)
-{
-    params.set_multi_queries(true);
-    setup_and_connect(sample);
-
-    // Generate an execution state
-    execution_state st;
-    conn->start_execution("SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st);
-    BOOST_TEST_REQUIRE(st.should_read_rows());
-
-    // Read the OK packet to finish 1st resultset
-    conn->read_some_rows(st).validate_no_error();
-    BOOST_TEST_REQUIRE(st.should_read_head());
-
-    // Read head for the 2nd resultset. This one contains an error, which is detected when reading head.
-    conn->read_resultset_head(st).validate_error_exact(
-        common_server_errc::er_bad_field_error,
-        "Unknown column 'bad_field' in 'field list'"
-    );
 }
 
 // Ping
@@ -639,3 +854,5 @@ BOOST_AUTO_TEST_CASE(run_pipeline_error)
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_spotchecks
+
+}  // namespace
