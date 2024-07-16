@@ -12,11 +12,13 @@
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
 
 #include "test_common/as_netres.hpp"
+#include "test_integration/common.hpp"
 
 namespace boost {
 namespace mysql {
@@ -45,6 +47,11 @@ struct any_connection_fixture
     void connect(const connect_params& params, source_location loc = BOOST_CURRENT_LOCATION)
     {
         conn.async_connect(params, as_netresult).validate_no_error(loc);
+    }
+
+    void connect(source_location loc = BOOST_CURRENT_LOCATION)
+    {
+        connect(connect_params_builder().ssl(ssl_mode::disable).build(), loc);
     }
 
     void start_transaction(source_location loc = BOOST_CURRENT_LOCATION)
