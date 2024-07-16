@@ -166,9 +166,10 @@ BOOST_AUTO_TEST_CASE(bad_password)
 
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 
-// caching_sha2_password. We create a unique user here to avoid clashes
-// with other integration tests running at the same time (which happens in b2 builds).
-// TODO: this can probably be implemented more reliably using table locks
+// caching_sha2_password. We acquire a lock on the sha256_mutex
+// (dummy table, used as a mutex) to avoid race conditions with other test runs
+// (which happens in b2 builds).
+// The sha256 cache is shared between all clients.
 struct caching_sha2_lock : handshake_fixture
 {
     caching_sha2_lock()
