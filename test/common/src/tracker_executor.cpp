@@ -226,7 +226,7 @@ int boost::mysql::test::current_executor_id()
 
 boost::mysql::test::initiation_guard::initiation_guard()
 {
-    BOOST_TEST_REQUIRE(!g_is_running_initiation);
+    BOOST_ASSERT(!g_is_running_initiation);
     g_is_running_initiation = true;
 }
 

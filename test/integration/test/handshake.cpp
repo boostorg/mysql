@@ -10,7 +10,6 @@
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
@@ -27,7 +26,6 @@
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <random>
 #include <utility>
 #include <vector>
 
@@ -171,83 +169,31 @@ BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 // caching_sha2_password. We create a unique user here to avoid clashes
 // with other integration tests running at the same time (which happens in b2 builds).
 // TODO: this can probably be implemented more reliably using table locks
-struct caching_sha2_user_creator : handshake_fixture
+struct caching_sha2_lock : handshake_fixture
 {
-    static std::string gen_id()
-    {
-        constexpr std::size_t len = 10;
-        constexpr const char alphanum[] = "0123456789abcdefghijklmnopqrstuvwxyz";
-
-        // Random number generation
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<std::size_t> distrib(0, sizeof(alphanum) - 2);  // NULL terminator
-
-        std::string res;
-        res.reserve(len);
-        for (std::size_t i = 0; i < len; ++i)
-            res += alphanum[distrib(gen)];
-        return res;
-    }
-
-    static const std::string& regular_username()
-    {
-        static std::string res = "csha2p_user_" + gen_id();
-        return res;
-    }
-
-    static const std::string& empty_password_username()
-    {
-        static std::string res = "csha2p_emptypuser_" + gen_id();
-        return res;
-    }
-
-    caching_sha2_user_creator()
+    caching_sha2_lock()
     {
         // Connect
         auto params = default_connect_params();
         params.username = "root";
         params.password = "";
-        params.multi_queries = true;
         conn.async_connect(params, as_netresult).validate_no_error();
 
-        // Compose the query
-        constexpr const char* query_pattern =
-            "CREATE USER {0}@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'csha2p_password';"
-            "GRANT ALL PRIVILEGES ON boost_mysql_integtests.*TO {0}@'%';"
-            "CREATE USER {1}@'%' IDENTIFIED WITH 'caching_sha2_password' BY '';"
-            "GRANT ALL PRIVILEGES ON boost_mysql_integtests.*TO {1}@'%';"
-            "FLUSH PRIVILEGES";
-        auto query = format_sql(
-            conn.format_opts().value(),
-            query_pattern,
-            regular_username(),
-            empty_password_username()
-        );
-
-        // Execute it
-        results result;
-        conn.async_execute(std::move(query), result, as_netresult).validate_no_error();
+        // Acquire the lock
+        results r;
+        conn.async_execute("LOCK TABLE sha256_mutex WRITE", r, as_netresult).validate_no_error();
     }
 
-    ~caching_sha2_user_creator()
+    ~caching_sha2_lock()
     {
-        // Compose the query
-        auto query = format_sql(
-            conn.format_opts().value(),
-            "DROP USER {}; DROP USER {}",
-            regular_username(),
-            empty_password_username()
-        );
-
-        // Execute it
-        results result;
-        conn.async_execute(std::move(query), result, as_netresult).validate_no_error();
+        // Close the connection, releasing the lock.
+        // TODO: the base fixture should close the connection already
+        conn.async_close(as_netresult).run();
     }
 };
 
 BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
-BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_sha2_user_creator>())
+BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_sha2_lock>())
 
 static void load_sha256_cache(string_view user, string_view password)
 {
@@ -278,7 +224,7 @@ static void clear_sha256_cache()
 BOOST_AUTO_TEST_CASE(cache_hit)
 {
     // One-time setup
-    load_sha256_cache(caching_sha2_user_creator::regular_username(), "csha2p_password");
+    load_sha256_cache("csha2p_user", "csha2p_password");
 
     for (const auto& tc : all_transports())
     {
@@ -287,7 +233,7 @@ BOOST_AUTO_TEST_CASE(cache_hit)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = caching_sha2_user_creator::regular_username();
+            params.username = "csha2p_user";
             params.password = "csha2p_password";
 
             // Handshake succeeds
@@ -307,7 +253,7 @@ BOOST_AUTO_TEST_CASE(cache_miss_success)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = caching_sha2_user_creator::regular_username();
+            params.username = "csha2p_user";
             params.password = "csha2p_password";
             clear_sha256_cache();
 
@@ -323,7 +269,7 @@ BOOST_FIXTURE_TEST_CASE(cache_miss_error, handshake_fixture)
 {
     // Setup
     auto params = default_connect_params(ssl_mode::disable);
-    params.username = caching_sha2_user_creator::regular_username();
+    params.username = "csha2p_user";
     params.password = "csha2p_password";
     clear_sha256_cache();
 
@@ -335,7 +281,7 @@ BOOST_FIXTURE_TEST_CASE(cache_miss_error, handshake_fixture)
 BOOST_AUTO_TEST_CASE(empty_password_cache_hit)
 {
     // One-time setup
-    load_sha256_cache(caching_sha2_user_creator::empty_password_username(), "");
+    load_sha256_cache("csha2p_empty_password_user", "");
 
     for (const auto& tc : all_transports())
     {
@@ -344,7 +290,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_hit)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = caching_sha2_user_creator::empty_password_username();
+            params.username = "csha2p_empty_password_user";
             params.password = "";
 
             // Handshake succeeds
@@ -363,7 +309,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_miss)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = caching_sha2_user_creator::empty_password_username();
+            params.username = "csha2p_empty_password_user";
             params.password = "";
             clear_sha256_cache();
 
@@ -378,13 +324,13 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, handshake_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
     auto params = default_connect_params(ssl_mode::require);
-    params.username = caching_sha2_user_creator::regular_username();
+    params.username = "csha2p_user";
     params.password = "bad_password";
-    load_sha256_cache(caching_sha2_user_creator::regular_username(), "csha2p_password");
+    load_sha256_cache("csha2p_user", "csha2p_password");
     conn.async_connect(params, as_netresult)
         .validate_error_contains(
             common_server_errc::er_access_denied_error,
-            {"access denied", caching_sha2_user_creator::regular_username()}
+            {"access denied", "csha2p_user"}
         );
 }
 
@@ -392,13 +338,13 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, handshake_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
     auto params = default_connect_params(ssl_mode::require);
-    params.username = caching_sha2_user_creator::regular_username();
+    params.username = "csha2p_user";
     params.password = "bad_password";
     clear_sha256_cache();
     conn.async_connect(params, as_netresult)
         .validate_error_contains(
             common_server_errc::er_access_denied_error,
-            {"access denied", caching_sha2_user_creator::regular_username()}
+            {"access denied", "csha2p_user"}
         );
 }
 
