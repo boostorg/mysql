@@ -84,20 +84,6 @@ BOOST_AUTO_TEST_CASE(custom_ssl_context)
     BOOST_TEST(result.error().message().find("certificate verify failed") != std::string::npos);
 }
 
-// Disabling SSL works with TCP connections
-BOOST_AUTO_TEST_CASE(tcp_ssl_mode_disable)
-{
-    // Create the connection
-    boost::asio::io_context ctx;
-    any_connection conn(ctx);
-
-    // Call the function
-    conn.async_connect(default_connect_params(ssl_mode::disable), as_netresult).validate_no_error();
-
-    // uses_ssl reports the right value
-    BOOST_TEST(!conn.uses_ssl());
-}
-
 // SSL mode enable woks with TCP connections
 BOOST_AUTO_TEST_CASE(tcp_ssl_mode_enable)
 {
@@ -111,78 +97,6 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_mode_enable)
     // All our CIs support SSL
     BOOST_TEST(conn.uses_ssl());
 }
-
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-// UNIX connections never use SSL
-BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
-BOOST_AUTO_TEST_CASE(unix_ssl)
-{
-    // Create the connection
-    boost::asio::io_context ctx;
-    any_connection conn(ctx);
-
-    // Connect params
-    auto params = default_connect_params(ssl_mode::require);
-    params.server_address.emplace_unix_path(default_unix_path);
-
-    // Call the function
-    conn.async_connect(params, as_netresult).validate_no_error();
-
-    // SSL is not enabled even if we specified require, since there's
-    // no point in using SSL with UNIX sockets
-    BOOST_TEST(!conn.uses_ssl());
-}
-#endif
-
-// Spotcheck: users can log-in using the caching_sha2_password auth plugin
-BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
-BOOST_AUTO_TEST_CASE(tcp_caching_sha2_password)
-{
-    // Create the connection
-    boost::asio::io_context ctx;
-    any_connection conn(ctx);
-
-    // Connect params
-    auto params = default_connect_params(ssl_mode::require);
-    params.username = "csha2p_user";
-    params.password = "csha2p_password";
-
-    // Call the function
-    conn.async_connect(params, as_netresult).validate_no_error();
-    BOOST_TEST(conn.uses_ssl());
-}
-
-#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-// Users can log-in using the caching_sha2_password auth plugin
-// even if they're using UNIX sockets.
-BOOST_TEST_DECORATOR(*run_if(&server_features::sha256, &server_features::unix_sockets))
-BOOST_AUTO_TEST_CASE(unix_caching_sha2_password)
-{
-    // Setup
-    boost::asio::io_context ctx;
-    any_connection conn(ctx);
-    any_connection root_conn(ctx);
-
-    // Clear the sha256 cache. This forces us send the password using plain text.
-    // TODO: we could create a dedicated user - this can make the test more reliable
-    auto root_params = default_connect_params();
-    results r;
-    root_params.username = "root";
-    root_params.password = "";
-    root_conn.connect(root_params);
-    root_conn.execute("FLUSH PRIVILEGES", r);
-
-    // Connect params
-    auto params = default_connect_params(ssl_mode::require);
-    params.server_address.emplace_unix_path(default_unix_path);
-    params.username = "csha2p_user";
-    params.password = "csha2p_password";
-
-    // Call the function
-    conn.async_connect(params, as_netresult).validate_no_error();
-    BOOST_TEST(!conn.uses_ssl());
-}
-#endif
 
 network_result<void> create_net_result()
 {
