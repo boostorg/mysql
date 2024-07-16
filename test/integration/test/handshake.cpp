@@ -109,6 +109,10 @@ static std::vector<transport_test_case> all_transports()
 // mysql_native_password
 BOOST_AUTO_TEST_SUITE(mysql_native_password)
 
+constexpr const char* regular_user = "mysqlnp_user";
+constexpr const char* regular_passwd = "mysqlnp_password";
+constexpr const char* empty_user = "mysqlnp_empty_password_user";
+
 BOOST_AUTO_TEST_CASE(regular_password)
 {
     for (const auto& tc : all_transports())
@@ -118,8 +122,8 @@ BOOST_AUTO_TEST_CASE(regular_password)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = "mysqlnp_user";
-            params.password = "mysqlnp_password";
+            params.username = regular_user;
+            params.password = regular_passwd;
 
             // Handshake succeeds
             fix.conn.async_connect(params, as_netresult).validate_no_error();
@@ -137,7 +141,7 @@ BOOST_AUTO_TEST_CASE(empty_password)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = "mysqlnp_empty_password_user";
+            params.username = empty_user;
             params.password = "";
 
             // Handshake succeeds
@@ -156,14 +160,14 @@ BOOST_AUTO_TEST_CASE(bad_password)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = "mysqlnp_user";
+            params.username = regular_user;
             params.password = "bad_password";
 
             // Handshake fails with the expected error code
             fix.conn.async_connect(params, as_netresult)
                 .validate_error_contains(
                     common_server_errc::er_access_denied_error,
-                    {"access denied", "mysqlnp_user"}
+                    {"access denied", regular_user}
                 );
         }
     }
@@ -175,7 +179,7 @@ BOOST_AUTO_TEST_CASE(tcp_connection_)
     // Setup
     asio::io_context ctx;
     tcp_connection conn(ctx);
-    handshake_params params("mysqlnp_user", "mysqlnp_password", integ_db);
+    handshake_params params(regular_user, regular_passwd, integ_db);
 
     // Connect succeeds
     conn.async_connect(get_endpoint<tcp_connection::stream_type>(), params, as_netresult).validate_no_error();
@@ -210,6 +214,10 @@ struct caching_sha2_lock : handshake_fixture
     }
 };
 
+constexpr const char* regular_user = "csha2p_user";
+constexpr const char* regular_passwd = "csha2p_password";
+constexpr const char* empty_user = "csha2p_empty_password_user";
+
 BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
 BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_sha2_lock>())
 
@@ -242,7 +250,7 @@ static void clear_sha256_cache()
 BOOST_AUTO_TEST_CASE(cache_hit)
 {
     // One-time setup
-    load_sha256_cache("csha2p_user", "csha2p_password");
+    load_sha256_cache(regular_user, regular_passwd);
 
     for (const auto& tc : all_transports())
     {
@@ -251,8 +259,8 @@ BOOST_AUTO_TEST_CASE(cache_hit)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = "csha2p_user";
-            params.password = "csha2p_password";
+            params.username = regular_user;
+            params.password = regular_passwd;
 
             // Handshake succeeds
             fix.conn.async_connect(params, as_netresult).validate_no_error();
@@ -271,8 +279,8 @@ BOOST_AUTO_TEST_CASE(cache_miss_success)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = "csha2p_user";
-            params.password = "csha2p_password";
+            params.username = regular_user;
+            params.password = regular_passwd;
             clear_sha256_cache();
 
             // Handshake succeeds
@@ -287,8 +295,8 @@ BOOST_FIXTURE_TEST_CASE(cache_miss_error, handshake_fixture)
 {
     // Setup
     auto params = default_connect_params(ssl_mode::disable);
-    params.username = "csha2p_user";
-    params.password = "csha2p_password";
+    params.username = regular_user;
+    params.password = regular_passwd;
     clear_sha256_cache();
 
     // Handshake fails
@@ -299,7 +307,7 @@ BOOST_FIXTURE_TEST_CASE(cache_miss_error, handshake_fixture)
 BOOST_AUTO_TEST_CASE(empty_password_cache_hit)
 {
     // One-time setup
-    load_sha256_cache("csha2p_empty_password_user", "");
+    load_sha256_cache(empty_user, "");
 
     for (const auto& tc : all_transports())
     {
@@ -308,7 +316,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_hit)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = "csha2p_empty_password_user";
+            params.username = empty_user;
             params.password = "";
 
             // Handshake succeeds
@@ -327,7 +335,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_miss)
             // Setup
             handshake_fixture fix;
             auto params = tc.params;
-            params.username = "csha2p_empty_password_user";
+            params.username = empty_user;
             params.password = "";
             clear_sha256_cache();
 
@@ -342,28 +350,22 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, handshake_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
     auto params = default_connect_params(ssl_mode::require);
-    params.username = "csha2p_user";
+    params.username = regular_user;
     params.password = "bad_password";
-    load_sha256_cache("csha2p_user", "csha2p_password");
+    load_sha256_cache(regular_user, regular_passwd);
     conn.async_connect(params, as_netresult)
-        .validate_error_contains(
-            common_server_errc::er_access_denied_error,
-            {"access denied", "csha2p_user"}
-        );
+        .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
 }
 
 BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, handshake_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
     auto params = default_connect_params(ssl_mode::require);
-    params.username = "csha2p_user";
+    params.username = regular_user;
     params.password = "bad_password";
     clear_sha256_cache();
     conn.async_connect(params, as_netresult)
-        .validate_error_contains(
-            common_server_errc::er_access_denied_error,
-            {"access denied", "csha2p_user"}
-        );
+        .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
 }
 
 // Spotcheck: caching_sha2_password works with old connection
@@ -373,7 +375,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
     asio::io_context ctx;
     asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
     tcp_ssl_connection conn(ctx, ssl_ctx);
-    handshake_params params("csha2p_user", "csha2p_password", integ_db);
+    handshake_params params(regular_user, regular_passwd, integ_db);
 
     // Connect succeeds
     conn.async_connect(get_endpoint<tcp_connection::stream_type>(), params, as_netresult).validate_no_error();
