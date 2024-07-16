@@ -9,13 +9,20 @@
 #define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_ANY_CONNECTION_FIXTURE_HPP
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/connect_params.hpp>
+#include <boost/mysql/metadata_mode.hpp>
+#include <boost/mysql/results.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/assert/source_location.hpp>
+
+#include "test_common/as_netres.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
+// TODO: move to compiled?
 struct any_connection_fixture
 {
     asio::io_context ctx;
@@ -28,9 +35,23 @@ struct any_connection_fixture
         return res;
     }
 
-    any_connection_fixture() = default;
-    any_connection_fixture(any_connection_params params) : conn(ctx, params) {}
+    any_connection_fixture() { conn.set_meta_mode(metadata_mode::full); }
+    any_connection_fixture(any_connection_params params) : conn(ctx, params)
+    {
+        conn.set_meta_mode(metadata_mode::full);
+    }
     any_connection_fixture(asio::ssl::context& ssl_ctx) : any_connection_fixture(make_params(ssl_ctx)) {}
+
+    void connect(const connect_params& params, source_location loc = BOOST_CURRENT_LOCATION)
+    {
+        conn.async_connect(params, as_netresult).validate_no_error(loc);
+    }
+
+    void start_transaction(source_location loc = BOOST_CURRENT_LOCATION)
+    {
+        results r;
+        conn.async_execute("START TRANSACTION", r, as_netresult).validate_no_error(loc);
+    }
 };
 
 }  // namespace test

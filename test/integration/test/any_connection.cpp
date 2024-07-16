@@ -45,7 +45,7 @@ BOOST_FIXTURE_TEST_CASE(backslash_escapes, any_connection_fixture)
     BOOST_TEST(conn.backslash_escapes());
 
     // Connect doesn't change the value
-    conn.async_connect(default_connect_params(ssl_mode::disable), as_netresult).validate_no_error();
+    conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
     BOOST_TEST(conn.backslash_escapes());
     BOOST_TEST(conn.format_opts()->backslash_escapes);
 
@@ -69,7 +69,7 @@ BOOST_FIXTURE_TEST_CASE(backslash_escapes, any_connection_fixture)
     conn.async_execute("SET sql_mode = 'NO_BACKSLASH_ESCAPES'", r, as_netresult).validate_no_error();
     BOOST_TEST(!conn.backslash_escapes());
     BOOST_TEST(!conn.format_opts()->backslash_escapes);
-    conn.async_connect(default_connect_params(ssl_mode::disable), as_netresult).validate_no_error();
+    conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
     BOOST_TEST(conn.backslash_escapes());
     BOOST_TEST(conn.format_opts()->backslash_escapes);
 }
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(max_buffer_size)
     any_connection_fixture fix(params);
 
     // Connect
-    fix.conn.async_connect(default_connect_params(ssl_mode::disable), as_netresult).validate_no_error();
+    fix.conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Reading and writing almost 512 bytes works
     results r;
@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(max_buffer_size)
 BOOST_FIXTURE_TEST_CASE(default_max_buffer_size_success, any_connection_fixture)
 {
     // Connect
-    conn.async_connect(default_connect_params(ssl_mode::disable), as_netresult).validate_no_error();
+    conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Reading almost max_buffer_size works
     execution_state st;
@@ -116,7 +116,7 @@ BOOST_FIXTURE_TEST_CASE(default_max_buffer_size_success, any_connection_fixture)
 BOOST_FIXTURE_TEST_CASE(default_max_buffer_size_error, any_connection_fixture)
 {
     // Connect
-    conn.async_connect(default_connect_params(ssl_mode::disable), as_netresult).validate_no_error();
+    conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Trying to read more than max_buffer_size bytes fails
     results r;
@@ -145,7 +145,7 @@ BOOST_AUTO_TEST_CASE(naggle_disabled)
             any_connection_fixture fix;
 
             // Connect
-            tc.fn(fix.conn, default_connect_params(ssl_mode::disable)).validate_no_error();
+            tc.fn(fix.conn, connect_params_builder().disable_ssl().build()).validate_no_error();
 
             // Naggle's algorithm was disabled
             asio::ip::tcp::no_delay opt;

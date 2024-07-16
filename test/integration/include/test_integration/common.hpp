@@ -21,6 +21,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <initializer_list>
+#include <string>
+#include <utility>
 
 #include "test_common/ci_server.hpp"
 #include "test_integration/er_connection.hpp"
@@ -30,6 +32,55 @@
 namespace boost {
 namespace mysql {
 namespace test {
+
+class connect_params_builder
+{
+    connect_params res_;
+
+public:
+    connect_params_builder()
+    {
+        res_.server_address.emplace_host_and_port(get_hostname());
+        res_.username = integ_user;
+        res_.password = integ_passwd;
+        res_.database = integ_db;
+    }
+
+    connect_params_builder& set_unix()
+    {
+        res_.server_address.emplace_unix_path(default_unix_path);
+        return *this;
+    }
+
+    connect_params_builder& credentials(std::string username, std::string passwd)
+    {
+        res_.username = std::move(username);
+        res_.password = std::move(passwd);
+        return *this;
+    }
+
+    connect_params_builder& database(std::string db)
+    {
+        res_.database = std::move(db);
+        return *this;
+    }
+
+    connect_params_builder& disable_ssl() { return ssl(ssl_mode::disable); }
+
+    connect_params_builder& ssl(ssl_mode ssl)
+    {
+        res_.ssl = ssl;
+        return *this;
+    }
+
+    connect_params_builder& multi_queries(bool v)
+    {
+        res_.multi_queries = v;
+        return *this;
+    }
+
+    connect_params build() { return std::move(res_); }
+};
 
 inline connect_params default_connect_params(ssl_mode ssl = ssl_mode::enable)
 {

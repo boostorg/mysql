@@ -6,40 +6,38 @@
 //
 
 #include <boost/mysql/common_server_errc.hpp>
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/results.hpp>
 
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/as_netres.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/validate_string_contains.hpp"
+#include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
+using boost::test_tools::per_element;
 
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_multi_queries)
 
-BOOST_FIXTURE_TEST_CASE(empty_results, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(empty_results, any_connection_fixture)
 {
-    params.set_multi_queries(true);
-    connect();
+    // Setup
+    constexpr const char* query =
+        "INSERT INTO inserts_table (field_varchar) VALUES ('abc');"
+        "INSERT INTO inserts_table (field_varchar) VALUES ('def');"
+        "DELETE FROM updates_table";
+    connect(connect_params_builder().disable_ssl().multi_queries(true).build());
     start_transaction();
 
+    // Run the query
     results result;
-    conn.execute(
-        R"%(
-            INSERT INTO inserts_table (field_varchar) VALUES ('abc');
-            INSERT INTO inserts_table (field_varchar) VALUES ('def');
-            DELETE FROM updates_table
-        )%",
-        result
-    );
+    conn.async_execute(query, result, as_netresult).validate_no_error();
 
     // Validate results
     BOOST_TEST_REQUIRE(result.size() == 3u);
@@ -69,21 +67,19 @@ BOOST_FIXTURE_TEST_CASE(empty_results, tcp_network_fixture)
     BOOST_TEST(!result[2].is_out_params());
 }
 
-BOOST_FIXTURE_TEST_CASE(data_results, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(data_results, any_connection_fixture)
 {
-    params.set_multi_queries(true);
-    connect();
+    // Setup
+    connect(connect_params_builder().disable_ssl().multi_queries(true).build());
     start_transaction();
+    constexpr const char* query =
+        "SELECT * FROM one_row_table;"
+        "SELECT * FROM empty_table;"
+        "DELETE FROM updates_table";
 
+    // Execute
     results result;
-    conn.execute(
-        R"%(
-            SELECT * FROM one_row_table;
-            SELECT * FROM empty_table;
-            DELETE FROM updates_table
-        )%",
-        result
-    );
+    conn.async_execute(query, result, as_netresult).validate_no_error();
 
     // Validate results
     BOOST_TEST_REQUIRE(result.size() == 3u);
@@ -113,19 +109,53 @@ BOOST_FIXTURE_TEST_CASE(data_results, tcp_network_fixture)
     BOOST_TEST(!result[2].is_out_params());
 }
 
-BOOST_FIXTURE_TEST_CASE(error_not_enabled, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(error_not_enabled, any_connection_fixture)
 {
-    connect();
+    // Setup
+    connect(connect_params_builder().disable_ssl().build());
 
+    // Execute fails
     results result;
-    error_code err;
-    diagnostics diag;
-
-    conn.execute("SELECT 1; SELECT 2", result, err, diag);
-    BOOST_TEST(err == common_server_errc::er_parse_error);
-    validate_string_contains(diag.server_message(), {"you have an error in your sql syntax"});
+    conn.async_execute("SELECT 1; SELECT 2", result, as_netresult)
+        .validate_error(
+            common_server_errc::er_parse_error,
+            "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server "
+            "version for the right syntax to use near 'SELECT 2' at line 1"
+        );
 }
 
-BOOST_AUTO_TEST_SUITE_END()  // test_crud
+// Spotcheck: old connection can do multi-queries
+BOOST_FIXTURE_TEST_CASE(tcp_connection_enable, tcp_network_fixture)
+{
+    // TODO: refactor this to current practices
+    // Setup
+    params.set_multi_queries(true);
+    connect();
+
+    // Execute succeeds
+    results result;
+    conn.async_execute("SELECT 1; SELECT 2", result, as_netresult).validate_no_error();
+    BOOST_TEST_REQUIRE(result.size() == 2u);
+    BOOST_TEST(result.at(0).rows() == makerows(1, 1), per_element());
+    BOOST_TEST(result.at(1).rows() == makerows(1, 2), per_element());
+}
+
+BOOST_FIXTURE_TEST_CASE(tcp_connection_disabled, tcp_network_fixture)
+{
+    // TODO: refactor this to current practices
+    // Setup
+    connect();
+
+    // Execute succeeds
+    results result;
+    conn.async_execute("SELECT 1; SELECT 2", result, as_netresult)
+        .validate_error(
+            common_server_errc::er_parse_error,
+            "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server "
+            "version for the right syntax to use near 'SELECT 2' at line 1"
+        );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace

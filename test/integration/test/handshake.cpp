@@ -26,6 +26,7 @@
 #include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -51,7 +52,6 @@ BOOST_AUTO_TEST_SUITE(test_handshake)
 
 // TODO: we can double-check SSL using 'SHOW STATUS LIKE 'ssl_version''
 // TODO: test that old tcp_ssl_connection can be passed a custom collation ID
-// TODO: update multi queries to test old/new connections
 // TODO: review connection termination tests
 
 // Handshake is the most convoluted part of MySQL protocol,
@@ -67,15 +67,13 @@ struct transport_test_case
 static std::vector<transport_test_case> secure_transports()
 {
     std::vector<transport_test_case> res{
-        {"tcp_ssl", default_connect_params(ssl_mode::require), true},
+        {"tcp_ssl", connect_params_builder().ssl(ssl_mode::require).build(), true},
     };
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
     if (get_server_features().unix_sockets)
     {
-        auto unix_params = default_connect_params();
-        unix_params.server_address.emplace_unix_path(default_unix_path);
-        res.push_back({"unix", std::move(unix_params), false});
+        res.push_back({"unix", connect_params_builder().set_unix().build(), false});
     }
 #endif
 
@@ -179,10 +177,8 @@ struct caching_sha2_lock : any_connection_fixture
     caching_sha2_lock()
     {
         // Connect
-        auto params = default_connect_params();
-        params.username = "root";
-        params.password = "";
-        conn.async_connect(params, as_netresult).validate_no_error();
+        conn.async_connect(connect_params_builder().credentials("root", "").build(), as_netresult)
+            .validate_no_error();
 
         // Acquire the lock
         results r;
@@ -204,14 +200,16 @@ constexpr const char* empty_user = "csha2p_empty_password_user";
 BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
 BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_sha2_lock>())
 
-static void load_sha256_cache(string_view user, string_view password)
+static void load_sha256_cache(std::string user, std::string password)
 {
     // Connecting as the given user loads the cache
     any_connection_fixture fix;
-    auto params = default_connect_params();
-    params.username = user;
-    params.password = password;
-    fix.conn.async_connect(params, as_netresult).validate_no_error();
+    fix.conn
+        .async_connect(
+            connect_params_builder().credentials(std::move(user), std::move(password)).build(),
+            as_netresult
+        )
+        .validate_no_error();
     fix.conn.async_close(as_netresult).validate_no_error();
 }
 
@@ -219,10 +217,8 @@ static void clear_sha256_cache()
 {
     // Issuing a FLUSH PRIVILEGES clears the cache
     any_connection_fixture fix;
-    connect_params params;
-    params.username = "root";
-    params.password = "";
-    fix.conn.async_connect(params, as_netresult).validate_no_error();
+    fix.conn.async_connect(connect_params_builder().credentials("root", "").build(), as_netresult)
+        .validate_no_error();
 
     results result;
     fix.conn.async_execute("FLUSH PRIVILEGES", result, as_netresult).validate_no_error();
@@ -277,9 +273,10 @@ BOOST_AUTO_TEST_CASE(cache_miss_success)
 BOOST_FIXTURE_TEST_CASE(cache_miss_error, any_connection_fixture)
 {
     // Setup
-    auto params = default_connect_params(ssl_mode::disable);
-    params.username = regular_user;
-    params.password = regular_passwd;
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::disable)
+                      .credentials(regular_user, regular_passwd)
+                      .build();
     clear_sha256_cache();
 
     // Handshake fails
@@ -332,9 +329,10 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_miss)
 BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, any_connection_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
-    auto params = default_connect_params(ssl_mode::require);
-    params.username = regular_user;
-    params.password = "bad_password";
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::require)
+                      .credentials(regular_user, "bad_password")
+                      .build();
     load_sha256_cache(regular_user, regular_passwd);
     conn.async_connect(params, as_netresult)
         .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
@@ -343,9 +341,10 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, any_connection_fixture)
 BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, any_connection_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
-    auto params = default_connect_params(ssl_mode::require);
-    params.username = regular_user;
-    params.password = "bad_password";
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::require)
+                      .credentials(regular_user, "bad_password")
+                      .build();
     clear_sha256_cache();
     conn.async_connect(params, as_netresult)
         .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
@@ -355,8 +354,7 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, any_connection_fixture)
 BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
 {
     // Setup
-    auto params = default_connect_params(ssl_mode::require);
-    params.database = "bad_db";
+    auto params = connect_params_builder().ssl(ssl_mode::require).database("bad_db").build();
     clear_sha256_cache();
 
     // Connect fails
@@ -395,7 +393,8 @@ BOOST_AUTO_TEST_CASE(certificate_valid)
     any_connection_fixture fix(ssl_ctx);
 
     // Connect works
-    fix.conn.async_connect(default_connect_params(ssl_mode::require), as_netresult).validate_no_error();
+    fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
+        .validate_no_error();
     BOOST_TEST(fix.conn.uses_ssl());
 }
 
@@ -407,7 +406,10 @@ BOOST_AUTO_TEST_CASE(certificate_invalid)
     any_connection_fixture fix(ssl_ctx);
 
     // Connect fails
-    auto netres = fix.conn.async_connect(default_connect_params(ssl_mode::require), as_netresult);
+    auto netres = fix.conn.async_connect(
+        connect_params_builder().ssl(ssl_mode::require).build(),
+        as_netresult
+    );
     netres.run();
     BOOST_TEST(netres.error().message().find("certificate verify failed") != std::string::npos);
 }
@@ -422,7 +424,8 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_success)
     any_connection_fixture fix(ssl_ctx);
 
     // Connect succeeds
-    fix.conn.async_connect(default_connect_params(ssl_mode::require), as_netresult).validate_no_error();
+    fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
+        .validate_no_error();
     BOOST_TEST(fix.conn.uses_ssl());
 }
 
@@ -436,7 +439,10 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
     any_connection_fixture fix(ssl_ctx);
 
     // Connect fails
-    auto netres = fix.conn.async_connect(default_connect_params(ssl_mode::require), as_netresult);
+    auto netres = fix.conn.async_connect(
+        connect_params_builder().ssl(ssl_mode::require).build(),
+        as_netresult
+    );
     netres.run();
     BOOST_TEST(netres.error().message().find("certificate verify failed") != std::string::npos);
 }
@@ -467,7 +473,7 @@ BOOST_AUTO_TEST_SUITE(ssl_mode_)
 BOOST_FIXTURE_TEST_CASE(any_enable, any_connection_fixture)
 {
     // Setup
-    auto params = default_connect_params(ssl_mode::enable);
+    auto params = connect_params_builder().ssl(ssl_mode::enable).build();
 
     // Connect succeeds
     conn.async_connect(params, as_netresult).validate_no_error();
@@ -528,12 +534,8 @@ BOOST_AUTO_TEST_SUITE_END()
 // Other handshake tests
 BOOST_FIXTURE_TEST_CASE(no_database, any_connection_fixture)
 {
-    // Setup
-    auto params = default_connect_params();
-    params.database = "";
-
     // Connect succeeds
-    conn.async_connect(params, as_netresult).validate_no_error();
+    conn.async_connect(connect_params_builder().database("").build(), as_netresult).validate_no_error();
 
     // No database selected
     results r;
@@ -543,12 +545,8 @@ BOOST_FIXTURE_TEST_CASE(no_database, any_connection_fixture)
 
 BOOST_FIXTURE_TEST_CASE(bad_database, any_connection_fixture)
 {
-    // Setup
-    auto params = default_connect_params();
-    params.database = "bad_db";
-
     // Connect fails
-    conn.async_connect(params, as_netresult)
+    conn.async_connect(connect_params_builder().database("bad_db").build(), as_netresult)
         .validate_error(
             common_server_errc::er_dbaccess_denied_error,
             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
@@ -560,9 +558,10 @@ BOOST_FIXTURE_TEST_CASE(unknown_auth_plugin, any_connection_fixture)
 {
     // Note: sha256_password is not supported, so it's an unknown plugin to us
     // Setup
-    auto params = default_connect_params(ssl_mode::require);
-    params.username = "sha2p_user";
-    params.password = "sha2p_password";
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::require)
+                      .credentials("sha2p_user", "sha2p_password")
+                      .build();
 
     // Connect fails
     conn.async_connect(params, as_netresult).validate_error(client_errc::unknown_auth_plugin);
@@ -573,9 +572,10 @@ BOOST_FIXTURE_TEST_CASE(bad_user, any_connection_fixture)
     // unreliable without SSL. If the default plugin requires SSL
     // (like SHA256), this would fail with 'ssl required'
     // Setup
-    auto params = default_connect_params(ssl_mode::require);
-    params.username = "non_existing_user";
-    params.password = "bad_password";
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::require)
+                      .credentials("non_existing_user", "bad_password")
+                      .build();
 
     // Connect fails
     auto netres = conn.async_connect(params, as_netresult);
