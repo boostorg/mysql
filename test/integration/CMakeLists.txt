@@ -21,6 +21,7 @@ add_executable(
 
     # Actual tests
     test/spotchecks.cpp
+    test/unix_sockets.cpp
     test/execution_requests.cpp
     test/crud.cpp
     test/handshake.cpp
