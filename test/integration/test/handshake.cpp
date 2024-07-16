@@ -556,6 +556,20 @@ BOOST_FIXTURE_TEST_CASE(no_database, handshake_fixture)
     BOOST_TEST(r.rows() == makerows(1, nullptr), per_element());
 }
 
+BOOST_FIXTURE_TEST_CASE(bad_database, handshake_fixture)
+{
+    // Setup
+    auto params = default_connect_params();
+    params.database = "bad_db";
+
+    // Connect fails
+    conn.async_connect(params, as_netresult)
+        .validate_error(
+            common_server_errc::er_dbaccess_denied_error,
+            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+        );
+}
+
 BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
 BOOST_FIXTURE_TEST_CASE(unknown_auth_plugin, handshake_fixture)
 {
