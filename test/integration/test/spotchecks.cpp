@@ -326,6 +326,34 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_error)
         );
 }
 
+// Read some rows. No error spotcheck here
+// TODO: spotcheck this as a unit test
+BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
+{
+    // Setup
+    fix.connect();
+
+    // Generate an execution state
+    execution_state st;
+    fn.start_execution(fix.conn, "SELECT * FROM one_row_table", st);
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // Read once. st may or may not be complete, depending
+    // on how the buffer reallocated memory
+    auto rows = fn.read_some_rows(fix.conn, st).get();
+    BOOST_TEST((rows == makerows(2, 1, "f0")));
+
+    // Reading again should complete st
+    rows = fn.read_some_rows(fix.conn, st).get();
+    BOOST_TEST(rows.empty());
+    validate_eof(st);
+
+    // Reading again does nothing
+    rows = fn.read_some_rows(fix.conn, st).get();
+    BOOST_TEST(rows.empty());
+    validate_eof(st);
+}
+
 //
 //
 //
@@ -358,32 +386,6 @@ BOOST_DATA_TEST_CASE_F(network_fixture, connect_error, err_samples)
         {"access denied", "integ_user"}
     );
     BOOST_TEST(!conn->is_open());
-}
-
-// Read some rows: no server error spotcheck
-BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    // Generate an execution state
-    execution_state st;
-    conn->start_execution("SELECT * FROM one_row_table", st);
-    BOOST_TEST_REQUIRE(st.should_read_rows());
-
-    // Read once. st may or may not be complete, depending
-    // on how the buffer reallocated memory
-    auto rows = conn->read_some_rows(st).get();
-    BOOST_TEST((rows == makerows(2, 1, "f0")));
-
-    // Reading again should complete st
-    rows = conn->read_some_rows(st).get();
-    BOOST_TEST(rows.empty());
-    validate_eof(st);
-
-    // Reading again does nothing
-    rows = conn->read_some_rows(st).get();
-    BOOST_TEST(rows.empty());
-    validate_eof(st);
 }
 
 // Ping
