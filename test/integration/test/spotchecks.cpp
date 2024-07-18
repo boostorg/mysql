@@ -354,6 +354,30 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
     validate_eof(st);
 }
 
+// Ping
+BOOST_MYSQL_SPOTCHECK_TEST(ping_success)
+{
+    // Setup
+    fix.connect();
+
+    // Success
+    fn.ping(fix.conn).validate_no_error();
+}
+
+// TODO: writing to an unconnected any_connection triggers an assert right now
+// This should be solved by the refactor we're delivering in
+// https://github.com/boostorg/mysql/issues/230
+// BOOST_MYSQL_SPOTCHECK_TEST(ping_error)
+// {
+//     // Pinging an unconnected connection fails
+//     fn.ping(fix.conn).validate_any_error();
+// }
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, ping_error, network_functions_connection::all())
+{
+    // Ping should return an error for an unconnected connection
+    sample.ping(conn).validate_any_error();
+}
+
 //
 //
 //
@@ -386,22 +410,6 @@ BOOST_DATA_TEST_CASE_F(network_fixture, connect_error, err_samples)
         {"access denied", "integ_user"}
     );
     BOOST_TEST(!conn->is_open());
-}
-
-// Ping
-BOOST_DATA_TEST_CASE_F(network_fixture, ping_success, all_samples)
-{
-    setup_and_connect(sample);
-    conn->ping().validate_no_error();
-}
-
-// TODO
-BOOST_DATA_TEST_CASE_F(network_fixture, ping_error, samples_with_handshake)
-{
-    setup(sample);
-
-    // Ping should return an error for an unconnected connection
-    conn->ping().validate_any_error();
 }
 
 // Reset connection: no server error spotcheck.
