@@ -29,6 +29,7 @@
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
 #include <boost/mp11/detail/mp_list.hpp>
 #include <boost/optional/optional.hpp>
@@ -109,6 +110,22 @@ struct fixture_type<any_connection>
 
 template <class Conn>
 using fixture_type_t = typename fixture_type<Conn>::type;
+
+// Connect with multi-queries enabled in a generic way
+// TODO: clangd reports that these are not used (incorrectly)
+static void connect_with_multi_queries(tcp_network_fixture& fix)
+{
+    fix.params.set_multi_queries(true);
+    fix.connect();
+}
+
+static void connect_with_multi_queries(
+    any_connection_fixture& fix,
+    boost::source_location loc = BOOST_CURRENT_LOCATION
+)
+{
+    fix.connect(connect_params_builder().ssl(ssl_mode::disable).multi_queries(true).build(), loc);
+}
 
 // Simplify defining test cases involving both connection types
 // The resulting test case gets the fixture (fix) and the network functions (fn) as args
@@ -255,17 +272,18 @@ BOOST_MYSQL_SPOTCHECK_TEST(close_statement_error)
 BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_success)
 {
     // Setup
-    fix.connect();
+    connect_with_multi_queries(fix);
 
     // Generate an execution state
     execution_state st;
-    fn.start_execution(fix.conn, "CALL sp_select_2('abc', 42)", st);
+    fn.start_execution(fix.conn, "SELECT 4.2e0; SELECT 'abc', 42", st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read the 1st resultset
     auto rws = fn.read_some_rows(fix.conn, st).get();
     BOOST_TEST_REQUIRE(st.should_read_head());
-    BOOST_TEST(rws == makerows(2, 1, "f0"), per_element());
+    BOOST_TEST(st.meta()[0].type() == column_type::double_);
+    BOOST_TEST(rws == makerows(1, 4.2), per_element());
 
     // Read head
     fn.read_resultset_head(fix.conn, st).validate_no_error();
@@ -284,25 +302,27 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_success)
     BOOST_TEST((rows == makerows(2, "abc", 42)));
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, read_resultset_head_error, all_samples)
+BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_error)
 {
-    params.set_multi_queries(true);
-    setup_and_connect(sample);
+    // Setup
+    connect_with_multi_queries(fix);
 
     // Generate an execution state
     execution_state st;
-    conn->start_execution("SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st);
+    fn.start_execution(fix.conn, "SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st)
+        .validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read the OK packet to finish 1st resultset
-    conn->read_some_rows(st).validate_no_error();
+    fn.read_some_rows(fix.conn, st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_head());
 
     // Read head for the 2nd resultset. This one contains an error, which is detected when reading head.
-    conn->read_resultset_head(st).validate_error_exact(
-        common_server_errc::er_bad_field_error,
-        "Unknown column 'bad_field' in 'field list'"
-    );
+    fn.read_resultset_head(fix.conn, st)
+        .validate_error_exact(
+            common_server_errc::er_bad_field_error,
+            "Unknown column 'bad_field' in 'field list'"
+        );
 }
 
 //
