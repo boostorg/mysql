@@ -367,15 +367,46 @@ BOOST_MYSQL_SPOTCHECK_TEST(ping_success)
 // TODO: writing to an unconnected any_connection triggers an assert right now
 // This should be solved by the refactor we're delivering in
 // https://github.com/boostorg/mysql/issues/230
-// BOOST_MYSQL_SPOTCHECK_TEST(ping_error)
-// {
-//     // Pinging an unconnected connection fails
-//     fn.ping(fix.conn).validate_any_error();
-// }
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, ping_error, network_functions_connection::all())
+BOOST_MYSQL_SPOTCHECK_TEST(ping_error)
 {
-    // Ping should return an error for an unconnected connection
-    sample.ping(conn).validate_any_error();
+    // Setup
+    fix.connect();
+
+    // Close the connection
+    fn.close(fix.conn).validate_no_error();
+
+    // Pinging an unconnected connection fails
+    fn.ping(fix.conn).validate_any_error();
+}
+
+// Reset connection
+BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_success)
+{
+    // Setup
+    fix.connect();
+
+    // Set some variable
+    results result;
+    fn.execute_query(fix.conn, "SET @myvar = 42", result).validate_no_error();
+
+    // Reset connection
+    fn.reset_connection(fix.conn).validate_no_error();
+
+    // The variable has been reset
+    fn.execute_query(fix.conn, "SELECT @myvar", result);
+    BOOST_TEST(result.rows() == makerows(1, nullptr), per_element());
+}
+
+BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_error)
+{
+    // Setup
+    fix.connect();
+
+    // Close the connection
+    fn.close(fix.conn).validate_no_error();
+
+    // Resetting an unconnected connection fails
+    fn.reset_connection(fix.conn).validate_any_error();
 }
 
 //
@@ -410,23 +441,6 @@ BOOST_DATA_TEST_CASE_F(network_fixture, connect_error, err_samples)
         {"access denied", "integ_user"}
     );
     BOOST_TEST(!conn->is_open());
-}
-
-// Reset connection: no server error spotcheck.
-BOOST_DATA_TEST_CASE_F(network_fixture, reset_connection_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    // Set some variable
-    results result;
-    conn->execute("SET @myvar = 42", result).validate_no_error();
-
-    // Reset connection
-    conn->reset_connection().validate_no_error();
-
-    // The variable has been reset
-    conn->execute("SELECT @myvar", result);
-    BOOST_TEST(result.rows().at(0).at(0).is_null());
 }
 
 // Quit connection: no server error spotcheck
