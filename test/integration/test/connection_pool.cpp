@@ -516,6 +516,7 @@ BOOST_FIXTURE_TEST_CASE(get_connection_timeout, fixture)
     });
 }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 // Spotcheck: pool works with unix sockets, too
 BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_FIXTURE_TEST_CASE(unix_sockets, fixture)
@@ -538,6 +539,7 @@ BOOST_FIXTURE_TEST_CASE(unix_sockets, fixture)
         conn->async_ping(yield);
     });
 }
+#endif
 
 // Spotcheck: pool works with TLS
 BOOST_FIXTURE_TEST_CASE(ssl, fixture)

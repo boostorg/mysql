@@ -27,7 +27,6 @@
 #include <cstring>
 
 #include "test_common/netfun_maker.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -40,7 +39,6 @@ BOOST_AUTO_TEST_SUITE(test_engine_impl)
 // Satisfies the EngineStream concept
 class mock_engine_stream
 {
-    executor_info stream_executor_info_;
     asio::any_io_executor ex_;
     error_code op_error_;  // Operations complete with this error code
 
@@ -82,7 +80,7 @@ public:
     std::vector<next_action> calls;
 
     mock_engine_stream(asio::any_io_executor ex, error_code op_error = error_code())
-        : ex_(create_tracker_executor(ex, &stream_executor_info_)), op_error_(op_error)
+        : ex_(std::move(ex)), op_error_(op_error)
     {
     }
 

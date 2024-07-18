@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CLOSE_CONNECTION_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CLOSE_CONNECTION_HPP
 
+#include <boost/mysql/diagnostics.hpp>
+
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 
@@ -26,7 +28,7 @@ class close_connection_algo
     error_code stored_ec_;
 
 public:
-    close_connection_algo(close_connection_algo_params params) noexcept : quit_({params.diag}) {}
+    close_connection_algo(diagnostics& diag, close_connection_algo_params) noexcept : quit_(diag, {}) {}
 
     next_action resume(connection_state_data& st, error_code ec)
     {

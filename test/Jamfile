@@ -23,6 +23,9 @@ feature.feature boost.mysql.separate-compilation : on off : propagated composite
 # Support builds with BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
 feature.feature boost.mysql.use-ts-executor : off on : propagated composite ;
 
+# Support builds forcing !BOOST_ASIO_HAS_LOCAL_SOCKETS
+feature.feature boost.mysql.disable-local-sockets : off on : propagated composite ;
+
 # Configure openssl if it hasn't been done yet
 using openssl ;
 
@@ -75,6 +78,7 @@ local requirements =
         <boost.mysql.use-ts-executor>on:<define>BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
         # Disable assertions when doing coverage, as they distort coverage data
         <coverage>on:<define>BOOST_DISABLE_ASSERTS
+        <boost.mysql.disable-local-sockets>on:<define>BOOST_ASIO_DISABLE_LOCAL_SOCKETS
     ;
 
 alias boost_mysql

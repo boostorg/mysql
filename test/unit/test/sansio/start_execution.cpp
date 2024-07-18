@@ -19,7 +19,6 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_unit/algo_test.hpp"
@@ -42,7 +41,7 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     detail::start_execution_algo algo;
 
-    fixture(any_execution_request req) : algo({&diag, req, &proc}) {}
+    fixture(any_execution_request req) : algo(diag, {req, &proc}) {}
 };
 
 BOOST_AUTO_TEST_CASE(text_query)

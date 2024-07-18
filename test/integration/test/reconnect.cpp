@@ -30,12 +30,9 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
-#include <exception>
-
 #include "test_common/netfun_maker.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/er_network_variant.hpp"
-#include "test_integration/get_endpoint.hpp"
 #include "test_integration/network_samples.hpp"
 #include "test_integration/run_stackful_coro.hpp"
 #include "test_integration/server_features.hpp"
@@ -229,8 +226,8 @@ struct change_stream_type_fixture : network_fixture_base
     };
 
     functions_t async_fns{
-        netmaker_connect::async_errinfo(&any_connection::async_connect, false),
-        netmaker_ping::async_errinfo(&any_connection::async_ping, false),
+        netmaker_connect::async_errinfo(&any_connection::async_connect),
+        netmaker_ping::async_errinfo(&any_connection::async_ping),
     };
 
     connect_params tcp_params;
@@ -254,6 +251,7 @@ BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp, change_stream_type_fixture)
     run(test_cases);
 }
 
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 // UNIX cases. Note that some sync cases are not included, to save testing time
 BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_FIXTURE_TEST_CASE(change_stream_type_unix, change_stream_type_fixture)
@@ -270,6 +268,7 @@ BOOST_FIXTURE_TEST_CASE(change_stream_type_unix, change_stream_type_fixture)
     };
     run(test_cases);
 }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()  // test_reconnect
 

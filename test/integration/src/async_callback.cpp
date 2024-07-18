@@ -40,17 +40,30 @@ protected:
     template <class R, class... Args>
     network_result<R> fn_impl(pmem_t<R, Args...> p, Args... args)
     {
-        executor_info exec_info{};
+        // Get the object's I/O executor
+        auto ex = this->conn().get_executor();
+
+        // Create the initial result
         auto res = create_initial_netresult<R>();
-        invoke_polyfill(
-            p,
-            this->conn(),
-            std::forward<Args>(args)...,
-            *res.diag,
-            as_network_result<R>(res, create_tracker_executor(this->conn().get_executor(), &exec_info))
-        );
-        run_until_completion(this->conn().get_executor());
-        BOOST_TEST(exec_info.total() > 0u);
+
+        {
+            // Mark ourselves as initiating
+            initiation_guard guard;
+
+            // Invoke the initiation function
+            invoke_polyfill(
+                p,
+                this->conn(),
+                std::forward<Args>(args)...,
+                *res.diag,
+                as_network_result<R>(res, ex)
+            );
+        }
+
+        // Run
+        run_until_completion(ex);
+
+        // Done
         return res;
     }
 

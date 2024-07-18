@@ -285,9 +285,9 @@ class connection_pool
         template <class Handler>
         void operator()(
             Handler&& h,
+            diagnostics* diag,
             std::shared_ptr<detail::pool_impl> self,
-            std::chrono::steady_clock::duration timeout,
-            diagnostics* diag
+            std::chrono::steady_clock::duration timeout
         )
         {
             async_get_connection_erased(std::move(self), timeout, diag, std::forward<Handler>(h));
@@ -311,18 +311,18 @@ class connection_pool
         -> decltype(asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
             initiate_get_connection{},
             token,
+            diag,
             impl_,
-            timeout,
-            diag
+            timeout
         ))
     {
         BOOST_ASSERT(valid());
         return asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
             initiate_get_connection{},
             token,
+            diag,
             impl_,
-            timeout,
-            diag
+            timeout
         );
     }
 
