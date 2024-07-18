@@ -113,6 +113,7 @@ using fixture_type_t = typename fixture_type<Conn>::type;
 
 // Connect with multi-queries enabled in a generic way
 // TODO: clangd reports that these are not used (incorrectly)
+// TODO: fixture connect shouldn't be used in this context
 static void connect_with_multi_queries(tcp_network_fixture& fix)
 {
     fix.params.set_multi_queries(true);

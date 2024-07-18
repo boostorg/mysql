@@ -119,6 +119,7 @@ struct network_functions_connection
     netmakers::quit::signature quit;
 
     static std::vector<network_functions_connection> all();
+    static std::vector<network_functions_connection> sync_and_async();
 };
 std::ostream& operator<<(std::ostream& os, const network_functions_connection& v);
 
@@ -149,6 +150,7 @@ struct network_functions_any
     netmakers::run_pipeline::signature run_pipeline;
 
     static std::vector<network_functions_any> all();
+    static std::vector<network_functions_any> sync_and_async();
 };
 std::ostream& operator<<(std::ostream& os, const network_functions_any& v);
 

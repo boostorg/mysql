@@ -6,6 +6,7 @@
 //
 
 #include <ostream>
+#include <utility>
 
 #include "test_integration/spotchecks_helpers.hpp"
 
@@ -54,6 +55,12 @@ std::vector<network_functions_connection> boost::mysql::test::network_functions_
     return res;
 }
 
+std::vector<network_functions_connection> boost::mysql::test::network_functions_connection::sync_and_async()
+{
+    auto all_fns = all();
+    return {std::move(all_fns[0]), std::move(all_fns[2])};
+}
+
 std::ostream& boost::mysql::test::operator<<(std::ostream& os, const network_functions_connection& v)
 {
     return os << v.name;
@@ -91,6 +98,12 @@ std::vector<network_functions_any> boost::mysql::test::network_functions_any::al
     }
 
     return res;
+}
+
+std::vector<network_functions_any> boost::mysql::test::network_functions_any::sync_and_async()
+{
+    auto all_fns = all();
+    return {std::move(all_fns[0]), std::move(all_fns[2])};
 }
 
 std::ostream& boost::mysql::test::operator<<(std::ostream& os, const network_functions_any& v)

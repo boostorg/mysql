@@ -8,12 +8,14 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_COMMON_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_COMMON_HPP
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -35,33 +37,28 @@ namespace test {
 
 class connect_params_builder
 {
-    connect_params res_;
+    handshake_params res_{integ_user, integ_passwd, integ_db};
+    any_address addr_;
 
 public:
-    connect_params_builder()
-    {
-        res_.server_address.emplace_host_and_port(get_hostname());
-        res_.username = integ_user;
-        res_.password = integ_passwd;
-        res_.database = integ_db;
-    }
+    connect_params_builder() { addr_.emplace_host_and_port(get_hostname()); }
 
     connect_params_builder& set_unix()
     {
-        res_.server_address.emplace_unix_path(default_unix_path);
+        addr_.emplace_unix_path(default_unix_path);
         return *this;
     }
 
-    connect_params_builder& credentials(std::string username, std::string passwd)
+    connect_params_builder& credentials(string_view username, string_view passwd)
     {
-        res_.username = std::move(username);
-        res_.password = std::move(passwd);
+        res_.set_username(username);
+        res_.set_password(passwd);
         return *this;
     }
 
-    connect_params_builder& database(std::string db)
+    connect_params_builder& database(string_view db)
     {
-        res_.database = std::move(db);
+        res_.set_database(db);
         return *this;
     }
 
@@ -69,17 +66,30 @@ public:
 
     connect_params_builder& ssl(ssl_mode ssl)
     {
-        res_.ssl = ssl;
+        res_.set_ssl(ssl);
         return *this;
     }
 
     connect_params_builder& multi_queries(bool v)
     {
-        res_.multi_queries = v;
+        res_.set_multi_queries(v);
         return *this;
     }
 
-    connect_params build() { return std::move(res_); }
+    // TODO: use this
+    handshake_params build_hparams() const { return res_; }
+
+    connect_params build()
+    {
+        connect_params res;
+        res.server_address = std::move(addr_);
+        res.username = res_.username();
+        res.password = res_.password();
+        res.database = res_.database();
+        res.multi_queries = res_.multi_queries();
+        res.ssl = res_.ssl();
+        return res;
+    }
 };
 
 inline connect_params default_connect_params(ssl_mode ssl = ssl_mode::enable)
