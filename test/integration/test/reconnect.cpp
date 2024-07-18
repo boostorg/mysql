@@ -9,7 +9,6 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
@@ -17,32 +16,29 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/throw_on_error.hpp>
 
-#include <boost/asio/deferred.hpp>
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/cancellation_signal.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/asio/experimental/cancellation_condition.hpp>
-#include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
-#include <boost/asio/spawn.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/data/monomorphic.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/as_netres.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/get_endpoint.hpp"
-#include "test_integration/run_stackful_coro.hpp"
 #include "test_integration/server_features.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
-using boost::asio::deferred;
-using boost::asio::experimental::make_parallel_group;
-using boost::asio::experimental::wait_for_one;
+namespace asio = boost::asio;
 using boost::test_tools::per_element;
 
 namespace {
@@ -147,39 +143,32 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_while_connected, any_sa
     BOOST_TEST(r.rows() == makerows(1, "root@%"), per_element());
 }
 
-// parallel_group doesn't work with this macro. See https://github.com/chriskohlhoff/asio/issues/1398
-#ifndef BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
-BOOST_AUTO_TEST_CASE(reconnect_after_cancel)
+BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
 {
-    run_stackful_coro([](boost::asio::yield_context yield) {
-        // Setup
-        auto connect_prms = default_connect_params();
-        any_connection conn(yield.get_executor());
-        results r;
-        boost::mysql::error_code ec;
-        boost::mysql::diagnostics diag;
+    // Setup
+    auto connect_prms = default_connect_params();
+    results r;
+    // boost::mysql::error_code ec;
+    // boost::mysql::diagnostics diag;
+    connect();
 
-        // Connect
-        conn.async_connect(connect_prms, diag, yield[ec]);
-        boost::mysql::throw_on_error(ec, diag);
+    // Kick an operation that ends up cancelled
+    asio::cancellation_signal sig;
+    auto netres = conn.async_execute("DO SLEEP(2)", r, as_netresult_t{sig.slot()});
 
-        // Kick an operation that ends up cancelled
-        auto wait_result = make_parallel_group(
-                               conn.async_execute("DO SLEEP(2)", r, deferred),
-                               boost::asio::post(yield.get_executor(), deferred)
-        )
-                               .async_wait(wait_for_one(), yield);
+    // Return to the event loop and emit the signal
+    asio::post(asio::bind_executor(ctx.get_executor(), [&]() {
+        // Emit the signal
+        sig.emit(asio::cancellation_type::terminal);
+    }));
 
-        // Verify this was the case
-        BOOST_TEST(std::get<0>(wait_result)[1] == 0u);  // post completed first
-        BOOST_TEST(std::get<1>(wait_result) == boost::asio::error::operation_aborted);
+    // Wait for the operation to finish
+    netres.validate_error(asio::error::operation_aborted);
 
-        // We can connect again
-        conn.async_connect(connect_prms, diag, yield[ec]);
-        boost::mysql::throw_on_error(ec, diag);
-    });
+    // We can connect again and use the connection
+    connect();
+    conn.async_execute("SELECT 42", r, as_netresult).validate_no_error();
 }
-#endif
 
 // any_connection can change the stream type used by successive connect calls.
 // We need to split this test in two (TCP and UNIX), so UNIX cases don't run on Windows.

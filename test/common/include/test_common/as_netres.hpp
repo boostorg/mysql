@@ -18,6 +18,7 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/asio/cancellation_signal.hpp>
 #include <boost/assert/source_location.hpp>
 
 #include <memory>
@@ -36,6 +37,7 @@ namespace test {
 
 struct as_netresult_t
 {
+    asio::cancellation_slot slot;
 };
 
 constexpr as_netresult_t as_netresult{};
@@ -140,6 +142,7 @@ class as_netres_handler
 {
     typename network_result_v2<R>::impl_t* target_;
     tracker_executor_result ex_;
+    asio::cancellation_slot slot_;
 
     void check_executor() const
     {
@@ -148,13 +151,22 @@ class as_netres_handler
     }
 
 public:
-    as_netres_handler(network_result_v2<R>& netresult, asio::any_io_executor exec)
-        : target_(netresult.impl.get()), ex_(create_tracker_executor(std::move(exec)))
+    as_netres_handler(
+        network_result_v2<R>& netresult,
+        asio::any_io_executor exec,
+        asio::cancellation_slot slot
+    )
+        : target_(netresult.impl.get()), ex_(create_tracker_executor(std::move(exec))), slot_(slot)
     {
     }
 
+    // Executor
     using executor_type = asio::any_io_executor;
     asio::any_io_executor get_executor() const { return ex_.ex; }
+
+    // Cancellation slot
+    using cancellation_slot_type = asio::cancellation_slot;
+    asio::cancellation_slot get_cancellation_slot() const noexcept { return slot_; }
 
     void operator()(error_code ec) const
     {
@@ -186,9 +198,9 @@ public:
     using return_type = mysql::test::network_result_v2<R>;
 
     template <typename Initiation, typename... Args>
-    static return_type initiate(Initiation&& initiation, mysql::test::as_netresult_t, Args&&... args)
+    static return_type initiate(Initiation&& initiation, mysql::test::as_netresult_t token, Args&&... args)
     {
-        return do_initiate(std::move(initiation), std::move(args)...);
+        return do_initiate(std::move(initiation), token.slot, std::move(args)...);
     }
 
 private:
@@ -196,6 +208,7 @@ private:
     template <typename Initiation, class IoObjectPtr, typename... Args>
     static return_type do_initiate(
         Initiation&& initiation,
+        asio::cancellation_slot slot,
         mysql::diagnostics* diag,
         IoObjectPtr io_obj_ptr,  // may be smart
         Args&&... args
@@ -212,7 +225,7 @@ private:
 
         // Actually call the initiation function
         std::move(initiation)(
-            mysql::test::as_netres_handler<R>(netres, io_obj_ptr->get_executor()),
+            mysql::test::as_netres_handler<R>(netres, io_obj_ptr->get_executor(), slot),
             diag,
             std::move(io_obj_ptr),
             std::move(args)...
