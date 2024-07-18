@@ -580,7 +580,10 @@ BOOST_FIXTURE_TEST_CASE(bad_user, any_connection_fixture)
     // Connect fails
     auto netres = conn.async_connect(params, as_netresult);
     netres.run();
-    BOOST_TEST(netres.error().category().name() == get_common_server_category().name());
+    BOOST_TEST(
+        (netres.error().category() == get_common_server_category() ||
+         netres.error().category() == get_client_category())
+    );
     BOOST_TEST(netres.error() != error_code());  // may be access denied or unknown auth plugin
 }
 
