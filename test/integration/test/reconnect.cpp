@@ -139,7 +139,6 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_while_connected, any_sa
 BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
 {
     // Setup
-    auto connect_prms = default_connect_params();
     results r;
     connect();
 

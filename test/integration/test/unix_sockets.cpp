@@ -6,7 +6,6 @@
 //
 
 #include <boost/mysql/connection.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/unix.hpp>
 #include <boost/mysql/unix_ssl.hpp>
@@ -14,7 +13,6 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "test_common/ci_server.hpp"
@@ -86,7 +84,7 @@ BOOST_AUTO_TEST_CASE(unix_connection_)
     unix_connection conn(ctx);
 
     // Connect
-    handshake_params params(integ_user, integ_passwd, integ_db);
+    auto params = connect_params_builder().build_hparams();
     conn.async_connect(asio::local::stream_protocol::endpoint(default_unix_path), params, as_netresult)
         .validate_no_error();
     BOOST_TEST(!conn.uses_ssl());
@@ -102,7 +100,7 @@ BOOST_AUTO_TEST_CASE(unix_ssl_connection_)
     unix_ssl_connection conn(ctx, ssl_ctx);
 
     // Connect
-    handshake_params params(integ_user, integ_passwd, integ_db);
+    auto params = connect_params_builder().build_hparams();
     conn.async_connect(asio::local::stream_protocol::endpoint(default_unix_path), params, as_netresult)
         .validate_no_error();
     BOOST_TEST(conn.uses_ssl());
@@ -122,7 +120,7 @@ BOOST_AUTO_TEST_CASE(unix_connection_handshake_quit)
     conn.stream().connect(asio::local::stream_protocol::endpoint(default_unix_path));
 
     // Handshake
-    handshake_params params(integ_user, integ_passwd, integ_db);
+    auto params = connect_params_builder().build_hparams();
     conn.async_handshake(params, as_netresult).validate_no_error();
     BOOST_TEST(!conn.uses_ssl());
 
@@ -141,7 +139,7 @@ BOOST_AUTO_TEST_CASE(unix_ssl_connection_handshake_quit)
     conn.stream().lowest_layer().connect(asio::local::stream_protocol::endpoint(default_unix_path));
 
     // Handshake
-    handshake_params params(integ_user, integ_passwd, integ_db);
+    auto params = connect_params_builder().build_hparams();
     conn.async_handshake(params, as_netresult).validate_no_error();
     BOOST_TEST(conn.uses_ssl());
 

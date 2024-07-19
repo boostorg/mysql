@@ -80,7 +80,6 @@ public:
         return *this;
     }
 
-    // TODO: use this
     handshake_params build_hparams() const { return res_; }
 
     connect_params build()
@@ -96,17 +95,6 @@ public:
         return res;
     }
 };
-
-inline connect_params default_connect_params(ssl_mode ssl = ssl_mode::enable)
-{
-    connect_params res;
-    res.server_address.emplace_host_and_port(get_hostname());
-    res.username = integ_user;
-    res.password = integ_passwd;
-    res.database = integ_db;
-    res.ssl = ssl;
-    return res;
-}
 
 // TODO: make these compiled and use source_location
 inline void validate_2fields_meta(const metadata_collection_view& fields, const std::string& table)

@@ -77,7 +77,7 @@ static std::vector<transport_test_case> secure_transports()
 static std::vector<transport_test_case> all_transports()
 {
     auto res = secure_transports();
-    res.push_back({"tcp", default_connect_params(ssl_mode::disable), false});
+    res.push_back({"tcp", connect_params_builder().ssl(ssl_mode::disable).build(), false});
     return res;
 }
 
