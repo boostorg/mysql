@@ -404,7 +404,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_error)
 
 // Close connection
 // TODO: make a unit test with double close and an error case
-BOOST_MYSQL_SPOTCHECK_TEST(close_connection_success)
+BOOST_MYSQL_SPOTCHECK_TEST(close_success)
 {
     // Setup
     fix.connect();
@@ -581,146 +581,116 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, quit_error, fns_connection)
     fn.quit(conn).validate_any_error();
 }
 
-// set_character_set. Since this is only available in any_connection, we spotcheck this
-// with netmakers and don't cover all streams
-using set_charset_netmaker = netfun_maker_mem<void, any_connection, const character_set&>;
+//
+// functions specific to any_connection
+//
 
-struct
+// Connect
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, connect_any_success, fns_any)
 {
-    string_view name;
-    set_charset_netmaker::signature set_character_set;
-} set_charset_all_fns[] = {
-    {"sync_errc",       set_charset_netmaker::sync_errc(&any_connection::set_character_set)            },
-    {"sync_exc",        set_charset_netmaker::sync_exc(&any_connection::set_character_set)             },
-    {"async_errinfo",   set_charset_netmaker::async_errinfo(&any_connection::async_set_character_set)  },
-    {"async_noerrinfo", set_charset_netmaker::async_noerrinfo(&any_connection::async_set_character_set)},
-};
+    // Setup
+    const network_functions_any& fn = sample;
 
-BOOST_AUTO_TEST_CASE(set_character_set_success)
-{
-    for (const auto& fns : set_charset_all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            // Setup
-            boost::asio::io_context ctx;
-            any_connection conn(ctx);
-            conn.connect(default_connect_params());
+    // Call the function
+    fn.connect(conn, connect_params_builder().ssl(ssl_mode::require).build()).validate_no_error();
 
-            // Issue the command
-            fns.set_character_set(conn, ascii_charset).validate_no_error();
+    // The connection is usable
+    fn.ping(conn).validate_no_error();
 
-            // Success
-            BOOST_TEST(conn.current_character_set()->name == "ascii");
-        }
-    }
+    // Closing works
+    fn.close(conn).validate_no_error();
 }
 
-BOOST_AUTO_TEST_CASE(set_character_set_error)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, connect_any_error, fns_any)
 {
-    for (const auto& fns : set_charset_all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            // Setup
-            boost::asio::io_context ctx;
-            any_connection conn(ctx);
-            conn.connect(default_connect_params(ssl_mode::disable));
+    // Setup
+    const network_functions_any& fn = sample;
 
-            // Issue the command
-            fns.set_character_set(conn, character_set{"bad_charset", nullptr})
-                .validate_error_exact(
-                    common_server_errc::er_unknown_character_set,
-                    "Unknown character set: 'bad_charset'"
-                );
-
-            // The character set was not modified
-            BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
-        }
-    }
+    // Call the function
+    fn.connect(conn, connect_params_builder().ssl(ssl_mode::require).database("bad_db").build())
+        .validate_error_exact(
+            common_server_errc::er_dbaccess_denied_error,
+            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+        );
 }
 
-// same for run_pipeline
-using run_pipeline_netmaker = netfun_maker_mem<
-    void,
-    any_connection,
-    const pipeline_request&,
-    std::vector<stage_response>&>;
-
-struct
+// Set character set
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, set_character_set_success, fns_any)
 {
-    string_view name;
-    run_pipeline_netmaker::signature run_pipeline;
-} run_pipeline_all_fns[] = {
-    {"sync_errc",       run_pipeline_netmaker::sync_errc(&any_connection::run_pipeline)            },
-    {"sync_exc",        run_pipeline_netmaker::sync_exc(&any_connection::run_pipeline)             },
-    {"async_errinfo",   run_pipeline_netmaker::async_errinfo(&any_connection::async_run_pipeline)  },
-    {"async_noerrinfo", run_pipeline_netmaker::async_noerrinfo(&any_connection::async_run_pipeline)},
-};
+    // Setup
+    const network_functions_any& fn = sample;
+    connect();
 
-BOOST_AUTO_TEST_CASE(run_pipeline_success)
-{
-    for (const auto& fns : run_pipeline_all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            // Setup
-            boost::asio::io_context ctx;
-            any_connection conn(ctx);
-            conn.connect(default_connect_params(ssl_mode::disable));
-            pipeline_request req;
-            req.add_set_character_set(ascii_charset)
-                .add_execute("SET @myvar = 42")
-                .add_execute("SELECT @myvar");
-            std::vector<stage_response> res;
+    // Call the function
+    fn.set_character_set(conn, ascii_charset).validate_no_error();
 
-            // Issue the pipeline
-            fns.run_pipeline(conn, req, res).validate_no_error();
-
-            // Success
-            BOOST_TEST(conn.current_character_set().value() == ascii_charset);
-            BOOST_TEST_REQUIRE(res.size() == 3u);
-            BOOST_TEST(res.at(0).error() == error_code());
-            BOOST_TEST(res.at(0).diag() == diagnostics());
-            BOOST_TEST(res.at(1).as_results().rows().empty());
-            BOOST_TEST(res.at(2).as_results().rows() == makerows(1, 42));
-        }
-    }
+    // Success
+    BOOST_TEST(conn.current_character_set()->name == "ascii");
 }
 
-BOOST_AUTO_TEST_CASE(run_pipeline_error)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, set_character_set_error, fns_any)
 {
-    for (const auto& fns : run_pipeline_all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            // Setup
-            boost::asio::io_context ctx;
-            any_connection conn(ctx);
-            conn.connect(default_connect_params(ssl_mode::disable));
-            pipeline_request req;
-            req.add_execute("SET @myvar = 42")
-                .add_prepare_statement("SELECT * FROM bad_table")
-                .add_execute("SELECT @myvar");
-            std::vector<stage_response> res;
+    // Setup
+    const network_functions_any& fn = sample;
+    connect();
 
-            // Issue the command
-            fns.run_pipeline(conn, req, res)
-                .validate_error_exact(
-                    common_server_errc::er_no_such_table,
-                    "Table 'boost_mysql_integtests.bad_table' doesn't exist"
-                );
+    // Call the function
+    fn.set_character_set(conn, character_set{"bad_charset", nullptr})
+        .validate_error_exact(
+            common_server_errc::er_unknown_character_set,
+            "Unknown character set: 'bad_charset'"
+        );
 
-            // Stages 0 and 2 were executed successfully
-            BOOST_TEST(res.size() == 3u);
-            BOOST_TEST(res[0].as_results().rows().size() == 0u);
-            BOOST_TEST(res[1].error() == common_server_errc::er_no_such_table);
-            BOOST_TEST(
-                res[1].diag() == create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
-            );
-            BOOST_TEST(res[2].as_results().rows() == makerows(1, 42));
-        }
-    }
+    // Success
+    BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
+}
+
+// Run pipeline
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, run_pipeline_success, fns_any)
+{
+    // Setup
+    const network_functions_any& fn = sample;
+    pipeline_request req;
+    req.add_set_character_set(ascii_charset).add_execute("SET @myvar = 42").add_execute("SELECT @myvar");
+    std::vector<stage_response> res;
+    connect();
+
+    // Run the function
+    fn.run_pipeline(conn, req, res).validate_no_error();
+
+    // Success
+    BOOST_TEST(conn.current_character_set().value() == ascii_charset);
+    BOOST_TEST_REQUIRE(res.size() == 3u);
+    BOOST_TEST(res.at(0).error() == error_code());
+    BOOST_TEST(res.at(0).diag() == diagnostics());
+    BOOST_TEST(res.at(1).as_results().rows() == rows(), per_element());
+    BOOST_TEST(res.at(2).as_results().rows() == makerows(1, 42), per_element());
+}
+
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, run_pipeline_error, fns_any)
+{
+    // Setup
+    const network_functions_any& fn = sample;
+    pipeline_request req;
+    req.add_execute("SET @myvar = 42")
+        .add_prepare_statement("SELECT * FROM bad_table")
+        .add_execute("SELECT @myvar");
+    std::vector<stage_response> res;
+    connect();
+
+    // Run the function
+    fn.run_pipeline(conn, req, res)
+        .validate_error_exact(
+            common_server_errc::er_no_such_table,
+            "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+        );
+
+    // Stages 0 and 2 were executed successfully
+    BOOST_TEST(res.size() == 3u);
+    BOOST_TEST(res[0].as_results().rows() == rows(), per_element());
+    BOOST_TEST(res[1].error() == common_server_errc::er_no_such_table);
+    BOOST_TEST(res[1].diag() == create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist"));
+    BOOST_TEST(res[2].as_results().rows() == makerows(1, 42), per_element());
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_spotchecks
