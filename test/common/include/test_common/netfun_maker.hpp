@@ -8,17 +8,51 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_NETFUN_MAKER_HPP
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_NETFUN_MAKER_HPP
 
+#include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 
-#include <boost/asio/any_io_executor.hpp>
 #include <boost/system/system_error.hpp>
 
-#include "test_common/netfun_helpers.hpp"
-#include "test_common/tracker_executor.hpp"
+#include <type_traits>
+
+#include "test_common/create_diagnostics.hpp"
+#include "test_common/network_result.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
+
+template <class Fn, class... Args>
+auto invoke_polyfill(Fn fn, Args&&... args) ->
+    typename std::enable_if<
+        std::is_function<typename std::remove_pointer<Fn>::type>::value,
+        decltype(fn(std::forward<Args>(args)...))>::type
+{
+    return fn(std::forward<Args>(args)...);
+}
+
+template <class Pmem, class Obj, class... Args>
+auto invoke_polyfill(Pmem fn, Obj& obj, Args&&... args) ->
+    typename std::enable_if<
+        std::is_member_function_pointer<Pmem>::value,
+        decltype((obj.*fn)(std::forward<Args>(args)...))>::type
+{
+    return (obj.*fn)(std::forward<Args>(args)...);
+}
+
+template <class T, class... InvokeArgs>
+void invoke_and_assign(network_result<T>& output, InvokeArgs&&... args)
+{
+    output.value = invoke_polyfill(std::forward<InvokeArgs>(args)...);
+}
+
+template <class... InvokeArgs>
+void invoke_and_assign(network_result<void>&, InvokeArgs&&... args)
+{
+    invoke_polyfill(std::forward<InvokeArgs>(args)...);
+}
 
 template <class R, class IOObject, class... Args>
 struct netfun_maker_impl
@@ -29,8 +63,11 @@ struct netfun_maker_impl
     static signature sync_errc(Pfn fn)
     {
         return [fn](IOObject& obj, Args... args) {
-            auto res = create_initial_netresult<R>();
-            invoke_and_assign(res, fn, obj, std::forward<Args>(args)..., res.err, *res.diag);
+            network_result<R> res{
+                common_server_errc::er_no,
+                create_server_diag("diagnostics not cleared properly")
+            };
+            invoke_and_assign(res, fn, obj, std::forward<Args>(args)..., res.err, res.diag);
             return res;
         };
     }
@@ -58,118 +95,39 @@ struct netfun_maker_impl
     }
 
     template <class Pfn>
-    static signature sync_errc_noerrinfo(Pfn fn)
+    static signature async_diag(Pfn fn)
     {
         return [fn](IOObject& obj, Args... args) {
-            auto res = create_initial_netresult<R>(false);
-            invoke_and_assign(res, fn, obj, std::forward<Args>(args)..., res.err);
-            return res;
+            diagnostics diag;  // checks for clearing diag are performed by as_netresult
+            return invoke_polyfill(fn, obj, std::forward<Args>(args)..., diag, as_netresult).run();
         };
     }
 
     template <class Pfn>
-    static signature async_errinfo(Pfn fn)
+    static signature async_nodiag(Pfn fn)
     {
         return [fn](IOObject& obj, Args... args) {
-            // Get the object's I/O executor
-            auto ex = obj.get_executor();
-
-            // Create the initial result
-            auto res = create_initial_netresult<R>();
-
-            {
-                // Mark ourselves as initiating
-                initiation_guard guard;
-
-                // Invoke the initiation function
-                invoke_polyfill(
-                    fn,
-                    obj,
-                    std::forward<Args>(args)...,
-                    *res.diag,
-                    as_network_result<R>(res, ex)
-                );
-            }
-
-            // Run
-            run_until_completion(ex);
-
-            // Done
-            return res;
-        };
-    }
-
-    template <class Pfn>
-    static signature async_noerrinfo(Pfn fn)
-    {
-        return [fn](IOObject& obj, Args... args) {
-            // Get the object's I/O executor
-            auto ex = obj.get_executor();
-
-            // Create the initial result
-            auto res = create_initial_netresult<R>(false);
-
-            {
-                // Mark ourselves as initiating
-                initiation_guard guard;
-
-                // Invoke the initiation function
-                invoke_polyfill(fn, obj, std::forward<Args>(args)..., as_network_result<R>(res, ex));
-            }
-
-            // Run until completion
-            run_until_completion(ex);
-
-            // Done
-            return res;
+            return invoke_polyfill(fn, obj, std::forward<Args>(args)..., as_netresult).run();
         };
     }
 };
 
 template <class R, class Obj, class... Args>
-class netfun_maker_mem
+class netfun_maker
 {
     using impl = netfun_maker_impl<R, Obj&, Args...>;
 
 public:
     using signature = std::function<network_result<R>(Obj&, Args...)>;
     using sig_sync_errc = R (Obj::*)(Args..., error_code&, diagnostics&);
-    using sig_sync_errc_noerrinfo = R (Obj::*)(Args..., error_code&);
     using sig_sync_exc = R (Obj::*)(Args...);
-    using sig_async_errinfo = void (Obj::*)(Args..., diagnostics&, as_network_result<R>&&);
-    using sig_async_noerrinfo = void (Obj::*)(Args..., as_network_result<R>&&);
+    using sig_async_diag = runnable_network_result<R> (Obj::*)(Args..., diagnostics&, const as_netresult_t&);
+    using sig_async_nodiag = runnable_network_result<R> (Obj::*)(Args..., const as_netresult_t&);
 
     static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }
-    static signature sync_errc_noerrinfo(sig_sync_errc_noerrinfo pfn)
-    {
-        return impl::sync_errc_noerrinfo(pfn);
-    }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
-    static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
-    static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
-};
-
-template <class R, class... Args>
-class netfun_maker_fn
-{
-    using impl = netfun_maker_impl<R, Args...>;
-
-public:
-    using signature = std::function<network_result<R>(Args...)>;
-    using sig_sync_errc = R (*)(Args..., error_code&, diagnostics&);
-    using sig_sync_errc_noerrinfo = R (*)(Args..., error_code&);
-    using sig_sync_exc = R (*)(Args...);
-    using sig_async_errinfo = void (*)(Args..., diagnostics&, as_network_result<R>&&);
-    using sig_async_noerrinfo = void (*)(Args..., as_network_result<R>&&);
-
-    static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }
-    static signature sync_errc_noerrinfo(sig_sync_errc_noerrinfo pfn)
-    {
-        return impl::sync_errc_noerrinfo(pfn);
-    }
-    static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
-    static signature async_errinfo(sig_async_errinfo pfn) { return impl::async_errinfo(pfn); }
-    static signature async_noerrinfo(sig_async_noerrinfo pfn) { return impl::async_noerrinfo(pfn); }
+    static signature async_diag(sig_async_diag pfn) { return impl::async_diag(pfn); }
+    static signature async_nodiag(sig_async_nodiag pfn) { return impl::async_nodiag(pfn); }
 };
 
 }  // namespace test

@@ -28,10 +28,10 @@
 
 #include <memory>
 
-#include "test_common/as_netres.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
 #include "test_common/netfun_maker.hpp"
+#include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_execution_processor.hpp"
@@ -307,7 +307,7 @@ BOOST_AUTO_TEST_CASE(nonvoid_signature_executor_propagation)
     execution_state st;
 
     // Function wrapper. This takes care of validating executor propagation
-    auto fn = netfun_maker_mem<rows_view, test_connection, execution_state&>::async_errinfo(
+    auto fn = netfun_maker<rows_view, test_connection, execution_state&>::async_diag(
         &test_connection::async_read_some_rows
     );
 
@@ -319,14 +319,14 @@ BOOST_AUTO_TEST_CASE(nonvoid_signature_executor_propagation)
 // returning a value fail with an assertion
 BOOST_AUTO_TEST_CASE(net_error_prepare_statement)
 {
-    using netmaker_stmt = netfun_maker_mem<statement, test_connection, string_view>;
+    using netmaker_stmt = netfun_maker<statement, test_connection, string_view>;
     struct
     {
         const char* name;
         netmaker_stmt::signature prepare_statement;
     } fns[] = {
-        {"sync",  netmaker_stmt::sync_errc(&test_connection::prepare_statement)          },
-        {"async", netmaker_stmt::async_errinfo(&test_connection::async_prepare_statement)},
+        {"sync",  netmaker_stmt::sync_errc(&test_connection::prepare_statement)       },
+        {"async", netmaker_stmt::async_diag(&test_connection::async_prepare_statement)},
     };
 
     for (const auto& fn : fns)
@@ -337,21 +337,21 @@ BOOST_AUTO_TEST_CASE(net_error_prepare_statement)
             test_connection conn;
             conn.stream().set_fail_count(fail_count(0, boost::asio::error::connection_reset));
 
-            fn.prepare_statement(conn, "SELECT 1").validate_error_exact(boost::asio::error::connection_reset);
+            fn.prepare_statement(conn, "SELECT 1").validate_error(boost::asio::error::connection_reset);
         }
     }
 }
 
 BOOST_AUTO_TEST_CASE(net_error_read_some_rows)
 {
-    using netmaker_stmt = netfun_maker_mem<rows_view, test_connection, execution_state&>;
+    using netmaker_stmt = netfun_maker<rows_view, test_connection, execution_state&>;
     struct
     {
         const char* name;
         netmaker_stmt::signature read_some_rows;
     } fns[] = {
-        {"sync",  netmaker_stmt::sync_errc(&test_connection::read_some_rows)          },
-        {"async", netmaker_stmt::async_errinfo(&test_connection::async_read_some_rows)},
+        {"sync",  netmaker_stmt::sync_errc(&test_connection::read_some_rows)       },
+        {"async", netmaker_stmt::async_diag(&test_connection::async_read_some_rows)},
     };
 
     for (const auto& fn : fns)
@@ -364,21 +364,21 @@ BOOST_AUTO_TEST_CASE(net_error_read_some_rows)
             execution_state st;
             add_meta(get_iface(st), {column_type::bigint});
 
-            fn.read_some_rows(conn, st).validate_error_exact(boost::asio::error::connection_reset);
+            fn.read_some_rows(conn, st).validate_error(boost::asio::error::connection_reset);
         }
     }
 }
 
 BOOST_AUTO_TEST_CASE(net_error_void_signature)
 {
-    using netmaker_execute = netfun_maker_mem<void, test_connection, const string_view&, results&>;
+    using netmaker_execute = netfun_maker<void, test_connection, const string_view&, results&>;
     struct
     {
         const char* name;
         netmaker_execute::signature execute;
     } fns[] = {
-        {"sync",  netmaker_execute::sync_errc(&test_connection::execute)          },
-        {"async", netmaker_execute::async_errinfo(&test_connection::async_execute)},
+        {"sync",  netmaker_execute::sync_errc(&test_connection::execute)       },
+        {"async", netmaker_execute::async_diag(&test_connection::async_execute)},
     };
 
     for (const auto& fn : fns)
@@ -390,7 +390,7 @@ BOOST_AUTO_TEST_CASE(net_error_void_signature)
             conn.stream().set_fail_count(fail_count(0, boost::asio::error::connection_reset));
             results r;
 
-            fn.execute(conn, "SELECT 1", r).validate_error_exact(boost::asio::error::connection_reset);
+            fn.execute(conn, "SELECT 1", r).validate_error(boost::asio::error::connection_reset);
         }
     }
 }
@@ -434,11 +434,8 @@ struct test_any_connection_fixture
     }
 };
 
-auto pipeline_fn = netfun_maker_mem<
-    void,
-    any_connection,
-    const pipeline_request&,
-    std::vector<stage_response>&>::async_errinfo(&any_connection::async_run_pipeline);
+auto pipeline_fn = netfun_maker<void, any_connection, const pipeline_request&, std::vector<stage_response>&>::
+    async_diag(&any_connection::async_run_pipeline);
 
 // empty pipelines complete immediately, posting adequately
 BOOST_FIXTURE_TEST_CASE(empty_pipeline, test_any_connection_fixture)
@@ -465,7 +462,7 @@ BOOST_FIXTURE_TEST_CASE(pipeline_fatal_error, test_any_connection_fixture)
     stream().set_fail_count(fail_count(1, boost::asio::error::network_reset));
 
     // Run it
-    pipeline_fn(conn, req, res).validate_error_exact(boost::asio::error::network_reset);
+    pipeline_fn(conn, req, res).validate_error(boost::asio::error::network_reset);
 
     // Validate the results
     BOOST_TEST(res.size() == 2u);

@@ -38,31 +38,31 @@ using static_state_t = static_execution_state<row_multifield, row_2fields, empty
 template <class Conn>
 struct netmakers_common
 {
-    using prepare_statement = netfun_maker_mem<statement, Conn, string_view>;
-    using execute_query = netfun_maker_mem<void, Conn, const string_view&, results&>;
-    using execute_statement = netfun_maker_mem<
+    using prepare_statement = netfun_maker<statement, Conn, string_view>;
+    using execute_query = netfun_maker<void, Conn, const string_view&, results&>;
+    using execute_statement = netfun_maker<
         void,
         Conn,
         const bound_statement_tuple<std::tuple<int, int>>&,
         results&>;
-    using start_execution = netfun_maker_mem<void, Conn, const string_view&, execution_state&>;
-    using close_statement = netfun_maker_mem<void, Conn, const statement&>;
-    using read_resultset_head = netfun_maker_mem<void, Conn, execution_state&>;
-    using read_some_rows = netfun_maker_mem<rows_view, Conn, execution_state&>;
-    using ping = netfun_maker_mem<void, Conn>;
-    using reset_connection = netfun_maker_mem<void, Conn>;
-    using close = netfun_maker_mem<void, Conn>;
+    using start_execution = netfun_maker<void, Conn, const string_view&, execution_state&>;
+    using close_statement = netfun_maker<void, Conn, const statement&>;
+    using read_resultset_head = netfun_maker<void, Conn, execution_state&>;
+    using read_some_rows = netfun_maker<rows_view, Conn, execution_state&>;
+    using ping = netfun_maker<void, Conn>;
+    using reset_connection = netfun_maker<void, Conn>;
+    using close = netfun_maker<void, Conn>;
 
 #ifdef BOOST_MYSQL_CXX14
-    using execute_static = netfun_maker_mem<void, Conn, const string_view&, static_results_t&>;
-    using start_execution_static = netfun_maker_mem<void, Conn, const string_view&, static_state_t&>;
-    using read_resultset_head_static = netfun_maker_mem<void, Conn, static_state_t&>;
-    using read_some_rows_static_1 = netfun_maker_mem<
+    using execute_static = netfun_maker<void, Conn, const string_view&, static_results_t&>;
+    using start_execution_static = netfun_maker<void, Conn, const string_view&, static_state_t&>;
+    using read_resultset_head_static = netfun_maker<void, Conn, static_state_t&>;
+    using read_some_rows_static_1 = netfun_maker<
         std::size_t,
         Conn,
         static_state_t&,
         boost::span<row_multifield>>;
-    using read_some_rows_static_2 = netfun_maker_mem<
+    using read_some_rows_static_2 = netfun_maker<
         std::size_t,
         Conn,
         static_state_t&,
@@ -72,20 +72,20 @@ struct netmakers_common
 
 struct netmakers_connection : netmakers_common<tcp_connection>
 {
-    using handshake = netfun_maker_mem<void, tcp_connection, const handshake_params&>;
-    using connect = netfun_maker_mem<
+    using handshake = netfun_maker<void, tcp_connection, const handshake_params&>;
+    using connect = netfun_maker<
         void,
         tcp_connection,
         const asio::ip::tcp::endpoint&,
         const handshake_params&>;
-    using quit = netfun_maker_mem<void, tcp_connection>;
+    using quit = netfun_maker<void, tcp_connection>;
 };
 
 struct netmakers_any : netmakers_common<any_connection>
 {
-    using connect = netfun_maker_mem<void, any_connection, const connect_params&>;
-    using set_character_set = netfun_maker_mem<void, any_connection, const character_set&>;
-    using run_pipeline = netfun_maker_mem<
+    using connect = netfun_maker<void, any_connection, const connect_params&>;
+    using set_character_set = netfun_maker<void, any_connection, const character_set&>;
+    using run_pipeline = netfun_maker<
         void,
         any_connection,
         const pipeline_request&,

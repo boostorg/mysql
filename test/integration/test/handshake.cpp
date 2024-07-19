@@ -26,8 +26,8 @@
 #include <utility>
 #include <vector>
 
-#include "test_common/as_netres.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/server_ca.hpp"
@@ -177,13 +177,8 @@ struct caching_sha2_lock : any_connection_fixture
         // Acquire the lock
         results r;
         conn.async_execute("LOCK TABLE sha256_mutex WRITE", r, as_netresult).validate_no_error();
-    }
 
-    ~caching_sha2_lock()
-    {
-        // Close the connection, releasing the lock.
-        // TODO: the base fixture should close the connection already
-        conn.async_close(as_netresult).run();
+        // The lock is released on fixture destruction, when the connection is closed
     }
 };
 
@@ -400,12 +395,10 @@ BOOST_AUTO_TEST_CASE(certificate_invalid)
     any_connection_fixture fix(ssl_ctx);
 
     // Connect fails
-    auto netres = fix.conn.async_connect(
-        connect_params_builder().ssl(ssl_mode::require).build(),
-        as_netresult
-    );
-    netres.run();
-    BOOST_TEST(netres.error().message().find("certificate verify failed") != std::string::npos);
+    auto err = fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
+                   .run()
+                   .err;
+    BOOST_TEST(err.message().find("certificate verify failed") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(custom_certificate_verification_success)
@@ -433,12 +426,10 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
     any_connection_fixture fix(ssl_ctx);
 
     // Connect fails
-    auto netres = fix.conn.async_connect(
-        connect_params_builder().ssl(ssl_mode::require).build(),
-        as_netresult
-    );
-    netres.run();
-    BOOST_TEST(netres.error().message().find("certificate verify failed") != std::string::npos);
+    auto err = fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
+                   .run()
+                   .err;
+    BOOST_TEST(err.message().find("certificate verify failed") != std::string::npos);
 }
 
 // Spotcheck: a custom SSL context can be used with old connections
@@ -454,9 +445,8 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
     auto params = connect_params_builder().build_hparams();
 
     // Connect fails
-    auto netres = conn.async_connect(get_tcp_endpoint(), params, as_netresult);
-    netres.run();
-    BOOST_TEST(netres.error().message().find("certificate verify failed") != std::string::npos);
+    auto err = conn.async_connect(get_tcp_endpoint(), params, as_netresult).run().err;
+    BOOST_TEST(err.message().find("certificate verify failed") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // ssl_certificate_validation
@@ -570,13 +560,9 @@ BOOST_FIXTURE_TEST_CASE(bad_user, any_connection_fixture)
                       .build();
 
     // Connect fails
-    auto netres = conn.async_connect(params, as_netresult);
-    netres.run();
-    BOOST_TEST(
-        (netres.error().category() == get_common_server_category() ||
-         netres.error().category() == get_client_category())
-    );
-    BOOST_TEST(netres.error() != error_code());  // may be access denied or unknown auth plugin
+    auto err = conn.async_connect(params, as_netresult).run().err;
+    BOOST_TEST((err.category() == get_common_server_category() || err.category() == get_client_category()));
+    BOOST_TEST(err != error_code());  // may be access denied or unknown auth plugin
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_handshake

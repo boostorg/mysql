@@ -162,7 +162,10 @@ BOOST_MYSQL_SPOTCHECK_TEST(prepare_statement_error)
 
     // Call the function
     fn.prepare_statement(fix.conn, "SELECT * FROM bad_table WHERE id IN (?, ?)")
-        .validate_error(common_server_errc::er_no_such_table, {"table", "doesn't exist", "bad_table"});
+        .validate_error(
+            common_server_errc::er_no_such_table,
+            "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+        );
 }
 
 // execute
@@ -189,7 +192,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(execute_error)
     // Call the function
     results result;
     fn.execute_query(fix.conn, "SELECT field_varchar, field_bad FROM one_row_table", result)
-        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
+        .validate_error_contains(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
 }
 
 // Start execution
@@ -215,7 +218,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(start_execution_error)
     // Call the function
     execution_state st;
     fn.start_execution(fix.conn, "SELECT field_varchar, field_bad FROM one_row_table", st)
-        .validate_error(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
+        .validate_error_contains(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
 }
 
 // Close statement
@@ -299,10 +302,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_error)
 
     // Read head for the 2nd resultset. This one contains an error, which is detected when reading head.
     fn.read_resultset_head(fix.conn, st)
-        .validate_error_exact(
-            common_server_errc::er_bad_field_error,
-            "Unknown column 'bad_field' in 'field list'"
-        );
+        .validate_error(common_server_errc::er_bad_field_error, "Unknown column 'bad_field' in 'field list'");
 }
 
 // Read some rows. No error spotcheck here
@@ -314,7 +314,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
 
     // Generate an execution state
     execution_state st;
-    fn.start_execution(fix.conn, "SELECT * FROM one_row_table", st);
+    fn.start_execution(fix.conn, "SELECT * FROM one_row_table", st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read once. st may or may not be complete, depending
@@ -372,7 +372,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_success)
     fn.reset_connection(fix.conn).validate_no_error();
 
     // The variable has been reset
-    fn.execute_query(fix.conn, "SELECT @myvar", result);
+    fn.execute_query(fix.conn, "SELECT @myvar", result).validate_no_error();
     BOOST_TEST(result.rows() == makerows(1, nullptr), per_element());
 }
 
@@ -482,8 +482,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_error)
 
     // No rows matched, so reading rows reads the OK packet. This will report the num resultsets mismatch
     std::array<row_multifield, 2> storage;
-    fn.read_some_rows_static_1(fix.conn, st, storage)
-        .validate_error_exact_client(client_errc::num_resultsets_mismatch);
+    fn.read_some_rows_static_1(fix.conn, st, storage).validate_error(client_errc::num_resultsets_mismatch);
 }
 #endif
 
@@ -513,7 +512,7 @@ BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, handshake_error, fns_connection)
 
     // Call the function
     fn.handshake(conn, connect_params_builder().database("bad_db").build_hparams())
-        .validate_error_exact(
+        .validate_error(
             common_server_errc::er_dbaccess_denied_error,
             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
         );
@@ -539,7 +538,7 @@ BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, connect_connection_error, fns_con
 
     // Call the function
     fn.connect(conn, get_tcp_endpoint(), connect_params_builder().database("bad_db").build_hparams())
-        .validate_error_exact(
+        .validate_error(
             common_server_errc::er_dbaccess_denied_error,
             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
         );
@@ -594,7 +593,7 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, connect_any_error, fns_any)
 
     // Call the function
     fn.connect(conn, connect_params_builder().ssl(ssl_mode::require).database("bad_db").build())
-        .validate_error_exact(
+        .validate_error(
             common_server_errc::er_dbaccess_denied_error,
             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
         );
@@ -622,10 +621,7 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, set_character_set_error, fns_any)
 
     // Call the function
     fn.set_character_set(conn, character_set{"bad_charset", nullptr})
-        .validate_error_exact(
-            common_server_errc::er_unknown_character_set,
-            "Unknown character set: 'bad_charset'"
-        );
+        .validate_error(common_server_errc::er_unknown_character_set, "Unknown character set: 'bad_charset'");
 
     // Success
     BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
@@ -666,7 +662,7 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, run_pipeline_error, fns_any)
 
     // Run the function
     fn.run_pipeline(conn, req, res)
-        .validate_error_exact(
+        .validate_error(
             common_server_errc::er_no_such_table,
             "Table 'boost_mysql_integtests.bad_table' doesn't exist"
         );

@@ -21,8 +21,8 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/as_netres.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
 #include "test_integration/server_features.hpp"
@@ -87,7 +87,7 @@ BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, reconnect_after_handshake_error_c
 
     // Error during server handshake
     fn.connect(conn, get_tcp_endpoint(), connect_params_builder().database("bad_db").build_hparams())
-        .validate_error_exact(
+        .validate_error(
             common_server_errc::er_dbaccess_denied_error,
             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
         );
@@ -106,7 +106,7 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_after_handshake_error_a
 
     // Error during server handshake
     fn.connect(conn, connect_params_builder().ssl(mode).database("bad_db").build())
-        .validate_error_exact(
+        .validate_error(
             common_server_errc::er_dbaccess_denied_error,
             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
         );
@@ -154,7 +154,7 @@ BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
     }));
 
     // Wait for the operation to finish
-    netres.validate_error(asio::error::operation_aborted);
+    std::move(netres).validate_error(asio::error::operation_aborted);
 
     // We can connect again and use the connection
     connect();

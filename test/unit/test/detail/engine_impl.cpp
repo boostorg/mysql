@@ -6,13 +6,16 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/any_resumable_ref.hpp>
 #include <boost/mysql/detail/engine_impl.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/async_result.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
@@ -27,6 +30,7 @@
 #include <cstring>
 
 #include "test_common/netfun_maker.hpp"
+#include "test_common/network_result.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -169,21 +173,58 @@ public:
     }
 };
 
-using test_engine = engine_impl<mock_engine_stream>;
-
 // Helpers to run the sync and async versions uniformly.
-// engine_impl uses any_completion_handler, so it needs a wrapper.
-template <class CompletionToken>
-void do_async_run(test_engine& eng, any_resumable_ref resumable, CompletionToken&& token)
+// engine_impl must be adapted because
+//   - run() and async_run() don't have a diagnostics parameter
+//   - async_run() takes a completion handler, rather than a generic completion token
+struct test_engine
 {
-    eng.async_run(resumable, std::forward<CompletionToken>(token));
-}
+    engine_impl<mock_engine_stream> value;
 
-const auto sync_fn = netfun_maker_mem<void, test_engine, any_resumable_ref>::sync_errc_noerrinfo(
-    &test_engine::run
-);
-const auto async_fn = netfun_maker_fn<void, test_engine&, any_resumable_ref>::async_noerrinfo(&do_async_run);
-using signature_t = decltype(sync_fn);
+    struct initiation_t
+    {
+        void operator()(
+            asio::any_completion_handler<void(error_code)> handler,
+            boost::mysql::diagnostics* diag,
+            engine* eng2,
+            any_resumable_ref resumable2
+        ) const
+        {
+            diag->clear();
+            eng2->async_run(resumable2, std::move(handler));
+        }
+    };
+
+    void run(any_resumable_ref resumable, error_code& err, boost::mysql::diagnostics& d)
+    {
+        d.clear();
+        value.run(resumable, err);
+    }
+
+    template <class CompletionToken>
+    auto async_run(any_resumable_ref resumable, boost::mysql::diagnostics& diag, CompletionToken&& token)
+        -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
+            initiation_t{},
+            token,
+            &diag,
+            &value,
+            resumable
+        ))
+    {
+        return asio::async_initiate<CompletionToken, void(error_code)>(
+            initiation_t{},
+            token,
+            &diag,
+            &value,
+            resumable
+        );
+    }
+};
+
+using netmaker_t = netfun_maker<void, test_engine, any_resumable_ref>;
+const auto sync_fn = netmaker_t::sync_errc(&test_engine::run);
+const auto async_fn = netmaker_t::async_diag(&test_engine::async_run);
+using signature_t = netmaker_t::signature;
 
 // A mock for a sans-io algorithm. Can be converted to any_resumable_ref
 struct mock_algo
@@ -233,11 +274,11 @@ BOOST_AUTO_TEST_CASE(next_action_read)
             test_engine eng(ctx.get_executor());
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
-            BOOST_TEST(eng.stream().calls.size() == 1u);
-            BOOST_TEST(eng.stream().calls[0].type() == next_action_type::read);
-            BOOST_TEST(eng.stream().calls[0].read_args().use_ssl == tc.ssl_active);
-            BOOST_TEST(eng.stream().calls[0].read_args().buffer.data() == buff.data());
-            BOOST_TEST(eng.stream().calls[0].read_args().buffer.size() == buff.size());
+            BOOST_TEST(eng.value.stream().calls.size() == 1u);
+            BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::read);
+            BOOST_TEST(eng.value.stream().calls[0].read_args().use_ssl == tc.ssl_active);
+            BOOST_TEST(eng.value.stream().calls[0].read_args().buffer.data() == buff.data());
+            BOOST_TEST(eng.value.stream().calls[0].read_args().buffer.size() == buff.size());
             algo.check_calls({
                 {error_code(), 0u},
                 {error_code(), 8u}
@@ -273,11 +314,11 @@ BOOST_AUTO_TEST_CASE(next_action_write)
             test_engine eng(ctx.get_executor());
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
-            BOOST_TEST(eng.stream().calls.size() == 1u);
-            BOOST_TEST(eng.stream().calls[0].type() == next_action_type::write);
-            BOOST_TEST(eng.stream().calls[0].write_args().use_ssl == tc.ssl_active);
-            BOOST_TEST(eng.stream().calls[0].write_args().buffer.data() == buff.data());
-            BOOST_TEST(eng.stream().calls[0].write_args().buffer.size() == buff.size());
+            BOOST_TEST(eng.value.stream().calls.size() == 1u);
+            BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::write);
+            BOOST_TEST(eng.value.stream().calls[0].write_args().use_ssl == tc.ssl_active);
+            BOOST_TEST(eng.value.stream().calls[0].write_args().buffer.data() == buff.data());
+            BOOST_TEST(eng.value.stream().calls[0].write_args().buffer.size() == buff.size());
             algo.check_calls({
                 {error_code(), 0u},
                 {error_code(), 4u}
@@ -316,8 +357,8 @@ BOOST_AUTO_TEST_CASE(next_action_other)
             test_engine eng(ctx.get_executor());
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
-            BOOST_TEST(eng.stream().calls.size() == 1u);
-            BOOST_TEST(eng.stream().calls[0].type() == tc.act.type());
+            BOOST_TEST(eng.value.stream().calls.size() == 1u);
+            BOOST_TEST(eng.value.stream().calls[0].type() == tc.act.type());
             algo.check_calls({
                 {error_code(), 0u},
                 {error_code(), 0u}
@@ -360,11 +401,13 @@ BOOST_AUTO_TEST_CASE(stream_errors)
             // Setup
             mock_algo algo(tc.act);
             asio::io_context ctx;
-            test_engine eng(ctx.get_executor(), asio::error::already_open);
+            test_engine eng{
+                {ctx.get_executor(), asio::error::already_open}
+            };
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();  // Error gets swallowed by the algo
-            BOOST_TEST(eng.stream().calls.size() == 1u);
-            BOOST_TEST(eng.stream().calls[0].type() == tc.act.type());
+            BOOST_TEST(eng.value.stream().calls.size() == 1u);
+            BOOST_TEST(eng.value.stream().calls[0].type() == tc.act.type());
             algo.check_calls({
                 {error_code(),              0u},
                 {asio::error::already_open, 0u}
@@ -398,8 +441,8 @@ BOOST_AUTO_TEST_CASE(resume_error_immediate)
             asio::io_context ctx;
             test_engine eng(ctx.get_executor());
 
-            tc.fn(eng, any_resumable_ref(algo)).validate_error_exact(tc.ec);
-            BOOST_TEST(eng.stream().calls.size() == 0u);
+            tc.fn(eng, any_resumable_ref(algo)).validate_error(tc.ec, {});
+            BOOST_TEST(eng.value.stream().calls.size() == 0u);
             algo.check_calls({
                 {error_code(), 0u}
             });
@@ -432,14 +475,13 @@ BOOST_AUTO_TEST_CASE(resume_error_successive_calls)
             asio::io_context ctx;
             test_engine eng(ctx.get_executor());
 
-            tc.fn(eng, any_resumable_ref(algo)).validate_error_exact(tc.ec);
-            BOOST_TEST(eng.stream().calls.size() == 1u);
-            BOOST_TEST(eng.stream().calls[0].type() == next_action_type::connect);
+            tc.fn(eng, any_resumable_ref(algo)).validate_error(tc.ec, {});
+            BOOST_TEST(eng.value.stream().calls.size() == 1u);
+            BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::connect);
             algo.check_calls({
                 {error_code(), 0u},
                 {error_code(), 0u}
             });
-            // Note: the testing infrastructure checks that we don't do extra posts in the async functions
         }
     }
 }

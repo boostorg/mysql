@@ -13,11 +13,11 @@
 using namespace boost::mysql::test;
 
 // Network functions
-#define BOOST_MYSQL_MAKE_NETFN(conn, netm, fn, i)                 \
-    (i == 0   ? netmakers::netm::sync_errc(&conn::fn)             \
-     : i == 1 ? netmakers::netm::sync_exc(&conn::fn)              \
-     : i == 2 ? netmakers::netm::async_errinfo(&conn::async_##fn) \
-              : netmakers::netm::async_noerrinfo(&conn::async_##fn))
+#define BOOST_MYSQL_MAKE_NETFN(conn, netm, fn, i)              \
+    (i == 0   ? netmakers::netm::sync_errc(&conn::fn)          \
+     : i == 1 ? netmakers::netm::sync_exc(&conn::fn)           \
+     : i == 2 ? netmakers::netm::async_diag(&conn::async_##fn) \
+              : netmakers::netm::async_nodiag(&conn::async_##fn))
 
 static constexpr const char* fn_names[] = {"sync_errc", "sync_exc", "async_diag", "async_nodiag"};
 

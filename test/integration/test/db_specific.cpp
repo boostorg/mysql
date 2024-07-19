@@ -11,8 +11,8 @@
 #include <boost/mysql/mysql_server_errc.hpp>
 #include <boost/mysql/results.hpp>
 
-#include "test_common/as_netres.hpp"
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/server_features.hpp"
 

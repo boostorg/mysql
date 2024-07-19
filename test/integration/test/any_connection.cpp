@@ -20,14 +20,16 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
+#include <boost/test/data/test_case.hpp>
+
 #include <string>
 
-#include "test_common/as_netres.hpp"
 #include "test_common/create_basic.hpp"
-#include "test_common/netfun_maker.hpp"
+#include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
+#include "test_integration/spotchecks_helpers.hpp"
 
 // Additional spotchecks for any_connection
 
@@ -124,40 +126,21 @@ BOOST_FIXTURE_TEST_CASE(default_max_buffer_size_error, any_connection_fixture)
         .validate_error(client_errc::max_buffer_size_exceeded);
 }
 
-BOOST_AUTO_TEST_CASE(naggle_disabled)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, naggle_disabled, network_functions_any::sync_and_async())
 {
-    using netmaker_connect = netfun_maker_mem<void, any_connection, const connect_params&>;
+    // Setup
+    const network_functions_any& fn = sample;
 
-    struct
-    {
-        string_view name;
-        netmaker_connect::signature fn;
-    } test_cases[] = {
-        {"sync",  netmaker_connect::sync_errc(&any_connection::connect)          },
-        {"async", netmaker_connect::async_errinfo(&any_connection::async_connect)},
-    };
+    // Connect
+    fn.connect(conn, connect_params_builder().disable_ssl().build()).validate_no_error();
 
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Create the connection
-            any_connection_fixture fix;
-
-            // Connect
-            tc.fn(fix.conn, connect_params_builder().disable_ssl().build()).validate_no_error();
-
-            // Naggle's algorithm was disabled
-            asio::ip::tcp::no_delay opt;
-            static_cast<detail::engine_impl<detail::variant_stream>&>(
-                detail::access::get_impl(fix.conn).get_engine()
-            )
-                .stream()
-                .tcp_socket()
-                .get_option(opt);
-            BOOST_TEST(opt.value() == true);
-        }
-    }
+    // Naggle's algorithm was disabled
+    asio::ip::tcp::no_delay opt;
+    static_cast<detail::engine_impl<detail::variant_stream>&>(detail::access::get_impl(conn).get_engine())
+        .stream()
+        .tcp_socket()
+        .get_option(opt);
+    BOOST_TEST(opt.value() == true);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

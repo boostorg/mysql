@@ -15,7 +15,6 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/check_meta.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_unit/create_coldef_frame.hpp"
@@ -33,9 +32,9 @@ BOOST_AUTO_TEST_SUITE(test_multifn)
 
 using test_connection = connection<test_stream>;
 
-using start_query_netm = netfun_maker_mem<void, test_connection, const string_view&, execution_state&>;
-using read_resultset_head_netm = netfun_maker_mem<void, test_connection, execution_state&>;
-using read_some_rows_netm = netfun_maker_mem<rows_view, test_connection, execution_state&>;
+using start_query_netm = netfun_maker<void, test_connection, const string_view&, execution_state&>;
+using read_resultset_head_netm = netfun_maker<void, test_connection, execution_state&>;
+using read_some_rows_netm = netfun_maker<rows_view, test_connection, execution_state&>;
 
 struct
 {
@@ -48,9 +47,9 @@ struct
      read_resultset_head_netm::sync_errc(&test_connection::read_resultset_head),
      read_some_rows_netm::sync_errc(&test_connection::read_some_rows),
      "sync" },
-    {start_query_netm::async_errinfo(&test_connection::async_start_execution),
-     read_resultset_head_netm::async_errinfo(&test_connection::async_read_resultset_head),
-     read_some_rows_netm::async_errinfo(&test_connection::async_read_some_rows),
+    {start_query_netm::async_diag(&test_connection::async_start_execution),
+     read_resultset_head_netm::async_diag(&test_connection::async_read_resultset_head),
+     read_some_rows_netm::async_diag(&test_connection::async_read_some_rows),
      "async"},
 };
 
