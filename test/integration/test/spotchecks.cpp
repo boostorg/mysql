@@ -11,46 +11,30 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
-#include <boost/mysql/connection.hpp>
-#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
-#include <boost/mysql/field_view.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/row_view.hpp>
-#include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp.hpp>
 
-#include <boost/mysql/detail/config.hpp>
-
-#include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
 #include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
-#include <boost/mp11/detail/mp_list.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/test/data/test_case.hpp>
-#include <boost/test/tools/context.hpp>
-#include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <cstddef>
-#include <vector>
 
 #include "test_common/create_basic.hpp"
-#include "test_common/netfun_maker.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
-#include "test_integration/get_endpoint.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 #include "test_integration/static_rows.hpp"
-#include "test_integration/tcp_network_fixture.hpp"
+#include "test_integration/tcp_connection_fixture.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -60,6 +44,8 @@ using boost::test_tools::per_element;
 // These tests aim to cover the 4 overloads we have for each network function,
 // both for the old templated connection and for any_connection.
 // A success and an error case is included for each function.
+// TODO: tcp_ssl_connection, unix_connection, unix_ssl_connection sync/async spotchecks
+// (we can repurpose unix_sockets file => templated connection)
 
 namespace {
 
@@ -98,7 +84,7 @@ struct fixture_type;
 template <>
 struct fixture_type<tcp_connection>
 {
-    using type = tcp_network_fixture;
+    using type = tcp_connection_fixture;
 };
 
 template <>
@@ -113,10 +99,12 @@ using fixture_type_t = typename fixture_type<Conn>::type;
 // Connect with multi-queries enabled in a generic way
 // TODO: clangd reports that these are not used (incorrectly)
 // TODO: fixture connect shouldn't be used in this context
-static void connect_with_multi_queries(tcp_network_fixture& fix)
+static void connect_with_multi_queries(
+    tcp_connection_fixture& fix,
+    boost::source_location loc = BOOST_CURRENT_LOCATION
+)
 {
-    fix.params.set_multi_queries(true);
-    fix.connect();
+    fix.connect(connect_params_builder().multi_queries(true).build_hparams(), loc);
 }
 
 static void connect_with_multi_queries(
@@ -133,18 +121,18 @@ static auto fns_any = network_functions_any::all();
 
 // Simplify defining test cases involving both connection types
 // The resulting test case gets the fixture (fix) and the network functions (fn) as args
-#define BOOST_MYSQL_SPOTCHECK_TEST(name)                                            \
-    template <class Conn>                                                           \
-    void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn); \
-    BOOST_DATA_TEST_CASE_F(tcp_network_fixture, name##_connection, fns_connection)  \
-    {                                                                               \
-        do_##name<tcp_connection>(*this, sample);                                   \
-    }                                                                               \
-    BOOST_DATA_TEST_CASE_F(any_connection_fixture, name##_any, fns_any)             \
-    {                                                                               \
-        do_##name<any_connection>(*this, sample);                                   \
-    }                                                                               \
-    template <class Conn>                                                           \
+#define BOOST_MYSQL_SPOTCHECK_TEST(name)                                              \
+    template <class Conn>                                                             \
+    void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn);   \
+    BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, name##_connection, fns_connection) \
+    {                                                                                 \
+        do_##name<tcp_connection>(*this, sample);                                     \
+    }                                                                                 \
+    BOOST_DATA_TEST_CASE_F(any_connection_fixture, name##_any, fns_any)               \
+    {                                                                                 \
+        do_##name<any_connection>(*this, sample);                                     \
+    }                                                                                 \
+    template <class Conn>                                                             \
     void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn)
 
 // prepare statement
@@ -270,7 +258,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_success)
 
     // Generate an execution state
     execution_state st;
-    fn.start_execution(fix.conn, "SELECT 4.2e0; SELECT 'abc', 42", st).validate_no_error();
+    fn.start_execution(fix.conn, "SELECT 4.2e0; SELECT * FROM empty_table", st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read the 1st resultset
@@ -282,18 +270,16 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_success)
     // Read head
     fn.read_resultset_head(fix.conn, st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
-    BOOST_TEST(st.meta()[0].type() == column_type::varchar);
-    BOOST_TEST(st.meta()[1].type() == column_type::bigint);
+    validate_2fields_meta(st.meta(), "empty_table");
 
     // Reading head again does nothing
     fn.read_resultset_head(fix.conn, st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
-    BOOST_TEST(st.meta()[0].type() == column_type::varchar);
-    BOOST_TEST(st.meta()[1].type() == column_type::bigint);
+    validate_2fields_meta(st.meta(), "empty_table");
 
     // We can read rows now
-    auto rows = fn.read_some_rows(fix.conn, st).get();
-    BOOST_TEST((rows == makerows(2, "abc", 42)));
+    rws = fn.read_some_rows(fix.conn, st).get();
+    BOOST_TEST(rws == rows(), per_element());
 }
 
 BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_error)
@@ -506,7 +492,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_error)
 //
 
 // Handshake
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, handshake_success, fns_connection)
+BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, handshake_success, fns_connection)
 {
     // Setup
     const network_functions_connection& fn = sample;
@@ -519,7 +505,7 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, handshake_success, fns_connection)
     fn.ping(conn).validate_no_error();
 }
 
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, handshake_error, fns_connection)
+BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, handshake_error, fns_connection)
 {
     // Setup
     const network_functions_connection& fn = sample;
@@ -534,7 +520,7 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, handshake_error, fns_connection)
 }
 
 // Connect
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, connect_connection_success, fns_connection)
+BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, connect_connection_success, fns_connection)
 {
     // Setup
     const network_functions_connection& fn = sample;
@@ -546,7 +532,7 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, connect_connection_success, fns_conn
     fn.ping(conn).validate_no_error();
 }
 
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, connect_connection_error, fns_connection)
+BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, connect_connection_error, fns_connection)
 {
     // Setup
     const network_functions_connection& fn = sample;
@@ -560,7 +546,7 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, connect_connection_error, fns_connec
 }
 
 // Quit
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, quit_success, fns_connection)
+BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, quit_success, fns_connection)
 {
     // Setup
     const network_functions_connection& fn = sample;
@@ -570,7 +556,7 @@ BOOST_DATA_TEST_CASE_F(tcp_network_fixture, quit_success, fns_connection)
     fn.quit(conn).validate_no_error();
 }
 
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, quit_error, fns_connection)
+BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, quit_error, fns_connection)
 {
     // Setup
     const network_functions_connection& fn = sample;

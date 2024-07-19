@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_AS_NETRES_HPP
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_AS_NETRES_HPP
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -89,12 +90,21 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_v2
     }
 
     void validate_error(
-        error_code expected_err,
-        string_view expected_msg,
+        common_server_errc expected_err,
+        string_view expected_msg = {},
         source_location loc = BOOST_CURRENT_LOCATION
     )
     {
         validate_error(expected_err, create_server_diag(expected_msg), loc);
+    }
+
+    void validate_error(
+        client_errc expected_err,
+        string_view expected_msg = {},
+        source_location loc = BOOST_CURRENT_LOCATION
+    )
+    {
+        validate_error(expected_err, create_client_diag(expected_msg), loc);
     }
 
     // Use when the exact message isn't known, but some of its contents are
@@ -122,6 +132,7 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_v2
 };
 
 // TODO: rename
+// TODO: could we validate diagnostics to not be cleared until initiation?
 template <class Signature>
 struct sig_to_network_result_type;
 

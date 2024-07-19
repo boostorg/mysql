@@ -10,15 +10,9 @@ add_executable(
 
     # Utilities
     src/server_features.cpp
-    src/get_endpoint.cpp
     src/metadata_validator.cpp
-    src/er_network_variant.cpp
-    src/sync_errc.cpp
-    src/sync_exc.cpp
-    src/async_callback.cpp
-    src/async_coroutines.cpp
-    src/async_coroutinescpp20.cpp
     src/spotchecks_helpers.cpp
+    src/utils.cpp
 
     # Actual tests
     test/spotchecks.cpp

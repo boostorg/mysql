@@ -46,11 +46,15 @@
 #include <unordered_map>
 #include <vector>
 
+#include "test_common/as_netres.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
+#include "test_integration/any_connection_fixture.hpp"
+#include "test_integration/common.hpp"
 #include "test_integration/metadata_validator.hpp"
 #include "test_integration/server_features.hpp"
-#include "test_integration/tcp_network_fixture.hpp"
+
+// TODO: this can be greatly simplified
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -84,22 +88,23 @@ const flagsvec no_flags{};
 
 constexpr format_options opts{utf8mb4_charset, true};
 
-struct database_types_fixture : tcp_network_fixture
+struct database_types_fixture : any_connection_fixture
 {
     database_types_fixture()
     {
         // Connect
-        params.set_multi_queries(true);
-        connect();
+        connect(connect_params_builder().multi_queries(true).build());
 
         // Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
         // Sets also sql_mode to allow invalid dates
         results result;
-        conn.execute(
-            "SET session time_zone = '+02:00'; "
-            "SET session sql_mode = 'ALLOW_INVALID_DATES'",
-            result
-        );
+        conn.async_execute(
+                "SET session time_zone = '+02:00'; "
+                "SET session sql_mode = 'ALLOW_INVALID_DATES'",
+                result,
+                as_netresult
+        )
+            .validate_no_error();
     }
 };
 
@@ -123,7 +128,7 @@ struct table_base
     }
 
     virtual ~table_base() {}
-    virtual void select_static(tcp_connection& conn) = 0;
+    virtual void select_static(any_connection& conn) = 0;
 
     void add_meta(
         std::string field,
@@ -255,11 +260,11 @@ public:
     }
 
 #ifdef BOOST_MYSQL_CXX14
-    void select_static(tcp_connection& conn) override
+    void select_static(any_connection& conn) override
     {
         // Execute the query
         static_results<StaticRow> result;
-        conn.execute(select_sql(), result);
+        conn.async_execute(select_sql(), result, as_netresult).validate_no_error();
 
         // Validate metadata
         validate_meta(result.meta(), metas);
@@ -301,7 +306,7 @@ public:
         }
     }
 #else
-    void select_static(tcp_connection&) override {}
+    void select_static(any_connection&) override {}
 #endif
 };
 
@@ -1038,7 +1043,7 @@ BOOST_FIXTURE_TEST_CASE(query_read, database_types_fixture)
         {
             // Execute the query
             results result;
-            conn.execute(table->select_sql(), result);
+            conn.async_execute(table->select_sql(), result, as_netresult).validate_no_error();
 
             // Validate the received contents
             validate_meta(result.meta(), table->metas);
@@ -1057,13 +1062,13 @@ BOOST_FIXTURE_TEST_CASE(sql_format_query_write, database_types_fixture)
         {
             // Remove all contents from the table
             results result;
-            conn.execute(table->delete_sql(), result);
+            conn.async_execute(table->delete_sql(), result, as_netresult).validate_no_error();
 
             // Insert all the contents again
-            conn.execute(table->insert_sql(), result);
+            conn.async_execute(table->insert_sql(), result, as_netresult).validate_no_error();
 
             // Query them again and verify the insertion was okay
-            conn.execute(table->select_sql(), result);
+            conn.async_execute(table->select_sql(), result, as_netresult).validate_no_error();
             validate_meta(result.meta(), table->metas);
             table->validate_rows(result.rows());
         }
@@ -1077,11 +1082,11 @@ BOOST_FIXTURE_TEST_CASE(statement_read, database_types_fixture)
         BOOST_TEST_CONTEXT(table->name)
         {
             // Prepare the statement
-            auto stmt = conn.prepare_statement(table->select_sql());
+            auto stmt = conn.async_prepare_statement(table->select_sql(), as_netresult).get();
 
             // Execute it with the provided parameters
             results result;
-            conn.execute(stmt.bind(), result);
+            conn.async_execute(stmt.bind(), result, as_netresult).validate_no_error();
 
             // Validate the received contents
             validate_meta(result.meta(), table->metas);
@@ -1099,21 +1104,22 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
         BOOST_TEST_CONTEXT(table->name)
         {
             // Prepare the statements
-            auto insert_stmt = conn.prepare_statement(table->insert_sql_stmt());
-            auto query_stmt = conn.prepare_statement(table->select_sql());
+            auto insert_stmt = conn.async_prepare_statement(table->insert_sql_stmt(), as_netresult).get();
+            auto query_stmt = conn.async_prepare_statement(table->select_sql(), as_netresult).get();
 
             // Remove all contents from the table
             results result;
-            conn.execute(table->delete_sql(), result);
+            conn.async_execute(table->delete_sql(), result, as_netresult).validate_no_error();
 
             // Insert all the contents again
             for (const auto& row : table->rws)
             {
-                conn.execute(insert_stmt.bind(row.begin(), row.end()), result);
+                conn.async_execute(insert_stmt.bind(row.begin(), row.end()), result, as_netresult)
+                    .validate_no_error();
             }
 
             // Query them again and verify the insertion was okay
-            conn.execute(query_stmt.bind(), result);
+            conn.async_execute(query_stmt.bind(), result, as_netresult).validate_no_error();
             validate_meta(result.meta(), table->metas);
             table->validate_rows(result.rows());
         }

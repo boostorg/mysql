@@ -22,13 +22,11 @@
 #include <boost/asio/system_executor.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <initializer_list>
+#include <cstdint>
 #include <string>
 #include <utility>
 
 #include "test_common/ci_server.hpp"
-#include "test_integration/er_connection.hpp"
-#include "test_integration/er_network_variant.hpp"
 #include "test_integration/metadata_validator.hpp"
 
 namespace boost {
@@ -76,6 +74,12 @@ public:
         return *this;
     }
 
+    connect_params_builder& collation(std::uint16_t v)
+    {
+        res_.set_connection_collation(v);
+        return *this;
+    }
+
     // TODO: use this
     handshake_params build_hparams() const { return res_; }
 
@@ -88,6 +92,7 @@ public:
         res.database = res_.database();
         res.multi_queries = res_.multi_queries();
         res.ssl = res_.ssl();
+        res.connection_collation = res_.connection_collation();
         return res;
     }
 };
@@ -103,84 +108,7 @@ inline connect_params default_connect_params(ssl_mode ssl = ssl_mode::enable)
     return res;
 }
 
-struct network_fixture_base
-{
-    handshake_params params{integ_user, integ_passwd, integ_db};
-    boost::asio::io_context ctx;
-    boost::asio::ssl::context ssl_ctx{boost::asio::ssl::context::tls_client};
-};
-
-struct network_fixture : network_fixture_base
-{
-    er_network_variant* var{};
-    er_connection_ptr conn;
-
-    ~network_fixture()
-    {
-        if (conn)
-        {
-            conn->sync_close();
-        }
-    }
-
-    void setup(er_network_variant& variant)
-    {
-        var = &variant;
-        conn = var->create_connection(ctx.get_executor(), ssl_ctx);
-        conn->set_metadata_mode(metadata_mode::full);
-    }
-
-    void setup_and_physical_connect(er_network_variant& net)
-    {
-        setup(net);
-        conn->physical_connect();
-    }
-
-    void setup_and_connect(er_network_variant& net, ssl_mode m = ssl_mode::require)
-    {
-        setup(net);
-        connect(m);
-    }
-
-    void set_credentials(string_view user, string_view password)
-    {
-        params.set_username(user);
-        params.set_password(password);
-    }
-
-    // Verifies that we are or are not using SSL, depending on whether the stream supports it or not
-    void validate_ssl(ssl_mode m = ssl_mode::require)
-    {
-        bool expected = (m == ssl_mode::require || m == ssl_mode::enable) && var->supports_ssl();
-        BOOST_TEST(conn->uses_ssl() == expected);
-    }
-
-    void handshake(ssl_mode m = ssl_mode::require)
-    {
-        assert(conn);
-        params.set_ssl(m);
-        conn->handshake(params).validate_no_error();
-        validate_ssl(m);
-    }
-
-    void connect(ssl_mode m = ssl_mode::require)
-    {
-        assert(conn);
-        params.set_ssl(m);
-        conn->connect(params).validate_no_error();
-        validate_ssl(m);
-    }
-
-    // Call this in the fixture setup of any test invoking write
-    // operations on the database, to prevent race conditions,
-    // make the testing environment more stable and speed up the tests
-    void start_transaction()
-    {
-        results result;
-        conn->execute("START TRANSACTION", result).get();
-    }
-};
-
+// TODO: make these compiled and use source_location
 inline void validate_2fields_meta(const metadata_collection_view& fields, const std::string& table)
 {
     validate_meta(

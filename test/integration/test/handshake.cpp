@@ -5,16 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/tcp.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/io_context.hpp>
@@ -23,7 +20,6 @@
 #include <boost/asio/ssl/verify_mode.hpp>
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
-#include <boost/test/tools/context.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <string>
@@ -31,14 +27,12 @@
 #include <vector>
 
 #include "test_common/as_netres.hpp"
-#include "test_common/ci_server.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
-#include "test_integration/get_endpoint.hpp"
 #include "test_integration/server_ca.hpp"
 #include "test_integration/server_features.hpp"
-#include "test_integration/snippets/credentials.hpp"
+#include "test_integration/tcp_connection_fixture.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -155,15 +149,15 @@ BOOST_AUTO_TEST_CASE(bad_password)
 }
 
 // Spotcheck: mysql_native_password works with old connection
-BOOST_AUTO_TEST_CASE(tcp_connection_)
+BOOST_FIXTURE_TEST_CASE(tcp_connection_, tcp_connection_fixture)
 {
-    // Setup
-    asio::io_context ctx;
-    tcp_connection conn(ctx);
-    handshake_params params(regular_user, regular_passwd, integ_db);
-
     // Connect succeeds
-    conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
+    conn.async_connect(
+            get_tcp_endpoint(),
+            connect_params_builder().credentials(regular_user, regular_passwd).build_hparams(),
+            as_netresult
+    )
+        .validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
@@ -372,7 +366,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
     asio::io_context ctx;
     asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
     tcp_ssl_connection conn(ctx, ssl_ctx);
-    handshake_params params(regular_user, regular_passwd, integ_db);
+    auto params = connect_params_builder().credentials(regular_user, regular_passwd).build_hparams();
 
     // Connect succeeds
     conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
@@ -457,7 +451,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
     asio::io_context ctx;
     tcp_ssl_connection conn(ctx, ssl_ctx);
-    handshake_params params(integ_user, integ_passwd, integ_db);
+    auto params = connect_params_builder().build_hparams();
 
     // Connect fails
     auto netres = conn.async_connect(get_tcp_endpoint(), params, as_netresult);
@@ -481,19 +475,18 @@ BOOST_FIXTURE_TEST_CASE(any_enable, any_connection_fixture)
 }
 
 // connection<>: all ssl modes work as disabled if the stream doesn't support ssl
-BOOST_DATA_TEST_CASE(non_ssl_stream, data::make({ssl_mode::disable, ssl_mode::enable, ssl_mode::require}))
+BOOST_DATA_TEST_CASE_F(
+    tcp_connection_fixture,
+    non_ssl_stream,
+    data::make({ssl_mode::disable, ssl_mode::enable, ssl_mode::require})
+)
 {
-    // Setup
-    asio::io_context ctx;
-    tcp_connection conn(ctx);
-    handshake_params params(integ_user, integ_passwd, integ_db);
-    params.set_ssl(sample);
-
     // Physical connect
     conn.stream().connect(get_tcp_endpoint());
 
     // Handshake succeeds
-    conn.async_handshake(params, as_netresult).validate_no_error();
+    conn.async_handshake(connect_params_builder().ssl(sample).build_hparams(), as_netresult)
+        .validate_no_error();
     BOOST_TEST(!conn.uses_ssl());
 }
 
@@ -519,8 +512,7 @@ BOOST_AUTO_TEST_CASE(ssl_stream)
             asio::io_context ctx;
             asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
             tcp_ssl_connection conn(ctx, ssl_ctx);
-            handshake_params params(mysql_username, mysql_password);
-            params.set_ssl(tc.mode);
+            auto params = connect_params_builder().ssl(tc.mode).build_hparams();
 
             // Handshake succeeds
             conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();

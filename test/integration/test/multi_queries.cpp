@@ -15,7 +15,7 @@
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
-#include "test_integration/tcp_network_fixture.hpp"
+#include "test_integration/tcp_connection_fixture.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -117,20 +117,16 @@ BOOST_FIXTURE_TEST_CASE(error_not_enabled, any_connection_fixture)
     // Execute fails
     results result;
     conn.async_execute("SELECT 1; SELECT 2", result, as_netresult)
-        .validate_error(
+        .validate_error_contains(
             common_server_errc::er_parse_error,
-            "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server "
-            "version for the right syntax to use near 'SELECT 2' at line 1"
+            {"you have an error in your sql syntax"}
         );
 }
 
 // Spotcheck: old connection can do multi-queries
-BOOST_FIXTURE_TEST_CASE(tcp_connection_enable, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(tcp_connection_enable, tcp_connection_fixture)
 {
-    // TODO: refactor this to current practices
-    // Setup
-    params.set_multi_queries(true);
-    connect();
+    connect(connect_params_builder().multi_queries(true).build_hparams());
 
     // Execute succeeds
     results result;
@@ -140,19 +136,17 @@ BOOST_FIXTURE_TEST_CASE(tcp_connection_enable, tcp_network_fixture)
     BOOST_TEST(result.at(1).rows() == makerows(1, 2), per_element());
 }
 
-BOOST_FIXTURE_TEST_CASE(tcp_connection_disabled, tcp_network_fixture)
+BOOST_FIXTURE_TEST_CASE(tcp_connection_disabled, tcp_connection_fixture)
 {
-    // TODO: refactor this to current practices
     // Setup
     connect();
 
     // Execute succeeds
     results result;
     conn.async_execute("SELECT 1; SELECT 2", result, as_netresult)
-        .validate_error(
+        .validate_error_contains(
             common_server_errc::er_parse_error,
-            "You have an error in your SQL syntax; check the manual that corresponds to your MySQL server "
-            "version for the right syntax to use near 'SELECT 2' at line 1"
+            {"you have an error in your sql syntax"}
         );
 }
 

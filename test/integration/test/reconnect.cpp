@@ -5,22 +5,16 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/any_address.hpp>
-#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
-#include <boost/mysql/error_code.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/data/monomorphic.hpp>
@@ -31,10 +25,9 @@
 #include "test_common/create_basic.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
-#include "test_integration/get_endpoint.hpp"
 #include "test_integration/server_features.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
-#include "test_integration/tcp_network_fixture.hpp"
+#include "test_integration/tcp_connection_fixture.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -51,7 +44,7 @@ auto any_samples_grid = boost::unit_test::data::make(any_samples) *
                         boost::unit_test::data::make({ssl_mode::disable, ssl_mode::require});
 
 // Old connection can reconnect after close if the stream is not SSL
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, reconnect_after_close_connection, connection_samples)
+BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, reconnect_after_close_connection, connection_samples)
 {
     const network_functions_connection& fn = sample;
 
@@ -88,7 +81,7 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_after_close_any, any_sa
 }
 
 // Old connection can reconnect after handshake failure if the stream is not SSL
-BOOST_DATA_TEST_CASE_F(tcp_network_fixture, reconnect_after_handshake_error_connection, connection_samples)
+BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, reconnect_after_handshake_error_connection, connection_samples)
 {
     const network_functions_connection& fn = sample;
 
@@ -148,8 +141,6 @@ BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
     // Setup
     auto connect_prms = default_connect_params();
     results r;
-    // boost::mysql::error_code ec;
-    // boost::mysql::diagnostics diag;
     connect();
 
     // Kick an operation that ends up cancelled
