@@ -409,6 +409,105 @@ BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_error)
     fn.reset_connection(fix.conn).validate_any_error();
 }
 
+// Close connection
+// TODO: make a unit test with double close and an error case
+BOOST_MYSQL_SPOTCHECK_TEST(close_connection_success)
+{
+    // Setup
+    fix.connect();
+
+    // Close
+    fn.close(fix.conn).validate_no_error();
+
+    // We are no longer able to query
+    results result;
+    fn.execute_query(fix.conn, "SELECT 1", result).validate_any_error();
+
+    // Closing again returns OK (and does nothing)
+    fn.close(fix.conn).validate_no_error();
+}
+
+#ifdef BOOST_MYSQL_CXX14
+// Execute (static) - errors are already covered by the other tests
+BOOST_MYSQL_SPOTCHECK_TEST(execute_static_success)
+{
+    // Setup
+    fix.connect();
+    static_results_t result;
+
+    // Execute the function
+    fn.execute_static(fix.conn, "CALL sp_spotchecks()", result).validate_no_error();
+
+    // Check
+    row_multifield expected[]{
+        {boost::optional<float>(1.1f), 11, std::string("aaa")}
+    };
+    BOOST_TEST(result.rows<0>() == expected, per_element());
+}
+
+// start_execution, read_resultset_head, read_some_rows success
+BOOST_MYSQL_SPOTCHECK_TEST(start_execution_and_followups_static_success)
+{
+    // Setup
+    fix.connect();
+    static_state_t st;
+
+    // Start
+    fn.start_execution_static(fix.conn, "CALL sp_spotchecks()", st).validate_no_error();
+    BOOST_TEST(st.should_read_rows());
+
+    // Read r1 rows
+    std::array<row_multifield, 2> storage;
+    std::size_t num_rows = fn.read_some_rows_static_1(fix.conn, st, storage).get();
+    row_multifield expected_multifield{boost::optional<float>(1.1f), 11, std::string("aaa")};  // MSVC 14.1
+    BOOST_TEST(num_rows == 1u);
+    BOOST_TEST(storage[0] == expected_multifield);
+
+    // Ensure we're in the next resultset
+    num_rows = fn.read_some_rows_static_1(fix.conn, st, storage).get();
+    BOOST_TEST(num_rows == 0u);
+    BOOST_TEST(st.should_read_head());
+
+    // Read r2 head
+    fn.read_resultset_head_static(fix.conn, st).validate_no_error();
+    BOOST_TEST(st.should_read_rows());
+
+    // Read r2 rows
+    std::array<row_2fields, 2> storage2;
+    num_rows = fn.read_some_rows_static_2(fix.conn, st, storage2).get();
+    BOOST_TEST(num_rows == 1u);
+    row_2fields expected_2fields{1, std::string("f0")};
+    BOOST_TEST(storage2[0] == expected_2fields);
+
+    // Ensure we're in the next resultset
+    num_rows = fn.read_some_rows_static_2(fix.conn, st, storage2).get();
+    BOOST_TEST(num_rows == 0u);
+    BOOST_TEST(st.should_read_head());
+
+    // Read r3 head (empty)
+    fn.read_resultset_head_static(fix.conn, st).validate_no_error();
+    BOOST_TEST(st.complete());
+}
+
+// read_some_rows failure (the other error cases are already widely tested)
+BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_error)
+{
+    // Setup
+    fix.connect();
+    static_state_t st;
+
+    // Start
+    fn.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 42", st)
+        .validate_no_error();
+    BOOST_TEST(st.should_read_rows());
+
+    // No rows matched, so reading rows reads the OK packet. This will report the num resultsets mismatch
+    std::array<row_multifield, 2> storage;
+    fn.read_some_rows_static_1(fix.conn, st, storage)
+        .validate_error_exact_client(client_errc::num_resultsets_mismatch);
+}
+#endif
+
 //
 //
 //
@@ -454,112 +553,6 @@ BOOST_DATA_TEST_CASE_F(network_fixture, quit_success, samples_with_handshake)
     // TODO: we can't just query() and expect an error, because that's not reliable as a test.
     // We should have a flag to check whether the connection is connected or not
 }
-
-// Close connection: no server error spotcheck
-// TODO: all_variants_with_handshake
-BOOST_DATA_TEST_CASE_F(network_fixture, close_connection_success, samples_with_handshake)
-{
-    setup_and_connect(sample);
-
-    // Close
-    conn->close().validate_no_error();
-
-    // We are no longer able to query
-    boost::mysql::results result;
-    conn->execute("SELECT 1", result).validate_any_error();
-
-    // The stream is closed
-    BOOST_TEST(!conn->is_open());
-
-    // Closing again returns OK (and does nothing)
-    conn->close().validate_no_error();
-
-    // Stream (socket) still closed
-    BOOST_TEST(!conn->is_open());
-}
-
-// TODO: move this to a unit test
-BOOST_DATA_TEST_CASE_F(network_fixture, not_open_connection, err_samples)
-{
-    setup(sample);
-    conn->close().validate_no_error();
-    BOOST_TEST(!conn->is_open());
-}
-
-#ifdef BOOST_MYSQL_CXX14
-// Execute (static) - errors are already covered by the other tests
-BOOST_DATA_TEST_CASE_F(network_fixture, execute_static_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    er_connection::static_results_t result;
-    conn->execute("CALL sp_spotchecks()", result).get();
-    BOOST_TEST(result.rows<0>().size() == 1u);
-    row_multifield expected{boost::optional<float>(1.1f), 11, std::string("aaa")};
-    BOOST_TEST(result.rows<0>()[0] == expected);
-}
-
-// start_execution, read_resultset_head, read_some_rows success
-BOOST_DATA_TEST_CASE_F(network_fixture, start_execution_and_followups_static_success, all_samples)
-{
-    setup_and_connect(sample);
-
-    er_connection::static_state_t st;
-
-    // Start
-    conn->start_execution("CALL sp_spotchecks()", st).get();
-    BOOST_TEST(st.should_read_rows());
-
-    // Read r1 rows
-    std::array<row_multifield, 2> storage;
-    std::size_t num_rows = conn->read_some_rows(st, storage).get();
-    row_multifield expected_multifield{boost::optional<float>(1.1f), 11, std::string("aaa")};  // MSVC 14.1
-    BOOST_TEST(num_rows == 1u);
-    BOOST_TEST(storage[0] == expected_multifield);
-
-    // Ensure we're in the next resultset
-    num_rows = conn->read_some_rows(st, storage).get();
-    BOOST_TEST(num_rows == 0u);
-    BOOST_TEST(st.should_read_head());
-
-    // Read r2 head
-    conn->read_resultset_head(st).get();
-    BOOST_TEST(st.should_read_rows());
-
-    // Read r2 rows
-    std::array<row_2fields, 2> storage2;
-    num_rows = conn->read_some_rows(st, storage2).get();
-    BOOST_TEST(num_rows == 1u);
-    row_2fields expected_2fields{1, std::string("f0")};
-    BOOST_TEST(storage2[0] == expected_2fields);
-
-    // Ensure we're in the next resultset
-    num_rows = conn->read_some_rows(st, storage2).get();
-    BOOST_TEST(num_rows == 0u);
-    BOOST_TEST(st.should_read_head());
-
-    // Read r3 head (empty)
-    conn->read_resultset_head(st).get();
-    BOOST_TEST(st.complete());
-}
-
-// read_some_rows failure (the other error cases are already widely tested)
-BOOST_DATA_TEST_CASE_F(network_fixture, read_some_rows_error, err_samples)
-{
-    setup_and_connect(sample);
-
-    er_connection::static_state_t st;
-
-    // Start
-    conn->start_execution("SELECT * FROM multifield_table WHERE id = 42", st).get();
-    BOOST_TEST(st.should_read_rows());
-
-    // No rows matched, so reading rows reads the OK packet. This will report the num resultsets mismatch
-    std::array<row_multifield, 2> storage;
-    conn->read_some_rows(st, storage)
-        .validate_error_exact_client(boost::mysql::client_errc::num_resultsets_mismatch);
-}
-#endif
 
 // set_character_set. Since this is only available in any_connection, we spotcheck this
 // with netmakers and don't cover all streams
