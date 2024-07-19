@@ -29,7 +29,7 @@
 #include "test_common/create_basic.hpp"
 #include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/connect_params_builder.hpp"
 #include "test_integration/server_ca.hpp"
 #include "test_integration/server_features.hpp"
 #include "test_integration/tcp_connection_fixture.hpp"

@@ -31,7 +31,8 @@
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/connect_params_builder.hpp"
+#include "test_integration/metadata_validator.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 #include "test_integration/static_rows.hpp"
 #include "test_integration/tcp_connection_fixture.hpp"
@@ -325,12 +326,20 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
     // Reading again should complete st
     rows = fn.read_some_rows(fix.conn, st).get();
     BOOST_TEST(rows.empty());
-    validate_eof(st);
+    BOOST_TEST_REQUIRE(st.complete());
+    BOOST_TEST(st.affected_rows() == 0u);
+    BOOST_TEST(st.warning_count() == 0u);
+    BOOST_TEST(st.last_insert_id() == 0u);
+    BOOST_TEST(st.info() == "");
 
     // Reading again does nothing
     rows = fn.read_some_rows(fix.conn, st).get();
     BOOST_TEST(rows.empty());
-    validate_eof(st);
+    BOOST_TEST_REQUIRE(st.complete());
+    BOOST_TEST(st.affected_rows() == 0u);
+    BOOST_TEST(st.warning_count() == 0u);
+    BOOST_TEST(st.last_insert_id() == 0u);
+    BOOST_TEST(st.info() == "");
 }
 
 // Ping

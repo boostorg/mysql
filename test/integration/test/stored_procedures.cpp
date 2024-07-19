@@ -8,6 +8,7 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/results.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -16,7 +17,7 @@
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/metadata_validator.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;

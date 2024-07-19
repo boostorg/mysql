@@ -13,7 +13,7 @@
 #include "test_common/ci_server.hpp"
 #include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/connect_params_builder.hpp"
 #include "test_integration/tcp_connection_fixture.hpp"
 
 using namespace boost::mysql;
@@ -85,5 +85,19 @@ void tcp_connection_fixture::connect(const handshake_params& params, source_loca
 asio::ip::tcp::endpoint boost::mysql::test::get_tcp_endpoint()
 {
     static auto res = resolve_server_endpoint();
+    return res;
+}
+
+// connect_params_builder
+connect_params connect_params_builder::build()
+{
+    connect_params res;
+    res.server_address = std::move(addr_);
+    res.username = res_.username();
+    res.password = res_.password();
+    res.database = res_.database();
+    res.multi_queries = res_.multi_queries();
+    res.ssl = res_.ssl();
+    res.connection_collation = res_.connection_collation();
     return res;
 }

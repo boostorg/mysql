@@ -32,7 +32,8 @@
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/connect_params_builder.hpp"
+#include "test_integration/metadata_validator.hpp"
 #include "test_integration/static_rows.hpp"
 
 using namespace boost::mysql;

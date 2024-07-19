@@ -28,7 +28,7 @@
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/connect_params_builder.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 
 // Additional spotchecks for any_connection

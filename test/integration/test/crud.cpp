@@ -14,7 +14,7 @@
 #include "test_common/create_basic.hpp"
 #include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/metadata_validator.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;

@@ -21,7 +21,7 @@
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/connect_params_builder.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;

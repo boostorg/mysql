@@ -17,7 +17,7 @@
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/metadata_validator.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -150,12 +150,20 @@ BOOST_FIXTURE_TEST_CASE(multifn, any_connection_fixture)
     BOOST_TEST(all_rows == makerows(2, 1, "f0", 2, "f1", 3, "f2"), per_element());
 
     // Verify eof
-    validate_eof(st);
+    BOOST_TEST_REQUIRE(st.complete());
+    BOOST_TEST(st.affected_rows() == 0u);
+    BOOST_TEST(st.warning_count() == 0u);
+    BOOST_TEST(st.last_insert_id() == 0u);
+    BOOST_TEST(st.info() == "");
 
     // Reading again does nothing
     auto rws = conn.async_read_some_rows(st, as_netresult).get();
     BOOST_TEST(rws == rows(), per_element());
-    validate_eof(st);
+    BOOST_TEST_REQUIRE(st.complete());
+    BOOST_TEST(st.affected_rows() == 0u);
+    BOOST_TEST(st.warning_count() == 0u);
+    BOOST_TEST(st.last_insert_id() == 0u);
+    BOOST_TEST(st.info() == "");
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_prepared_statements
