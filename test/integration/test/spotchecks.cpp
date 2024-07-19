@@ -47,8 +47,7 @@
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/common.hpp"
-#include "test_integration/er_connection.hpp"
-#include "test_integration/network_samples.hpp"
+#include "test_integration/get_endpoint.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 #include "test_integration/static_rows.hpp"
 #include "test_integration/tcp_network_fixture.hpp"
@@ -128,31 +127,25 @@ static void connect_with_multi_queries(
     fix.connect(connect_params_builder().ssl(ssl_mode::disable).multi_queries(true).build(), loc);
 }
 
+// Functions for each connection type
+static auto fns_connection = network_functions_connection::all();
+static auto fns_any = network_functions_any::all();
+
 // Simplify defining test cases involving both connection types
 // The resulting test case gets the fixture (fix) and the network functions (fn) as args
-#define BOOST_MYSQL_SPOTCHECK_TEST(name)                                                                \
-    template <class Conn>                                                                               \
-    void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn);                     \
-    BOOST_DATA_TEST_CASE_F(tcp_network_fixture, name##_connection, network_functions_connection::all()) \
-    {                                                                                                   \
-        do_##name<tcp_connection>(*this, sample);                                                       \
-    }                                                                                                   \
-    BOOST_DATA_TEST_CASE_F(any_connection_fixture, name##_any, network_functions_any::all())            \
-    {                                                                                                   \
-        do_##name<any_connection>(*this, sample);                                                       \
-    }                                                                                                   \
-    template <class Conn>                                                                               \
+#define BOOST_MYSQL_SPOTCHECK_TEST(name)                                            \
+    template <class Conn>                                                           \
+    void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn); \
+    BOOST_DATA_TEST_CASE_F(tcp_network_fixture, name##_connection, fns_connection)  \
+    {                                                                               \
+        do_##name<tcp_connection>(*this, sample);                                   \
+    }                                                                               \
+    BOOST_DATA_TEST_CASE_F(any_connection_fixture, name##_any, fns_any)             \
+    {                                                                               \
+        do_##name<any_connection>(*this, sample);                                   \
+    }                                                                               \
+    template <class Conn>                                                           \
     void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn)
-
-auto err_samples = network_samples({
-    "tcp_sync_errc",
-    "tcp_sync_exc",
-    "tcp_async_callback",
-    "tcp_async_coroutines",
-});
-
-auto samples_with_handshake = network_samples::all_with_handshake();
-auto all_samples = network_samples::all();
 
 // prepare statement
 BOOST_MYSQL_SPOTCHECK_TEST(prepare_statement_success)
@@ -509,49 +502,83 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_error)
 #endif
 
 //
+// functions specific to old connection
 //
-//
-//
+
 // Handshake
-BOOST_DATA_TEST_CASE_F(network_fixture, handshake_success, samples_with_handshake)
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, handshake_success, fns_connection)
 {
-    setup_and_physical_connect(sample);
-    conn->handshake(params).validate_no_error();
-    BOOST_TEST(conn->uses_ssl() == var->supports_ssl());
+    // Setup
+    const network_functions_connection& fn = sample;
+    conn.stream().connect(get_tcp_endpoint());
+
+    // Call the function
+    fn.handshake(conn, connect_params_builder().build_hparams()).validate_no_error();
+
+    // The connection is usable
+    fn.ping(conn).validate_no_error();
 }
 
-BOOST_DATA_TEST_CASE_F(network_fixture, handshake_error, err_samples)
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, handshake_error, fns_connection)
 {
-    setup_and_physical_connect(sample);
-    params.set_database("bad_database");
-    conn->handshake(params).validate_error(
-        common_server_errc::er_dbaccess_denied_error,
-        {"database", "bad_database"}
-    );
+    // Setup
+    const network_functions_connection& fn = sample;
+    conn.stream().connect(get_tcp_endpoint());
+
+    // Call the function
+    fn.handshake(conn, connect_params_builder().database("bad_db").build_hparams())
+        .validate_error_exact(
+            common_server_errc::er_dbaccess_denied_error,
+            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+        );
 }
 
-// Connect: success is already widely tested throughout integ tests
-BOOST_DATA_TEST_CASE_F(network_fixture, connect_error, err_samples)
+// Connect
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, connect_connection_success, fns_connection)
 {
-    setup(sample);
-    set_credentials("integ_user", "bad_password");
-    conn->connect(params).validate_error(
-        common_server_errc::er_access_denied_error,
-        {"access denied", "integ_user"}
-    );
-    BOOST_TEST(!conn->is_open());
+    // Setup
+    const network_functions_connection& fn = sample;
+
+    // Call the function
+    fn.connect(conn, get_tcp_endpoint(), connect_params_builder().build_hparams()).validate_no_error();
+
+    // The connection is usable
+    fn.ping(conn).validate_no_error();
 }
 
-// Quit connection: no server error spotcheck
-BOOST_DATA_TEST_CASE_F(network_fixture, quit_success, samples_with_handshake)
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, connect_connection_error, fns_connection)
 {
-    setup_and_connect(sample);
+    // Setup
+    const network_functions_connection& fn = sample;
+
+    // Call the function
+    fn.connect(conn, get_tcp_endpoint(), connect_params_builder().database("bad_db").build_hparams())
+        .validate_error_exact(
+            common_server_errc::er_dbaccess_denied_error,
+            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+        );
+}
+
+// Quit
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, quit_success, fns_connection)
+{
+    // Setup
+    const network_functions_connection& fn = sample;
+    connect();
 
     // Quit
-    conn->quit().validate_no_error();
+    fn.quit(conn).validate_no_error();
+}
 
-    // TODO: we can't just query() and expect an error, because that's not reliable as a test.
-    // We should have a flag to check whether the connection is connected or not
+BOOST_DATA_TEST_CASE_F(tcp_network_fixture, quit_error, fns_connection)
+{
+    // Setup
+    const network_functions_connection& fn = sample;
+    connect();
+    conn.stream().close();
+
+    // Quit
+    fn.quit(conn).validate_any_error();
 }
 
 // set_character_set. Since this is only available in any_connection, we spotcheck this
