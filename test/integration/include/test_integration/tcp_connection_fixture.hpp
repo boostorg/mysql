@@ -14,6 +14,8 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
 
+#include "test_common/source_location.hpp"
+
 namespace boost {
 namespace mysql {
 namespace test {
@@ -26,8 +28,8 @@ struct tcp_connection_fixture
     tcp_connection_fixture();
     ~tcp_connection_fixture();
 
-    void connect(source_location loc = BOOST_CURRENT_LOCATION);
-    void connect(const handshake_params&, source_location loc = BOOST_CURRENT_LOCATION);
+    void connect(source_location loc = BOOST_MYSQL_CURRENT_LOCATION);
+    void connect(const handshake_params&, source_location loc = BOOST_MYSQL_CURRENT_LOCATION);
 };
 
 asio::ip::tcp::endpoint get_tcp_endpoint();

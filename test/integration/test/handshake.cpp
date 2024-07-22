@@ -45,7 +45,6 @@ namespace {
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
 // TODO: we can double-check SSL using 'SHOW STATUS LIKE 'ssl_version''
-// TODO: test that old tcp_ssl_connection can be passed a custom collation ID
 // TODO: review connection termination tests
 
 // Handshake is the most convoluted part of MySQL protocol,

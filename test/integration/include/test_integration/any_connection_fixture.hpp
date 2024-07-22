@@ -14,6 +14,8 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
 
+#include "test_common/source_location.hpp"
+
 namespace boost {
 namespace mysql {
 namespace test {
@@ -28,9 +30,9 @@ struct any_connection_fixture
     any_connection_fixture(asio::ssl::context& ssl_ctx);
     ~any_connection_fixture();
 
-    void connect(const connect_params& params, source_location loc = BOOST_CURRENT_LOCATION);
-    void connect(source_location loc = BOOST_CURRENT_LOCATION);
-    void start_transaction(source_location loc = BOOST_CURRENT_LOCATION);
+    void connect(const connect_params& params, source_location loc = BOOST_MYSQL_CURRENT_LOCATION);
+    void connect(source_location loc = BOOST_MYSQL_CURRENT_LOCATION);
+    void start_transaction(source_location loc = BOOST_MYSQL_CURRENT_LOCATION);
 };
 
 }  // namespace test

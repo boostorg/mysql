@@ -30,6 +30,7 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/source_location.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/metadata_validator.hpp"
@@ -102,7 +103,7 @@ using fixture_type_t = typename fixture_type<Conn>::type;
 // TODO: fixture connect shouldn't be used in this context
 static void connect_with_multi_queries(
     tcp_connection_fixture& fix,
-    boost::source_location loc = BOOST_CURRENT_LOCATION
+    boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 )
 {
     fix.connect(connect_params_builder().multi_queries(true).build_hparams(), loc);
@@ -110,7 +111,7 @@ static void connect_with_multi_queries(
 
 static void connect_with_multi_queries(
     any_connection_fixture& fix,
-    boost::source_location loc = BOOST_CURRENT_LOCATION
+    boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 )
 {
     fix.connect(connect_params_builder().ssl(ssl_mode::disable).multi_queries(true).build(), loc);

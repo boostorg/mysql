@@ -28,6 +28,7 @@
 
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/source_location.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_common/validate_string_contains.hpp"
 
@@ -46,7 +47,7 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
     error_code err;
     diagnostics diag;
 
-    void validate_no_error(source_location loc = BOOST_CURRENT_LOCATION) const
+    void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
     {
         validate_error(error_code(), diagnostics(), loc);
     }
@@ -54,7 +55,7 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
     void validate_error(
         error_code expected_err,
         const diagnostics& expected_diag = {},
-        source_location loc = BOOST_CURRENT_LOCATION
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) const
     {
         BOOST_TEST_CONTEXT("Called from " << loc)
@@ -67,7 +68,7 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
     void validate_error(
         common_server_errc expected_err,
         string_view expected_msg = {},
-        source_location loc = BOOST_CURRENT_LOCATION
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     )
     {
         validate_error(expected_err, create_server_diag(expected_msg), loc);
@@ -76,7 +77,7 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
     void validate_error(
         client_errc expected_err,
         string_view expected_msg = {},
-        source_location loc = BOOST_CURRENT_LOCATION
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     )
     {
         validate_error(expected_err, create_client_diag(expected_msg), loc);
@@ -86,7 +87,7 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
     void validate_error_contains(
         error_code expected_err,
         const std::vector<std::string>& pieces,
-        source_location loc = BOOST_CURRENT_LOCATION
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     )
     {
         BOOST_TEST_CONTEXT("Called from " << loc)
@@ -97,7 +98,7 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
     }
 
     // Use when you don't care or can't determine the kind of error
-    void validate_any_error(source_location loc = BOOST_CURRENT_LOCATION) const
+    void validate_any_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
     {
         BOOST_TEST_CONTEXT("Called from " << loc) { BOOST_TEST_REQUIRE(err != error_code()); }
     }
@@ -116,7 +117,7 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result : network_result_base
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    value_type get(source_location loc = BOOST_CURRENT_LOCATION) const
+    value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
     {
         validate_no_error(loc);
         return value;
@@ -156,7 +157,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
         return std::move(impl->netres);
     }
 
-    void validate_no_error(source_location loc = BOOST_CURRENT_LOCATION) &&
+    void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
         std::move(*this).run().validate_no_error(loc);
     }
@@ -164,7 +165,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_error(
         error_code expected_err,
         const diagnostics& expected_diag = {},
-        source_location loc = BOOST_CURRENT_LOCATION
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) &&
     {
         std::move(*this).run().validate_error(expected_err, expected_diag, loc);
@@ -173,7 +174,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_error(
         common_server_errc expected_err,
         string_view expected_msg = {},
-        source_location loc = BOOST_CURRENT_LOCATION
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) &&
     {
         std::move(*this).run().validate_error(expected_err, expected_msg, loc);
@@ -182,7 +183,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_error(
         client_errc expected_err,
         string_view expected_msg = {},
-        source_location loc = BOOST_CURRENT_LOCATION
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) &&
     {
         std::move(*this).run().validate_error(expected_err, expected_msg, loc);
@@ -192,20 +193,20 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_error_contains(
         error_code expected_err,
         const std::vector<std::string>& pieces,
-        source_location loc = BOOST_CURRENT_LOCATION
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) &&
     {
         std::move(*this).run().validate_error_contains(expected_err, pieces, loc);
     }
 
     // Use when you don't care or can't determine the kind of error
-    void validate_any_error(source_location loc = BOOST_CURRENT_LOCATION) &&
+    void validate_any_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
         std::move(*this).run().validate_any_error(loc);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    typename network_result<R>::value_type get(source_location loc = BOOST_CURRENT_LOCATION) &&
+    typename network_result<R>::value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
         return std::move(*this).run().get(loc);
     }
@@ -218,18 +219,19 @@ struct as_netresult_t
 
 constexpr as_netresult_t as_netresult{};
 
-// TODO: rename
+namespace test_detail {
+
 template <class Signature>
-struct sig_to_network_result_type;
+struct as_netres_sig_to_rtype;
 
 template <>
-struct sig_to_network_result_type<void(error_code)>
+struct as_netres_sig_to_rtype<void(error_code)>
 {
     using type = void;
 };
 
 template <class T>
-struct sig_to_network_result_type<void(error_code, T)>
+struct as_netres_sig_to_rtype<void(error_code, T)>
 {
     using type = T;
 };
@@ -287,6 +289,8 @@ public:
     }
 };
 
+}  // namespace test_detail
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
@@ -298,7 +302,7 @@ template <typename Signature>
 class async_result<mysql::test::as_netresult_t, Signature>
 {
 public:
-    using R = typename mysql::test::sig_to_network_result_type<Signature>::type;
+    using R = typename mysql::test::test_detail::as_netres_sig_to_rtype<Signature>::type;
     using return_type = mysql::test::runnable_network_result<R>;
 
     template <typename Initiation, typename... Args>
@@ -329,7 +333,12 @@ private:
 
         // Actually call the initiation function
         std::move(initiation)(
-            mysql::test::as_netres_handler<R>(netres.impl->netres, *diag, io_obj_ptr->get_executor(), slot),
+            mysql::test::test_detail::as_netres_handler<R>(
+                netres.impl->netres,
+                *diag,
+                io_obj_ptr->get_executor(),
+                slot
+            ),
             diag,
             std::move(io_obj_ptr),
             std::move(args)...

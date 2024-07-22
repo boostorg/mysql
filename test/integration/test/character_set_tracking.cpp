@@ -20,6 +20,7 @@
 #include "test_common/create_basic.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/source_location.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 
@@ -33,7 +34,7 @@ BOOST_AUTO_TEST_SUITE(test_character_set_tracking)
 static void validate_db_charset(
     any_connection& conn,
     string_view expected_charset,
-    boost::source_location loc = BOOST_CURRENT_LOCATION
+    boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 )
 {
     // Issue the query
