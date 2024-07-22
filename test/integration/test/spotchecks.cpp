@@ -46,8 +46,6 @@ using boost::test_tools::per_element;
 // These tests aim to cover the 4 overloads we have for each network function,
 // both for the old templated connection and for any_connection.
 // A success and an error case is included for each function.
-// TODO: tcp_ssl_connection, unix_connection, unix_ssl_connection sync/async spotchecks
-// (we can repurpose unix_sockets file => templated connection)
 
 namespace {
 
