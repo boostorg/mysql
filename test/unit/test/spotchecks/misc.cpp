@@ -297,24 +297,6 @@ BOOST_AUTO_TEST_CASE(async_close_statement_handle_deferred_tokens)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected_message);
 }
 
-// Verify that async functions with signature void(error_code, T)
-// get their executor propagated correctly
-// TODO: this is probably obsolete with the new infrastructure
-BOOST_AUTO_TEST_CASE(nonvoid_signature_executor_propagation)
-{
-    // Setup
-    test_connection conn;
-    execution_state st;
-
-    // Function wrapper. This takes care of validating executor propagation
-    auto fn = netfun_maker<rows_view, test_connection, execution_state&>::async_diag(
-        &test_connection::async_read_some_rows
-    );
-
-    // Call it
-    fn(conn, st).validate_no_error();
-}
-
 // Regression check: when there is a network error, sync functions
 // returning a value fail with an assertion
 BOOST_AUTO_TEST_CASE(net_error_prepare_statement)
