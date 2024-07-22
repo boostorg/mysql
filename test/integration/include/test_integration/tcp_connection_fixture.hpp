@@ -11,7 +11,6 @@
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/tcp.hpp>
 
-#include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
 
 #include "test_common/source_location.hpp"
@@ -22,7 +21,6 @@ namespace test {
 
 struct tcp_connection_fixture
 {
-    asio::io_context ctx;
     tcp_connection conn;
 
     tcp_connection_fixture();

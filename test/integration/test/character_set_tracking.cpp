@@ -13,7 +13,6 @@
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
 #include <boost/test/unit_test.hpp>
 

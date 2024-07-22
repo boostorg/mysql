@@ -147,7 +147,7 @@ BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
     auto netres = conn.async_execute("DO SLEEP(2)", r, as_netresult_t{sig.slot()});
 
     // Return to the event loop and emit the signal
-    asio::post(asio::bind_executor(ctx.get_executor(), [&]() {
+    asio::post(asio::bind_executor(global_context_executor(), [&]() {
         // Emit the signal
         sig.emit(asio::cancellation_type::terminal);
     }));

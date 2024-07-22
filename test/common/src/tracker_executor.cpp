@@ -5,9 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/execution/blocking.hpp>
 #include <boost/asio/execution/relationship.hpp>
 #include <boost/asio/execution_context.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/require.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -237,3 +239,13 @@ boost::mysql::test::initiation_guard::~initiation_guard()
 }
 
 bool boost::mysql::test::is_initiation_function() { return g_is_running_initiation; }
+
+static boost::asio::io_context g_ctx;
+
+boost::asio::any_io_executor boost::mysql::test::global_context_executor() { return g_ctx.get_executor(); }
+
+void boost::mysql::test::run_global_context()
+{
+    g_ctx.restart();
+    g_ctx.run();
+}

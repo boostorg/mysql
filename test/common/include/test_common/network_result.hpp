@@ -130,30 +130,19 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
 {
     struct impl_t
     {
-        asio::any_io_executor io_ex;
-        network_result<R> netres;
+        network_result<R> netres{
+            common_server_errc::er_no,
+            create_server_diag("network_result_v2 - diagnostics not cleared")
+        };
     };
-
-    static void run_until_completion(asio::any_io_executor ex)
-    {
-        auto& ctx = static_cast<asio::io_context&>(ex.context());
-        ctx.restart();
-        ctx.run();
-    }
 
     std::unique_ptr<impl_t> impl;
 
-    runnable_network_result(asio::any_io_executor ex)
-        : impl(new impl_t{
-              std::move(ex),
-              {common_server_errc::er_no, create_server_diag("network_result_v2 - diagnostics not cleared")}
-    })
-    {
-    }
+    runnable_network_result() : impl(new impl_t) {}
 
     network_result<R> run() &&
     {
-        run_until_completion(impl->io_ex);
+        run_global_context();
         return std::move(impl->netres);
     }
 
@@ -244,23 +233,30 @@ class as_netres_handler
     asio::cancellation_slot slot_;
     const diagnostics* diag_ptr;
 
-    void check_executor() const
+    void complete(error_code ec) const
     {
+        // Check executor
         BOOST_TEST(!is_initiation_function());
         BOOST_TEST(current_executor_id() == ex_.executor_id);
+
+        // Assign error code and diagnostics
+        target_->err = ec;
+        if (diag_ptr)
+            target_->diag = *diag_ptr;
+        else
+            target_->diag = create_server_diag("<diagnostics unavailable>");
     }
 
 public:
     as_netres_handler(
         network_result<R>& netresult,
-        const diagnostics& output_diag,
-        asio::any_io_executor exec,
+        const diagnostics* output_diag,
         asio::cancellation_slot slot
     )
         : target_(&netresult),
-          ex_(create_tracker_executor(std::move(exec))),
+          ex_(create_tracker_executor(global_context_executor())),
           slot_(slot),
-          diag_ptr(&output_diag)
+          diag_ptr(output_diag)
     {
     }
 
@@ -272,20 +268,13 @@ public:
     using cancellation_slot_type = asio::cancellation_slot;
     asio::cancellation_slot get_cancellation_slot() const noexcept { return slot_; }
 
-    void operator()(error_code ec) const
-    {
-        check_executor();
-        target_->err = ec;
-        target_->diag = *diag_ptr;
-    }
+    void operator()(error_code ec) const { complete(ec); }
 
     template <class Arg>
     void operator()(error_code ec, Arg&& arg) const
     {
-        check_executor();
-        target_->err = ec;
-        target_->diag = *diag_ptr;
         target_->value = std::forward<Arg>(arg);
+        complete(ec);
     }
 };
 
@@ -313,12 +302,11 @@ public:
 
 private:
     // initiate() is not allowed to inspect individual arguments
-    template <typename Initiation, class IoObjectPtr, typename... Args>
+    template <typename Initiation, typename... Args>
     static return_type do_initiate(
         Initiation&& initiation,
         asio::cancellation_slot slot,
         mysql::diagnostics* diag,
-        IoObjectPtr io_obj_ptr,  // may be smart
         Args&&... args
     )
     {
@@ -326,21 +314,34 @@ private:
         *diag = mysql::test::create_server_diag("Diagnostics not cleared properly");
 
         // Create the return type
-        mysql::test::runnable_network_result<R> netres(io_obj_ptr->get_executor());
+        mysql::test::runnable_network_result<R> netres;
 
         // Record that we're initiating
         mysql::test::initiation_guard guard;
 
         // Actually call the initiation function
         std::move(initiation)(
-            mysql::test::test_detail::as_netres_handler<R>(
-                netres.impl->netres,
-                *diag,
-                io_obj_ptr->get_executor(),
-                slot
-            ),
+            mysql::test::test_detail::as_netres_handler<R>(netres.impl->netres, diag, slot),
             diag,
-            std::move(io_obj_ptr),
+            std::move(args)...
+        );
+
+        return netres;
+    }
+
+    // For functions without diagnostics
+    template <typename Initiation, typename... Args>
+    static return_type do_initiate(Initiation&& initiation, asio::cancellation_slot slot, Args&&... args)
+    {
+        // Create the return type
+        mysql::test::runnable_network_result<R> netres;
+
+        // Record that we're initiating
+        mysql::test::initiation_guard guard;
+
+        // Actually call the initiation function
+        std::move(initiation)(
+            mysql::test::test_detail::as_netres_handler<R>(netres.impl->netres, nullptr, slot),
             std::move(args)...
         );
 

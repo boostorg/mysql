@@ -12,6 +12,7 @@
 
 #include "test_common/ci_server.hpp"
 #include "test_common/network_result.hpp"
+#include "test_common/tracker_executor.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/tcp_connection_fixture.hpp"
@@ -28,7 +29,8 @@ static any_connection_params make_params(asio::ssl::context& ssl_ctx)
 }
 
 // any_connection_fixture
-any_connection_fixture::any_connection_fixture(any_connection_params params) : conn(ctx, params)
+any_connection_fixture::any_connection_fixture(any_connection_params params)
+    : conn(global_context_executor(), params)
 {
     conn.set_meta_mode(metadata_mode::full);
 }
@@ -65,7 +67,7 @@ static asio::ip::tcp::endpoint resolve_server_endpoint()
     return *results.begin();
 }
 
-tcp_connection_fixture::tcp_connection_fixture() : conn(ctx.get_executor())
+tcp_connection_fixture::tcp_connection_fixture() : conn(global_context_executor())
 {
     conn.set_meta_mode(metadata_mode::full);
 }

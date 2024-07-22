@@ -16,7 +16,6 @@
 #include <boost/mysql/unix.hpp>
 #include <boost/mysql/unix_ssl.hpp>
 
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -327,9 +326,8 @@ BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
 BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
 {
     // Setup
-    asio::io_context ctx;
     asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
-    tcp_ssl_connection conn(ctx, ssl_ctx);
+    tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
     auto params = connect_params_builder().credentials(regular_user, regular_passwd).build_hparams();
 
     // Connect succeeds
@@ -412,8 +410,7 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
-    asio::io_context ctx;
-    tcp_ssl_connection conn(ctx, ssl_ctx);
+    tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
     auto params = connect_params_builder().build_hparams();
 
     // Connect fails
@@ -471,9 +468,8 @@ BOOST_AUTO_TEST_CASE(ssl_stream)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            asio::io_context ctx;
             asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
-            tcp_ssl_connection conn(ctx, ssl_ctx);
+            tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
             auto params = connect_params_builder().ssl(tc.mode).build_hparams();
 
             // Handshake succeeds
@@ -498,9 +494,8 @@ struct fixture;
 template <>
 struct fixture<tcp_ssl_connection>
 {
-    asio::io_context ctx;
     asio::ssl::context ssl_ctx{asio::ssl::context::tls_client};
-    tcp_ssl_connection conn{ctx, ssl_ctx};
+    tcp_ssl_connection conn{global_context_executor(), ssl_ctx};
 
     using endpoint_type = asio::ip::tcp::endpoint;
     static endpoint_type get_endpoint() { return get_tcp_endpoint(); }
@@ -511,8 +506,7 @@ struct fixture<tcp_ssl_connection>
 template <>
 struct fixture<unix_connection>
 {
-    asio::io_context ctx;
-    unix_connection conn{ctx};
+    unix_connection conn{global_context_executor()};
 
     using endpoint_type = asio::local::stream_protocol::endpoint;
     static endpoint_type get_endpoint() { return default_unix_path; }
@@ -522,9 +516,8 @@ struct fixture<unix_connection>
 template <>
 struct fixture<unix_ssl_connection>
 {
-    asio::io_context ctx;
     asio::ssl::context ssl_ctx{asio::ssl::context::tls_client};
-    unix_ssl_connection conn{ctx, ssl_ctx};
+    unix_ssl_connection conn{global_context_executor(), ssl_ctx};
 
     using endpoint_type = asio::local::stream_protocol::endpoint;
     static endpoint_type get_endpoint() { return default_unix_path; }

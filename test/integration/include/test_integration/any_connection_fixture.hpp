@@ -11,7 +11,6 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
 
-#include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
 
 #include "test_common/source_location.hpp"
@@ -22,7 +21,6 @@ namespace test {
 
 struct any_connection_fixture
 {
-    asio::io_context ctx;
     any_connection conn;
 
     any_connection_fixture() : any_connection_fixture(any_connection_params{}) {}

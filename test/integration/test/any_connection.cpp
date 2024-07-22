@@ -174,6 +174,9 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, naggle_disabled, network_function
         .tcp_socket()
         .get_option(opt);
     BOOST_TEST(opt.value() == true);
+
+    // Close successfully
+    fn.close(conn).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
