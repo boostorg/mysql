@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cstring>
 
+#include "test_common/create_diagnostics.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/tracker_executor.hpp"
@@ -174,9 +175,8 @@ public:
 };
 
 // Helpers to run the sync and async versions uniformly.
-// engine_impl must be adapted because
-//   - run() and async_run() don't have a diagnostics parameter
-//   - async_run() takes a completion handler, rather than a generic completion token
+// engine_impl must be adapted because async_run() takes a completion handler,
+// rather than a generic completion token
 struct test_engine
 {
     engine_impl<mock_engine_stream> value;
@@ -185,28 +185,21 @@ struct test_engine
     {
         void operator()(
             asio::any_completion_handler<void(error_code)> handler,
-            boost::mysql::diagnostics* diag,
-            engine* eng2,
-            any_resumable_ref resumable2
+            engine* eng,
+            any_resumable_ref resumable
         ) const
         {
-            diag->clear();
-            eng2->async_run(resumable2, std::move(handler));
+            eng->async_run(resumable, std::move(handler));
         }
     };
 
-    void run(any_resumable_ref resumable, error_code& err, boost::mysql::diagnostics& d)
-    {
-        d.clear();
-        value.run(resumable, err);
-    }
+    void run(any_resumable_ref resumable, error_code& err) { value.run(resumable, err); }
 
     template <class CompletionToken>
-    auto async_run(any_resumable_ref resumable, boost::mysql::diagnostics& diag, CompletionToken&& token)
+    auto async_run(any_resumable_ref resumable, CompletionToken&& token)
         -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
             initiation_t{},
             token,
-            &diag,
             &value,
             resumable
         ))
@@ -214,7 +207,6 @@ struct test_engine
         return asio::async_initiate<CompletionToken, void(error_code)>(
             initiation_t{},
             token,
-            &diag,
             &value,
             resumable
         );
@@ -222,8 +214,8 @@ struct test_engine
 };
 
 using netmaker_t = netfun_maker<void, test_engine, any_resumable_ref>;
-const auto sync_fn = netmaker_t::sync_errc(&test_engine::run);
-const auto async_fn = netmaker_t::async_diag(&test_engine::async_run);
+const auto sync_fn = netmaker_t::sync_errc_nodiag(&test_engine::run);
+const auto async_fn = netmaker_t::async_nodiag(&test_engine::async_run);
 using signature_t = netmaker_t::signature;
 
 // A mock for a sans-io algorithm. Can be converted to any_resumable_ref
@@ -272,7 +264,7 @@ BOOST_AUTO_TEST_CASE(next_action_read)
             mock_algo algo(next_action::read({buff, tc.ssl_active}));
             test_engine eng{global_context_executor()};
 
-            tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
+            tc.fn(eng, any_resumable_ref(algo)).validate_no_error_nodiag();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
             BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::read);
             BOOST_TEST(eng.value.stream().calls[0].read_args().use_ssl == tc.ssl_active);
@@ -311,7 +303,7 @@ BOOST_AUTO_TEST_CASE(next_action_write)
             mock_algo algo(next_action::write({buff, tc.ssl_active}));
             test_engine eng{global_context_executor()};
 
-            tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
+            tc.fn(eng, any_resumable_ref(algo)).validate_no_error_nodiag();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
             BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::write);
             BOOST_TEST(eng.value.stream().calls[0].write_args().use_ssl == tc.ssl_active);
@@ -353,7 +345,7 @@ BOOST_AUTO_TEST_CASE(next_action_other)
             mock_algo algo(tc.act);
             test_engine eng{global_context_executor()};
 
-            tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
+            tc.fn(eng, any_resumable_ref(algo)).validate_no_error_nodiag();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
             BOOST_TEST(eng.value.stream().calls[0].type() == tc.act.type());
             algo.check_calls({
@@ -401,7 +393,8 @@ BOOST_AUTO_TEST_CASE(stream_errors)
                 {global_context_executor(), asio::error::already_open}
             };
 
-            tc.fn(eng, any_resumable_ref(algo)).validate_no_error();  // Error gets swallowed by the algo
+            tc.fn(eng, any_resumable_ref(algo))
+                .validate_no_error_nodiag();  // Error gets swallowed by the algo
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
             BOOST_TEST(eng.value.stream().calls[0].type() == tc.act.type());
             algo.check_calls({
@@ -436,7 +429,8 @@ BOOST_AUTO_TEST_CASE(resume_error_immediate)
             mock_algo algo(next_action(tc.ec));
             test_engine eng{global_context_executor()};
 
-            tc.fn(eng, any_resumable_ref(algo)).validate_error(tc.ec, {});
+            tc.fn(eng, any_resumable_ref(algo))
+                .validate_error(tc.ec, create_server_diag("<diagnostics unavailable>"));
             BOOST_TEST(eng.value.stream().calls.size() == 0u);
             algo.check_calls({
                 {error_code(), 0u}
@@ -469,7 +463,8 @@ BOOST_AUTO_TEST_CASE(resume_error_successive_calls)
             mock_algo algo(next_action::connect(), next_action(tc.ec));
             test_engine eng{global_context_executor()};
 
-            tc.fn(eng, any_resumable_ref(algo)).validate_error(tc.ec, {});
+            tc.fn(eng, any_resumable_ref(algo))
+                .validate_error(tc.ec, create_server_diag("<diagnostics unavailable>"));
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
             BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::connect);
             algo.check_calls({
