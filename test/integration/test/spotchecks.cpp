@@ -97,8 +97,6 @@ template <class Conn>
 using fixture_type_t = typename fixture_type<Conn>::type;
 
 // Connect with multi-queries enabled in a generic way
-// TODO: clangd reports that these are not used (incorrectly)
-// TODO: fixture connect shouldn't be used in this context
 static void connect_with_multi_queries(
     tcp_connection_fixture& fix,
     boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
@@ -306,7 +304,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_error)
 }
 
 // Read some rows. No error spotcheck here
-// TODO: spotcheck this as a unit test
+// TODO: write a unit test with this
 BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
 {
     // Setup
@@ -351,7 +349,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(ping_success)
     fn.ping(fix.conn).validate_no_error();
 }
 
-// TODO: writing to an unconnected any_connection triggers an assert right now
+// Writing to an unconnected any_connection triggers an assert right now
 // This should be solved by the refactor we're delivering in
 // https://github.com/boostorg/mysql/issues/230
 BOOST_MYSQL_SPOTCHECK_TEST(ping_error)

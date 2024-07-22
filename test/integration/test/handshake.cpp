@@ -22,6 +22,7 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/asio/ssl/verify_mode.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/test/data/monomorphic/collection.hpp>
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
@@ -34,6 +35,7 @@
 #include "test_common/create_basic.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
+#include "test_common/source_location.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/server_ca.hpp"
@@ -49,8 +51,6 @@ namespace data = boost::unit_test::data;
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_handshake)
-
-// TODO: we can double-check SSL using 'SHOW STATUS LIKE 'ssl_version''
 
 // Handshake is the most convoluted part of MySQL protocol,
 // and is in active development in current MySQL versions.
@@ -86,6 +86,23 @@ static std::vector<transport_test_case> all_transports()
     return res;
 }
 
+// Check whether the connection is using SSL or not
+template <class Conn>
+void check_ssl(Conn& conn, bool expected, boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION)
+{
+    BOOST_TEST_CONTEXT("Called from " << loc)
+    {
+        // Check that the client thinks it's using SSL
+        BOOST_TEST(conn.uses_ssl() == expected);
+
+        // Check that the server is using SSL
+        results r;
+        conn.async_execute("SHOW STATUS LIKE 'ssl_version'", r, as_netresult).validate_no_error(loc);
+        bool server_tls = r.rows().at(0).at(1).as_string().starts_with("TLS");
+        BOOST_TEST(server_tls == expected);
+    }
+}
+
 // mysql_native_password
 BOOST_AUTO_TEST_SUITE(mysql_native_password)
 
@@ -107,7 +124,7 @@ BOOST_AUTO_TEST_CASE(regular_password)
 
             // Handshake succeeds
             fix.conn.async_connect(params, as_netresult).validate_no_error();
-            BOOST_TEST(fix.conn.uses_ssl() == tc.expect_ssl);
+            check_ssl(fix.conn, tc.expect_ssl);
         }
     }
 }
@@ -126,7 +143,7 @@ BOOST_AUTO_TEST_CASE(empty_password)
 
             // Handshake succeeds
             fix.conn.async_connect(params, as_netresult).validate_no_error();
-            BOOST_TEST(fix.conn.uses_ssl() == tc.expect_ssl);
+            check_ssl(fix.conn, tc.expect_ssl);
         }
     }
 }
@@ -235,7 +252,7 @@ BOOST_AUTO_TEST_CASE(cache_hit)
 
             // Handshake succeeds
             fix.conn.async_connect(params, as_netresult).validate_no_error();
-            BOOST_TEST(fix.conn.uses_ssl() == tc.expect_ssl);
+            check_ssl(fix.conn, tc.expect_ssl);
         }
     }
 }
@@ -256,7 +273,7 @@ BOOST_AUTO_TEST_CASE(cache_miss_success)
 
             // Handshake succeeds
             fix.conn.async_connect(params, as_netresult).validate_no_error();
-            BOOST_TEST(fix.conn.uses_ssl() == tc.expect_ssl);
+            check_ssl(fix.conn, tc.expect_ssl);
         }
     }
 }
@@ -293,7 +310,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_hit)
 
             // Handshake succeeds
             fix.conn.async_connect(params, as_netresult).validate_no_error();
-            BOOST_TEST(fix.conn.uses_ssl() == tc.expect_ssl);
+            check_ssl(fix.conn, tc.expect_ssl);
         }
     }
 }
@@ -313,7 +330,7 @@ BOOST_AUTO_TEST_CASE(empty_password_cache_miss)
 
             // Handshake succeeds
             fix.conn.async_connect(params, as_netresult).validate_no_error();
-            BOOST_TEST(fix.conn.uses_ssl() == tc.expect_ssl);
+            check_ssl(fix.conn, tc.expect_ssl);
         }
     }
 }
@@ -390,7 +407,7 @@ BOOST_AUTO_TEST_CASE(certificate_valid)
     // Connect works
     fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
         .validate_no_error();
-    BOOST_TEST(fix.conn.uses_ssl());
+    check_ssl(fix.conn, true);
 }
 
 BOOST_AUTO_TEST_CASE(certificate_invalid)
@@ -419,7 +436,7 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_success)
     // Connect succeeds
     fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
         .validate_no_error();
-    BOOST_TEST(fix.conn.uses_ssl());
+    check_ssl(fix.conn, true);
 }
 
 BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
@@ -467,7 +484,7 @@ BOOST_FIXTURE_TEST_CASE(any_enable, any_connection_fixture)
 
     // Connect succeeds
     conn.async_connect(params, as_netresult).validate_no_error();
-    BOOST_TEST(conn.uses_ssl());
+    check_ssl(conn, true);
 }
 
 // connection<>: all ssl modes work as disabled if the stream doesn't support ssl
@@ -483,7 +500,7 @@ BOOST_DATA_TEST_CASE_F(
     // Handshake succeeds
     conn.async_handshake(connect_params_builder().ssl(sample).build_hparams(), as_netresult)
         .validate_no_error();
-    BOOST_TEST(!conn.uses_ssl());
+    check_ssl(conn, false);
 }
 
 // connection<>: disable can be used to effectively disable SSL
@@ -512,7 +529,7 @@ BOOST_AUTO_TEST_CASE(ssl_stream)
 
             // Handshake succeeds
             conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
-            BOOST_TEST(conn.uses_ssl() == tc.expect_ssl);
+            check_ssl(conn, tc.expect_ssl);
 
             // Close succeeds
             conn.async_close(as_netresult).validate_no_error();
@@ -607,7 +624,7 @@ void do_connect_close_test()
                 .validate_no_error();
 
             // Check whether the connection is using SSL
-            BOOST_TEST(fix.conn.uses_ssl() == fix.expect_ssl());
+            check_ssl(fix.conn, fix.expect_ssl());
 
             // The connection is usable
             results r;
@@ -657,7 +674,7 @@ void do_handshake_quit_test()
             tc.handshake(fix.conn, connect_params_builder().build_hparams()).validate_no_error();
 
             // Check whether the connection uses SSL
-            BOOST_TEST(fix.conn.uses_ssl() == fix.expect_ssl());
+            check_ssl(fix.conn, fix.expect_ssl());
 
             // The connection is usable
             results r;
