@@ -27,6 +27,7 @@
 #include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -62,8 +63,9 @@ struct transport_test_case
     connect_params params;
     bool expect_ssl;
 };
+std::ostream& operator<<(std::ostream& os, const transport_test_case& tc) { return os << tc.name; }
 
-static std::vector<transport_test_case> secure_transports()
+std::vector<transport_test_case> make_secure_transports()
 {
     std::vector<transport_test_case> res{
         {"tcp_ssl", connect_params_builder().ssl(ssl_mode::require).build(), true},
@@ -79,12 +81,15 @@ static std::vector<transport_test_case> secure_transports()
     return res;
 }
 
-static std::vector<transport_test_case> all_transports()
+std::vector<transport_test_case> make_all_transports()
 {
-    auto res = secure_transports();
+    auto res = make_secure_transports();
     res.push_back({"tcp", connect_params_builder().ssl(ssl_mode::disable).build(), false});
     return res;
 }
+
+auto secure_transports = make_secure_transports();
+auto all_transports = make_all_transports();
 
 // Check whether the connection is using SSL or not
 template <class Conn>
@@ -110,64 +115,40 @@ constexpr const char* regular_user = "mysqlnp_user";
 constexpr const char* regular_passwd = "mysqlnp_password";
 constexpr const char* empty_user = "mysqlnp_empty_password_user";
 
-BOOST_AUTO_TEST_CASE(regular_password)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, regular_password, all_transports)
 {
-    for (const auto& tc : all_transports())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            any_connection_fixture fix;
-            auto params = tc.params;
-            params.username = regular_user;
-            params.password = regular_passwd;
+    // Setup
+    connect_params params = sample.params;
+    params.username = regular_user;
+    params.password = regular_passwd;
 
-            // Handshake succeeds
-            fix.conn.async_connect(params, as_netresult).validate_no_error();
-            check_ssl(fix.conn, tc.expect_ssl);
-        }
-    }
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_AUTO_TEST_CASE(empty_password)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password, all_transports)
 {
-    for (const auto& tc : all_transports())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            any_connection_fixture fix;
-            auto params = tc.params;
-            params.username = empty_user;
-            params.password = "";
+    // Setup
+    connect_params params = sample.params;
+    params.username = empty_user;
+    params.password = "";
 
-            // Handshake succeeds
-            fix.conn.async_connect(params, as_netresult).validate_no_error();
-            check_ssl(fix.conn, tc.expect_ssl);
-        }
-    }
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_AUTO_TEST_CASE(bad_password)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, bad_password, all_transports)
 {
-    for (const auto& tc : all_transports())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            any_connection_fixture fix;
-            auto params = tc.params;
-            params.username = regular_user;
-            params.password = "bad_password";
+    // Setup
+    connect_params params = sample.params;
+    params.username = regular_user;
+    params.password = "bad_password";
 
-            // Handshake fails with the expected error code
-            fix.conn.async_connect(params, as_netresult)
-                .validate_error_contains(
-                    common_server_errc::er_access_denied_error,
-                    {"access denied", regular_user}
-                );
-        }
-    }
+    // Handshake fails with the expected error code
+    conn.async_connect(params, as_netresult)
+        .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
 }
 
 // Spotcheck: mysql_native_password works with old connection
@@ -235,57 +216,41 @@ static void clear_sha256_cache()
 };
 
 // Cache hit means that we are sending the password hashed, so it is OK to not have SSL for this
-BOOST_AUTO_TEST_CASE(cache_hit)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_hit, all_transports)
 {
-    // One-time setup
+    // Setup
+    connect_params params = sample.params;
+    params.username = regular_user;
+    params.password = regular_passwd;
     load_sha256_cache(regular_user, regular_passwd);
 
-    for (const auto& tc : all_transports())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            any_connection_fixture fix;
-            auto params = tc.params;
-            params.username = regular_user;
-            params.password = regular_passwd;
-
-            // Handshake succeeds
-            fix.conn.async_connect(params, as_netresult).validate_no_error();
-            check_ssl(fix.conn, tc.expect_ssl);
-        }
-    }
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
 // Cache miss succeeds only if the underlying transport is secure
-BOOST_AUTO_TEST_CASE(cache_miss_success)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_miss_success, secure_transports)
 {
-    for (const auto& tc : secure_transports())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            any_connection_fixture fix;
-            auto params = tc.params;
-            params.username = regular_user;
-            params.password = regular_passwd;
-            clear_sha256_cache();
+    // Setup
+    connect_params params = sample.params;
+    params.username = regular_user;
+    params.password = regular_passwd;
+    clear_sha256_cache();
 
-            // Handshake succeeds
-            fix.conn.async_connect(params, as_netresult).validate_no_error();
-            check_ssl(fix.conn, tc.expect_ssl);
-        }
-    }
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
 // A cache miss would force us send a plaintext password over a non-TLS connection, so we fail
 BOOST_FIXTURE_TEST_CASE(cache_miss_error, any_connection_fixture)
 {
     // Setup
-    auto params = connect_params_builder()
-                      .ssl(ssl_mode::disable)
-                      .credentials(regular_user, regular_passwd)
-                      .build();
+    connect_params params = connect_params_builder()
+                                .ssl(ssl_mode::disable)
+                                .credentials(regular_user, regular_passwd)
+                                .build();
     clear_sha256_cache();
 
     // Handshake fails
@@ -293,46 +258,30 @@ BOOST_FIXTURE_TEST_CASE(cache_miss_error, any_connection_fixture)
 }
 
 // Empty password users can log in regardless of the SSL usage or cache state
-BOOST_AUTO_TEST_CASE(empty_password_cache_hit)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password_cache_hit, all_transports)
 {
-    // One-time setup
+    // Setup
+    connect_params params = sample.params;
+    params.username = empty_user;
+    params.password = "";
     load_sha256_cache(empty_user, "");
 
-    for (const auto& tc : all_transports())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            any_connection_fixture fix;
-            auto params = tc.params;
-            params.username = empty_user;
-            params.password = "";
-
-            // Handshake succeeds
-            fix.conn.async_connect(params, as_netresult).validate_no_error();
-            check_ssl(fix.conn, tc.expect_ssl);
-        }
-    }
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_AUTO_TEST_CASE(empty_password_cache_miss)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password_cache_miss, all_transports)
 {
-    for (const auto& tc : all_transports())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            any_connection_fixture fix;
-            auto params = tc.params;
-            params.username = empty_user;
-            params.password = "";
-            clear_sha256_cache();
+    // Setup
+    connect_params params = sample.params;
+    params.username = empty_user;
+    params.password = "";
+    clear_sha256_cache();
 
-            // Handshake succeeds
-            fix.conn.async_connect(params, as_netresult).validate_no_error();
-            check_ssl(fix.conn, tc.expect_ssl);
-        }
-    }
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
 BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, any_connection_fixture)
