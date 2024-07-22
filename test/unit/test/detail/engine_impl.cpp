@@ -351,7 +351,7 @@ BOOST_AUTO_TEST_CASE(next_action_other)
         {
             // Setup
             mock_algo algo(tc.act);
-            test_engine eng{ctx.get_executor()};
+            test_engine eng{global_context_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
