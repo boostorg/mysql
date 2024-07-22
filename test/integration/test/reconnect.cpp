@@ -131,9 +131,9 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_while_connected, any_sa
     // We can safely connect again
     fn.connect(conn, connect_params_builder().ssl(mode).credentials("root", "").build()).validate_no_error();
 
-    // We've logged in as root
-    fn.execute_query(conn, "SELECT CURRENT_USER()", r).validate_no_error();
-    BOOST_TEST(r.rows() == makerows(1, "root@%"), per_element());
+    // We've logged in as root. May be root@% or root@localhost
+    fn.execute_query(conn, "SELECT SUBSTRING_INDEX(CURRENT_USER(), '@', 1)", r).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, "root"), per_element());
 }
 
 BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
