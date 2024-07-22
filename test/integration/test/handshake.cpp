@@ -45,11 +45,11 @@ namespace {
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
 // TODO: we can double-check SSL using 'SHOW STATUS LIKE 'ssl_version''
-// TODO: review connection termination tests
 
 // Handshake is the most convoluted part of MySQL protocol,
 // and is in active development in current MySQL versions.
 // We try to test all combinations of auth methods/transports.
+// Note that fixtures take care of closing the connection can be closed successfully
 struct transport_test_case
 {
     string_view name;
@@ -198,7 +198,6 @@ static void load_sha256_cache(std::string user, std::string password)
             as_netresult
         )
         .validate_no_error();
-    fix.conn.async_close(as_netresult).validate_no_error();
 }
 
 static void clear_sha256_cache()
@@ -210,7 +209,6 @@ static void clear_sha256_cache()
 
     results result;
     fix.conn.async_execute("FLUSH PRIVILEGES", result, as_netresult).validate_no_error();
-    fix.conn.async_close(as_netresult).validate_no_error();
 };
 
 // Cache hit means that we are sending the password hashed, so it is OK to not have SSL for this
@@ -364,6 +362,9 @@ BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
 
     // Connect succeeds
     conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
+
+    // Close succeeds
+    conn.async_close(as_netresult).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // caching_sha2_password
@@ -506,6 +507,9 @@ BOOST_AUTO_TEST_CASE(ssl_stream)
             // Handshake succeeds
             conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
             BOOST_TEST(conn.uses_ssl() == tc.expect_ssl);
+
+            // Close succeeds
+            conn.async_close(as_netresult).validate_no_error();
         }
     }
 }
