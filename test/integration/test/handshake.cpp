@@ -326,7 +326,7 @@ BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
 BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
 {
     // Setup
-    asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
     auto params = connect_params_builder().credentials(regular_user, regular_passwd).build_hparams();
 
@@ -346,7 +346,7 @@ BOOST_AUTO_TEST_SUITE(ssl_certificate_validation)
 BOOST_AUTO_TEST_CASE(certificate_valid)
 {
     // Setup
-    asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     any_connection_fixture fix(ssl_ctx);
@@ -360,7 +360,7 @@ BOOST_AUTO_TEST_CASE(certificate_valid)
 BOOST_AUTO_TEST_CASE(certificate_invalid)
 {
     // Setup
-    asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     any_connection_fixture fix(ssl_ctx);
 
@@ -374,7 +374,7 @@ BOOST_AUTO_TEST_CASE(certificate_invalid)
 BOOST_AUTO_TEST_CASE(custom_certificate_verification_success)
 {
     // Setup
-    asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("mysql"));
@@ -389,7 +389,7 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_success)
 BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
 {
     // Setup
-    asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
@@ -406,7 +406,7 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
 BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
 {
     // Setup
-    asio::ssl::context ssl_ctx(asio::ssl::context::tlsv13_client);
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
