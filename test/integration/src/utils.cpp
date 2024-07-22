@@ -42,17 +42,17 @@ any_connection_fixture::any_connection_fixture(asio::ssl::context& ssl_ctx)
 
 any_connection_fixture::~any_connection_fixture() { conn.async_close(as_netresult).validate_no_error(); }
 
-void any_connection_fixture::connect(const connect_params& params, source_location loc)
+void any_connection_fixture::connect(const connect_params& params, boost::source_location loc)
 {
     conn.async_connect(params, as_netresult).validate_no_error(loc);
 }
 
-void any_connection_fixture::connect(source_location loc)
+void any_connection_fixture::connect(boost::source_location loc)
 {
     connect(connect_params_builder().ssl(ssl_mode::disable).build(), loc);
 }
 
-void any_connection_fixture::start_transaction(source_location loc)
+void any_connection_fixture::start_transaction(boost::source_location loc)
 {
     results r;
     conn.async_execute("START TRANSACTION", r, as_netresult).validate_no_error(loc);
@@ -74,12 +74,12 @@ tcp_connection_fixture::tcp_connection_fixture() : conn(global_context_executor(
 
 tcp_connection_fixture::~tcp_connection_fixture() { conn.async_close(as_netresult).validate_no_error(); }
 
-void tcp_connection_fixture::connect(source_location loc)
+void tcp_connection_fixture::connect(boost::source_location loc)
 {
     connect(connect_params_builder().build_hparams(), loc);
 }
 
-void tcp_connection_fixture::connect(const handshake_params& params, source_location loc)
+void tcp_connection_fixture::connect(const handshake_params& params, boost::source_location loc)
 {
     conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error(loc);
 }
