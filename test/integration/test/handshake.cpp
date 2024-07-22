@@ -13,8 +13,12 @@
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
+#include <boost/mysql/unix.hpp>
+#include <boost/mysql/unix_ssl.hpp>
 
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/asio/ssl/verify_mode.hpp>
@@ -26,7 +30,9 @@
 #include <utility>
 #include <vector>
 
+#include "test_common/ci_server.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
@@ -513,6 +519,177 @@ BOOST_AUTO_TEST_CASE(ssl_stream)
         }
     }
 }
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// Old tcp_ssl_connection, unix_connection, unix_ssl_connection
+// can establish and terminate connections, using sync and async fns
+BOOST_AUTO_TEST_SUITE(connection_stream_types)
+
+template <class Conn>
+struct fixture;
+
+template <>
+struct fixture<tcp_ssl_connection>
+{
+    asio::io_context ctx;
+    asio::ssl::context ssl_ctx{asio::ssl::context::tls_client};
+    tcp_ssl_connection conn{ctx, ssl_ctx};
+
+    using endpoint_type = asio::ip::tcp::endpoint;
+    static endpoint_type get_endpoint() { return get_tcp_endpoint(); }
+    static bool expect_ssl() { return true; }
+};
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+template <>
+struct fixture<unix_connection>
+{
+    asio::io_context ctx;
+    unix_connection conn{ctx};
+
+    using endpoint_type = asio::local::stream_protocol::endpoint;
+    static endpoint_type get_endpoint() { return default_unix_path; }
+    static bool expect_ssl() { return false; }
+};
+
+template <>
+struct fixture<unix_ssl_connection>
+{
+    asio::io_context ctx;
+    asio::ssl::context ssl_ctx{asio::ssl::context::tls_client};
+    unix_ssl_connection conn{ctx, ssl_ctx};
+
+    using endpoint_type = asio::local::stream_protocol::endpoint;
+    static endpoint_type get_endpoint() { return default_unix_path; }
+    static bool expect_ssl() { return true; }
+};
+#endif
+
+template <class Conn>
+void do_connect_close_test()
+{
+    using fixture_type = fixture<Conn>;
+    using netmaker_connect = netfun_maker<
+        void,
+        Conn,
+        const typename fixture_type::endpoint_type&,
+        const handshake_params&>;
+    using netmaker_execute = netfun_maker<void, Conn, const string_view&, results&>;
+    using netmaker_close = netfun_maker<void, Conn>;
+
+    struct
+    {
+        string_view name;
+        typename netmaker_connect::signature connect;
+        typename netmaker_execute::signature execute;
+        typename netmaker_close::signature close;
+    } test_cases[] = {
+        {"sync",
+         netmaker_connect::sync_errc(&Conn::connect),
+         netmaker_execute::sync_errc(&Conn::execute),
+         netmaker_close::sync_errc(&Conn::close)       },
+        {"async",
+         netmaker_connect::async_diag(&Conn::async_connect),
+         netmaker_execute::async_diag(&Conn::async_execute),
+         netmaker_close::async_diag(&Conn::async_close)},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            fixture_type fix;
+
+            // Connect
+            tc.connect(fix.conn, fix.get_endpoint(), connect_params_builder().build_hparams())
+                .validate_no_error();
+
+            // Check whether the connection is using SSL
+            BOOST_TEST(fix.conn.uses_ssl() == fix.expect_ssl());
+
+            // The connection is usable
+            results r;
+            tc.execute(fix.conn, "SELECT 'abc'", r).validate_no_error();
+            BOOST_TEST(r.rows() == makerows(1, "abc"), per_element());
+
+            // Closing succeeds
+            tc.close(fix.conn).validate_no_error();
+        }
+    }
+}
+
+template <class Conn>
+void do_handshake_quit_test()
+{
+    using fixture_type = fixture<Conn>;
+    using netmaker_handshake = netfun_maker<void, Conn, const handshake_params&>;
+    using netmaker_execute = netfun_maker<void, Conn, const string_view&, results&>;
+    using netmaker_quit = netfun_maker<void, Conn>;
+
+    struct
+    {
+        string_view name;
+        typename netmaker_handshake::signature handshake;
+        typename netmaker_execute::signature execute;
+        typename netmaker_quit::signature quit;
+    } test_cases[] = {
+        {"sync",
+         netmaker_handshake::sync_errc(&Conn::handshake),
+         netmaker_execute::sync_errc(&Conn::execute),
+         netmaker_quit::sync_errc(&Conn::quit)       },
+        {"async",
+         netmaker_handshake::async_diag(&Conn::async_handshake),
+         netmaker_execute::async_diag(&Conn::async_execute),
+         netmaker_quit::async_diag(&Conn::async_quit)},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            fixture_type fix;
+
+            // Connect
+            fix.conn.stream().lowest_layer().connect(fix.get_endpoint());
+            tc.handshake(fix.conn, connect_params_builder().build_hparams()).validate_no_error();
+
+            // Check whether the connection uses SSL
+            BOOST_TEST(fix.conn.uses_ssl() == fix.expect_ssl());
+
+            // The connection is usable
+            results r;
+            tc.execute(fix.conn, "SELECT 'abc'", r).validate_no_error();
+            BOOST_TEST(r.rows() == makerows(1, "abc"), per_element());
+
+            // Quitting succeeds
+            tc.quit(fix.conn).validate_no_error();
+            fix.conn.stream().lowest_layer().close();
+        }
+    }
+}
+
+// tcp_ssl
+BOOST_AUTO_TEST_CASE(tcp_ssl_connect_close) { do_connect_close_test<tcp_ssl_connection>(); }
+BOOST_AUTO_TEST_CASE(tcp_ssl_handshake_quit) { do_handshake_quit_test<tcp_ssl_connection>(); }
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+// unix
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_AUTO_TEST_CASE(unix_connection_connect_close) { do_connect_close_test<unix_connection>(); }
+
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_AUTO_TEST_CASE(unix_connection_handshake_quit) { do_handshake_quit_test<unix_connection>(); }
+
+// unix ssl
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_AUTO_TEST_CASE(unix_ssl_connection_connect_close) { do_connect_close_test<unix_ssl_connection>(); }
+
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_AUTO_TEST_CASE(unix_ssl_connection_handshake_quit) { do_handshake_quit_test<unix_ssl_connection>(); }
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

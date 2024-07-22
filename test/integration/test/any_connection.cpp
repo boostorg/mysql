@@ -29,6 +29,7 @@
 #include "test_common/printing.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
+#include "test_integration/server_features.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 
 // Additional spotchecks for any_connection
@@ -39,6 +40,38 @@ namespace asio = boost::asio;
 using boost::test_tools::per_element;
 
 BOOST_AUTO_TEST_SUITE(test_any_connection)
+
+// any_connection can be used with UNIX sockets
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_FIXTURE_TEST_CASE(unix_sockets, any_connection_fixture)
+{
+    // Connect
+    connect(connect_params_builder().set_unix().build());
+    BOOST_TEST(!conn.uses_ssl());
+
+    // We can prepare statements
+    auto stmt = conn.async_prepare_statement("SELECT ?", as_netresult).get();
+    BOOST_TEST(stmt.num_params() == 1u);
+
+    // We can execute queries
+    results r;
+    conn.async_execute("SELECT 'abc'", r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, "abc"), per_element());
+
+    // We can execute statements
+    conn.async_execute(stmt.bind(42), r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, 42), per_element());
+
+    // We can get errors
+    conn.async_execute("SELECT * FROM bad_table", r, as_netresult)
+        .validate_error(
+            common_server_errc::er_no_such_table,
+            "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+        );
+
+    // We can terminate the connection
+    conn.async_close(as_netresult).validate_no_error();
+}
 
 // Backslash escapes
 BOOST_FIXTURE_TEST_CASE(backslash_escapes, any_connection_fixture)
