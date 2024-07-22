@@ -29,10 +29,12 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
+#include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/metadata_validator.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 #include "test_integration/static_rows.hpp"
+#include "test_integration/tcp_connection_fixture.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
