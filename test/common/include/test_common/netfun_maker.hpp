@@ -73,6 +73,16 @@ struct netfun_maker_impl
     }
 
     template <class Pfn>
+    static signature sync_errc_nodiag(Pfn fn)
+    {
+        return [fn](IOObject& obj, Args... args) {
+            network_result<R> res{common_server_errc::er_no, create_server_diag("<diagnostics unavailable>")};
+            invoke_and_assign(res, fn, obj, std::forward<Args>(args)..., res.err);
+            return res;
+        };
+    }
+
+    template <class Pfn>
     static signature sync_exc(Pfn fn)
     {
         return [fn](IOObject& obj, Args... args) {
@@ -120,11 +130,16 @@ class netfun_maker
 public:
     using signature = std::function<network_result<R>(Obj&, Args...)>;
     using sig_sync_errc = R (Obj::*)(Args..., error_code&, diagnostics&);
+    using sig_sync_errc_nodiag = R (Obj::*)(Args..., error_code&);
+    using sig_sync_errc_nodiag_old =
+        error_code (Obj::*)(Args..., error_code&);  // support old Asio signatures
     using sig_sync_exc = R (Obj::*)(Args...);
     using sig_async_diag = runnable_network_result<R> (Obj::*)(Args..., diagnostics&, const as_netresult_t&);
     using sig_async_nodiag = runnable_network_result<R> (Obj::*)(Args..., const as_netresult_t&);
 
     static signature sync_errc(sig_sync_errc pfn) { return impl::sync_errc(pfn); }
+    static signature sync_errc_nodiag(sig_sync_errc_nodiag pfn) { return impl::sync_errc_nodiag(pfn); }
+    static signature sync_errc_nodiag(sig_sync_errc_nodiag_old pfn) { return impl::sync_errc_nodiag(pfn); }
     static signature sync_exc(sig_sync_exc pfn) { return impl::sync_exc(pfn); }
     static signature async_diag(sig_async_diag pfn) { return impl::async_diag(pfn); }
     static signature async_nodiag(sig_async_nodiag pfn) { return impl::async_nodiag(pfn); }

@@ -441,7 +441,7 @@ BOOST_DATA_TEST_CASE_F(
 )
 {
     // Physical connect
-    conn.stream().connect(get_tcp_endpoint());
+    conn.stream().async_connect(get_tcp_endpoint(), as_netresult).validate_no_error_nodiag();
 
     // Handshake succeeds
     conn.async_handshake(connect_params_builder().ssl(sample).build_hparams(), as_netresult)
@@ -583,6 +583,8 @@ template <class Conn>
 void do_handshake_quit_test()
 {
     using fixture_type = fixture<Conn>;
+    using socket_type = typename Conn::stream_type::lowest_layer_type;
+    using netmaker_connect = netfun_maker<void, socket_type, const typename fixture_type::endpoint_type&>;
     using netmaker_handshake = netfun_maker<void, Conn, const handshake_params&>;
     using netmaker_execute = netfun_maker<void, Conn, const string_view&, results&>;
     using netmaker_quit = netfun_maker<void, Conn>;
@@ -590,15 +592,18 @@ void do_handshake_quit_test()
     struct
     {
         string_view name;
+        typename netmaker_connect::signature connect;
         typename netmaker_handshake::signature handshake;
         typename netmaker_execute::signature execute;
         typename netmaker_quit::signature quit;
     } test_cases[] = {
         {"sync",
+         netmaker_connect::sync_errc_nodiag(&socket_type::connect),
          netmaker_handshake::sync_errc(&Conn::handshake),
          netmaker_execute::sync_errc(&Conn::execute),
          netmaker_quit::sync_errc(&Conn::quit)       },
         {"async",
+         netmaker_connect::async_nodiag(&socket_type::async_connect),
          netmaker_handshake::async_diag(&Conn::async_handshake),
          netmaker_execute::async_diag(&Conn::async_execute),
          netmaker_quit::async_diag(&Conn::async_quit)},
@@ -612,7 +617,7 @@ void do_handshake_quit_test()
             fixture_type fix;
 
             // Connect
-            fix.conn.stream().lowest_layer().connect(fix.get_endpoint());
+            tc.connect(fix.conn.stream().lowest_layer(), fix.get_endpoint()).validate_no_error_nodiag();
             tc.handshake(fix.conn, connect_params_builder().build_hparams()).validate_no_error();
 
             // Check whether the connection uses SSL

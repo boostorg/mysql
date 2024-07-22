@@ -18,12 +18,16 @@
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/tcp.hpp>
 
+#include <boost/asio/ip/tcp.hpp>
 #include <boost/core/span.hpp>
 
 #include <iosfwd>
 
 #include "test_common/netfun_maker.hpp"
+#include "test_common/tracker_executor.hpp"
+#include "test_integration/connect_params_builder.hpp"
 #include "test_integration/static_rows.hpp"
+#include "test_integration/tcp_connection_fixture.hpp"
 
 namespace boost {
 namespace mysql {
@@ -72,6 +76,7 @@ struct netmakers_common
 
 struct netmakers_connection : netmakers_common<tcp_connection>
 {
+    using connect_stream = netfun_maker<void, asio::ip::tcp::socket, const asio::ip::tcp::endpoint&>;
     using handshake = netfun_maker<void, tcp_connection, const handshake_params&>;
     using connect = netfun_maker<
         void,
@@ -114,6 +119,7 @@ struct network_functions_connection
     netmakers::read_some_rows_static_1::signature read_some_rows_static_1;
     netmakers::read_some_rows_static_2::signature read_some_rows_static_2;
 #endif
+    netmakers::connect_stream::signature connect_stream;
     netmakers::handshake::signature handshake;
     netmakers::connect::signature connect;
     netmakers::quit::signature quit;
@@ -153,6 +159,42 @@ struct network_functions_any
     static std::vector<network_functions_any> sync_and_async();
 };
 std::ostream& operator<<(std::ostream& os, const network_functions_any& v);
+
+// Fixtures. Like tcp_connection_fixture and any_connection_fixture,
+// but using a network_functions value
+struct netfn_fixture_connection
+{
+    tcp_connection conn{global_context_executor()};
+    network_functions_connection net;
+
+    netfn_fixture_connection(network_functions_connection n) : net(std::move(n))
+    {
+        conn.set_meta_mode(metadata_mode::full);
+    }
+    ~netfn_fixture_connection() { net.close(conn).validate_no_error(); }
+
+    void connect(connect_params_builder conn_params = {})
+    {
+        net.connect(conn, get_tcp_endpoint(), conn_params.build_hparams()).validate_no_error();
+    }
+};
+
+struct netfn_fixture_any
+{
+    any_connection conn{global_context_executor()};
+    network_functions_any net;
+
+    netfn_fixture_any(network_functions_any n) : net(std::move(n))
+    {
+        conn.set_meta_mode(metadata_mode::full);
+    }
+    ~netfn_fixture_any() { net.close(conn).validate_no_error(); }
+
+    void connect(connect_params_builder conn_params = {})
+    {
+        net.connect(conn, conn_params.build()).validate_no_error();
+    }
+};
 
 }  // namespace test
 }  // namespace mysql

@@ -44,49 +44,51 @@ auto any_samples_grid = boost::unit_test::data::make(any_samples) *
                         boost::unit_test::data::make({ssl_mode::disable, ssl_mode::require});
 
 // Old connection can reconnect after close if the stream is not SSL
-BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, reconnect_after_close_connection, connection_samples)
+BOOST_DATA_TEST_CASE(reconnect_after_close_connection, connection_samples)
 {
-    const network_functions_connection& fn = sample;
+    netfn_fixture_connection fix(sample);
 
     // Connect and use the connection
     results r;
-    fn.connect(conn, get_tcp_endpoint(), connect_params_builder().build_hparams()).validate_no_error();
-    fn.execute_query(conn, "SELECT * FROM empty_table", r).validate_no_error();
+    fix.net.connect(fix.conn, get_tcp_endpoint(), connect_params_builder().build_hparams())
+        .validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT * FROM empty_table", r).validate_no_error();
 
     // Close
-    fn.close(conn).validate_no_error();
+    fix.net.close(fix.conn).validate_no_error();
 
     // Reopen and use the connection normally
-    fn.connect(conn, get_tcp_endpoint(), connect_params_builder().build_hparams()).validate_no_error();
-    fn.execute_query(conn, "SELECT * FROM empty_table", r).validate_no_error();
+    fix.net.connect(fix.conn, get_tcp_endpoint(), connect_params_builder().build_hparams())
+        .validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT * FROM empty_table", r).validate_no_error();
 }
 
 // any_connection can reconnect after close, even if the stream uses ssl
-BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_after_close_any, any_samples_grid, p0, p1)
+BOOST_DATA_TEST_CASE(reconnect_after_close_any, any_samples_grid, p0, p1)
 {
-    const network_functions_any& fn = p0;
+    netfn_fixture_any fix(p0);
     ssl_mode mode = p1;
 
     // Connect and use the connection
     results r;
-    fn.connect(conn, connect_params_builder().ssl(mode).build()).validate_no_error();
-    fn.execute_query(conn, "SELECT * FROM empty_table", r).validate_no_error();
+    fix.net.connect(fix.conn, connect_params_builder().ssl(mode).build()).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT * FROM empty_table", r).validate_no_error();
 
     // Close
-    fn.close(conn).validate_no_error();
+    fix.net.close(fix.conn).validate_no_error();
 
     // Reopen and use the connection normally
-    fn.connect(conn, connect_params_builder().ssl(mode).build()).validate_no_error();
-    fn.execute_query(conn, "SELECT * FROM empty_table", r).validate_no_error();
+    fix.net.connect(fix.conn, connect_params_builder().ssl(mode).build()).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT * FROM empty_table", r).validate_no_error();
 }
 
 // Old connection can reconnect after handshake failure if the stream is not SSL
-BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, reconnect_after_handshake_error_connection, connection_samples)
+BOOST_DATA_TEST_CASE(reconnect_after_handshake_error_connection, connection_samples)
 {
-    const network_functions_connection& fn = sample;
+    netfn_fixture_connection fix(sample);
 
     // Error during server handshake
-    fn.connect(conn, get_tcp_endpoint(), connect_params_builder().database("bad_db").build_hparams())
+    fix.net.connect(fix.conn, get_tcp_endpoint(), connect_params_builder().database("bad_db").build_hparams())
         .validate_error(
             common_server_errc::er_dbaccess_denied_error,
             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
@@ -94,18 +96,19 @@ BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, reconnect_after_handshake_error_c
 
     // Reopen with correct parameters and use the connection normally
     results r;
-    fn.connect(conn, get_tcp_endpoint(), connect_params_builder().build_hparams()).validate_no_error();
-    fn.execute_query(conn, "SELECT * FROM empty_table", r).validate_no_error();
+    fix.net.connect(fix.conn, get_tcp_endpoint(), connect_params_builder().build_hparams())
+        .validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT * FROM empty_table", r).validate_no_error();
 }
 
 // any_connection can reconnect after a handshake failure, even if SSL is used
-BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_after_handshake_error_any, any_samples_grid, p0, p1)
+BOOST_DATA_TEST_CASE(reconnect_after_handshake_error_any, any_samples_grid, p0, p1)
 {
-    const network_functions_any& fn = p0;
+    netfn_fixture_any fix(p0);
     ssl_mode mode = p1;
 
     // Error during server handshake
-    fn.connect(conn, connect_params_builder().ssl(mode).database("bad_db").build())
+    fix.net.connect(fix.conn, connect_params_builder().ssl(mode).database("bad_db").build())
         .validate_error(
             common_server_errc::er_dbaccess_denied_error,
             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
@@ -113,27 +116,31 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_after_handshake_error_a
 
     // Reopen with correct parameters and use the connection normally
     results r;
-    fn.connect(conn, connect_params_builder().ssl(mode).build()).validate_no_error();
-    fn.execute_query(conn, "SELECT * FROM empty_table", r).validate_no_error();
+    fix.net.connect(fix.conn, connect_params_builder().ssl(mode).build()).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT * FROM empty_table", r).validate_no_error();
 }
 
 // any_connection can reconnect while it's connected
-BOOST_DATA_TEST_CASE_F(any_connection_fixture, reconnect_while_connected, any_samples_grid, p0, p1)
+BOOST_DATA_TEST_CASE(reconnect_while_connected, any_samples_grid, p0, p1)
 {
-    const network_functions_any& fn = p0;
+    netfn_fixture_any fix(p0);
     ssl_mode mode = p1;
 
     // Connect and use the connection
     results r;
-    fn.connect(conn, connect_params_builder().ssl(mode).build()).validate_no_error();
-    fn.execute_query(conn, "SELECT * FROM empty_table", r).validate_no_error();
+    fix.net.connect(fix.conn, connect_params_builder().ssl(mode).build()).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT * FROM empty_table", r).validate_no_error();
 
     // We can safely connect again
-    fn.connect(conn, connect_params_builder().ssl(mode).credentials("root", "").build()).validate_no_error();
+    fix.net.connect(fix.conn, connect_params_builder().ssl(mode).credentials("root", "").build())
+        .validate_no_error();
 
     // We've logged in as root. May be root@% or root@localhost
-    fn.execute_query(conn, "SELECT SUBSTRING_INDEX(CURRENT_USER(), '@', 1)", r).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT SUBSTRING_INDEX(CURRENT_USER(), '@', 1)", r).validate_no_error();
     BOOST_TEST(r.rows() == makerows(1, "root"), per_element());
+
+    // Close succeeds
+    fix.net.close(fix.conn).validate_no_error();
 }
 
 BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
@@ -160,11 +167,15 @@ BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
     conn.async_execute("SELECT 42", r, as_netresult).validate_no_error();
 }
 
-// any_connection can change the stream type used by successive connect calls.
-// We need to split this test in two (TCP and UNIX), so UNIX cases don't run on Windows.
-struct change_stream_type_fixture : any_connection_fixture
+// any_connection can change the stream type used by successive connect calls
+BOOST_AUTO_TEST_CASE(change_stream_type)
 {
-    // A test case sample
+    // Helpers
+    const auto tcp_params = connect_params_builder().ssl(ssl_mode::disable).build();
+    const auto tcp_ssl_params = connect_params_builder().ssl(ssl_mode::require).build();
+    const auto unix_params = connect_params_builder().set_unix().build();
+
+    // Samples
     struct test_case_t
     {
         string_view name;
@@ -173,54 +184,39 @@ struct change_stream_type_fixture : any_connection_fixture
         connect_params second_params;
     };
 
-    // Runs the actual test
-    void run(boost::span<const test_case_t> test_cases)
-    {
-        for (const auto& tc : test_cases)
-        {
-            BOOST_TEST_CONTEXT(tc.name)
-            {
-                // Connect with the first stream type
-                tc.fns.connect(conn, tc.first_params).validate_no_error();
-                tc.fns.ping(conn).validate_no_error();
-
-                // Connect with the second stream type
-                tc.fns.connect(conn, tc.second_params).validate_no_error();
-                tc.fns.ping(conn).validate_no_error();
-            }
-        }
-    }
-
-    connect_params tcp_params{connect_params_builder().ssl(ssl_mode::disable).build()};
-    connect_params tcp_ssl_params{connect_params_builder().ssl(ssl_mode::require).build()};
-};
-
-// TCP cases. Note that some sync cases are not included, to save testing time
-BOOST_FIXTURE_TEST_CASE(change_stream_type_tcp, change_stream_type_fixture)
-{
-    test_case_t test_cases[] = {
+    std::vector<test_case_t> test_cases{
         {"sync_tcp_tcpssl",  any_samples[0], tcp_params,     tcp_ssl_params},
         {"async_tcp_tcpssl", any_samples[1], tcp_params,     tcp_ssl_params},
         {"async_tcpssl_tcp", any_samples[1], tcp_ssl_params, tcp_params    },
     };
-    run(test_cases);
-}
-
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
-// UNIX cases. Note that some sync cases are not included, to save testing time
-BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
-BOOST_FIXTURE_TEST_CASE(change_stream_type_unix, change_stream_type_fixture)
-{
-    auto unix_params = connect_params_builder().set_unix().build();
-    test_case_t test_cases[] = {
-        {"sync_unix_tcpssl",  any_samples[0], unix_params,    tcp_ssl_params},
-        {"async_unix_tcpssl", any_samples[1], unix_params,    tcp_ssl_params},
-        {"async_tcpssl_unix", any_samples[1], tcp_ssl_params, unix_params   },
-        {"async_tcp_unix",    any_samples[1], tcp_params,     unix_params   },
-    };
-    run(test_cases);
-}
+    if (get_server_features().unix_sockets)
+    {
+        test_cases.push_back({"sync_unix_tcpssl", any_samples[0], unix_params, tcp_ssl_params});
+        test_cases.push_back({"async_unix_tcpssl", any_samples[1], unix_params, tcp_ssl_params});
+        test_cases.push_back({"async_tcpssl_unix", any_samples[1], tcp_ssl_params, unix_params});
+        test_cases.push_back({"async_tcp_unix", any_samples[1], tcp_params, unix_params});
+    }
 #endif
+
+    // Actual test
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            netfn_fixture_any fix(tc.fns);
+
+            // Connect with the first stream type
+            fix.net.connect(fix.conn, tc.first_params).validate_no_error();
+            fix.net.ping(fix.conn).validate_no_error();
+
+            // Connect with the second stream type
+            fix.net.connect(fix.conn, tc.second_params).validate_no_error();
+            fix.net.ping(fix.conn).validate_no_error();
+        }
+    }
+}
 
 BOOST_AUTO_TEST_SUITE_END()  // test_reconnect
 

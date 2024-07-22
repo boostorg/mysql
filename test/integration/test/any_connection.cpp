@@ -159,24 +159,21 @@ BOOST_FIXTURE_TEST_CASE(default_max_buffer_size_error, any_connection_fixture)
         .validate_error(client_errc::max_buffer_size_exceeded);
 }
 
-BOOST_DATA_TEST_CASE_F(any_connection_fixture, naggle_disabled, network_functions_any::sync_and_async())
+BOOST_DATA_TEST_CASE(naggle_disabled, network_functions_any::sync_and_async())
 {
     // Setup
-    const network_functions_any& fn = sample;
+    netfn_fixture_any fix(sample);
 
     // Connect
-    fn.connect(conn, connect_params_builder().disable_ssl().build()).validate_no_error();
+    fix.net.connect(fix.conn, connect_params_builder().disable_ssl().build()).validate_no_error();
 
     // Naggle's algorithm was disabled
     asio::ip::tcp::no_delay opt;
-    static_cast<detail::engine_impl<detail::variant_stream>&>(detail::access::get_impl(conn).get_engine())
+    static_cast<detail::engine_impl<detail::variant_stream>&>(detail::access::get_impl(fix.conn).get_engine())
         .stream()
         .tcp_socket()
         .get_option(opt);
     BOOST_TEST(opt.value() == true);
-
-    // Close successfully
-    fn.close(conn).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

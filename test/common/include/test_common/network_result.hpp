@@ -52,6 +52,12 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
         validate_error(error_code(), diagnostics(), loc);
     }
 
+    // Use for functions without a diagnostics& parameter
+    void validate_no_error_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
+    {
+        validate_error(error_code(), create_server_diag("<diagnostics unavailable>"), loc);
+    }
+
     void validate_error(
         error_code expected_err,
         const diagnostics& expected_diag = {},
@@ -149,6 +155,11 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
         std::move(*this).run().validate_no_error(loc);
+    }
+
+    void validate_no_error_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    {
+        std::move(*this).run().validate_no_error_nodiag(loc);
     }
 
     void validate_error(

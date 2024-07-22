@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/asio/ip/tcp.hpp>
+
 #include <ostream>
 #include <utility>
 
@@ -27,6 +29,14 @@ std::vector<network_functions_connection> boost::mysql::test::network_functions_
 
     for (std::size_t i = 0; i < 4; ++i)
     {
+        // connect_stream doesn't involve diagnostics
+        auto fn_connect_stream = (i == 0 || i == 1) ? netmakers::connect_stream::sync_errc_nodiag(
+                                                          &asio::ip::tcp::socket::connect
+                                                      )
+                                                    : netmakers::connect_stream::async_nodiag(
+                                                          &asio::ip::tcp::socket::async_connect
+                                                      );
+
         res.push_back({
             fn_names[i],
             BOOST_MYSQL_MAKE_NETFN(tcp_connection, prepare_statement, prepare_statement, i),
@@ -46,6 +56,7 @@ std::vector<network_functions_connection> boost::mysql::test::network_functions_
             BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_some_rows_static_1, read_some_rows, i),
             BOOST_MYSQL_MAKE_NETFN(tcp_connection, read_some_rows_static_2, read_some_rows, i),
 #endif
+            std::move(fn_connect_stream),
             BOOST_MYSQL_MAKE_NETFN(tcp_connection, handshake, handshake, i),
             BOOST_MYSQL_MAKE_NETFN(tcp_connection, connect, connect, i),
             BOOST_MYSQL_MAKE_NETFN(tcp_connection, quit, quit, i),

@@ -19,7 +19,6 @@
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp.hpp>
 
-#include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -30,13 +29,10 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/source_location.hpp"
-#include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/metadata_validator.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 #include "test_integration/static_rows.hpp"
-#include "test_integration/tcp_connection_fixture.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -51,87 +47,27 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_spotchecks)
 
-// Map from a connection to its network functions type
-template <class Conn>
-struct network_functions_type;
-
-template <>
-struct network_functions_type<tcp_connection>
-{
-    using type = network_functions_connection;
-};
-
-template <>
-struct network_functions_type<any_connection>
-{
-    using type = network_functions_any;
-};
-
-template <class Conn>
-using network_functions_t = typename network_functions_type<Conn>::type;
-
-template <class Conn>
-boost::span<const typename network_functions_type<Conn>::type> get_network_functions()
-{
-    static auto res = network_functions_type<Conn>::type::all();
-    return res;
-}
-
-// Fixtures
-template <class Conn>
-struct fixture_type;
-
-template <>
-struct fixture_type<tcp_connection>
-{
-    using type = tcp_connection_fixture;
-};
-
-template <>
-struct fixture_type<any_connection>
-{
-    using type = any_connection_fixture;
-};
-
-template <class Conn>
-using fixture_type_t = typename fixture_type<Conn>::type;
-
-// Connect with multi-queries enabled in a generic way
-static void connect_with_multi_queries(
-    tcp_connection_fixture& fix,
-    boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-)
-{
-    fix.connect(connect_params_builder().multi_queries(true).build_hparams(), loc);
-}
-
-static void connect_with_multi_queries(
-    any_connection_fixture& fix,
-    boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-)
-{
-    fix.connect(connect_params_builder().ssl(ssl_mode::disable).multi_queries(true).build(), loc);
-}
-
 // Functions for each connection type
 static auto fns_connection = network_functions_connection::all();
 static auto fns_any = network_functions_any::all();
 
 // Simplify defining test cases involving both connection types
 // The resulting test case gets the fixture (fix) and the network functions (fn) as args
-#define BOOST_MYSQL_SPOTCHECK_TEST(name)                                              \
-    template <class Conn>                                                             \
-    void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn);   \
-    BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, name##_connection, fns_connection) \
-    {                                                                                 \
-        do_##name<tcp_connection>(*this, sample);                                     \
-    }                                                                                 \
-    BOOST_DATA_TEST_CASE_F(any_connection_fixture, name##_any, fns_any)               \
-    {                                                                                 \
-        do_##name<any_connection>(*this, sample);                                     \
-    }                                                                                 \
-    template <class Conn>                                                             \
-    void do_##name(fixture_type_t<Conn>& fix, const network_functions_t<Conn>& fn)
+#define BOOST_MYSQL_SPOTCHECK_TEST(name)                    \
+    template <class FixtureType>                            \
+    void do_##name(FixtureType& fix);                       \
+    BOOST_DATA_TEST_CASE(name##_connection, fns_connection) \
+    {                                                       \
+        netfn_fixture_connection fix{sample};               \
+        do_##name(fix);                                     \
+    }                                                       \
+    BOOST_DATA_TEST_CASE(name##_any, fns_any)               \
+    {                                                       \
+        netfn_fixture_any fix{sample};                      \
+        do_##name(fix);                                     \
+    }                                                       \
+    template <class FixtureType>                            \
+    void do_##name(FixtureType& fix)
 
 // prepare statement
 BOOST_MYSQL_SPOTCHECK_TEST(prepare_statement_success)
@@ -140,7 +76,8 @@ BOOST_MYSQL_SPOTCHECK_TEST(prepare_statement_success)
     fix.connect();
 
     // Call the function
-    statement stmt = fn.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+    statement stmt = fix.net.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)")
+                         .get();
 
     // Validate the result
     BOOST_TEST_REQUIRE(stmt.valid());
@@ -149,7 +86,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(prepare_statement_success)
 
     // It can be executed
     results result;
-    fn.execute_statement(fix.conn, stmt.bind(10, 20), result).validate_no_error();
+    fix.net.execute_statement(fix.conn, stmt.bind(10, 20), result).validate_no_error();
     BOOST_TEST(result.rows().empty());
 }
 
@@ -159,7 +96,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(prepare_statement_error)
     fix.connect();
 
     // Call the function
-    fn.prepare_statement(fix.conn, "SELECT * FROM bad_table WHERE id IN (?, ?)")
+    fix.net.prepare_statement(fix.conn, "SELECT * FROM bad_table WHERE id IN (?, ?)")
         .validate_error(
             common_server_errc::er_no_such_table,
             "Table 'boost_mysql_integtests.bad_table' doesn't exist"
@@ -174,7 +111,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(execute_success)
 
     // Call the function
     results result;
-    fn.execute_query(fix.conn, "SELECT 'hello', 42", result).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT 'hello', 42", result).validate_no_error();
 
     // Check results
     BOOST_TEST(result.rows().size() == 1u);
@@ -189,7 +126,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(execute_error)
 
     // Call the function
     results result;
-    fn.execute_query(fix.conn, "SELECT field_varchar, field_bad FROM one_row_table", result)
+    fix.net.execute_query(fix.conn, "SELECT field_varchar, field_bad FROM one_row_table", result)
         .validate_error_contains(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
 }
 
@@ -201,7 +138,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(start_execution_success)
 
     // Call the function
     execution_state st;
-    fn.start_execution(fix.conn, "SELECT * FROM empty_table", st).validate_no_error();
+    fix.net.start_execution(fix.conn, "SELECT * FROM empty_table", st).validate_no_error();
 
     // Check results
     BOOST_TEST(st.should_read_rows());
@@ -215,7 +152,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(start_execution_error)
 
     // Call the function
     execution_state st;
-    fn.start_execution(fix.conn, "SELECT field_varchar, field_bad FROM one_row_table", st)
+    fix.net.start_execution(fix.conn, "SELECT field_varchar, field_bad FROM one_row_table", st)
         .validate_error_contains(common_server_errc::er_bad_field_error, {"unknown column", "field_bad"});
 }
 
@@ -226,14 +163,15 @@ BOOST_MYSQL_SPOTCHECK_TEST(close_statement_success)
     fix.connect();
 
     // Prepare a statement
-    statement stmt = fn.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+    statement stmt = fix.net.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)")
+                         .get();
 
     // Close the statement
-    fn.close_statement(fix.conn, stmt).validate_no_error();
+    fix.net.close_statement(fix.conn, stmt).validate_no_error();
 
     // The statement is no longer valid
     results result;
-    fn.execute_statement(fix.conn, stmt.bind(1, 2), result).validate_any_error();
+    fix.net.execute_statement(fix.conn, stmt.bind(1, 2), result).validate_any_error();
 }
 
 BOOST_MYSQL_SPOTCHECK_TEST(close_statement_error)
@@ -242,64 +180,65 @@ BOOST_MYSQL_SPOTCHECK_TEST(close_statement_error)
     fix.connect();
 
     // Prepare a statement
-    statement stmt = fn.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)").get();
+    statement stmt = fix.net.prepare_statement(fix.conn, "SELECT * FROM empty_table WHERE id IN (?, ?)")
+                         .get();
 
     // Close the connection
-    fn.close(fix.conn).validate_no_error();
+    fix.net.close(fix.conn).validate_no_error();
 
     // Close the statement fails, as it requires communication with the server
-    fn.close_statement(fix.conn, stmt).validate_any_error();
+    fix.net.close_statement(fix.conn, stmt).validate_any_error();
 }
 
 // Read resultset head
 BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_success)
 {
     // Setup
-    connect_with_multi_queries(fix);
+    fix.connect(connect_params_builder().multi_queries(true));
 
     // Generate an execution state
     execution_state st;
-    fn.start_execution(fix.conn, "SELECT 4.2e0; SELECT * FROM empty_table", st).validate_no_error();
+    fix.net.start_execution(fix.conn, "SELECT 4.2e0; SELECT * FROM empty_table", st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read the 1st resultset
-    auto rws = fn.read_some_rows(fix.conn, st).get();
+    auto rws = fix.net.read_some_rows(fix.conn, st).get();
     BOOST_TEST_REQUIRE(st.should_read_head());
     BOOST_TEST(st.meta()[0].type() == column_type::double_);
     BOOST_TEST(rws == makerows(1, 4.2), per_element());
 
     // Read head
-    fn.read_resultset_head(fix.conn, st).validate_no_error();
+    fix.net.read_resultset_head(fix.conn, st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
     validate_2fields_meta(st.meta(), "empty_table");
 
     // Reading head again does nothing
-    fn.read_resultset_head(fix.conn, st).validate_no_error();
+    fix.net.read_resultset_head(fix.conn, st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
     validate_2fields_meta(st.meta(), "empty_table");
 
     // We can read rows now
-    rws = fn.read_some_rows(fix.conn, st).get();
+    rws = fix.net.read_some_rows(fix.conn, st).get();
     BOOST_TEST(rws == rows(), per_element());
 }
 
 BOOST_MYSQL_SPOTCHECK_TEST(read_resultset_head_error)
 {
     // Setup
-    connect_with_multi_queries(fix);
+    fix.connect(connect_params_builder().multi_queries(true));
 
     // Generate an execution state
     execution_state st;
-    fn.start_execution(fix.conn, "SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st)
+    fix.net.start_execution(fix.conn, "SELECT * FROM empty_table; SELECT bad_field FROM one_row_table", st)
         .validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read the OK packet to finish 1st resultset
-    fn.read_some_rows(fix.conn, st).validate_no_error();
+    fix.net.read_some_rows(fix.conn, st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_head());
 
     // Read head for the 2nd resultset. This one contains an error, which is detected when reading head.
-    fn.read_resultset_head(fix.conn, st)
+    fix.net.read_resultset_head(fix.conn, st)
         .validate_error(common_server_errc::er_bad_field_error, "Unknown column 'bad_field' in 'field list'");
 }
 
@@ -312,16 +251,16 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
 
     // Generate an execution state
     execution_state st;
-    fn.start_execution(fix.conn, "SELECT * FROM one_row_table", st).validate_no_error();
+    fix.net.start_execution(fix.conn, "SELECT * FROM one_row_table", st).validate_no_error();
     BOOST_TEST_REQUIRE(st.should_read_rows());
 
     // Read once. st may or may not be complete, depending
     // on how the buffer reallocated memory
-    auto rows = fn.read_some_rows(fix.conn, st).get();
+    auto rows = fix.net.read_some_rows(fix.conn, st).get();
     BOOST_TEST((rows == makerows(2, 1, "f0")));
 
     // Reading again should complete st
-    rows = fn.read_some_rows(fix.conn, st).get();
+    rows = fix.net.read_some_rows(fix.conn, st).get();
     BOOST_TEST(rows.empty());
     BOOST_TEST_REQUIRE(st.complete());
     BOOST_TEST(st.affected_rows() == 0u);
@@ -330,7 +269,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_success)
     BOOST_TEST(st.info() == "");
 
     // Reading again does nothing
-    rows = fn.read_some_rows(fix.conn, st).get();
+    rows = fix.net.read_some_rows(fix.conn, st).get();
     BOOST_TEST(rows.empty());
     BOOST_TEST_REQUIRE(st.complete());
     BOOST_TEST(st.affected_rows() == 0u);
@@ -346,7 +285,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(ping_success)
     fix.connect();
 
     // Success
-    fn.ping(fix.conn).validate_no_error();
+    fix.net.ping(fix.conn).validate_no_error();
 }
 
 // Writing to an unconnected any_connection triggers an assert right now
@@ -358,10 +297,10 @@ BOOST_MYSQL_SPOTCHECK_TEST(ping_error)
     fix.connect();
 
     // Close the connection
-    fn.close(fix.conn).validate_no_error();
+    fix.net.close(fix.conn).validate_no_error();
 
     // Pinging an unconnected connection fails
-    fn.ping(fix.conn).validate_any_error();
+    fix.net.ping(fix.conn).validate_any_error();
 }
 
 // Reset connection
@@ -372,13 +311,13 @@ BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_success)
 
     // Set some variable
     results result;
-    fn.execute_query(fix.conn, "SET @myvar = 42", result).validate_no_error();
+    fix.net.execute_query(fix.conn, "SET @myvar = 42", result).validate_no_error();
 
     // Reset connection
-    fn.reset_connection(fix.conn).validate_no_error();
+    fix.net.reset_connection(fix.conn).validate_no_error();
 
     // The variable has been reset
-    fn.execute_query(fix.conn, "SELECT @myvar", result).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT @myvar", result).validate_no_error();
     BOOST_TEST(result.rows() == makerows(1, nullptr), per_element());
 }
 
@@ -388,10 +327,10 @@ BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_error)
     fix.connect();
 
     // Close the connection
-    fn.close(fix.conn).validate_no_error();
+    fix.net.close(fix.conn).validate_no_error();
 
     // Resetting an unconnected connection fails
-    fn.reset_connection(fix.conn).validate_any_error();
+    fix.net.reset_connection(fix.conn).validate_any_error();
 }
 
 // Close connection
@@ -402,14 +341,14 @@ BOOST_MYSQL_SPOTCHECK_TEST(close_success)
     fix.connect();
 
     // Close
-    fn.close(fix.conn).validate_no_error();
+    fix.net.close(fix.conn).validate_no_error();
 
     // We are no longer able to query
     results result;
-    fn.execute_query(fix.conn, "SELECT 1", result).validate_any_error();
+    fix.net.execute_query(fix.conn, "SELECT 1", result).validate_any_error();
 
     // Closing again returns OK (and does nothing)
-    fn.close(fix.conn).validate_no_error();
+    fix.net.close(fix.conn).validate_no_error();
 }
 
 #ifdef BOOST_MYSQL_CXX14
@@ -421,7 +360,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(execute_static_success)
     static_results_t result;
 
     // Execute the function
-    fn.execute_static(fix.conn, "CALL sp_spotchecks()", result).validate_no_error();
+    fix.net.execute_static(fix.conn, "CALL sp_spotchecks()", result).validate_no_error();
 
     // Check
     row_multifield expected[]{
@@ -438,39 +377,39 @@ BOOST_MYSQL_SPOTCHECK_TEST(start_execution_and_followups_static_success)
     static_state_t st;
 
     // Start
-    fn.start_execution_static(fix.conn, "CALL sp_spotchecks()", st).validate_no_error();
+    fix.net.start_execution_static(fix.conn, "CALL sp_spotchecks()", st).validate_no_error();
     BOOST_TEST(st.should_read_rows());
 
     // Read r1 rows
     std::array<row_multifield, 2> storage;
-    std::size_t num_rows = fn.read_some_rows_static_1(fix.conn, st, storage).get();
+    std::size_t num_rows = fix.net.read_some_rows_static_1(fix.conn, st, storage).get();
     row_multifield expected_multifield{boost::optional<float>(1.1f), 11, std::string("aaa")};  // MSVC 14.1
     BOOST_TEST(num_rows == 1u);
     BOOST_TEST(storage[0] == expected_multifield);
 
     // Ensure we're in the next resultset
-    num_rows = fn.read_some_rows_static_1(fix.conn, st, storage).get();
+    num_rows = fix.net.read_some_rows_static_1(fix.conn, st, storage).get();
     BOOST_TEST(num_rows == 0u);
     BOOST_TEST(st.should_read_head());
 
     // Read r2 head
-    fn.read_resultset_head_static(fix.conn, st).validate_no_error();
+    fix.net.read_resultset_head_static(fix.conn, st).validate_no_error();
     BOOST_TEST(st.should_read_rows());
 
     // Read r2 rows
     std::array<row_2fields, 2> storage2;
-    num_rows = fn.read_some_rows_static_2(fix.conn, st, storage2).get();
+    num_rows = fix.net.read_some_rows_static_2(fix.conn, st, storage2).get();
     BOOST_TEST(num_rows == 1u);
     row_2fields expected_2fields{1, std::string("f0")};
     BOOST_TEST(storage2[0] == expected_2fields);
 
     // Ensure we're in the next resultset
-    num_rows = fn.read_some_rows_static_2(fix.conn, st, storage2).get();
+    num_rows = fix.net.read_some_rows_static_2(fix.conn, st, storage2).get();
     BOOST_TEST(num_rows == 0u);
     BOOST_TEST(st.should_read_head());
 
     // Read r3 head (empty)
-    fn.read_resultset_head_static(fix.conn, st).validate_no_error();
+    fix.net.read_resultset_head_static(fix.conn, st).validate_no_error();
     BOOST_TEST(st.complete());
 }
 
@@ -482,13 +421,14 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_error)
     static_state_t st;
 
     // Start
-    fn.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 42", st)
+    fix.net.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 42", st)
         .validate_no_error();
     BOOST_TEST(st.should_read_rows());
 
     // No rows matched, so reading rows reads the OK packet. This will report the num resultsets mismatch
     std::array<row_multifield, 2> storage;
-    fn.read_some_rows_static_1(fix.conn, st, storage).validate_error(client_errc::num_resultsets_mismatch);
+    fix.net.read_some_rows_static_1(fix.conn, st, storage)
+        .validate_error(client_errc::num_resultsets_mismatch);
 }
 #endif
 
@@ -501,7 +441,7 @@ BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, handshake_success, fns_connection
 {
     // Setup
     const network_functions_connection& fn = sample;
-    conn.stream().connect(get_tcp_endpoint());
+    fn.connect_stream(conn.stream(), get_tcp_endpoint()).validate_no_error_nodiag();
 
     // Call the function
     fn.handshake(conn, connect_params_builder().build_hparams()).validate_no_error();
@@ -514,7 +454,7 @@ BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, handshake_error, fns_connection)
 {
     // Setup
     const network_functions_connection& fn = sample;
-    conn.stream().connect(get_tcp_endpoint());
+    fn.connect_stream(conn.stream(), get_tcp_endpoint()).validate_no_error_nodiag();
 
     // Call the function
     fn.handshake(conn, connect_params_builder().database("bad_db").build_hparams())
