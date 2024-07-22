@@ -271,7 +271,7 @@ BOOST_AUTO_TEST_CASE(next_action_read)
             std::array<std::uint8_t, 8> buff{};
             mock_algo algo(next_action::read({buff, tc.ssl_active}));
             asio::io_context ctx;
-            test_engine eng(ctx.get_executor());
+            test_engine eng{ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
@@ -311,7 +311,7 @@ BOOST_AUTO_TEST_CASE(next_action_write)
             const std::array<std::uint8_t, 4> buff{};
             mock_algo algo(next_action::write({buff, tc.ssl_active}));
             asio::io_context ctx;
-            test_engine eng(ctx.get_executor());
+            test_engine eng{ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
@@ -354,7 +354,7 @@ BOOST_AUTO_TEST_CASE(next_action_other)
             // Setup
             mock_algo algo(tc.act);
             asio::io_context ctx;
-            test_engine eng(ctx.get_executor());
+            test_engine eng{ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
@@ -439,7 +439,7 @@ BOOST_AUTO_TEST_CASE(resume_error_immediate)
             // Setup
             mock_algo algo(next_action(tc.ec));
             asio::io_context ctx;
-            test_engine eng(ctx.get_executor());
+            test_engine eng{ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_error(tc.ec, {});
             BOOST_TEST(eng.value.stream().calls.size() == 0u);
@@ -473,7 +473,7 @@ BOOST_AUTO_TEST_CASE(resume_error_successive_calls)
             // Setup
             mock_algo algo(next_action::connect(), next_action(tc.ec));
             asio::io_context ctx;
-            test_engine eng(ctx.get_executor());
+            test_engine eng{ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_error(tc.ec, {});
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
