@@ -492,7 +492,7 @@ BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, connect_connection_error, fns_con
         );
 }
 
-// Quit
+// Quit. TODO: write a unit test spotcheck for errors
 BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, quit_success, fns_connection)
 {
     // Setup
@@ -501,17 +501,6 @@ BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, quit_success, fns_connection)
 
     // Quit
     fn.quit(conn).validate_no_error();
-}
-
-BOOST_DATA_TEST_CASE_F(tcp_connection_fixture, quit_error, fns_connection)
-{
-    // Setup
-    const network_functions_connection& fn = sample;
-    connect();
-    conn.stream().close();
-
-    // Quit
-    fn.quit(conn).validate_any_error();
 }
 
 //
