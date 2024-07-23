@@ -8,3 +8,5 @@
 # Change how pull request comments look
 comment:
   layout: "reach,diff,files,footer"
+fixes:
+  - "/root/boost-root/::/include/"
