@@ -381,7 +381,7 @@ public:
     BOOST_MYSQL_DECL bool ssl_active() const;
     BOOST_MYSQL_DECL bool backslash_escapes() const;
     BOOST_MYSQL_DECL system::result<character_set> current_character_set() const;
-    BOOST_MYSQL_DECL diagnostics& shared_diag();  // TODO: get rid of this
+    BOOST_MYSQL_DECL diagnostics& shared_diag();
 
     engine& get_engine()
     {

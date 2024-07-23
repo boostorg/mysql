@@ -37,8 +37,8 @@ using row1 = std::tuple<int, float>;
 using row2 = std::tuple<double>;
 
 using state_t = static_execution_state<row1, row1, row2, row1, row2>;
-using netfun_maker_row1 = netfun_maker_mem<std::size_t, test_connection, state_t&, span<row1> >;
-using netfun_maker_row2 = netfun_maker_mem<std::size_t, test_connection, state_t&, span<row2> >;
+using netfun_maker_row1 = netfun_maker<std::size_t, test_connection, state_t&, span<row1> >;
+using netfun_maker_row2 = netfun_maker<std::size_t, test_connection, state_t&, span<row2> >;
 
 struct
 {
@@ -49,8 +49,8 @@ struct
     {netfun_maker_row1::sync_errc(&test_connection::read_some_rows),
      netfun_maker_row2::sync_errc(&test_connection::read_some_rows),
      "sync" },
-    {netfun_maker_row1::async_errinfo(&test_connection::async_read_some_rows),
-     netfun_maker_row2::async_errinfo(&test_connection::async_read_some_rows),
+    {netfun_maker_row1::async_diag(&test_connection::async_read_some_rows),
+     netfun_maker_row2::async_diag(&test_connection::async_read_some_rows),
      "async"},
 };
 
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(error_row_type_mismatch)
             // 1st resultset: row1. Note that this will consume the message
             fix.stream().add_bytes(create_text_row_message(0, 10, 4.2f));
             fns.read_some_rows_row2(fix.conn, fix.st, fix.storage2)
-                .validate_error_exact(client_errc::row_type_mismatch);
+                .validate_error(client_errc::row_type_mismatch);
 
             // Advance resultset
             fix.add_ok();
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE(error_row_type_mismatch)
             // 3rd resultset: row2
             fix.stream().add_bytes(create_text_row_message(1, 9.1));
             fns.read_some_rows_row1(fix.conn, fix.st, fix.storage1)
-                .validate_error_exact(client_errc::row_type_mismatch);
+                .validate_error(client_errc::row_type_mismatch);
         }
     }
 }

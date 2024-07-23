@@ -47,6 +47,9 @@ struct initiation_guard
 };
 bool is_initiation_function();
 
+asio::any_io_executor global_context_executor();
+void run_global_context();
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
