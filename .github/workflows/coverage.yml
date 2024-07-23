@@ -71,3 +71,4 @@ jobs:
           disable_search: true
           directory: /root/boost-root/bin.v2/
           file: /root/boost-root/bin.v2/coverage.info
+          fail_ci_if_error: true
