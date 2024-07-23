@@ -246,8 +246,9 @@ INSERT INTO types_date VALUES
     ("yregular_invalid_date_leap100",     "1900-02-29")
 ;
 
+-- A bug in MySQL 5.x requires us to set this collation to binary to get the correct order
 CREATE TABLE types_datetime(
-    id VARCHAR(50) NOT NULL PRIMARY KEY,
+    id VARCHAR(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL PRIMARY KEY,
     field_0 DATETIME(0),
     field_1 DATETIME(1),
     field_2 DATETIME(2),
