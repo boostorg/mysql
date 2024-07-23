@@ -20,6 +20,7 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
+#include <boost/asio/local/basic_endpoint.hpp>
 #include <boost/test/data/test_case.hpp>
 
 #include <string>
@@ -42,6 +43,7 @@ using boost::test_tools::per_element;
 BOOST_AUTO_TEST_SUITE(test_any_connection)
 
 // any_connection can be used with UNIX sockets
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_FIXTURE_TEST_CASE(unix_sockets, any_connection_fixture)
 {
@@ -72,6 +74,7 @@ BOOST_FIXTURE_TEST_CASE(unix_sockets, any_connection_fixture)
     // We can terminate the connection
     conn.async_close(as_netresult).validate_no_error();
 }
+#endif
 
 // Backslash escapes
 BOOST_FIXTURE_TEST_CASE(backslash_escapes, any_connection_fixture)
