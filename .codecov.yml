@@ -10,3 +10,5 @@ comment:
   layout: "reach,diff,files,footer"
 fixes:
   - "/root/boost-root/::/include/"
+codecov:
+  disable_default_path_fixes: true
