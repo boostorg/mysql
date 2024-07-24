@@ -87,8 +87,8 @@ def b2_build(
         'warnings-as-errors=on',
         '-j4',
         'libs/mysql/test',
-        # 'libs/mysql/test/integration//boost_mysql_integrationtests',
-        # 'libs/mysql/test/thread_safety',
-        # 'libs/mysql/example',
+        'libs/mysql/test/integration//boost_mysql_integrationtests',
+        'libs/mysql/test/thread_safety',
+        'libs/mysql/example',
         _conditional('libs/mysql/test//fail_if_no_openssl', fail_if_no_openssl)
     ])
