@@ -34,9 +34,6 @@ rule do_fail_impl ( a * )
 {
     exit "OpenSSL could not be found. Don't build target fail_if_no_openssl to skip this check" ;
 }
-using openssl : : <search>$(OPENSSL_ROOT)/lib <include>$(OPENSSL_ROOT)/include ;
-alias ssl : : <source>/openssl//ssl/<link>shared ;
-alias crypto : : <source>/openssl//crypto/<link>shared ;
 
 local do_fail = [ indirect.make do_fail_impl ] ;
 
@@ -74,7 +71,6 @@ local requirements =
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
-        <define>BOOST_ASIO_SEPARATE_COMPILATION
         <boost.mysql.use-ts-executor>on:<define>BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
         # Disable assertions when doing coverage, as they distort coverage data
         <coverage>on:<define>BOOST_DISABLE_ASSERTS
