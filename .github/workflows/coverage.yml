@@ -66,4 +66,5 @@ jobs:
           plugins: noop # Don't run gcov again, codecov doesn't know about the filtering we perform
           file: coverage.info
           disable_search: true
+          disable_file_fixes: true
 
