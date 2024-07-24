@@ -14,9 +14,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  GCOV_REPORT_DIR: /tmp/gcov-reports
-
 jobs:
   coverage:
     runs-on: ubuntu-latest
