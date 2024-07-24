@@ -14,14 +14,11 @@ on:
   pull_request:
   workflow_dispatch:
 
-env:
-  GCOV_REPORT_DIR: /tmp/gcov-reports
-
 jobs:
   coverage:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/anarthal-containers/build-gcc14:1e06ba22fc5ab038a3c4ce4a73d0d624848c8f70
+      image: ghcr.io/anarthal-containers/build-gcc13:1e06ba22fc5ab038a3c4ce4a73d0d624848c8f70
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
@@ -32,6 +29,10 @@ jobs:
         volumes:
           - /var/run/mysqld:/var/run/mysqld
     steps:
+      - name: Install coverage packages
+        run: |
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends lcov
+
       - name: Fetch code
         uses: actions/checkout@v4
       
@@ -50,16 +51,19 @@ jobs:
       - name: Generate coverage reports
         shell: bash
         run: |
-          SOURCE_DIR=$(pwd)
-          cd ~/boost-root
-          gcov-14 -r -p $(find bin.v2/ -name '*.gcda') > /dev/null
-          mkdir $GCOV_REPORT_DIR
-          cp boost#mysql#*.gcov $GCOV_REPORT_DIR
+          cd ~/boost-root/bin.v2
+          lcov --rc lcov_branch_coverage=0 --gcov-tool gcov-13 --directory . --capture --output-file all.info
+          lcov --rc lcov_branch_coverage=0 --output-file coverage.info --extract all.info '*/boost/mysql*'
+          sed "s|^SF:$HOME/boost-root/|SF:include/|g" coverage.info > $GITHUB_WORKSPACE/coverage.info
       
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         with:
           verbose: true
+          fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
-          plugins: "" # Don't run gcov again, codecov doesn't know about the filtering we perform
-          directory: ${{ env.GCOV_REPORT_DIR }}
+          plugins: noop # Don't run gcov again, codecov doesn't know about the filtering we perform
+          file: coverage.info
+          disable_search: true # Don't upload unwanted files
+          disable_file_fixes: true # Default fixes make reports unusable
+
