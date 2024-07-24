@@ -5,26 +5,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
-#include <boost/mysql/error_code.hpp>
-#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/pipeline.hpp>
-#include <boost/mysql/ssl_mode.hpp>
 
-#include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <vector>
 
 #include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
-#include "test_common/netfun_helpers.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
-#include "test_integration/common.hpp"
+#include "test_integration/any_connection_fixture.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -35,17 +29,10 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_pipeline)
 
-struct fixture
-{
-    asio::io_context ctx;
-    any_connection conn{ctx};
-
-    fixture() { conn.connect(default_connect_params(ssl_mode::disable)); }
-};
-
-BOOST_FIXTURE_TEST_CASE(success, fixture)
+BOOST_FIXTURE_TEST_CASE(success, any_connection_fixture)
 {
     // Setup
+    connect();
     pipeline_request req;
     std::vector<stage_response> res;
 
@@ -55,9 +42,7 @@ BOOST_FIXTURE_TEST_CASE(success, fixture)
         .add_prepare_statement("SELECT * FROM one_row_table WHERE id = ?");
 
     // Run it
-    auto result = create_initial_netresult<void>();
-    conn.run_pipeline(req, res, result.err, *result.diag);
-    result.validate_no_error();
+    conn.async_run_pipeline(req, res, as_netresult).validate_no_error();
 
     // Check results
     BOOST_TEST_REQUIRE(res.size() == 3u);
@@ -78,9 +63,7 @@ BOOST_FIXTURE_TEST_CASE(success, fixture)
         .add_close_statement(stmt);
 
     // Run it
-    result = create_initial_netresult<void>();
-    conn.run_pipeline(req, res, result.err, *result.diag);
-    result.validate_no_error();
+    conn.async_run_pipeline(req, res, as_netresult).validate_no_error();
 
     // Check results
     BOOST_TEST_REQUIRE(res.size() == 4u);
@@ -96,9 +79,10 @@ BOOST_FIXTURE_TEST_CASE(success, fixture)
     BOOST_TEST(!res[3].has_statement());
 }
 
-BOOST_FIXTURE_TEST_CASE(errors, fixture)
+BOOST_FIXTURE_TEST_CASE(errors, any_connection_fixture)
 {
     // Setup
+    connect();
     pipeline_request req;
     std::vector<stage_response> res;
 
@@ -111,12 +95,11 @@ BOOST_FIXTURE_TEST_CASE(errors, fixture)
         .add_execute("SELECT 'abc'");                                                    // OK
 
     // Run it. The result of the operation is the first encountered error
-    auto result = create_initial_netresult<void>();
-    conn.run_pipeline(req, res, result.err, *result.diag);
-    result.validate_error_exact(
-        common_server_errc::er_no_such_table,
-        "Table 'boost_mysql_integtests.bad_table' doesn't exist"
-    );
+    conn.async_run_pipeline(req, res, as_netresult)
+        .validate_error(
+            common_server_errc::er_no_such_table,
+            "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+        );
 
     // Check results
     BOOST_TEST_REQUIRE(res.size() == 6u);

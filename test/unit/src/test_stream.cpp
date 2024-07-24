@@ -5,15 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "test_unit/test_stream.hpp"
-
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 
 #include <algorithm>
@@ -26,11 +23,10 @@
 
 #include "test_common/buffer_concat.hpp"
 #include "test_common/tracker_executor.hpp"
+#include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql::test;
 using boost::mysql::error_code;
-
-static boost::asio::io_context ctx;
 
 std::size_t boost::mysql::test::test_stream::get_size_to_read(std::size_t buffer_size) const
 {
@@ -144,7 +140,7 @@ struct boost::mysql::test::test_stream::write_op : boost::asio::coroutine
 
 boost::mysql::test::test_stream::executor_type boost::mysql::test::test_stream::get_executor()
 {
-    return create_tracker_executor(ctx.get_executor(), &executor_info_);
+    return global_context_executor();
 }
 
 // Reading

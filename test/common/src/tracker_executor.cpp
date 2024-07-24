@@ -5,16 +5,69 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "test_common/tracker_executor.hpp"
-
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/execution/blocking.hpp>
 #include <boost/asio/execution/relationship.hpp>
 #include <boost/asio/execution_context.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/require.hpp>
+#include <boost/test/unit_test.hpp>
 
+#include <atomic>
+#include <type_traits>
 #include <utility>
+#include <vector>
+
+#include "test_common/tracker_executor.hpp"
 
 using namespace boost::mysql::test;
+
+namespace {
+
+// Are we in the call stack of an initiating function?
+thread_local bool g_is_running_initiation = false;
+
+// Produce unique executor IDs (start in 1)
+std::atomic_int next_executor_id{1};
+
+// The executor call stack
+thread_local std::vector<int> g_executor_call_stack;
+
+// Guard to remove an entry from the stack
+struct executor_call_stack_guard
+{
+    executor_call_stack_guard(int executor_id) { g_executor_call_stack.push_back(executor_id); }
+    executor_call_stack_guard(const executor_call_stack_guard&) = delete;
+    executor_call_stack_guard(executor_call_stack_guard&&) = delete;
+    executor_call_stack_guard& operator=(const executor_call_stack_guard&) = delete;
+    executor_call_stack_guard& operator=(executor_call_stack_guard&&) = delete;
+    ~executor_call_stack_guard() { g_executor_call_stack.pop_back(); }
+};
+
+// Wraps a function object to insert tracking of the caller executor
+template <class Function>
+struct tracker_executor_function
+{
+    int executor_id;
+    Function fn;
+
+    void operator()()
+    {
+        executor_call_stack_guard guard(executor_id);
+        std::move(fn)();
+    }
+};
+
+template <class Function>
+tracker_executor_function<typename std::decay<Function>::type> create_tracker_executor_function(
+    int executor_id,
+    Function&& fn
+)
+{
+    return {executor_id, std::forward<Function>(fn)};
+}
+
+}  // namespace
 
 namespace boost {
 namespace mysql {
@@ -23,34 +76,11 @@ namespace test {
 class tracker_executor
 {
 public:
-    tracker_executor(boost::asio::any_io_executor ex, executor_info* tracked) noexcept
-        : ex_(ex), tracked_(tracked)
-    {
-    }
+    tracker_executor(int id, boost::asio::any_io_executor ex) noexcept : id_(id), ex_(std::move(ex)) {}
 
-    tracker_executor(const tracker_executor& rhs) noexcept : ex_(rhs.ex_), tracked_(rhs.tracked_) {}
-    tracker_executor(tracker_executor&& rhs) noexcept : ex_(std::move(rhs.ex_)), tracked_(rhs.tracked_) {}
-    tracker_executor& operator=(const tracker_executor& rhs) noexcept
-    {
-        ex_ = rhs.ex_;
-        tracked_ = rhs.tracked_;
-        return *this;
-    }
-    tracker_executor& operator=(tracker_executor&& rhs) noexcept
-    {
-        ex_ = std::move(rhs.ex_);
-        tracked_ = std::move(rhs.tracked_);
-        return *this;
-    }
-    ~tracker_executor() = default;
-
-    bool operator==(const tracker_executor& rhs) const noexcept
-    {
-        return ex_ == rhs.ex_ && tracked_ == rhs.tracked_;
-    }
+    bool operator==(const tracker_executor& rhs) const noexcept { return id_ == rhs.id_ && ex_ == rhs.ex_; }
     bool operator!=(const tracker_executor& rhs) const noexcept { return !(*this == rhs); }
-
-    executor_info* get_tracked() const noexcept { return tracked_; }
+    int id() const { return id_; }
 
 #ifdef BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
 
@@ -62,21 +92,19 @@ public:
     template <typename Function, typename Allocator>
     void dispatch(Function&& f, const Allocator& a) const
     {
-        ++tracked_->num_dispatches;
-        ex_.dispatch(std::forward<Function>(f), a);
+        ex_.dispatch(create_tracker_executor_function(id_, std::forward<Function>(f)), a);
     }
 
     template <typename Function, typename Allocator>
     void post(Function&& f, const Allocator& a) const
     {
-        ++tracked_->num_posts;
-        ex_.post(std::forward<Function>(f), a);
+        ex_.post(create_tracker_executor_function(id_, std::forward<Function>(f)), a);
     }
 
     template <typename Function, typename Allocator>
     void defer(Function&& f, const Allocator& a) const
     {
-        ex_.defer(std::forward<Function>(f), a);
+        ex_.defer(create_tracker_executor_function(id_, std::forward<Function>(f)), a);
     }
 
 #else
@@ -88,7 +116,7 @@ public:
         typename std::enable_if<asio::can_require<asio::any_io_executor, Property>::value>::type* = nullptr
     ) const
     {
-        return tracker_executor(asio::require(ex_, p), tracked_);
+        return tracker_executor(id_, asio::require(ex_, p));
     }
 
     template <class Property>
@@ -97,7 +125,7 @@ public:
         typename std::enable_if<asio::can_prefer<asio::any_io_executor, Property>::value>::type* = nullptr
     ) const
     {
-        return tracker_executor(asio::prefer(ex_, p), tracked_);
+        return tracker_executor(id_, asio::prefer(ex_, p));
     }
 
     template <class Property>
@@ -112,24 +140,13 @@ public:
     template <typename Function>
     void execute(Function&& f) const
     {
-        if (asio::query(ex_, asio::execution::relationship) == asio::execution::relationship.fork &&
-            asio::query(ex_, asio::execution::blocking) == asio::execution::blocking.never)
-        {
-            // This is a post
-            ++tracked_->num_posts;
-        }
-        else
-        {
-            ++tracked_->num_dispatches;
-        }
-        ex_.execute(std::forward<Function>(f));
+        ex_.execute(create_tracker_executor_function(id_, std::forward<Function>(f)));
     }
-
 #endif
 
 private:
+    int id_;
     boost::asio::any_io_executor ex_;
-    executor_info* tracked_;
 };
 
 }  // namespace test
@@ -196,15 +213,39 @@ struct query_member<
 }  // namespace asio
 }  // namespace boost
 
-boost::asio::any_io_executor boost::mysql::test::create_tracker_executor(
-    asio::any_io_executor inner,
-    executor_info* tracked_values
+boost::mysql::test::tracker_executor_result boost::mysql::test::create_tracker_executor(
+    asio::any_io_executor inner
 )
 {
-    return tracker_executor(std::move(inner), tracked_values);
+    int id = ++next_executor_id;
+    return {id, tracker_executor(id, std::move(inner))};
 }
 
-executor_info boost::mysql::test::get_executor_info(const asio::any_io_executor& exec)
+int boost::mysql::test::current_executor_id()
 {
-    return *exec.target<tracker_executor>()->get_tracked();
+    return g_executor_call_stack.empty() ? -1 : g_executor_call_stack.back();
+}
+
+boost::mysql::test::initiation_guard::initiation_guard()
+{
+    BOOST_ASSERT(!g_is_running_initiation);
+    g_is_running_initiation = true;
+}
+
+boost::mysql::test::initiation_guard::~initiation_guard()
+{
+    BOOST_ASSERT(g_is_running_initiation);
+    g_is_running_initiation = false;
+}
+
+bool boost::mysql::test::is_initiation_function() { return g_is_running_initiation; }
+
+static boost::asio::io_context g_ctx;
+
+boost::asio::any_io_executor boost::mysql::test::global_context_executor() { return g_ctx.get_executor(); }
+
+void boost::mysql::test::run_global_context()
+{
+    g_ctx.restart();
+    g_ctx.run();
 }

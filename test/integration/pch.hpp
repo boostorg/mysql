@@ -12,6 +12,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/stream.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/config.hpp>
 #include <boost/core/detail/string_view.hpp>
 #include <boost/core/span.hpp>

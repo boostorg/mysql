@@ -94,8 +94,8 @@ class read_some_rows_algo
     }
 
 public:
-    read_some_rows_algo(read_some_rows_algo_params params) noexcept
-        : diag_(params.diag), proc_(params.proc), output_(params.output)
+    read_some_rows_algo(diagnostics& diag, read_some_rows_algo_params params) noexcept
+        : diag_(&diag), proc_(params.proc), output_(params.output)
     {
     }
 

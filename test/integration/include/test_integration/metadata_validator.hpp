@@ -73,10 +73,8 @@ private:
     std::vector<flag_getter> ignore_flags_;
 };
 
-void validate_meta(
-    const metadata_collection_view& actual,
-    const std::vector<meta_validator>& expected
-);
+void validate_meta(const metadata_collection_view& actual, const std::vector<meta_validator>& expected);
+void validate_2fields_meta(metadata_collection_view fields, string_view table);
 
 }  // namespace test
 }  // namespace mysql

@@ -42,17 +42,12 @@ Examples make use of a database named `boost_mysql_examples`.
 The server hostname and credentials (username and password) are passed 
 to the examples via the command line.
 
-If you're using docker, you can use the `ghcr.io/anarthal-containers/mysql8` container
-to simplify the process:
+You can spin up a server quickly by using Docker:
 
 [!teletype]
 ```
-    # If you're on a system supporting UNIX sockets. Note that /var/run/mysqld
-    # should be empty for this to work; you can specify a different directory, if it's not
-    > docker run -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d ghcr.io/anarthal-containers/mysql8
-
-    # If you're on a system that does not support UNIX sockets
-    > docker run -p 3306:3306 -d ghcr.io/anarthal-containers/mysql8
+    # Remove the "-v /var/run/mysqld:/var/run/mysqld" part if you don't need UNIX sockets
+    > docker run --name some-mysql -p 3306:3306 -v /var/run/mysqld:/var/run/mysqld -d -e MYSQL_ROOT_PASSWORD= -e MYSQL_ALLOW_EMPTY_PASSWORD=1 -d mysql
 
     # All the required data can be loaded by running example/db_setup.sql.
     # If you're using the above container, the root user has a blank password
@@ -153,7 +148,7 @@ implement a minimal order management system for an online store.
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
-This examples requires you to run [link_to_file example/order_management/db_setup.sql].
+This example requires you to run [link_to_file example/order_management/db_setup.sql].
 You can find table definitions there.
 
 [import ../../example/order_management/prepared_statements_cpp11.cpp]
@@ -173,7 +168,7 @@ implement a minimal order management system for an online store.
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
-This examples requires you to run [link_to_file example/order_management/db_setup.sql].
+This example requires you to run [link_to_file example/order_management/db_setup.sql].
 You can find table definitions there.
 
 [import ../../example/order_management/prepared_statements_cpp14.cpp]
@@ -193,7 +188,7 @@ implement a minimal order management system for an online store.
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
-This examples requires you to run [link_to_file example/order_management/db_setup.sql].
+This example requires you to run [link_to_file example/order_management/db_setup.sql].
 You can find table and procedure definitions there.
 
 [import ../../example/order_management/stored_procedures_cpp11.cpp]
@@ -213,7 +208,7 @@ implement a minimal order management system for an online store.
 The example employs synchronous functions with
 exceptions as error handling. __see_error_handling__
 
-This examples requires you to run [link_to_file example/order_management/db_setup.sql].
+This example requires you to run [link_to_file example/order_management/db_setup.sql].
 You can find table and procedure definitions there.
 
 [import ../../example/order_management/stored_procedures_cpp14.cpp]

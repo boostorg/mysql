@@ -302,7 +302,7 @@ public:
      */
     void handshake(const handshake_params& params, error_code& ec, diagnostics& diag)
     {
-        impl_.run(impl_.make_params_handshake(params, diag), ec);
+        impl_.run(impl_.make_params_handshake(params), ec, diag);
     }
 
     /// \copydoc handshake
@@ -342,10 +342,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_handshake_t<CompletionToken&&>)
     {
-        return impl_.async_run(
-            impl_.make_params_handshake(params, diag),
-            std::forward<CompletionToken>(token)
-        );
+        return impl_
+            .async_run(impl_.make_params_handshake(params), diag, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -559,7 +557,7 @@ public:
      */
     statement prepare_statement(string_view stmt, error_code& err, diagnostics& diag)
     {
-        return impl_.run(detail::prepare_statement_algo_params{&diag, stmt}, err);
+        return impl_.run(detail::prepare_statement_algo_params{stmt}, err, diag);
     }
 
     /// \copydoc prepare_statement
@@ -603,7 +601,8 @@ public:
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_prepare_statement_t<CompletionToken&&>)
     {
         return impl_.async_run(
-            detail::prepare_statement_algo_params{&diag, stmt},
+            detail::prepare_statement_algo_params{stmt},
+            diag,
             std::forward<CompletionToken>(token)
         );
     }
@@ -622,7 +621,7 @@ public:
      */
     void close_statement(const statement& stmt, error_code& err, diagnostics& diag)
     {
-        impl_.run(impl_.make_params_close_statement(stmt, diag), err);
+        impl_.run(impl_.make_params_close_statement(stmt), err, diag);
     }
 
     /// \copydoc close_statement
@@ -662,10 +661,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_close_statement_t<CompletionToken&&>)
     {
-        return impl_.async_run(
-            impl_.make_params_close_statement(stmt, diag),
-            std::forward<CompletionToken>(token)
-        );
+        return impl_
+            .async_run(impl_.make_params_close_statement(stmt), diag, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -685,7 +682,7 @@ public:
      */
     rows_view read_some_rows(execution_state& st, error_code& err, diagnostics& diag)
     {
-        return impl_.run(impl_.make_params_read_some_rows(st, diag), err);
+        return impl_.run(impl_.make_params_read_some_rows(st), err, diag);
     }
 
     /// \copydoc read_some_rows(execution_state&,error_code&,diagnostics&)
@@ -724,10 +721,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_read_some_rows_dynamic_t<CompletionToken&&>)
     {
-        return impl_.async_run(
-            impl_.make_params_read_some_rows(st, diag),
-            std::forward<CompletionToken>(token)
-        );
+        return impl_
+            .async_run(impl_.make_params_read_some_rows(st), diag, std::forward<CompletionToken>(token));
     }
 
 #ifdef BOOST_MYSQL_CXX14
@@ -768,7 +763,7 @@ public:
         diagnostics& diag
     )
     {
-        return impl_.run(impl_.make_params_read_some_rows_static(st, output, diag), err);
+        return impl_.run(impl_.make_params_read_some_rows_static(st, output), err, diag);
     }
 
     /**
@@ -908,7 +903,8 @@ public:
     )
     {
         return impl_.async_run(
-            impl_.make_params_read_some_rows_static(st, output, diag),
+            impl_.make_params_read_some_rows_static(st, output),
+            diag,
             std::forward<CompletionToken>(token)
         );
     }
@@ -936,7 +932,7 @@ public:
     template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
     void read_resultset_head(ExecutionStateType& st, error_code& err, diagnostics& diag)
     {
-        return impl_.run(impl_.make_params_read_resultset_head(st, diag), err);
+        return impl_.run(impl_.make_params_read_resultset_head(st), err, diag);
     }
 
     /// \copydoc read_resultset_head
@@ -978,10 +974,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_read_resultset_head_t<CompletionToken&&>)
     {
-        return impl_.async_run(
-            impl_.make_params_read_resultset_head(st, diag),
-            std::forward<CompletionToken>(token)
-        );
+        return impl_
+            .async_run(impl_.make_params_read_resultset_head(st), diag, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -995,7 +989,7 @@ public:
      * in a long-running query, the ping request won't be answered until the query is
      * finished.
      */
-    void ping(error_code& err, diagnostics& diag) { impl_.run(impl_.make_params_ping(diag), err); }
+    void ping(error_code& err, diagnostics& diag) { impl_.run(detail::ping_algo_params{}, err, diag); }
 
     /// \copydoc ping
     void ping()
@@ -1029,7 +1023,7 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_ping_t<CompletionToken&&>)
     {
-        return impl_.async_run(impl_.make_params_ping(diag), std::forward<CompletionToken>(token));
+        return impl_.async_run(detail::ping_algo_params{}, diag, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -1066,7 +1060,7 @@ public:
      */
     void reset_connection(error_code& err, diagnostics& diag)
     {
-        impl_.run(impl_.make_params_reset_connection(diag), err);
+        impl_.run(detail::reset_connection_algo_params{}, err, diag);
     }
 
     /// \copydoc reset_connection
@@ -1101,10 +1095,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_reset_connection_t<CompletionToken&&>)
     {
-        return impl_.async_run(
-            impl_.make_params_reset_connection(diag),
-            std::forward<CompletionToken>(token)
-        );
+        return impl_
+            .async_run(detail::reset_connection_algo_params{}, diag, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -1121,7 +1113,7 @@ public:
             detail::is_socket_stream<Stream>::value,
             "close can only be used if Stream satisfies the SocketStream concept"
         );
-        impl_.run(impl_.make_params_close(diag), err);
+        impl_.run(detail::close_connection_algo_params{}, err, diag);
     }
 
     /// \copydoc close
@@ -1167,7 +1159,8 @@ public:
             detail::is_socket_stream<Stream>::value,
             "async_close can only be used if Stream satisfies the SocketStream concept"
         );
-        return impl_.async_run(impl_.make_params_close(diag), std::forward<CompletionToken>(token));
+        return impl_
+            .async_run(detail::close_connection_algo_params{}, diag, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -1180,7 +1173,10 @@ public:
      * requirements, use \ref connection::close instead of this function,
      * as it also takes care of closing the underlying stream.
      */
-    void quit(error_code& err, diagnostics& diag) { impl_.run(impl_.make_params_quit(diag), err); }
+    void quit(error_code& err, diagnostics& diag)
+    {
+        impl_.run(detail::quit_connection_algo_params{}, err, diag);
+    }
 
     /// \copydoc quit
     void quit()
@@ -1213,7 +1209,8 @@ public:
         CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type)
     ) BOOST_MYSQL_RETURN_TYPE(detail::async_quit_connection_t<CompletionToken&&>)
     {
-        return impl_.async_run(impl_.make_params_quit(diag), std::forward<CompletionToken>(token));
+        return impl_
+            .async_run(detail::quit_connection_algo_params{}, diag, std::forward<CompletionToken>(token));
     }
 
     /**

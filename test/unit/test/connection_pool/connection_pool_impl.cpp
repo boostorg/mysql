@@ -40,7 +40,6 @@
 #include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <array>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -296,14 +295,11 @@ class get_connection_task
     {
         asio::steady_timer tim;
         mock_pool& pool;
-        executor_info exec_info;
         mock_node* actual_node{};
         mock_pool* actual_pool{};
         error_code actual_ec;
 
-        impl_t(mock_pool& p) : tim(p.get_executor(), (steady_clock::time_point::max)()), pool(p), exec_info{}
-        {
-        }
+        impl_t(mock_pool& p) : tim(p.get_executor(), (steady_clock::time_point::max)()), pool(p) {}
     };
 
     std::shared_ptr<impl_t> impl_;
@@ -343,15 +339,24 @@ public:
     get_connection_task(mock_pool& pool, diagnostics* diag, std::chrono::steady_clock::duration timeout)
         : impl_(std::make_shared<impl_t>(pool))
     {
-        auto ex = create_tracker_executor(pool.get_executor(), &impl_->exec_info);
+        // Create a tracker executor
+        auto ex_result = create_tracker_executor(pool.get_executor());
+        auto ex_id = ex_result.executor_id;
         auto impl = impl_;
+
+        // Mark that we're calling an initiating function
+        initiation_guard guard;
+
+        // Call the initiating function
         pool.async_get_connection(
-            asio::use_service<mock_timer_service>(ex.context()).current_time() + timeout,
+            asio::use_service<mock_timer_service>(ex_result.ex.context()).current_time() + timeout,
             diag,
             asio::bind_executor(
-                ex,
-                [ex, impl](error_code ec, mock_pooled_connection c) {
-                    BOOST_TEST(impl->exec_info.total() > 0u);
+                ex_result.ex,
+                [ex_id, impl](error_code ec, mock_pooled_connection c) {
+                    BOOST_TEST(current_executor_id() == ex_id);
+                    BOOST_TEST(!is_initiation_function());
+
                     impl->actual_node = c.node;
                     impl->actual_pool = c.pool.get();
                     impl->actual_ec = ec;

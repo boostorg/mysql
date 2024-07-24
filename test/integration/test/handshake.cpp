@@ -7,410 +7,706 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
-#include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/connect_params.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
+#include <boost/mysql/unix.hpp>
+#include <boost/mysql/unix_ssl.hpp>
 
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
+#include <boost/asio/ssl/context.hpp>
 #include <boost/asio/ssl/host_name_verification.hpp>
 #include <boost/asio/ssl/verify_mode.hpp>
+#include <boost/assert/source_location.hpp>
+#include <boost/test/data/monomorphic/collection.hpp>
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <random>
-#include <sstream>
+#include <ostream>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "test_integration/common.hpp"
-#include "test_integration/er_network_variant.hpp"
-#include "test_integration/get_endpoint.hpp"
-#include "test_integration/network_test.hpp"
+#include "test_common/ci_server.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/netfun_maker.hpp"
+#include "test_common/network_result.hpp"
+#include "test_common/source_location.hpp"
+#include "test_integration/any_connection_fixture.hpp"
+#include "test_integration/connect_params_builder.hpp"
 #include "test_integration/server_ca.hpp"
-#include "test_integration/streams.hpp"
-#include "test_integration/tcp_network_fixture.hpp"
+#include "test_integration/server_features.hpp"
+#include "test_integration/tcp_connection_fixture.hpp"
 
+using namespace boost::mysql;
 using namespace boost::mysql::test;
-
-using boost::mysql::client_errc;
-using boost::mysql::common_server_errc;
-using boost::mysql::error_code;
-using boost::mysql::handshake_params;
-using boost::mysql::ssl_mode;
-using boost::mysql::string_view;
-using boost::mysql::tcp_ssl_connection;
+using boost::test_tools::per_element;
+namespace asio = boost::asio;
+namespace data = boost::unit_test::data;
 
 namespace {
 
-auto net_samples_ssl = create_network_samples({
-    "tcp_ssl_sync_errc",
-    "tcp_ssl_async_callback",
-});
-
-auto net_samples_nossl = create_network_samples({
-    "tcp_sync_errc",
-    "tcp_async_callback",
-});
-
-auto net_samples_both = create_network_samples({
-    "tcp_ssl_sync_errc",
-    "tcp_ssl_async_callback",
-    "tcp_sync_exc",
-    "tcp_async_coroutines",
-});
-
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
-struct handshake_fixture : network_fixture
+// Handshake is the most convoluted part of MySQL protocol,
+// and is in active development in current MySQL versions.
+// We try to test all combinations of auth methods/transports.
+// Note that fixtures take care of closing the connection can be closed successfully
+struct transport_test_case
 {
-    void do_handshake_ok()
-    {
-        conn->handshake(params).validate_no_error();
-        BOOST_TEST(conn->uses_ssl() == var->supports_ssl());
-    }
-
-    void do_handshake_ok_ssl()
-    {
-        params.set_ssl(ssl_mode::require);
-        conn->handshake(params).validate_no_error();
-        BOOST_TEST(conn->uses_ssl());
-    }
-
-    void do_handshake_ok_nossl()
-    {
-        params.set_ssl(ssl_mode::disable);
-        conn->handshake(params).validate_no_error();
-        BOOST_TEST(!conn->uses_ssl());
-    }
+    string_view name;
+    connect_params params;
+    bool expect_ssl;
 };
+std::ostream& operator<<(std::ostream& os, const transport_test_case& tc) { return os << tc.name; }
+
+std::vector<transport_test_case> make_secure_transports()
+{
+    std::vector<transport_test_case> res{
+        {"tcp_ssl", connect_params_builder().ssl(ssl_mode::require).build(), true},
+    };
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+    if (get_server_features().unix_sockets)
+    {
+        res.push_back({"unix", connect_params_builder().set_unix().build(), false});
+    }
+#endif
+
+    return res;
+}
+
+std::vector<transport_test_case> make_all_transports()
+{
+    auto res = make_secure_transports();
+    res.push_back({"tcp", connect_params_builder().ssl(ssl_mode::disable).build(), false});
+    return res;
+}
+
+auto secure_transports = make_secure_transports();
+auto all_transports = make_all_transports();
+
+// Check whether the connection is using SSL or not
+template <class Conn>
+void check_ssl(Conn& conn, bool expected, boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION)
+{
+    BOOST_TEST_CONTEXT("Called from " << loc)
+    {
+        // Check that the client thinks it's using SSL
+        BOOST_TEST(conn.uses_ssl() == expected);
+
+        // Check that the server is using SSL
+        results r;
+        conn.async_execute("SHOW STATUS LIKE 'ssl_version'", r, as_netresult).validate_no_error(loc);
+        bool server_tls = r.rows().at(0).at(1).as_string().starts_with("TLS");
+        BOOST_TEST(server_tls == expected);
+    }
+}
 
 // mysql_native_password
 BOOST_AUTO_TEST_SUITE(mysql_native_password)
 
-BOOST_MYSQL_NETWORK_TEST(regular_user, handshake_fixture, net_samples_both)
+constexpr const char* regular_user = "mysqlnp_user";
+constexpr const char* regular_passwd = "mysqlnp_password";
+constexpr const char* empty_user = "mysqlnp_empty_password_user";
+
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, regular_password, all_transports)
 {
-    setup_and_physical_connect(sample.net);
-    set_credentials("mysqlnp_user", "mysqlnp_password");
-    do_handshake_ok();
+    // Setup
+    connect_params params = sample.params;
+    params.username = regular_user;
+    params.password = regular_passwd;
+
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_MYSQL_NETWORK_TEST(empty_password, handshake_fixture, net_samples_both)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password, all_transports)
 {
-    setup_and_physical_connect(sample.net);
-    set_credentials("mysqlnp_empty_password_user", "");
-    do_handshake_ok();
+    // Setup
+    connect_params params = sample.params;
+    params.username = empty_user;
+    params.password = "";
+
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_MYSQL_NETWORK_TEST(bad_password, handshake_fixture, net_samples_both)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, bad_password, all_transports)
 {
-    setup_and_physical_connect(sample.net);
-    set_credentials("mysqlnp_user", "bad_password");
-    conn->handshake(params).validate_error(
-        common_server_errc::er_access_denied_error,
-        {"access denied", "mysqlnp_user"}
-    );
+    // Setup
+    connect_params params = sample.params;
+    params.username = regular_user;
+    params.password = "bad_password";
+
+    // Handshake fails with the expected error code
+    conn.async_connect(params, as_netresult)
+        .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
+}
+
+// Spotcheck: mysql_native_password works with old connection
+BOOST_FIXTURE_TEST_CASE(tcp_connection_, tcp_connection_fixture)
+{
+    // Connect succeeds
+    conn.async_connect(
+            get_tcp_endpoint(),
+            connect_params_builder().credentials(regular_user, regular_passwd).build_hparams(),
+            as_netresult
+    )
+        .validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 
-// caching_sha2_password. We create a unique user here to avoid clashes
-// with other integration tests running at the same time (which happens in b2 builds).
-// We should probably migrate the offending tests to unit tests.
-struct caching_sha2_user_creator : tcp_network_fixture
+// caching_sha2_password. We acquire a lock on the sha256_mutex
+// (dummy table, used as a mutex) to avoid race conditions with other test runs
+// (which happens in b2 builds).
+// The sha256 cache is shared between all clients.
+struct caching_sha2_lock : any_connection_fixture
 {
-    static std::string gen_id()
+    caching_sha2_lock()
     {
-        constexpr std::size_t len = 10;
-        constexpr const char alphanum[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+        // Connect
+        conn.async_connect(connect_params_builder().credentials("root", "").build(), as_netresult)
+            .validate_no_error();
 
-        // Random number generation
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<std::size_t> distrib(0, sizeof(alphanum) - 2);  // NULL terminator
+        // Acquire the lock
+        results r;
+        conn.async_execute("LOCK TABLE sha256_mutex WRITE", r, as_netresult).validate_no_error();
 
-        std::string res;
-        res.reserve(len);
-        for (std::size_t i = 0; i < len; ++i)
-            res += alphanum[distrib(gen)];
-        return res;
-    }
-
-    static const std::string& regular_username()
-    {
-        static std::string res = "csha2p_user_" + gen_id();
-        return res;
-    }
-
-    static const std::string& empty_password_username()
-    {
-        static std::string res = "csha2p_emptypuser_" + gen_id();
-        return res;
-    }
-
-    caching_sha2_user_creator()
-    {
-        std::stringstream query;
-        query << "CREATE USER '" << regular_username()
-              << "'@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'csha2p_password';"
-                 "GRANT ALL PRIVILEGES ON boost_mysql_integtests.*TO '"
-              << regular_username()
-              << "'@'%';"
-                 "CREATE USER '"
-              << empty_password_username()
-              << "'@'%' IDENTIFIED WITH 'caching_sha2_password' BY '';"
-                 "GRANT ALL PRIVILEGES ON boost_mysql_integtests.*TO '"
-              << empty_password_username()
-              << "'@'%';"
-                 "FLUSH PRIVILEGES";
-
-        boost::mysql::results result;
-        params.set_username("root");
-        params.set_password("");
-        params.set_multi_queries(true);
-        connect();
-        conn.execute(query.str(), result);
-    }
-
-    ~caching_sha2_user_creator()
-    {
-        std::stringstream query;
-        query << "DROP USER '" << regular_username()
-              << "';"
-                 "DROP USER '"
-              << empty_password_username() << "'";
-
-        boost::mysql::results result;
-        conn.execute(query.str(), result);
+        // The lock is released on fixture destruction, when the connection is closed
     }
 };
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
-BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_sha2_user_creator>())
+constexpr const char* regular_user = "csha2p_user";
+constexpr const char* regular_passwd = "csha2p_password";
+constexpr const char* empty_user = "csha2p_empty_password_user";
 
-struct caching_sha2_fixture : handshake_fixture
+BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
+BOOST_AUTO_TEST_SUITE(caching_sha2_password, *boost::unit_test::fixture<caching_sha2_lock>())
+
+static void load_sha256_cache(std::string user, std::string password)
 {
-    void load_sha256_cache(string_view user, string_view password)
-    {
-        tcp_ssl_connection root_conn(ctx, ssl_ctx);
-        root_conn.connect(get_endpoint<tcp_socket>(), handshake_params(user, password));
-        root_conn.close();
-    }
+    // Connecting as the given user loads the cache
+    any_connection_fixture fix;
+    fix.conn
+        .async_connect(
+            connect_params_builder().credentials(std::move(user), std::move(password)).build(),
+            as_netresult
+        )
+        .validate_no_error();
+}
 
-    void clear_sha256_cache()
-    {
-        tcp_ssl_connection root_conn(ctx, ssl_ctx);
-        boost::mysql::results result;
-        root_conn.connect(get_endpoint<tcp_socket>(), handshake_params("root", ""));
-        root_conn.execute("FLUSH PRIVILEGES", result);
-        root_conn.close();
-    }
+static void clear_sha256_cache()
+{
+    // Issuing a FLUSH PRIVILEGES clears the cache
+    any_connection_fixture fix;
+    fix.conn.async_connect(connect_params_builder().credentials("root", "").build(), as_netresult)
+        .validate_no_error();
+
+    results result;
+    fix.conn.async_execute("FLUSH PRIVILEGES", result, as_netresult).validate_no_error();
 };
 
-BOOST_MYSQL_NETWORK_TEST(ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
+// Cache hit means that we are sending the password hashed, so it is OK to not have SSL for this
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_hit, all_transports)
 {
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::regular_username(), "csha2p_password");
-    load_sha256_cache(caching_sha2_user_creator::regular_username(), "csha2p_password");
-    do_handshake_ok_ssl();
+    // Setup
+    connect_params params = sample.params;
+    params.username = regular_user;
+    params.password = regular_passwd;
+    load_sha256_cache(regular_user, regular_passwd);
+
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_hit, caching_sha2_fixture, net_samples_both)
+// Cache miss succeeds only if the underlying transport is secure
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, cache_miss_success, secure_transports)
 {
-    // As we are sending password hashed, it is OK to not have SSL for this
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::regular_username(), "csha2p_password");
-    load_sha256_cache(caching_sha2_user_creator::regular_username(), "csha2p_password");
-    do_handshake_ok_nossl();
-}
-
-BOOST_MYSQL_NETWORK_TEST(ssl_on_cache_miss, caching_sha2_fixture, net_samples_ssl)
-{
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::regular_username(), "csha2p_password");
+    // Setup
+    connect_params params = sample.params;
+    params.username = regular_user;
+    params.password = regular_passwd;
     clear_sha256_cache();
-    do_handshake_ok_ssl();
+
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_MYSQL_NETWORK_TEST(ssl_off_cache_miss, caching_sha2_fixture, net_samples_both)
+// A cache miss would force us send a plaintext password over a non-TLS connection, so we fail
+BOOST_FIXTURE_TEST_CASE(cache_miss_error, any_connection_fixture)
 {
-    // A cache miss would force us send a plaintext password over
-    // a non-TLS connection, so we fail
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::regular_username(), "csha2p_password");
+    // Setup
+    connect_params params = connect_params_builder()
+                                .ssl(ssl_mode::disable)
+                                .credentials(regular_user, regular_passwd)
+                                .build();
     clear_sha256_cache();
-    params.set_ssl(ssl_mode::disable);
-    conn->handshake(params).validate_error(client_errc::auth_plugin_requires_ssl, {});
+
+    // Handshake fails
+    conn.async_connect(params, as_netresult).validate_error(client_errc::auth_plugin_requires_ssl);
 }
 
-BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
+// Empty password users can log in regardless of the SSL usage or cache state
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password_cache_hit, all_transports)
 {
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::empty_password_username(), "");
-    load_sha256_cache(caching_sha2_user_creator::empty_password_username(), "");
-    do_handshake_ok_ssl();
+    // Setup
+    connect_params params = sample.params;
+    params.username = empty_user;
+    params.password = "";
+    load_sha256_cache(empty_user, "");
+
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_hit, caching_sha2_fixture, net_samples_both)
+BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password_cache_miss, all_transports)
 {
-    // Empty passwords are allowed over non-TLS connections
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::empty_password_username(), "");
-    load_sha256_cache(caching_sha2_user_creator::empty_password_username(), "");
-    do_handshake_ok_nossl();
-}
-
-BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_on_cache_miss, caching_sha2_fixture, net_samples_ssl)
-{
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::empty_password_username(), "");
+    // Setup
+    connect_params params = sample.params;
+    params.username = empty_user;
+    params.password = "";
     clear_sha256_cache();
-    do_handshake_ok_ssl();
+
+    // Handshake succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, sample.expect_ssl);
 }
 
-BOOST_MYSQL_NETWORK_TEST(empty_password_ssl_off_cache_miss, caching_sha2_fixture, net_samples_both)
-{
-    // Empty passwords are allowed over non-TLS connections
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::empty_password_username(), "");
-    clear_sha256_cache();
-    do_handshake_ok_nossl();
-}
-
-BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_hit, caching_sha2_fixture, net_samples_ssl)
+BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, any_connection_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::regular_username(), "bad_password");
-    load_sha256_cache(caching_sha2_user_creator::regular_username(), "csha2p_password");
-    conn->handshake(params).validate_error(
-        common_server_errc::er_access_denied_error,
-        {"access denied", caching_sha2_user_creator::regular_username()}
-    );
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::require)
+                      .credentials(regular_user, "bad_password")
+                      .build();
+    load_sha256_cache(regular_user, regular_passwd);
+    conn.async_connect(params, as_netresult)
+        .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
 }
 
-BOOST_MYSQL_NETWORK_TEST(bad_password_ssl_on_cache_miss, caching_sha2_fixture, net_samples_ssl)
+BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, any_connection_fixture)
 {
     // Note: test over non-TLS would return "ssl required"
-    setup_and_physical_connect(sample.net);
-    set_credentials(caching_sha2_user_creator::regular_username(), "bad_password");
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::require)
+                      .credentials(regular_user, "bad_password")
+                      .build();
     clear_sha256_cache();
-    conn->handshake(params).validate_error(
-        common_server_errc::er_access_denied_error,
-        {"access denied", caching_sha2_user_creator::regular_username()}
-    );
+    conn.async_connect(params, as_netresult)
+        .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
+}
+
+// Spotcheck: an invalid DB error after cache miss works
+BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
+{
+    // Setup
+    auto params = connect_params_builder().ssl(ssl_mode::require).database("bad_db").build();
+    clear_sha256_cache();
+
+    // Connect fails
+    conn.async_connect(params, as_netresult)
+        .validate_error(
+            common_server_errc::er_dbaccess_denied_error,
+            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+        );
+}
+
+// Spotcheck: caching_sha2_password works with old connection
+BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
+{
+    // Setup
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
+    tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
+    auto params = connect_params_builder().credentials(regular_user, regular_passwd).build_hparams();
+
+    // Connect succeeds
+    conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
+
+    // Close succeeds
+    conn.async_close(as_netresult).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // caching_sha2_password
 
 // SSL certificate validation
+// This also tests that we can pass a custom ssl::context to connections
 BOOST_AUTO_TEST_SUITE(ssl_certificate_validation)
 
-BOOST_MYSQL_NETWORK_TEST(certificate_valid, handshake_fixture, net_samples_ssl)
+BOOST_AUTO_TEST_CASE(certificate_valid)
 {
-    // Context changes need to be before setup
+    // Setup
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
-    setup_and_physical_connect(sample.net);
-    do_handshake_ok_ssl();
+    any_connection_fixture fix(ssl_ctx);
+
+    // Connect works
+    fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
+        .validate_no_error();
+    check_ssl(fix.conn, true);
 }
 
-BOOST_MYSQL_NETWORK_TEST(certificate_invalid, handshake_fixture, net_samples_ssl)
+BOOST_AUTO_TEST_CASE(certificate_invalid)
 {
+    // Setup
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
-    setup_and_physical_connect(sample.net);
-    auto result = conn->handshake(params);
-    BOOST_TEST(result.err.message().find("certificate verify failed") != std::string::npos);
+    any_connection_fixture fix(ssl_ctx);
+
+    // Connect fails
+    auto err = fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
+                   .run()
+                   .err;
+    BOOST_TEST(err.message().find("certificate verify failed") != std::string::npos);
 }
 
-BOOST_MYSQL_NETWORK_TEST(custom_certificate_verification_failed, handshake_fixture, net_samples_ssl)
+BOOST_AUTO_TEST_CASE(custom_certificate_verification_success)
 {
-    ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
-    ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
-    ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
-    setup_and_physical_connect(sample.net);
-    auto result = conn->handshake(params);
-    BOOST_TEST(result.err.message().find("certificate verify failed") != std::string::npos);
-}
-
-BOOST_MYSQL_NETWORK_TEST(custom_certificate_verification_ok, handshake_fixture, net_samples_ssl)
-{
+    // Setup
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("mysql"));
-    setup_and_physical_connect(sample.net);
-    do_handshake_ok_ssl();
+    any_connection_fixture fix(ssl_ctx);
+
+    // Connect succeeds
+    fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
+        .validate_no_error();
+    check_ssl(fix.conn, true);
+}
+
+BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
+{
+    // Setup
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
+    ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
+    ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
+    any_connection_fixture fix(ssl_ctx);
+
+    // Connect fails
+    auto err = fix.conn.async_connect(connect_params_builder().ssl(ssl_mode::require).build(), as_netresult)
+                   .run()
+                   .err;
+    BOOST_TEST(err.message().find("certificate verify failed") != std::string::npos);
+}
+
+// Spotcheck: a custom SSL context can be used with old connections
+BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
+{
+    // Setup
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
+    ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
+    ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
+    ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
+    tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
+    auto params = connect_params_builder().build_hparams();
+
+    // Connect fails
+    auto err = conn.async_connect(get_tcp_endpoint(), params, as_netresult).run().err;
+    BOOST_TEST(err.message().find("certificate verify failed") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // ssl_certificate_validation
 
-// Other handshake tests
-BOOST_MYSQL_NETWORK_TEST(no_database, handshake_fixture, net_samples_both)
+BOOST_AUTO_TEST_SUITE(ssl_mode_)
+
+// All our CI servers support SSL, so enable should behave like required
+BOOST_FIXTURE_TEST_CASE(any_enable, any_connection_fixture)
 {
-    setup_and_physical_connect(sample.net);
-    params.set_database("");
-    do_handshake_ok();
+    // Setup
+    auto params = connect_params_builder().ssl(ssl_mode::enable).build();
+
+    // Connect succeeds
+    conn.async_connect(params, as_netresult).validate_no_error();
+    check_ssl(conn, true);
 }
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mysql5"))
-BOOST_TEST_DECORATOR(*boost::unit_test::label("skip_mariadb"))
-BOOST_MYSQL_NETWORK_TEST(unknown_auth_plugin, handshake_fixture, net_samples_ssl)
+// connection<>: all ssl modes work as disabled if the stream doesn't support ssl
+BOOST_DATA_TEST_CASE_F(
+    tcp_connection_fixture,
+    non_ssl_stream,
+    data::make({ssl_mode::disable, ssl_mode::enable, ssl_mode::require})
+)
+{
+    // Physical connect
+    conn.stream().async_connect(get_tcp_endpoint(), as_netresult).validate_no_error_nodiag();
+
+    // Handshake succeeds
+    conn.async_handshake(connect_params_builder().ssl(sample).build_hparams(), as_netresult)
+        .validate_no_error();
+    check_ssl(conn, false);
+}
+
+// connection<>: disable can be used to effectively disable SSL
+BOOST_AUTO_TEST_CASE(ssl_stream)
+{
+    struct
+    {
+        string_view name;
+        ssl_mode mode;
+        bool expect_ssl;
+    } test_cases[] = {
+        {"disable", ssl_mode::disable, false},
+        {"enable",  ssl_mode::enable,  true },
+        {"require", ssl_mode::require, true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
+            tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
+            auto params = connect_params_builder().ssl(tc.mode).build_hparams();
+
+            // Handshake succeeds
+            conn.async_connect(get_tcp_endpoint(), params, as_netresult).validate_no_error();
+            check_ssl(conn, tc.expect_ssl);
+
+            // Close succeeds
+            conn.async_close(as_netresult).validate_no_error();
+        }
+    }
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// Old tcp_ssl_connection, unix_connection, unix_ssl_connection
+// can establish and terminate connections, using sync and async fns
+BOOST_AUTO_TEST_SUITE(connection_stream_types)
+
+template <class Conn>
+struct fixture;
+
+template <>
+struct fixture<tcp_ssl_connection>
+{
+    asio::ssl::context ssl_ctx{asio::ssl::context::tls_client};
+    tcp_ssl_connection conn{global_context_executor(), ssl_ctx};
+
+    using endpoint_type = asio::ip::tcp::endpoint;
+    static endpoint_type get_endpoint() { return get_tcp_endpoint(); }
+    static bool expect_ssl() { return true; }
+};
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+template <>
+struct fixture<unix_connection>
+{
+    unix_connection conn{global_context_executor()};
+
+    using endpoint_type = asio::local::stream_protocol::endpoint;
+    static endpoint_type get_endpoint() { return default_unix_path; }
+    static bool expect_ssl() { return false; }
+};
+
+template <>
+struct fixture<unix_ssl_connection>
+{
+    asio::ssl::context ssl_ctx{asio::ssl::context::tls_client};
+    unix_ssl_connection conn{global_context_executor(), ssl_ctx};
+
+    using endpoint_type = asio::local::stream_protocol::endpoint;
+    static endpoint_type get_endpoint() { return default_unix_path; }
+    static bool expect_ssl() { return true; }
+};
+#endif
+
+template <class Conn>
+void do_connect_close_test()
+{
+    using fixture_type = fixture<Conn>;
+    using netmaker_connect = netfun_maker<
+        void,
+        Conn,
+        const typename fixture_type::endpoint_type&,
+        const handshake_params&>;
+    using netmaker_execute = netfun_maker<void, Conn, const string_view&, results&>;
+    using netmaker_close = netfun_maker<void, Conn>;
+
+    struct
+    {
+        string_view name;
+        typename netmaker_connect::signature connect;
+        typename netmaker_execute::signature execute;
+        typename netmaker_close::signature close;
+    } test_cases[] = {
+        {"sync",
+         netmaker_connect::sync_errc(&Conn::connect),
+         netmaker_execute::sync_errc(&Conn::execute),
+         netmaker_close::sync_errc(&Conn::close)       },
+        {"async",
+         netmaker_connect::async_diag(&Conn::async_connect),
+         netmaker_execute::async_diag(&Conn::async_execute),
+         netmaker_close::async_diag(&Conn::async_close)},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            fixture_type fix;
+
+            // Connect
+            tc.connect(fix.conn, fix.get_endpoint(), connect_params_builder().build_hparams())
+                .validate_no_error();
+
+            // Check whether the connection is using SSL
+            check_ssl(fix.conn, fix.expect_ssl());
+
+            // The connection is usable
+            results r;
+            tc.execute(fix.conn, "SELECT 'abc'", r).validate_no_error();
+            BOOST_TEST(r.rows() == makerows(1, "abc"), per_element());
+
+            // Closing succeeds
+            tc.close(fix.conn).validate_no_error();
+        }
+    }
+}
+
+template <class Conn>
+void do_handshake_quit_test()
+{
+    using fixture_type = fixture<Conn>;
+    using socket_type = typename Conn::stream_type::lowest_layer_type;
+    using netmaker_connect = netfun_maker<void, socket_type, const typename fixture_type::endpoint_type&>;
+    using netmaker_handshake = netfun_maker<void, Conn, const handshake_params&>;
+    using netmaker_execute = netfun_maker<void, Conn, const string_view&, results&>;
+    using netmaker_quit = netfun_maker<void, Conn>;
+
+    struct
+    {
+        string_view name;
+        typename netmaker_connect::signature connect;
+        typename netmaker_handshake::signature handshake;
+        typename netmaker_execute::signature execute;
+        typename netmaker_quit::signature quit;
+    } test_cases[] = {
+        {"sync",
+         netmaker_connect::sync_errc_nodiag(&socket_type::connect),
+         netmaker_handshake::sync_errc(&Conn::handshake),
+         netmaker_execute::sync_errc(&Conn::execute),
+         netmaker_quit::sync_errc(&Conn::quit)       },
+        {"async",
+         netmaker_connect::async_nodiag(&socket_type::async_connect),
+         netmaker_handshake::async_diag(&Conn::async_handshake),
+         netmaker_execute::async_diag(&Conn::async_execute),
+         netmaker_quit::async_diag(&Conn::async_quit)},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            fixture_type fix;
+
+            // Connect
+            tc.connect(fix.conn.stream().lowest_layer(), fix.get_endpoint()).validate_no_error_nodiag();
+            tc.handshake(fix.conn, connect_params_builder().build_hparams()).validate_no_error();
+
+            // Check whether the connection uses SSL
+            check_ssl(fix.conn, fix.expect_ssl());
+
+            // The connection is usable
+            results r;
+            tc.execute(fix.conn, "SELECT 'abc'", r).validate_no_error();
+            BOOST_TEST(r.rows() == makerows(1, "abc"), per_element());
+
+            // Quitting succeeds
+            tc.quit(fix.conn).validate_no_error();
+            fix.conn.stream().lowest_layer().close();
+        }
+    }
+}
+
+// tcp_ssl
+BOOST_AUTO_TEST_CASE(tcp_ssl_connect_close) { do_connect_close_test<tcp_ssl_connection>(); }
+BOOST_AUTO_TEST_CASE(tcp_ssl_handshake_quit) { do_handshake_quit_test<tcp_ssl_connection>(); }
+
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+// unix
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_AUTO_TEST_CASE(unix_connection_connect_close) { do_connect_close_test<unix_connection>(); }
+
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_AUTO_TEST_CASE(unix_connection_handshake_quit) { do_handshake_quit_test<unix_connection>(); }
+
+// unix ssl
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_AUTO_TEST_CASE(unix_ssl_connection_connect_close) { do_connect_close_test<unix_ssl_connection>(); }
+
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
+BOOST_AUTO_TEST_CASE(unix_ssl_connection_handshake_quit) { do_handshake_quit_test<unix_ssl_connection>(); }
+#endif
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// Other handshake tests
+BOOST_FIXTURE_TEST_CASE(no_database, any_connection_fixture)
+{
+    // Connect succeeds
+    conn.async_connect(connect_params_builder().database("").build(), as_netresult).validate_no_error();
+
+    // No database selected
+    results r;
+    conn.async_execute("SELECT DATABASE()", r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, nullptr), per_element());
+}
+
+BOOST_FIXTURE_TEST_CASE(bad_database, any_connection_fixture)
+{
+    // Connect fails
+    conn.async_connect(connect_params_builder().database("bad_db").build(), as_netresult)
+        .validate_error(
+            common_server_errc::er_dbaccess_denied_error,
+            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+        );
+}
+
+BOOST_TEST_DECORATOR(*run_if(&server_features::sha256))
+BOOST_FIXTURE_TEST_CASE(unknown_auth_plugin, any_connection_fixture)
 {
     // Note: sha256_password is not supported, so it's an unknown plugin to us
-    setup_and_physical_connect(sample.net);
-    set_credentials("sha2p_user", "sha2p_password");
-    conn->handshake(params).validate_error(client_errc::unknown_auth_plugin, {});
+    // Setup
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::require)
+                      .credentials("sha2p_user", "sha2p_password")
+                      .build();
+
+    // Connect fails
+    conn.async_connect(params, as_netresult).validate_error(client_errc::unknown_auth_plugin);
 }
 
-BOOST_MYSQL_NETWORK_TEST(bad_user, handshake_fixture, net_samples_nossl)
+BOOST_FIXTURE_TEST_CASE(bad_user, any_connection_fixture)
 {
     // unreliable without SSL. If the default plugin requires SSL
     // (like SHA256), this would fail with 'ssl required'
-    setup_and_physical_connect(sample.net);
-    set_credentials("non_existing_user", "bad_password");
-    conn->handshake(params).validate_any_error();  // may be access denied or unknown auth plugin
-}
+    // Setup
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::require)
+                      .credentials("non_existing_user", "bad_password")
+                      .build();
 
-BOOST_MYSQL_NETWORK_TEST(ssl_disable, handshake_fixture, net_samples_both)
-{
-    // Both SSL and non-SSL streams will act as non-SSL streams
-    setup_and_physical_connect(sample.net);
-    params.set_ssl(ssl_mode::disable);
-    conn->handshake(params).validate_no_error();
-    BOOST_TEST(!conn->uses_ssl());
-}
-
-BOOST_MYSQL_NETWORK_TEST(ssl_enable_nonssl_streams, handshake_fixture, net_samples_nossl)
-{
-    // Ignored by non-ssl streams
-    setup_and_physical_connect(sample.net);
-    params.set_ssl(ssl_mode::enable);
-    conn->handshake(params).validate_no_error();
-    BOOST_TEST(!conn->uses_ssl());
-}
-
-BOOST_MYSQL_NETWORK_TEST(ssl_enable_ssl_streams, handshake_fixture, net_samples_ssl)
-{
-    // In all our CI systems, our servers support SSL, so
-    // ssl_mode::enable will do the same as ssl_mode::require.
-    // We test for this fact.
-    setup_and_physical_connect(sample.net);
-    params.set_ssl(ssl_mode::enable);
-    conn->handshake(params).validate_no_error();
-    BOOST_TEST(conn->uses_ssl());
-}
-
-BOOST_MYSQL_NETWORK_TEST(ssl_require_nonssl_streams, handshake_fixture, net_samples_nossl)
-{
-    // Ignored by non-ssl streams
-    setup_and_physical_connect(sample.net);
-    params.set_ssl(ssl_mode::require);
-    conn->handshake(params).validate_no_error();
-    BOOST_TEST(!conn->uses_ssl());
-}
-
-BOOST_MYSQL_NETWORK_TEST(ssl_require_ssl_streams, handshake_fixture, net_samples_ssl)
-{
-    setup_and_physical_connect(sample.net);
-    params.set_ssl(ssl_mode::require);
-    conn->handshake(params).validate_no_error();
-    BOOST_TEST(conn->uses_ssl());
+    // Connect fails
+    auto err = conn.async_connect(params, as_netresult).run().err;
+    BOOST_TEST((err.category() == get_common_server_category() || err.category() == get_client_category()));
+    BOOST_TEST(err != error_code());  // may be access denied or unknown auth plugin
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_handshake

@@ -36,10 +36,11 @@ for local fuzzer in $(all_fuzzers)
     make /tmp/corpus/$(fuzzer) : : common.MkDir ;
     make /tmp/mincorpus/$(fuzzer) : : common.MkDir ;
 
-    # Build the fuzzer
+    # Build the fuzzer. Fail the build if openssl is not found
     exe $(fuzzer)
         : 
             /boost/mysql/test//boost_mysql
+            /boost/mysql/test//fail_if_no_openssl
             $(fuzzer).cpp
         : requirements
             <include>../common/include

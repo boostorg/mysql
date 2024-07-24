@@ -34,9 +34,7 @@ BOOST_AUTO_TEST_SUITE(test_read_some_rows_dynamic)
 struct fixture : algo_fixture_base
 {
     execution_state_impl exec_st;
-    detail::read_some_rows_dynamic_algo algo{
-        {&diag, &exec_st}
-    };
+    detail::read_some_rows_dynamic_algo algo{diag, {&exec_st}};
 
     fixture()
     {

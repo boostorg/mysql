@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_SUITE(test_reset_connection)
 //
 struct read_response_fixture : algo_fixture_base
 {
-    detail::read_reset_connection_response_algo algo{&diag, 11};
+    detail::read_reset_connection_response_algo algo{diag, 11};
 
     // Clearing diagnostics is not this algorithm's responsibility
     read_response_fixture() : algo_fixture_base(diagnostics()) {}
@@ -99,7 +99,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 //
 struct reset_conn_fixture : algo_fixture_base
 {
-    detail::run_pipeline_algo algo{detail::setup_reset_connection_pipeline(st, {&diag})};
+    detail::run_pipeline_algo algo{diag, detail::setup_reset_connection_pipeline(st)};
 };
 
 BOOST_AUTO_TEST_CASE(success)
