@@ -5,29 +5,32 @@
 
 require-b2 5.2 ;
 
+constant boost_dependencies :
+    /boost/asio//boost_asio
+    /boost/assert//boost_assert
+    /boost/charconv//boost_charconv
+    /boost/config//boost_config
+    /boost/core//boost_core
+    /boost/describe//boost_describe
+    /boost/endian//boost_endian
+    /boost/intrusive//boost_intrusive
+    /boost/mp11//boost_mp11
+    /boost/optional//boost_optional
+    /boost/pfr//boost_pfr
+    /boost/system//boost_system
+    /boost/throw_exception//boost_throw_exception
+    /boost/variant2//boost_variant2 ;
+
 project /boost/mysql
     : common-requirements
-        <library>/boost/asio//boost_asio
-        <library>/boost/assert//boost_assert
-        <library>/boost/charconv//boost_charconv
-        <library>/boost/config//boost_config
-        <library>/boost/core//boost_core
-        <library>/boost/describe//boost_describe
-        <library>/boost/endian//boost_endian
-        <library>/boost/intrusive//boost_intrusive
-        <library>/boost/mp11//boost_mp11
-        <library>/boost/optional//boost_optional
-        <library>/boost/pfr//boost_pfr
-        <library>/boost/system//boost_system
-        <library>/boost/throw_exception//boost_throw_exception
-        <library>/boost/variant2//boost_variant2
         <include>include
     ;
 
 explicit
-    [ alias boost_mysql ]
+    [ alias boost_mysql : : : : <library>$(boost_dependencies) ]
     [ alias all : boost_mysql example test ]
     ;
 
 call-if : boost-library mysql
     ;
+
