@@ -374,6 +374,25 @@ BOOST_AUTO_TEST_CASE(buffer_exceeds_max_size)
     BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
 }
 
+// Previous contents are taken into account for size checks
+BOOST_AUTO_TEST_CASE(buffer_with_previous_contents)
+{
+    // Setup
+    std::vector<std::uint8_t> buff{1, 2, 3};
+    detail::serialization_context ctx(buff, 8u);
+
+    // Just max size
+    ctx.add(42);
+    std::vector<std::uint8_t> expected{1, 2, 3, 0, 0, 0, 0, 42};
+    BOOST_TEST(ctx.error() == error_code());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Past max size
+    ctx.add(80);
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
+
 BOOST_AUTO_TEST_CASE(several_errors)
 {
     // Setup

@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/datetime.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
@@ -23,6 +24,7 @@
 #include "serialization_test.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_common/printing.hpp"
 #include "test_unit/mock_message.hpp"
 
 using namespace boost::mysql::detail;
@@ -38,7 +40,7 @@ using boost::mysql::string_view;
 BOOST_AUTO_TEST_SUITE(test_serialization)
 
 // spotcheck: multi-frame messages handled correctly by serialize_top_level
-BOOST_AUTO_TEST_CASE(serialize_top_level_)
+BOOST_AUTO_TEST_CASE(serialize_top_level_multiframe)
 {
     constexpr std::size_t frame_size = 8u;
     const std::array<std::uint8_t, 11> payload{
@@ -52,6 +54,18 @@ BOOST_AUTO_TEST_CASE(serialize_top_level_)
     BOOST_TEST(result.err == error_code());
     BOOST_TEST(result.seqnum == 44u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
+
+// spotcheck: max size correctly propagated
+BOOST_AUTO_TEST_CASE(serialize_top_level_error_max_size)
+{
+    const std::array<std::uint8_t, 11> payload{
+        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11}
+    };
+    std::vector<std::uint8_t> buff;
+    auto result = serialize_top_level(mock_message{payload}, buff, 42, 8u);
+    BOOST_TEST(result.err == boost::mysql::client_errc::max_buffer_size_exceeded);
+    BOOST_TEST(result.seqnum == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(quit)
