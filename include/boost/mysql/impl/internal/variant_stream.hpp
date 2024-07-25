@@ -318,6 +318,7 @@ private:
 
     struct connect_op
     {
+        // TODO: could we use the associated allocator here?
         std::unique_ptr<variant_stream_connect_algo> algo_;
 
         connect_op(variant_stream& this_obj)
@@ -346,7 +347,7 @@ private:
                 asio::dispatch(
                     asio::get_associated_immediate_executor(self, self.get_io_executor()),
                     std::move(self)
-                );  // TODO: should probably be get_executor, but this doesn't compile
+                );
                 break;
             case vsconnect_action_type::none:
                 algo_.reset();
