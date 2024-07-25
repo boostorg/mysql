@@ -31,12 +31,16 @@ struct int_holder
 {
     IntType value;
 
-    void serialize(serialization_context& ctx) const
+    // This is a fixed-size type
+    static constexpr std::size_t size = sizeof(IntType);
+
+    void serialize_fixed(std::uint8_t* to) const
     {
-        std::array<std::uint8_t, sizeof(IntType)> buffer{};
-        endian::endian_store<IntType, sizeof(IntType), endian::order::little>(buffer.data(), value);
-        ctx.add(buffer);
+        endian::endian_store<IntType, sizeof(IntType), endian::order::little>(to, value);
     }
+
+    // TODO: do we need a serialize()?
+    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
     {
@@ -61,12 +65,13 @@ struct int3
 {
     std::uint32_t value;
 
-    void serialize(serialization_context& ctx) const
-    {
-        std::array<std::uint8_t, 3> buffer;
-        endian::store_little_u24(buffer.data(), value);
-        ctx.add(buffer);
-    }
+    // This is a fixed-size type
+    static constexpr std::size_t size = 3u;
+
+    void serialize_fixed(std::uint8_t* to) const { endian::store_little_u24(to, value); }
+
+    // TODO: do we need a serialize()?
+    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
     {
@@ -90,18 +95,21 @@ struct int_lenenc
         }
         else if (value < 0x10000)
         {
-            ctx.add(static_cast<std::uint8_t>(0xfc));
-            int2{static_cast<std::uint16_t>(value)}.serialize(ctx);
+            ctx.serialize_fixed(
+                int1{static_cast<std::uint8_t>(0xfc)},
+                int2{static_cast<std::uint16_t>(value)}
+            );
         }
         else if (value < 0x1000000)
         {
-            ctx.add(static_cast<std::uint8_t>(0xfd));
-            int3{static_cast<std::uint32_t>(value)}.serialize(ctx);
+            ctx.serialize_fixed(
+                int1{static_cast<std::uint8_t>(0xfd)},
+                int3{static_cast<std::uint32_t>(value)}
+            );
         }
         else
         {
-            ctx.add(static_cast<std::uint8_t>(0xfe));
-            int8{value}.serialize(ctx);
+            ctx.serialize_fixed(int1{static_cast<std::uint8_t>(0xfe)}, int8{value});
         }
     }
 
@@ -178,7 +186,6 @@ struct string_eof
     }
 
     void serialize(serialization_context& ctx) const { ctx.add(to_span(value)); }
-    void serialize_checked(serialization_context& ctx) const { ctx.add_checked(to_span(value)); }
 };
 
 struct string_lenenc
@@ -213,11 +220,6 @@ struct string_lenenc
         ctx.serialize(int_lenenc{value.size()});
         ctx.add(to_span(value));
     }
-    void serialize_checked(serialization_context& ctx) const
-    {
-        ctx.serialize(int_lenenc{value.size()});
-        ctx.add_checked(to_span(value));
-    }
 };
 
 template <std::size_t N>
@@ -225,10 +227,13 @@ struct string_fixed
 {
     std::array<char, N> value;
 
-    void serialize(serialization_context& ctx) const
-    {
-        ctx.add({reinterpret_cast<const std::uint8_t*>(value.data()), N});
-    }
+    // This is a fixed size type
+    static constexpr std::size_t size = N;
+
+    void serialize_fixed(std::uint8_t* to) const { std::memcpy(to, value.data(), N); }
+
+    // TODO: do we need this?
+    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
     {

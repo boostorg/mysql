@@ -53,7 +53,7 @@ struct query_command
     void serialize(serialization_context& ctx) const
     {
         ctx.add(0x03);
-        string_eof{query}.serialize_checked(ctx);
+        string_eof{query}.serialize(ctx);
     }
 };
 
@@ -82,11 +82,7 @@ struct execute_stmt_command
 struct close_stmt_command
 {
     std::uint32_t statement_id;
-    void serialize(serialization_context& ctx) const
-    {
-        ctx.add(0x19);
-        int4{statement_id}.serialize(ctx);
-    }
+    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(int1{0x19}, int4{statement_id}); }
 };
 
 // Login request
@@ -197,7 +193,7 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
     constexpr int1 new_params_bind_flag{1};
 
     // header
-    ctx.serialize(command_id, int4{statement_id}, flags, iteration_count);
+    ctx.serialize_fixed(command_id, int4{statement_id}, flags, iteration_count);
 
     // Number of parameters
     auto num_params = params.size();
@@ -218,8 +214,7 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
             field_kind kind = param.kind();
             protocol_field_type type = to_protocol_field_type(kind);
             std::uint8_t unsigned_flag = kind == field_kind::uint64 ? std::uint8_t(0x80) : std::uint8_t(0);
-            ctx.add(static_cast<std::uint8_t>(type));
-            ctx.add(unsigned_flag);
+            ctx.serialize_fixed(int1{static_cast<std::uint8_t>(type)}, int1{unsigned_flag});
         }
 
         // actual values
@@ -232,11 +227,13 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
 
 void boost::mysql::detail::login_request::serialize(serialization_context& ctx) const
 {
-    ctx.serialize(
+    ctx.serialize_fixed(
         int4{negotiated_capabilities.get()},           // client_flag
         int4{max_packet_size},                         // max_packet_size
         int1{get_collation_first_byte(collation_id)},  //  character_set
-        string_fixed<23>{},                            // filler (all zeros)
+        string_fixed<23>{}                             // filler (all zeros)
+    );
+    ctx.serialize(
         string_null{username},
         string_lenenc{to_string(auth_response)}  // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
     );
@@ -249,7 +246,7 @@ void boost::mysql::detail::login_request::serialize(serialization_context& ctx) 
 
 void boost::mysql::detail::ssl_request::serialize(serialization_context& ctx) const
 {
-    ctx.serialize(
+    ctx.serialize_fixed(
         int4{negotiated_capabilities.get()},           // client_flag
         int4{max_packet_size},                         // max_packet_size
         int1{get_collation_first_byte(collation_id)},  // character_set,

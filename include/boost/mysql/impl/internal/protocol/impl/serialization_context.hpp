@@ -45,11 +45,8 @@ class serialization_context
     // max_frame_size_ == -1 can be used to disable framing. Used for testing
     bool framing_enabled() const { return max_frame_size_ != disable_framing; }
 
-    void add_checked_impl(span<const std::uint8_t> content)
+    void add_impl(span<const std::uint8_t> content)
     {
-        // Add any required frame headers we didn't add until now
-        add_frame_headers();
-
         // Add the content in chunks, inserting space for headers where required
         std::size_t content_offset = 0;
         while (content_offset < content.size())
@@ -75,6 +72,23 @@ class serialization_context
         }
     }
 
+    template <class Serializable, class... Rest>
+    static constexpr std::size_t fixed_total_size(Serializable, Rest... rest)
+    {
+        return Serializable::size + fixed_total_size(rest...);
+    }
+
+    static constexpr std::size_t fixed_total_size() { return 0u; }
+
+    template <class Serializable, class... Rest>
+    static void serialize_fixed_impl(std::uint8_t* it, Serializable serializable, Rest... rest)
+    {
+        serializable.serialize_fixed(it);
+        serialize_fixed_impl(it + Serializable::size, rest...);
+    }
+
+    static void serialize_fixed_impl(std::uint8_t*) {}
+
 public:
     serialization_context(std::vector<std::uint8_t>& buff, std::size_t max_frame_size = max_packet_size)
         : buffer_(buff), initial_offset_(buffer_.size()), max_frame_size_(max_frame_size)
@@ -85,59 +99,24 @@ public:
             buffer_.resize(buffer_.size() + frame_header_size);
             next_header_offset_ = initial_offset_ + max_frame_size_ + frame_header_size;
         }
+        else
+        {
+            next_header_offset_ = static_cast<std::size_t>(-1);
+        }
     }
 
     // Exposed for testing
     std::size_t next_header_offset() const { return next_header_offset_; }
 
-    // To be called by serialize() functions.
-    // Appends a single byte to the buffer. Doesn't take framing into account.
-    void add(std::uint8_t value) { buffer_.push_back(value); }
+    void add(std::uint8_t value) { add_impl({&value, 1}); }
 
     // To be called by serialize() functions. Appends bytes to the buffer.
-    // Doesn't take framing into account - use for payloads with bound size.
-    void add(span<const std::uint8_t> content)
-    {
-        buffer_.insert(buffer_.end(), content.begin(), content.end());
-    }
-
-    // Like add, but takes framing into account. Use for potentially long payloads.
-    // If the payload is very long, space for frame headers will be added as required,
-    // avoiding expensive memmove's when calling add_frame_headers
-    void add_checked(span<const std::uint8_t> content)
-    {
-        if (framing_enabled())
-        {
-            add_checked_impl(content);
-        }
-        else
-        {
-            add(content);
-        }
-    }
-
-    // Inserts any missing space for frame headers, moving data as required.
-    // Exposed for testing
-    void add_frame_headers()
-    {
-        while (next_header_offset_ <= buffer_.size())
-        {
-            // Insert space for the frame header where needed
-            const std::array<std::uint8_t, frame_header_size> placeholder{};
-            buffer_.insert(buffer_.begin() + next_header_offset_, placeholder.begin(), placeholder.end());
-
-            // Update the next frame header offset
-            next_header_offset_ += (max_frame_size_ + frame_header_size);
-        }
-    }
+    void add(span<const std::uint8_t> content) { add_impl(content); }
 
     // Write frame headers to an already serialized message with space for them
     std::uint8_t write_frame_headers(std::uint8_t seqnum)
     {
         BOOST_ASSERT(framing_enabled());
-
-        // Add any missing space for headers
-        add_frame_headers();
 
         // Actually write the headers
         std::size_t offset = initial_offset_;
@@ -163,6 +142,15 @@ public:
         BOOST_ASSERT(offset == buffer_.size());
 
         return seqnum;
+    }
+
+    // Optimization for fixed size types
+    template <class... Serializable>
+    void serialize_fixed(Serializable... s)
+    {
+        std::array<std::uint8_t, fixed_total_size(Serializable{}...)> buff;
+        serialize_fixed_impl(buff.data(), s...);
+        add(buff);
     }
 
     // Allow chaining

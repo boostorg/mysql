@@ -21,6 +21,8 @@
 
 using namespace boost::mysql;
 
+namespace {
+
 BOOST_AUTO_TEST_SUITE(test_serialization_context)
 
 struct framing_test_case
@@ -57,7 +59,7 @@ std::vector<framing_test_case> make_test_cases()
     };
 }
 
-BOOST_AUTO_TEST_CASE(add_frame_headers)
+BOOST_AUTO_TEST_CASE(add)
 {
     constexpr std::size_t fs = 8u;  // frame size
     const std::vector<std::uint8_t> initial_buffer{0xaa, 0xbb, 0xcc, 0xdd, 0xee};
@@ -70,9 +72,8 @@ BOOST_AUTO_TEST_CASE(add_frame_headers)
             std::vector<std::uint8_t> buff{initial_buffer};
             detail::serialization_context ctx(buff, fs);
 
-            // Add payload and set headers
+            // Add the payload
             ctx.add(tc.payload);
-            ctx.add_frame_headers();
 
             // Check
             auto expected = test::concat_copy(initial_buffer, tc.expected_buffer);
@@ -83,7 +84,7 @@ BOOST_AUTO_TEST_CASE(add_frame_headers)
 }
 
 // Spotcheck: if the initial buffer is empty, everything works fine
-BOOST_AUTO_TEST_CASE(add_frame_headers_initial_buffer_empty)
+BOOST_AUTO_TEST_CASE(add_initial_buffer_empty)
 {
     // Setup
     std::vector<std::uint8_t> buff;
@@ -94,7 +95,6 @@ BOOST_AUTO_TEST_CASE(add_frame_headers_initial_buffer_empty)
         {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
     };
     ctx.add(payload);
-    ctx.add_frame_headers();
 
     // Check
     const std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 9, 10};
@@ -103,129 +103,65 @@ BOOST_AUTO_TEST_CASE(add_frame_headers_initial_buffer_empty)
 }
 
 // Spotcheck: adding single bytes or in chunks also works fine
-BOOST_AUTO_TEST_CASE(add_frame_headers_chunks)
+BOOST_AUTO_TEST_CASE(chunks)
 {
     // Setup
     std::vector<std::uint8_t> buff;
     detail::serialization_context ctx(buff, 8);
-
-    // Add data
     const std::array<std::uint8_t, 4> payload1{
         {1, 2, 3, 4}
     };
     const std::array<std::uint8_t, 5> payload2{
         {5, 6, 7, 8, 9}
     };
+
+    // Add byte
     ctx.add(0xff);
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 0xff};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Add buffer
     ctx.add(payload1);
+    expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Add byte
     ctx.add(0xfe);
+    expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Add buffer
     ctx.add(payload2);
+    expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe, 5, 6, 0, 0, 0, 0, 7, 8, 9};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Add byte
     ctx.add(0xfc);
-    ctx.add_frame_headers();
-
-    // Check
-    const std::vector<std::uint8_t> expected{0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe,
-                                             5, 6, 0, 0, 0,    0, 7, 8, 9, 0xfc};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe, 5, 6, 0, 0, 0, 0, 7, 8, 9, 0xfc};
     BOOST_TEST(ctx.next_header_offset() == 24u);
 }
 
-// add_checked should behave like add + write_frame_headers
-BOOST_AUTO_TEST_CASE(add_checked)
-{
-    constexpr std::size_t fs = 8u;  // frame size
-    const std::vector<std::uint8_t> initial_buffer{0xaa, 0xbb, 0xcc, 0xdd, 0xee};
-
-    for (const auto& tc : make_test_cases())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, fs);
-
-            // Add payload and set headers
-            ctx.add_checked(tc.payload);
-
-            // Check
-            auto expected = test::concat_copy(initial_buffer, tc.expected_buffer);
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
-            BOOST_TEST(ctx.next_header_offset() == tc.expected_next_frame_offset + initial_buffer.size());
-        }
-    }
-}
-
-// Spotcheck: add_checked should work fine if the initial buffer is empty
-BOOST_AUTO_TEST_CASE(add_checked_initial_buffer_empty)
+// Spotcheck: adding a single byte that causes a frame header to be written works
+BOOST_AUTO_TEST_CASE(add_byte_fills_frame)
 {
     // Setup
     std::vector<std::uint8_t> buff;
     detail::serialization_context ctx(buff, 8);
-
-    // Add payload and set headers
-    const std::array<std::uint8_t, 10> payload{
-        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+    const std::array<std::uint8_t, 7> payload{
+        {1, 2, 3, 4, 5, 6, 7}
     };
-    ctx.add_checked(payload);
 
-    // Check
-    const std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 9, 10};
+    // Add payload
+    ctx.add(payload);
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.next_header_offset() == 12u);
+
+    // Add byte
+    ctx.add(0xab);
+    expected = {0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 0xab, 0, 0, 0, 0};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(ctx.next_header_offset() == 24u);
-}
-
-// If there are any missing frame headers when add_checked is called,
-// they are inserted
-BOOST_AUTO_TEST_CASE(add_checked_missing_frame_headers)
-{
-    // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
-
-    // Create some missing frame headers by using unchecked add
-    const std::array<std::uint8_t, 20> payload1{
-        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
-    };
-    ctx.add(payload1);
-
-    // Add (checked) some data
-    const std::array<std::uint8_t, 10> payload2{
-        {21, 22, 23, 24, 25, 26, 27, 28, 29, 30}
-    };
-    ctx.add_checked(payload2);
-
-    // Check
-    const std::vector<std::uint8_t> expected{0,  0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  0,  0,  0,  0,
-                                             9,  10, 11, 12, 13, 14, 15, 16, 0,  0,  0,  0,  17, 18, 19, 20,
-                                             21, 22, 23, 24, 0,  0,  0,  0,  25, 26, 27, 28, 29, 30};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
-    BOOST_TEST(ctx.next_header_offset() == 48u);
-}
-
-// Same as above, but what we insert via add_checked is not enough to fill a frame
-BOOST_AUTO_TEST_CASE(add_checked_missing_frame_headers_small_payload)
-{
-    // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
-
-    // Create some missing frame headers by using unchecked add
-    const std::array<std::uint8_t, 20> payload1{
-        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
-    };
-    ctx.add(payload1);
-
-    // Add (checked) some data
-    const std::array<std::uint8_t, 2> payload2{
-        {21, 22}
-    };
-    ctx.add_checked(payload2);
-
-    // Check
-    const std::vector<std::uint8_t> expected{0,  0,  0,  0,  1,  2,  3,  4, 5, 6, 7, 8,  0,  0,  0,  0,  9,
-                                             10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 17, 18, 19, 20, 21, 22};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
-    BOOST_TEST(ctx.next_header_offset() == 36u);
 }
 
 BOOST_AUTO_TEST_CASE(write_frame_headers)
@@ -270,7 +206,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
             detail::serialization_context ctx(buff, 8);
-            ctx.add_checked(tc.payload);
+            ctx.add(tc.payload);
 
             // Call and check
             auto seqnum = ctx.write_frame_headers(42);
@@ -317,11 +253,15 @@ BOOST_AUTO_TEST_CASE(disable_framing)
     };
     ctx.add(42);
     ctx.add(payload1);
-    ctx.add_checked(payload2);
+    ctx.add(payload2);
 
     // We didn't add any framing
     const std::vector<std::uint8_t> expected{42, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
 }
 
+// TODO: serialize_fixed tests
+
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace
