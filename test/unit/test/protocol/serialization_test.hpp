@@ -20,7 +20,7 @@
 #include <initializer_list>
 
 #include "test_common/assert_buffer_equals.hpp"
-#include "test_unit/serialization_helpers.hpp"
+#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {

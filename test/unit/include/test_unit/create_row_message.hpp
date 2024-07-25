@@ -13,7 +13,7 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_unit/create_frame.hpp"
-#include "test_unit/serialization_helpers.hpp"
+#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {
