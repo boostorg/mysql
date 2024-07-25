@@ -39,7 +39,6 @@ struct int_holder
         endian::endian_store<IntType, sizeof(IntType), endian::order::little>(to, value);
     }
 
-    // TODO: do we need a serialize()?
     void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
@@ -70,7 +69,6 @@ struct int3
 
     void serialize_fixed(std::uint8_t* to) const { endian::store_little_u24(to, value); }
 
-    // TODO: do we need a serialize()?
     void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
@@ -232,7 +230,6 @@ struct string_fixed
 
     void serialize_fixed(std::uint8_t* to) const { std::memcpy(to, value.data(), N); }
 
-    // TODO: do we need this?
     void serialize(serialization_context& ctx) const { ctx.serialize_fixed(*this); }
 
     deserialize_errc deserialize(deserialization_context& ctx)
