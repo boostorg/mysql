@@ -138,7 +138,7 @@ BOOST_AUTO_TEST_CASE(ping_error_network)
         .check_network_errors<ping_fixture>();
 }
 
-BOOST_AUTO_TEST_CASE(error_max_buffer_size)
+BOOST_AUTO_TEST_CASE(ping_error_max_buffer_size)
 {
     // Setup
     ping_fixture fix(4u);
