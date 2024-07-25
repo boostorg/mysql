@@ -13,13 +13,9 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include <cstdint>
-#include <vector>
-
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_err.hpp"
-#include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_prepare_statement_response.hpp"
 #include "test_unit/create_query_frame.hpp"
