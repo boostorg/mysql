@@ -5,13 +5,16 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-FROM ubuntu:23.10
+FROM ubuntu:24.04
 
 RUN \
     apt-get update && \
     apt-get --no-install-recommends -y install \
-        wget \
         ca-certificates \
+        clang-18 \
+        libclang-rt-18-dev \
+        libc++-18-dev \
+        libc++abi-18-dev \
         libssl-dev \
         git \
         ninja-build \
@@ -19,16 +22,5 @@ RUN \
         python3-requests \
         python-is-python3 \
         mysql-client && \
-    echo 'deb http://apt.llvm.org/mantic/ llvm-toolchain-mantic-18 main' > /etc/apt/sources.list.d/llvm.list && \
-    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key > /etc/apt/trusted.gpg.d/apt.llvm.org.asc && \
-    apt-get update && \
-    apt-get --no-install-recommends -y install \
-        clang-18 \
-        libclang-rt-18-dev \
-        libc++-18-dev \
-        libc++abi-18-dev && \
-    apt-get -y remove wget && \
-    apt-get -y autoremove && \
     ln -s /usr/bin/clang++-18 /usr/bin/clang++ && \
     ln -s /usr/bin/clang-18 /usr/bin/clang
-

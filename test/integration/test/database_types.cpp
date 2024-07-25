@@ -23,6 +23,7 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row.hpp>
+#include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/tcp.hpp>
@@ -37,20 +38,22 @@
 #include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <ostream>
 #include <stdint.h>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 
 #include "test_common/create_basic.hpp"
+#include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
+#include "test_integration/any_connection_fixture.hpp"
+#include "test_integration/connect_params_builder.hpp"
 #include "test_integration/metadata_validator.hpp"
 #include "test_integration/server_features.hpp"
-#include "test_integration/tcp_network_fixture.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -84,22 +87,23 @@ const flagsvec no_flags{};
 
 constexpr format_options opts{utf8mb4_charset, true};
 
-struct database_types_fixture : tcp_network_fixture
+struct database_types_fixture : any_connection_fixture
 {
     database_types_fixture()
     {
         // Connect
-        params.set_multi_queries(true);
-        connect();
+        connect(connect_params_builder().multi_queries(true).build());
 
         // Sets the time_zone to a well known value, so we can deterministically read TIMESTAMPs
         // Sets also sql_mode to allow invalid dates
         results result;
-        conn.execute(
-            "SET session time_zone = '+02:00'; "
-            "SET session sql_mode = 'ALLOW_INVALID_DATES'",
-            result
-        );
+        conn.async_execute(
+                "SET session time_zone = '+02:00'; "
+                "SET session sql_mode = 'ALLOW_INVALID_DATES'",
+                result,
+                as_netresult
+        )
+            .validate_no_error();
     }
 };
 
@@ -123,7 +127,7 @@ struct table_base
     }
 
     virtual ~table_base() {}
-    virtual void select_static(tcp_connection& conn) = 0;
+    virtual void select_static(any_connection& conn) = 0;
 
     void add_meta(
         std::string field,
@@ -136,95 +140,30 @@ struct table_base
         metas.emplace_back(name, std::move(field), type, std::move(flags), decimals, std::move(ignore_flags));
     }
 
-    void validate_rows(boost::mysql::rows_view actual_matrix) const
+    void validate_rows(rows_view actual) const
     {
-        // The matrix size is correct
-        BOOST_TEST_REQUIRE(metas.size() == actual_matrix.num_columns());
+        // Sort the expected rows as the database retrieves it
+        std::vector<row> expected{rws.begin(), rws.end()};
+        std::sort(expected.begin(), expected.end(), [](row_view r1, row_view r2) {
+            return r1.at(0).as_string() < r2.at(0).as_string();
+        });
 
-        // Build a map with the received rows, by ID
-        std::unordered_map<std::string, boost::mysql::row_view> actual;
-        for (const auto& row : actual_matrix)
-            actual[std::string(row.at(0).as_string())] = row;
-
-        // Verify that all expected rows are there and match
-        for (const auto& expected_row : rws)
-        {
-            auto id = expected_row.at(0).as_string();
-            BOOST_TEST_CONTEXT("row_id=" << id)
-            {
-                auto it = actual.find(std::string(id));
-                if (it == actual.end())
-                {
-                    BOOST_TEST(false, "Row not found in the actual table");
-                }
-                else
-                {
-                    BOOST_TEST(
-                        expected_row == it->second,
-                        "\nlhs: " << expected_row << "\nrhs: " << it->second
-                    );
-                    actual.erase(it);
-                }
-            }
-        }
-
-        // Verify that there are no additional rows
-        for (const auto& additional_row : actual)
-        {
-            BOOST_TEST_CONTEXT("row_id=" << additional_row.first)
-            {
-                BOOST_TEST(false, "Row was found in the table but not declared in database_types");
-            }
-        }
+        // Compare
+        BOOST_TEST(actual == expected, boost::test_tools::per_element());
     }
 
     std::string select_sql() const { return format_sql(opts, "SELECT * FROM {:i} ORDER BY id", name); }
 
     std::string insert_sql_stmt() const
     {
-        format_context ctx(opts);
-        format_sql_to(ctx, "INSERT INTO {:i} VALUES (", name);
-        for (std::size_t i = 0; i < metas.size(); ++i)
-        {
-            if (i == 0)
-                ctx.append_raw("?");
-            else
-                ctx.append_raw(", ?");
-        }
-        ctx.append_raw(")");
-        return std::move(ctx).get().value();
+        auto format_fn = [](const meta_validator&, format_context_base& ctx) { ctx.append_raw("?"); };
+        return format_sql(opts, "INSERT INTO {:i} VALUES ({})", name, sequence(metas, format_fn));
     }
 
     std::string insert_sql() const
     {
-        format_context ctx(opts);
-        format_sql_to(ctx, "INSERT INTO {:i} VALUES ", name);
-
-        bool is_first_row = true;
-        for (const auto& r : rws)
-        {
-            // Comma separator between rows
-            if (!is_first_row)
-                ctx.append_raw(", ");
-            is_first_row = false;
-
-            // Actual row
-            ctx.append_raw("(");
-            bool is_first_field = true;
-            for (const field_view fv : r)
-            {
-                // Comma separator between fields
-                if (!is_first_field)
-                    ctx.append_raw(", ");
-                is_first_field = false;
-
-                // Actual field
-                ctx.append_value(fv);
-            }
-            ctx.append_raw(")");
-        }
-
-        return std::move(ctx).get().value();
+        auto format_fn = [](row_view r, format_context_base& ctx) { format_sql_to(ctx, "({})", r); };
+        return format_sql(opts, "INSERT INTO {:i} VALUES {}", name, sequence(rws, format_fn));
     }
 
     std::string delete_sql() const { return format_sql(opts, "DELETE FROM {:i}", name); }
@@ -255,53 +194,24 @@ public:
     }
 
 #ifdef BOOST_MYSQL_CXX14
-    void select_static(tcp_connection& conn) override
+    void select_static(any_connection& conn) override
     {
         // Execute the query
         static_results<StaticRow> result;
-        conn.execute(select_sql(), result);
+        conn.async_execute(select_sql(), result, as_netresult).validate_no_error();
 
         // Validate metadata
         validate_meta(result.meta(), metas);
 
         // Validate the rows
-        // Build a map with the received rows, by ID
-        std::unordered_map<std::string, StaticRow> actual;
-        for (const auto& row : result.rows())
-            actual[row.id] = row;
-
-        // Verify that all expected rows are there and match
-        for (const auto& expected_row : static_rows_)
-        {
-            BOOST_TEST_CONTEXT("row_id=" << expected_row.id)
-            {
-                auto it = actual.find(expected_row.id);
-                if (it == actual.end())
-                {
-                    BOOST_TEST(false, "Row not found in the actual table");
-                }
-                else
-                {
-                    BOOST_TEST(
-                        expected_row == it->second,
-                        "\nlhs: " << expected_row << "\nrhs: " << it->second
-                    );
-                    actual.erase(it);
-                }
-            }
-        }
-
-        // Verify that there are no additional rows
-        for (const auto& additional_row : actual)
-        {
-            BOOST_TEST_CONTEXT("row_id=" << additional_row.first)
-            {
-                BOOST_TEST(false, "Row was found in the table but not declared in database_types");
-            }
-        }
+        std::vector<StaticRow> expected{static_rows_};
+        std::sort(expected.begin(), expected.end(), [](const StaticRow& r1, const StaticRow& r2) {
+            return r1.id < r2.id;
+        });
+        BOOST_TEST(result.rows() == expected, boost::test_tools::per_element());
     }
 #else
-    void select_static(tcp_connection&) override {}
+    void select_static(any_connection&) override {}
 #endif
 };
 
@@ -1038,7 +948,7 @@ BOOST_FIXTURE_TEST_CASE(query_read, database_types_fixture)
         {
             // Execute the query
             results result;
-            conn.execute(table->select_sql(), result);
+            conn.async_execute(table->select_sql(), result, as_netresult).validate_no_error();
 
             // Validate the received contents
             validate_meta(result.meta(), table->metas);
@@ -1057,13 +967,13 @@ BOOST_FIXTURE_TEST_CASE(sql_format_query_write, database_types_fixture)
         {
             // Remove all contents from the table
             results result;
-            conn.execute(table->delete_sql(), result);
+            conn.async_execute(table->delete_sql(), result, as_netresult).validate_no_error();
 
             // Insert all the contents again
-            conn.execute(table->insert_sql(), result);
+            conn.async_execute(table->insert_sql(), result, as_netresult).validate_no_error();
 
             // Query them again and verify the insertion was okay
-            conn.execute(table->select_sql(), result);
+            conn.async_execute(table->select_sql(), result, as_netresult).validate_no_error();
             validate_meta(result.meta(), table->metas);
             table->validate_rows(result.rows());
         }
@@ -1077,11 +987,11 @@ BOOST_FIXTURE_TEST_CASE(statement_read, database_types_fixture)
         BOOST_TEST_CONTEXT(table->name)
         {
             // Prepare the statement
-            auto stmt = conn.prepare_statement(table->select_sql());
+            auto stmt = conn.async_prepare_statement(table->select_sql(), as_netresult).get();
 
             // Execute it with the provided parameters
             results result;
-            conn.execute(stmt.bind(), result);
+            conn.async_execute(stmt.bind(), result, as_netresult).validate_no_error();
 
             // Validate the received contents
             validate_meta(result.meta(), table->metas);
@@ -1099,21 +1009,22 @@ BOOST_FIXTURE_TEST_CASE(statement_write, database_types_fixture)
         BOOST_TEST_CONTEXT(table->name)
         {
             // Prepare the statements
-            auto insert_stmt = conn.prepare_statement(table->insert_sql_stmt());
-            auto query_stmt = conn.prepare_statement(table->select_sql());
+            auto insert_stmt = conn.async_prepare_statement(table->insert_sql_stmt(), as_netresult).get();
+            auto query_stmt = conn.async_prepare_statement(table->select_sql(), as_netresult).get();
 
             // Remove all contents from the table
             results result;
-            conn.execute(table->delete_sql(), result);
+            conn.async_execute(table->delete_sql(), result, as_netresult).validate_no_error();
 
             // Insert all the contents again
             for (const auto& row : table->rws)
             {
-                conn.execute(insert_stmt.bind(row.begin(), row.end()), result);
+                conn.async_execute(insert_stmt.bind(row.begin(), row.end()), result, as_netresult)
+                    .validate_no_error();
             }
 
             // Query them again and verify the insertion was okay
-            conn.execute(query_stmt.bind(), result);
+            conn.async_execute(query_stmt.bind(), result, as_netresult).validate_no_error();
             validate_meta(result.meta(), table->metas);
             table->validate_rows(result.rows());
         }

@@ -23,15 +23,15 @@ BOOST_AUTO_TEST_SUITE(test_connection_use_after_move)
 
 using test_connection = connection<test_stream>;
 
-using query_netfun_maker = netfun_maker_mem<void, test_connection, const string_view&, results&>;
+using query_netfun_maker = netfun_maker<void, test_connection, const string_view&, results&>;
 
 struct
 {
     query_netfun_maker::signature query;
     const char* name;
 } all_fns[] = {
-    {query_netfun_maker::sync_errc(&test_connection::execute),           "sync" },
-    {query_netfun_maker::async_errinfo(&test_connection::async_execute), "async"},
+    {query_netfun_maker::sync_errc(&test_connection::execute),        "sync" },
+    {query_netfun_maker::async_diag(&test_connection::async_execute), "async"},
 };
 
 BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
