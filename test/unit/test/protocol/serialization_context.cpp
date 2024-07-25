@@ -260,8 +260,6 @@ BOOST_AUTO_TEST_CASE(disable_framing)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
 }
 
-// TODO: serialize_fixed tests
-
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
