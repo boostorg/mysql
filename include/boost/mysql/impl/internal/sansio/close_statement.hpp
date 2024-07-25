@@ -27,14 +27,10 @@ inline run_pipeline_algo_params setup_close_statement_pipeline(
     st.write_buffer.clear();
     auto stage1 = create_stage(
         pipeline_stage_kind::close_statement,
-        serialize_top_level(close_stmt_command{params.stmt_id}, st.write_buffer),
+        st.serialize(close_stmt_command{params.stmt_id}),
         {}
     );
-    auto stage2 = create_stage(
-        pipeline_stage_kind::ping,
-        serialize_top_level(ping_command{}, st.write_buffer),
-        {}
-    );
+    auto stage2 = create_stage(pipeline_stage_kind::ping, st.serialize(ping_command{}), {});
     st.shared_pipeline_stages = {stage1, stage2};
     return {st.write_buffer, st.shared_pipeline_stages, nullptr};
 }

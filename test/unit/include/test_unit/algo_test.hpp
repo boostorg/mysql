@@ -235,14 +235,21 @@ public:
 
 struct algo_fixture_base
 {
-    detail::connection_state_data st{512};
+    static constexpr std::size_t default_max_buffsize = 1024u;
+
+    detail::connection_state_data st;
     diagnostics diag;
 
-    algo_fixture_base(diagnostics initial_diag = create_server_diag("Diagnostics not cleared"))
-        : diag(std::move(initial_diag))
+    algo_fixture_base(
+        diagnostics initial_diag = create_server_diag("Diagnostics not cleared"),
+        std::size_t max_buffer_size = default_max_buffsize
+    )
+        : st(max_buffer_size, max_buffer_size), diag(std::move(initial_diag))
     {
         st.write_buffer.push_back(0xff);  // Check that we clear the write buffer at each step
     }
+
+    algo_fixture_base(std::size_t max_buffer_size) : algo_fixture_base(diagnostics(), max_buffer_size) {}
 };
 
 }  // namespace test
