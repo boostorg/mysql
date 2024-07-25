@@ -82,6 +82,7 @@ BOOST_AUTO_TEST_CASE(add)
             auto expected = test::concat_copy(initial_buffer, tc.expected_buffer);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
             BOOST_TEST(ctx.next_header_offset() == tc.expected_next_frame_offset + initial_buffer.size());
+            BOOST_TEST(ctx.error() == error_code());
         }
     }
 }
@@ -103,6 +104,7 @@ BOOST_AUTO_TEST_CASE(add_initial_buffer_empty)
     const std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 9, 10};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(ctx.next_header_offset() == 24u);
+    BOOST_TEST(ctx.error() == error_code());
 }
 
 // Spotcheck: adding single bytes or in chunks also works fine
@@ -122,26 +124,31 @@ BOOST_AUTO_TEST_CASE(chunks)
     ctx.add(0xff);
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 0xff};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
 
     // Add buffer
     ctx.add(payload1);
     expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
 
     // Add byte
     ctx.add(0xfe);
     expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
 
     // Add buffer
     ctx.add(payload2);
     expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe, 5, 6, 0, 0, 0, 0, 7, 8, 9};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
 
     // Add byte
     ctx.add(0xfc);
     expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe, 5, 6, 0, 0, 0, 0, 7, 8, 9, 0xfc};
     BOOST_TEST(ctx.next_header_offset() == 24u);
+    BOOST_TEST(ctx.error() == error_code());
 }
 
 // Spotcheck: adding a single byte that causes a frame header to be written works
@@ -159,12 +166,14 @@ BOOST_AUTO_TEST_CASE(add_byte_fills_frame)
     std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(ctx.next_header_offset() == 12u);
+    BOOST_TEST(ctx.error() == error_code());
 
     // Add byte
     ctx.add(0xab);
     expected = {0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 0xab, 0, 0, 0, 0};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(ctx.next_header_offset() == 24u);
+    BOOST_TEST(ctx.error() == error_code());
 }
 
 BOOST_AUTO_TEST_CASE(write_frame_headers)
@@ -216,6 +225,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
             const auto expected = test::concat_copy(initial_buffer, tc.expected);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
             BOOST_TEST(seqnum == tc.expected_seqnum);
+            BOOST_TEST(ctx.error() == error_code());
         }
     }
 }
@@ -238,6 +248,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
     auto seqnum = ctx.write_frame_headers(0xfe, 0);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(seqnum == 1u);
+    BOOST_TEST(ctx.error() == error_code());
 }
 
 // Spotcheck: disable framing works
@@ -261,6 +272,7 @@ BOOST_AUTO_TEST_CASE(disable_framing)
     // We didn't add any framing
     const std::vector<std::uint8_t> expected{42, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
 }
 
 BOOST_AUTO_TEST_SUITE(max_buffer_size_error)
