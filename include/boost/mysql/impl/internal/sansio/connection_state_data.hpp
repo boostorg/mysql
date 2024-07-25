@@ -18,6 +18,7 @@
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 
@@ -124,7 +125,10 @@ struct connection_state_data
     {
         // use_ssl is attached by top_level_algo
         write_buffer.clear();
-        seqnum = serialize_top_level(msg, write_buffer, seqnum);
+        auto res = serialize_top_level(msg, write_buffer, seqnum, max_packet_size, max_buffer_size());
+        if (res.err)
+            return res.err;
+        seqnum = res.seqnum;
         return next_action::write({write_buffer, false});
     }
 };

@@ -17,6 +17,7 @@
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/create_stage.hpp>
 
 namespace boost {
 namespace mysql {
@@ -66,11 +67,11 @@ public:
 inline run_pipeline_algo_params setup_reset_connection_pipeline(connection_state_data& st)
 {
     st.write_buffer.clear();
-    st.shared_pipeline_stages[0] = {
+    st.shared_pipeline_stages[0] = create_stage(
         pipeline_stage_kind::reset_connection,
         serialize_top_level(reset_connection_command{}, st.write_buffer),
         {}
-    };
+    );
     return {
         st.write_buffer,
         {st.shared_pipeline_stages.data(), 1},

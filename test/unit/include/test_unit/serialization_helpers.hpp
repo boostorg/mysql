@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_SERIALIZATION_HELPERS_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_SERIALIZATION_HELPERS_HPP
 
+#include <boost/mysql/error_code.hpp>
+
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
@@ -24,6 +26,7 @@ std::vector<std::uint8_t> serialize_to_vector(const Fn& serialize_fn)
     std::vector<std::uint8_t> buff;
     detail::serialization_context ctx(buff, detail::disable_framing);
     serialize_fn(ctx);
+    BOOST_TEST(ctx.error() == error_code());
     return buff;
 }
 

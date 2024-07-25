@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_DETAIL_PIPELINE_HPP
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
@@ -29,6 +30,7 @@ enum class pipeline_stage_kind
     reset_connection,
     set_character_set,
     ping,
+    error,
 };
 
 struct pipeline_request_stage
@@ -40,10 +42,12 @@ struct pipeline_request_stage
         std::nullptr_t nothing;
         resultset_encoding enc;
         character_set charset;
+        error_code err;
 
         stage_specific_t() noexcept : nothing() {}
         stage_specific_t(resultset_encoding v) noexcept : enc(v) {}
         stage_specific_t(character_set v) noexcept : charset(v) {}
+        stage_specific_t(error_code v) noexcept : err(v) {}
     } stage_specific;
 };
 

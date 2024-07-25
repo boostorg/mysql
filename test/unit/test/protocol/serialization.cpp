@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -30,6 +31,7 @@ namespace collations = boost::mysql::mysql_collations;
 using boost::span;
 using boost::mysql::date;
 using boost::mysql::datetime;
+using boost::mysql::error_code;
 using boost::mysql::field_view;
 using boost::mysql::string_view;
 
@@ -46,8 +48,9 @@ BOOST_AUTO_TEST_CASE(serialize_top_level_)
                                              4,  5,  6,  7,  8,  3, 0, 0, 43, 9, 10, 11};
 
     std::vector<std::uint8_t> buff{80, 81, 82, 83, 85};
-    std::uint8_t seqnum = serialize_top_level(mock_message{payload}, buff, 42, frame_size);
-    BOOST_TEST(seqnum == 44u);
+    auto result = serialize_top_level(mock_message{payload}, buff, 42, frame_size);
+    BOOST_TEST(result.err == error_code());
+    BOOST_TEST(result.seqnum == 44u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
 }
 

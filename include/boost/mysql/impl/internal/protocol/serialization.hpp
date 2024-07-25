@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_SERIALIZATION_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_SERIALIZATION_HPP
 
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -118,16 +119,29 @@ struct auth_switch_response
 };
 
 // Serialize a complete message
+struct serialize_top_level_result
+{
+    error_code err;
+    std::uint8_t seqnum{};
+
+    constexpr serialize_top_level_result(error_code ec) noexcept : err(ec) {}
+    constexpr serialize_top_level_result(std::uint8_t seqnum) noexcept : seqnum(seqnum) {}
+};
+
 template <class Serializable>
-inline std::uint8_t serialize_top_level(
+inline serialize_top_level_result serialize_top_level(
     const Serializable& input,
     std::vector<std::uint8_t>& to,
     std::uint8_t seqnum = 0,
-    std::size_t frame_size = max_packet_size
+    std::size_t frame_size = max_packet_size,
+    std::size_t max_buffer_size = static_cast<std::size_t>(-1)  // TODO: reorder args
 )
 {
-    serialization_context ctx(to, frame_size);
+    serialization_context ctx(to, frame_size, max_buffer_size);
     input.serialize(ctx);
+    auto err = ctx.error();
+    if (err)
+        return err;
     return ctx.write_frame_headers(seqnum);
 }
 

@@ -8,10 +8,14 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_SERIALIZATION_CONTEXT_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_IMPL_SERIALIZATION_CONTEXT_HPP
 
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/error_code.hpp>
+
 #include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 
 #include <boost/assert.hpp>
 #include <boost/core/ignore_unused.hpp>
+#include <boost/core/span.hpp>
 #include <boost/endian/conversion.hpp>
 
 #include <algorithm>
@@ -41,9 +45,30 @@ class serialization_context
     std::size_t initial_offset_;
     std::size_t max_frame_size_;
     std::size_t next_header_offset_{};
+    std::size_t max_buffer_size_;
+    error_code err_;
 
     // max_frame_size_ == -1 can be used to disable framing. Used for testing
     bool framing_enabled() const { return max_frame_size_ != disable_framing; }
+
+    void append_to_buffer(span<const std::uint8_t> contents)
+    {
+        // Do nothing if we previously encountered an error
+        if (err_)
+            return;
+
+        // Check if the buffer has space for the given contents
+        if (buffer_.size() + contents.size() > max_buffer_size_)
+        {
+            err_ = client_errc::max_buffer_size_exceeded;
+            return;
+        }
+
+        // Copy
+        buffer_.insert(buffer_.end(), contents.begin(), contents.end());
+    }
+
+    void append_header() { append_to_buffer(std::array<std::uint8_t, frame_header_size>{}); }
 
     void add_impl(span<const std::uint8_t> content)
     {
@@ -56,17 +81,13 @@ class serialization_context
             auto remaining_content = static_cast<std::size_t>(content.size() - content_offset);
             auto remaining_frame = static_cast<std::size_t>(next_header_offset_ - buffer_.size());
             auto size_to_write = (std::min)(remaining_content, remaining_frame);
-            buffer_.insert(
-                buffer_.end(),
-                content.data() + content_offset,
-                content.data() + content_offset + size_to_write
-            );
+            append_to_buffer(content.subspan(content_offset, size_to_write));
             content_offset += size_to_write;
 
             // Insert space for a frame header if required
             if (buffer_.size() == next_header_offset_)
             {
-                buffer_.resize(buffer_.size() + 4);
+                append_header();
                 next_header_offset_ += (max_frame_size_ + frame_header_size);
             }
         }
@@ -90,13 +111,21 @@ class serialization_context
     static void serialize_fixed_impl(std::uint8_t*) {}
 
 public:
-    serialization_context(std::vector<std::uint8_t>& buff, std::size_t max_frame_size = max_packet_size)
-        : buffer_(buff), initial_offset_(buffer_.size()), max_frame_size_(max_frame_size)
+    // TODO: reorder args
+    serialization_context(
+        std::vector<std::uint8_t>& buff,
+        std::size_t max_frame_size = max_packet_size,
+        std::size_t max_buffer_size = static_cast<std::size_t>(-1)
+    )
+        : buffer_(buff),
+          initial_offset_(buffer_.size()),
+          max_frame_size_(max_frame_size),
+          max_buffer_size_(max_buffer_size)
     {
         // Add space for the initial header
         if (framing_enabled())
         {
-            buffer_.resize(buffer_.size() + frame_header_size);
+            append_header();
             next_header_offset_ = initial_offset_ + max_frame_size_ + frame_header_size;
         }
         else
@@ -113,10 +142,13 @@ public:
     // To be called by serialize() functions. Appends bytes to the buffer.
     void add(span<const std::uint8_t> content) { add_impl(content); }
 
+    error_code error() const { return err_; }
+
     // Write frame headers to an already serialized message with space for them
     std::uint8_t write_frame_headers(std::uint8_t seqnum)
     {
         BOOST_ASSERT(framing_enabled());
+        BOOST_ASSERT(!err_);
 
         // Actually write the headers
         std::size_t offset = initial_offset_;
