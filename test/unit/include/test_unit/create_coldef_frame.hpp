@@ -17,6 +17,7 @@
 #include <boost/assert.hpp>
 
 #include "test_unit/create_frame.hpp"
+#include "test_unit/serialization_helpers.hpp"
 
 namespace boost {
 namespace mysql {
@@ -58,24 +59,23 @@ inline std::vector<std::uint8_t> create_coldef_body(const detail::coldef_view& p
         }
     };
 
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, detail::disable_framing);
-    ctx.serialize(
-        detail::string_lenenc{"def"},
-        detail::string_lenenc{pack.database},
-        detail::string_lenenc{pack.table},
-        detail::string_lenenc{pack.org_table},
-        detail::string_lenenc{pack.name},
-        detail::string_lenenc{pack.org_name},
-        detail::int_lenenc{0x0c},  // length of fixed fields
-        detail::int2{pack.collation_id},
-        detail::int4{pack.column_length},
-        detail::int1{static_cast<std::uint8_t>(to_protocol_type(pack.type))},
-        detail::int2{pack.flags},
-        detail::int1{pack.decimals},
-        detail::int2{0}  // padding
-    );
-    return buff;
+    return serialize_to_vector([=](detail::serialization_context& ctx) {
+        ctx.serialize(
+            detail::string_lenenc{"def"},
+            detail::string_lenenc{pack.database},
+            detail::string_lenenc{pack.table},
+            detail::string_lenenc{pack.org_table},
+            detail::string_lenenc{pack.name},
+            detail::string_lenenc{pack.org_name},
+            detail::int_lenenc{0x0c},  // length of fixed fields
+            detail::int2{pack.collation_id},
+            detail::int4{pack.column_length},
+            detail::int1{static_cast<std::uint8_t>(to_protocol_type(pack.type))},
+            detail::int2{pack.flags},
+            detail::int1{pack.decimals},
+            detail::int2{0}  // padding
+        );
+    });
 }
 
 inline std::vector<std::uint8_t> create_coldef_frame(std::uint8_t seqnum, const detail::coldef_view& coldef)

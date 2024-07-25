@@ -14,6 +14,7 @@
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include "test_unit/create_frame.hpp"
+#include "test_unit/serialization_helpers.hpp"
 
 namespace boost {
 namespace mysql {
@@ -21,22 +22,20 @@ namespace test {
 
 inline std::vector<std::uint8_t> serialize_ok_impl(const detail::ok_view& pack, std::uint8_t header)
 {
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, detail::disable_framing);
-
-    ctx.serialize(
-        detail::int1{header},
-        detail::int_lenenc{pack.affected_rows},
-        detail::int_lenenc{pack.last_insert_id},
-        detail::int2{pack.status_flags},
-        detail::int2{pack.warnings}
-    );
-    // When info is empty, it's actually omitted in the ok_packet
-    if (!pack.info.empty())
-    {
-        detail::string_lenenc{pack.info}.serialize(ctx);
-    }
-    return buff;
+    return serialize_to_vector([=](detail::serialization_context& ctx) {
+        ctx.serialize(
+            detail::int1{header},
+            detail::int_lenenc{pack.affected_rows},
+            detail::int_lenenc{pack.last_insert_id},
+            detail::int2{pack.status_flags},
+            detail::int2{pack.warnings}
+        );
+        // When info is empty, it's actually omitted in the ok_packet
+        if (!pack.info.empty())
+        {
+            detail::string_lenenc{pack.info}.serialize(ctx);
+        }
+    });
 }
 
 inline std::vector<std::uint8_t> create_ok_body(const detail::ok_view& ok)
