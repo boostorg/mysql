@@ -21,6 +21,7 @@
 #include <thread>
 
 #include "test_common/ci_server.hpp"
+#include "test_integration/server_features.hpp"
 #include "test_integration/snippets/credentials.hpp"
 
 using namespace boost::mysql;
@@ -62,7 +63,8 @@ BOOST_AUTO_TEST_CASE(section_any_connection_tcp)
     create_and_connect(get_hostname(), mysql_username, mysql_password, "boost_mysql_examples");
 }
 
-// Intentionally not run, since it creates problems in Windows CIs
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
+
 //[any_connection_unix
 void create_and_connect_unix(string_view username, string_view password, string_view database)
 {
@@ -87,11 +89,12 @@ void create_and_connect_unix(string_view username, string_view password, string_
 }
 //]
 
-BOOST_TEST_DECORATOR(*boost::unit_test::label("unix"))
+BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_AUTO_TEST_CASE(section_any_connection_unix)
 {
     create_and_connect_unix(mysql_username, mysql_password, "boost_mysql_examples");
 }
+#endif
 
 //[any_connection_reconnect
 error_code connect_with_retries(

@@ -2814,6 +2814,9 @@ BOOST_INLINE_CONSTEXPR int er_warn_no_space_version_comment = 4164;
 /// Server error specific to mysql. Error number: 4165, symbol: ER_VALIDATE_PASSWORD_INSUFFICIENT_CHANGED_CHARACTERS.
 BOOST_INLINE_CONSTEXPR int er_validate_password_insufficient_changed_characters = 4165;
 
+/// Server error specific to mysql. Error number: 4166, symbol: ER_WARN_DEPRECATED_WITH_NOTE.
+BOOST_INLINE_CONSTEXPR int er_warn_deprecated_with_note = 4166;
+
 }  // namespace mysql_server_errc
 
 }  // namespace mysql

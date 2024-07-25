@@ -43,8 +43,8 @@ class read_prepare_statement_response_algo
     }
 
 public:
-    read_prepare_statement_response_algo(diagnostics* diag, std::uint8_t seqnum) noexcept
-        : diag_(diag), sequence_number_(seqnum)
+    read_prepare_statement_response_algo(diagnostics& diag, std::uint8_t seqnum) noexcept
+        : diag_(&diag), sequence_number_(seqnum)
     {
     }
 
@@ -89,8 +89,8 @@ class prepare_statement_algo
     string_view stmt_sql_;
 
 public:
-    prepare_statement_algo(prepare_statement_algo_params params) noexcept
-        : read_response_st_(params.diag, 0u), stmt_sql_(params.stmt_sql)
+    prepare_statement_algo(diagnostics& diag, prepare_statement_algo_params params) noexcept
+        : read_response_st_(diag, 0u), stmt_sql_(params.stmt_sql)
     {
     }
 

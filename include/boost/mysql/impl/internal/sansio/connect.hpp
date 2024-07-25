@@ -29,8 +29,8 @@ class connect_algo
     error_code stored_ec_;
 
 public:
-    connect_algo(connect_algo_params params) noexcept
-        : handshake_({params.diag, params.hparams, params.secure_channel})
+    connect_algo(diagnostics& diag, connect_algo_params params) noexcept
+        : handshake_(diag, {params.hparams, params.secure_channel})
     {
     }
 

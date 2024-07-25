@@ -102,8 +102,8 @@ class start_execution_algo
     }
 
 public:
-    start_execution_algo(start_execution_algo_params params) noexcept
-        : read_head_st_(read_resultset_head_algo_params{params.diag, params.proc}), req_(params.req)
+    start_execution_algo(diagnostics& diag, start_execution_algo_params params) noexcept
+        : read_head_st_(diag, {params.proc}), req_(params.req)
     {
     }
 

@@ -43,12 +43,12 @@ def b2_build(
     stdlib: str,
     address_model: str,
     boost_branch: str,
-    db: str,
     server_host: str,
     separate_compilation: bool,
     address_sanitizer: bool,
     undefined_sanitizer: bool,
     use_ts_executor: bool,
+    disable_local_sockets: Optional[str],
     coverage: bool,
     valgrind: bool,
     fail_if_no_openssl: bool,
@@ -65,7 +65,7 @@ def b2_build(
     )
 
     # Setup DB
-    db_setup(source_dir, db, server_host)
+    db_setup(source_dir, server_host)
 
     # Invoke b2
     _conditional_run([
@@ -78,12 +78,11 @@ def b2_build(
         'stdlib={}'.format(stdlib),
         'boost.mysql.separate-compilation={}'.format('on' if separate_compilation else 'off'),
         'boost.mysql.use-ts-executor={}'.format('on' if use_ts_executor else 'off'),
+        _conditional('boost.mysql.disable-local-sockets={}'.format(disable_local_sockets), disable_local_sockets is not None),
         _conditional('address-sanitizer=norecover', address_sanitizer),
         _conditional('undefined-sanitizer=norecover', undefined_sanitizer),
         _conditional('coverage=on', coverage),
         _conditional('valgrind=on', valgrind),
-        # Workaround for https://github.com/bfgroup/b2/issues/368
-        _conditional('architecture=x86', address_model == '32' and not IS_WINDOWS),
         'warnings=extra',
         'warnings-as-errors=on',
         '-j4',

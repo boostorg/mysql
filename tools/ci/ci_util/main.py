@@ -55,7 +55,6 @@ def _deduce_boost_branch() -> str:
 # Adds any DB args for builds requiring these
 def _add_db_args(subp: argparse.ArgumentParser) -> None:
     subp.add_argument('--server-host', default='127.0.0.1')
-    subp.add_argument('--db', choices=['mysql5', 'mysql8', 'mariadb'], default='mysql8')
 
 
 # Fuzzing uses some Python features only available in newer CIs,
@@ -82,6 +81,7 @@ def main():
     subp.add_argument('--address-model', choices=['32', '64'], default='64')
     subp.add_argument('--separate-compilation', type=_str2bool, default=True)
     subp.add_argument('--use-ts-executor', type=_str2bool, default=False)
+    subp.add_argument('--disable-local-sockets', default=None)
     subp.add_argument('--address-sanitizer', type=_str2bool, default=False)
     subp.add_argument('--undefined-sanitizer', type=_str2bool, default=False)
     subp.add_argument('--coverage', type=_str2bool, default=False)

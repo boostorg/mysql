@@ -5,12 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "test_integration/metadata_validator.hpp"
-
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/metadata_collection_view.hpp>
 
 #include <boost/test/unit_test.hpp>
+
+#include "test_integration/metadata_validator.hpp"
 
 using namespace boost::mysql::test;
 
@@ -32,7 +32,8 @@ static struct flag_entry
     MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(is_zerofill),
     MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(is_auto_increment),
     MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(has_no_default_value),
-    MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(is_set_to_now_on_update)};
+    MYSQL_TEST_FLAG_GETTER_NAME_ENTRY(is_set_to_now_on_update)
+};
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(std::vector<flag_entry>::iterator)
 
@@ -89,4 +90,13 @@ void boost::mysql::test::validate_meta(
     {
         expected[i].validate(actual[i]);
     }
+}
+
+void boost::mysql::test::validate_2fields_meta(metadata_collection_view fields, string_view table)
+{
+    validate_meta(
+        fields,
+        {meta_validator(table, "id", column_type::int_),
+         meta_validator(table, "field_varchar", column_type::varchar)}
+    );
 }

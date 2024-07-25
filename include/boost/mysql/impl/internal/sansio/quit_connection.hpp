@@ -29,7 +29,7 @@ class quit_connection_algo
     std::uint8_t sequence_number_{0};
 
 public:
-    quit_connection_algo(quit_connection_algo_params params) noexcept : diag_(params.diag) {}
+    quit_connection_algo(diagnostics& diag, quit_connection_algo_params) noexcept : diag_(&diag) {}
 
     diagnostics& diag() { return *diag_; }
 

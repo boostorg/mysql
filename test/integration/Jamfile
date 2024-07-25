@@ -5,24 +5,6 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-import os ;
-import sequence ;
-
-# Integration test filtering
-local test_exclusions = "" ;
-if [ os.environ BOOST_MYSQL_NO_UNIX_SOCKET_TESTS ] != "" {
-    test_exclusions += "!@unix" ;
-}
-local test_db = [ os.environ BOOST_MYSQL_TEST_DB ] ;
-if $(test_db) = "" {
-    test_db = "mysql8" ;
-}
-test_exclusions += "!@skip_$(test_db)" ;
-
-local test_filter = [ sequence.join $(test_exclusions) : ":" ] ;
-
-local test_command = "-t $(test_filter)" ;
-
 cpp-pch pch
     :
         pch.hpp
@@ -39,17 +21,14 @@ run
         /boost/mysql/test//launch_with_valgrind
  
         # Utilities
-        src/get_endpoint.cpp
+        src/server_features.cpp
         src/metadata_validator.cpp
-        src/er_network_variant.cpp
-        src/sync_errc.cpp
-        src/sync_exc.cpp
-        src/async_callback.cpp
-        src/async_coroutines.cpp
-        src/async_coroutinescpp20.cpp
+        src/spotchecks_helpers.cpp
+        src/utils.cpp
 
         # Actual tests
         test/spotchecks.cpp
+        test/execution_requests.cpp
         test/crud.cpp
         test/handshake.cpp
         test/prepared_statements.cpp
@@ -81,7 +60,6 @@ run
         test/snippets/pipeline.cpp
 
     : requirements
-        <testing.arg>$(test_command)
         <include>include
     : target-name boost_mysql_integrationtests
     ;

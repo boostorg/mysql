@@ -193,8 +193,8 @@ class handshake_algo
     }
 
 public:
-    handshake_algo(handshake_algo_params params) noexcept
-        : diag_(params.diag), hparams_(params.hparams), secure_channel_(params.secure_channel)
+    handshake_algo(diagnostics& diag, handshake_algo_params params) noexcept
+        : diag_(&diag), hparams_(params.hparams), secure_channel_(params.secure_channel)
     {
     }
 

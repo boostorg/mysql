@@ -165,7 +165,6 @@ END
 [include 23_sql_formatting_advanced.qbk]
 [include 24_pipeline.qbk]
 [include 24_examples.qbk]
-[include 25_tests.qbk]
 
 
 [section:ref Reference]
