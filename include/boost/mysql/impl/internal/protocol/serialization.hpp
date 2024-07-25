@@ -137,12 +137,13 @@ inline serialize_top_level_result serialize_top_level(
     std::size_t max_frame_size = max_packet_size
 )
 {
+    std::size_t initial_offset = to.size();
     serialization_context ctx(to, max_buffer_size, max_frame_size);
     input.serialize(ctx);
     auto err = ctx.error();
     if (err)
         return err;
-    return ctx.write_frame_headers(seqnum);
+    return ctx.write_frame_headers(seqnum, initial_offset);
 }
 
 }  // namespace detail

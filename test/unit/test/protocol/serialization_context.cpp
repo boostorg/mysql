@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
             ctx.add(tc.payload);
 
             // Call and check
-            auto seqnum = ctx.write_frame_headers(42);
+            auto seqnum = ctx.write_frame_headers(42, initial_buffer.size());
             const auto expected = test::concat_copy(initial_buffer, tc.expected);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
             BOOST_TEST(seqnum == tc.expected_seqnum);
@@ -232,7 +232,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
         8, 0, 0, 0xff, 9,  10, 11, 12, 13, 14, 15, 16,  // frame 2
         4, 0, 0, 0,    17, 18, 19, 20                   // frame 3
     };
-    auto seqnum = ctx.write_frame_headers(0xfe);
+    auto seqnum = ctx.write_frame_headers(0xfe, 0);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(seqnum == 1u);
 }

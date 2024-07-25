@@ -42,10 +42,9 @@ BOOST_INLINE_CONSTEXPR std::size_t disable_framing = static_cast<std::size_t>(-1
 class serialization_context
 {
     std::vector<std::uint8_t>& buffer_;
-    std::size_t initial_offset_;
-    std::size_t next_header_offset_{};
     std::size_t max_buffer_size_;
     std::size_t max_frame_size_;
+    std::size_t next_header_offset_;
     error_code err_;
 
     // max_frame_size_ == -1 can be used to disable framing. Used for testing
@@ -117,20 +116,16 @@ public:
         std::size_t max_frame_size = max_packet_size
     )
         : buffer_(buff),
-          initial_offset_(buffer_.size()),
           max_buffer_size_(max_buffer_size),
-          max_frame_size_(max_frame_size)
+          max_frame_size_(max_frame_size),
+          next_header_offset_(
+              framing_enabled() ? buffer_.size() + max_frame_size_ + frame_header_size
+                                : static_cast<std::size_t>(-1)
+          )
     {
         // Add space for the initial header
         if (framing_enabled())
-        {
             append_header();
-            next_header_offset_ = initial_offset_ + max_frame_size_ + frame_header_size;
-        }
-        else
-        {
-            next_header_offset_ = static_cast<std::size_t>(-1);
-        }
     }
 
     // Exposed for testing
@@ -144,13 +139,14 @@ public:
     error_code error() const { return err_; }
 
     // Write frame headers to an already serialized message with space for them
-    std::uint8_t write_frame_headers(std::uint8_t seqnum)
+    std::uint8_t write_frame_headers(std::uint8_t seqnum, std::size_t initial_offset)
     {
         BOOST_ASSERT(framing_enabled());
         BOOST_ASSERT(!err_);
+        BOOST_ASSERT(initial_offset < buffer_.size());
 
         // Actually write the headers
-        std::size_t offset = initial_offset_;
+        std::size_t offset = initial_offset;
         while (offset < buffer_.size())
         {
             // Calculate the current frame size
