@@ -51,11 +51,7 @@ public:
 inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st)
 {
     st.write_buffer.clear();
-    st.shared_pipeline_stages[0] = create_stage(
-        pipeline_stage_kind::ping,
-        serialize_top_level(ping_command{}, st.write_buffer),
-        {}
-    );
+    st.shared_pipeline_stages[0] = create_stage(pipeline_stage_kind::ping, st.serialize(ping_command{}), {});
     return {
         st.write_buffer,
         {st.shared_pipeline_stages.data(), 1},
