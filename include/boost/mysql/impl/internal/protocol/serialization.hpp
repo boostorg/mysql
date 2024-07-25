@@ -133,11 +133,11 @@ inline serialize_top_level_result serialize_top_level(
     const Serializable& input,
     std::vector<std::uint8_t>& to,
     std::uint8_t seqnum = 0,
-    std::size_t frame_size = max_packet_size,
-    std::size_t max_buffer_size = static_cast<std::size_t>(-1)  // TODO: reorder args
+    std::size_t max_buffer_size = static_cast<std::size_t>(-1),
+    std::size_t max_frame_size = max_packet_size
 )
 {
-    serialization_context ctx(to, frame_size, max_buffer_size);
+    serialization_context ctx(to, max_buffer_size, max_frame_size);
     input.serialize(ctx);
     auto err = ctx.error();
     if (err)

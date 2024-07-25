@@ -43,9 +43,9 @@ class serialization_context
 {
     std::vector<std::uint8_t>& buffer_;
     std::size_t initial_offset_;
-    std::size_t max_frame_size_;
     std::size_t next_header_offset_{};
     std::size_t max_buffer_size_;
+    std::size_t max_frame_size_;
     error_code err_;
 
     // max_frame_size_ == -1 can be used to disable framing. Used for testing
@@ -111,16 +111,15 @@ class serialization_context
     static void serialize_fixed_impl(std::uint8_t*) {}
 
 public:
-    // TODO: reorder args
     serialization_context(
         std::vector<std::uint8_t>& buff,
-        std::size_t max_frame_size = max_packet_size,
-        std::size_t max_buffer_size = static_cast<std::size_t>(-1)
+        std::size_t max_buffer_size = static_cast<std::size_t>(-1),
+        std::size_t max_frame_size = max_packet_size
     )
         : buffer_(buff),
           initial_offset_(buffer_.size()),
-          max_frame_size_(max_frame_size),
-          max_buffer_size_(max_buffer_size)
+          max_buffer_size_(max_buffer_size),
+          max_frame_size_(max_frame_size)
     {
         // Add space for the initial header
         if (framing_enabled())

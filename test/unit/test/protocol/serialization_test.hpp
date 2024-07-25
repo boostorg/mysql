@@ -71,7 +71,7 @@ void do_serialize_test(
 {
     // Setup
     std::vector<std::uint8_t> buffer;
-    detail::serialization_context ctx(buffer, frame_size);
+    detail::serialization_context ctx(buffer, static_cast<std::size_t>(-1), frame_size);
 
     // Serialize
     value.serialize(ctx);

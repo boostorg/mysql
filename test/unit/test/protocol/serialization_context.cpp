@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(add)
         {
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, fs);
+            detail::serialization_context ctx(buff, 0xffff, fs);
 
             // Add the payload
             ctx.add(tc.payload);
@@ -88,7 +88,7 @@ BOOST_AUTO_TEST_CASE(add_initial_buffer_empty)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
+    detail::serialization_context ctx(buff, 0xffff, 8);
 
     // Add data
     const std::array<std::uint8_t, 10> payload{
@@ -107,7 +107,7 @@ BOOST_AUTO_TEST_CASE(chunks)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
+    detail::serialization_context ctx(buff, 0xffff, 8);
     const std::array<std::uint8_t, 4> payload1{
         {1, 2, 3, 4}
     };
@@ -146,7 +146,7 @@ BOOST_AUTO_TEST_CASE(add_byte_fills_frame)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
+    detail::serialization_context ctx(buff, 0xffff, 8);
     const std::array<std::uint8_t, 7> payload{
         {1, 2, 3, 4, 5, 6, 7}
     };
@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
         {
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, 8);
+            detail::serialization_context ctx(buff, 0xffff, 8);
             ctx.add(tc.payload);
 
             // Call and check
@@ -222,7 +222,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
+    detail::serialization_context ctx(buff, 0xffff, 8);
     for (std::uint8_t i = 1; i <= 20; ++i)
         ctx.add(i);
 
@@ -242,7 +242,7 @@ BOOST_AUTO_TEST_CASE(disable_framing)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, detail::disable_framing);
+    detail::serialization_context ctx(buff, 0xffff, detail::disable_framing);
 
     // Add data using the several functions available
     const std::array<std::uint8_t, 5> payload1{

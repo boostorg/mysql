@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(serialize_top_level_)
                                              4,  5,  6,  7,  8,  3, 0, 0, 43, 9, 10, 11};
 
     std::vector<std::uint8_t> buff{80, 81, 82, 83, 85};
-    auto result = serialize_top_level(mock_message{payload}, buff, 42, frame_size);
+    auto result = serialize_top_level(mock_message{payload}, buff, 42, 0xffff, frame_size);
     BOOST_TEST(result.err == error_code());
     BOOST_TEST(result.seqnum == 44u);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);

@@ -116,7 +116,7 @@ struct connection_state_data
     template <class Serializable>
     serialize_top_level_result serialize(const Serializable& msg, std::uint8_t seqnum = 0)
     {
-        return serialize_top_level(msg, write_buffer, seqnum, max_packet_size, max_buffer_size());
+        return serialize_top_level(msg, write_buffer, seqnum, max_buffer_size());
     }
 
     // Helpers for sans-io algorithms
