@@ -154,6 +154,11 @@ that formatting functions need to know in order to work:
 [link mysql.error_handling.system_result `boost::system::result`]`<`[reflink format_options]`>`.
 If the connection could not determine the current character set, the result will contain an error.
 For a reference on how character set tracking works, please read [link mysql.charsets.tracking this section].
+
+[note
+    Prior to connection establishment, the connection's character set is always unknown.
+    Connect your connection before calling `format_opts`.
+]
   
 [warning
     Passing an incorrect `format_options` value to formatting functions may cause

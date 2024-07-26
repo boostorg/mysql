@@ -201,7 +201,7 @@ This is equivalent to the previous snippet:
 
 
 
-[heading Prepared statements vs. client-side SQL formatting]
+[heading:comparison Prepared statements vs. client-side SQL formatting]
 
 
 * May seem similar in the surface, but work differently. Client-side gets expanded in the
@@ -268,73 +268,32 @@ your formatting operations result in valid SQL. If you try to build very complex
 queries and make mistakes, attackers may exploit logic errors in your formatting logic to overtake your system.
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-[heading:unknown_character_set Solving the unknown_character_set error]
-
-If you are getting a `boost::system::system_error` with a
-`client_errc::unknown_character_set` error code (or getting this error code by other means),
-your connection is currently unaware of the character set it's using, which is required by format operations.
-Try the following:
-
-* Make sure that you are performing connection establishment ([refmem any_connection connect] or
-  [refmemunq any_connection async_connect]) before calling [refmemunq any_connection format_opts].
 * Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
   to set your connection's character set instead of using raw SQL.
-* Some [refmem connect_params connection_collation] values are not supported by all servers
-  and often trigger fallback behavior. If you are using a non-UTF8 character set, prefer setting it
-  explicitly using [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set].
-  Don't rely on [refmem connect_params connection_collation].
-* [refmem any_connection reset_connection] and [refmemunq any_connection async_reset_connection] wipe
-  character set information. Call [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
-  after resetting your connection.
-
 [warning
   [*Security considerations]: don't craft [reflink format_options] values manually.
   Always use [refmem any_connection format_opts].
 ]
 
-For an explanation on why [reflink format_options] is necessary and how
-character set tracking works, please read [link mysql.sql_formatting_advanced.format_options this section].
 
 
 
 
-[heading Solving the invalid_encoding error]
 
-SQL formatting can fail if you provide values that can't be securely formatted.
-The most common cause is passing string values that are not valid according to the
-passed character set. This triggers a `client_errc::invalid_encoding` error:
 
-[sql_formatting_invalid_encoding]
 
-You can validate your strings beforehand or handle the error once
-it happened and reject the input. Other types may also produce format errors.
 
-[tip
-    If you prefer handling errors with error codes, instead of exceptions,
-    use [reflink format_sql_to]. Please read
-    [link mysql.sql_formatting_advanced.error_handling this section] for details.
-]
+
+
+
+
+
+
+
+
+
+
+
 
 
 
