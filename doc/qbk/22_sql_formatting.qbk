@@ -203,25 +203,54 @@ This is equivalent to the previous snippet:
 
 [heading:comparison Prepared statements vs. client-side SQL formatting]
 
+Although both serve a similar purpose, they are fundamentally different. Prepared statements
+are parsed and expanded by the server. Client-side SQL expands the query in the client
+and sends it to the server as a string.
 
-* May seem similar in the surface, but work differently. Client-side gets expanded in the
-  client, and gets sent to the server as a SQL string. Statements get parsed and expanded by the server.
-* Client-side SQL does not understand your query strings. They are just text that gets expanded.
-  Statements are parsed before being expanded. Client-side SQL yields more flexibility, but you need
-  more care to make sure your queries expand to valid SQL.
-* Some use cases are only possible with client-side SQL
+This means that [*client-side SQL does not understand your queries]. It just knows about how
+to format MySQL types into a string without creating vulnerabilities, but otherwise treats
+your queries as opaque strings. Client-side SQL yields [*greater flexibility] (you can dynamically
+compose any query), while statements have more limitations. This also means that
+[*you need to pay more attention to compose valid queries], specially when dealing with complex conditionals.
+Logic errors may lead to exploits. Please read the [link mysql.sql_formatting.security security considerations section]
+for more info.
 
+Client-side SQL entails [*less round-trips to the server] than statements, and is usually more efficient
+for lightweight queries. However, it uses the less compact text protocol, which may be slower more
+queries retrieving a lot of data. See the [link mysql.sql_formatting.efficiency efficiency considerations section] for more info.
+
+In general, [*do use client-side SQL] formatting for the following cases:
+
+* Simple queries that don't retrieve a lot of data. Default to `with_params` and
+  only switch to statements if your performance measurements says so.
+* Queries involving dynamic SQL that can't be achieved by statements. Typical cases include:
+    * [*Dynamic filters] ([link mysql.examples.dynamic_filters example]).
+    * [*Batch inserts]. Inserting rows one by one can lead to poor efficiency.
+      You can use client-side SQL formatting to compose a single `INSERT` that
+      inserts several rows at once (see [link mysql.examples.batch_inserts example 1]
+      and [link mysql.examples.batch_inserts_generic example 2]).
+    * [*PATCH-like updates], where the field list in an `UPDATE` must be dynamic
+      ([link mysql.examples.patch_updates example]).
+    * Queries involving [*dynamic identifiers], like table and field names.
+    * [*Conditional sorting].
+    * Pipelines consisting of several [*semicolon-separated queries] with dynamic fields.
+
+[*Prefer prepared statements] if:
+
+* You are executing the same query over and over. You can prepare the statement
+  once and execute it several times.
+* Your query is retrieving a lot of data, and you have performed the relevant performance measurements.
+
+
+
+[heading:efficiency Efficiency considerations]
+
+Both client-side SQL formatting and prepared statements have pros and cons efficiency-wise:
 
 * Client-formatted SQL entails [*less round-trips to the server]. For prepared statements, you usually need
   a call to prepare the statement, another one to execute it, and possibly a final one to close it.
   Client-formatted SQL only requires the execution round-trip. This performance gain increases with network
   latency and if you are using TLS.
-
-
-Both client-side SQL formatting and prepared statements have pros and cons efficiency-wise:
-
-
-
 * Prepared statements always entail a [*mutation of session state], while client-formatted SQL may not.
   If you're using a [reflink connection_pool] with prepared statements, you can't use
   [refmem pooled_connection return_without_reset], as this will leak the statement.
@@ -232,35 +261,14 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
 * [*Prepared statements can be re-used]. If you need to execute a query several times,
   prepared statements will only be parsed once.
 * Client-formatted SQL allows [*more efficient patterns] than prepared statements,
-  like batch inserts.
-* You can use client-formatted SQL to generate several [*semicolon-separated queries]
-  to be run in batch.
+  like batch inserts and semicolon-separated queries.
 
 
 
 
 
-[heading Common use cases]
 
-* Queries involving several [*dynamic filters].
-  See [link mysql.examples.dynamic_filters this example].
-* [*Batch inserts]. Inserting rows one by one can lead to poor efficiency.
-  You can use client-side query formatting to compose a single `INSERT` that
-  performs several insertions at once. See [link mysql.examples.batch_inserts this example]
-  for simple batch inserts and [link mysql.examples.batch_inserts_generic this other] for
-  a generic utility to implement this case.
-* [*PATCH-like updates]. If your query must update fields dynamically, based on some input,
-  prepared statements may not be suitable. See [link mysql.examples.patch_updates this example].
-* Queries involving [*dynamic identifiers], like table and field names.
-* Performing [*conditional sorting].
-* Any other use case that involves SQL that can change dynamically.
-
-This feature can also be used to improve efficiency, as text queries perform less
-round-trips to the server. See [link mysql.sql_formatting.efficiency this section]
-for more info.
-
-
-[heading Security considerations]
+[heading:security Security considerations]
 
 Client-side SQL formatting [*does protect against SQL injection] by appropriately quoting and escaping
 string values. However, this feature [*does not understand your queries]. You need to make sure that
@@ -274,7 +282,11 @@ queries and make mistakes, attackers may exploit logic errors in your formatting
   [*Security considerations]: don't craft [reflink format_options] values manually.
   Always use [refmem any_connection format_opts].
 ]
-
+* Statements are more foolproof (they are parsed by the server, then executed) and are more mature.
+  Statements guarantee by design the absence of logic errors, as long as you use constant query strings
+  during prepare. Client-side SQL requires you to pay more attention.
+* Avoid too complex query generation logic. If you can express things as a single format string, do.
+* If you really need to use conditionals with `format_sql_to`, thoroughly unit test your query generation.
 
 
 
