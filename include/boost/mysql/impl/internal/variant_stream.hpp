@@ -318,7 +318,6 @@ private:
 
     struct connect_op
     {
-        // TODO: could we use the associated allocator here?
         std::unique_ptr<variant_stream_connect_algo> algo_;
 
         connect_op(variant_stream& this_obj)
