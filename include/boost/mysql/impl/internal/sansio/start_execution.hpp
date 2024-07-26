@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_START_EXECUTION_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_START_EXECUTION_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -55,31 +56,15 @@ class start_execution_algo
         any_execution_request::data_t::query_with_params_t data
     )
     {
-        // TODO: this should be expressible in terms of st.write()
         // Determine format options
         if (st.current_charset.name == nullptr)
         {
             return error_code(client_errc::unknown_character_set);
         }
+        format_options opts{st.current_charset, st.backslash_escapes};
 
-        // Clear the write buffer
-        st.write_buffer.clear();
-
-        // Serialize
-        auto res = serialize_query_with_params(
-            st.write_buffer,
-            data.query,
-            data.args,
-            format_options{st.current_charset, st.backslash_escapes}
-        );
-
-        // Check for errors
-        if (res.has_error())
-            return res.error();
-
-        // Done
-        seqnum() = *res;
-        return next_action::write({st.write_buffer, false});
+        // Write the request
+        return st.write(query_with_params{data.query, data.args, opts}, seqnum());
     }
 
     next_action write_stmt(connection_state_data& st, any_execution_request::data_t::stmt_t data)

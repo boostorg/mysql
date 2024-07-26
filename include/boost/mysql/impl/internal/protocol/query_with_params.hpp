@@ -18,7 +18,6 @@
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include <boost/core/span.hpp>
-#include <boost/system/result.hpp>
 
 #include <cstdint>
 
@@ -30,9 +29,7 @@ class external_format_context : public format_context_base
 {
     static void do_append(void* obj, const char* data, std::size_t size)
     {
-        static_cast<serialization_context*>(obj)->add_checked(
-            {reinterpret_cast<const std::uint8_t*>(data), size}
-        );
+        static_cast<serialization_context*>(obj)->add({reinterpret_cast<const std::uint8_t*>(data), size});
     }
 
 public:
@@ -42,33 +39,27 @@ public:
     }
 };
 
-// TODO: can we make serialization able to fail in the general case?
-inline system::result<std::uint8_t> serialize_query_with_params(
-    std::vector<std::uint8_t>& to,
-    constant_string_view query,
-    span<const format_arg> args,
-    format_options opts,
-    std::size_t frame_size = max_packet_size
-)
+struct query_with_params
 {
-    // Create a serialization context
-    serialization_context ctx(to, frame_size);
+    constant_string_view query;
+    span<const format_arg> args;
+    format_options opts;
 
-    // Serialize the query header
-    ctx.add(0x03);
+    void serialize(serialization_context& ctx) const
+    {
+        // Create a format context
+        external_format_context fmt_ctx(ctx, opts);
 
-    // Create a format context and serialize the actual query
-    external_format_context fmt_ctx(ctx, opts);
-    vformat_sql_to(fmt_ctx, query, args);
+        // Serialize the query header
+        ctx.add(0x03);
 
-    // Check for errors
-    auto err = fmt_ctx.error_state();
-    if (err)
-        return err;
+        // Serialize the actual query
+        vformat_sql_to(fmt_ctx, query, args);
 
-    // Write frame headers
-    return ctx.write_frame_headers(0);
-}
+        // Check for errors
+        ctx.add_error(fmt_ctx.error_state());
+    }
+};
 
 }  // namespace detail
 }  // namespace mysql
