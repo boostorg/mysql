@@ -8,9 +8,11 @@
 [section:sql_formatting (Experimental) Client-side SQL query formatting]
 [nochunk]
 
-* Queries with parameters containing untrusted input, two options: statements (server side) and client-side SQL (client-side).
-* This module provides an alternative to statements that's usually easier to use and more versatile. See comparison.
-* Provides the required mechanisms to defend against SQL injections. See security considerations.
+Client-side SQL formatting allows running SQL queries with user-supplied parameters securely.
+It can be used as a simpler and more flexible alternative to prepared statements.
+While prepared statements expand queries server-side, SQL formatting does it client-side.
+Please read the [TODO:link comparison with prepared statements] and the [TODO:link security considerations] sections
+for more info.
 
 [note
     This feature is experimental. Its API may change in subsequent releases.
@@ -23,12 +25,16 @@
 
 [heading Simple queries]
 
-Use [reflink with_params], together with [refmem any_connection execute]
-or [refmemunq any_connection async_execute], to run a client-side formatted query.
-`with_params` must be passed a query string and a set of parameters:
+[reflink with_params] is an execution request consisting of a SQL query
+string with placeholders and a set of parameters. When passed to
+[refmem any_connection execute] or [refmemunq any_connection async_execute],
+the query is expanded in the client with the supplied parameters and
+sent to the server for execution:
 
 [sql_formatting_simple]
 
+Curly braces (`{}`) represent placeholders (technically called replacement fields).
+The notation and semantics are similar to [@https://en.cppreference.com/w/cpp/utility/format/format `std::format`].
 
 All fundamental types can be used with query formatting. This includes integers, floating point types,
 strings, blobs, dates and times:
@@ -66,22 +72,27 @@ explanation on format strings.
 
 [heading Common errors and how to fix them]
 
-Using client-side SQL formatting can yield some extra errors. Here are the most common:
+Not all values can be formatted. If the library finds that formatting a certain
+value can cause an ambiguity that could lead to a security problem, an error
+will be issued and the query won't run. Here are the most common errors:
 
 - `client_errc::invalid_encoding`
     - Cause: one of your string parameters contains invalid code points.
       With the default character set, this means that it contains invalid UTF-8.
-    - Solution: sanitize or reject such values.
+    - Solution: all string values must be encoded according to the connection's character
+      set (usually UTF-8). Sanitize or reject such values. Use the [reflink blob] and [reflink blob_view]
+      types for values that don't represent strings, but arbitrary binary values.
     - TODO: link learn more.
 - `client_errc::unformattable_value`
     - Cause: one of your parameters contains an invalid value. For instance, a `double`
       contains a `NaN` or an `Inf`, unsupported by MySQL.
     - Solution: reject such values, or replace them by `NULL` before passing them to client-side SQL formatting.
 - `client_errc::unknown_character_set`
-    - Cause: your connection doesn't know the character set you're using. Can happen after calling [refmemunq reset_connection]
+    - Cause: your connection doesn't know the character set you're using. Knowing the character set in use
+      is required to generate queries securely. This situation can happen after calling [refmemunq reset_connection]
       or if you used a custom [refmem connect_params connection_collation] when connecting.
     - Solution:
-        - Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set] after calling `reset_connection`.
+        - Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set].
         - Use [reflink connection_pool] instead of manually resetting connections.
         - Use the default `connection_collation` when connecting.
     - TODO: link learn more.
