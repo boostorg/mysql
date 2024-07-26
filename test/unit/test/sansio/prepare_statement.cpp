@@ -158,7 +158,8 @@ struct prepare_fixture : algo_fixture_base
 {
     detail::prepare_statement_algo algo{diag, {"SELECT 1"}};
 
-    using algo_fixture_base::algo_fixture_base;
+    prepare_fixture() = default;
+    prepare_fixture(std::size_t max_bufsize) : algo_fixture_base(max_bufsize) {}
 
     statement result() const { return algo.result(st); }
 };
