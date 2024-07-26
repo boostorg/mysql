@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "test_unit/create_frame.hpp"
+#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {
@@ -24,11 +25,10 @@ namespace test {
 
 inline std::vector<std::uint8_t> create_query_body_impl(std::uint8_t command_id, string_view sql)
 {
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, detail::disable_framing);
-    ctx.add(command_id);
-    ctx.add(detail::to_span(sql));
-    return buff;
+    return serialize_to_vector([=](detail::serialization_context& ctx) {
+        ctx.add(command_id);
+        ctx.add(detail::to_span(sql));
+    });
 }
 
 inline std::vector<std::uint8_t> create_query_frame(std::uint8_t seqnum, string_view sql)

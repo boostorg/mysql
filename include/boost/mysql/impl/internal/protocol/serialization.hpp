@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_SERIALIZATION_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_SERIALIZATION_HPP
 
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -21,6 +22,7 @@
 
 #include <boost/assert.hpp>
 
+#include <cstddef>
 #include <cstdint>
 
 namespace boost {
@@ -53,7 +55,7 @@ struct query_command
     void serialize(serialization_context& ctx) const
     {
         ctx.add(0x03);
-        string_eof{query}.serialize_checked(ctx);
+        string_eof{query}.serialize(ctx);
     }
 };
 
@@ -82,11 +84,7 @@ struct execute_stmt_command
 struct close_stmt_command
 {
     std::uint32_t statement_id;
-    void serialize(serialization_context& ctx) const
-    {
-        ctx.add(0x19);
-        int4{statement_id}.serialize(ctx);
-    }
+    void serialize(serialization_context& ctx) const { ctx.serialize_fixed(int1{0x19}, int4{statement_id}); }
 };
 
 // Login request
@@ -121,18 +119,48 @@ struct auth_switch_response
     void serialize(serialization_context& ctx) const { ctx.add(auth_plugin_data); }
 };
 
-// Serialize a complete message
+// The result of serialize_top_level (similar to system::result,
+// doesn't track source locations)
+struct serialize_top_level_result
+{
+    error_code err;
+    std::uint8_t seqnum{};
+
+    constexpr serialize_top_level_result(error_code ec) noexcept : err(ec) {}
+    constexpr serialize_top_level_result(std::uint8_t seqnum) noexcept : seqnum(seqnum) {}
+};
+
+// Serialize a complete message. May fail
 template <class Serializable>
-inline std::uint8_t serialize_top_level(
+inline serialize_top_level_result serialize_top_level(
     const Serializable& input,
     std::vector<std::uint8_t>& to,
     std::uint8_t seqnum = 0,
-    std::size_t frame_size = max_packet_size
+    std::size_t max_buffer_size = static_cast<std::size_t>(-1),
+    std::size_t max_frame_size = max_packet_size
 )
 {
-    serialization_context ctx(to, frame_size);
+    std::size_t initial_offset = to.size();
+    serialization_context ctx(to, max_buffer_size, max_frame_size);
     input.serialize(ctx);
-    return ctx.write_frame_headers(seqnum);
+    auto err = ctx.error();
+    if (err)
+        return err;
+    return ctx.write_frame_headers(seqnum, initial_offset);
+}
+
+// Same, but for cases that can't fail. Does not enforce any limit on buffer size
+template <class Serializable>
+inline std::uint8_t serialize_top_level_checked(
+    const Serializable& input,
+    std::vector<std::uint8_t>& to,
+    std::uint8_t seqnum = 0,
+    std::size_t max_frame_size = max_packet_size
+)
+{
+    auto res = serialize_top_level(input, to, seqnum, static_cast<std::size_t>(-1), max_frame_size);
+    BOOST_ASSERT(res.err == error_code());
+    return res.seqnum;
 }
 
 }  // namespace detail
@@ -197,7 +225,7 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
     constexpr int1 new_params_bind_flag{1};
 
     // header
-    ctx.serialize(command_id, int4{statement_id}, flags, iteration_count);
+    ctx.serialize_fixed(command_id, int4{statement_id}, flags, iteration_count);
 
     // Number of parameters
     auto num_params = params.size();
@@ -218,8 +246,7 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
             field_kind kind = param.kind();
             protocol_field_type type = to_protocol_field_type(kind);
             std::uint8_t unsigned_flag = kind == field_kind::uint64 ? std::uint8_t(0x80) : std::uint8_t(0);
-            ctx.add(static_cast<std::uint8_t>(type));
-            ctx.add(unsigned_flag);
+            ctx.serialize_fixed(int1{static_cast<std::uint8_t>(type)}, int1{unsigned_flag});
         }
 
         // actual values
@@ -232,11 +259,13 @@ void boost::mysql::detail::execute_stmt_command::serialize(serialization_context
 
 void boost::mysql::detail::login_request::serialize(serialization_context& ctx) const
 {
-    ctx.serialize(
+    ctx.serialize_fixed(
         int4{negotiated_capabilities.get()},           // client_flag
         int4{max_packet_size},                         // max_packet_size
         int1{get_collation_first_byte(collation_id)},  //  character_set
-        string_fixed<23>{},                            // filler (all zeros)
+        string_fixed<23>{}                             // filler (all zeros)
+    );
+    ctx.serialize(
         string_null{username},
         string_lenenc{to_string(auth_response)}  // we require CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA
     );
@@ -249,7 +278,7 @@ void boost::mysql::detail::login_request::serialize(serialization_context& ctx) 
 
 void boost::mysql::detail::ssl_request::serialize(serialization_context& ctx) const
 {
-    ctx.serialize(
+    ctx.serialize_fixed(
         int4{negotiated_capabilities.get()},           // client_flag
         int4{max_packet_size},                         // max_packet_size
         int1{get_collation_first_byte(collation_id)},  // character_set,
