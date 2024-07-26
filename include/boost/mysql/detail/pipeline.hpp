@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_DETAIL_PIPELINE_HPP
 
 #include <boost/mysql/character_set.hpp>
-#include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/resultset_encoding.hpp>
 

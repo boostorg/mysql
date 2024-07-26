@@ -18,7 +18,6 @@
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
-#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 

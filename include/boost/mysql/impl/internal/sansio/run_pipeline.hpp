@@ -119,11 +119,11 @@ class run_pipeline_algo
         }
     }
 
-    void set_stage_error(std::size_t index, error_code ec, diagnostics&& diag)
+    void set_stage_error(error_code ec, diagnostics&& diag)
     {
         if (response_)
         {
-            access::get_impl((*response_)[index]).set_error(ec, std::move(diag));
+            access::get_impl((*response_)[current_stage_index_]).set_error(ec, std::move(diag));
         }
     }
 
@@ -149,7 +149,7 @@ class run_pipeline_algo
             // Propagate the error
             if (response_ != nullptr)
             {
-                set_stage_error(current_stage_index_, stage_ec, std::move(temp_diag_));
+                set_stage_error(stage_ec, std::move(temp_diag_));
             }
         }
         else
@@ -204,7 +204,7 @@ public:
 
             // If the request is empty, don't do anything
             if (stages_.empty())
-                return error_code();
+                break;
 
             // Write the request. use_ssl is attached by top_level_algo
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({request_buffer_, false}))
@@ -222,7 +222,7 @@ public:
                 // If there was a fatal error, just set the error and move forward
                 if (has_hatal_error_)
                 {
-                    set_stage_error(current_stage_index_, pipeline_ec_, diagnostics(*diag_));
+                    set_stage_error(pipeline_ec_, diagnostics(*diag_));
                     continue;
                 }
 

@@ -35,10 +35,12 @@ BOOST_INLINE_CONSTEXPR std::size_t disable_framing = static_cast<std::size_t>(-1
 // of frame headers in serialization functions creates messages ready to send.
 // We require the entire message to be created before it's sent, so we don't lose any functionality.
 //
-// This class knows the offset of the next frame header. Adding data with add_checked will correctly
-// insert space for headers as required while copying the data. Other functions may result in
-// "overruns" (writing past the offset of the next header). Overruns are fixed by add_frame_headers,
-// which will memmove data as required. The distinction is made for efficiency.
+// This class knows the offset of the next frame header. Adding data will correctly
+// insert space for headers as required while copying the data.
+//
+// Like format_context_base, contains an error that can be set if a serialization
+// function helps (e.g. because it would overrun the buffer size limit).
+// Once set, serializing is a no-op. This pattern allows us to check for errors just once.
 class serialization_context
 {
     std::vector<std::uint8_t>& buffer_;
@@ -171,7 +173,9 @@ public:
         return seqnum;
     }
 
-    // Optimization for fixed size types
+    // Optimization for fixed size types. We serialize them to an
+    // intermediate, stack-based buffer, then copy them to the actual buffer.
+    // This saves reallocations and space checks
     template <class... Serializable>
     void serialize_fixed(Serializable... s)
     {
