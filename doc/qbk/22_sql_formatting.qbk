@@ -82,7 +82,6 @@ will be issued and the query won't run. Here are the most common errors:
     - Solution: all string values must be encoded according to the connection's character
       set (usually UTF-8). Sanitize or reject such values. Use the [reflink blob] and [reflink blob_view]
       types for values that don't represent strings, but arbitrary binary values.
-    - TODO: link learn more.
 - `client_errc::unformattable_value`
     - Cause: one of your parameters contains an invalid value. For instance, a `double`
       contains a `NaN` or an `Inf`, unsupported by MySQL.
@@ -95,10 +94,14 @@ will be issued and the query won't run. Here are the most common errors:
         - Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set].
         - Use [reflink connection_pool] instead of manually resetting connections.
         - Use the default `connection_collation` when connecting.
-    - TODO: link learn more.
-      
+    - [link mysql.charsets.tracking Learn more] about how character set tracking works.
 
+For example:
 
+```
+    // Throws boost::mysql::error_with_diagnostics with error() == client_errc::invalid_encoding
+    conn.execute(with_params("SELECT {}", "Bad\xff"), result);
+```
 
 
 
