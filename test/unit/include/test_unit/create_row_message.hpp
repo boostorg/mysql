@@ -13,6 +13,7 @@
 
 #include "test_common/create_basic.hpp"
 #include "test_unit/create_frame.hpp"
+#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {
@@ -20,25 +21,24 @@ namespace test {
 
 inline std::vector<std::uint8_t> serialize_text_row_impl(span<const field_view> fields)
 {
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, detail::disable_framing);
-    for (field_view f : fields)
-    {
-        std::string s;
-        switch (f.kind())
+    return serialize_to_vector([=](detail::serialization_context& ctx) {
+        for (field_view f : fields)
         {
-        case field_kind::int64: s = std::to_string(f.get_int64()); break;
-        case field_kind::uint64: s = std::to_string(f.get_uint64()); break;
-        case field_kind::float_: s = std::to_string(f.get_float()); break;
-        case field_kind::double_: s = std::to_string(f.get_double()); break;
-        case field_kind::string: s = f.get_string(); break;
-        case field_kind::blob: s.assign(f.get_blob().begin(), f.get_blob().end()); break;
-        case field_kind::null: ctx.add(std::uint8_t(0xfb)); continue;
-        default: throw std::runtime_error("create_text_row_message: type not implemented");
+            std::string s;
+            switch (f.kind())
+            {
+            case field_kind::int64: s = std::to_string(f.get_int64()); break;
+            case field_kind::uint64: s = std::to_string(f.get_uint64()); break;
+            case field_kind::float_: s = std::to_string(f.get_float()); break;
+            case field_kind::double_: s = std::to_string(f.get_double()); break;
+            case field_kind::string: s = f.get_string(); break;
+            case field_kind::blob: s.assign(f.get_blob().begin(), f.get_blob().end()); break;
+            case field_kind::null: ctx.add(std::uint8_t(0xfb)); continue;
+            default: throw std::runtime_error("create_text_row_message: type not implemented");
+            }
+            detail::string_lenenc{s}.serialize(ctx);
         }
-        detail::string_lenenc{s}.serialize(ctx);
-    }
-    return buff;
+    });
 }
 
 template <class... Args>

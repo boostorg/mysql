@@ -117,44 +117,6 @@ BOOST_AUTO_TEST_CASE(serialize)
     }
 }
 
-// String and blob parameters may be large, so we take framing
-// into account when serializing them
-BOOST_AUTO_TEST_CASE(serialize_framing)
-{
-    constexpr std::uint8_t blob_buffer[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-
-    struct
-    {
-        const char* name;
-        field_view param;
-        std::vector<std::uint8_t> serialized;
-    } test_cases[] = {
-        // clang-format off
-        {
-            "string",
-            field_view("abcdefghijk"),
-            {
-                0, 0, 0, 0, 11,   0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
-                0, 0, 0, 0, 0x6a, 0x6b
-            }
-        },
-        {
-            "blob",
-            field_view(blob_buffer),
-            {
-                0, 0, 0, 0, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-                0, 0, 0, 0, 10
-            }
-        },
-        // clang-format on
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name) { do_serialize_test(field_view_adaptor{tc.param}, tc.serialized, 10u); }
-    }
-}
-
 BOOST_AUTO_TEST_SUITE(deserialize_success)
 
 struct success_sample

@@ -19,6 +19,8 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <string>
+
 #include "test_common/check_meta.hpp"
 #include "test_common/create_basic.hpp"
 #include "test_unit/algo_test.hpp"
@@ -41,7 +43,13 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     detail::start_execution_algo algo;
 
-    fixture(any_execution_request req) : algo(diag, {req, &proc}) {}
+    fixture(
+        any_execution_request req = any_execution_request("SELECT 1"),
+        std::size_t max_bufsize = default_max_buffsize
+    )
+        : algo_fixture_base(max_bufsize), algo(diag, {req, &proc})
+    {
+    }
 };
 
 BOOST_AUTO_TEST_CASE(text_query)
@@ -109,19 +117,23 @@ BOOST_AUTO_TEST_CASE(error_num_params)
 // This covers errors in both writing the request and calling read_resultset_head
 BOOST_AUTO_TEST_CASE(error_network_error)
 {
-    // check_network_errors<F>() requires F to be default-constructible
-    struct query_fixture : fixture
-    {
-        query_fixture() : fixture(any_execution_request("SELECT 1")) {}
-    };
-
     // This will test for errors writing the execution request
     // and reading the response and metadata (thus, calling read_resultset_head)
     algo_test()
         .expect_write(create_frame(0, {0x03, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31}))
         .expect_read(create_frame(1, {0x01}))
         .expect_read(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
-        .check_network_errors<query_fixture>();
+        .check_network_errors<fixture>();
+}
+
+BOOST_AUTO_TEST_CASE(error_max_buffer_size)
+{
+    // Setup
+    std::string query(512, 'a');
+    fixture fix(any_execution_request(query), 512u);
+
+    // Run the algo
+    algo_test().check(fix, client_errc::max_buffer_size_exceeded);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

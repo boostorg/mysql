@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
@@ -18,8 +20,11 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
+#include "test_common/printing.hpp"
 
 using namespace boost::mysql;
+
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_serialization_context)
 
@@ -57,7 +62,7 @@ std::vector<framing_test_case> make_test_cases()
     };
 }
 
-BOOST_AUTO_TEST_CASE(add_frame_headers)
+BOOST_AUTO_TEST_CASE(add)
 {
     constexpr std::size_t fs = 8u;  // frame size
     const std::vector<std::uint8_t> initial_buffer{0xaa, 0xbb, 0xcc, 0xdd, 0xee};
@@ -68,164 +73,107 @@ BOOST_AUTO_TEST_CASE(add_frame_headers)
         {
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, fs);
+            detail::serialization_context ctx(buff, 0xffff, fs);
 
-            // Add payload and set headers
+            // Add the payload
             ctx.add(tc.payload);
-            ctx.add_frame_headers();
 
             // Check
             auto expected = test::concat_copy(initial_buffer, tc.expected_buffer);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
             BOOST_TEST(ctx.next_header_offset() == tc.expected_next_frame_offset + initial_buffer.size());
+            BOOST_TEST(ctx.error() == error_code());
         }
     }
 }
 
 // Spotcheck: if the initial buffer is empty, everything works fine
-BOOST_AUTO_TEST_CASE(add_frame_headers_initial_buffer_empty)
+BOOST_AUTO_TEST_CASE(add_initial_buffer_empty)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
+    detail::serialization_context ctx(buff, 0xffff, 8);
 
     // Add data
     const std::array<std::uint8_t, 10> payload{
         {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
     };
     ctx.add(payload);
-    ctx.add_frame_headers();
 
     // Check
     const std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 9, 10};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(ctx.next_header_offset() == 24u);
+    BOOST_TEST(ctx.error() == error_code());
 }
 
 // Spotcheck: adding single bytes or in chunks also works fine
-BOOST_AUTO_TEST_CASE(add_frame_headers_chunks)
+BOOST_AUTO_TEST_CASE(chunks)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
-
-    // Add data
+    detail::serialization_context ctx(buff, 0xffff, 8);
     const std::array<std::uint8_t, 4> payload1{
         {1, 2, 3, 4}
     };
     const std::array<std::uint8_t, 5> payload2{
         {5, 6, 7, 8, 9}
     };
+
+    // Add byte
     ctx.add(0xff);
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 0xff};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
+
+    // Add buffer
     ctx.add(payload1);
+    expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
+
+    // Add byte
     ctx.add(0xfe);
+    expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
+
+    // Add buffer
     ctx.add(payload2);
+    expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe, 5, 6, 0, 0, 0, 0, 7, 8, 9};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
+
+    // Add byte
     ctx.add(0xfc);
-    ctx.add_frame_headers();
+    expected = {0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe, 5, 6, 0, 0, 0, 0, 7, 8, 9, 0xfc};
+    BOOST_TEST(ctx.next_header_offset() == 24u);
+    BOOST_TEST(ctx.error() == error_code());
+}
 
-    // Check
-    const std::vector<std::uint8_t> expected{0, 0, 0, 0, 0xff, 1, 2, 3, 4, 0xfe,
-                                             5, 6, 0, 0, 0,    0, 7, 8, 9, 0xfc};
+// Spotcheck: adding a single byte that causes a frame header to be written works
+BOOST_AUTO_TEST_CASE(add_byte_fills_frame)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 0xffff, 8);
+    const std::array<std::uint8_t, 7> payload{
+        {1, 2, 3, 4, 5, 6, 7}
+    };
+
+    // Add payload
+    ctx.add(payload);
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.next_header_offset() == 12u);
+    BOOST_TEST(ctx.error() == error_code());
+
+    // Add byte
+    ctx.add(0xab);
+    expected = {0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 0xab, 0, 0, 0, 0};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(ctx.next_header_offset() == 24u);
-}
-
-// add_checked should behave like add + write_frame_headers
-BOOST_AUTO_TEST_CASE(add_checked)
-{
-    constexpr std::size_t fs = 8u;  // frame size
-    const std::vector<std::uint8_t> initial_buffer{0xaa, 0xbb, 0xcc, 0xdd, 0xee};
-
-    for (const auto& tc : make_test_cases())
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Setup
-            std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, fs);
-
-            // Add payload and set headers
-            ctx.add_checked(tc.payload);
-
-            // Check
-            auto expected = test::concat_copy(initial_buffer, tc.expected_buffer);
-            BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
-            BOOST_TEST(ctx.next_header_offset() == tc.expected_next_frame_offset + initial_buffer.size());
-        }
-    }
-}
-
-// Spotcheck: add_checked should work fine if the initial buffer is empty
-BOOST_AUTO_TEST_CASE(add_checked_initial_buffer_empty)
-{
-    // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
-
-    // Add payload and set headers
-    const std::array<std::uint8_t, 10> payload{
-        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-    };
-    ctx.add_checked(payload);
-
-    // Check
-    const std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 0, 0, 0, 9, 10};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
-    BOOST_TEST(ctx.next_header_offset() == 24u);
-}
-
-// If there are any missing frame headers when add_checked is called,
-// they are inserted
-BOOST_AUTO_TEST_CASE(add_checked_missing_frame_headers)
-{
-    // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
-
-    // Create some missing frame headers by using unchecked add
-    const std::array<std::uint8_t, 20> payload1{
-        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
-    };
-    ctx.add(payload1);
-
-    // Add (checked) some data
-    const std::array<std::uint8_t, 10> payload2{
-        {21, 22, 23, 24, 25, 26, 27, 28, 29, 30}
-    };
-    ctx.add_checked(payload2);
-
-    // Check
-    const std::vector<std::uint8_t> expected{0,  0,  0,  0,  1,  2,  3,  4,  5,  6,  7,  8,  0,  0,  0,  0,
-                                             9,  10, 11, 12, 13, 14, 15, 16, 0,  0,  0,  0,  17, 18, 19, 20,
-                                             21, 22, 23, 24, 0,  0,  0,  0,  25, 26, 27, 28, 29, 30};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
-    BOOST_TEST(ctx.next_header_offset() == 48u);
-}
-
-// Same as above, but what we insert via add_checked is not enough to fill a frame
-BOOST_AUTO_TEST_CASE(add_checked_missing_frame_headers_small_payload)
-{
-    // Setup
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
-
-    // Create some missing frame headers by using unchecked add
-    const std::array<std::uint8_t, 20> payload1{
-        {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20}
-    };
-    ctx.add(payload1);
-
-    // Add (checked) some data
-    const std::array<std::uint8_t, 2> payload2{
-        {21, 22}
-    };
-    ctx.add_checked(payload2);
-
-    // Check
-    const std::vector<std::uint8_t> expected{0,  0,  0,  0,  1,  2,  3,  4, 5, 6, 7, 8,  0,  0,  0,  0,  9,
-                                             10, 11, 12, 13, 14, 15, 16, 0, 0, 0, 0, 17, 18, 19, 20, 21, 22};
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
-    BOOST_TEST(ctx.next_header_offset() == 36u);
+    BOOST_TEST(ctx.error() == error_code());
 }
 
 BOOST_AUTO_TEST_CASE(write_frame_headers)
@@ -269,14 +217,15 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
         {
             // Setup
             std::vector<std::uint8_t> buff{initial_buffer};
-            detail::serialization_context ctx(buff, 8);
-            ctx.add_checked(tc.payload);
+            detail::serialization_context ctx(buff, 0xffff, 8);
+            ctx.add(tc.payload);
 
             // Call and check
-            auto seqnum = ctx.write_frame_headers(42);
+            auto seqnum = ctx.write_frame_headers(42, initial_buffer.size());
             const auto expected = test::concat_copy(initial_buffer, tc.expected);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
             BOOST_TEST(seqnum == tc.expected_seqnum);
+            BOOST_TEST(ctx.error() == error_code());
         }
     }
 }
@@ -286,7 +235,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, 8);
+    detail::serialization_context ctx(buff, 0xffff, 8);
     for (std::uint8_t i = 1; i <= 20; ++i)
         ctx.add(i);
 
@@ -296,9 +245,10 @@ BOOST_AUTO_TEST_CASE(write_frame_headers_seqnum_wrap)
         8, 0, 0, 0xff, 9,  10, 11, 12, 13, 14, 15, 16,  // frame 2
         4, 0, 0, 0,    17, 18, 19, 20                   // frame 3
     };
-    auto seqnum = ctx.write_frame_headers(0xfe);
+    auto seqnum = ctx.write_frame_headers(0xfe, 0);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
     BOOST_TEST(seqnum == 1u);
+    BOOST_TEST(ctx.error() == error_code());
 }
 
 // Spotcheck: disable framing works
@@ -306,7 +256,7 @@ BOOST_AUTO_TEST_CASE(disable_framing)
 {
     // Setup
     std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, detail::disable_framing);
+    detail::serialization_context ctx(buff, 0xffff, detail::disable_framing);
 
     // Add data using the several functions available
     const std::array<std::uint8_t, 5> payload1{
@@ -317,11 +267,180 @@ BOOST_AUTO_TEST_CASE(disable_framing)
     };
     ctx.add(42);
     ctx.add(payload1);
-    ctx.add_checked(payload2);
+    ctx.add(payload2);
 
     // We didn't add any framing
     const std::vector<std::uint8_t> expected{42, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+    BOOST_TEST(ctx.error() == error_code());
+}
+
+BOOST_AUTO_TEST_SUITE(max_buffer_size_error)
+
+BOOST_AUTO_TEST_CASE(header_exceeds_maxsize)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 3u);
+
+    // Buffer can't hold the header
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+}
+
+BOOST_AUTO_TEST_CASE(contents_exceed_maxsize)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 8u);
+
+    // Header plus content would exceed max size
+    ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6});
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+
+    // Only header written
+    std::array<std::uint8_t, 4> expected{};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
+
+BOOST_AUTO_TEST_CASE(subsequent_header_exceeds_maxsize)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 13u, 8u);
+
+    // Successfully add some data
+    ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6});
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6};
+    BOOST_TEST(ctx.error() == error_code());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Add data triggering a header that can't fit
+    ctx.add(std::vector<std::uint8_t>{7, 8});
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+}
+
+BOOST_AUTO_TEST_CASE(maxsize_zero)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 0u);
+
+    // Buffer can't hold the header
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+}
+
+BOOST_AUTO_TEST_CASE(error_by_one_byte)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 12u);
+
+    // Successfully add data until max size
+    ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8};
+    BOOST_TEST(ctx.error() == error_code());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Adding more data fails. No data is written to the buffer
+    ctx.add(std::vector<std::uint8_t>{1});
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
+
+// Spotcheck: adding a single byte triggers the same behavior
+BOOST_AUTO_TEST_CASE(error_add_u8)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 12u);
+
+    // Successfully add data until max size
+    ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5, 6, 7, 8});
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8};
+    BOOST_TEST(ctx.error() == error_code());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Adding more data fails. No data is written to the buffer
+    ctx.add(42);
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
+
+// Edge case: if the input buffer exceeded the max size, we fail
+BOOST_AUTO_TEST_CASE(buffer_exceeds_max_size)
+{
+    std::vector<std::uint8_t> buff(48u, 0);
+    detail::serialization_context ctx(buff, 12u);
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+}
+
+// Previous contents are taken into account for size checks
+BOOST_AUTO_TEST_CASE(buffer_with_previous_contents)
+{
+    // Setup
+    std::vector<std::uint8_t> buff{1, 2, 3};
+    detail::serialization_context ctx(buff, 8u);
+
+    // Just max size
+    ctx.add(42);
+    std::vector<std::uint8_t> expected{1, 2, 3, 0, 0, 0, 0, 42};
+    BOOST_TEST(ctx.error() == error_code());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Past max size
+    ctx.add(80);
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
+
+BOOST_AUTO_TEST_CASE(several_errors)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 12u);
+
+    // Successfully add some data
+    ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5};
+    BOOST_TEST(ctx.error() == error_code());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Adding more data fails. No data is written to the buffer
+    ctx.add(std::vector<std::uint8_t>{6, 7, 8, 9});
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Adding more data again does nothing
+    ctx.add(std::vector<std::uint8_t>{10, 11, 12});
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
+
+BOOST_AUTO_TEST_CASE(success_after_error)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff, 12u);
+
+    // Successfully add some data
+    ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5};
+    BOOST_TEST(ctx.error() == error_code());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Adding more data fails. No data is written to the buffer
+    ctx.add(std::vector<std::uint8_t>{6, 7, 8, 9});
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Adding more data again does nothing, even if the data would fit
+    ctx.add(1);
+    BOOST_TEST(ctx.error() == client_errc::max_buffer_size_exceeded);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace

@@ -124,7 +124,10 @@ struct connection_state_data
     {
         // use_ssl is attached by top_level_algo
         write_buffer.clear();
-        seqnum = serialize_top_level(msg, write_buffer, seqnum);
+        auto res = serialize_top_level(msg, write_buffer, seqnum, max_buffer_size());
+        if (res.err)
+            return res.err;
+        seqnum = res.seqnum;
         return next_action::write({write_buffer, false});
     }
 };

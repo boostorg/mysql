@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "test_unit/create_frame.hpp"
+#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {
@@ -56,17 +57,17 @@ public:
 
     std::vector<std::uint8_t> build() const
     {
-        std::vector<std::uint8_t> res;
-        detail::serialization_context ctx(res, detail::disable_framing);
-        ctx.serialize(
-            detail::int1{0u},             // OK header
-            detail::int4{statement_id_},  // statement_id
-            detail::int2{num_columns_},   // num columns
-            detail::int2{num_params_},    // num_params
-            detail::int1{0u},             // reserved
-            detail::int2{90u}             // warning_count
-        );
-        return create_frame(seqnum_, res);
+        auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
+            ctx.serialize(
+                detail::int1{0u},             // OK header
+                detail::int4{statement_id_},  // statement_id
+                detail::int2{num_columns_},   // num columns
+                detail::int2{num_params_},    // num_params
+                detail::int1{0u},             // reserved
+                detail::int2{90u}             // warning_count
+            );
+        });
+        return create_frame(seqnum_, body);
     }
 };
 
