@@ -32,6 +32,16 @@ We can now use it like this:
 See the [reflink formatter] reference docs for more info.
 
 
+
+
+
+TODO: async ops with_params and lifetimes
+
+
+
+
+
+
 [heading:format_string_syntax Format string syntax]
 
 This section extends on the supported syntax for format strings.
@@ -153,6 +163,8 @@ For a reference on how character set tracking works, please read [link mysql.cha
     determined, you will get a [link mysql.sql_formatting.unknown_character_set `client_errc::unknown_character_set`]
     error instead of a vulnerability.
 ]
+
+
 
 
 

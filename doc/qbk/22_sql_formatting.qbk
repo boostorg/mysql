@@ -105,18 +105,22 @@ will be issued and the query won't run. Here are the most common errors:
 
 [heading Formatting queries without executing them]
 
-`with_params` is convenient, but some cases may require you to directly
-format a query string without executing it. Useful for more complex cases
-and testing.
+`with_params` is handy, but may fall short in some cases involving queries with
+complex logic. For these cases, you can use [reflink format_sql] and
+[reflink format_sql_to] to expand a query without executing it.
+These APIs don't involve communication with the server.
+
+[reflink format_sql] is the simplest. Akin to `std::format`, it takes a query string and
+a set of parameters, and expands the query to a `std::string`:
+
+```
+
+```
+
+<TODO: example>
 
 Anything that can be used with `with_params` can be used with `format_sql`
 and `format_sql_to` too - we say that such types satisfy the [reflink Formattable] concept.
-
-These APIs don't involve communication with the server.
-
-[reflink format_sql] is the simplest. Takes a query string and a set of parameters, expands it to a `std::string`:
-
-<TODO: example>
 
 In order to work, `format_sql` requires a [reflink format_options] instance describing
 connection configuration, like the character set currently in use.
