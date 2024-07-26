@@ -10,6 +10,7 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
+#include <boost/asio/error.hpp>
 #include <boost/asio/generic/stream_protocol.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -26,6 +27,7 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
+using boost::test_tools::per_element;
 using detail::vsconnect_action_type;
 
 static const char* act_type_to_string(vsconnect_action_type act)
@@ -53,7 +55,7 @@ std::ostream& operator<<(std::ostream& os, vsconnect_action_type act)
 }  // namespace mysql
 }  // namespace boost
 
-BOOST_TEST_DONT_PRINT_LOG_VALUE(::boost::asio::generic::stream_protocol::endpoint)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(boost::asio::generic::stream_protocol::endpoint)
 
 namespace {
 
@@ -71,10 +73,15 @@ connect algo
     could we test that all memory that was allocated was also deallocated?
  */
 
-BOOST_AUTO_TEST_CASE(tcp_success)
+struct fixture
 {
     detail::variant_stream_state st{global_context_executor(), nullptr};
     any_address addr;
+};
+
+BOOST_FIXTURE_TEST_CASE(tcp_success, fixture)
+{
+    // Setup
     addr.emplace_host_and_port("my_host", 1234);
     detail::variant_stream_connect_algo algo{st, addr};
 
@@ -84,10 +91,10 @@ BOOST_AUTO_TEST_CASE(tcp_success)
     BOOST_TEST(*act.data.resolve.hostname == "my_host");
     BOOST_TEST(*act.data.resolve.service == "1234");
 
-    // Resolving done
+    // Resolving done: we should connect
     const asio::ip::tcp::endpoint endpoints[]{
         asio::ip::tcp::endpoint(asio::ip::make_address("192.168.10.1"), 1234),
-        // asio::ip::tcp::endpoint(asio::ip::make_address("2001:0000::::::130B"), 1234),
+        asio::ip::tcp::endpoint(asio::ip::make_address("fe76::abab:4567:72b4:9876"), 1234),
     };
     auto r = asio::ip::tcp::resolver::results_type::create(
         std::begin(endpoints),
@@ -97,13 +104,65 @@ BOOST_AUTO_TEST_CASE(tcp_success)
     );
     act = algo.resume(error_code(), &r);
     BOOST_TEST(act.type == vsconnect_action_type::connect);
-    BOOST_TEST(act.data.connect == endpoints, boost::test_tools::per_element());
+    BOOST_TEST(act.data.connect == endpoints, per_element());
 
-    // Connect done
-    st.sock.open(asio::ip::tcp::v4());
+    // Connect done: success
+    st.sock.open(asio::ip::tcp::v4());  // Simulate a connection - otherwise setting sock options fails
     act = algo.resume(error_code(), nullptr);
     BOOST_TEST(act.type == vsconnect_action_type::none);
     BOOST_TEST(act.data.err == error_code());
+}
+
+BOOST_FIXTURE_TEST_CASE(tcp_error_resolve, fixture)
+{
+    // Setup
+    addr.emplace_host_and_port("my_host", 1234);
+    detail::variant_stream_connect_algo algo{st, addr};
+
+    // Initiate: we should resolve
+    auto act = algo.resume(error_code(), nullptr);
+    BOOST_TEST(act.type == vsconnect_action_type::resolve);
+    BOOST_TEST(*act.data.resolve.hostname == "my_host");
+    BOOST_TEST(*act.data.resolve.service == "1234");
+
+    // Resolving error: done
+    asio::ip::tcp::resolver::results_type r;
+    act = algo.resume(asio::error::connection_reset, &r);
+    BOOST_TEST(act.type == vsconnect_action_type::none);
+    BOOST_TEST(act.data.err == asio::error::connection_reset);
+}
+
+BOOST_FIXTURE_TEST_CASE(tcp_error_connect, fixture)
+{
+    // Setup
+    addr.emplace_host_and_port("my_host", 1234);
+    detail::variant_stream_connect_algo algo{st, addr};
+
+    // Initiate: we should resolve
+    auto act = algo.resume(error_code(), nullptr);
+    BOOST_TEST(act.type == vsconnect_action_type::resolve);
+    BOOST_TEST(*act.data.resolve.hostname == "my_host");
+    BOOST_TEST(*act.data.resolve.service == "1234");
+
+    // Resolving done: we should connect
+    const asio::ip::tcp::endpoint endpoints[]{
+        asio::ip::tcp::endpoint(asio::ip::make_address("192.168.10.1"), 1234),
+        asio::ip::tcp::endpoint(asio::ip::make_address("fe76::abab:4567:72b4:9876"), 1234),
+    };
+    auto r = asio::ip::tcp::resolver::results_type::create(
+        std::begin(endpoints),
+        std::end(endpoints),
+        "my_host",
+        "1234"
+    );
+    act = algo.resume(error_code(), &r);
+    BOOST_TEST(act.type == vsconnect_action_type::connect);
+    BOOST_TEST(act.data.connect == endpoints, per_element());
+
+    // Connect failed: done. No socket option is set
+    act = algo.resume(asio::error::connection_reset, nullptr);
+    BOOST_TEST(act.type == vsconnect_action_type::none);
+    BOOST_TEST(act.data.err == asio::error::connection_reset);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
