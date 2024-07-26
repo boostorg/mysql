@@ -379,37 +379,6 @@ BOOST_AUTO_TEST_CASE(write_max_buffer_size_exact)
     BOOST_TEST(act.success());
 }
 
-BOOST_AUTO_TEST_CASE(write_max_buffer_size_exceeded)
-{
-    struct mock_algo
-    {
-        coroutine coro;
-        std::uint8_t seqnum{};
-        const std::array<std::uint8_t, 61> long_msg{};
-
-        next_action resume(connection_state_data& st, error_code ec)
-        {
-            BOOST_ASIO_CORO_REENTER(coro)
-            {
-                BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return st.write(mock_message{long_msg}, seqnum);
-                BOOST_TEST(ec == client_errc::max_buffer_size_exceeded);
-            }
-            return next_action();
-        }
-    };
-
-    connection_state_data st(32, 64);
-    top_level_algo<mock_algo> algo(st);
-
-    // Initial run yields a write request that exceeds the max buffer size.
-    // We never get to see such request, it generates an immediate failure.
-    auto act = algo.resume(error_code(), 0);
-
-    // Done
-    BOOST_TEST(act.success());
-}
-
 BOOST_AUTO_TEST_CASE(write_ssl_active)
 {
     struct mock_algo

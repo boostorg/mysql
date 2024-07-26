@@ -140,6 +140,10 @@ struct set_charset_fixture : algo_fixture_base
     detail::set_character_set_algo algo;
 
     set_charset_fixture(character_set charset = utf8mb4_charset) : algo(diag, {charset}) {}
+    set_charset_fixture(std::size_t max_bufsize)
+        : algo_fixture_base(max_bufsize), algo(diag, {utf8mb4_charset})
+    {
+    }
 };
 
 BOOST_AUTO_TEST_CASE(set_charset_success)
@@ -190,6 +194,15 @@ BOOST_AUTO_TEST_CASE(set_charset_error_network)
         .expect_write(create_query_frame(0, "SET NAMES 'utf8mb4'"))
         .expect_read(create_ok_frame(1, ok_builder().build()))
         .check_network_errors<set_charset_fixture>();
+}
+
+BOOST_AUTO_TEST_CASE(set_charset_error_max_buffer_size)
+{
+    // Setup
+    set_charset_fixture fix(16u);
+
+    // Run the algo
+    algo_test().check(fix, client_errc::max_buffer_size_exceeded);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
