@@ -100,8 +100,6 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 struct reset_conn_fixture : algo_fixture_base
 {
     detail::run_pipeline_algo algo{diag, detail::setup_reset_connection_pipeline(st)};
-
-    using algo_fixture_base::algo_fixture_base;
 };
 
 BOOST_AUTO_TEST_CASE(success)
@@ -119,6 +117,15 @@ BOOST_AUTO_TEST_CASE(success)
     // The OK packet was processed correctly. The charset was reset
     BOOST_TEST(fix.st.backslash_escapes);
     BOOST_TEST(fix.st.current_charset == character_set());
+}
+
+BOOST_AUTO_TEST_CASE(reset_conn_error_network)
+{
+    // This covers errors in read and write
+    algo_test()
+        .expect_write(create_frame(0, {0x1f}))
+        .expect_read(create_ok_frame(1, ok_builder().build()))
+        .check_network_errors<reset_conn_fixture>();
 }
 
 BOOST_AUTO_TEST_CASE(reset_conn_error_response)
@@ -139,15 +146,6 @@ BOOST_AUTO_TEST_CASE(reset_conn_error_response)
 
     // The charset was not updated
     BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
-}
-
-BOOST_AUTO_TEST_CASE(reset_conn_error_network)
-{
-    // This covers errors in read and write
-    algo_test()
-        .expect_write(create_frame(0, {0x1f}))
-        .expect_read(create_ok_frame(1, ok_builder().build()))
-        .check_network_errors<reset_conn_fixture>();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

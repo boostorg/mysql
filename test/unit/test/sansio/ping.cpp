@@ -95,7 +95,6 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 struct ping_fixture : algo_fixture_base
 {
     detail::run_pipeline_algo algo{diag, detail::setup_ping_pipeline(st)};
-    using algo_fixture_base::algo_fixture_base;
 };
 
 BOOST_AUTO_TEST_CASE(ping_success)
@@ -113,6 +112,15 @@ BOOST_AUTO_TEST_CASE(ping_success)
     BOOST_TEST(fix.st.backslash_escapes);
 }
 
+BOOST_AUTO_TEST_CASE(ping_error_network)
+{
+    // Check for net errors for each read/write
+    algo_test()
+        .expect_write({0x01, 0x00, 0x00, 0x00, 0x0e})
+        .expect_read(create_ok_frame(1, ok_builder().build()))
+        .check_network_errors<ping_fixture>();
+}
+
 BOOST_AUTO_TEST_CASE(ping_error_response)
 {
     // Setup
@@ -127,15 +135,6 @@ BOOST_AUTO_TEST_CASE(ping_error_response)
                          .message("my_message")
                          .build_frame())  // Error response
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
-}
-
-BOOST_AUTO_TEST_CASE(ping_error_network)
-{
-    // Check for net errors for each read/write
-    algo_test()
-        .expect_write({0x01, 0x00, 0x00, 0x00, 0x0e})
-        .expect_read(create_ok_frame(1, ok_builder().build()))
-        .check_network_errors<ping_fixture>();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
