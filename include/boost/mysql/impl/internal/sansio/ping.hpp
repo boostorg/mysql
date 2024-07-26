@@ -13,7 +13,6 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/create_stage.hpp>
 
 namespace boost {
 namespace mysql {
@@ -50,8 +49,13 @@ public:
 
 inline run_pipeline_algo_params setup_ping_pipeline(connection_state_data& st)
 {
+    // The ping request is fixed size and small. No buffer limit is enforced on it.
     st.write_buffer.clear();
-    st.shared_pipeline_stages[0] = create_stage(pipeline_stage_kind::ping, st.serialize(ping_command{}), {});
+    st.shared_pipeline_stages[0] = {
+        pipeline_stage_kind::ping,
+        serialize_top_level_checked(ping_command{}, st.write_buffer),
+        {}
+    };
     return {
         st.write_buffer,
         {st.shared_pipeline_stages.data(), 1},

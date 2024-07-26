@@ -13,7 +13,6 @@
 
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/create_stage.hpp>
 
 namespace boost {
 namespace mysql {
@@ -24,14 +23,18 @@ inline run_pipeline_algo_params setup_close_statement_pipeline(
     close_statement_algo_params params
 )
 {
+    // Pipeline a ping with the close statement, to avoid delays on old connections
+    // that don't set tcp_nodelay. Both requests are small and fixed size, so
+    // we don't enforce any buffer limits here.
     st.write_buffer.clear();
-    auto stage1 = create_stage(
-        pipeline_stage_kind::close_statement,
-        st.serialize(close_stmt_command{params.stmt_id}),
-        {}
-    );
-    auto stage2 = create_stage(pipeline_stage_kind::ping, st.serialize(ping_command{}), {});
-    st.shared_pipeline_stages = {stage1, stage2};
+    auto seqnum1 = serialize_top_level_checked(close_stmt_command{params.stmt_id}, st.write_buffer);
+    auto seqnum2 = serialize_top_level_checked(ping_command{}, st.write_buffer);
+    st.shared_pipeline_stages = {
+        {
+         {pipeline_stage_kind::close_statement, seqnum1, {}},
+         {pipeline_stage_kind::ping, seqnum2, {}},
+         }
+    };
     return {st.write_buffer, st.shared_pipeline_stages, nullptr};
 }
 

@@ -138,13 +138,4 @@ BOOST_AUTO_TEST_CASE(ping_error_network)
         .check_network_errors<ping_fixture>();
 }
 
-BOOST_AUTO_TEST_CASE(ping_error_max_buffer_size)
-{
-    // Setup
-    ping_fixture fix(4u);
-
-    // Run the algo
-    algo_test().check(fix, client_errc::max_buffer_size_exceeded);
-}
-
 BOOST_AUTO_TEST_SUITE_END()

@@ -99,22 +99,4 @@ BOOST_AUTO_TEST_CASE(error_network)
         .check_network_errors<fixture>();
 }
 
-BOOST_AUTO_TEST_CASE(error_max_buffer_size_close)
-{
-    // Setup
-    fixture fix(4u);
-
-    // Run the algo
-    algo_test().check(fix, client_errc::max_buffer_size_exceeded);
-}
-
-BOOST_AUTO_TEST_CASE(error_max_buffer_size_ping)
-{
-    // Setup
-    fixture fix(12u);
-
-    // Run the algo
-    algo_test().check(fix, client_errc::max_buffer_size_exceeded);
-}
-
 BOOST_AUTO_TEST_SUITE_END()

@@ -112,13 +112,6 @@ struct connection_state_data
         return deserialize_ok_response(reader.message(), flavor, diag, backslash_escapes);
     }
 
-    // Serializes a message to the write buffer
-    template <class Serializable>
-    serialize_top_level_result serialize(const Serializable& msg, std::uint8_t seqnum = 0)
-    {
-        return serialize_top_level(msg, write_buffer, seqnum, max_buffer_size());
-    }
-
     // Helpers for sans-io algorithms
     next_action read(std::uint8_t& seqnum, bool keep_parsing_state = false)
     {
@@ -132,7 +125,7 @@ struct connection_state_data
     {
         // use_ssl is attached by top_level_algo
         write_buffer.clear();
-        auto res = serialize(msg, seqnum);
+        auto res = serialize_top_level(msg, write_buffer, seqnum, max_buffer_size());
         if (res.err)
             return res.err;
         seqnum = res.seqnum;

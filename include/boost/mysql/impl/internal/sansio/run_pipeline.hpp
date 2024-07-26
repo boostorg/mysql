@@ -177,37 +177,8 @@ class run_pipeline_algo
             return read_response_algo_.set_character_set.resume(st, ec);
         case pipeline_stage_kind::ping: return read_response_algo_.ping.resume(st, ec);
         case pipeline_stage_kind::close_statement: return next_action();  // has no response
-        case pipeline_stage_kind::error:                                  // already handled previously
         default: BOOST_ASSERT(false); return next_action();
         }
-    }
-
-    error_code check_request_errors()
-    {
-        // Verify if any stage has errors
-        error_code first_ec;
-        for (auto stage : stages_)
-        {
-            if (stage.kind == pipeline_stage_kind::error)
-            {
-                first_ec = stage.stage_specific.err;
-                break;
-            }
-        }
-
-        // If it has errors just fail the pipeline
-        if (first_ec)
-        {
-            for (std::size_t i = 0; i < stages_.size(); ++i)
-            {
-                auto stage = stages_[i];
-                error_code err = stage.kind == pipeline_stage_kind::error ? stage.stage_specific.err
-                                                                          : first_ec;
-                set_stage_error(i, err, {});
-            }
-        }
-
-        return first_ec;
     }
 
 public:
@@ -234,12 +205,6 @@ public:
             // If the request is empty, don't do anything
             if (stages_.empty())
                 return error_code();
-
-            // The request may contain errors (e.g. serialization somehow failed).
-            // Just fail the pipeline and do nothing for that case
-            ec = check_request_errors();
-            if (ec)
-                return ec;
 
             // Write the request. use_ssl is attached by top_level_algo
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({request_buffer_, false}))
