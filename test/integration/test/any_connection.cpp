@@ -193,4 +193,10 @@ BOOST_DATA_TEST_CASE(naggle_disabled, network_functions_any::sync_and_async())
     BOOST_TEST(opt.value() == true);
 }
 
+// Regression test: using a non-connected connection doesn't crash
+BOOST_FIXTURE_TEST_CASE(using_non_connected_connection, any_connection_fixture)
+{
+    conn.async_ping(as_netresult).validate_any_error();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
