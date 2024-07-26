@@ -63,12 +63,6 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_variant_stream)
 
-/**
-connect algo
-    UNIX error because it's not supported: integration. sync and async
-    could we test that all memory that was allocated was also deallocated?
- */
-
 struct fixture
 {
     detail::variant_stream_state st{global_context_executor(), nullptr};
