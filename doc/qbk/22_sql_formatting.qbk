@@ -113,22 +113,25 @@ complex logic. For these cases, you can use [reflink format_sql] and
 [reflink format_sql_to] to expand a query without executing it.
 These APIs don't involve communication with the server.
 
-[reflink format_sql] is the simplest. Akin to `std::format`, it takes a query string and
-a set of parameters, and expands the query to a `std::string`:
+[reflink format_sql] is the simplest, and is akin to `std::format`:
 
 ```
+    // Compose the SQL query without executing it
+    std::string query = boost::mysql::format_sql(
+        conn.format_opts().value(),
+        "SELECT id, salary FROM employee WHERE last_name = {}",
+        "Doe"
+    );
 
+    BOOST_TEST("query == "SELECT id, salary FROM employee WHERE last_name = 'Doe'");
+    
+    // TODO: execute it
 ```
 
-<TODO: example>
-
-Anything that can be used with `with_params` can be used with `format_sql`
-and `format_sql_to` too - we say that such types satisfy the [reflink Formattable] concept.
-
-In order to work, `format_sql` requires a [reflink format_options] instance describing
+`format_sql` requires a [reflink format_options] instance describing
 connection configuration, like the character set currently in use.
 [refmem any_connection format_opts] provides an easy way to retrieve these.
-
+[link mysql.sql_formatting_advanced.format_options This section] contains more info about `format_opts`.
 
 Some use cases, usually involving conditionals, may not be
 expressible in terms of a single format string. In such cases, you can
@@ -139,6 +142,16 @@ build query strings incrementally:
 [sql_formatting_incremental_use]
 
 [reflink sequence] uses this feature to make formatting ranges easier.
+
+Any type that works with `with_params` also does with `format_sql`
+and `format_sql_to`. These types are said to satisfy the [reflink Formattable] concept.
+[link mysql.sql_formatting.reference This table] summarizes such types.
+
+
+
+
+
+
 
 
 
@@ -158,7 +171,7 @@ By default, elements are separated by commas, but this is configurable:
 
 [sql_formatting_sequence_2]
 
-You may use `sequence` and [reflink with_params] together.
+You can use `sequence` and [reflink with_params] together.
 
 
 
