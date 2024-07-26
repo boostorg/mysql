@@ -40,10 +40,11 @@ public:
             if (ec)
                 return ec;
 
-            // Process the OK packet
-            return st.deserialize_ok(*diag_);
+            // Process the OK packet and done
+            ec = st.deserialize_ok(*diag_);
         }
-        return next_action();
+
+        return ec;
     }
 };
 

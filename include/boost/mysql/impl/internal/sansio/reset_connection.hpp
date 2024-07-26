@@ -56,10 +56,9 @@ public:
             }
 
             // Done
-            return ec;
         }
 
-        return next_action();
+        return ec;
     }
 };
 
