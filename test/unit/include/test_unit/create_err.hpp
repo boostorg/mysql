@@ -16,6 +16,7 @@
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include "test_unit/create_frame.hpp"
+#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {
@@ -23,17 +24,16 @@ namespace test {
 
 inline std::vector<std::uint8_t> serialize_err_impl(detail::err_view pack, bool with_header)
 {
-    std::vector<std::uint8_t> buff;
-    detail::serialization_context ctx(buff, detail::disable_framing);
-    if (with_header)
-        ctx.add(0xff);  // header
-    ctx.serialize(
-        detail::int2{pack.error_code},
-        detail::string_fixed<1>{},  // SQL state marker
-        detail::string_fixed<5>{},  // SQL state
-        detail::string_eof{pack.error_message}
-    );
-    return buff;
+    return serialize_to_vector([=](detail::serialization_context& ctx) {
+        if (with_header)
+            ctx.add(0xff);  // header
+        ctx.serialize(
+            detail::int2{pack.error_code},
+            detail::string_fixed<1>{},  // SQL state marker
+            detail::string_fixed<5>{},  // SQL state
+            detail::string_eof{pack.error_message}
+        );
+    });
 }
 
 class err_builder

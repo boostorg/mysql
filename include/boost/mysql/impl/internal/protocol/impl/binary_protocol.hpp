@@ -326,7 +326,7 @@ inline void serialize_binary_float(serialization_context& ctx, T input)
 
 inline void serialize_binary_date(serialization_context& ctx, const date& input)
 {
-    ctx.serialize(
+    ctx.serialize_fixed(
         int1{static_cast<std::uint8_t>(binc::date_sz)},
         int2{input.year()},
         int1{input.month()},
@@ -336,7 +336,7 @@ inline void serialize_binary_date(serialization_context& ctx, const date& input)
 
 inline void serialize_binary_datetime(serialization_context& ctx, const datetime& input)
 {
-    ctx.serialize(
+    ctx.serialize_fixed(
         int1{static_cast<std::uint8_t>(binc::datetime_dhmsu_sz)},
         int2{input.year()},
         int1{input.month()},
@@ -367,7 +367,7 @@ inline void serialize_binary_time(serialization_context& ctx, const boost::mysql
     auto is_negative = (input.count() < 0) ? 1 : 0;
 
     // Serialize
-    ctx.serialize(
+    ctx.serialize_fixed(
         int1{static_cast<std::uint8_t>(time_dhmsu_sz)},
         int1{static_cast<std::uint8_t>(is_negative)},
         int4{static_cast<std::uint32_t>(std::abs(num_days.count()))},
@@ -431,8 +431,8 @@ void boost::mysql::detail::serialize_binary_field(serialization_context& ctx, fi
     case field_kind::null: break;
     case field_kind::int64: sint8{input.get_int64()}.serialize(ctx); break;
     case field_kind::uint64: int8{input.get_uint64()}.serialize(ctx); break;
-    case field_kind::string: string_lenenc{input.get_string()}.serialize_checked(ctx); break;
-    case field_kind::blob: string_lenenc{to_string(input.get_blob())}.serialize_checked(ctx); break;
+    case field_kind::string: string_lenenc{input.get_string()}.serialize(ctx); break;
+    case field_kind::blob: string_lenenc{to_string(input.get_blob())}.serialize(ctx); break;
     case field_kind::float_: serialize_binary_float(ctx, input.get_float()); break;
     case field_kind::double_: serialize_binary_float(ctx, input.get_double()); break;
     case field_kind::date: serialize_binary_date(ctx, input.get_date()); break;
