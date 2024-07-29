@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/blob.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -42,6 +43,7 @@
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/create_statement.hpp"
 #include "test_unit/fail_count.hpp"
+#include "test_unit/test_any_connection.hpp"
 #include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql::test;
@@ -367,57 +369,35 @@ BOOST_AUTO_TEST_CASE(stmt_tuple_ref)
     BOOST_CHECK_NO_THROW(conn.execute(stmt.bind(std::ref(s), std::ref(b)), r));
 }
 
-// Helper to create any_connection objects using test_stream
-struct test_any_connection_fixture
-{
-    any_connection conn;
-
-    test_any_connection_fixture()
-        : conn(detail::access::construct<any_connection>(
-              default_initial_read_buffer_size,
-              static_cast<std::size_t>(-1),  // no buffer limit
-              std::unique_ptr<detail::engine>(
-                  new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>()
-              )
-          ))
-    {
-    }
-
-    test_stream& stream()
-    {
-        return detail::stream_from_engine<test_stream>(detail::access::get_impl(conn).get_engine());
-    }
-};
-
-auto pipeline_fn = netfun_maker<void, any_connection, const pipeline_request&, std::vector<stage_response>&>::
-    async_diag(&any_connection::async_run_pipeline);
-
 // empty pipelines complete immediately, posting adequately
-BOOST_FIXTURE_TEST_CASE(empty_pipeline, test_any_connection_fixture)
+BOOST_AUTO_TEST_CASE(empty_pipeline)
 {
     // Setup
+    auto conn = create_test_any_connection();
     pipeline_request req;
     std::vector<stage_response> res;
 
     // Run it. It should complete immediately, posting to the correct executor (verified by the testing
     // infrastructure)
-    pipeline_fn(conn, req, res).validate_no_error();
+    conn.async_run_pipeline(req, res, as_netresult).validate_no_error();
     BOOST_TEST(res.size() == 0u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(get_stream(conn).bytes_written(), blob{});
 }
 
 // fatal errors in pipelines behave correctly
-BOOST_FIXTURE_TEST_CASE(pipeline_fatal_error, test_any_connection_fixture)
+BOOST_AUTO_TEST_CASE(pipeline_fatal_error)
 {
     // Setup
+    auto conn = create_test_any_connection();
     pipeline_request req;
     std::vector<stage_response> res;
     req.add_execute("SELECT 1").add_execute("SELECT 2");
 
     // The first read will fail
-    stream().set_fail_count(fail_count(1, boost::asio::error::network_reset));
+    get_stream(conn).set_fail_count(fail_count(1, boost::asio::error::network_reset));
 
     // Run it
-    pipeline_fn(conn, req, res).validate_error(boost::asio::error::network_reset);
+    conn.async_run_pipeline(req, res, as_netresult).validate_error(boost::asio::error::network_reset);
 
     // Validate the results
     BOOST_TEST(res.size() == 2u);
