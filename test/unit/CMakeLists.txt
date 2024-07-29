@@ -80,6 +80,7 @@ add_executable(
     test/spotchecks/default_completion_tokens.cpp
     test/spotchecks/read_some_rows_static.cpp
     test/spotchecks/multifn.cpp
+    test/spotchecks/execution_requests.cpp
     test/spotchecks/misc.cpp
 
     test/format_sql/formattable.cpp

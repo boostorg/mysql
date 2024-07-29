@@ -64,10 +64,17 @@ struct execution_request_traits<with_params_t<T...>>
     static with_params_proxy<sizeof...(T)> make_request_impl(WithParamsType&& input, mp11::index_sequence<I...>)
     {
         boost::ignore_unused(input);  // MSVC gets confused for tuples of size 0
+        // clang-format off
         return {
             input.impl_.query,
-            {{{string_view(), std::get<I>(std::forward<WithParamsType>(input).impl_.args)}...}}
+            {{
+                {
+                    string_view(),
+                    formattable_ref(std::get<I>(std::forward<WithParamsType>(input).impl_.args))
+                }...
+            }}
         };
+        // clang-format on
     }
 
     // Allow the value category of the object to be deduced
