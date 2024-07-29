@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -27,6 +28,9 @@
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
+#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
+#include "test_unit/create_query_frame.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/printing.hpp"
 
@@ -71,7 +75,7 @@ BOOST_AUTO_TEST_CASE(text_query)
     fix.proc.num_calls().reset(1).on_num_meta(1).on_meta(1).validate();
 }
 
-BOOST_AUTO_TEST_CASE(prepared_statement)
+BOOST_AUTO_TEST_CASE(stmt_success)
 {
     // Setup
     const auto params = make_fv_arr("test", nullptr);
@@ -98,7 +102,7 @@ BOOST_AUTO_TEST_CASE(prepared_statement)
     fix.proc.num_calls().reset(1).on_num_meta(1).on_meta(1).validate();
 }
 
-BOOST_AUTO_TEST_CASE(error_num_params)
+BOOST_AUTO_TEST_CASE(stmt_error_num_params)
 {
     // Setup
     const auto params = make_fv_arr("test", nullptr, 42);  // too many params
@@ -106,6 +110,56 @@ BOOST_AUTO_TEST_CASE(error_num_params)
 
     // Run the algo. Nothing should be written to the server
     algo_test().check(fix, client_errc::wrong_num_params);
+}
+
+BOOST_AUTO_TEST_CASE(with_params_success)
+{
+    // Setup
+    const format_arg args[]{
+        {"", "abc"},
+        {"", 42   }
+    };
+    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fix.st.current_charset = utf8mb4_charset;
+
+    // Run the algo
+    algo_test()
+        .expect_write(create_query_frame(0, "SELECT 'abc', 42"))
+        .expect_read(create_ok_frame(1, ok_builder().build()))
+        .check(fix);
+
+    // Verify
+    BOOST_TEST(fix.proc.encoding() == resultset_encoding::text);
+    BOOST_TEST(fix.proc.sequence_number() == 2u);
+    BOOST_TEST(fix.proc.is_complete());
+    fix.proc.num_calls().reset(1).on_head_ok_packet(1).validate();
+}
+
+BOOST_AUTO_TEST_CASE(with_params_error_unknown_charset)
+{
+    // Setup
+    const format_arg args[]{
+        {"", "abc"},
+        {"", 42   }
+    };
+    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fix.st.current_charset = {};
+
+    // The algo fails immediately
+    algo_test().check(fix, client_errc::unknown_character_set);
+}
+
+BOOST_AUTO_TEST_CASE(with_params_error_formatting)
+{
+    // Setup
+    const format_arg args[]{
+        {"", "abc"},
+    };
+    fixture fix(any_execution_request({"SELECT {}, {}", args}));
+    fix.st.current_charset = utf8mb4_charset;
+
+    // The algo fails immediately
+    algo_test().check(fix, client_errc::format_arg_not_found);
 }
 
 // This covers errors in both writing the request and calling read_resultset_head
