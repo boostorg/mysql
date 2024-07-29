@@ -132,6 +132,12 @@ public:
     // To be called by serialize() functions. Appends bytes to the buffer.
     void add(span<const std::uint8_t> content) { add_impl(content); }
 
+    // Make serialization_context compatible with output_string
+    void append(const char* content, std::size_t size)
+    {
+        add({reinterpret_cast<const std::uint8_t*>(content), size});
+    }
+
     // Sets the error state. TODO: unit test
     void add_error(error_code ec)
     {

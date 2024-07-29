@@ -19,25 +19,9 @@
 
 #include <boost/core/span.hpp>
 
-#include <cstdint>
-
 namespace boost {
 namespace mysql {
 namespace detail {
-
-class external_format_context : public format_context_base
-{
-    static void do_append(void* obj, const char* data, std::size_t size)
-    {
-        static_cast<serialization_context*>(obj)->add({reinterpret_cast<const std::uint8_t*>(data), size});
-    }
-
-public:
-    external_format_context(serialization_context& ctx, format_options opts) noexcept
-        : format_context_base(output_string_ref(&do_append, &ctx), opts)
-    {
-    }
-};
 
 struct query_with_params
 {
@@ -48,7 +32,7 @@ struct query_with_params
     void serialize(serialization_context& ctx) const
     {
         // Create a format context
-        external_format_context fmt_ctx(ctx, opts);
+        auto fmt_ctx = access::construct<format_context_base>(output_string_ref::create(ctx), opts);
 
         // Serialize the query header
         ctx.add(0x03);
