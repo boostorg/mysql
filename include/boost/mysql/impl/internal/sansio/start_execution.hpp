@@ -125,4 +125,4 @@ public:
 }  // namespace mysql
 }  // namespace boost
 
-#endif /* INCLUDE_MYSQL_IMPL_NETWORK_ALGORITHMS_READ_RESULTSET_HEAD_HPP_ */
+#endif
