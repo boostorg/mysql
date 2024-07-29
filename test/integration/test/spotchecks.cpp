@@ -290,17 +290,8 @@ BOOST_MYSQL_SPOTCHECK_TEST(ping_success)
     fix.net.ping(fix.conn).validate_no_error();
 }
 
-// Writing to an unconnected any_connection triggers an assert right now
-// This should be solved by the refactor we're delivering in
-// https://github.com/boostorg/mysql/issues/230
 BOOST_MYSQL_SPOTCHECK_TEST(ping_error)
 {
-    // Setup
-    fix.connect();
-
-    // Close the connection
-    fix.net.close(fix.conn).validate_no_error();
-
     // Pinging an unconnected connection fails
     fix.net.ping(fix.conn).validate_any_error();
 }
@@ -325,12 +316,6 @@ BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_success)
 
 BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_error)
 {
-    // Setup
-    fix.connect();
-
-    // Close the connection
-    fix.net.close(fix.conn).validate_no_error();
-
     // Resetting an unconnected connection fails
     fix.net.reset_connection(fix.conn).validate_any_error();
 }
