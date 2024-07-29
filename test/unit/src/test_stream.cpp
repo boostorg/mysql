@@ -196,12 +196,12 @@ test_stream& boost::mysql::test::test_stream::add_break(std::size_t byte_num)
 }
 
 // test_any_connection
-boost::mysql::any_connection boost::mysql::test::create_test_any_connection()
+boost::mysql::any_connection boost::mysql::test::create_test_any_connection(any_connection_params params)
 {
     return any_connection(detail::access::construct<any_connection>(
-        default_initial_read_buffer_size,
-        static_cast<std::size_t>(-1),  // no buffer limit
-        std::unique_ptr<detail::engine>(new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>())
+        std::unique_ptr<detail::engine>(new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>()
+        ),
+        params
     ));
 }
 

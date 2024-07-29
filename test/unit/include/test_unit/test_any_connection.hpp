@@ -16,7 +16,7 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-any_connection create_test_any_connection();
+any_connection create_test_any_connection(any_connection_params params = {});
 test_stream& get_stream(any_connection& conn);
 
 }  // namespace test
