@@ -141,33 +141,6 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
     BOOST_TEST(result[2].rows() == makerows(1, "ab"));
 }
 
-// Regression check: execute statement with iterator range with a reference type that is convertible to
-// field_view, but not equal to field_view
-BOOST_AUTO_TEST_CASE(stmt_iterator_reference_not_field_view)
-{
-    results result;
-    auto stmt = statement_builder().id(1).num_params(2).build();
-    test_connection conn;
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().affected_rows(50).info("1st").build()));
-
-    // Call the function
-    std::vector<field> fields{field_view("test"), field_view()};
-    conn.execute(stmt.bind(fields.begin(), fields.end()), result);
-
-    // Verify the message we sent
-    constexpr std::uint8_t expected_msg[] = {
-        0x15, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
-        0x00, 0x02, 0x01, 0xfe, 0x00, 0x06, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74,
-    };
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected_msg);
-
-    // Verify the results
-    BOOST_TEST_REQUIRE(result.size() == 1u);
-    BOOST_TEST(result.meta().size() == 0u);
-    BOOST_TEST(result.affected_rows() == 50u);
-    BOOST_TEST(result.info() == "1st");
-}
-
 // The serialized form of executing a statement with ID=1, params=("test", nullptr)
 constexpr std::uint8_t execute_stmt_msg[] = {
     0x15, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,

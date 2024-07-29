@@ -7,12 +7,15 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/execution_state.hpp>
+#include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/results.hpp>
 
+#include <boost/optional/optional.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <forward_list>
+#include <vector>
 
 #include "test_common/create_basic.hpp"
 #include "test_common/network_result.hpp"
@@ -47,21 +50,22 @@ BOOST_FIXTURE_TEST_CASE(query, any_connection_fixture)
 
 BOOST_FIXTURE_TEST_CASE(stmt_tuple, any_connection_fixture)
 {
+    // Also verifies that tuples correctly apply the writable field transformation
     // Setup
     connect();
     results r;
     execution_state st;
-    auto stmt = conn.async_prepare_statement("SELECT ?", as_netresult).get();
-    BOOST_TEST_REQUIRE(stmt.num_params() == 1u);
+    auto stmt = conn.async_prepare_statement("SELECT ?, ?", as_netresult).get();
+    BOOST_TEST_REQUIRE(stmt.num_params() == 2u);
 
     // execute
-    conn.async_execute(stmt.bind("42"), r, as_netresult).validate_no_error();
-    BOOST_TEST(r.rows() == makerows(1, "42"), per_element());
+    conn.async_execute(stmt.bind("42", boost::optional<int>(13)), r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(2, "42", 13), per_element());
 
     // start execution
-    conn.async_start_execution(stmt.bind(90), st, as_netresult).validate_no_error();
+    conn.async_start_execution(stmt.bind(90, boost::optional<int>()), st, as_netresult).validate_no_error();
     auto rws = conn.async_read_some_rows(st, as_netresult).get();
-    BOOST_TEST(rws == makerows(1, 90), per_element());
+    BOOST_TEST(rws == makerows(2, 90, nullptr), per_element());
 }
 
 BOOST_FIXTURE_TEST_CASE(stmt_tuple_error, any_connection_fixture)
@@ -98,6 +102,12 @@ BOOST_FIXTURE_TEST_CASE(stmt_range, any_connection_fixture)
     conn.async_start_execution(stmt.bind(params.begin(), params.end()), st, as_netresult).validate_no_error();
     auto rws = conn.async_read_some_rows(st, as_netresult).get();
     BOOST_TEST(rws == makerows(2, 42, "abc"), per_element());
+
+    // Regression check: executing with a type convertible (but not equal) to field_view works
+    const std::vector<field> owning_params{field_view(50), field_view("luv")};
+    conn.async_execute(stmt.bind(owning_params.begin(), owning_params.end()), r, as_netresult)
+        .validate_no_error();
+    BOOST_TEST(r.rows() == makerows(2, 50, "luv"), per_element());
 }
 
 BOOST_FIXTURE_TEST_CASE(stmt_range_error, any_connection_fixture)
