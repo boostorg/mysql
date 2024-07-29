@@ -5,7 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_code.hpp>
+
+#include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/engine.hpp>
+#include <boost/mysql/detail/engine_impl.hpp>
+#include <boost/mysql/detail/engine_stream_adaptor.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
@@ -18,11 +24,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <set>
 #include <vector>
 
 #include "test_common/buffer_concat.hpp"
 #include "test_common/tracker_executor.hpp"
+#include "test_unit/test_any_connection.hpp"
 #include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql::test;
@@ -185,4 +193,19 @@ test_stream& boost::mysql::test::test_stream::add_break(std::size_t byte_num)
     BOOST_ASSERT(byte_num <= bytes_to_read_.size());
     read_break_offsets_.insert(byte_num);
     return *this;
+}
+
+// test_any_connection
+boost::mysql::any_connection boost::mysql::test::create_test_any_connection()
+{
+    return any_connection(detail::access::construct<any_connection>(
+        default_initial_read_buffer_size,
+        static_cast<std::size_t>(-1),  // no buffer limit
+        std::unique_ptr<detail::engine>(new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>())
+    ));
+}
+
+test_stream& boost::mysql::test::get_stream(any_connection& conn)
+{
+    return detail::stream_from_engine<test_stream>(detail::access::get_impl(conn).get_engine());
 }
