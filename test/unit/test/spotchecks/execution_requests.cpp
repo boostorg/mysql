@@ -8,7 +8,6 @@
 // Since integration tests can't reliably test multifunction operations
 // that span over multiple messages, we test the complete multifn fllow in this unit tests.
 
-#include <boost/mysql/connection.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/with_params.hpp>
@@ -23,6 +22,7 @@
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_query_frame.hpp"
+#include "test_unit/test_any_connection.hpp"
 #include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql;
@@ -30,8 +30,7 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_execution_requests)
 
-// TODO: replace this by any_connection
-using test_connection = connection<test_stream>;
+// TODO: do we want to spotcheck old connection, too?
 
 //                 execute, start_execution 4 overloads, and with deferred/eager tokens
 //                     const/nonconst correctly applied => with_params and a mutable range
@@ -41,9 +40,9 @@ using test_connection = connection<test_stream>;
 #ifdef BOOST_MYSQL_HAS_RANGES
 BOOST_AUTO_TEST_CASE(forwarding_constness)
 {
-    test_connection conn;
+    auto conn = create_test_any_connection();
     results result;
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
 
     std::vector<int> elms{1, 7, 4, 10};
     conn.execute(
@@ -51,7 +50,7 @@ BOOST_AUTO_TEST_CASE(forwarding_constness)
         result
     );
 
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), create_query_frame(0, "SELECT 1, 4"));
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(get_stream(conn).bytes_written(), create_query_frame(0, "SELECT 1, 4"));
 }
 #endif
 

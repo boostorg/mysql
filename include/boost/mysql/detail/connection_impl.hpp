@@ -274,14 +274,14 @@ class connection_impl
             diagnostics* diag,
             engine* eng,
             connection_state* st,
-            const ExecutionRequest& req,
+            ExecutionRequest&& req,
             execution_processor* proc
         )
         {
             async_run_impl(
                 *eng,
                 *st,
-                execute_algo_params{make_request(req, *st), proc},
+                execute_algo_params{make_request(std::forward<ExecutionRequest>(req), *st), proc},
                 *diag,
                 std::forward<Handler>(handler)
             );
@@ -297,14 +297,14 @@ class connection_impl
             diagnostics* diag,
             engine* eng,
             connection_state* st,
-            const ExecutionRequest& req,
+            ExecutionRequest&& req,
             execution_processor* proc
         )
         {
             async_run_impl(
                 *eng,
                 *st,
-                start_execution_algo_params{make_request(req, *st), proc},
+                start_execution_algo_params{make_request(std::forward<ExecutionRequest>(req), *st), proc},
                 *diag,
                 std::forward<Handler>(handler)
             );
@@ -441,9 +441,15 @@ public:
 
     // Execute
     template <class ExecutionRequest, class ResultsType>
-    void execute(const ExecutionRequest& req, ResultsType& result, error_code& err, diagnostics& diag)
+    void execute(ExecutionRequest&& req, ResultsType& result, error_code& err, diagnostics& diag)
     {
-        run(execute_algo_params{make_request(req, *st_), &access::get_impl(result).get_interface()}, err, diag
+        run(
+            execute_algo_params{
+                make_request(std::forward<ExecutionRequest>(req), *st_),
+                &access::get_impl(result).get_interface()
+            },
+            err,
+            diag
         );
     }
 
@@ -478,15 +484,20 @@ public:
     // Start execution
     template <class ExecutionRequest, class ExecutionStateType>
     void start_execution(
-        const ExecutionRequest& req,
+        ExecutionRequest&& req,
         ExecutionStateType& exec_st,
         error_code& err,
         diagnostics& diag
     )
     {
-        run(start_execution_algo_params{make_request(req, *st_), &access::get_impl(exec_st).get_interface()},
+        run(
+            start_execution_algo_params{
+                make_request(std::forward<ExecutionRequest>(req), *st_),
+                &access::get_impl(exec_st).get_interface()
+            },
             err,
-            diag);
+            diag
+        );
     }
 
     template <class ExecutionRequest, class ExecutionStateType, class CompletionToken>

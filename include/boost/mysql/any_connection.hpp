@@ -400,18 +400,18 @@ public:
 
     /// \copydoc connection::execute
     template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
-    void execute(const ExecutionRequest& req, ResultsType& result, error_code& err, diagnostics& diag)
+    void execute(ExecutionRequest&& req, ResultsType& result, error_code& err, diagnostics& diag)
     {
-        impl_.execute(req, result, err, diag);
+        impl_.execute(std::forward<ExecutionRequest>(req), result, err, diag);
     }
 
     /// \copydoc execute
     template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
-    void execute(const ExecutionRequest& req, ResultsType& result)
+    void execute(ExecutionRequest&& req, ResultsType& result)
     {
         error_code err;
         diagnostics diag;
-        execute(req, result, err, diag);
+        execute(std::forward<ExecutionRequest>(req), result, err, diag);
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
@@ -455,25 +455,20 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
-    void start_execution(
-        const ExecutionRequest& req,
-        ExecutionStateType& st,
-        error_code& err,
-        diagnostics& diag
-    )
+    void start_execution(ExecutionRequest&& req, ExecutionStateType& st, error_code& err, diagnostics& diag)
     {
-        impl_.start_execution(req, st, err, diag);
+        impl_.start_execution(std::forward<ExecutionRequest>(req), st, err, diag);
     }
 
     /// \copydoc start_execution
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
-    void start_execution(const ExecutionRequest& req, ExecutionStateType& st)
+    void start_execution(ExecutionRequest&& req, ExecutionStateType& st)
     {
         error_code err;
         diagnostics diag;
-        start_execution(req, st, err, diag);
+        start_execution(std::forward<ExecutionRequest>(req), st, err, diag);
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
