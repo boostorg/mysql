@@ -22,23 +22,16 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
-#include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/engine.hpp>
-#include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/writable_field_traits.hpp>
 
-#include <boost/core/ignore_unused.hpp>
-#include <boost/mp11/integer_sequence.hpp>
 #include <boost/system/result.hpp>
 
-#include <array>
 #include <cstddef>
 #include <cstring>
 #include <memory>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -55,12 +48,11 @@ class pipeline_request;
 
 namespace detail {
 
-// Forward decl
-class connection_state;
-
 //
 // Helpers to interact with connection_state, without including its definition
 //
+class connection_state;
+
 struct connection_state_deleter
 {
     BOOST_MYSQL_DECL void operator()(connection_state*) const;
@@ -76,25 +68,8 @@ template <class AlgoParams>
 typename AlgoParams::result_type get_result(const connection_state&);
 
 //
-// execution helpers
-//
-template <class... T, std::size_t... I>
-std::array<field_view, sizeof...(T)> tuple_to_array_impl(const std::tuple<T...>& t, mp11::index_sequence<I...>) noexcept
-{
-    boost::ignore_unused(t);  // MSVC gets confused if sizeof...(T) == 0
-    return std::array<field_view, sizeof...(T)>{{to_field(std::get<I>(t))...}};
-}
-
-template <class... T>
-std::array<field_view, sizeof...(T)> tuple_to_array(const std::tuple<T...>& t) noexcept
-{
-    return tuple_to_array_impl(t, mp11::make_index_sequence<sizeof...(T)>());
-}
-
-//
 // helpers to run algos
 //
-
 template <class AlgoParams>
 using has_void_result = std::is_same<typename AlgoParams::result_type, void>;
 
@@ -150,45 +125,18 @@ class connection_impl
     std::unique_ptr<engine> engine_;
     std::unique_ptr<connection_state, connection_state_deleter> st_;
 
-    // Execution helpers
-    static any_execution_request make_request(string_view q, connection_state&) noexcept { return q; }
-
-    // Used for any type with make_request() in its impl type
-    // TODO: use this for statements, too
+    // Helper for execution requests
     template <class T>
-    static auto make_request(T&& req, connection_state&)
-        -> decltype(access::get_impl(std::forward<T>(req)).make_request())
+    static auto make_request(T&& input, connection_state& st)
+        -> decltype(execution_request_traits<typename std::decay<T>::type>::make_request(
+            std::forward<T>(input),
+            get_shared_fields(st)
+        ))
     {
-        return access::get_impl(std::forward<T>(req)).make_request();
-    }
-
-    template <class FieldViewFwdIterator>
-    static any_execution_request make_request(
-        const bound_statement_iterator_range<FieldViewFwdIterator>& req,
-        connection_state& st
-    )
-    {
-        auto& impl = access::get_impl(req);
-        auto& shared_fields = get_shared_fields(st);
-        shared_fields.assign(impl.first, impl.last);
-        return {impl.stmt, shared_fields};
-    }
-
-    template <std::size_t N>
-    struct stmt_tuple_request_proxy
-    {
-        statement stmt;
-        std::array<field_view, N> params;
-
-        operator any_execution_request() const { return any_execution_request(stmt, params); }
-    };
-
-    template <class WritableFieldTuple>
-    static stmt_tuple_request_proxy<std::tuple_size<WritableFieldTuple>::value>
-    make_request(const bound_statement_tuple<WritableFieldTuple>& req, connection_state&)
-    {
-        auto& impl = access::get_impl(req);
-        return {impl.stmt, tuple_to_array(impl.params)};
+        return execution_request_traits<typename std::decay<T>::type>::make_request(
+            std::forward<T>(input),
+            get_shared_fields(st)
+        );
     }
 
     // Generic algorithm

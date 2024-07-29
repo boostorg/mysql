@@ -25,7 +25,6 @@
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
-#include "test_unit/create_statement.hpp"
 #include "test_unit/mock_execution_processor.hpp"
 #include "test_unit/printing.hpp"
 
@@ -239,9 +238,8 @@ BOOST_AUTO_TEST_CASE(execute_success_rows)
 BOOST_AUTO_TEST_CASE(execute_error_num_params)
 {
     // Setup
-    auto stmt = statement_builder().id(1).num_params(2).build();
     const auto params = make_fv_arr("test", nullptr, 42);  // too many params
-    execute_fixture fix(any_execution_request(stmt, params));
+    execute_fixture fix(any_execution_request({std::uint32_t(1), std::uint16_t(2), params}));
 
     // Run the algo. Nothing should be written to the server
     algo_test().check(fix, client_errc::wrong_num_params);

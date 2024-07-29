@@ -8,13 +8,14 @@
 #ifndef BOOST_MYSQL_DETAIL_EXECUTION_CONCEPTS_HPP
 #define BOOST_MYSQL_DETAIL_EXECUTION_CONCEPTS_HPP
 
-#include <boost/mysql/statement.hpp>
+#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
 
-#include <cstddef>
 #include <type_traits>
+#include <vector>
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
@@ -22,6 +23,8 @@ namespace boost {
 namespace mysql {
 
 // Forward decls
+class field_view;
+
 template <class... StaticRow>
 class static_execution_state;
 
@@ -65,45 +68,27 @@ template <class T>
 concept results_type = std::is_same_v<T, results> || is_static_results<T>::value;
 
 // Execution request
-// TODO: we can rewrite this simpler
-template <class T>
-struct is_bound_statement_tuple : std::false_type
+struct no_execution_request_traits
+{
+};
+
+template <class T, class = void>
+struct execution_request_traits : no_execution_request_traits
 {
 };
 
 template <class T>
-struct is_bound_statement_tuple<bound_statement_tuple<T>> : std::true_type
+struct execution_request_traits<T, typename std::enable_if<std::is_convertible<T, string_view>::value>::type>
 {
-};
-
-template <class T>
-struct is_bound_statement_range : std::false_type
-{
-};
-
-template <class T>
-struct is_bound_statement_range<bound_statement_iterator_range<T>> : std::true_type
-{
-};
-
-template <class T>
-struct is_with_params : std::false_type
-{
-};
-
-template <class... T>
-struct is_with_params<with_params_t<T...>> : std::true_type
-{
+    static any_execution_request make_request(string_view input, std::vector<field_view>&) { return input; }
 };
 
 template <class T>
 struct is_execution_request
 {
-    using without_cvref = typename std::remove_cv<typename std::remove_reference<T>::type>::type;
-    static constexpr bool value = std::is_convertible<T, string_view>::value ||
-                                  is_bound_statement_tuple<without_cvref>::value ||
-                                  is_bound_statement_range<without_cvref>::value ||
-                                  is_with_params<without_cvref>::value;
+    static constexpr bool value = !std::is_base_of<
+        no_execution_request_traits,
+        execution_request_traits<typename std::decay<T>::type>>::value;
 };
 
 template <class T>

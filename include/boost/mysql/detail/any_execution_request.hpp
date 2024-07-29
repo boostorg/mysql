@@ -9,10 +9,11 @@
 #define BOOST_MYSQL_DETAIL_ANY_EXECUTION_REQUEST_HPP
 
 #include <boost/mysql/constant_string_view.hpp>
-#include <boost/mysql/statement.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/core/span.hpp>
+
+#include <cstdint>
 
 namespace boost {
 namespace mysql {
@@ -41,7 +42,8 @@ struct any_execution_request
         } query_with_params;
         struct stmt_t
         {
-            statement stmt;
+            std::uint32_t stmt_id;
+            std::uint16_t num_params;
             span<const field_view> params;
         } stmt;
 
@@ -54,14 +56,10 @@ struct any_execution_request
     data_t data;
 
     any_execution_request(string_view q) noexcept : type(type_t::query), data(q) {}
-    any_execution_request(constant_string_view q, span<const format_arg> args) noexcept
-        : type(type_t::query_with_params), data({q, args})
+    any_execution_request(data_t::query_with_params_t v) noexcept : type(type_t::query_with_params), data(v)
     {
     }
-    any_execution_request(statement s, span<const field_view> params) noexcept
-        : type(type_t::stmt), data({s, params})
-    {
-    }
+    any_execution_request(data_t::stmt_t v) noexcept : type(type_t::stmt), data(v) {}
 };
 
 }  // namespace detail

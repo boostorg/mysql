@@ -69,9 +69,9 @@ class start_execution_algo
 
     next_action write_stmt(connection_state_data& st, any_execution_request::data_t::stmt_t data)
     {
-        if (data.stmt.num_params() != data.params.size())
+        if (data.num_params != data.params.size())
             return error_code(client_errc::wrong_num_params);
-        return st.write(execute_stmt_command{data.stmt.id(), data.params}, seqnum());
+        return st.write(execute_stmt_command{data.stmt_id, data.params}, seqnum());
     }
 
     next_action compose_request(connection_state_data& st)
