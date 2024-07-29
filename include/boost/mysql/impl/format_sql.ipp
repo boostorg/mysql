@@ -545,7 +545,7 @@ void boost::mysql::format_context_base::format_arg(detail::formattable_ref_impl 
     }
 }
 
-void boost::mysql::vformat_sql_to(
+void boost::mysql::detail::vformat_sql_to(
     format_context_base& ctx,
     constant_string_view format_str,
     span<const format_arg> args
