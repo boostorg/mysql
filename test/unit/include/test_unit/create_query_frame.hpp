@@ -31,9 +31,14 @@ inline std::vector<std::uint8_t> create_query_body_impl(std::uint8_t command_id,
     });
 }
 
+inline std::vector<std::uint8_t> create_query_body(string_view sql)
+{
+    return create_query_body_impl(0x03, sql);
+}
+
 inline std::vector<std::uint8_t> create_query_frame(std::uint8_t seqnum, string_view sql)
 {
-    return create_frame(seqnum, create_query_body_impl(0x03, sql));
+    return create_frame(seqnum, create_query_body(sql));
 }
 
 inline std::vector<std::uint8_t> create_prepare_statement_frame(std::uint8_t seqnum, string_view sql)
