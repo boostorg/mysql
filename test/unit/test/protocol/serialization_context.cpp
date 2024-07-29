@@ -439,6 +439,38 @@ BOOST_AUTO_TEST_CASE(success_after_error)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
 }
 
+BOOST_AUTO_TEST_CASE(add_error)
+{
+    // Setup
+    std::vector<std::uint8_t> buff;
+    detail::serialization_context ctx(buff);
+
+    // Successfully add some data
+    ctx.add(std::vector<std::uint8_t>{1, 2, 3, 4, 5});
+    std::vector<std::uint8_t> expected{0, 0, 0, 0, 1, 2, 3, 4, 5};
+    BOOST_TEST(ctx.error() == error_code());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Add an error
+    ctx.add_error(client_errc::invalid_encoding);
+    BOOST_TEST(ctx.error() == client_errc::invalid_encoding);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Adding further data with the error set does nothing
+    ctx.add(std::vector<std::uint8_t>{8, 9, 10});
+    BOOST_TEST(ctx.error() == client_errc::invalid_encoding);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    // Adding another error does nothing
+    ctx.add_error(client_errc::protocol_value_error);
+    BOOST_TEST(ctx.error() == client_errc::invalid_encoding);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+
+    ctx.add_error(error_code());
+    BOOST_TEST(ctx.error() == client_errc::invalid_encoding);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()

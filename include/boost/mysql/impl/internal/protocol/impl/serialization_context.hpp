@@ -138,7 +138,7 @@ public:
         add({reinterpret_cast<const std::uint8_t*>(content), size});
     }
 
-    // Sets the error state. TODO: unit test
+    // Sets the error state
     void add_error(error_code ec)
     {
         if (!err_)
