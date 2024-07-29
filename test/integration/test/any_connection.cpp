@@ -20,6 +20,7 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
+#include <boost/asio/error.hpp>
 #include <boost/asio/local/basic_endpoint.hpp>
 #include <boost/test/data/test_case.hpp>
 
@@ -45,34 +46,47 @@ BOOST_AUTO_TEST_SUITE(test_any_connection)
 // any_connection can be used with UNIX sockets
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
-BOOST_FIXTURE_TEST_CASE(unix_sockets, any_connection_fixture)
+BOOST_DATA_TEST_CASE(unix_sockets, network_functions_any::sync_and_async())
 {
+    // Setup
+    netfn_fixture_any fix(sample);
+
     // Connect
-    connect(connect_params_builder().set_unix().build());
-    BOOST_TEST(!conn.uses_ssl());
+    fix.connect(connect_params_builder().set_unix());
+    BOOST_TEST(!fix.conn.uses_ssl());
 
     // We can prepare statements
-    auto stmt = conn.async_prepare_statement("SELECT ?", as_netresult).get();
-    BOOST_TEST(stmt.num_params() == 1u);
+    auto stmt = fix.net.prepare_statement(fix.conn, "SELECT ?, ?").get();
+    BOOST_TEST(stmt.num_params() == 2u);
 
     // We can execute queries
     results r;
-    conn.async_execute("SELECT 'abc'", r, as_netresult).validate_no_error();
+    fix.net.execute_query(fix.conn, "SELECT 'abc'", r).validate_no_error();
     BOOST_TEST(r.rows() == makerows(1, "abc"), per_element());
 
     // We can execute statements
-    conn.async_execute(stmt.bind(42), r, as_netresult).validate_no_error();
-    BOOST_TEST(r.rows() == makerows(1, 42), per_element());
+    fix.net.execute_statement(fix.conn, stmt.bind(42, 100), r).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(2, 42, 100), per_element());
 
     // We can get errors
-    conn.async_execute("SELECT * FROM bad_table", r, as_netresult)
+    fix.net.execute_query(fix.conn, "SELECT * FROM bad_table", r)
         .validate_error(
             common_server_errc::er_no_such_table,
             "Table 'boost_mysql_integtests.bad_table' doesn't exist"
         );
 
     // We can terminate the connection
-    conn.async_close(as_netresult).validate_no_error();
+    fix.net.close(fix.conn).validate_no_error();
+}
+#else
+BOOST_DATA_TEST_CASE(unix_sockets_not_supported, network_functions_any::sync_and_async())
+{
+    // Setup
+    netfn_fixture_any fix(sample);
+
+    // Attempting to connect yields an error
+    fix.net.connect(fix.conn, connect_params_builder().set_unix().build())
+        .validate_error(asio::error::operation_not_supported);
 }
 #endif
 
@@ -174,9 +188,15 @@ BOOST_DATA_TEST_CASE(naggle_disabled, network_functions_any::sync_and_async())
     asio::ip::tcp::no_delay opt;
     static_cast<detail::engine_impl<detail::variant_stream>&>(detail::access::get_impl(fix.conn).get_engine())
         .stream()
-        .tcp_socket()
+        .socket()
         .get_option(opt);
     BOOST_TEST(opt.value() == true);
+}
+
+// Regression test: using a non-connected connection doesn't crash
+BOOST_FIXTURE_TEST_CASE(using_non_connected_connection, any_connection_fixture)
+{
+    conn.async_ping(as_netresult).validate_any_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
