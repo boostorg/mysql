@@ -143,11 +143,8 @@ struct generic_algo_handler
     connection_state* st;
 };
 
-// Note: async_initiate args be, at least:
-//    1. a diagnostics*
-//    2. a (possibly smart) pointer to an I/O object
-//    3. everything else
-// This uniform structure allows to write completion tokens with extra functionality
+// Note: the 1st async_initiate arg should be a diagnostics*,
+// so completion tokens knowing how Boost.MySQL work can operate
 class connection_impl
 {
     std::unique_ptr<engine> engine_;
