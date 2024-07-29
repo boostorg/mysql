@@ -350,7 +350,7 @@ private:
                 break;
             case vsconnect_action_type::none:
                 algo_.reset();
-                self.complete(ec);
+                self.complete(act.data.err);
                 break;
             default: BOOST_ASSERT(false);
             }
