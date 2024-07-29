@@ -70,7 +70,7 @@ explanation on format strings.
 
 
 
-[heading Common errors and how to fix them]
+[heading:errors Common errors and how to fix them]
 
 Not all values can be formatted. If the library finds that formatting a certain
 value can cause an ambiguity that could lead to a security problem, an error
@@ -270,36 +270,44 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
 
 [heading:security Security considerations]
 
-Client-side SQL formatting [*does protect against SQL injection] by appropriately quoting and escaping
-string values. However, this feature [*does not understand your queries]. You need to make sure that
-your formatting operations result in valid SQL. If you try to build very complex
-queries and make mistakes, attackers may exploit logic errors in your formatting logic to overtake your system.
+[*Both] client-side SQL formatting and prepared statements [*protect against SQL injection].
+Statements do so by parsing the query with placeholders server-side, before performing parameter
+substitution. Client-side SQL quotes and escapes your values to avoid injection, but
+[*does not understand your queries].
 
+This means that you need to [*ensure that your queries always expand to valid SQL].
+This is trivial for simple queries, but may be an issue with more complex ones,
+involving ranges or dynamic identifiers. For instance, the following query may
+expand to invalid SQL if the provided range is empty:
 
-* Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
-  to set your connection's character set instead of using raw SQL.
-[warning
-  [*Security considerations]: don't craft [reflink format_options] values manually.
-  Always use [refmem any_connection format_opts].
-]
-* Statements are more foolproof (they are parsed by the server, then executed) and are more mature.
-  Statements guarantee by design the absence of logic errors, as long as you use constant query strings
-  during prepare. Client-side SQL requires you to pay more attention.
-* Avoid too complex query generation logic. If you can express things as a single format string, do.
-* If you really need to use conditionals with `format_sql_to`, thoroughly unit test your query generation.
+```
+// If ids.empty(), generates "SELECT * FROM employee WHERE id IN ()", which is a syntax error.
+// This is not a security issue for this query, but may be exploitable in more involved queries.
+// Queries involving only scalar values (as opposed to ranges) are not affected by this.
+// It is your responsibility to check for conditions like ids.empty(), as client-side SQL
+// formatting does not understand your queries.
+auto q = format_sql(opts, "SELECT * FROM employee WHERE id IN ({})", ids);
+```
 
+The risk is higher if you're building your query by pieces using [reflink format_sql_to].
 
+To sum up:
 
-
-
-
-
-
-
-
-
-
-
+* Client-side SQL protects against SQL injection.
+* Client-side SQL does not protect against logic errors. The risk is only present in complex
+  queries. We suggest the following advice:
+    * Avoid complex query generation logic as much as possible.
+      Use a single format string instead of `format_sql_to`, unless you have no other option.
+    * When using ranges, consider if the empty range would lead to valid SQL or not.
+    * Thoroughly test complex query generation logic.
+* Client-side SQL requires knowing the connection's current character set. This usually happens
+  out of the box, and will lead to a [link mysql.sql_formatting.errors controlled error]
+  otherwise. Some recommendations:
+    * If in doubt, always use the default character set (`utf8mb4`).
+    * Never issue `SET NAMES` or `SET CHARACTER SET` SQL statements directly -
+      use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set], instead.
+    * If you're using [reflink format_sql] or [reflink format_sql_to], never craft [reflink format_options] values manually.
+      Use [refmem any_connection format_opts], instead.
 
 
 
