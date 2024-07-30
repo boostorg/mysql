@@ -54,6 +54,14 @@ public:
         fail_count_ = fc;
         return *this;
     }
+    void clear()
+    {
+        bytes_to_read_.clear();
+        read_break_offsets_.clear();
+        num_bytes_read_ = 0;
+        bytes_written_.clear();
+        fail_count_ = fail_count();
+    }
 
     // Getting test results
     std::size_t num_bytes_read() const noexcept { return num_bytes_read_; }
