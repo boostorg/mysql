@@ -72,6 +72,9 @@ std::vector<note_t> note_repository::get_notes(boost::asio::yield_context yield)
         std::make_move_iterator(result.rows().begin()),
         std::make_move_iterator(result.rows().end())
     );
+
+    // If an exception is thrown, pooled_connection's destructor will
+    // return the connection automatically to the pool.
 }
 
 optional<note_t> note_repository::get_note(std::int64_t note_id, boost::asio::yield_context yield)
@@ -85,13 +88,8 @@ optional<note_t> note_repository::get_note(std::int64_t note_id, boost::asio::yi
     mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
     mysql::throw_on_error(ec, diag);
 
-    // Our query has a parameter, so we need a prepared statement.
-    // We don't need to deallocate this statement explicitly
-    // (no need to call any_connection::async_close_statement).
-    // The connection pool takes care of this for us
-    // (by using any_connection::async_reset_connection).
-    // We use the static interface to parse results
-    // TODO: review
+    // When executed, with_params expands a query client-side before sending it to the server.
+    // Placeholders are marked with {}
     mysql::static_results<note_t> result;
     conn->async_execute(
         mysql::with_params("SELECT id, title, content FROM notes WHERE id = {}", note_id),
@@ -101,14 +99,14 @@ optional<note_t> note_repository::get_note(std::int64_t note_id, boost::asio::yi
     );
     mysql::throw_on_error(ec, diag);
 
+    // We did nothing to mutate session state, so we can skip reset
+    conn.return_without_reset();
+
     // An empty results object indicates that no note was found
     if (result.rows().empty())
         return {};
     else
         return std::move(result.rows()[0]);
-
-    // There's no need to return the connection explicitly to the pool,
-    // pooled_connection's destructor takes care of it.
 }
 
 note_t note_repository::create_note(string_view title, string_view content, boost::asio::yield_context yield)
@@ -122,18 +120,21 @@ note_t note_repository::create_note(string_view title, string_view content, boos
     mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
     mysql::throw_on_error(ec, diag);
 
-    // Our query has parameters, so we need to prepare a statement.
-    // As explained above, there is no need to deallocate the statement explicitly,
-    // since the pool takes care of it. The statement won't produce any rows,
-    // so we can use static_results<std::tuple<>>
-    // TODO: review
-    mysql::static_results<std::tuple<>> result;
-    conn->async_execute(
-        mysql::with_params("INSERT INTO notes (title, content) VALUES ({}, {})", title, content),
-        result,
+    // We will use statements in this function for the sake of example.
+    // We don't need to deallocate the statement explicitly,
+    // since the pool takes care of it after the connection is returned.
+    // You can also use with_params instead of statements.
+    mysql::statement stmt = conn->async_prepare_statement(
+        "INSERT INTO notes (title, content) VALUES (?, ?)",
         diag,
         yield[ec]
     );
+    mysql::throw_on_error(ec, diag);
+
+    // Execute the statement. The statement won't produce any rows,
+    // so we can use static_results<std::tuple<>>
+    mysql::static_results<std::tuple<>> result;
+    conn->async_execute(stmt.bind(title, content), result, diag, yield[ec]);
     mysql::throw_on_error(ec, diag);
 
     // MySQL reports last_insert_id as a uint64_t regardless of the actual ID type.
@@ -162,12 +163,8 @@ optional<note_t> note_repository::replace_note(
     mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
     mysql::throw_on_error(ec, diag);
 
-    // Our query has parameters, so we need to prepare a statement.
-    // As explained above, there is no need to deallocate the statement explicitly,
-    // since the pool takes care of it.
-    // Execute the statement. The statement won't produce any rows,
-    // so we can use static_results<std::tuple<>>
-    // TODO: review
+    // Expand and execute the query.
+    // It won't produce any rows, so we can use static_results<std::tuple<>>
     mysql::static_results<std::tuple<>> empty_result;
     conn->async_execute(
         mysql::with_params(
@@ -182,14 +179,14 @@ optional<note_t> note_repository::replace_note(
     );
     mysql::throw_on_error(ec, diag);
 
+    // We didn't mutate session state, so we can skip reset
+    conn.return_without_reset();
+
     // No affected rows means that the note doesn't exist
     if (empty_result.affected_rows() == 0u)
         return {};
 
     return note_t{note_id, title, content};
-
-    // There's no need to return the connection explicitly to the pool,
-    // pooled_connection's destructor takes care of it.
 }
 
 bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_context yield)
@@ -203,12 +200,8 @@ bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_conte
     mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
     mysql::throw_on_error(ec, diag);
 
-    // Our query has parameters, so we need to prepare a statement.
-    // As explained above, there is no need to deallocate the statement explicitly,
-    // since the pool takes care of it.
-    // Execute the statement. The statement won't produce any rows,
-    // so we can use static_results<std::tuple<>>
-    // TODO: review
+    // Expand and execute the query.
+    // It won't produce any rows, so we can use static_results<std::tuple<>>
     mysql::static_results<std::tuple<>> empty_result;
     conn->async_execute(
         mysql::with_params("DELETE FROM notes WHERE id = {}", note_id),
@@ -218,11 +211,11 @@ bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_conte
     );
     mysql::throw_on_error(ec, diag);
 
+    // We didn't mutate session state, so we can skip reset
+    conn.return_without_reset();
+
     // No affected rows means that the note didn't exist
     return empty_result.affected_rows() != 0u;
-
-    // There's no need to return the connection explicitly to the pool,
-    // pooled_connection's destructor takes care of it.
 }
 
 //]
