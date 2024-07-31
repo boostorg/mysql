@@ -331,7 +331,7 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         std::vector<int> ids;
         auto q = format_sql(conn.format_opts().value(), "SELECT * FROM employee WHERE id IN ({})", ids);
         //]
-        BOOST_TEST(q == "SELECT * FROM employee WHERE id IN ({})");
+        BOOST_TEST(q == "SELECT * FROM employee WHERE id IN ()");
     }
 
     {
