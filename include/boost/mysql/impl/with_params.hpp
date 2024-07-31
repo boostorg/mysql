@@ -18,6 +18,7 @@
 #include <boost/mysql/detail/any_execution_request.hpp>
 
 #include <boost/core/ignore_unused.hpp>
+#include <boost/core/span.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
 #include <tuple>
@@ -84,6 +85,16 @@ struct execution_request_traits<with_params_t<T...>>
             std::forward<WithParamsType>(input),
             mp11::make_index_sequence<sizeof...(T)>()
         );
+    }
+};
+
+// Old MSVCs fail to process the above when sizeof...(T) is zero
+template <>
+struct execution_request_traits<with_params_t<>>
+{
+    static any_execution_request make_request(with_params_t<> input, std::vector<field_view>&)
+    {
+        return any_execution_request({input.impl_.query, span<format_arg>{}});
     }
 };
 
