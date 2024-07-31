@@ -11,8 +11,8 @@
 Client-side SQL formatting allows running SQL queries with user-supplied parameters securely.
 It can be used as a simpler and more flexible alternative to prepared statements.
 While prepared statements expand queries server-side, SQL formatting does it client-side.
-Please read the [TODO:link comparison with prepared statements] and the [TODO:link security considerations] sections
-for more info.
+Please read the [link mysql.sql_formatting.comparison comparison with prepared statements]
+and the [link mysql.sql_formatting.security security considerations] sections for more info.
 
 [note
     This feature is experimental. Its API may change in subsequent releases.
