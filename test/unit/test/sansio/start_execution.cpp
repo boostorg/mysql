@@ -20,6 +20,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <array>
 #include <string>
 
 #include "test_common/check_meta.hpp"
@@ -115,9 +116,8 @@ BOOST_AUTO_TEST_CASE(stmt_error_num_params)
 BOOST_AUTO_TEST_CASE(with_params_success)
 {
     // Setup
-    const format_arg args[]{
-        {"", "abc"},
-        {"", 42   }
+    const std::array<format_arg, 2> args{
+        {{"", "abc"}, {"", 42}}
     };
     fixture fix(any_execution_request({"SELECT {}, {}", args}));
     fix.st.current_charset = utf8mb4_charset;
@@ -138,9 +138,8 @@ BOOST_AUTO_TEST_CASE(with_params_success)
 BOOST_AUTO_TEST_CASE(with_params_error_unknown_charset)
 {
     // Setup
-    const format_arg args[]{
-        {"", "abc"},
-        {"", 42   }
+    const std::array<format_arg, 2> args{
+        {{"", "abc"}, {"", 42}}
     };
     fixture fix(any_execution_request({"SELECT {}, {}", args}));
     fix.st.current_charset = {};
@@ -152,9 +151,7 @@ BOOST_AUTO_TEST_CASE(with_params_error_unknown_charset)
 BOOST_AUTO_TEST_CASE(with_params_error_formatting)
 {
     // Setup
-    const format_arg args[]{
-        {"", "abc"},
-    };
+    const std::array<format_arg, 1> args{{{"", "abc"}}};
     fixture fix(any_execution_request({"SELECT {}, {}", args}));
     fix.st.current_charset = utf8mb4_charset;
 
