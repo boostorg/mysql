@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(success)
         {{"", "abc"}, {"", 42}}
     };
     detail::query_with_params input{
-        "SELECT {}, {}",
+        constant_string_view("SELECT {}, {}"),
         args,
         {utf8mb4_charset, true}
     };
@@ -45,7 +45,7 @@ BOOST_AUTO_TEST_CASE(success)
 BOOST_AUTO_TEST_CASE(success_no_params)
 {
     detail::query_with_params input{
-        "SELECT 42",
+        constant_string_view("SELECT 42"),
         {},
         {utf8mb4_charset, true}
     };
