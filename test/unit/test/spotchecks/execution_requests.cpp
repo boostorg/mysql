@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
@@ -466,5 +467,89 @@ void old_connection()
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+// Deferred tokens appropriately decay-copy lvalues
+BOOST_AUTO_TEST_SUITE(deferred_tokens_lvalues)
+
+BOOST_AUTO_TEST_CASE(execute)
+{
+    // Setup
+    auto conn = create_test_any_connection();
+    results result;
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
+    std::string req(128, 'a');
+
+    // Create a deferred op
+    auto op = conn.async_execute(req, result, asio::deferred);
+
+    // Mutate the argument
+    std::fill(req.begin(), req.end(), 'b');
+
+    // Initiate
+    std::move(op)(as_netresult).validate_no_error();
+
+    // We wrote the initial value
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
+        get_stream(conn).bytes_written(),
+        create_query_frame(0, std::string(128, 'a'))
+    );
+}
+
+BOOST_AUTO_TEST_CASE(start_execution)
+{
+    // Setup
+    auto conn = create_test_any_connection();
+    execution_state st;
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
+    std::string req(128, 'a');
+
+    // Create a deferred op
+    auto op = conn.async_start_execution(req, st, asio::deferred);
+
+    // Mutate the argument
+    std::fill(req.begin(), req.end(), 'b');
+
+    // Initiate
+    std::move(op)(as_netresult).validate_no_error();
+
+    // We wrote the initial value
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(
+        get_stream(conn).bytes_written(),
+        create_query_frame(0, std::string(128, 'a'))
+    );
+}
+
+BOOST_AUTO_TEST_SUITE_END()
+
+// Regression test: async_execute() doesn't cause side effects in the initiation
+BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
+{
+    auto conn = create_test_any_connection();
+    results result1, result2;
+
+    // Resultsets will be complete as soon as a message is read
+    get_stream(conn)
+        .add_bytes(create_ok_frame(1, ok_builder().affected_rows(2).build()))
+        .add_bytes(create_ok_frame(1, ok_builder().affected_rows(1).build()));
+
+    // Create two queries as deferred objects, but don't run them yet
+    auto q1 = conn.async_execute("Q1", result1, asio::deferred);
+    auto q2 = conn.async_execute("Q2", result2, asio::deferred);
+
+    // Run them in reverse order
+    std::move(q2)(as_netresult).validate_no_error();
+    std::move(q1)(as_netresult).validate_no_error();
+
+    // Check that we wrote Q2's message first, then Q1's
+    auto expected = concat_copy(
+        create_frame(0, {0x03, 0x51, 0x32}),  // query request Q2
+        create_frame(0, {0x03, 0x51, 0x31})   // query request Q1
+    );
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(get_stream(conn).bytes_written(), expected);
+
+    // Check that the results got the right ok_packets
+    BOOST_TEST(result2.affected_rows() == 2u);
+    BOOST_TEST(result1.affected_rows() == 1u);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
