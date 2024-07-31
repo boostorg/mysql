@@ -25,6 +25,7 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "test_common/has_ranges.hpp"
 #include "test_common/printing.hpp"
@@ -71,7 +72,10 @@ std::string compose_select_query(
         boost::mysql::format_sql_to(ctx, " LIMIT {}", *limit);
     }
 
-    // Retrieve the generated query string
+    // Retrieve the generated query string.
+    // get() returns a boost::system::result<std::string> that
+    // contains an error if any of the format operations failed.
+    // Calling value() will throw on error, like format_sql does
     return std::move(ctx).get().value();
 }
 //]
@@ -191,7 +195,7 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         try
         {
             // If the connection is using UTF-8 (the default), this will throw an error,
-            // because the string to be formatted contains invalid UTF8.
+            // because the string to be formatted is not valid UTF-8.
             // The query never reaches the server.
             results result;
             conn.execute(with_params("SELECT {}", "bad\xff UTF-8"), result);
@@ -316,6 +320,18 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
 
         BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
         conn.execute(query, r);
+    }
+    {
+        //[sql_formatting_empty_ranges
+        // If ids.empty(), generates "SELECT * FROM employee WHERE id IN ()", which is a syntax error.
+        // This is not a security issue for this query, but may be exploitable in more involved scenarios.
+        // Queries involving only scalar values (as opposed to ranges) are not affected by this.
+        // It is your responsibility to check for conditions like ids.empty(), as client-side SQL
+        // formatting does not understand your queries.
+        std::vector<int> ids;
+        auto q = format_sql(conn.format_opts().value(), "SELECT * FROM employee WHERE id IN ({})", ids);
+        //]
+        BOOST_TEST(q == "SELECT * FROM employee WHERE id IN ({})");
     }
 
     {
