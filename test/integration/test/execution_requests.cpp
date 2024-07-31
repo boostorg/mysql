@@ -10,6 +10,7 @@
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/deferred.hpp>
 #include <boost/optional/optional.hpp>
@@ -20,8 +21,13 @@
 #include <vector>
 
 #include "test_common/create_basic.hpp"
+#include "test_common/has_ranges.hpp"
 #include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
+
+#ifdef BOOST_MYSQL_HAS_RANGES
+#include <ranges>
+#endif
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -125,6 +131,57 @@ BOOST_FIXTURE_TEST_CASE(stmt_range, any_connection_fixture)
     auto bound_stmt = stmt.bind(params.begin(), params.end());
     conn.async_execute(bound_stmt, r, as_netresult).validate_no_error();
     BOOST_TEST(r.rows() == makerows(2, 42, "abc"), per_element());
+}
+
+BOOST_FIXTURE_TEST_CASE(with_params_, any_connection_fixture)
+{
+    // Setup
+    connect();
+    results r;
+    execution_state st;
+
+    // execute
+    conn.async_execute(with_params("SELECT {}, {}", 42, "abc"), r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(2, 42, "abc"), per_element());
+
+    // spotcheck: can be used with start_execution
+    conn.async_start_execution(with_params("SELECT {}, {}", 42, "abc"), st, as_netresult).validate_no_error();
+    auto rws = conn.async_read_some_rows(st, as_netresult).get();
+    BOOST_TEST(rws == makerows(2, 42, "abc"), per_element());
+
+    // references work
+    std::string s = "abcdef";
+    auto op = conn.async_execute(with_params("SELECT {}, {}", 42, std::ref(s)), r, asio::deferred);
+    s = "opqrs";
+    std::move(op)(as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(2, 42, "opqrs"), per_element());
+
+    // Queries without parameters work
+    conn.async_execute(with_params("SELECT '{{}}'"), r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, "{}"), per_element());
+
+    // lvalues work
+    const auto req = with_params("SELECT {}, {}", "42", boost::optional<int>(100));
+    conn.async_execute(req, r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(2, "42", 100), per_element());
+
+#ifdef BOOST_MYSQL_HAS_RANGES
+    // Regression check: mutable ranges work
+    std::vector<int> nums{2, 5, 10, 20};
+    auto is_even = [](int i) { return i % 2 == 0; };
+    conn.async_execute(with_params("SELECT {}", std::ranges::views::filter(nums, is_even)), r, as_netresult)
+        .validate_no_error();
+    BOOST_TEST(r.rows() == makerows(3, 2, 10, 20), per_element());
+#endif
+
+    // Error: unformattable values
+    conn.async_execute(with_params("SELECT {}", "bad\xffutf8"), r, as_netresult)
+        .validate_error(client_errc::invalid_encoding);
+
+    // Error: unknown charset
+    conn.async_reset_connection(as_netresult).validate_no_error();
+    conn.async_execute(with_params("SELECT {}", 42), r, as_netresult)
+        .validate_error(client_errc::unknown_character_set);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
