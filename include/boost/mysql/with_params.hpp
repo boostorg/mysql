@@ -19,16 +19,6 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief A text query with bound parameters that can be executed.
- * \details
- * Conceptually, this class holds a query string, as a view, and a `std::tuple`
- * with format args to expand the query string.
- * Satisfies the `ExecutionRequest` concept. See \ref with_params for more info.
- */
-template <BOOST_MYSQL_FORMATTABLE... Formattable>
-struct with_params_t;
-
-/**
  * \brief Type trait that applies the transformation performed by `std::make_tuple` to a single element.
  * \details
  * For example: \n
@@ -36,17 +26,36 @@ struct with_params_t;
  *   - `make_tuple_element_t<const int&>` yields `int` \n
  *   - `make_tuple_element_t<std::reference_wrapper<int>>` yields `int&` \n
  * \n
- * Consult the `std::make_tuple` docs for more info.
+ * Consult the <a href="https://en.cppreference.com/w/cpp/utility/tuple/make_tuple">`std::make_tuple`</a> docs
+ * for more info.
  */
 template <class T>
 using make_tuple_element_t = typename std::tuple_element<0, decltype(std::make_tuple(std::declval<T&&>()))>::
     type;
 
 /**
+ * \brief A text query with bound parameters that can be executed.
+ * \details
+ * Conceptually, this class holds a query string, as a view, and a `std::tuple`
+ * with format args to expand the query string.
+ * Satisfies the `ExecutionRequest` concept. See \ref with_params for more info.
+ */
+template <BOOST_MYSQL_FORMATTABLE... Formattable>
+struct with_params_t
+{
+    /// The query to be expanded and executed, which may contain `{}` placeholders.
+    constant_string_view query;
+
+    /// The arguments to use to expand the query.
+    std::tuple<Formattable...> args;
+};
+
+/**
  * \brief Creates a query with parameters (client-side SQL formatting) that can be executed.
  * \details
  * Packs a query with replacement fields (i.e. `{}`) and a set of parameters into a
- * \ref with_params_t object that can be passed to `execute`, `start_execution` and its
+ * \ref with_params_t object that can be passed to \ref any_connection::execute,
+ * \ref any_connection::start_execution and its
  * async counterparts. When executed, client-side SQL formatting is invoked
  * to expand the provided query with the supplied parameters. The resulting query is then sent to
  * the server for execution.
@@ -92,7 +101,10 @@ using make_tuple_element_t = typename std::tuple_element<0, decltype(std::make_t
  */
 template <class... Formattable>
 auto with_params(constant_string_view query, Formattable&&... args)
-    -> with_params_t<make_tuple_element_t<Formattable>...>;
+    -> with_params_t<make_tuple_element_t<Formattable>...>
+{
+    return {query, std::make_tuple(std::forward<Formattable>(args)...)};
+}
 
 }  // namespace mysql
 }  // namespace boost

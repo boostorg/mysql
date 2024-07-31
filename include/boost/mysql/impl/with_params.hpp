@@ -21,27 +21,7 @@
 #include <boost/core/span.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
-#include <tuple>
 #include <utility>
-
-template <BOOST_MYSQL_FORMATTABLE... Formattable>
-struct boost::mysql::with_params_t
-{
-    struct impl_t
-    {
-        constant_string_view query;
-        std::tuple<Formattable...> args;
-    } impl_;
-};
-
-template <class... Formattable>
-auto boost::mysql::with_params(constant_string_view query, Formattable&&... args)
-    -> with_params_t<make_tuple_element_t<Formattable>...>
-{
-    return {
-        {query, std::make_tuple(std::forward<Formattable>(args)...)}
-    };
-}
 
 // Execution request traits
 namespace boost {
@@ -66,11 +46,11 @@ struct execution_request_traits<with_params_t<T...>>
         boost::ignore_unused(input);  // MSVC gets confused for tuples of size 0
         // clang-format off
         return {
-            input.impl_.query,
+            input.query,
             {{
                 {
                     string_view(),
-                    formattable_ref(std::get<I>(std::forward<WithParamsType>(input).impl_.args))
+                    formattable_ref(std::get<I>(std::forward<WithParamsType>(input).args))
                 }...
             }}
         };
@@ -94,7 +74,7 @@ struct execution_request_traits<with_params_t<>>
 {
     static any_execution_request make_request(with_params_t<> input, std::vector<field_view>&)
     {
-        return any_execution_request({input.impl_.query, span<format_arg>{}});
+        return any_execution_request({input.query, span<format_arg>{}});
     }
 };
 
