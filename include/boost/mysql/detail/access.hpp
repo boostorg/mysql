@@ -19,21 +19,15 @@ namespace detail {
 struct access
 {
     template <class T>
-    static decltype(std::declval<T>().impl_)& get_impl(T& obj)
+    static decltype(std::declval<T>().impl_)& get_impl(T& obj) noexcept
     {
         return obj.impl_;
     }
 
     template <class T>
-    static const decltype(std::declval<T>().impl_)& get_impl(const T& obj)
+    static const decltype(std::declval<T>().impl_)& get_impl(const T& obj) noexcept
     {
         return obj.impl_;
-    }
-
-    template <class T>
-    static decltype(std::declval<T>().impl_)&& get_impl(T&& obj)
-    {
-        return std::move(obj).impl_;
     }
 
     template <class T, class... Args>
