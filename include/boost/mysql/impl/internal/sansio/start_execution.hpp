@@ -10,25 +10,53 @@
 
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/format_sql.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 #include <boost/mysql/detail/next_action.hpp>
+#include <boost/mysql/detail/output_string.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
-#include <boost/mysql/impl/internal/protocol/query_with_params.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 
+#include <boost/core/span.hpp>
+
 namespace boost {
 namespace mysql {
 namespace detail {
+
+// A serializable to generate the query in the write buffer without copies
+struct query_with_params
+{
+    constant_string_view query;
+    span<const format_arg> args;
+    format_options opts;
+
+    void serialize(serialization_context& ctx) const
+    {
+        // Create a format context
+        auto fmt_ctx = access::construct<format_context_base>(output_string_ref::create(ctx), opts);
+
+        // Serialize the query header
+        ctx.add(0x03);
+
+        // Serialize the actual query
+        vformat_sql_to(fmt_ctx, query, args);
+
+        // Check for errors
+        ctx.add_error(fmt_ctx.error_state());
+    }
+};
 
 class start_execution_algo
 {

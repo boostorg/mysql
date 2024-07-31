@@ -25,7 +25,6 @@ add_executable(
     test/protocol/protocol_types.cpp
     test/protocol/text_protocol.cpp
     test/protocol/binary_protocol.cpp
-    test/protocol/query_with_params.cpp
     test/protocol/serialization.cpp
     test/protocol/deserialization.cpp
 
