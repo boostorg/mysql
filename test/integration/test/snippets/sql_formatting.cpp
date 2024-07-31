@@ -186,30 +186,40 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         );
         //]
     }
-
     {
-        //[sql_formatting_specifiers
-        std::string query = boost::mysql::format_sql(
-            conn.format_opts().value(),
-            "SELECT id, last_name FROM employee ORDER BY {:i} DESC",
-            "company_id"
-        );
-
-        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
+        //[sql_formatting_invalid_encoding
+        try
+        {
+            // If the connection is using UTF-8 (the default), this will throw an error,
+            // because the string to be formatted contains invalid UTF8.
+            // The query never reaches the server.
+            results result;
+            conn.execute(with_params("SELECT {}", "bad\xff UTF-8"), result);
+            //<-
+            BOOST_TEST(false);
+            //->
+        }
+        catch (const boost::system::system_error& err)
+        {
+            BOOST_TEST(err.code() == boost::mysql::client_errc::invalid_encoding);
+        }
         //]
-
-        conn.execute(query, r);
     }
     {
-        //[sql_formatting_specifiers_explicit_indices
+        //[sql_formatting_format_sql
+        // Compose the SQL query without executing it.
+        // format_opts returns a system::result<format_options>,
+        // contains settings like the current character set.
+        // If the connection is using an unknown character set, this will throw an error.
         std::string query = boost::mysql::format_sql(
             conn.format_opts().value(),
-            "SELECT id, last_name FROM employee ORDER BY {0:i} DESC",
-            "company_id"
+            "SELECT id, salary FROM employee WHERE last_name = {}",
+            "Doe"
         );
+
+        BOOST_TEST(query == "SELECT id, salary FROM employee WHERE last_name = 'Doe'");
         //]
 
-        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
         conn.execute(query, r);
     }
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
@@ -281,22 +291,33 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         //]
         conn.execute(query, r);
     }
-    {
-        try
-        {
-            //[sql_formatting_invalid_encoding
-            // If the connection is using UTF-8 (the default), this will throw an error,
-            // because the string to be formatted contains invalid UTF8.
-            format_sql(conn.format_opts().value(), "SELECT {}", "bad\xff UTF-8");
-            //]
 
-            BOOST_TEST(false);
-        }
-        catch (const boost::system::system_error& err)
-        {
-            BOOST_TEST(err.code() == boost::mysql::client_errc::invalid_encoding);
-        }
+    {
+        //[sql_formatting_specifiers
+        std::string query = boost::mysql::format_sql(
+            conn.format_opts().value(),
+            "SELECT id, last_name FROM employee ORDER BY {:i} DESC",
+            "company_id"
+        );
+
+        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
+        //]
+
+        conn.execute(query, r);
     }
+    {
+        //[sql_formatting_specifiers_explicit_indices
+        std::string query = boost::mysql::format_sql(
+            conn.format_opts().value(),
+            "SELECT id, last_name FROM employee ORDER BY {0:i} DESC",
+            "company_id"
+        );
+        //]
+
+        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
+        conn.execute(query, r);
+    }
+
     {
         using namespace boost::mysql;
         using boost::optional;

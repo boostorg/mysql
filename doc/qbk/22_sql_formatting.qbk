@@ -98,10 +98,7 @@ will be issued and the query won't run. Here are the most common errors:
 
 For example:
 
-```
-    // Throws boost::mysql::error_with_diagnostics with error() == client_errc::invalid_encoding
-    conn.execute(with_params("SELECT {}", "Bad\xff"), result);
-```
+[sql_formatting_invalid_encoding]
 
 
 
@@ -115,18 +112,7 @@ These APIs don't involve communication with the server.
 
 [reflink format_sql] is the simplest, and is akin to `std::format`:
 
-```
-    // Compose the SQL query without executing it
-    std::string query = boost::mysql::format_sql(
-        conn.format_opts().value(),
-        "SELECT id, salary FROM employee WHERE last_name = {}",
-        "Doe"
-    );
-
-    BOOST_TEST("query == "SELECT id, salary FROM employee WHERE last_name = 'Doe'");
-    
-    // TODO: execute it
-```
+[sql_formatting_format_sql]
 
 `format_sql` requires a [reflink format_options] instance describing
 connection configuration, like the character set currently in use.
