@@ -153,8 +153,7 @@ For a reference on how character set tracking works, please read [link mysql.cha
     escaping to generate incorrect values, which may generate vulnerabilities.
     Stay safe and always use [refmem any_connection format_opts] instead of
     hand-crafting `format_options` values. Doing this, if the character set can't be safely
-    determined, you will get a [link mysql.sql_formatting.unknown_character_set `client_errc::unknown_character_set`]
-    error instead of a vulnerability.
+    determined, you will get a `client_errc::unknown_character_set` error instead of a vulnerability.
 ]
 
 

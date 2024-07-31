@@ -88,7 +88,7 @@ will be issued and the query won't run. Here are the most common errors:
     - Solution: reject such values, or replace them by `NULL` before passing them to client-side SQL formatting.
 - `client_errc::unknown_character_set`
     - Cause: your connection doesn't know the character set you're using. Knowing the character set in use
-      is required to generate queries securely. This situation can happen after calling [refmemunq reset_connection]
+      is required to generate queries securely. This situation can happen after calling [refmemunq any_connection reset_connection]
       or if you used a custom [refmem connect_params connection_collation] when connecting.
     - Solution:
         - Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set].
