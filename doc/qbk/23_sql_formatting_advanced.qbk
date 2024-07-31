@@ -35,12 +35,6 @@ See the [reflink formatter] reference docs for more info.
 
 
 
-TODO: async ops with_params and lifetimes
-
-
-
-
-
 
 [heading:format_string_syntax Format string syntax]
 
