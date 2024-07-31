@@ -99,9 +99,10 @@ struct with_params_t
  * The passed `args` must either satisfy `Formattable`, or be `std::reference_wrapper<T>`
  * with `T` satisfying `Formattable`.
  * \n
+ * See \ref with_params_t for details on how the execution request works.
+ * \n
  * \par Exception safety
  * Strong guarantee. Any exception thrown when copying `args` will be propagated.
- * See \ref with_params_t for details on how the execution request works.
  * \n
  */
 template <class... FormattableOrRefWrapper>
