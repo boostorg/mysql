@@ -16,24 +16,18 @@
 // Note: client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
-#include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
-#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/core/span.hpp>
 
 #include <cstdint>
 #include <iostream>
 #include <string>
 
-using boost::mysql::error_code;
 using boost::mysql::field_view;
 using boost::mysql::string_view;
 
@@ -171,19 +165,20 @@ void main_impl(int argc, char** argv)
     // Formats an individual update. Used by sequence().
     // For update_field{"first_name", "John"}, it generates the string
     // "`first_name` = 'John'"
+    // Format contexts can build a query string incrementally, and are used by sequence() internally
     auto update_format_fn = [](update_field upd, boost::mysql::format_context_base& ctx) {
         boost::mysql::format_sql_to(ctx, "{:i} = {}", upd.field_name, upd.field_value);
     };
 
-    // Compose the query. We use sequence() to output the update list separated by commas.
+    // Compose and execute the query. with_params will expand placeholders
+    // before sending the query to the server.
+    // We use sequence() to output the update list separated by commas.
     // We want to update the employee and then retrieve it. MySQL doesn't support
     // the UPDATE ... RETURNING statement to update and retrieve data atomically,
     // so we will use a transaction to guarantee consistency.
     // Instead of running every statement separately, we activated params.multi_queries,
     // which allows semicolon-separated statements.
     // As in std::format, we can use explicit indices like {0} and {1} to reference arguments.
-    // Execute the query as usual.
-    // TODO: review this
     boost::mysql::results result;
     conn.execute(
         boost::mysql::with_params(

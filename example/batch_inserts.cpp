@@ -22,17 +22,11 @@
 // Note: client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
-#include <boost/mysql/character_set.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
-#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/string_view.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/core/span.hpp>
-#include <boost/describe/class.hpp>
 #include <boost/describe/members.hpp>
 #include <boost/describe/modifiers.hpp>
 #include <boost/json/parse.hpp>
@@ -41,9 +35,6 @@
 #include <fstream>
 #include <iostream>
 #include <string>
-
-using boost::mysql::error_code;
-using boost::mysql::string_view;
 
 /**
  * We will use Boost.Describe to easily parse the JSON file
@@ -122,11 +113,11 @@ void main_impl(int argc, char** argv)
     // A function describing how to format a single employee object. Used with mysql::sequence.
     auto format_employee_fn = [](const employee& emp, boost::mysql::format_context_base& ctx) {
         // format_context_base can be used to build query strings incrementally.
-        // Used internally by the sequence() formatter
+        // Used internally by the sequence() formatter.
         // format_sql_to expands a format string, replacing {} fields,
         // and appends the result to the passed context.
         // When formatted, strings are quoted and escaped as string literals.
-        // Doubles are formatted as number literals.
+        // ints are formatted as number literals.
         boost::mysql::format_sql_to(
             ctx,
             "({}, {}, {}, {})",
@@ -137,12 +128,11 @@ void main_impl(int argc, char** argv)
         );
     };
 
-    // TODO: review
-    // Composes an INSERT SQL query suitable to be sent to the server.
-    // For instance, when inserting two employees, something like the following may be generated:
+    // Compose and execute the batch INSERT. When passed to execute(), with_params
+    // replaces placeholders ({}) by actual parameter values before sending the query to the server.
+    // When inserting two employees, something like the following may be generated:
     // INSERT INTO employee (first_name, last_name, company_id, salary)
     //     VALUES ('John', 'Doe', 'HGS', 20000), ('Rick', 'Smith', 'LLC', 50000)
-    // Execute the query
     conn.execute(
         boost::mysql::with_params(
             "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
