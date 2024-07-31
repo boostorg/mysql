@@ -34,9 +34,6 @@ class static_results;
 class execution_state;
 class results;
 
-template <class... T>
-struct with_params_t;
-
 namespace detail {
 
 // Execution state

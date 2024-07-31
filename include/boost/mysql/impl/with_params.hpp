@@ -24,7 +24,7 @@
 #ifndef BOOST_MYSQL_IMPL_WITH_PARAMS_HPP
 #define BOOST_MYSQL_IMPL_WITH_PARAMS_HPP
 
-template <class... Formattable>
+template <BOOST_MYSQL_FORMATTABLE... Formattable>
 struct boost::mysql::with_params_t
 {
     struct impl_t
@@ -34,9 +34,9 @@ struct boost::mysql::with_params_t
     } impl_;
 };
 
-template <BOOST_MYSQL_FORMATTABLE... Formattable>
+template <class... Formattable>
 auto boost::mysql::with_params(constant_string_view query, Formattable&&... args)
-    -> mp11::mp_rename<decltype(std::make_tuple(std::forward<Formattable>(args)...)), with_params_t>
+    -> with_params_t<make_tuple_element_t<Formattable>...>
 {
     return {
         {query, std::make_tuple(std::forward<Formattable>(args)...)}

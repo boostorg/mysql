@@ -12,19 +12,22 @@
 
 #include <boost/mysql/detail/format_sql.hpp>
 
-#include <boost/mp11/detail/mp_rename.hpp>
-
 #include <tuple>
+#include <utility>
 
 namespace boost {
 namespace mysql {
 
-template <class... Formattable>
+template <BOOST_MYSQL_FORMATTABLE... Formattable>
 struct with_params_t;
 
-template <BOOST_MYSQL_FORMATTABLE... Formattable>
+template <class T>
+using make_tuple_element_t = typename std::tuple_element<0, decltype(std::make_tuple(std::declval<T&&>()))>::
+    type;
+
+template <class... Formattable>
 auto with_params(constant_string_view query, Formattable&&... args)
-    -> mp11::mp_rename<decltype(std::make_tuple(std::forward<Formattable>(args)...)), with_params_t>;
+    -> with_params_t<make_tuple_element_t<Formattable>...>;
 
 }  // namespace mysql
 }  // namespace boost

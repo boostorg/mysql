@@ -522,6 +522,46 @@ BOOST_AUTO_TEST_CASE(start_execution)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+// Spotcheck: the types returned by with_params are correct
+BOOST_AUTO_TEST_CASE(with_params_types)
+{
+    {
+        // const references
+        const std::string s = "abc";
+        auto p1 = with_params("SELECT {}", s);
+        static_assert(std::is_same<decltype(p1), with_params_t<std::string>>::value, "");
+    }
+    {
+        // references
+        std::string s = "abc";
+        auto p = with_params("SELECT {}", s);
+        static_assert(std::is_same<decltype(p), with_params_t<std::string>>::value, "");
+    }
+    {
+        // rvalue references
+        std::string s = "abc";
+        auto p = with_params("SELECT {}", std::move(s));
+        static_assert(std::is_same<decltype(p), with_params_t<std::string>>::value, "");
+    }
+    {
+        // pure rvalues
+        auto p = with_params("SELECT {}", std::string());
+        static_assert(std::is_same<decltype(p), with_params_t<std::string>>::value, "");
+    }
+    {
+        // std::ref
+        std::string s = "abc";
+        auto p = with_params("SELECT {}", std::ref(s));
+        static_assert(std::is_same<decltype(p), with_params_t<std::string&>>::value, "");
+    }
+    {
+        // std::ref (const)
+        const std::string s = "abc";
+        auto p = with_params("SELECT {}", std::ref(s));
+        static_assert(std::is_same<decltype(p), with_params_t<const std::string&>>::value, "");
+    }
+}
+
 // Regression test: async_execute() doesn't cause side effects in the initiation
 BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
 {
