@@ -26,7 +26,6 @@
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 
 #include <boost/core/span.hpp>

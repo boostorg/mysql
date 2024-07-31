@@ -8,14 +8,12 @@
 #ifndef BOOST_MYSQL_DETAIL_EXECUTION_CONCEPTS_HPP
 #define BOOST_MYSQL_DETAIL_EXECUTION_CONCEPTS_HPP
 
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/any_execution_request.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <type_traits>
-#include <vector>
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 
@@ -23,8 +21,6 @@ namespace boost {
 namespace mysql {
 
 // Forward decls
-class field_view;
-
 template <class... StaticRow>
 class static_execution_state;
 

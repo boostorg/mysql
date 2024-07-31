@@ -14,6 +14,7 @@
 #include <boost/core/span.hpp>
 
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 
 namespace boost {
