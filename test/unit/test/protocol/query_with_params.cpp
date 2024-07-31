@@ -30,9 +30,8 @@ BOOST_AUTO_TEST_SUITE(test_query_with_params)
 
 BOOST_AUTO_TEST_CASE(success)
 {
-    const format_arg args[]{
-        {"", "abc"},
-        {"", 42   }
+    const std::array<format_arg, 2> args{
+        {{"", "abc"}, {"", 42}}
     };
     detail::query_with_params input{
         "SELECT {}, {}",
