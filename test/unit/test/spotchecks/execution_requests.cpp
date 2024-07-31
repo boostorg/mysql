@@ -38,6 +38,7 @@
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_query_frame.hpp"
+#include "test_unit/create_statement.hpp"
 #include "test_unit/test_any_connection.hpp"
 #include "test_unit/test_stream.hpp"
 
@@ -550,6 +551,38 @@ BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
     // Check that the results got the right ok_packets
     BOOST_TEST(result2.affected_rows() == 2u);
     BOOST_TEST(result1.affected_rows() == 1u);
+}
+
+// Regression test: bound statements correctly store statement handle and params
+// when used with deferred tokens
+BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes)
+{
+    // Setup
+    constexpr std::uint8_t expected_msg[] = {
+        0x15, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
+        0x00, 0x02, 0x01, 0xfe, 0x00, 0x06, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74,
+    };
+    results result;
+    auto conn = create_test_any_connection();
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
+
+    // Create a bound statement on the heap. This helps tooling detect memory errors
+    using bound_stmt_t = bound_statement_tuple<std::tuple<std::string, std::nullptr_t>>;
+    std::unique_ptr<bound_stmt_t> stmt_ptr{
+        new bound_stmt_t{statement_builder().id(1).num_params(2).build().bind(std::string("test"), nullptr)}
+    };
+
+    // Deferred op
+    auto op = conn.async_execute(*stmt_ptr, result, asio::deferred);
+
+    // Free the statement
+    stmt_ptr.reset();
+
+    // Actually run the op
+    std::move(op)(as_netresult).validate_no_error();
+
+    // verify that the op had the intended effects
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(get_stream(conn).bytes_written(), expected_msg);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
