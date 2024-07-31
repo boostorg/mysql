@@ -187,32 +187,6 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         //]
     }
 
-    //
-    //
-    {
-        // TODO: move this
-        // clang-format off
-        //[sql_formatting_named_args
-        std::string query = boost::mysql::format_sql(
-            conn.format_opts().value(),
-            "UPDATE employee SET first_name = {name} WHERE id = {id}; SELECT * FROM employee WHERE id = {id}",
-            {
-                {"id",   42    },
-                {"name", "John"}
-            }
-        );
-        //<-
-        // clang-format on
-        //->
-
-        BOOST_TEST(
-            query ==
-            "UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42"
-        );
-        //]
-
-        conn.execute(query, r);
-    }
     {
         //[sql_formatting_specifiers
         std::string query = boost::mysql::format_sql(

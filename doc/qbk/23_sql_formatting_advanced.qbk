@@ -56,19 +56,9 @@ Indices can appear in any order, and can be repeated:
 
 [sql_formatting_manual_indices]
 
-Finally, you can use named arguments by using the initializer-list overloads,
-which creates [reflink format_arg] values:
-
-[sql_formatting_named_args]
-
-Argument names can only contain ASCII letters (lowercase and uppercase),
-digits and the underscore character (`_`). Names can't start with a digit.
-
 Format strings can use either manual or automatic indexing, but can't mix them:
 
 [sql_formatting_manual_auto_mix]
-
-Named arguments can be mixed with either manual or automatic indexing.
 
 Unreferenced format arguments are ignored. It's not an error to supply more
 format arguments than required:
@@ -83,8 +73,8 @@ Format specifiers (e.g. `{:i}`) are supported for some types,
 but are far less common than in fmtlib, since most types have a
 single, canonical representation.
 
-Specifiers can appear when doing automatic indexing (e.g. `{:i}`),
-manual indexing (e.g. `{0:i}`) and named arguments (e.g. `{name:i}`).
+Specifiers can appear when doing automatic indexing (e.g. `{:i}`) or
+manual indexing (e.g. `{0:i}`).
 
 Types specializing formatters can define custom specifiers.
 Only printable ASCII characters that are not `{` or `}` can be used as specifiers.
