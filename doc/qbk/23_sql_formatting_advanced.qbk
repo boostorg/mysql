@@ -15,7 +15,7 @@ You can specialize [reflink formatter] to add formatting support to your types:
 
 [sql_formatting_formatter_specialization]
 
-The type can now be used in [reflink format_sql] and [reflink format_sql_to]:
+The type can now be used in [reflink format_sql], [reflink format_sql_to] and [reflink with_params]:
 
 [sql_formatting_formatter_use]
 
