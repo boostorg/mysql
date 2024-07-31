@@ -5,6 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#ifndef BOOST_MYSQL_IMPL_WITH_PARAMS_HPP
+#define BOOST_MYSQL_IMPL_WITH_PARAMS_HPP
+
 #pragma once
 
 #include <boost/mysql/constant_string_view.hpp>
@@ -13,16 +16,12 @@
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/mysql/detail/any_execution_request.hpp>
-#include <boost/mysql/detail/execution_concepts.hpp>
 
 #include <boost/core/ignore_unused.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
 #include <tuple>
 #include <utility>
-
-#ifndef BOOST_MYSQL_IMPL_WITH_PARAMS_HPP
-#define BOOST_MYSQL_IMPL_WITH_PARAMS_HPP
 
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
 struct boost::mysql::with_params_t

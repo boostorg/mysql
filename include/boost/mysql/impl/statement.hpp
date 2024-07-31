@@ -15,7 +15,6 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/any_execution_request.hpp>
-#include <boost/mysql/detail/execution_concepts.hpp>
 #include <boost/mysql/detail/writable_field_traits.hpp>
 
 #include <boost/assert.hpp>

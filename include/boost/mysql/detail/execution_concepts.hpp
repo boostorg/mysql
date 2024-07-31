@@ -65,21 +65,6 @@ template <class T>
 concept results_type = std::is_same_v<T, results> || is_static_results<T>::value;
 
 // Execution request
-struct no_execution_request_traits
-{
-};
-
-template <class T, class = void>
-struct execution_request_traits : no_execution_request_traits
-{
-};
-
-template <class T>
-struct execution_request_traits<T, typename std::enable_if<std::is_convertible<T, string_view>::value>::type>
-{
-    static any_execution_request make_request(string_view input, std::vector<field_view>&) { return input; }
-};
-
 template <class T>
 struct is_execution_request
 {

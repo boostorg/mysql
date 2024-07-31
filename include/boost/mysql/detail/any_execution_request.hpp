@@ -14,6 +14,7 @@
 #include <boost/core/span.hpp>
 
 #include <cstdint>
+#include <vector>
 
 namespace boost {
 namespace mysql {
@@ -60,6 +61,21 @@ struct any_execution_request
     {
     }
     any_execution_request(data_t::stmt_t v) noexcept : type(type_t::stmt), data(v) {}
+};
+
+struct no_execution_request_traits
+{
+};
+
+template <class T, class = void>
+struct execution_request_traits : no_execution_request_traits
+{
+};
+
+template <class T>
+struct execution_request_traits<T, typename std::enable_if<std::is_convertible<T, string_view>::value>::type>
+{
+    static any_execution_request make_request(string_view input, std::vector<field_view>&) { return input; }
 };
 
 }  // namespace detail
