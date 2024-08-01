@@ -62,6 +62,7 @@
           <member><link linkend="mysql.ref.boost__mysql__static_execution_state">static_execution_state</link></member>
           <member><link linkend="mysql.ref.boost__mysql__static_results">static_results</link></member>
           <member><link linkend="mysql.ref.boost__mysql__unix_path">unix_path</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__with_params_t">with_params_t</link></member>
         </simplelist>
       </entry>
       <entry valign="top">
@@ -103,6 +104,7 @@
           <member><link linkend="mysql.ref.boost__mysql__runtime">runtime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__sequence">sequence</link></member>
           <member><link linkend="mysql.ref.boost__mysql__throw_on_error">throw_on_error</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__with_params">with_params</link></member>
         </simplelist>
       </entry>
       <entry valign="top">
@@ -113,6 +115,7 @@
           <member><link linkend="mysql.ref.boost__mysql__days">days</link></member>
           <member><link linkend="mysql.ref.boost__mysql__error_code">error_code</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_context">format_context</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__make_tuple_element_t">make_tuple_element_t</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata_collection_view">metadata_collection_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__string_view">string_view</link></member>
           <member><link linkend="mysql.ref.boost__mysql__tcp_connection">tcp_connection</link></member>

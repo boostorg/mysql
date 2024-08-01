@@ -15,7 +15,6 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
-#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -29,7 +28,6 @@
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/spawn.hpp>
-#include <boost/core/span.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <cassert>
@@ -188,6 +186,12 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
 }
 
 // Composes a SELECT query to retrieve employees according to the passed filters.
+// We allow an optional ORDER BY clause that must be added dynamically,
+// so we can't express our query as a single format string.
+// This function uses format_sql_to to build a query string incrementally.
+// format_sql_to requires us to pass a format_options value, containing configuration
+// options like the current character set. Use any_connection::format_opts to obtain it.
+// If your use case allows you to express your query as a single format string, use with_params, instead.
 std::string compose_get_employees_query(
     boost::mysql::format_options opts,
     const std::vector<filter>& filts,
@@ -228,7 +232,10 @@ std::string compose_get_employees_query(
         boost::mysql::format_sql_to(ctx, " ORDER BY {:i}", *order_by);
     }
 
-    // Get our generated query
+    // Get our generated query. get() returns a system::result<std::string>, which
+    // will contain errors if any of the args couldn't be formatted. This can happen
+    // if you pass string values containing invalid UTF-8.
+    // value() will throw an exception if that's the case.
     return std::move(ctx).get().value();
 }
 
@@ -282,8 +289,9 @@ void main_impl(int argc, char** argv)
 
             // Execute the query as usual. Note that, unlike with prepared statements,
             // formatting happened in the client, and not in the server.
+            // Casting to string_view saves a copy in async_execute
             boost::mysql::results result;
-            conn.async_execute(query, result, diag, yield[ec]);
+            conn.async_execute(string_view(query), result, diag, yield[ec]);
             boost::mysql::throw_on_error(ec, diag);
 
             // Print the employees

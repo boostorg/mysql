@@ -8,12 +8,11 @@
 [section:sql_formatting (Experimental) Client-side SQL query formatting]
 [nochunk]
 
-When issuing queries that contain untrusted input, prepared statement are usually
-the way to go. However, some use cases like dynamic filters or batch inserts
-are not attainable using them.
-
-The functions described in this section can be used to compose SQL query
-strings dynamically client-side while keeping your application secure.
+Client-side SQL formatting allows running SQL queries with user-supplied parameters securely.
+It can be used as a simpler and more flexible alternative to prepared statements.
+While prepared statements expand queries server-side, SQL formatting does it client-side.
+Please read the [link mysql.sql_formatting.comparison comparison with prepared statements]
+and the [link mysql.sql_formatting.security security considerations] sections for more info.
 
 [note
     This feature is experimental. Its API may change in subsequent releases.
@@ -21,52 +20,23 @@ strings dynamically client-side while keeping your application secure.
 
 
 
-[heading Common use cases]
-
-* Queries involving several [*dynamic filters].
-  See [link mysql.examples.dynamic_filters this example].
-* [*Batch inserts]. Inserting rows one by one can lead to poor efficiency.
-  You can use client-side query formatting to compose a single `INSERT` that
-  performs several insertions at once. See [link mysql.examples.batch_inserts this example]
-  for simple batch inserts and [link mysql.examples.batch_inserts_generic this other] for
-  a generic utility to implement this case.
-* [*PATCH-like updates]. If your query must update fields dynamically, based on some input,
-  prepared statements may not be suitable. See [link mysql.examples.patch_updates this example].
-* Queries involving [*dynamic identifiers], like table and field names.
-* Performing [*conditional sorting].
-* Any other use case that involves SQL that can change dynamically.
-
-This feature can also be used to improve efficiency, as text queries perform less
-round-trips to the server. See [link mysql.sql_formatting.efficiency this section]
-for more info.
-
-
-[heading Security considerations]
-
-Client-side SQL formatting [*does protect against SQL injection] by appropriately quoting and escaping
-string values. However, this feature [*does not understand your queries]. You need to make sure that
-your formatting operations result in valid SQL. If you try to build very complex
-queries and make mistakes, attackers may exploit logic errors in your formatting logic to overtake your system.
 
 
 
-[heading Formatting simple queries]
+[heading Simple queries]
 
-You can use [reflink format_sql] to generate a SQL query from a format string
-and a set of parameters, using a notation similar to `std::format`:
+[reflink with_params] takes a SQL query
+string with placeholders and a set of parameters. When passed to
+[refmemunq any_connection execute] or [refmemunq any_connection async_execute],
+the query is expanded in the client with the supplied parameters and
+sent to the server for execution:
 
 [sql_formatting_simple]
 
-[reflink format_sql] doesn't involve communication with the server.
-In order to work, it requires a [reflink format_options] instance describing
-connection configuration, like the character set currently in use.
-[refmem any_connection format_opts] provides an easy way to retrieve these.
+Curly braces (`{}`) represent placeholders (technically called ['replacement fields]).
+The notation and semantics are similar to [@https://en.cppreference.com/w/cpp/utility/format/format `std::format`].
 
-[note
-  Getting an `unknown_character_set` error? Have a look at [link mysql.sql_formatting.unknown_character_set this section].
-]
-
-All fundamental types can be used with query formatting. This includes integers, floating point types,
+All fundamental types can be used as query parameters. This includes integers, floating point types,
 strings, blobs, dates and times:
 
 [sql_formatting_other_scalars]
@@ -84,7 +54,7 @@ and [link mysql.sql_formatting.reference this table] for a reference of types
 that have built-in support for SQL formatting.
 
 [note
-  Like with `std::format`, the format string passed to `format_sql` must be known at
+  Like with `std::format`, the query string passed to `with_params` must be known at
   compile-time. You can skip this check using the [reflink runtime] function.
 ]
 
@@ -92,12 +62,106 @@ Like `std::format`, you can use arguments with explicit indices:
 
 [sql_formatting_manual_indices]
 
-You can also use named arguments, using the initializer list overload:
+See [link mysql.sql_formatting_advanced.format_string_syntax this section]
+for a reference on the format string syntax.
 
-[sql_formatting_named_args]
 
-See [link mysql.sql_formatting_advanced.format_string_syntax this section] for an in-depth
-explanation on format strings.
+
+
+
+
+[heading:errors Common errors and how to fix them]
+
+Not all values can be formatted. If the library finds that formatting a certain
+value can cause an ambiguity that could lead to a security problem, an error
+will be issued and the query won't be sent to the server. Here are the most common errors:
+
+* `client_errc::invalid_encoding`
+    * Cause: one of your string parameters contains invalid code points.
+      With the default character set, this means that it contains [*invalid UTF-8].
+    * Solution: all string values must be encoded according to the connection's character
+      set (usually UTF-8). Sanitize or reject such values. Use the [reflink blob] and [reflink blob_view]
+      types for values that don't represent character strings, but arbitrary binary values.
+* `client_errc::unformattable_value`
+    * Cause: one of your parameters contains an invalid value. For instance, a `double`
+      contains a `NaN` or an `Inf`, unsupported by MySQL.
+    * Solution: reject such values, or replace them by `NULL` before passing them to client-side SQL formatting.
+* `client_errc::unknown_character_set`
+    * Cause: your connection doesn't know the character set you're using. Knowing the character set in use
+      is required to generate queries securely. This situation can happen after calling [refmemunq any_connection reset_connection]
+      or if you used a custom [refmem connect_params connection_collation] when connecting.
+    * Solution: use a [reflink connection_pool] instead of manually resetting connections. If you can't,
+      use the default [refmemunq connect_params connection_collation] when connecting, and use
+      [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
+      after resetting connections.
+    * [link mysql.charsets.tracking Learn more] about how character set tracking works.
+
+For example:
+
+[sql_formatting_invalid_encoding]
+
+
+
+
+[heading Formatting queries without executing them]
+
+`with_params` is handy, but may fall short in some cases involving queries with
+complex logic. For these cases, you can use [reflink format_sql] and
+[reflink format_sql_to] to expand a query without executing it.
+These APIs don't involve communication with the server.
+
+[reflink format_sql] is the simplest, and is akin to `std::format`:
+
+[sql_formatting_format_sql]
+
+`format_sql` requires a [reflink format_options] instance describing
+connection configuration, like the character set currently in use.
+[refmem any_connection format_opts] provides an easy way to retrieve these.
+[link mysql.sql_formatting_advanced.format_options This section] contains more info about `format_opts`.
+
+Some use cases, usually involving conditionals, may not be
+expressible in terms of a single format string. In such cases, you can
+use [reflink format_context] and [reflink format_sql_to] to
+build query strings incrementally:
+
+[sql_formatting_incremental_fn]
+[sql_formatting_incremental_use]
+
+[reflink sequence] uses this feature to make formatting ranges easier.
+
+Any type that works with `with_params` also does with `format_sql`
+and `format_sql_to`. These types are said to satisfy the [reflink Formattable] concept.
+[link mysql.sql_formatting.reference This table] summarizes such types.
+
+
+
+
+
+
+
+
+
+
+
+
+
+[heading:ranges Formatting ranges with sequence]
+
+The [reflink sequence] function can be used when the default range formatting isn't sufficient.
+If the elements in your range are not formattable, you can pass a user-defined function to `sequence`
+describing how to format each element:
+
+[sql_formatting_sequence_1]
+
+By default, elements are separated by commas, but this is configurable:
+
+[sql_formatting_sequence_2]
+
+You can use `sequence` and [reflink with_params] together.
+
+
+
+
 
 
 
@@ -120,84 +184,48 @@ This is equivalent to the previous snippet:
 
 
 
-[heading Building SQL strings incrementally using format_sql_to]
-
-Some use cases, usually involving conditionals, may not be
-expressible in terms of a single format string. In such cases, you can
-use [reflink format_context] and [reflink format_sql_to] to
-build query strings incrementally:
-
-[sql_formatting_incremental_fn]
-[sql_formatting_incremental_use]
 
 
 
+[heading:comparison Prepared statements vs. client-side SQL formatting]
 
+Although both serve a similar purpose, they are fundamentally different. Prepared statements
+are parsed and expanded by the server. Client-side SQL expands the query in the client
+and sends it to the server as a string.
 
+This means that [*client-side SQL does not understand your queries]. It just knows about how
+to format MySQL types into a string without creating vulnerabilities, but otherwise treats
+your queries as opaque strings. Client-side SQL yields [*greater flexibility] (you can dynamically
+compose any query), while statements have more limitations. This also means that
+[*you need to pay more attention to compose valid queries], specially when dealing with complex conditionals.
+Logic errors may lead to exploits. Please read the [link mysql.sql_formatting.security security considerations section]
+for more info.
 
-[heading:ranges Formatting ranges with sequence]
+Client-side SQL entails [*less round-trips to the server] than statements, and is usually more efficient
+for lightweight queries. However, it uses the less compact text protocol, which may be slower for
+queries retrieving a lot of data. See the [link mysql.sql_formatting.efficiency efficiency considerations section] for more info.
 
-The [reflink sequence] function can be used when the default range formatting isn't sufficient.
-If the elements in your range are not formattable, you can pass a user-defined function to `sequence`
-describing how to format each element:
+In general, [*use client-side SQL] formatting for the following cases:
 
-[sql_formatting_sequence_1]
+* Simple queries that don't retrieve a lot of data. Default to `with_params` and
+  only switch to statements if your performance measurements says so.
+* Queries involving dynamic SQL that can't be achieved by statements. Typical cases include:
+    * Dynamic filters ([link mysql.examples.dynamic_filters example]).
+    * Batch inserts. Inserting rows one by one can lead to poor efficiency.
+      You can use client-side SQL formatting to compose a single `INSERT` that
+      inserts several rows at once (see [link mysql.examples.batch_inserts example 1]
+      and [link mysql.examples.batch_inserts_generic example 2]).
+    * PATCH-like updates, where the field list in an `UPDATE` must be dynamic
+      ([link mysql.examples.patch_updates example]).
+    * Queries involving dynamic identifiers, like table and field names.
+    * Conditional sorting.
+    * Pipelines consisting of several semicolon-separated queries with dynamic fields.
 
-By default, elements are separated by commas, but this is configurable:
+On the other hand, [*prefer prepared statements] if:
 
-[sql_formatting_sequence_2]
-
-
-
-
-[heading:unknown_character_set Solving the unknown_character_set error]
-
-If you are getting a `boost::system::system_error` with a
-`client_errc::unknown_character_set` error code (or getting this error code by other means),
-your connection is currently unaware of the character set it's using, which is required by format operations.
-Try the following:
-
-* Make sure that you are performing connection establishment ([refmem any_connection connect] or
-  [refmemunq any_connection async_connect]) before calling [refmemunq any_connection format_opts].
-* Use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
-  to set your connection's character set instead of using raw SQL.
-* Some [refmem connect_params connection_collation] values are not supported by all servers
-  and often trigger fallback behavior. If you are using a non-UTF8 character set, prefer setting it
-  explicitly using [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set].
-  Don't rely on [refmem connect_params connection_collation].
-* [refmem any_connection reset_connection] and [refmemunq any_connection async_reset_connection] wipe
-  character set information. Call [refmemunq any_connection set_character_set] or [refmemunq any_connection async_set_character_set]
-  after resetting your connection.
-
-[warning
-  [*Security considerations]: don't craft [reflink format_options] values manually.
-  Always use [refmem any_connection format_opts].
-]
-
-For an explanation on why [reflink format_options] is necessary and how
-character set tracking works, please read [link mysql.sql_formatting_advanced.format_options this section].
-
-
-
-
-[heading Solving the invalid_encoding error]
-
-SQL formatting can fail if you provide values that can't be securely formatted.
-The most common cause is passing string values that are not valid according to the
-passed character set. This triggers a `client_errc::invalid_encoding` error:
-
-[sql_formatting_invalid_encoding]
-
-You can validate your strings beforehand or handle the error once
-it happened and reject the input. Other types may also produce format errors.
-
-[tip
-    If you prefer handling errors with error codes, instead of exceptions,
-    use [reflink format_sql_to]. Please read
-    [link mysql.sql_formatting_advanced.error_handling this section] for details.
-]
-
-
+* You are executing the same query over and over. You can prepare the statement
+  once and execute it several times.
+* Your query is retrieving a lot of data, and you have performed the relevant performance measurements.
 
 
 
@@ -219,9 +247,55 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
 * [*Prepared statements can be re-used]. If you need to execute a query several times,
   prepared statements will only be parsed once.
 * Client-formatted SQL allows [*more efficient patterns] than prepared statements,
-  like batch inserts.
-* You can use client-formatted SQL to generate several [*semicolon-separated queries]
-  to be run in batch.
+  like batch inserts and semicolon-separated queries.
+
+
+
+
+
+
+[heading:security Security considerations]
+
+Both client-side SQL formatting and prepared statements [*protect against SQL injection].
+Statements do so by parsing the query with placeholders server-side, before performing parameter
+substitution. Client-side SQL quotes and escapes your values to avoid injection, but
+[*does not understand your queries].
+
+This means that you need to [*ensure that your queries always expand to valid SQL].
+This is trivial for simple queries, but may be an issue with more complex ones,
+involving ranges or dynamic identifiers. For instance, the following query may
+expand to invalid SQL if the provided range is empty:
+
+[sql_formatting_empty_ranges]
+
+The risk is higher if you're building your query by pieces using [reflink format_sql_to].
+
+To sum up:
+
+* Client-side SQL protects against SQL injection.
+* Client-side SQL does not protect against logic errors. The risk is only present in complex
+  queries. We suggest the following advice:
+    * Avoid complex query generation logic as much as possible.
+      Use a single format string instead of `format_sql_to`, unless you have no other option.
+    * When using ranges, consider if the empty range would lead to valid SQL or not.
+    * Thoroughly test complex query generation logic.
+* Client-side SQL requires knowing the connection's current character set. This usually happens
+  out of the box, and will lead to a [link mysql.sql_formatting.errors controlled error]
+  otherwise. Some recommendations:
+    * If in doubt, always use the default character set (`utf8mb4`).
+    * Never issue `SET NAMES` or `SET CHARACTER SET` statements directly -
+      use [refmem any_connection set_character_set] or [refmemunq any_connection async_set_character_set], instead.
+    * If you're using [reflink format_sql] or [reflink format_sql_to], never craft [reflink format_options] values manually.
+      Use [refmem any_connection format_opts], instead.
+
+
+
+
+
+
+
+
+
 
 
 

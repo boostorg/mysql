@@ -54,19 +54,13 @@ class serialization_context
 
     void append_to_buffer(span<const std::uint8_t> contents)
     {
-        // Do nothing if we previously encountered an error
-        if (err_)
-            return;
-
         // Check if the buffer has space for the given contents
         if (buffer_.size() + contents.size() > max_buffer_size_)
-        {
-            err_ = client_errc::max_buffer_size_exceeded;
-            return;
-        }
+            add_error(client_errc::max_buffer_size_exceeded);
 
-        // Copy
-        buffer_.insert(buffer_.end(), contents.begin(), contents.end());
+        // Copy if there was no error
+        if (!err_)
+            buffer_.insert(buffer_.end(), contents.begin(), contents.end());
     }
 
     void append_header() { append_to_buffer(std::array<std::uint8_t, frame_header_size>{}); }
@@ -137,6 +131,19 @@ public:
 
     // To be called by serialize() functions. Appends bytes to the buffer.
     void add(span<const std::uint8_t> content) { add_impl(content); }
+
+    // Make serialization_context compatible with output_string
+    void append(const char* content, std::size_t size)
+    {
+        add({reinterpret_cast<const std::uint8_t*>(content), size});
+    }
+
+    // Sets the error state
+    void add_error(error_code ec)
+    {
+        if (!err_)
+            err_ = ec;
+    }
 
     error_code error() const { return err_; }
 

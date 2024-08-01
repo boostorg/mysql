@@ -7,23 +7,22 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include "test_unit/test_stream.hpp"
-
 #ifdef BOOST_MYSQL_CXX14
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/connection.hpp>
 #include <boost/mysql/static_execution_state.hpp>
 
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/netfun_maker.hpp"
+#include "test_common/network_result.hpp"
 #include "test_unit/create_execution_processor.hpp"
-#include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_row_message.hpp"
+#include "test_unit/test_any_connection.hpp"
+#include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -31,37 +30,22 @@ using boost::span;
 
 BOOST_AUTO_TEST_SUITE(test_read_some_rows_static)
 
-using test_connection = connection<test_stream>;
-
 using row1 = std::tuple<int, float>;
 using row2 = std::tuple<double>;
 
 using state_t = static_execution_state<row1, row1, row2, row1, row2>;
-using netfun_maker_row1 = netfun_maker<std::size_t, test_connection, state_t&, span<row1> >;
-using netfun_maker_row2 = netfun_maker<std::size_t, test_connection, state_t&, span<row2> >;
-
-struct
-{
-    typename netfun_maker_row1::signature read_some_rows_row1;
-    typename netfun_maker_row2::signature read_some_rows_row2;
-    const char* name;
-} all_fns[] = {
-    {netfun_maker_row1::sync_errc(&test_connection::read_some_rows),
-     netfun_maker_row2::sync_errc(&test_connection::read_some_rows),
-     "sync" },
-    {netfun_maker_row1::async_diag(&test_connection::async_read_some_rows),
-     netfun_maker_row2::async_diag(&test_connection::async_read_some_rows),
-     "async"},
-};
 
 struct fixture
 {
     state_t st;
-    test_connection conn;
+    any_connection conn{create_test_any_connection()};
     std::array<row1, 3> storage1;
     std::array<row2, 3> storage2;
 
-    test_stream& stream() noexcept { return conn.stream(); }
+    span<row1> storage1_span() { return storage1; }
+    span<row2> storage2_span() { return storage2; }
+
+    test_stream& stream() noexcept { return get_stream(conn); }
 
     void add_ok() { ::add_ok(get_iface(st), ok_builder().more_results(true).build()); }
 
@@ -87,99 +71,83 @@ struct fixture
     }
 };
 
-BOOST_AUTO_TEST_CASE(repeated_row_types)
+BOOST_FIXTURE_TEST_CASE(repeated_row_types, fixture)
 {
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            fixture fix;
-            fix.add_meta_row1();
+    add_meta_row1();
 
-            // 1st resultset: row1
-            fix.stream()
-                .add_bytes(create_text_row_message(0, 10, 4.2f))
-                .add_bytes(create_text_row_message(1, 11, 4.3f));
+    // 1st resultset: row1
+    stream().add_bytes(create_text_row_message(0, 10, 4.2f)).add_bytes(create_text_row_message(1, 11, 4.3f));
 
-            std::size_t num_rows = fns.read_some_rows_row1(fix.conn, fix.st, fix.storage1).get();
-            BOOST_TEST_REQUIRE(num_rows == 2u);
-            BOOST_TEST((fix.storage1[0] == row1{10, 4.2f}));
-            BOOST_TEST((fix.storage1[1] == row1{11, 4.3f}));
+    std::size_t num_rows = conn.async_read_some_rows(st, storage1_span(), as_netresult).get();
+    BOOST_TEST_REQUIRE(num_rows == 2u);
+    BOOST_TEST((storage1[0] == row1{10, 4.2f}));
+    BOOST_TEST((storage1[1] == row1{11, 4.3f}));
 
-            // Advance resultset
-            fix.add_ok();
-            fix.add_meta_row1();
-            BOOST_TEST_REQUIRE(fix.st.should_read_rows());
+    // Advance resultset
+    add_ok();
+    add_meta_row1();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
-            // 2nd resultset: row1 again
-            fix.stream().add_bytes(create_text_row_message(2, 13, 0.2f));
-            num_rows = fns.read_some_rows_row1(fix.conn, fix.st, fix.storage1).get();
-            BOOST_TEST_REQUIRE(num_rows == 1u);
-            BOOST_TEST((fix.storage1[0] == row1{13, 0.2f}));
+    // 2nd resultset: row1 again
+    stream().add_bytes(create_text_row_message(2, 13, 0.2f));
+    num_rows = conn.async_read_some_rows(st, storage1_span(), as_netresult).get();
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST((storage1[0] == row1{13, 0.2f}));
 
-            // Advance resultset
-            fix.add_ok();
-            fix.add_meta_row2();
-            BOOST_TEST_REQUIRE(fix.st.should_read_rows());
+    // Advance resultset
+    add_ok();
+    add_meta_row2();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
-            // 3rd resultset: row2
-            fix.stream().add_bytes(create_text_row_message(3, 9.1));
-            num_rows = fns.read_some_rows_row2(fix.conn, fix.st, fix.storage2).get();
-            BOOST_TEST_REQUIRE(num_rows == 1u);
-            BOOST_TEST((fix.storage2[0] == row2{9.1}));
+    // 3rd resultset: row2
+    stream().add_bytes(create_text_row_message(3, 9.1));
+    num_rows = conn.async_read_some_rows(st, storage2_span(), as_netresult).get();
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST((storage2[0] == row2{9.1}));
 
-            // Advance resultset
-            fix.add_ok();
-            fix.add_meta_row1();
-            BOOST_TEST_REQUIRE(fix.st.should_read_rows());
+    // Advance resultset
+    add_ok();
+    add_meta_row1();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
-            // 4th resultset: row1
-            fix.stream().add_bytes(create_text_row_message(4, 43, 0.7f));
-            num_rows = fns.read_some_rows_row1(fix.conn, fix.st, fix.storage1).get();
-            BOOST_TEST_REQUIRE(num_rows == 1u);
-            BOOST_TEST((fix.storage1[0] == row1{43, 0.7f}));
+    // 4th resultset: row1
+    stream().add_bytes(create_text_row_message(4, 43, 0.7f));
+    num_rows = conn.async_read_some_rows(st, storage1_span(), as_netresult).get();
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST((storage1[0] == row1{43, 0.7f}));
 
-            // Advance resultset
-            fix.add_ok();
-            fix.add_meta_row2();
-            BOOST_TEST_REQUIRE(fix.st.should_read_rows());
+    // Advance resultset
+    add_ok();
+    add_meta_row2();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
-            // 5th resultset: row2
-            fix.stream().add_bytes(create_text_row_message(5, 99.9));
-            num_rows = fns.read_some_rows_row2(fix.conn, fix.st, fix.storage2).get();
-            BOOST_TEST_REQUIRE(num_rows == 1u);
-            BOOST_TEST((fix.storage2[0] == row2{99.9}));
-        }
-    }
+    // 5th resultset: row2
+    stream().add_bytes(create_text_row_message(5, 99.9));
+    num_rows = conn.async_read_some_rows(st, storage2_span(), as_netresult).get();
+    BOOST_TEST_REQUIRE(num_rows == 1u);
+    BOOST_TEST((storage2[0] == row2{99.9}));
 }
 
-BOOST_AUTO_TEST_CASE(error_row_type_mismatch)
+BOOST_FIXTURE_TEST_CASE(error_row_type_mismatch, fixture)
 {
-    for (const auto& fns : all_fns)
-    {
-        BOOST_TEST_CONTEXT(fns.name)
-        {
-            fixture fix;
-            fix.add_meta_row1();
+    add_meta_row1();
 
-            // 1st resultset: row1. Note that this will consume the message
-            fix.stream().add_bytes(create_text_row_message(0, 10, 4.2f));
-            fns.read_some_rows_row2(fix.conn, fix.st, fix.storage2)
-                .validate_error(client_errc::row_type_mismatch);
+    // 1st resultset: row1. Note that this will consume the message
+    stream().add_bytes(create_text_row_message(0, 10, 4.2f));
+    conn.async_read_some_rows(st, storage2_span(), as_netresult)
+        .validate_error(client_errc::row_type_mismatch);
 
-            // Advance resultset
-            fix.add_ok();
-            fix.add_meta_row1();
-            fix.add_ok();
-            fix.add_meta_row2();
-            BOOST_TEST_REQUIRE(fix.st.should_read_rows());
+    // Advance resultset
+    add_ok();
+    add_meta_row1();
+    add_ok();
+    add_meta_row2();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
 
-            // 3rd resultset: row2
-            fix.stream().add_bytes(create_text_row_message(1, 9.1));
-            fns.read_some_rows_row1(fix.conn, fix.st, fix.storage1)
-                .validate_error(client_errc::row_type_mismatch);
-        }
-    }
+    // 3rd resultset: row2
+    stream().add_bytes(create_text_row_message(1, 9.1));
+    conn.async_read_some_rows(st, storage1_span(), as_netresult)
+        .validate_error(client_errc::row_type_mismatch);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

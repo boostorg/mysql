@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/with_params.hpp>
+
 #include <boost/mysql/detail/config.hpp>
 
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
@@ -68,6 +70,17 @@ static_assert(is_execution_request<bound_statement_iterator_range<field_view*>&>
 static_assert(is_execution_request<bound_statement_iterator_range<field_view*>&&>::value, "");
 
 static_assert(!is_execution_request<field_view*>::value, "");
+
+// with_params
+static_assert(is_execution_request<with_params_t<>>::value, "");
+static_assert(is_execution_request<with_params_t<int>>::value, "");
+static_assert(is_execution_request<with_params_t<int, float>>::value, "");
+static_assert(is_execution_request<with_params_t<const std::string&, float>>::value, "");
+
+static_assert(is_execution_request<with_params_t<int>&>::value, "");
+static_assert(is_execution_request<const with_params_t<int>&>::value, "");
+static_assert(is_execution_request<with_params_t<int>&&>::value, "");
+static_assert(is_execution_request<with_params_t<const std::string&>&&>::value, "");
 
 // Other stuff
 static_assert(!is_execution_request<field_view>::value, "");

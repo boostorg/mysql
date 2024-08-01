@@ -15,7 +15,7 @@ You can specialize [reflink formatter] to add formatting support to your types:
 
 [sql_formatting_formatter_specialization]
 
-The type can now be used in [reflink format_sql] and [reflink format_sql_to]:
+The type can now be used in [reflink format_sql], [reflink format_sql_to] and [reflink with_params]:
 
 [sql_formatting_formatter_use]
 
@@ -30,6 +30,10 @@ We can now use it like this:
 [sql_formatting_formatter_use_specifiers]
 
 See the [reflink formatter] reference docs for more info.
+
+
+
+
 
 
 [heading:format_string_syntax Format string syntax]
@@ -52,19 +56,9 @@ Indices can appear in any order, and can be repeated:
 
 [sql_formatting_manual_indices]
 
-Finally, you can use named arguments by using the initializer-list overloads,
-which creates [reflink format_arg] values:
-
-[sql_formatting_named_args]
-
-Argument names can only contain ASCII letters (lowercase and uppercase),
-digits and the underscore character (`_`). Names can't start with a digit.
-
 Format strings can use either manual or automatic indexing, but can't mix them:
 
 [sql_formatting_manual_auto_mix]
-
-Named arguments can be mixed with either manual or automatic indexing.
 
 Unreferenced format arguments are ignored. It's not an error to supply more
 format arguments than required:
@@ -79,8 +73,8 @@ Format specifiers (e.g. `{:i}`) are supported for some types,
 but are far less common than in fmtlib, since most types have a
 single, canonical representation.
 
-Specifiers can appear when doing automatic indexing (e.g. `{:i}`),
-manual indexing (e.g. `{0:i}`) and named arguments (e.g. `{name:i}`).
+Specifiers can appear when doing automatic indexing (e.g. `{:i}`) or
+manual indexing (e.g. `{0:i}`).
 
 Types specializing formatters can define custom specifiers.
 Only printable ASCII characters that are not `{` or `}` can be used as specifiers.
@@ -98,6 +92,10 @@ Some values can't be securely formatted. For instance, C++
 `double` can be NaN and infinity, which is not supported by MySQL.
 Strings can contain byte sequences that don't represent valid characters,
 which makes them impossible to escape securely.
+
+When using [reflink with_params] and any of these errors is encountered,
+the [refmemunq any_connection execute] operation fails, as if a server error
+had been encountered. This is transparent to the user, so no action is required.
 
 [reflink format_sql] reports these errors by throwing `boost::system::system_error` exceptions,
 which contain an error code with details about what happened. For instance:
@@ -144,15 +142,21 @@ that formatting functions need to know in order to work:
 [link mysql.error_handling.system_result `boost::system::result`]`<`[reflink format_options]`>`.
 If the connection could not determine the current character set, the result will contain an error.
 For a reference on how character set tracking works, please read [link mysql.charsets.tracking this section].
+
+[note
+    Prior to connection establishment, the connection's character set is always unknown.
+    Connect your connection before calling `format_opts`.
+]
   
 [warning
     Passing an incorrect `format_options` value to formatting functions may cause
     escaping to generate incorrect values, which may generate vulnerabilities.
     Stay safe and always use [refmem any_connection format_opts] instead of
     hand-crafting `format_options` values. Doing this, if the character set can't be safely
-    determined, you will get a [link mysql.sql_formatting.unknown_character_set `client_errc::unknown_character_set`]
-    error instead of a vulnerability.
+    determined, you will get a `client_errc::unknown_character_set` error instead of a vulnerability.
 ]
+
+
 
 
 
