@@ -555,7 +555,14 @@ struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args);
+void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args)
+{
+    std::initializer_list<format_arg> args_il{
+        {string_view(), std::forward<Formattable>(args)}
+        ...
+    };
+    detail::vformat_sql_to(ctx, format_str, args_il);
+}
 
 /**
  * \copydoc format_sql_to
@@ -563,12 +570,14 @@ void format_sql_to(format_context_base& ctx, constant_string_view format_str, Fo
  * \n
  * This overload allows using named arguments.
  */
-BOOST_MYSQL_DECL
-void format_sql_to(
+inline void format_sql_to(
     format_context_base& ctx,
     constant_string_view format_str,
     std::initializer_list<format_arg> args
-);
+)
+{
+    detail::vformat_sql_to(ctx, format_str, args);
+}
 
 /**
  * \brief (EXPERIMENTAL) Composes a SQL query client-side.

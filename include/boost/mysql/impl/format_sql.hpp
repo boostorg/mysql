@@ -159,20 +159,6 @@ boost::mysql::detail::formattable_ref_impl boost::mysql::detail::make_formattabl
 }
 
 template <BOOST_MYSQL_FORMATTABLE... Formattable>
-void boost::mysql::format_sql_to(
-    format_context_base& ctx,
-    constant_string_view format_str,
-    Formattable&&... args
-)
-{
-    std::initializer_list<format_arg> args_il{
-        {string_view(), std::forward<Formattable>(args)}
-        ...
-    };
-    format_sql_to(ctx, format_str, args_il);
-}
-
-template <BOOST_MYSQL_FORMATTABLE... Formattable>
 std::string boost::mysql::format_sql(
     format_options opts,
     constant_string_view format_str,

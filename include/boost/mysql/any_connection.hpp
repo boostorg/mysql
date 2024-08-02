@@ -144,12 +144,8 @@ class any_connection
     static std::unique_ptr<detail::engine> create_engine(asio::any_io_executor ex, asio::ssl::context* ctx);
 
     // Used by tests
-    any_connection(
-        std::size_t initial_buffer_size,
-        std::size_t max_buffer_size,
-        std::unique_ptr<detail::engine> eng
-    )
-        : impl_(initial_buffer_size, max_buffer_size, std::move(eng))
+    any_connection(std::unique_ptr<detail::engine> eng, any_connection_params params)
+        : impl_(params.initial_buffer_size, params.max_buffer_size, std::move(eng))
     {
     }
 
@@ -164,11 +160,7 @@ public:
      * an \ref any_connection_params object to this constructor.
      */
     any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
-        : any_connection(
-              params.initial_buffer_size,
-              params.max_buffer_size,
-              create_engine(std::move(ex), params.ssl_context)
-          )
+        : any_connection(create_engine(std::move(ex), params.ssl_context), params)
     {
     }
 
@@ -408,18 +400,18 @@ public:
 
     /// \copydoc connection::execute
     template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
-    void execute(const ExecutionRequest& req, ResultsType& result, error_code& err, diagnostics& diag)
+    void execute(ExecutionRequest&& req, ResultsType& result, error_code& err, diagnostics& diag)
     {
-        impl_.execute(req, result, err, diag);
+        impl_.execute(std::forward<ExecutionRequest>(req), result, err, diag);
     }
 
     /// \copydoc execute
     template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
-    void execute(const ExecutionRequest& req, ResultsType& result)
+    void execute(ExecutionRequest&& req, ResultsType& result)
     {
         error_code err;
         diagnostics diag;
-        execute(req, result, err, diag);
+        execute(std::forward<ExecutionRequest>(req), result, err, diag);
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
@@ -463,25 +455,20 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
-    void start_execution(
-        const ExecutionRequest& req,
-        ExecutionStateType& st,
-        error_code& err,
-        diagnostics& diag
-    )
+    void start_execution(ExecutionRequest&& req, ExecutionStateType& st, error_code& err, diagnostics& diag)
     {
-        impl_.start_execution(req, st, err, diag);
+        impl_.start_execution(std::forward<ExecutionRequest>(req), st, err, diag);
     }
 
     /// \copydoc start_execution
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
-    void start_execution(const ExecutionRequest& req, ExecutionStateType& st)
+    void start_execution(ExecutionRequest&& req, ExecutionStateType& st)
     {
         error_code err;
         diagnostics diag;
-        start_execution(req, st, err, diag);
+        start_execution(std::forward<ExecutionRequest>(req), st, err, diag);
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 

@@ -13,6 +13,7 @@
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/optional/optional.hpp>
@@ -24,6 +25,7 @@
 #include <cstdint>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "test_common/has_ranges.hpp"
 #include "test_common/printing.hpp"
@@ -70,7 +72,10 @@ std::string compose_select_query(
         boost::mysql::format_sql_to(ctx, " LIMIT {}", *limit);
     }
 
-    // Retrieve the generated query string
+    // Retrieve the generated query string.
+    // get() returns a boost::system::result<std::string> that
+    // contains an error if any of the format operations failed.
+    // Calling value() will throw on error, like format_sql does
     return std::move(ctx).get().value();
 }
 //]
@@ -129,136 +134,96 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
     {
         //[sql_formatting_simple
         std::string employee_name = get_name();  // employee_name is an untrusted string
-
-        // Compose the SQL query in the client
-        std::string query = boost::mysql::format_sql(
-            conn.format_opts().value(),
-            "SELECT id, salary FROM employee WHERE last_name = {}",
-            employee_name
-        );
-
-        // If employee_name is "John", query now contains:
-        // "SELECT id, salary FROM employee WHERE last_name = 'John'"
-        // If employee_name contains quotes, they will be escaped as required
-
-        // Execute the generated query as usual
         results result;
-        conn.execute(query, result);
-        //]
 
-        BOOST_TEST(query == "SELECT id, salary FROM employee WHERE last_name = 'John'");
+        // Expand the query and execute it. The expansion happens client-side.
+        // If employee_name is "John", the executed query would be:
+        // "SELECT id, salary FROM employee WHERE last_name = 'John'"
+        conn.execute(
+            with_params("SELECT id, salary FROM employee WHERE last_name = {}", employee_name),
+            result
+        );
+        //]
     }
     {
         //[sql_formatting_other_scalars
-        std::string query = boost::mysql::format_sql(
-            conn.format_opts().value(),
-            "SELECT id FROM employee WHERE salary > {}",
-            42000
-        );
-
-        BOOST_TEST(query == "SELECT id FROM employee WHERE salary > 42000");
+        // Will execute "SELECT id FROM employee WHERE salary > 42000"
+        results result;
+        conn.execute(with_params("SELECT id FROM employee WHERE salary > {}", 42000), result);
         //]
-
-        conn.execute(query, r);
     }
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
     {
         //[sql_formatting_optionals
         std::optional<std::int64_t> salary;  // get salary from a possibly untrusted source
+        results result;
 
-        std::string query = boost::mysql::format_sql(
-            conn.format_opts().value(),
-            "UPDATE employee SET salary = {} WHERE id = {}",
-            salary,
-            1
-        );
-
-        // Depending on whether salary has a value or not, generates:
-        // UPDATE employee SET salary = 42000 WHERE id = 1
-        // UPDATE employee SET salary = NULL WHERE id = 1
+        // Depending on whether salary has a value or not, executes:
+        // "UPDATE employee SET salary = 42000 WHERE id = 1"
+        // "UPDATE employee SET salary = NULL WHERE id = 1"
+        conn.execute(with_params("UPDATE employee SET salary = {} WHERE id = {}", salary, 1), result);
         //]
-
-        BOOST_TEST(query == "UPDATE employee SET salary = NULL WHERE id = 1");
-        conn.execute(query, r);
     }
 #endif
     {
         //[sql_formatting_ranges
+        results result;
         std::vector<long> ids{1, 5, 20};
-        std::string query = format_sql(
-            conn.format_opts().value(),
-            "SELECT * FROM employee WHERE id IN ({})",
-            ids
-        );
-        BOOST_TEST(query == "SELECT * FROM employee WHERE id IN (1, 5, 20)");
+
+        // Executes "SELECT * FROM employee WHERE id IN (1, 5, 20)"
+        conn.execute(with_params("SELECT * FROM employee WHERE id IN ({})", ids), result);
         //]
-        conn.execute(query, r);
     }
     {
         //[sql_formatting_manual_indices
         // Recall that you need to set connect_params::multi_queries to true when connecting
-        // before running semicolon-separated queries.
-        std::string query = boost::mysql::format_sql(
-            conn.format_opts().value(),
-            "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
-            42,
-            "John"
-        );
-
-        BOOST_TEST(
-            query ==
-            "UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42"
+        // before running semicolon-separated queries. Executes:
+        // "UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42"
+        results result;
+        conn.execute(
+            with_params(
+                "UPDATE employee SET first_name = {1} WHERE id = {0}; SELECT * FROM employee WHERE id = {0}",
+                42,
+                "John"
+            ),
+            result
         );
         //]
-
-        conn.execute(query, r);
     }
     {
-        // clang-format off
-        //[sql_formatting_named_args
-        std::string query = boost::mysql::format_sql(
-            conn.format_opts().value(),
-            "UPDATE employee SET first_name = {name} WHERE id = {id}; SELECT * FROM employee WHERE id = {id}",
-            {
-                {"id",   42    },
-                {"name", "John"}
-            }
-        );
-        //<-
-        // clang-format on
-        //->
-
-        BOOST_TEST(
-            query ==
-            "UPDATE employee SET first_name = 'John' WHERE id = 42; SELECT * FROM employee WHERE id = 42"
-        );
+        //[sql_formatting_invalid_encoding
+        try
+        {
+            // If the connection is using UTF-8 (the default), this will throw an error,
+            // because the string to be formatted is not valid UTF-8.
+            // The query never reaches the server.
+            results result;
+            conn.execute(with_params("SELECT {}", "bad\xff UTF-8"), result);
+            //<-
+            BOOST_TEST(false);
+            //->
+        }
+        catch (const boost::system::system_error& err)
+        {
+            BOOST_TEST(err.code() == boost::mysql::client_errc::invalid_encoding);
+        }
         //]
-
-        conn.execute(query, r);
     }
     {
-        //[sql_formatting_specifiers
+        //[sql_formatting_format_sql
+        // Compose the SQL query without executing it.
+        // format_opts returns a system::result<format_options>,
+        // contains settings like the current character set.
+        // If the connection is using an unknown character set, this will throw an error.
         std::string query = boost::mysql::format_sql(
             conn.format_opts().value(),
-            "SELECT id, last_name FROM employee ORDER BY {:i} DESC",
-            "company_id"
+            "SELECT id, salary FROM employee WHERE last_name = {}",
+            "Doe"
         );
 
-        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
+        BOOST_TEST(query == "SELECT id, salary FROM employee WHERE last_name = 'Doe'");
         //]
 
-        conn.execute(query, r);
-    }
-    {
-        //[sql_formatting_specifiers_explicit_indices
-        std::string query = boost::mysql::format_sql(
-            conn.format_opts().value(),
-            "SELECT id, last_name FROM employee ORDER BY {0:i} DESC",
-            "company_id"
-        );
-        //]
-
-        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
         conn.execute(query, r);
     }
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
@@ -330,22 +295,45 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting)
         //]
         conn.execute(query, r);
     }
-    {
-        try
-        {
-            //[sql_formatting_invalid_encoding
-            // If the connection is using UTF-8 (the default), this will throw an error,
-            // because the string to be formatted contains invalid UTF8.
-            format_sql(conn.format_opts().value(), "SELECT {}", "bad\xff UTF-8");
-            //]
 
-            BOOST_TEST(false);
-        }
-        catch (const boost::system::system_error& err)
-        {
-            BOOST_TEST(err.code() == boost::mysql::client_errc::invalid_encoding);
-        }
+    {
+        //[sql_formatting_specifiers
+        std::string query = boost::mysql::format_sql(
+            conn.format_opts().value(),
+            "SELECT id, last_name FROM employee ORDER BY {:i} DESC",
+            "company_id"
+        );
+
+        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
+        //]
+
+        conn.execute(query, r);
     }
+    {
+        //[sql_formatting_specifiers_explicit_indices
+        std::string query = boost::mysql::format_sql(
+            conn.format_opts().value(),
+            "SELECT id, last_name FROM employee ORDER BY {0:i} DESC",
+            "company_id"
+        );
+        //]
+
+        BOOST_TEST(query == "SELECT id, last_name FROM employee ORDER BY `company_id` DESC");
+        conn.execute(query, r);
+    }
+    {
+        //[sql_formatting_empty_ranges
+        // If ids.empty(), generates "SELECT * FROM employee WHERE id IN ()", which is a syntax error.
+        // This is not a security issue for this query, but may be exploitable in more involved scenarios.
+        // Queries involving only scalar values (as opposed to ranges) are not affected by this.
+        // It is your responsibility to check for conditions like ids.empty(), as client-side SQL
+        // formatting does not understand your queries.
+        std::vector<int> ids;
+        auto q = format_sql(conn.format_opts().value(), "SELECT * FROM employee WHERE id IN ({})", ids);
+        //]
+        BOOST_TEST(q == "SELECT * FROM employee WHERE id IN ()");
+    }
+
     {
         using namespace boost::mysql;
         using boost::optional;

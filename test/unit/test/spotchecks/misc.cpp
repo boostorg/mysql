@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/blob.hpp>
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -42,6 +43,7 @@
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/create_statement.hpp"
 #include "test_unit/fail_count.hpp"
+#include "test_unit/test_any_connection.hpp"
 #include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql::test;
@@ -50,51 +52,17 @@ namespace asio = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_misc)
 
-using test_connection = connection<test_stream>;
-
-// Make sure async_execute() and friends don't cause side
-// effects in the initiation
-BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
-{
-    test_connection conn;
-    results result1, result2;
-
-    // Resultsets will be complete as soon as a message is read
-    conn.stream()
-        .add_bytes(create_ok_frame(1, ok_builder().affected_rows(2).build()))
-        .add_bytes(create_ok_frame(1, ok_builder().affected_rows(1).build()));
-
-    // Create two queries as deferred objects, but don't run them yet
-    auto q1 = conn.async_execute("Q1", result1, asio::deferred);
-    auto q2 = conn.async_execute("Q2", result2, asio::deferred);
-
-    // Run them in reverse order
-    std::move(q2)(as_netresult).validate_no_error();
-    std::move(q1)(as_netresult).validate_no_error();
-
-    // Check that we wrote Q2's message first, then Q1's
-    auto expected = concat_copy(
-        create_frame(0, {0x03, 0x51, 0x32}),  // query request Q2
-        create_frame(0, {0x03, 0x51, 0x31})   // query request Q1
-    );
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected);
-
-    // Check that the results got the right ok_packets
-    BOOST_TEST(result2.affected_rows() == 2u);
-    BOOST_TEST(result1.affected_rows() == 1u);
-}
-
 // spotcheck for the dynamic interface
 // Verifies that execute (dynamic interface) works when rows come in separate batches
 // This is testing the interaction between the network algorithm and results
 BOOST_AUTO_TEST_CASE(execute_multiple_batches)
 {
     // Setup
-    test_connection conn;
+    auto conn = create_test_any_connection();
     results result;
 
     // Message sequence (each on its own read)
-    conn.stream()
+    get_stream(conn)
         .add_bytes(create_frame(1, {0x02}))  // OK, 2 columns
         .add_break()
         .add_bytes(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))  // meta
@@ -126,7 +94,7 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
 
     // We've written the query request
     auto expected_msg = create_frame(0, {0x03, 0x61, 0x62, 0x63});  // ASCII "abc" (plus length)
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected_msg);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(get_stream(conn).bytes_written(), expected_msg);
 
     // We've populated the results
     BOOST_TEST_REQUIRE(result.size() == 3u);
@@ -141,150 +109,20 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
     BOOST_TEST(result[2].rows() == makerows(1, "ab"));
 }
 
-// Regression check: execute statement with iterator range with a reference type that is convertible to
-// field_view, but not equal to field_view
-BOOST_AUTO_TEST_CASE(stmt_iterator_reference_not_field_view)
-{
-    results result;
-    auto stmt = statement_builder().id(1).num_params(2).build();
-    test_connection conn;
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().affected_rows(50).info("1st").build()));
-
-    // Call the function
-    std::vector<field> fields{field_view("test"), field_view()};
-    conn.execute(stmt.bind(fields.begin(), fields.end()), result);
-
-    // Verify the message we sent
-    constexpr std::uint8_t expected_msg[] = {
-        0x15, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
-        0x00, 0x02, 0x01, 0xfe, 0x00, 0x06, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74,
-    };
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected_msg);
-
-    // Verify the results
-    BOOST_TEST_REQUIRE(result.size() == 1u);
-    BOOST_TEST(result.meta().size() == 0u);
-    BOOST_TEST(result.affected_rows() == 50u);
-    BOOST_TEST(result.info() == "1st");
-}
-
-// The serialized form of executing a statement with ID=1, params=("test", nullptr)
-constexpr std::uint8_t execute_stmt_msg[] = {
-    0x15, 0x00, 0x00, 0x00, 0x17, 0x01, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00,
-    0x00, 0x02, 0x01, 0xfe, 0x00, 0x06, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74,
-};
-
-// Verify that we correctly perform a decay-copy of the execution request
-// in async_execute(), relevant for deferred tokens
-BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes_rvalues)
-{
-    test_connection conn;
-
-    results result;
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().info("1st").build()));
-
-    // Deferred op. Execution request is a temporary
-    auto op = conn.async_execute(
-        statement_builder().id(1).num_params(2).build().bind(std::string("test"), nullptr),
-        result,
-        asio::deferred
-    );
-    std::move(op)(as_netresult).validate_no_error();
-
-    // verify that the op had the intended effects
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-    BOOST_TEST(result.info() == "1st");
-}
-
-BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes_lvalues)
-{
-    test_connection conn;
-
-    results result;
-
-    // Create a bound statement on the heap. This helps tooling detect memory errors
-    using bound_stmt_t = bound_statement_tuple<std::tuple<std::string, std::nullptr_t>>;
-    auto stmt = statement_builder().id(1).num_params(2).build();
-    std::unique_ptr<bound_stmt_t> stmt_ptr{new bound_stmt_t{stmt.bind(std::string("test"), nullptr)}};
-
-    // Messages
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().info("1st").build()));
-
-    // Deferred op
-    auto op = conn.async_execute(*stmt_ptr, result, asio::deferred);
-
-    // Free the statement
-    stmt_ptr.reset();
-
-    // Actually run the op
-    std::move(op)(as_netresult).validate_no_error();
-
-    // verify that the op had the intended effects
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-    BOOST_TEST(result.info() == "1st");
-}
-
-// Verify that we correctly perform a decay-copy of the parameters and the
-// statement handle for async_start_execution(), relevant for deferred tokens
-BOOST_AUTO_TEST_CASE(async_start_execution_deferred_lifetimes_rvalues)
-{
-    test_connection conn;
-
-    execution_state st;
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().info("1st").build()));
-
-    // Deferred op. Execution request is a temporary
-    auto op = conn.async_start_execution(
-        statement_builder().id(1).num_params(2).build().bind(std::string("test"), nullptr),
-        st,
-        asio::deferred
-    );
-    std::move(op)(as_netresult).validate_no_error();
-
-    // verify that the op had the intended effects
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-    BOOST_TEST(st.info() == "1st");
-}
-
-BOOST_AUTO_TEST_CASE(deferred_lifetimes_statement)
-{
-    test_connection conn;
-    execution_state st;
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().info("1st").build()));
-
-    // Create a bound statement on the heap. This helps tooling detect memory errors
-    using bound_stmt_t = bound_statement_tuple<std::tuple<std::string, std::nullptr_t>>;
-    auto stmt = statement_builder().id(1).num_params(2).build();
-    std::unique_ptr<bound_stmt_t> stmt_ptr{new bound_stmt_t{stmt.bind(std::string("test"), nullptr)}};
-
-    // Deferred op
-    auto op = conn.async_start_execution(*stmt_ptr, st, asio::deferred);
-
-    // Free the statement
-    stmt_ptr.reset();
-
-    // Actually run the op
-    std::move(op)(as_netresult).validate_no_error();
-
-    // verify that the op had the intended effects
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), execute_stmt_msg);
-    BOOST_TEST(st.info() == "1st");
-}
-
-// Verify that async_close_statement doesn't require the passed-in statement to be alive. Only
-// relevant for deferred tokens.
+// Regression check: async_close_statement doesn't require the passed-in statement to be alive
+// when used with deferred tokens.
 BOOST_AUTO_TEST_CASE(async_close_statement_handle_deferred_tokens)
 {
-    test_connection conn;
-
-    auto stmt = statement_builder().id(3).build();
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
+    // Setup
+    auto conn = create_test_any_connection();
+    std::unique_ptr<statement> stmt{new statement(statement_builder().id(3).build())};
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
 
     // Deferred op
-    auto op = conn.async_close_statement(stmt, asio::deferred);
+    auto op = conn.async_close_statement(*stmt, asio::deferred);
 
     // Invalidate the original variable
-    stmt = statement_builder().id(42).build();
+    stmt.reset();
 
     // Run the operation
     std::move(op)(as_netresult).validate_no_error();
@@ -294,21 +132,21 @@ BOOST_AUTO_TEST_CASE(async_close_statement_handle_deferred_tokens)
         create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}),
         create_frame(0, {0x0e})
     );
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(conn.stream().bytes_written(), expected_message);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(get_stream(conn).bytes_written(), expected_message);
 }
 
 // Regression check: when there is a network error, sync functions
 // returning a value fail with an assertion
 BOOST_AUTO_TEST_CASE(net_error_prepare_statement)
 {
-    using netmaker_stmt = netfun_maker<statement, test_connection, string_view>;
+    using netmaker_stmt = netfun_maker<statement, any_connection, string_view>;
     struct
     {
         const char* name;
         netmaker_stmt::signature prepare_statement;
     } fns[] = {
-        {"sync",  netmaker_stmt::sync_errc(&test_connection::prepare_statement)       },
-        {"async", netmaker_stmt::async_diag(&test_connection::async_prepare_statement)},
+        {"sync",  netmaker_stmt::sync_errc(&any_connection::prepare_statement)       },
+        {"async", netmaker_stmt::async_diag(&any_connection::async_prepare_statement)},
     };
 
     for (const auto& fn : fns)
@@ -316,8 +154,8 @@ BOOST_AUTO_TEST_CASE(net_error_prepare_statement)
         BOOST_TEST_CONTEXT(fn.name)
         {
             // Setup
-            test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, boost::asio::error::connection_reset));
+            auto conn = create_test_any_connection();
+            get_stream(conn).set_fail_count(fail_count(0, boost::asio::error::connection_reset));
 
             fn.prepare_statement(conn, "SELECT 1").validate_error(boost::asio::error::connection_reset);
         }
@@ -326,14 +164,14 @@ BOOST_AUTO_TEST_CASE(net_error_prepare_statement)
 
 BOOST_AUTO_TEST_CASE(net_error_read_some_rows)
 {
-    using netmaker_stmt = netfun_maker<rows_view, test_connection, execution_state&>;
+    using netmaker_stmt = netfun_maker<rows_view, any_connection, execution_state&>;
     struct
     {
         const char* name;
         netmaker_stmt::signature read_some_rows;
     } fns[] = {
-        {"sync",  netmaker_stmt::sync_errc(&test_connection::read_some_rows)       },
-        {"async", netmaker_stmt::async_diag(&test_connection::async_read_some_rows)},
+        {"sync",  netmaker_stmt::sync_errc(&any_connection::read_some_rows)       },
+        {"async", netmaker_stmt::async_diag(&any_connection::async_read_some_rows)},
     };
 
     for (const auto& fn : fns)
@@ -341,8 +179,8 @@ BOOST_AUTO_TEST_CASE(net_error_read_some_rows)
         BOOST_TEST_CONTEXT(fn.name)
         {
             // Setup
-            test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, boost::asio::error::connection_reset));
+            auto conn = create_test_any_connection();
+            get_stream(conn).set_fail_count(fail_count(0, boost::asio::error::connection_reset));
             execution_state st;
             add_meta(get_iface(st), {column_type::bigint});
 
@@ -353,14 +191,14 @@ BOOST_AUTO_TEST_CASE(net_error_read_some_rows)
 
 BOOST_AUTO_TEST_CASE(net_error_void_signature)
 {
-    using netmaker_execute = netfun_maker<void, test_connection, const string_view&, results&>;
+    using netmaker_execute = netfun_maker<void, any_connection, const string_view&, results&>;
     struct
     {
         const char* name;
         netmaker_execute::signature execute;
     } fns[] = {
-        {"sync",  netmaker_execute::sync_errc(&test_connection::execute)       },
-        {"async", netmaker_execute::async_diag(&test_connection::async_execute)},
+        {"sync",  netmaker_execute::sync_errc(&any_connection::execute)       },
+        {"async", netmaker_execute::async_diag(&any_connection::async_execute)},
     };
 
     for (const auto& fn : fns)
@@ -368,8 +206,8 @@ BOOST_AUTO_TEST_CASE(net_error_void_signature)
         BOOST_TEST_CONTEXT(fn.name)
         {
             // Setup
-            test_connection conn;
-            conn.stream().set_fail_count(fail_count(0, boost::asio::error::connection_reset));
+            auto conn = create_test_any_connection();
+            get_stream(conn).set_fail_count(fail_count(0, boost::asio::error::connection_reset));
             results r;
 
             fn.execute(conn, "SELECT 1", r).validate_error(boost::asio::error::connection_reset);
@@ -377,74 +215,35 @@ BOOST_AUTO_TEST_CASE(net_error_void_signature)
     }
 }
 
-// We can bind and execute statements using references
-BOOST_AUTO_TEST_CASE(stmt_tuple_ref)
-{
-    // Setup
-    std::string s = "abcdef";
-    blob b{0x00, 0x01, 0x02};
-    results r;
-    auto stmt = statement_builder().id(1).num_params(2).build();
-
-    // Connection
-    test_connection conn;
-    conn.stream().add_bytes(create_ok_frame(1, ok_builder().build()));
-
-    // This should compile and run
-    BOOST_CHECK_NO_THROW(conn.execute(stmt.bind(std::ref(s), std::ref(b)), r));
-}
-
-// Helper to create any_connection objects using test_stream
-struct test_any_connection_fixture
-{
-    any_connection conn;
-
-    test_any_connection_fixture()
-        : conn(detail::access::construct<any_connection>(
-              default_initial_read_buffer_size,
-              static_cast<std::size_t>(-1),  // no buffer limit
-              std::unique_ptr<detail::engine>(
-                  new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>()
-              )
-          ))
-    {
-    }
-
-    test_stream& stream()
-    {
-        return detail::stream_from_engine<test_stream>(detail::access::get_impl(conn).get_engine());
-    }
-};
-
-auto pipeline_fn = netfun_maker<void, any_connection, const pipeline_request&, std::vector<stage_response>&>::
-    async_diag(&any_connection::async_run_pipeline);
-
 // empty pipelines complete immediately, posting adequately
-BOOST_FIXTURE_TEST_CASE(empty_pipeline, test_any_connection_fixture)
+BOOST_AUTO_TEST_CASE(empty_pipeline)
 {
     // Setup
+    auto conn = create_test_any_connection();
     pipeline_request req;
     std::vector<stage_response> res;
 
     // Run it. It should complete immediately, posting to the correct executor (verified by the testing
     // infrastructure)
-    pipeline_fn(conn, req, res).validate_no_error();
+    conn.async_run_pipeline(req, res, as_netresult).validate_no_error();
     BOOST_TEST(res.size() == 0u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(get_stream(conn).bytes_written(), blob{});
 }
 
 // fatal errors in pipelines behave correctly
-BOOST_FIXTURE_TEST_CASE(pipeline_fatal_error, test_any_connection_fixture)
+BOOST_AUTO_TEST_CASE(pipeline_fatal_error)
 {
     // Setup
+    auto conn = create_test_any_connection();
     pipeline_request req;
     std::vector<stage_response> res;
     req.add_execute("SELECT 1").add_execute("SELECT 2");
 
     // The first read will fail
-    stream().set_fail_count(fail_count(1, boost::asio::error::network_reset));
+    get_stream(conn).set_fail_count(fail_count(1, boost::asio::error::network_reset));
 
     // Run it
-    pipeline_fn(conn, req, res).validate_error(boost::asio::error::network_reset);
+    conn.async_run_pipeline(req, res, as_netresult).validate_error(boost::asio::error::network_reset);
 
     // Validate the results
     BOOST_TEST(res.size() == 2u);
