@@ -15,7 +15,7 @@ import ac ;
 import indirect ;
 import config : requires ;
 
-project ;
+project : requirements <library>/boost/mysql//boost_mysql ;
 
 # Support header-only builds
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
