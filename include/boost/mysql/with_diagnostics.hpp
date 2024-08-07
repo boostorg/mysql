@@ -12,6 +12,8 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 
+#include <boost/mysql/detail/access.hpp>
+
 #include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/config.hpp>
@@ -25,10 +27,19 @@ namespace boost {
 namespace mysql {
 
 template <class CompletionToken>
-struct with_diagnostics_t
+class with_diagnostics_t
 {
-    CompletionToken token_;
-    // TODO: hide this
+    CompletionToken impl_;
+
+#ifndef BOOST_MYSQL_DOXYGEN
+    friend struct detail::access;
+#endif
+
+public:
+    template <class T>
+    constexpr explicit with_diagnostics_t(T&& token) : impl_(std::forward<T>(token))
+    {
+    }
 };
 
 template <class CompletionToken>
@@ -36,7 +47,8 @@ constexpr with_diagnostics_t<typename std::decay<CompletionToken>::type> with_di
     CompletionToken&& token
 )
 {
-    return {std::forward<CompletionToken>(token)};
+    return with_diagnostics_t<typename std::decay<CompletionToken>::type>(std::forward<CompletionToken>(token)
+    );
 }
 
 }  // namespace mysql
@@ -176,7 +188,7 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
             mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
                 std::forward<Initiation>(initiation),
             },
-            token.token_,
+            mysql::detail::access::get_impl(token),
             std::forward<Args>(args)...
         ))
     {
@@ -186,7 +198,7 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
             mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
                 std::forward<Initiation>(initiation),
             },
-            token.token_,
+            mysql::detail::access::get_impl(token),
             std::forward<Args>(args)...
         );
     }
