@@ -16,6 +16,7 @@
 #include <boost/config.hpp>
 
 #include <exception>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -53,10 +54,12 @@ struct with_diag_handler
     {
         std::exception_ptr exc = ec ? std::make_exception_ptr(error_with_diagnostics(ec, diag))
                                     : std::exception_ptr();
+        owning_diag.reset();
         std::move(handler)(std::move(exc), std::forward<Args>(args)...);
     }
 
     Handler handler;
+    std::unique_ptr<diagnostics> owning_diag;
     const diagnostics& diag;
 };
 
@@ -107,7 +110,14 @@ template <class Initiation, class Handler, class... Args>
 void do_initiate_with_diag(Initiation&& init, Handler&& handler, diagnostics* diag, Args&&... args)
 {
     using handler_type = with_diag_handler<typename std::decay<Handler>::type>;
-    std::forward<Initiation>(init)(handler_type{std::move(handler), *diag}, diag, std::move(args)...);
+    std::unique_ptr<diagnostics> owning_diag{diag ? nullptr : new diagnostics};  // TODO: use allocator
+    if (!diag)
+        diag = owning_diag.get();
+    std::forward<Initiation>(init)(
+        handler_type{std::forward<Handler>(handler), std::move(owning_diag), *diag},
+        diag,
+        std::forward<Args>(args)...
+    );
 }
 
 template <typename Initiation>
@@ -118,13 +128,18 @@ struct with_diag_init
     template <typename Handler, typename... Args>
     void operator()(Handler&& handler, diagnostics* diag, Args&&... args) &&
     {
-        do_initiate_with_diag(std::move(init), std::move(handler), diag, std::move(args)...);
+        do_initiate_with_diag(
+            std::move(init),
+            std::forward<Handler>(handler),
+            diag,
+            std::forward<Args>(args)...
+        );
     }
 
     template <typename Handler, typename... Args>
     void operator()(Handler&& handler, diagnostics* diag, Args&&... args) const&
     {
-        do_initiate_with_diag(init, std::move(handler), diag, std::move(args)...);
+        do_initiate_with_diag(init, std::forward<Handler>(handler), diag, std::forward<Args>(args)...);
     }
 };
 
@@ -148,19 +163,21 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
         -> decltype(async_initiate<
                     maybe_const_token_t<RawCompletionToken>,
                     typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            std::declval<mysql::detail::with_diag_init<typename std::decay<Initiation>::type>>(),
+            mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
+                std::forward<Initiation>(initiation),
+            },
             token.token_,
-            std::move(args)...
+            std::forward<Args>(args)...
         ))
     {
         return async_initiate<
             maybe_const_token_t<RawCompletionToken>,
             typename mysql::detail::with_diag_signature<Signatures>::type...>(
             mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
-                std::move(initiation),
+                std::forward<Initiation>(initiation),
             },
             token.token_,
-            std::move(args)...
+            std::forward<Args>(args)...
         );
     }
 };
