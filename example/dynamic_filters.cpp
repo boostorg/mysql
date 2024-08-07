@@ -15,15 +15,13 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/throw_on_error.hpp>
+#include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
@@ -36,9 +34,9 @@
 #include <string>
 #include <vector>
 
-using boost::mysql::error_code;
 using boost::mysql::field_view;
 using boost::mysql::string_view;
+using boost::mysql::with_diagnostics;
 
 // Prints an employee row to stdout
 void print_employee(boost::mysql::row_view employee)
@@ -268,14 +266,9 @@ void main_impl(int argc, char** argv)
             params.password = args.password;
             params.database = "boost_mysql_examples";
 
-            // This error_code and diagnostics will be filled if an
-            // operation fails. We will check them for every operation we perform.
-            boost::mysql::error_code ec;
-            boost::mysql::diagnostics diag;
-
-            // Connect to the server
-            conn.async_connect(params, diag, yield[ec]);
-            boost::mysql::throw_on_error(ec, diag);
+            // Connect to the server.with_diagnostics will turn any thrown exceptions
+            // into error_with_diagnostics, which contain more info than regular exceptions
+            conn.async_connect(params, with_diagnostics(yield));
 
             // Compose the query. format_opts() returns a system::result<format_options>,
             // containing the options required by format_context. format_opts() may return
@@ -291,8 +284,7 @@ void main_impl(int argc, char** argv)
             // formatting happened in the client, and not in the server.
             // Casting to string_view saves a copy in async_execute
             boost::mysql::results result;
-            conn.async_execute(string_view(query), result, diag, yield[ec]);
-            boost::mysql::throw_on_error(ec, diag);
+            conn.async_execute(string_view(query), result, with_diagnostics(yield));
 
             // Print the employees
             for (boost::mysql::row_view employee : result.rows())
@@ -301,8 +293,7 @@ void main_impl(int argc, char** argv)
             }
 
             // Notify the MySQL server we want to quit, then close the underlying connection.
-            conn.async_close(diag, yield[ec]);
-            boost::mysql::throw_on_error(ec, diag);
+            conn.async_close(with_diagnostics(yield));
         },
         // If any exception is thrown in the coroutine body, rethrow it.
         [](std::exception_ptr ptr) {
@@ -325,7 +316,7 @@ int main(int argc, char** argv)
     }
     catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // You will only get this type of exceptions if you use throw_on_error.
+        // You will only get this type of exceptions if you use with_diagnostics.
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's encoding
