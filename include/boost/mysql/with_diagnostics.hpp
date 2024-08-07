@@ -60,15 +60,6 @@ struct with_diag_handler
     const diagnostics& diag;
 };
 
-template <class Handler>
-with_diag_handler<typename std::decay<Handler>::type> make_with_diag_handler(
-    Handler&& handler,
-    const diagnostics& diag
-)
-{
-    return {std::forward<Handler>(handler), diag};
-}
-
 template <typename Signature>
 struct with_diag_signature;
 
@@ -112,6 +103,13 @@ struct with_diag_signature<R(error_code, Args...) && noexcept>
 
 #endif  // defined(BOOST_ASIO_HAS_NOEXCEPT_FUNCTION_TYPE)
 
+template <class Initiation, class Handler, class... Args>
+void do_initiate_with_diag(Initiation&& init, Handler&& handler, diagnostics* diag, Args&&... args)
+{
+    using handler_type = with_diag_handler<typename std::decay<Handler>::type>;
+    std::forward<Initiation>(init)(handler_type{std::move(handler), *diag}, diag, std::move(args)...);
+}
+
 template <typename Initiation>
 struct with_diag_init
 {
@@ -120,21 +118,13 @@ struct with_diag_init
     template <typename Handler, typename... Args>
     void operator()(Handler&& handler, diagnostics* diag, Args&&... args) &&
     {
-        std::move(init)(
-            make_with_diag_handler(std::forward<Handler>(handler), *diag),
-            diag,
-            std::forward<Args>(args)...
-        );
+        do_initiate_with_diag(std::move(init), std::move(handler), diag, std::move(args)...);
     }
 
     template <typename Handler, typename... Args>
     void operator()(Handler&& handler, diagnostics* diag, Args&&... args) const&
     {
-        init(
-            make_with_diag_handler(std::forward<Handler>(handler), *diag),
-            diag,
-            std::forward<Args>(args)...
-        );
+        do_initiate_with_diag(init, std::move(handler), diag, std::move(args)...);
     }
 };
 
