@@ -10,23 +10,20 @@
 // To use coroutines created by boost::asio::spawn, you need to link
 // against Boost.Context.
 
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/throw_on_error.hpp>
+#include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/post.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/asio/ssl/context.hpp>
 
 #include <iostream>
 
-using boost::mysql::error_code;
+using boost::mysql::with_diagnostics;
 
 void print_employee(boost::mysql::row_view employee)
 {
@@ -75,32 +72,22 @@ void main_impl(int argc, char** argv)
     boost::asio::spawn(
         ctx.get_executor(),
         [&conn, &resolver, params, hostname, company_id](boost::asio::yield_context yield) {
-            // This error_code and diagnostics will be filled if an
-            // operation fails. We will check them for every operation we perform.
-            boost::mysql::error_code ec;
-            boost::mysql::diagnostics diag;
-
             // Hostname resolution
-            auto endpoints = resolver.async_resolve(hostname, boost::mysql::default_port_string, yield[ec]);
-            boost::mysql::throw_on_error(ec);
+            auto endpoints = resolver.async_resolve(hostname, boost::mysql::default_port_string, yield);
 
             // Connect to server
-            conn.async_connect(*endpoints.begin(), params, diag, yield[ec]);
-            boost::mysql::throw_on_error(ec, diag);
+            conn.async_connect(*endpoints.begin(), params, with_diagnostics(yield));
 
             // We will be using company_id, which is untrusted user input, so we will use a prepared
             // statement.
             boost::mysql::statement stmt = conn.async_prepare_statement(
                 "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-                diag,
-                yield[ec]
+                with_diagnostics(yield)
             );
-            boost::mysql::throw_on_error(ec, diag);
 
             // Execute the statement
             boost::mysql::results result;
-            conn.async_execute(stmt.bind(company_id), result, diag, yield[ec]);
-            boost::mysql::throw_on_error(ec, diag);
+            conn.async_execute(stmt.bind(company_id), result, with_diagnostics(yield));
 
             // Print the employees
             for (boost::mysql::row_view employee : result.rows())
@@ -109,8 +96,7 @@ void main_impl(int argc, char** argv)
             }
 
             // Notify the MySQL server we want to quit, then close the underlying connection.
-            conn.async_close(diag, yield[ec]);
-            boost::mysql::throw_on_error(ec, diag);
+            conn.async_close(with_diagnostics(yield));
         },
         // If any exception is thrown in the coroutine body, rethrow it.
         [](std::exception_ptr ptr) {
