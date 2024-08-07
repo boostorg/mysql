@@ -12,6 +12,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 
+#include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/config.hpp>
 
@@ -58,9 +59,14 @@ struct with_diag_handler
         std::move(handler)(std::move(exc), std::forward<Args>(args)...);
     }
 
+    // The final handler to call
     Handler handler;
-    std::unique_ptr<diagnostics> owning_diag;
+
+    // The diagnostics to use, taken from initiation
     const diagnostics& diag;
+
+    // Keep alive any allocated diagnostics
+    std::shared_ptr<diagnostics> owning_diag;
 };
 
 template <typename Signature>
@@ -109,37 +115,41 @@ struct with_diag_signature<R(error_code, Args...) && noexcept>
 template <class Initiation, class Handler, class... Args>
 void do_initiate_with_diag(Initiation&& init, Handler&& handler, diagnostics* diag, Args&&... args)
 {
+    // The handler type to use
     using handler_type = with_diag_handler<typename std::decay<Handler>::type>;
-    std::unique_ptr<diagnostics> owning_diag{diag ? nullptr : new diagnostics};  // TODO: use allocator
+
+    // Some functions (e.g. connection_pool) may pass nullptr as diag.
+    // When using this token, allocate a diagnostics instance and overwrite the passed value
+    std::shared_ptr<diagnostics> owning_diag;
     if (!diag)
+    {
+        owning_diag = std::allocate_shared<diagnostics>(asio::get_associated_allocator(handler));
         diag = owning_diag.get();
+    }
+
+    // Actually initiate
     std::forward<Initiation>(init)(
-        handler_type{std::forward<Handler>(handler), std::move(owning_diag), *diag},
+        handler_type{std::forward<Handler>(handler), *diag, std::move(owning_diag)},
         diag,
         std::forward<Args>(args)...
     );
 }
 
-template <typename Initiation>
+template <class Initiation>
 struct with_diag_init
 {
     Initiation init;
 
-    template <typename Handler, typename... Args>
-    void operator()(Handler&& handler, diagnostics* diag, Args&&... args) &&
+    template <class... Args>
+    void operator()(Args&&... args) &&
     {
-        do_initiate_with_diag(
-            std::move(init),
-            std::forward<Handler>(handler),
-            diag,
-            std::forward<Args>(args)...
-        );
+        do_initiate_with_diag(std::move(init), std::forward<Args>(args)...);
     }
 
-    template <typename Handler, typename... Args>
-    void operator()(Handler&& handler, diagnostics* diag, Args&&... args) const&
+    template <class... Args>
+    void operator()(Args&&... args) const&
     {
-        do_initiate_with_diag(init, std::forward<Handler>(handler), diag, std::forward<Args>(args)...);
+        do_initiate_with_diag(init, std::forward<Args>(args)...);
     }
 };
 
