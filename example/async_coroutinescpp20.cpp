@@ -7,22 +7,18 @@
 
 //[example_async_coroutinescpp20
 
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/throw_on_error.hpp>
 #include <boost/mysql/with_diagnostics.hpp>
 
-#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/use_awaitable.hpp>
 
 #include <exception>
 #include <iostream>
@@ -38,12 +34,8 @@ void print_employee(boost::mysql::row_view employee)
               << employee.at(2) << " dollars yearly\n";  // salary     (double)
 }
 
-// Using this completion token instead of plain use_awaitable prevents
-// co_await from throwing exceptions. Instead, co_await will return a std::tuple<error_code>
-// with a non-zero code on error. We will then use boost::mysql::throw_on_error
-// to throw exceptions with embedded diagnostics, if available. If you
-// employ plain use_awaitable, you will get boost::system::system_error exceptions
-// instead of boost::mysql::error_with_diagnostics exceptions. This is a limitation of use_awaitable.
+// Using this completion token instead of plain deferred will turn any
+// thrown exceptions into error_with_diagnostics, which contain more info.
 constexpr auto token = boost::mysql::with_diagnostics(boost::asio::deferred);
 
 /**
@@ -168,7 +160,7 @@ int main(int argc, char** argv)
     }
     catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // You will only get this type of exceptions if you use throw_on_error.
+        // You will only get this type of exceptions if you use with_diagnostics.
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's character set

@@ -75,7 +75,8 @@ void main_impl(int argc, char** argv)
             // Hostname resolution
             auto endpoints = resolver.async_resolve(hostname, boost::mysql::default_port_string, yield);
 
-            // Connect to server
+            // Connect to server. with_diagnostics will turn any thrown exceptions
+            // into error_with_diagnostics, which contain more info than regular exceptions
             conn.async_connect(*endpoints.begin(), params, with_diagnostics(yield));
 
             // We will be using company_id, which is untrusted user input, so we will use a prepared
@@ -120,7 +121,7 @@ int main(int argc, char** argv)
     }
     catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // You will only get this type of exceptions if you use throw_on_error.
+        // You will only get this type of exceptions if you use with_diagnostics.
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's character set
