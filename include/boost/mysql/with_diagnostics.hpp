@@ -116,21 +116,25 @@ template <typename Initiation>
 struct with_diag_init
 {
     Initiation init;
-    const diagnostics& diag;
 
     template <typename Handler, typename... Args>
-    void operator()(Handler&& handler, Args&&... args) &&
+    void operator()(Handler&& handler, diagnostics* diag, Args&&... args) &&
     {
         std::move(init)(
-            make_with_diag_handler(std::forward<Handler>(handler), diag),
+            make_with_diag_handler(std::forward<Handler>(handler), *diag),
+            diag,
             std::forward<Args>(args)...
         );
     }
 
     template <typename Handler, typename... Args>
-    void operator()(Handler&& handler, Args&&... args) const&
+    void operator()(Handler&& handler, diagnostics* diag, Args&&... args) const&
     {
-        init(make_with_diag_handler(std::forward<Handler>(handler), diag), std::forward<Args>(args)...);
+        init(
+            make_with_diag_handler(std::forward<Handler>(handler), *diag),
+            diag,
+            std::forward<Args>(args)...
+        );
     }
 };
 
@@ -144,41 +148,6 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
     : async_result<CompletionToken, typename mysql::detail::with_diag_signature<Signatures>::type...>
 {
     template <typename Initiation, typename RawCompletionToken, typename... Args>
-    static auto do_initiate(
-        Initiation&& initiation,
-        RawCompletionToken&& token,
-        mysql::diagnostics* diag,
-        Args&&... args
-    )
-        -> decltype(async_initiate<
-                    conditional_t<
-                        is_const<remove_reference_t<RawCompletionToken>>::value,
-                        const CompletionToken,
-                        CompletionToken>,
-                    typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            std::declval<mysql::detail::with_diag_init<typename std::decay<Initiation>::type>>(),
-            token.token_,
-            std::move(diag),
-            std::move(args)...
-        ))
-    {
-        return async_initiate<
-            conditional_t<
-                is_const<remove_reference_t<RawCompletionToken>>::value,
-                const CompletionToken,
-                CompletionToken>,
-            typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
-                std::forward<Initiation>(initiation),
-                *diag
-            },
-            token.token_,
-            std::move(diag),
-            std::move(args)...
-        );
-    }
-
-    template <typename Initiation, typename RawCompletionToken, typename... Args>
     static auto initiate(Initiation&& initiation, RawCompletionToken&& token, Args&&... args)
         -> decltype(async_initiate<
                     conditional_t<
@@ -191,9 +160,16 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
             std::move(args)...
         ))
     {
-        return do_initiate(
-            std::forward<Initiation>(initiation),
-            std::forward<RawCompletionToken>(token),
+        return async_initiate<
+            conditional_t<
+                is_const<remove_reference_t<RawCompletionToken>>::value,
+                const CompletionToken,
+                CompletionToken>,
+            typename mysql::detail::with_diag_signature<Signatures>::type...>(
+            mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
+                std::forward<Initiation>(initiation),
+            },
+            token.token_,
             std::move(args)...
         );
     }
