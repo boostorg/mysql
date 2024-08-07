@@ -143,11 +143,11 @@ template <typename CompletionToken, typename... Signatures>
 struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
     : async_result<CompletionToken, typename mysql::detail::with_diag_signature<Signatures>::type...>
 {
-    template <typename Initiation, typename RawCompletionToken, class DeducedDiag, typename... Args>
+    template <typename Initiation, typename RawCompletionToken, typename... Args>
     static auto do_initiate(
         Initiation&& initiation,
         RawCompletionToken&& token,
-        DeducedDiag&& diag,
+        mysql::diagnostics* diag,
         Args&&... args
     )
         -> decltype(async_initiate<
@@ -158,8 +158,8 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
                     typename mysql::detail::with_diag_signature<Signatures>::type...>(
             std::declval<mysql::detail::with_diag_init<typename std::decay<Initiation>::type>>(),
             token.token_,
-            std::forward<DeducedDiag>(diag),
-            std::forward<Args>(args)...
+            std::move(diag),
+            std::move(args)...
         ))
     {
         return async_initiate<
@@ -173,8 +173,8 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
                 *diag
             },
             token.token_,
-            std::forward<DeducedDiag>(diag),
-            std::forward<Args>(args)...
+            std::move(diag),
+            std::move(args)...
         );
     }
 
@@ -188,13 +188,13 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
                     typename mysql::detail::with_diag_signature<Signatures>::type...>(
             std::declval<mysql::detail::with_diag_init<typename std::decay<Initiation>::type>>(),
             token.token_,
-            std::forward<Args>(args)...
+            std::move(args)...
         ))
     {
         return do_initiate(
             std::forward<Initiation>(initiation),
             std::forward<RawCompletionToken>(token),
-            std::forward<Args>(args)...
+            std::move(args)...
         );
     }
 };
