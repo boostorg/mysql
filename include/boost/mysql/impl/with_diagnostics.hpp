@@ -17,9 +17,15 @@
 
 #include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/detail/mp_list.hpp>
+#include <boost/mp11/list.hpp>
 
+#include <cstddef>
 #include <exception>
 #include <memory>
+#include <tuple>
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
@@ -91,8 +97,14 @@ struct with_diag_signature<R(error_code, Args...) && noexcept>
 #endif  // defined(BOOST_ASIO_HAS_NOEXCEPT_FUNCTION_TYPE)
 
 template <class Initiation, class Handler, class... Args>
-void do_initiate_with_diag(Initiation&& init, Handler&& handler, diagnostics* diag, Args&&... args)
+void do_initiate_with_diag(Initiation&& init, Handler&& handler, Args&&... args)
 {
+    using types = mp11::mp_list<typename std::decay<Args>::type...>;
+    constexpr std::size_t pos = mp11::mp_find<types, diagnostics*>::value;
+    static_assert(pos < mp11::mp_size<types>::value, "????");
+
+    diagnostics*& diag = std::get<pos>(std::tuple<Args&...>{args...});
+
     // The handler type to use
     using handler_type = with_diag_handler<typename std::decay<Handler>::type>;
 
@@ -108,7 +120,6 @@ void do_initiate_with_diag(Initiation&& init, Handler&& handler, diagnostics* di
     // Actually initiate
     std::forward<Initiation>(init)(
         handler_type{std::forward<Handler>(handler), *diag, std::move(owning_diag)},
-        diag,
         std::forward<Args>(args)...
     );
 }
