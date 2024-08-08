@@ -14,6 +14,7 @@
 #include <boost/mysql/pool_params.hpp>
 
 #include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/async_helpers.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
@@ -265,8 +266,10 @@ class connection_pool
         return std::chrono::seconds(30);
     }
 
-    struct initiate_run
+    struct initiate_run : detail::initiation_base
     {
+        using detail::initiation_base::initiation_base;
+
         template <class Handler>
         void operator()(Handler&& h, std::shared_ptr<detail::pool_impl> self)
         {
@@ -280,8 +283,10 @@ class connection_pool
         asio::any_completion_handler<void(error_code)> handler
     );
 
-    struct initiate_get_connection
+    struct initiate_get_connection : detail::initiation_base
     {
+        using detail::initiation_base::initiation_base;
+
         template <class Handler>
         void operator()(
             Handler&& h,
@@ -309,7 +314,7 @@ class connection_pool
         CompletionToken&& token
     )
         -> decltype(asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
-            initiate_get_connection{},
+            std::declval<initiate_get_connection>(),
             token,
             diag,
             impl_,
@@ -318,7 +323,7 @@ class connection_pool
     {
         BOOST_ASSERT(valid());
         return asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
-            initiate_get_connection{},
+            initiate_get_connection{get_executor()},
             token,
             diag,
             impl_,
@@ -538,12 +543,19 @@ public:
      * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-    auto async_run(CompletionToken&& token) BOOST_MYSQL_RETURN_TYPE(
-        decltype(asio::async_initiate<CompletionToken, void(error_code)>(initiate_run{}, token, impl_))
-    )
+    auto async_run(CompletionToken&& token)
+        BOOST_MYSQL_RETURN_TYPE(decltype(asio::async_initiate<CompletionToken, void(error_code)>(
+            std::declval<initiate_run>(),
+            token,
+            impl_
+        )))
     {
         BOOST_ASSERT(valid());
-        return asio::async_initiate<CompletionToken, void(error_code)>(initiate_run{}, token, impl_);
+        return asio::async_initiate<CompletionToken, void(error_code)>(
+            initiate_run{get_executor()},
+            token,
+            impl_
+        );
     }
 
     /// \copydoc async_get_connection(diagnostics&,CompletionToken&&)
