@@ -113,7 +113,12 @@ void do_initiate_with_diag(Initiation&& init, Handler&& handler, Args&&... args)
     std::shared_ptr<diagnostics> owning_diag;
     if (!diag)
     {
-        owning_diag = std::allocate_shared<diagnostics>(asio::get_associated_allocator(handler));
+        // The allocator to use
+        auto base_alloc = asio::get_associated_allocator(handler);
+        using alloc_type = typename std::allocator_traits<decltype(base_alloc
+        )>::template rebind_alloc<diagnostics>;
+
+        owning_diag = std::allocate_shared<diagnostics>(alloc_type{std::move(base_alloc)});
         diag = owning_diag.get();
     }
 
