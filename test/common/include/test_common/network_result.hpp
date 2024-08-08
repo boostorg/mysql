@@ -19,10 +19,13 @@
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
+#include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/list.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -308,11 +311,31 @@ public:
     template <typename Initiation, typename... Args>
     static return_type initiate(Initiation&& initiation, mysql::test::as_netresult_t token, Args&&... args)
     {
-        return do_initiate(std::move(initiation), token.slot, std::move(args)...);
+        using types = mp11::mp_list<Args...>;
+        using diag_pos = mp11::mp_find<types, mysql::diagnostics*>;
+        constexpr std::size_t actual_pos = diag_pos::value == sizeof...(Args) ? 0u : diag_pos::value;
+        return do_initiate(
+            std::move(initiation),
+            token.slot,
+            std::get<actual_pos>(std::tuple<Args&...>{args...}),
+            std::forward<Args>(args)...
+        );
+    }
+
+    // Common case optimization: diagnostics* is first
+    template <typename Initiation, typename... Args>
+    static return_type initiate(
+        Initiation&& initiation,
+        mysql::test::as_netresult_t token,
+        mysql::diagnostics* diag,
+        Args&&... args
+    )
+    {
+        return do_initiate_impl(std::move(initiation), token.slot, diag, diag, std::forward<Args>(args)...);
     }
 
 private:
-    // initiate() is not allowed to inspect individual arguments
+    // A diagnostics* was found
     template <typename Initiation, typename... Args>
     static return_type do_initiate(
         Initiation&& initiation,
@@ -321,8 +344,27 @@ private:
         Args&&... args
     )
     {
+        return do_initiate_impl(std::move(initiation), slot, diag, std::forward<Args>(args)...);
+    }
+
+    // No diagnostics* was found
+    template <typename Initiation, class T, typename... Args>
+    static return_type do_initiate(Initiation&& initiation, asio::cancellation_slot slot, T&&, Args&&... args)
+    {
+        return do_initiate_impl(std::move(initiation), slot, nullptr, std::forward<Args>(args)...);
+    }
+
+    template <typename Initiation, typename... Args>
+    static return_type do_initiate_impl(
+        Initiation&& initiation,
+        asio::cancellation_slot slot,
+        mysql::diagnostics* diag,
+        Args&&... args
+    )
+    {
         // Verify that we correctly set diagnostics in all cases
-        *diag = mysql::test::create_server_diag("Diagnostics not cleared properly");
+        if (diag)
+            *diag = mysql::test::create_server_diag("Diagnostics not cleared properly");
 
         // Create the return type
         mysql::test::runnable_network_result<R> netres;
@@ -333,26 +375,6 @@ private:
         // Actually call the initiation function
         std::move(initiation)(
             mysql::test::test_detail::as_netres_handler<R>(netres.impl->netres, diag, slot),
-            diag,
-            std::move(args)...
-        );
-
-        return netres;
-    }
-
-    // For functions without diagnostics
-    template <typename Initiation, typename... Args>
-    static return_type do_initiate(Initiation&& initiation, asio::cancellation_slot slot, Args&&... args)
-    {
-        // Create the return type
-        mysql::test::runnable_network_result<R> netres;
-
-        // Record that we're initiating
-        mysql::test::initiation_guard guard;
-
-        // Actually call the initiation function
-        std::move(initiation)(
-            mysql::test::test_detail::as_netres_handler<R>(netres.impl->netres, nullptr, slot),
             std::move(args)...
         );
 

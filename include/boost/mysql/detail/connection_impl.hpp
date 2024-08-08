@@ -22,11 +22,13 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/algo_params.hpp>
+#include <boost/mysql/detail/async_helpers.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/system/result.hpp>
 
 #include <cstddef>
@@ -125,6 +127,8 @@ class connection_impl
     std::unique_ptr<engine> engine_;
     std::unique_ptr<connection_state, connection_state_deleter> st_;
 
+    asio::any_io_executor get_executor() const { return engine_->get_executor(); }
+
     // Helper for execution requests
     template <class T>
     static auto make_request(T&& input, connection_state& st)
@@ -202,8 +206,10 @@ class connection_impl
         async_run_impl(eng, st, params, diag, std::forward<Handler>(handler), has_void_result<AlgoParams>{});
     }
 
-    struct run_algo_initiation
+    struct run_algo_initiation : initiation_base
     {
+        using initiation_base::initiation_base;
+
         template <class Handler, class AlgoParams>
         void operator()(
             Handler&& handler,
@@ -232,8 +238,10 @@ class connection_impl
     }
 
     template <class EndpointType>
-    struct initiate_connect
+    struct initiate_connect : initiation_base
     {
+        using initiation_base::initiation_base;
+
         template <class Handler>
         void operator()(
             Handler&& handler,
@@ -249,8 +257,10 @@ class connection_impl
         }
     };
 
-    struct initiate_connect_v2
+    struct initiate_connect_v2 : initiation_base
     {
+        using initiation_base::initiation_base;
+
         template <class Handler>
         void operator()(
             Handler&& handler,
@@ -266,8 +276,10 @@ class connection_impl
     };
 
     // execute
-    struct initiate_execute
+    struct initiate_execute : initiation_base
     {
+        using initiation_base::initiation_base;
+
         template <class Handler, class ExecutionRequest>
         void operator()(
             Handler&& handler,
@@ -289,8 +301,10 @@ class connection_impl
     };
 
     // start execution
-    struct initiate_start_execution
+    struct initiate_start_execution : initiation_base
     {
+        using initiation_base::initiation_base;
+
         template <class Handler, class ExecutionRequest>
         void operator()(
             Handler&& handler,
@@ -347,7 +361,7 @@ public:
     template <class AlgoParams, class CompletionToken>
     auto async_run(AlgoParams params, diagnostics& diag, CompletionToken&& token)
         -> decltype(asio::async_initiate<CompletionToken, completion_signature_t<AlgoParams>>(
-            run_algo_initiation(),
+            run_algo_initiation(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -356,7 +370,7 @@ public:
         ))
     {
         return asio::async_initiate<CompletionToken, completion_signature_t<AlgoParams>>(
-            run_algo_initiation(),
+            run_algo_initiation(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -392,7 +406,7 @@ public:
         CompletionToken&& token
     )
         -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_connect<EndpointType>(),
+            initiate_connect<EndpointType>(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -402,7 +416,7 @@ public:
         ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_connect<EndpointType>(),
+            initiate_connect<EndpointType>(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -415,7 +429,7 @@ public:
     template <class CompletionToken>
     auto async_connect_v2(const connect_params& params, diagnostics& diag, CompletionToken&& token)
         -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_connect_v2(),
+            initiate_connect_v2(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -424,7 +438,7 @@ public:
         ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_connect_v2(),
+            initiate_connect_v2(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -461,7 +475,7 @@ public:
         CompletionToken&& token
     )
         -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_execute(),
+            initiate_execute(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -471,7 +485,7 @@ public:
         ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_execute(),
+            initiate_execute(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -508,7 +522,7 @@ public:
         CompletionToken&& token
     )
         -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_start_execution(),
+            initiate_start_execution(get_executor()),
             token,
             &diag,
             engine_.get(),
@@ -518,7 +532,7 @@ public:
         ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            initiate_start_execution(),
+            initiate_start_execution(get_executor()),
             token,
             &diag,
             engine_.get(),

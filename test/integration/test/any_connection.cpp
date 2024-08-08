@@ -20,6 +20,7 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/local/basic_endpoint.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -197,6 +198,50 @@ BOOST_DATA_TEST_CASE(naggle_disabled, network_functions_any::sync_and_async())
 BOOST_FIXTURE_TEST_CASE(using_non_connected_connection, any_connection_fixture)
 {
     conn.async_ping(as_netresult).validate_any_error();
+}
+
+// Spotcheck: we can use cancel_after and other tokens
+// that require initiations to have an associated executor
+BOOST_FIXTURE_TEST_CASE(cancel_after, any_connection_fixture)
+{
+    // The token to use
+    const auto token = asio::cancel_after(std::chrono::seconds(10), asio::deferred);
+
+    // Connect
+    conn.async_connect(connect_params_builder().build(), token)(as_netresult).validate_no_error();
+
+    // Execute
+    results result;
+    conn.async_execute("SELECT 'abc'", result, token)(as_netresult).validate_no_error();
+    BOOST_TEST(result.rows() == makerows(1, "abc"), per_element());
+
+    // Start execution
+    execution_state st;
+    conn.async_start_execution("SELECT 'abc'", st, token)(as_netresult).validate_no_error();
+    auto rws = conn.async_read_some_rows(st, token)(as_netresult).get();
+    BOOST_TEST(rws == makerows(1, "abc"), per_element());
+    conn.async_read_resultset_head(st, token)(as_netresult).validate_no_error();
+
+#ifdef BOOST_MYSQL_CXX14
+    // Start execution (static, for read_some_rows)
+    using tup_t = std::tuple<std::string>;
+    static_execution_state<tup_t> st2;
+    std::array<tup_t, 2> storage;
+    conn.async_start_execution("SELECT 'abc'", st2, token)(as_netresult).validate_no_error();
+    std::size_t sz = conn.async_read_some_rows(st2, boost::span<tup_t>(storage), token)(as_netresult).get();
+    BOOST_TEST(sz == 1u);
+#endif
+
+    // Prepare & close statement
+    auto stmt = conn.async_prepare_statement("SELECT ?", token)(as_netresult).get();
+    conn.async_close_statement(stmt, token)(as_netresult).validate_no_error();
+
+    // Reset connection & ping
+    conn.async_reset_connection(token)(as_netresult).validate_no_error();
+    conn.async_ping(token)(as_netresult).validate_no_error();
+
+    // Close
+    conn.async_close(token)(as_netresult).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()

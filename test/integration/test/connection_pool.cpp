@@ -18,6 +18,7 @@
 #include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
@@ -613,6 +614,28 @@ BOOST_FIXTURE_TEST_CASE(zero_timeuts, fixture)
         // Get the same connection again. A zero timeout for async_get_connection works, too
         conn = pool.async_get_connection(std::chrono::seconds(0), diag, yield[ec]);
         check_success();
+        conn->async_ping(yield);
+    });
+}
+
+// Spotcheck: we can use completion tokens that require
+// initiations to have a bound executor, like cancel_after
+BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
+{
+    run_stackful_coro([&](asio::yield_context yield) {
+        constexpr std::chrono::seconds timeout(10);
+
+        connection_pool pool(yield.get_executor(), create_pool_params());
+        pool_guard grd(&pool);
+        pool.async_run(asio::cancel_after(timeout, check_err));
+
+        // Get a connection
+        auto conn = pool.async_get_connection(diag, asio::cancel_after(timeout, yield[ec]));
+        check_success();
+        conn->async_ping(yield);
+
+        // The overload with a timeout also works
+        conn = pool.async_get_connection(timeout, diag, asio::cancel_after(timeout, yield[ec]));
         conn->async_ping(yield);
     });
 }
