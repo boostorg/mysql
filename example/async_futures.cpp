@@ -13,18 +13,19 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
+#include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/use_future.hpp>
-#include <boost/system/system_error.hpp>
 
 #include <iostream>
 #include <thread>
 
 using boost::asio::use_future;
 using boost::mysql::error_code;
+using boost::mysql::with_diagnostics;
 
 void print_employee(boost::mysql::row_view employee)
 {
@@ -102,20 +103,22 @@ void main_impl(int argc, char** argv)
     auto endpoints = endpoints_fut.get();
 
     // Perform the TCP connect and MySQL handshake.
-    std::future<void> fut = conn.async_connect(*endpoints.begin(), params, use_future);
+    // with_diagnostics will turn any thrown exceptions
+    // into error_with_diagnostics, which contain more info than regular exceptions
+    std::future<void> fut = conn.async_connect(*endpoints.begin(), params, with_diagnostics(use_future));
     fut.get();
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared
     // statement.
     std::future<boost::mysql::statement> stmt_fut = conn.async_prepare_statement(
         "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-        use_future
+        with_diagnostics(use_future)
     );
     boost::mysql::statement stmt = stmt_fut.get();
 
     // Execute the statement
     boost::mysql::results result;
-    fut = conn.async_execute(stmt.bind(company_id), result, use_future);
+    fut = conn.async_execute(stmt.bind(company_id), result, with_diagnostics(use_future));
     fut.get();
 
     // Print employees
@@ -125,7 +128,7 @@ void main_impl(int argc, char** argv)
     }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
-    conn.async_close(use_future).get();
+    conn.async_close(with_diagnostics(use_future)).get();
 
     // application dtor. stops io_context and then joins the thread
 }
@@ -135,6 +138,17 @@ int main(int argc, char** argv)
     try
     {
         main_impl(argc, argv);
+    }
+    catch (const boost::mysql::error_with_diagnostics& err)
+    {
+        // You will only get this type of exceptions if you use with_diagnostics.
+        // Some errors include additional diagnostics, like server-provided error messages.
+        // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
+        // field value that caused the error) and is encoded using to the connection's character set
+        // (UTF-8 by default). Treat is as untrusted input.
+        std::cerr << "Error: " << err.what() << '\n'
+                  << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
+        return 1;
     }
     catch (const std::exception& err)
     {
