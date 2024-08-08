@@ -99,10 +99,18 @@ struct with_diag_signature<R(error_code, Args...) && noexcept>
 template <class Initiation, class Handler, class... Args>
 void do_initiate_with_diag(Initiation&& init, Handler&& handler, Args&&... args)
 {
+    // Find the diagnostics object in the list of arguments
     using types = mp11::mp_list<typename std::decay<Args>::type...>;
     constexpr std::size_t pos = mp11::mp_find<types, diagnostics*>::value;
-    static_assert(pos < mp11::mp_size<types>::value, "????");
 
+    // If you're getting an error here, it's because you're trying to use
+    // with_diagnostics with an async function unrelated to Boost.MySQL.
+    static_assert(
+        pos < mp11::mp_size<types>::value,
+        "with_diagnostics only works with Boost.MySQL async functions"
+    );
+
+    // Actually get the object
     diagnostics*& diag = std::get<pos>(std::tuple<Args&...>{args...});
 
     // The handler type to use
