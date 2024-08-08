@@ -125,6 +125,7 @@ add_executable(
     test/constant_string_view.cpp
     test/pfr.cpp
     test/pipeline.cpp
+    test/with_diagnostics.cpp
 )
 target_include_directories(
     boost_mysql_unittests
