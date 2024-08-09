@@ -33,6 +33,15 @@ class with_diagnostics_t
 #endif
 
 public:
+    /// Default constructor.
+    /**
+     * This constructor is only valid if the underlying completion token is
+     * default constructible and move constructible. The underlying completion
+     * token is itself defaulted as an argument to allow it to capture a source
+     * location.
+     */
+    constexpr with_diagnostics_t() : impl_{} {}
+
     template <class T>
     constexpr explicit with_diagnostics_t(T&& token) : impl_(std::forward<T>(token))
     {
