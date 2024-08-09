@@ -26,6 +26,8 @@
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/create_err.hpp"
+#include "test_unit/create_ok.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/test_any_connection.hpp"
 
 using namespace boost::mysql;
@@ -135,6 +137,39 @@ BOOST_AUTO_TEST_CASE(initiation_args_forwarding)
     BOOST_TEST(arg1 != nullptr);
     BOOST_TEST(arg2 != nullptr);
     BOOST_TEST(arg3 == nullptr);
+}
+
+// Works fine if the token is a lvalue
+BOOST_AUTO_TEST_CASE(token_lvalue)
+{
+    // Setup
+    auto conn = create_test_any_connection();
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
+    bool called = false;
+    auto token = with_diagnostics([&](std::exception_ptr) { called = true; });
+
+    // Call the op
+    conn.async_reset_connection(token);
+    run_global_context();
+
+    // Sanity check
+    BOOST_TEST(called);
+}
+
+BOOST_AUTO_TEST_CASE(token_const_lvalue)
+{
+    // Setup
+    auto conn = create_test_any_connection();
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
+    bool called = false;
+    const auto token = with_diagnostics([&](std::exception_ptr) { called = true; });
+
+    // Call the op
+    conn.async_reset_connection(token);
+    run_global_context();
+
+    // Sanity check
+    BOOST_TEST(called);
 }
 
 // Edge case: if a diagnostics* gets passed as an argument
