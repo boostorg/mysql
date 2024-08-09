@@ -27,6 +27,7 @@
 #include <boost/mysql/detail/connect_params_helpers.hpp>
 #include <boost/mysql/detail/engine.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/intermediate_handler.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/system/result.hpp>

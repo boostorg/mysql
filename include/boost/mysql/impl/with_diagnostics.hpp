@@ -15,7 +15,7 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/with_diagnostics.hpp>
 
-#include <boost/mysql/detail/async_helpers.hpp>
+#include <boost/mysql/detail/intermediate_handler.hpp>
 
 #include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/async_result.hpp>

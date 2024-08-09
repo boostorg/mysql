@@ -10,78 +10,46 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/associator.hpp>
+#include <boost/asio/deferred.hpp>
+
+#include <type_traits>
 
 namespace boost {
 namespace mysql {
+
+// TODO: remove this
+template <class T>
+class with_diagnostics_t;
+
 namespace detail {
+
+struct executor_with_default : asio::any_io_executor
+{
+    using default_completion_token_type = with_diagnostics_t<asio::deferred_t>;
+
+    template <
+        typename InnerExecutor1,
+        class = typename std::enable_if<!std::is_same<InnerExecutor1, executor_with_default>::value>::type>
+    executor_with_default(const InnerExecutor1& ex) noexcept : asio::any_io_executor(ex)
+    {
+    }
+};
 
 // Base class for initiation objects. Includes a bound executor, so they're compatible
 // with asio::cancel_after and similar
 struct initiation_base
 {
-    asio::any_io_executor ex;
+    executor_with_default ex;
 
     initiation_base(asio::any_io_executor ex) noexcept : ex(std::move(ex)) {}
 
-    using executor_type = asio::any_io_executor;
+    using executor_type = executor_with_default;
     const executor_type& get_executor() const noexcept { return ex; }
 };
-
-// An intermediate handler that propagates associated characteristics.
-// HandlerFn must be a function void(Handler&&, args...) that calls the handler
-template <class HandlerFn, class FinalHandler>
-struct intermediate_handler
-{
-    HandlerFn fn;
-    FinalHandler handler;
-
-    template <class... Args>
-    void operator()(Args&&... args)
-    {
-        fn(std::move(handler), std::forward<Args>(args)...);
-    }
-};
-
-template <class HandlerFn, class FinalHandler>
-intermediate_handler<typename std::decay<HandlerFn>::type, typename std::decay<FinalHandler>::type> make_intermediate_handler(
-    HandlerFn&& fn,
-    FinalHandler&& handler
-)
-{
-    return {std::forward<HandlerFn>(fn), std::forward<FinalHandler>(handler)};
-}
 
 }  // namespace detail
 }  // namespace mysql
 
-namespace asio {
-
-template <
-    template <typename, typename>
-    class Associator,
-    class HandlerFn,
-    class FinalHandler,
-    typename DefaultCandidate>
-struct associator<Associator, mysql::detail::intermediate_handler<HandlerFn, FinalHandler>, DefaultCandidate>
-    : Associator<FinalHandler, DefaultCandidate>
-{
-    static typename Associator<FinalHandler, DefaultCandidate>::type get(
-        const mysql::detail::intermediate_handler<HandlerFn, FinalHandler>& h
-    ) noexcept
-    {
-        return Associator<FinalHandler, DefaultCandidate>::get(h.handler);
-    }
-
-    static auto get(
-        const mysql::detail::intermediate_handler<HandlerFn, FinalHandler>& h,
-        const DefaultCandidate& c
-    ) noexcept -> decltype(Associator<FinalHandler, DefaultCandidate>::get(h.handler, c))
-    {
-        return Associator<FinalHandler, DefaultCandidate>::get(h.handler, c);
-    }
-};
-
-}  // namespace asio
 }  // namespace boost
 
 #endif

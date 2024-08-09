@@ -8,7 +8,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 
-#include <boost/mysql/detail/async_helpers.hpp>
+#include <boost/mysql/detail/intermediate_handler.hpp>
 
 #include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/associated_cancellation_slot.hpp>
@@ -31,7 +31,7 @@ using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
 
-BOOST_AUTO_TEST_SUITE(test_async_helpers)
+BOOST_AUTO_TEST_SUITE(test_intermediate_handler)
 
 //
 // intermediate_handler. Verify that associated characteristics are propagated
