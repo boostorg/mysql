@@ -93,62 +93,48 @@ struct with_diag_signature<R(error_code, Args...) && noexcept>
 
 #endif  // defined(BOOST_ASIO_HAS_NOEXCEPT_FUNCTION_TYPE)
 
-template <class Initiation, class Handler, class... Args>
-void do_initiate_with_diag(Initiation&& init, Handler&& handler, Args&&... args)
-{
-    // Find the diagnostics object in the list of arguments
-    using types = mp11::mp_list<typename std::decay<Args>::type...>;
-    constexpr std::size_t pos = mp11::mp_find<types, diagnostics*>::value;
-
-    // If you're getting an error here, it's because you're trying to use
-    // with_diagnostics with an async function unrelated to Boost.MySQL.
-    static_assert(
-        pos < mp11::mp_size<types>::value,
-        "with_diagnostics only works with Boost.MySQL async functions"
-    );
-
-    // Actually get the object
-    diagnostics*& diag = std::get<pos>(std::tuple<Args&...>{args...});
-
-    // Some functions (e.g. connection_pool) may pass nullptr as diag.
-    // When using this token, allocate a diagnostics instance and overwrite the passed value
-    std::shared_ptr<diagnostics> owning_diag;
-    if (!diag)
-    {
-        // The allocator to use
-        auto base_alloc = asio::get_associated_allocator(handler);
-        using alloc_type = typename std::allocator_traits<decltype(base_alloc
-        )>::template rebind_alloc<diagnostics>;
-
-        owning_diag = std::allocate_shared<diagnostics>(alloc_type{std::move(base_alloc)});
-        diag = owning_diag.get();
-    }
-
-    // Actually initiate
-    std::forward<Initiation>(init)(
-        make_intermediate_handler(
-            with_diag_handler_fn{*diag, std::move(owning_diag)},
-            std::forward<Handler>(handler)
-        ),
-        std::forward<Args>(args)...
-    );
-}
-
-template <class Initiation>
 struct with_diag_init
 {
-    Initiation init;
-
-    template <class... Args>
-    void operator()(Args&&... args) &&
+    // We pass the inner token's initiation as 1st arg
+    template <class Handler, class Initiation, class... Args>
+    void operator()(Handler&& handler, Initiation&& init, Args&&... args) const
     {
-        do_initiate_with_diag(std::move(init), std::forward<Args>(args)...);
-    }
+        // Find the diagnostics object in the list of arguments
+        using types = mp11::mp_list<typename std::decay<Args>::type...>;
+        constexpr std::size_t pos = mp11::mp_find<types, diagnostics*>::value;
 
-    template <class... Args>
-    void operator()(Args&&... args) const&
-    {
-        do_initiate_with_diag(init, std::forward<Args>(args)...);
+        // If you're getting an error here, it's because you're trying to use
+        // with_diagnostics with an async function unrelated to Boost.MySQL.
+        static_assert(
+            pos < mp11::mp_size<types>::value,
+            "with_diagnostics only works with Boost.MySQL async functions"
+        );
+
+        // Actually get the object
+        diagnostics*& diag = std::get<pos>(std::tuple<Args&...>{args...});
+
+        // Some functions (e.g. connection_pool) may pass nullptr as diag.
+        // When using this token, allocate a diagnostics instance and overwrite the passed value
+        std::shared_ptr<diagnostics> owning_diag;
+        if (!diag)
+        {
+            // The allocator to use
+            auto base_alloc = asio::get_associated_allocator(handler);
+            using alloc_type = typename std::allocator_traits<decltype(base_alloc
+            )>::template rebind_alloc<diagnostics>;
+
+            owning_diag = std::allocate_shared<diagnostics>(alloc_type{std::move(base_alloc)});
+            diag = owning_diag.get();
+        }
+
+        // Actually initiate
+        std::forward<Initiation>(init)(
+            make_intermediate_handler(
+                with_diag_handler_fn{*diag, std::move(owning_diag)},
+                std::forward<Handler>(handler)
+            ),
+            std::forward<Args>(args)...
+        );
     }
 };
 
@@ -172,20 +158,18 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
         -> decltype(async_initiate<
                     maybe_const_token_t<RawCompletionToken>,
                     typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
-                std::forward<Initiation>(initiation),
-            },
+            mysql::detail::with_diag_init{},
             mysql::detail::access::get_impl(token),
+            std::forward<Initiation>(initiation),
             std::forward<Args>(args)...
         ))
     {
         return async_initiate<
             maybe_const_token_t<RawCompletionToken>,
             typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
-                std::forward<Initiation>(initiation),
-            },
+            mysql::detail::with_diag_init{},
             mysql::detail::access::get_impl(token),
+            std::forward<Initiation>(initiation),
             std::forward<Args>(args)...
         );
     }
