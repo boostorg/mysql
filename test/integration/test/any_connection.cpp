@@ -7,8 +7,10 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
@@ -20,7 +22,9 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
+#include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/local/basic_endpoint.hpp>
 #include <boost/test/data/test_case.hpp>
@@ -28,11 +32,14 @@
 #include <string>
 
 #include "test_common/create_basic.hpp"
+#include "test_common/create_diagnostics.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/tracker_executor.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/server_features.hpp"
+#include "test_integration/snippets/run_coro.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 
 // Additional spotchecks for any_connection
@@ -243,5 +250,40 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, any_connection_fixture)
     // Close
     conn.async_close(token)(as_netresult).validate_no_error();
 }
+
+// Spotcheck: we can co_await async functions in any_connection,
+// and this throws the right exception type
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+BOOST_FIXTURE_TEST_CASE(default_token, any_connection_fixture)
+{
+    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
+        // Connect
+        co_await conn.async_connect(connect_params_builder().build());
+
+        // Success case
+        results result;
+        co_await conn.async_execute("SELECT 'abc'", result);
+        BOOST_TEST(result.rows() == makerows(1, "abc"), per_element());
+
+        // Error case
+        BOOST_CHECK_EXCEPTION(
+            co_await conn.async_execute("SELECT * FROM bad_table", result),
+            error_with_diagnostics,
+            [](const error_with_diagnostics& err) {
+                BOOST_TEST(err.code() == common_server_errc::er_no_such_table);
+                BOOST_TEST(
+                    err.get_diagnostics() ==
+                    create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
+                );
+                return true;
+            }
+        );
+
+        // Returning a value works
+        auto stmt = co_await conn.async_prepare_statement("SELECT ?");
+        BOOST_TEST(stmt.valid());
+    });
+}
+#endif
 
 BOOST_AUTO_TEST_SUITE_END()
