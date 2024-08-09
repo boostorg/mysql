@@ -15,10 +15,11 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/with_diagnostics.hpp>
 
+#include <boost/mysql/detail/async_helpers.hpp>
+
 #include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/mp11/algorithm.hpp>
-#include <boost/mp11/detail/mp_list.hpp>
 #include <boost/mp11/list.hpp>
 
 #include <cstddef>
@@ -31,20 +32,16 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class Handler>
-struct with_diag_handler
+struct with_diag_handler_fn
 {
-    template <class... Args>
-    void operator()(error_code ec, Args&&... args)
+    template <class Handler, class... Args>
+    void operator()(Handler&& handler, error_code ec, Args&&... args)
     {
         std::exception_ptr exc = ec ? std::make_exception_ptr(error_with_diagnostics(ec, diag))
                                     : std::exception_ptr();
         owning_diag.reset();
         std::move(handler)(std::move(exc), std::forward<Args>(args)...);
     }
-
-    // The final handler to call
-    Handler handler;
 
     // The diagnostics to use, taken from initiation
     const diagnostics& diag;
@@ -113,9 +110,6 @@ void do_initiate_with_diag(Initiation&& init, Handler&& handler, Args&&... args)
     // Actually get the object
     diagnostics*& diag = std::get<pos>(std::tuple<Args&...>{args...});
 
-    // The handler type to use
-    using handler_type = with_diag_handler<typename std::decay<Handler>::type>;
-
     // Some functions (e.g. connection_pool) may pass nullptr as diag.
     // When using this token, allocate a diagnostics instance and overwrite the passed value
     std::shared_ptr<diagnostics> owning_diag;
@@ -132,7 +126,10 @@ void do_initiate_with_diag(Initiation&& init, Handler&& handler, Args&&... args)
 
     // Actually initiate
     std::forward<Initiation>(init)(
-        handler_type{std::forward<Handler>(handler), *diag, std::move(owning_diag)},
+        make_intermediate_handler(
+            with_diag_handler_fn{*diag, std::move(owning_diag)},
+            std::forward<Handler>(handler)
+        ),
         std::forward<Args>(args)...
     );
 }
@@ -191,24 +188,6 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
             mysql::detail::access::get_impl(token),
             std::forward<Args>(args)...
         );
-    }
-};
-
-template <template <typename, typename> class Associator, typename Handler, typename DefaultCandidate>
-struct associator<Associator, mysql::detail::with_diag_handler<Handler>, DefaultCandidate>
-    : Associator<Handler, DefaultCandidate>
-{
-    static typename Associator<Handler, DefaultCandidate>::type get(
-        const mysql::detail::with_diag_handler<Handler>& h
-    ) noexcept
-    {
-        return Associator<Handler, DefaultCandidate>::get(h.handler);
-    }
-
-    static auto get(const mysql::detail::with_diag_handler<Handler>& h, const DefaultCandidate& c) noexcept
-        -> decltype(Associator<Handler, DefaultCandidate>::get(h.handler, c))
-    {
-        return Associator<Handler, DefaultCandidate>::get(h.handler, c);
     }
 };
 
