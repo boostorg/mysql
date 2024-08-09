@@ -7,6 +7,8 @@
 
 import os ;
 
+project : requirements <library>/boost/mysql//boost_mysql ;
+
 path-constant this_dir : . ;
 
 # The hostname to use for examples
@@ -110,6 +112,7 @@ run
         /boost/mysql/test//boost_context_lib
         /boost/json//boost_json
         /boost/url//boost_url
+        /boost/beast//boost_beast
     : requirements
             <testing.launcher>"python $(this_dir)/private/run_connection_pool.py"
             <testing.arg>$(hostname)
