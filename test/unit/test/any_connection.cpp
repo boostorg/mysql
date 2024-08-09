@@ -14,10 +14,13 @@
 #include <boost/mysql/static_execution_state.hpp>
 
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
+#include <exception>
 #include <stdexcept>
 #include <tuple>
 
@@ -197,15 +200,68 @@ asio::awaitable<void> spotcheck_default_tokens()
     co_await conn.async_close_statement(stmt);
     co_await conn.async_close_statement(stmt, diag);
 
-    co_await conn.async_reset_connection(deferred);
+    co_await conn.async_reset_connection();
     co_await conn.async_reset_connection(diag);
 
-    co_await conn.async_ping(deferred);
+    co_await conn.async_ping();
     co_await conn.async_ping(diag);
 
-    co_await conn.async_close(deferred);
+    co_await conn.async_close();
     co_await conn.async_close(diag);
 }
 #endif
+
+// Spotcheck: any_connection ops support partial tokens,
+// and they get passed the correct default token
+template <class T, class... SigArgs, class... Rest>
+void check_op(asio::deferred_async_operation<void(T, SigArgs...), Rest...>)
+{
+    static_assert(std::is_same<T, std::exception_ptr>::value, "");
+}
+
+void spotcheck_partial_tokens()
+{
+    auto conn = test::create_test_any_connection();
+    connect_params params;
+    diagnostics diag;
+    results result;
+    execution_state st;
+    statement stmt;
+    static_execution_state<std::tuple<>> st2;
+    auto tok = asio::cancel_after(std::chrono::seconds(10));
+
+    check_op(conn.async_connect(params, tok));
+    check_op(conn.async_connect(params, diag, tok));
+
+    check_op(conn.async_execute("SELECT 1", result, tok));
+    check_op(conn.async_execute("SELECT 1", result, diag, tok));
+
+    check_op(conn.async_start_execution("SELECT 1", st, tok));
+    check_op(conn.async_start_execution("SELECT 1", st, diag, tok));
+
+    check_op(conn.async_read_some_rows(st, tok));
+    check_op(conn.async_read_some_rows(st, diag, tok));
+
+    check_op(conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, tok));
+    check_op(conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, diag, tok));
+
+    check_op(conn.async_read_resultset_head(st, tok));
+    check_op(conn.async_read_resultset_head(st, diag, tok));
+
+    check_op(conn.async_prepare_statement("SELECT 1", tok));
+    check_op(conn.async_prepare_statement("SELECT 1", diag, tok));
+
+    check_op(conn.async_close_statement(stmt, tok));
+    check_op(conn.async_close_statement(stmt, diag, tok));
+
+    check_op(conn.async_reset_connection(tok));
+    check_op(conn.async_reset_connection(diag, tok));
+
+    check_op(conn.async_ping(tok));
+    check_op(conn.async_ping(diag, tok));
+
+    check_op(conn.async_close(tok));
+    check_op(conn.async_close(diag, tok));
+}
 
 BOOST_AUTO_TEST_SUITE_END()

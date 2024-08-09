@@ -299,8 +299,24 @@ BOOST_FIXTURE_TEST_CASE(default_token_cancel_after, any_connection_fixture)
         // Returning a value works
         auto stmt = co_await conn.async_prepare_statement("SELECT ?", asio::cancel_after(timeout));
         BOOST_TEST(stmt.valid());
+
+        // Error case
+        results result;
+        BOOST_CHECK_EXCEPTION(
+            co_await conn.async_execute("SELECT * FROM bad_table", result, asio::cancel_after(timeout)),
+            error_with_diagnostics,
+            [](const error_with_diagnostics& err) {
+                BOOST_TEST(err.code() == common_server_errc::er_no_such_table);
+                BOOST_TEST(
+                    err.get_diagnostics() ==
+                    create_server_diag("Table 'boost_mysql_integtests.bad_table' doesn't exist")
+                );
+                return true;
+            }
+        );
     });
 }
+
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()
