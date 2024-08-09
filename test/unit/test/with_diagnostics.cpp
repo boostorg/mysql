@@ -34,9 +34,11 @@ BOOST_AUTO_TEST_CASE(several_diagnostics_args)
 {
     // Setup
     auto conn = create_test_any_connection();
-    get_stream(conn).add_bytes(
-        err_builder().code(common_server_errc::er_no_such_user).message("Invalid user").seqnum(1).build_body()
-    );
+    get_stream(conn).add_bytes(err_builder()
+                                   .code(common_server_errc::er_no_such_user)
+                                   .message("Invalid user")
+                                   .seqnum(1)
+                                   .build_frame());
     results r;
     diagnostics other_diag;
 
@@ -59,6 +61,7 @@ BOOST_AUTO_TEST_CASE(several_diagnostics_args)
             return true;
         }
     );
+    BOOST_TEST(other_diag == diagnostics());  // unmodified
 }
 
 BOOST_AUTO_TEST_SUITE_END()
