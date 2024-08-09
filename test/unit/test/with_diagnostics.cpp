@@ -14,6 +14,7 @@
 
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/bind_executor.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/consign.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/test/unit_test.hpp>
@@ -244,6 +245,24 @@ BOOST_AUTO_TEST_CASE(token_const_lvalue)
 
     // Call the op
     conn.async_reset_connection(token);
+    run_global_context();
+
+    // Sanity check
+    BOOST_TEST(called);
+}
+
+// with_diagnostics' initiation has the same executor as the initiation that gets passed,
+// and thus with_diagnostics(asio::cancel_after(...)) works
+BOOST_AUTO_TEST_CASE(initiation_propagates_executor)
+{
+    // Setup
+    auto conn = create_test_any_connection();
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
+    bool called = false;
+    const auto cb = [&](std::exception_ptr) { called = true; };
+
+    // Call the op
+    conn.async_reset_connection(with_diagnostics(asio::cancel_after(std::chrono::seconds(1), cb)));
     run_global_context();
 
     // Sanity check

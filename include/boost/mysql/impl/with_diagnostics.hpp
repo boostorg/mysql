@@ -93,11 +93,19 @@ struct with_diag_signature<R(error_code, Args...) && noexcept>
 
 #endif  // defined(BOOST_ASIO_HAS_NOEXCEPT_FUNCTION_TYPE)
 
-struct with_diag_init
+// Inheriting from Initiation propagates its executor type,
+// if any. Required by tokens like asio::cancel_after
+template <class Initiation>
+struct with_diag_init : public Initiation
 {
+    template <class I>
+    with_diag_init(I&& i) : Initiation(std::forward<I>(i))
+    {
+    }
+
     // We pass the inner token's initiation as 1st arg
-    template <class Handler, class Initiation, class... Args>
-    void operator()(Handler&& handler, Initiation&& init, Args&&... args) const
+    template <class Handler, class... Args>
+    void operator()(Handler&& handler, Args&&... args) &&
     {
         // Find the diagnostics object in the list of arguments
         using types = mp11::mp_list<typename std::decay<Args>::type...>;
@@ -128,7 +136,7 @@ struct with_diag_init
         }
 
         // Actually initiate
-        std::forward<Initiation>(init)(
+        static_cast<Initiation&&>(*this)(
             make_intermediate_handler(
                 with_diag_handler_fn{*diag, std::move(owning_diag)},
                 std::forward<Handler>(handler)
@@ -158,18 +166,18 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
         -> decltype(async_initiate<
                     maybe_const_token_t<RawCompletionToken>,
                     typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            mysql::detail::with_diag_init{},
+            std::declval<mysql::detail::with_diag_init<typename std::decay<Initiation>::type>>(),
             mysql::detail::access::get_impl(token),
-            std::forward<Initiation>(initiation),
             std::forward<Args>(args)...
         ))
     {
         return async_initiate<
             maybe_const_token_t<RawCompletionToken>,
             typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            mysql::detail::with_diag_init{},
+            mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
+                std::forward<Initiation>(initiation)
+            },
             mysql::detail::access::get_impl(token),
-            std::forward<Initiation>(initiation),
             std::forward<Args>(args)...
         );
     }
