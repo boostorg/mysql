@@ -50,6 +50,46 @@ void check_exception(std::exception_ptr exc, error_code expected_ec, const diagn
     );
 }
 
+BOOST_AUTO_TEST_CASE(success)
+{
+    // Setup
+    auto conn = create_test_any_connection();
+    get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
+    bool called = false;
+
+    // Execute
+    conn.async_reset_connection(with_diagnostics([&](std::exception_ptr exc) {
+        called = true;
+        BOOST_TEST((exc == nullptr));
+    }));
+    run_global_context();
+
+    // Sanity check
+    BOOST_TEST(called);
+}
+
+BOOST_AUTO_TEST_CASE(error)
+{
+    // Setup
+    auto conn = create_test_any_connection();
+    get_stream(conn).add_bytes(err_builder()
+                                   .code(common_server_errc::er_no_such_user)
+                                   .message("Invalid user")
+                                   .seqnum(1)
+                                   .build_frame());
+    bool called = false;
+
+    // Execute
+    conn.async_reset_connection(with_diagnostics([&](std::exception_ptr exc) {
+        called = true;
+        check_exception(exc, common_server_errc::er_no_such_user, create_server_diag("Invalid user"));
+    }));
+    run_global_context();
+
+    // Sanity check
+    BOOST_TEST(called);
+}
+
 BOOST_AUTO_TEST_CASE(associated_properties)
 {
     // Uses intermediate_handler internally, so we just perform a sanity check here
