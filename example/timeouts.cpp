@@ -56,9 +56,6 @@ boost::asio::awaitable<void> coro_main(
     using boost::asio::cancel_after;
     constexpr std::chrono::seconds timeout(8);
 
-    // TODO: thrown exceptions don't contain diagnostics.
-    // Should be solved by https://github.com/boostorg/mysql/issues/329
-
     // Resolve hostname
     auto endpoints = co_await resolver
                          .async_resolve(hostname, boost::mysql::default_port_string, cancel_after(timeout));
@@ -152,7 +149,6 @@ int main(int argc, char** argv)
     }
     catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // You will only get this type of exceptions if you use throw_on_error.
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's character set
