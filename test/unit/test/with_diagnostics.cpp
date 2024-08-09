@@ -201,4 +201,27 @@ BOOST_AUTO_TEST_CASE(several_diagnostics_args)
     BOOST_TEST(other_diag == diagnostics());  // unmodified
 }
 
+// with_diagnostics decays correctly
+struct test_fn
+{
+    void operator()(error_code) {}
+};
+static_assert(
+    std::is_same<decltype(with_diagnostics(std::declval<test_fn>())), with_diagnostics_t<test_fn>>::value,
+    ""
+);
+static_assert(
+    std::is_same<decltype(with_diagnostics(std::declval<test_fn&>())), with_diagnostics_t<test_fn>>::value,
+    ""
+);
+static_assert(
+    std::is_same<decltype(with_diagnostics(std::declval<const test_fn&>())), with_diagnostics_t<test_fn>>::
+        value,
+    ""
+);
+static_assert(
+    std::is_same<decltype(with_diagnostics(std::declval<test_fn&&>())), with_diagnostics_t<test_fn>>::value,
+    ""
+);
+
 BOOST_AUTO_TEST_SUITE_END()
