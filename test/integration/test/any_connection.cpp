@@ -29,6 +29,7 @@
 #include <boost/asio/local/basic_endpoint.hpp>
 #include <boost/test/data/test_case.hpp>
 
+#include <chrono>
 #include <string>
 
 #include "test_common/create_basic.hpp"
@@ -251,9 +252,10 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, any_connection_fixture)
     conn.async_close(token)(as_netresult).validate_no_error();
 }
 
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+
 // Spotcheck: we can co_await async functions in any_connection,
 // and this throws the right exception type
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
 BOOST_FIXTURE_TEST_CASE(default_token, any_connection_fixture)
 {
     run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
@@ -281,6 +283,21 @@ BOOST_FIXTURE_TEST_CASE(default_token, any_connection_fixture)
 
         // Returning a value works
         auto stmt = co_await conn.async_prepare_statement("SELECT ?");
+        BOOST_TEST(stmt.valid());
+    });
+}
+
+// The pattern co_await conn.fn(..., cancel_after(10s)) works
+BOOST_FIXTURE_TEST_CASE(default_token_cancel_after, any_connection_fixture)
+{
+    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
+        constexpr std::chrono::seconds timeout(10);
+
+        // Connect
+        co_await conn.async_connect(connect_params_builder().build(), asio::cancel_after(timeout));
+
+        // Returning a value works
+        auto stmt = co_await conn.async_prepare_statement("SELECT ?", asio::cancel_after(timeout));
         BOOST_TEST(stmt.valid());
     });
 }
