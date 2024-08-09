@@ -90,6 +90,44 @@ BOOST_AUTO_TEST_CASE(error)
     BOOST_TEST(called);
 }
 
+struct nulldiag_initiation
+{
+    template <class Handler>
+    void operator()(Handler&& handler, diagnostics* diag)
+    {
+        // with_diagnostics should have allocated a diagnostics object for us
+        BOOST_TEST_REQUIRE(diag != nullptr);
+
+        // set diagnostics
+        *diag = create_server_diag("Invalid user");
+
+        // call the handler
+        std::move(handler)(common_server_errc::er_no_such_user);
+    }
+};
+
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+void async_nulldiag(CompletionToken&& token)
+{
+    diagnostics* diag = nullptr;
+    asio::async_initiate<CompletionToken, void(error_code)>(nulldiag_initiation{}, token, diag);
+}
+
+BOOST_AUTO_TEST_CASE(diagnostics_null)
+{
+    // Setup
+    bool called = false;
+
+    // Execute
+    async_nulldiag(with_diagnostics([&](std::exception_ptr exc) {
+        called = true;
+        check_exception(exc, common_server_errc::er_no_such_user, create_server_diag("Invalid user"));
+    }));
+
+    // Sanity check
+    BOOST_TEST(called);
+}
+
 BOOST_AUTO_TEST_CASE(associated_properties)
 {
     // Uses intermediate_handler internally, so we just perform a sanity check here
