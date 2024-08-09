@@ -65,6 +65,7 @@ add_executable(
     test/detail/connect_params_helpers.cpp
     test/detail/output_string.cpp
     test/detail/engine_impl.cpp
+    test/detail/async_helpers.cpp
 
     test/detail/typing/meta_check_context.cpp
     test/detail/typing/pos_map.cpp
