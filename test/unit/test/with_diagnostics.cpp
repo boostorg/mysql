@@ -12,11 +12,15 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/with_diagnostics.hpp>
 
+#include <boost/asio/async_result.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/consign.hpp>
+#include <boost/core/ignore_unused.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <exception>
+#include <memory>
+#include <type_traits>
 
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
@@ -68,6 +72,69 @@ BOOST_AUTO_TEST_CASE(associated_properties)
 
     // Sanity check
     BOOST_TEST(called);
+}
+
+// We correctly forward initiation args
+struct test_initiation
+{
+    template <class Handler, class T1, class T2, class T3>
+    void operator()(Handler&& handler, T1&& arg1, T2&& arg2, T3&& arg3, diagnostics*)
+    {
+        // T1 should be a non-const lvalue
+        static_assert(std::is_same<T1, std::shared_ptr<int>&>::value, "");
+        BOOST_TEST(arg1 != nullptr);
+
+        // T2 should be a const lvalue
+        static_assert(std::is_same<T2, const std::shared_ptr<int>&>::value, "");
+        BOOST_TEST(arg2 != nullptr);
+
+        // T3 should be a rvalue
+        static_assert(std::is_same<T3, std::shared_ptr<int>>::value, "");
+        BOOST_TEST(arg3 != nullptr);
+        auto arg3_move = std::move(arg3);
+        boost::ignore_unused(arg3_move);
+
+        // Just call the handler
+        std::move(handler)(error_code());
+    }
+};
+
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code)) CompletionToken>
+void async_test(
+    std::shared_ptr<int>& arg1,
+    const std::shared_ptr<int>& arg2,
+    std::shared_ptr<int>&& arg3,
+    diagnostics& diag,
+    CompletionToken&& token
+)
+{
+    asio::async_initiate<CompletionToken, void(error_code)>(
+        test_initiation{},
+        token,
+        arg1,
+        arg2,
+        std::move(arg3),
+        &diag
+    );
+}
+
+BOOST_AUTO_TEST_CASE(initiation_args_forwarding)
+{
+    // Setup
+    auto arg1 = std::make_shared<int>(42);
+    auto arg2 = arg1;
+    auto arg3 = arg1;
+    bool called = false;
+    auto handler = [&](std::exception_ptr) { called = true; };
+    diagnostics diag;
+
+    // Call the operation
+    async_test(arg1, arg2, std::move(arg3), diag, with_diagnostics(handler));
+
+    // lvalues not moved, rvalue moved
+    BOOST_TEST(arg1 != nullptr);
+    BOOST_TEST(arg2 != nullptr);
+    BOOST_TEST(arg3 == nullptr);
 }
 
 // Edge case: if a diagnostics* gets passed as an argument
