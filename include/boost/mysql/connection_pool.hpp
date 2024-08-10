@@ -22,7 +22,6 @@
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
-#include <boost/asio/deferred.hpp>
 
 #include <chrono>
 #include <memory>

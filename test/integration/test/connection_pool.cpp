@@ -29,6 +29,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <exception>
 #include <memory>
 #include <stdexcept>
 
@@ -666,7 +667,10 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
         );
 
         // Run the pool
-        std::move(run_op)(check_err);
+        std::move(run_op)([](std::exception_ptr exc) {
+            if (exc)
+                std::rethrow_exception(exc);
+        });
 
         // Success case
         auto conn = co_await pool.async_get_connection();
