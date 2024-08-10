@@ -39,8 +39,8 @@
 #include "test_common/tracker_executor.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
+#include "test_integration/run_coro.hpp"
 #include "test_integration/server_features.hpp"
-#include "test_integration/snippets/run_coro.hpp"
 #include "test_integration/spotchecks_helpers.hpp"
 
 // Additional spotchecks for any_connection

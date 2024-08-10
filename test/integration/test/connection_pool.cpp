@@ -37,9 +37,9 @@
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
+#include "test_integration/run_coro.hpp"
 #include "test_integration/run_stackful_coro.hpp"
 #include "test_integration/server_features.hpp"
-#include "test_integration/snippets/run_coro.hpp"  // TODO: rename header
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;

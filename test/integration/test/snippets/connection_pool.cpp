@@ -25,8 +25,8 @@
 #include <tuple>
 
 #include "test_common/ci_server.hpp"
+#include "test_integration/run_coro.hpp"
 #include "test_integration/snippets/credentials.hpp"
-#include "test_integration/snippets/run_coro.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
