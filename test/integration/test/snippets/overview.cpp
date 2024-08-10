@@ -17,8 +17,10 @@
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/spawn.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/use_awaitable.hpp>
+#include <boost/config.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <string>
@@ -27,6 +29,7 @@
 #include "test_integration/run_coro.hpp"
 #include "test_integration/snippets/credentials.hpp"
 #include "test_integration/snippets/describe.hpp"
+#include "test_integration/snippets/get_any_connection.hpp"
 #include "test_integration/snippets/get_connection.hpp"
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
@@ -302,6 +305,37 @@ BOOST_AUTO_TEST_CASE(section_overview)
 
         conn.execute("DROP TABLE posts", result);
     }
+}
+
+// The async section is small enough to just be here
+BOOST_AUTO_TEST_CASE(section_async)
+{
+    auto& conn = get_any_connection();
+    results result;
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+    run_coro(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
+        //[async_with_diagnostics_cpp20
+        // C++20. Will throw error_with_diagnostics on error
+        co_await conn.async_execute("SELECT 1", result, with_diagnostics(boost::asio::deferred));
+
+        // If you're using any_connection, with_diagnostics(asio::deferred) is the default token,
+        // so you can just write:
+        co_await conn.async_execute("SELECT 1", result);
+        //]
+    });
+#endif
+}
+
+BOOST_ATTRIBUTE_UNUSED
+void section_async_cpp11(boost::asio::yield_context yield)
+{
+    auto& conn = get_connection();
+    results result;
+    //[async_with_diagnostics_cpp11
+    // C++11. Will throw error_with_diagnostics on error
+    conn.async_execute("SELECT 1", result, with_diagnostics(yield));
+    //]
 }
 
 }  // namespace
