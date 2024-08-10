@@ -359,7 +359,7 @@ void spotcheck_partial_tokens()
     std::chrono::seconds timeout(5);
     auto tok = asio::cancel_after(std::chrono::seconds(10));
 
-    check_run_op(pool.async_run(tok));
+    check_op(pool.async_run(tok));
     check_op(pool.async_get_connection(timeout, diag, tok));
     check_op(pool.async_get_connection(timeout, tok));
     check_op(pool.async_get_connection(diag, tok));

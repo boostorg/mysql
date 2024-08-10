@@ -273,16 +273,13 @@ class connection_pool
         return std::chrono::seconds(30);
     }
 
-    // Run has deferred as default token, as it's not associated to any diagnostics
-    struct initiate_run
+    struct initiate_run : detail::initiation_base
     {
-        asio::any_io_executor ex;
+        using detail::initiation_base::initiation_base;
 
-        using executor_type = asio::any_io_executor;
-        const executor_type& get_executor() const noexcept { return ex; }
-
+        // Having diagnostics* here makes async_run compatible with with_diagnostics
         template <class Handler>
-        void operator()(Handler&& h, std::shared_ptr<detail::pool_impl> self)
+        void operator()(Handler&& h, diagnostics*, std::shared_ptr<detail::pool_impl> self)
         {
             async_run_erased(std::move(self), std::forward<Handler>(h));
         }
@@ -554,11 +551,13 @@ public:
      * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken = asio::deferred_t>
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+            CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_run(CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(decltype(asio::async_initiate<CompletionToken, void(error_code)>(
             std::declval<initiate_run>(),
             token,
+            static_cast<diagnostics*>(nullptr),
             impl_
         )))
     {
@@ -566,6 +565,7 @@ public:
         return asio::async_initiate<CompletionToken, void(error_code)>(
             initiate_run{get_executor()},
             token,
+            static_cast<diagnostics*>(nullptr),
             impl_
         );
     }
