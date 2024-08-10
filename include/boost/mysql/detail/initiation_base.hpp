@@ -5,8 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_DETAIL_ASYNC_HELPERS_HPP
-#define BOOST_MYSQL_DETAIL_ASYNC_HELPERS_HPP
+#ifndef BOOST_MYSQL_DETAIL_INITIATION_BASE_HPP
+#define BOOST_MYSQL_DETAIL_INITIATION_BASE_HPP
+
+#include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/associator.hpp>
@@ -16,11 +18,6 @@
 
 namespace boost {
 namespace mysql {
-
-// TODO: remove this
-template <class T>
-class with_diagnostics_t;
-
 namespace detail {
 
 struct executor_with_default : asio::any_io_executor
@@ -36,7 +33,8 @@ struct executor_with_default : asio::any_io_executor
 };
 
 // Base class for initiation objects. Includes a bound executor, so they're compatible
-// with asio::cancel_after and similar
+// with asio::cancel_after and similar. The bound executor has our default completion token.
+// Use only in the ops that should use this token.
 struct initiation_base
 {
     executor_with_default ex;

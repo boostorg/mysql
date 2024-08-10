@@ -15,9 +15,9 @@
 #include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/mysql/detail/access.hpp>
-#include <boost/mysql/detail/async_helpers.hpp>
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
+#include <boost/mysql/detail/initiation_base.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
