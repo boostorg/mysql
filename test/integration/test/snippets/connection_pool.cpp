@@ -10,19 +10,16 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/throw_on_error.hpp>
+#include <boost/mysql/with_diagnostics.hpp>
 
-#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/thread_pool.hpp>
-#include <boost/asio/use_awaitable.hpp>
 #include <boost/asio/use_future.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
-#include <tuple>
 
 #include "test_common/ci_server.hpp"
 #include "test_integration/run_coro.hpp"
@@ -97,47 +94,15 @@ public:
         conn_pool_.async_run(boost::asio::detached);
     }
 
-    // Retrieves a connection from the pool (error code version)
-    boost::mysql::pooled_connection get_connection(
-        boost::mysql::error_code& ec,
-        boost::mysql::diagnostics& diag,
-        std::chrono::steady_clock::duration timeout = std::chrono::seconds(30)
-    )
-    {
-        // The completion token to use for the async initiation function.
-        // use_future will make the async function return a std::future object, which will
-        // become ready when the operation completes.
-        // as_tuple prevents the future from throwing on error, and packages the result as a tuple.
-        // The returned future will be std::future<std::tuple<error_code, pooled_connection>>.
-        constexpr auto completion_token = boost::asio::as_tuple(boost::asio::use_future);
-
-        // We will use std::tie to decompose the tuple into its components.
-        // We need to declare the connection before using std::tie
-        boost::mysql::pooled_connection res;
-
-        // async_get_connection returns a future. Calling std::future::get will
-        // wait for the future to become ready
-        std::tie(ec, res) = conn_pool_.async_get_connection(timeout, diag, completion_token).get();
-
-        // Done!
-        return res;
-    }
-
-    // Retrieves a connection from the pool (exception version)
+    // Retrieves a connection from the pool. Throws an exception on error
     boost::mysql::pooled_connection get_connection(
         std::chrono::steady_clock::duration timeout = std::chrono::seconds(30)
     )
     {
-        // Call the error code version
-        boost::mysql::error_code ec;
-        boost::mysql::diagnostics diag;
-        auto res = get_connection(ec, diag, timeout);
-
-        // This will throw boost::mysql::error_with_diagnostics on error
-        boost::mysql::throw_on_error(ec, diag);
-
-        // Done
-        return res;
+        // use_future returns a std::future<pooled_connection>.
+        // Calling get() waits for the future to complete and throws an exception on failure.
+        // with_diagnostics ensures that the exception contains any server-supplied information.
+        return conn_pool_.async_get_connection(timeout, with_diagnostics(boost::asio::use_future)).get();
     }
 };
 //]
