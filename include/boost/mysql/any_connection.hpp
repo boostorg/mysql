@@ -123,7 +123,12 @@ struct any_connection_params
  * Provides a level of performance similar to \ref connection.
  * \n
  * This is a move-only type.
- * \n
+ *
+ * \par Default completion tokens
+ * The default completion token for all async operations in this class is
+ * `with_diagnostics(asio::deferred)`, which allows you to use `co_await`
+ * and have the expected exceptions thrown on error.
+ *
  * \par Thread safety
  * Distinct objects: safe. \n
  * Shared objects: unsafe. \n

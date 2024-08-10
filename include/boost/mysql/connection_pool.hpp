@@ -236,6 +236,11 @@ public:
  * \n
  * This is a move-only type.
  *
+ * \par Default completion tokens
+ * The default completion token for all async operations in this class is
+ * `with_diagnostics(asio::deferred)`, which allows you to use `co_await`
+ * and have the expected exceptions thrown on error.
+ *
  * \par Thread-safety
  * By default, connection pools are *not* thread-safe, but most functions can
  * be made thread-safe by passing an adequate \ref pool_executor_params objects
