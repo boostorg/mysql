@@ -59,8 +59,7 @@ asio::awaitable<std::vector<boost::mysql::statement>> batch_prepare(
     // This allows us to include the diagnostics object diag in the thrown exception.
     // stage_response is a variant-like type that can hold the response of any stage type.
     std::vector<boost::mysql::stage_response> pipe_res;
-    boost::mysql::diagnostics diag;
-    co_await conn.async_run_pipeline(req, pipe_res, diag, with_diagnostics(asio::deferred));
+    co_await conn.async_run_pipeline(req, pipe_res);
 
     // If we got here, all statements were prepared successfully.
     // pipe_res contains as many elements as statements.size(), holding statement objects
@@ -117,7 +116,7 @@ void main_impl(int argc, char** argv)
         [&conn, &params, company_id]() -> boost::asio::awaitable<void> {
             // Connect to the server. with_diagnostics will turn any thrown exceptions
             // into error_with_diagnostics, which contain more info than regular exceptions
-            co_await conn.async_connect(params, with_diagnostics(asio::deferred));
+            co_await conn.async_connect(params);
 
             // Prepare the statements using the batch prepare function that we previously defined
             const std::array<string_view, 2> stmt_sql{
@@ -140,7 +139,7 @@ void main_impl(int argc, char** argv)
             std::vector<boost::mysql::stage_response> res;
 
             // Execute the pipeline
-            co_await conn.async_run_pipeline(req, res, with_diagnostics(asio::deferred));
+            co_await conn.async_run_pipeline(req, res);
 
             // If we got here, all stages executed successfully.
             // Since they were execution stages, the response contains a results object.
@@ -155,13 +154,13 @@ void main_impl(int argc, char** argv)
             req.add_execute("COMMIT").add_close_statement(stmts.at(0)).add_close_statement(stmts.at(1));
 
             // Run it
-            co_await conn.async_run_pipeline(req, res, with_diagnostics(asio::deferred));
+            co_await conn.async_run_pipeline(req, res);
 
             // If we got here, our insertions got committed.
             std::cout << "Inserted employees: " << id1 << ", " << id2 << ", " << id3 << std::endl;
 
             // Notify the MySQL server we want to quit, then close the underlying connection.
-            co_await conn.async_close(with_diagnostics(asio::deferred));
+            co_await conn.async_close();
         },
         // If any exception is thrown in the coroutine body, rethrow it.
         [](std::exception_ptr ptr) {
@@ -185,7 +184,6 @@ int main(int argc, char** argv)
     }
     catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // You will only get this type of exceptions if you use with_diagnostics.
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's character set
