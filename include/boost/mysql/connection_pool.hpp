@@ -12,6 +12,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
+#include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/async_helpers.hpp>
@@ -21,6 +22,7 @@
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/asio/deferred.hpp>
 
 #include <chrono>
 #include <memory>
@@ -266,9 +268,13 @@ class connection_pool
         return std::chrono::seconds(30);
     }
 
-    struct initiate_run : detail::initiation_base
+    // Run has deferred as default token, as it's not associated to any diagnostics
+    struct initiate_run
     {
-        using detail::initiation_base::initiation_base;
+        asio::any_io_executor ex;
+
+        using executor_type = asio::any_io_executor;
+        const executor_type& get_executor() const noexcept { return ex; }
 
         template <class Handler>
         void operator()(Handler&& h, std::shared_ptr<detail::pool_impl> self)
@@ -542,8 +548,9 @@ public:
      * is safe to be called concurrently with \ref async_get_connection, \ref cancel,
      * `~pooled_connection` and \ref pooled_connection::return_without_reset.
      */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken>
-    auto async_run(CompletionToken&& token)
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code)) CompletionToken = asio::deferred_t>
+    auto async_run(CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(decltype(asio::async_initiate<CompletionToken, void(error_code)>(
             std::declval<initiate_run>(),
             token,
@@ -561,8 +568,8 @@ public:
     /// \copydoc async_get_connection(diagnostics&,CompletionToken&&)
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken>
-    auto async_get_connection(CompletionToken&& token) BOOST_MYSQL_RETURN_TYPE(
+            CompletionToken = with_diagnostics_t<asio::deferred_t>>
+    auto async_get_connection(CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
         decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
     )
     {
@@ -621,8 +628,8 @@ public:
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken>
-    auto async_get_connection(diagnostics& diag, CompletionToken&& token) BOOST_MYSQL_RETURN_TYPE(
+            CompletionToken = with_diagnostics_t<asio::deferred_t>>
+    auto async_get_connection(diagnostics& diag, CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
         decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
     )
     {
@@ -632,8 +639,8 @@ public:
     /// \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken>
-    auto async_get_connection(std::chrono::steady_clock::duration timeout, CompletionToken&& token)
+            CompletionToken = with_diagnostics_t<asio::deferred_t>>
+    auto async_get_connection(std::chrono::steady_clock::duration timeout, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(
             decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
         )
@@ -690,11 +697,11 @@ public:
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken>
+            CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_get_connection(
         std::chrono::steady_clock::duration timeout,
         diagnostics& diag,
-        CompletionToken&& token
+        CompletionToken&& token = {}
     )
         BOOST_MYSQL_RETURN_TYPE(
             decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))

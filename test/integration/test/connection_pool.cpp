@@ -36,8 +36,10 @@
 #include "test_common/ci_server.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/tracker_executor.hpp"
 #include "test_integration/run_stackful_coro.hpp"
 #include "test_integration/server_features.hpp"
+#include "test_integration/snippets/run_coro.hpp"  // TODO: rename header
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -639,6 +641,39 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
         conn->async_ping(yield);
     });
 }
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+// Spotcheck: we can co_await async functions in any_connection,
+// and this throws the right exception type
+BOOST_FIXTURE_TEST_CASE(default_token, fixture)
+{
+    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
+        connection_pool pool(global_context_executor(), create_pool_params());
+        pool_guard grd(&pool);
+
+        // Run can be used without a token. Defaults to deferred
+        auto run_op = pool.async_run();
+
+        // Error case (pool not running)
+        BOOST_CHECK_EXCEPTION(
+            co_await pool.async_get_connection(),
+            error_with_diagnostics,
+            [](const error_with_diagnostics& err) {
+                BOOST_TEST(err.code() == client_errc::pool_not_running);
+                BOOST_TEST(err.get_diagnostics() == diagnostics());
+                return true;
+            }
+        );
+
+        // Run the pool
+        std::move(run_op)(check_err);
+
+        // Success case
+        auto conn = co_await pool.async_get_connection();
+        co_await conn->async_ping();
+    });
+}
+#endif
 
 // Spotcheck: constructing a connection_pool with invalid params throws
 BOOST_AUTO_TEST_CASE(invalid_params)
