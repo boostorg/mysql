@@ -643,6 +643,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
 }
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
+
 // Spotcheck: we can co_await async functions in any_connection,
 // and this throws the right exception type
 BOOST_FIXTURE_TEST_CASE(default_token, fixture)
@@ -673,6 +674,10 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
         co_await conn->async_ping();
     });
 }
+
+// TODO: test cancel_after as a partial token used with async_get_connection.
+// This requires https://github.com/boostorg/mysql/issues/197
+
 #endif
 
 // Spotcheck: constructing a connection_pool with invalid params throws
