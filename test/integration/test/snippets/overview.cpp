@@ -310,10 +310,10 @@ BOOST_AUTO_TEST_CASE(section_overview)
 // The async section is small enough to just be here
 BOOST_AUTO_TEST_CASE(section_async)
 {
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
     auto& conn = get_any_connection();
     results result;
 
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
     run_coro(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
         //[async_with_diagnostics_cpp20
         // C++20. Will throw error_with_diagnostics on error
