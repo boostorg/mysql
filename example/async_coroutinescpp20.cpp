@@ -11,7 +11,6 @@
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -23,8 +22,6 @@
 #include <exception>
 #include <iostream>
 
-using boost::mysql::error_code;
-
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 void print_employee(boost::mysql::row_view employee)
@@ -33,10 +30,6 @@ void print_employee(boost::mysql::row_view employee)
               << employee.at(1) << "' earns "            // last_name  (string)
               << employee.at(2) << " dollars yearly\n";  // salary     (double)
 }
-
-// Using this completion token instead of plain deferred will turn any
-// thrown exceptions into error_with_diagnostics, which contain more info.
-constexpr auto token = boost::mysql::with_diagnostics(boost::asio::deferred);
 
 /**
  * Our coroutine. It must have a return type of boost::asio::awaitable<T>.
@@ -55,6 +48,10 @@ constexpr auto token = boost::mysql::with_diagnostics(boost::asio::deferred);
  * is the second argument to the handler signature for the asynchronous operation.
  * If any of the asynchronous operations fail, an exception will be raised
  * within the coroutine.
+ *
+ * Note that we're not specifying any completion token to our initiating functions.
+ * The default token for Boost.MySQL is mysql::with_diagnostics(asio::deferred),
+ * which allows using co_await, and will throw exceptions on error.
  */
 boost::asio::awaitable<void> coro_main(
     boost::mysql::tcp_ssl_connection& conn,
@@ -66,22 +63,20 @@ boost::asio::awaitable<void> coro_main(
 {
     // Resolve hostname. We may use use_awaitable here, as hostname resolution
     // never produces any diagnostics.
-    auto endpoints = co_await resolver
-                         .async_resolve(hostname, boost::mysql::default_port_string, boost::asio::deferred);
+    auto endpoints = co_await resolver.async_resolve(hostname, boost::mysql::default_port_string);
 
     // Connect to server
-    co_await conn.async_connect(*endpoints.begin(), params, token);
+    co_await conn.async_connect(*endpoints.begin(), params);
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared
     // statement.
     boost::mysql::statement stmt = co_await conn.async_prepare_statement(
-        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-        token
+        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?"
     );
 
     // Execute the statement
     boost::mysql::results result;
-    co_await conn.async_execute(stmt.bind(company_id), result, token);
+    co_await conn.async_execute(stmt.bind(company_id), result);
 
     // Print all employees
     for (boost::mysql::row_view employee : result.rows())
@@ -90,7 +85,7 @@ boost::asio::awaitable<void> coro_main(
     }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
-    co_await conn.async_close(token);
+    co_await conn.async_close();
 }
 
 void main_impl(int argc, char** argv)
@@ -160,7 +155,6 @@ int main(int argc, char** argv)
     }
     catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // You will only get this type of exceptions if you use with_diagnostics.
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's character set
