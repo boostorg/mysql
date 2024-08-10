@@ -45,6 +45,7 @@ std::vector<note_t> note_repository::get_notes(boost::asio::yield_context yield)
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
     // pool when the proxy object is destroyed.
+    // with_diagnostics ensures that thrown exceptions include diagnostic information
     mysql::pooled_connection conn = pool_.async_get_connection(with_diagnostics(yield));
 
     // Execute the query to retrieve all notes. We use the static interface to

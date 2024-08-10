@@ -51,7 +51,7 @@ void print_employee(boost::mysql::row_view employee)
  *
  * Note that we're not specifying any completion token to our initiating functions.
  * The default token for Boost.MySQL is mysql::with_diagnostics(asio::deferred),
- * which allows using co_await, and will throw exceptions on error.
+ * which allows using co_await and throws on error.
  */
 boost::asio::awaitable<void> coro_main(
     boost::mysql::tcp_ssl_connection& conn,
