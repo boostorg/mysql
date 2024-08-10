@@ -15,7 +15,6 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/cancel_after.hpp>
