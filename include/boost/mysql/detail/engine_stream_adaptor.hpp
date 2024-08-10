@@ -48,7 +48,7 @@ struct endpoint_storage<Stream, void_t<typename Stream::lowest_layer_type::endpo
 template <class Stream>
 void do_connect_impl(Stream&, const endpoint_storage<Stream>&, error_code&, std::false_type)
 {
-    BOOST_ASSERT(false);
+    BOOST_ASSERT(false);  // LCOV_EXCL_LINE
 }
 
 template <class Stream>
@@ -66,7 +66,7 @@ void do_connect(Stream& stream, const endpoint_storage<Stream>& ep, error_code& 
 template <class Stream, class CompletionToken>
 void do_async_connect_impl(Stream&, const endpoint_storage<Stream>&, CompletionToken&&, std::false_type)
 {
-    BOOST_ASSERT(false);
+    BOOST_ASSERT(false);  // LCOV_EXCL_LINE
 }
 
 template <class Stream, class CompletionToken>
@@ -89,7 +89,7 @@ void do_async_connect(Stream& stream, const endpoint_storage<Stream>& ep, Comple
 template <class Stream>
 void do_close_impl(Stream&, error_code&, std::false_type)
 {
-    BOOST_ASSERT(false);
+    BOOST_ASSERT(false);  // LCOV_EXCL_LINE
 }
 
 template <class Stream>
@@ -133,7 +133,7 @@ public:
     template <class CompletinToken>
     void async_ssl_handshake(CompletinToken&&)
     {
-        BOOST_ASSERT(false);
+        BOOST_ASSERT(false);  // LCOV_EXCL_LINE
     }
 
     void ssl_shutdown(error_code&) { BOOST_ASSERT(false); }
@@ -141,7 +141,7 @@ public:
     template <class CompletionToken>
     void async_ssl_shutdown(CompletionToken&&)
     {
-        BOOST_ASSERT(false);
+        BOOST_ASSERT(false);  // LCOV_EXCL_LINE
     }
 
     // Reading
