@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -15,6 +16,8 @@
 #include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/test/tools/old/interface.hpp>
 #include <boost/test/unit_test.hpp>
@@ -23,6 +26,7 @@
 #include <memory>
 
 #include "test_common/printing.hpp"
+#include "test_common/tracker_executor.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql;
@@ -301,6 +305,65 @@ BOOST_FIXTURE_TEST_CASE(move_assign_invalid_invalid, pool_fixture)
     pool = std::move(pool2);
     BOOST_TEST(!pool.valid());
     BOOST_TEST(!pool2.valid());
+}
+
+// Regression check: deferred works even in C++11
+void deferred_spotcheck()
+{
+    connection_pool pool(test::global_context_executor(), pool_params());
+    diagnostics diag;
+    std::chrono::seconds timeout(5);
+
+    (void)pool.async_run(asio::deferred);
+    (void)pool.async_get_connection(timeout, diag, asio::deferred);
+    (void)pool.async_get_connection(timeout, asio::deferred);
+    (void)pool.async_get_connection(diag, asio::deferred);
+    (void)pool.async_get_connection(asio::deferred);
+}
+
+// Spotcheck: all pool functions support default completion tokens
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+asio::awaitable<void> spotcheck_default_tokens()
+{
+    connection_pool pool(test::global_context_executor(), pool_params());
+    diagnostics diag;
+    std::chrono::seconds timeout(5);
+
+    co_await pool.async_run();
+    co_await pool.async_get_connection(timeout, diag);
+    co_await pool.async_get_connection(timeout);
+    co_await pool.async_get_connection(diag);
+    co_await pool.async_get_connection();
+}
+#endif
+
+// Spotcheck: connection_pool ops support partial tokens,
+// and they get passed the correct default token
+template <class T, class... SigArgs, class... Rest>
+void check_op(asio::deferred_async_operation<void(T, SigArgs...), Rest...>)
+{
+    static_assert(std::is_same<T, std::exception_ptr>::value, "");
+}
+
+// run has a different signature
+template <class T, class... Rest>
+void check_run_op(asio::deferred_async_operation<void(T), Rest...>)
+{
+    static_assert(std::is_same<T, error_code>::value, "");
+}
+
+void spotcheck_partial_tokens()
+{
+    connection_pool pool(test::global_context_executor(), pool_params());
+    diagnostics diag;
+    std::chrono::seconds timeout(5);
+    auto tok = asio::cancel_after(std::chrono::seconds(10));
+
+    check_run_op(pool.async_run(tok));
+    check_op(pool.async_get_connection(timeout, diag, tok));
+    check_op(pool.async_get_connection(timeout, tok));
+    check_op(pool.async_get_connection(diag, tok));
+    check_op(pool.async_get_connection(tok));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
