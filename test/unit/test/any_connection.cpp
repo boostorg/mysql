@@ -227,7 +227,6 @@ void spotcheck_partial_tokens()
     results result;
     execution_state st;
     statement stmt;
-    static_execution_state<std::tuple<>> st2;
     auto tok = asio::cancel_after(std::chrono::seconds(10));
 
     check_op(conn.async_connect(params, tok));
@@ -242,8 +241,11 @@ void spotcheck_partial_tokens()
     check_op(conn.async_read_some_rows(st, tok));
     check_op(conn.async_read_some_rows(st, diag, tok));
 
+#ifdef BOOST_MYSQL_CXX14
+    static_execution_state<std::tuple<>> st2;
     check_op(conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, tok));
     check_op(conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, diag, tok));
+#endif
 
     check_op(conn.async_read_resultset_head(st, tok));
     check_op(conn.async_read_resultset_head(st, diag, tok));
