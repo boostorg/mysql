@@ -25,9 +25,8 @@ local doxygen_exclussions =
     src.hpp
 ;
 
-docca.reference reference.qbk
+docca.pyreference reference.qbk
     :
-        xsl/custom-overrides.xsl
         [ glob-tree-ex ../include/boost/mysql : *.hpp : $(doxygen_exclussions) ]
     :
         <doxygen:param>PROJECT_NAME=MySQL
@@ -74,7 +73,6 @@ docca.reference reference.qbk
         <doxygen:param>SKIP_FUNCTION_MACROS=NO
         <doxygen:param>OUTPUT_LANGUAGE=English
         <doxygen:param>ABBREVIATE_BRIEF=
-        <doxygen:param>INLINE_INHERITED_MEMB=YES
         <doxygen:param>AUTOLINK_SUPPORT=NO
         <doxygen:param>EXTRACT_ALL=NO
         <doxygen:param>EXTRACT_PRIVATE=NO
@@ -90,8 +88,9 @@ docca.reference reference.qbk
         <doxygen:param>SHOW_USED_FILES=NO
         <doxygen:param>SHOW_FILES=NO
         <doxygen:param>SHOW_NAMESPACES=NO
-        <doxygen:param>CLASS_DIAGRAMS=NO
         <doxygen:param>QUIET=YES
+
+        <docca:config>config.json
     ;
 
 install images

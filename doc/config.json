@@ -1,0 +1,25 @@
+{
+    "include_private": false,
+    "legacy_behavior": false,
+    "external_marker": "!EXTERNAL!",
+    "link_prefix": "mysql.ref.",
+    "default_namespace": "boost::mysql",
+    "convenience_header": "boost/mysql.hpp",
+    "replace_strings": {
+        "__see_below__": "``['see-below]``",
+        "CompletionToken": "__CompletionToken__",
+        "ExecutionContext": "__ExecutionContext__",
+        "ExecutionRequest": "__ExecutionRequest__",
+        "ExecutionStateType": "__ExecutionStateType__",
+        "Executor": "__Executor__",
+        "FieldViewFwdIterator": "__FieldViewFwdIterator__",
+        "Formattable": "__Formattable__",
+        "OutputString": "__OutputString__",
+        "ResultsType": "__ResultsType__",
+        "SocketStream": "__SocketStream__",
+        "StaticRow": "__StaticRow__",
+        "Stream": "__Stream__",
+        "WritableField": "__WritableField__",
+        "WritableFieldTuple": "__WritableFieldTuple__"
+    }
+}
