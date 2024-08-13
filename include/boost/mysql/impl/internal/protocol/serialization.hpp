@@ -190,7 +190,7 @@ inline protocol_field_type to_protocol_field_type(field_kind kind)
     case field_kind::date: return protocol_field_type::date;
     case field_kind::datetime: return protocol_field_type::datetime;
     case field_kind::time: return protocol_field_type::time;
-    default: BOOST_ASSERT(false); return protocol_field_type::null;
+    default: BOOST_ASSERT(false); return protocol_field_type::null;  // LCOV_EXCL_LINE
     }
 }
 

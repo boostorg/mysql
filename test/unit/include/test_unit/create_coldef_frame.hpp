@@ -55,7 +55,7 @@ inline std::vector<std::uint8_t> create_coldef_body(const detail::coldef_view& p
         case column_type::set: return protocol_field_type::set;
         case column_type::json: return protocol_field_type::json;
         case column_type::geometry: return protocol_field_type::geometry;
-        default: BOOST_ASSERT(false); return protocol_field_type::var_string;
+        default: BOOST_ASSERT(false); return protocol_field_type::var_string;  // LCOV_EXCL_LINE
         }
     };
 

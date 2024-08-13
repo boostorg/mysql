@@ -34,7 +34,7 @@ namespace detail {
 template <class Stream, class = void>
 struct endpoint_storage  // prevent build errors for non socket streams
 {
-    void store(const void*) {}
+    void store(const void*) { BOOST_ASSERT(false); }  // LCOV_EXCL_LINE
 };
 
 template <class Stream>
@@ -45,11 +45,13 @@ struct endpoint_storage<Stream, void_t<typename Stream::lowest_layer_type::endpo
     void store(const void* v) { value = *static_cast<const endpoint_type*>(v); }
 };
 
+// LCOV_EXCL_START
 template <class Stream>
 void do_connect_impl(Stream&, const endpoint_storage<Stream>&, error_code&, std::false_type)
 {
     BOOST_ASSERT(false);
 }
+// LCOV_EXCL_STOP
 
 template <class Stream>
 void do_connect_impl(Stream& stream, const endpoint_storage<Stream>& ep, error_code& ec, std::true_type)
@@ -63,11 +65,13 @@ void do_connect(Stream& stream, const endpoint_storage<Stream>& ep, error_code& 
     do_connect_impl(stream, ep, ec, is_socket_stream<Stream>{});
 }
 
+// LCOV_EXCL_START
 template <class Stream, class CompletionToken>
 void do_async_connect_impl(Stream&, const endpoint_storage<Stream>&, CompletionToken&&, std::false_type)
 {
     BOOST_ASSERT(false);
 }
+// LCOV_EXCL_STOP
 
 template <class Stream, class CompletionToken>
 void do_async_connect_impl(
@@ -86,11 +90,13 @@ void do_async_connect(Stream& stream, const endpoint_storage<Stream>& ep, Comple
     do_async_connect_impl(stream, ep, std::forward<CompletionToken>(token), is_socket_stream<Stream>{});
 }
 
+// LCOV_EXCL_START
 template <class Stream>
 void do_close_impl(Stream&, error_code&, std::false_type)
 {
     BOOST_ASSERT(false);
 }
+// LCOV_EXCL_STOP
 
 template <class Stream>
 void do_close_impl(Stream& stream, error_code& ec, std::true_type)
@@ -128,6 +134,7 @@ public:
     executor_type get_executor() { return stream_.get_executor(); }
 
     // SSL
+    // LCOV_EXCL_START
     void ssl_handshake(error_code&) { BOOST_ASSERT(false); }
 
     template <class CompletinToken>
@@ -143,6 +150,7 @@ public:
     {
         BOOST_ASSERT(false);
     }
+    // LCOV_EXCL_STOP
 
     // Reading
     std::size_t read_some(boost::asio::mutable_buffer buff, bool use_ssl, error_code& ec)

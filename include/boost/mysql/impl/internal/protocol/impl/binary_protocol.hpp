@@ -438,7 +438,7 @@ void boost::mysql::detail::serialize_binary_field(serialization_context& ctx, fi
     case field_kind::date: serialize_binary_date(ctx, input.get_date()); break;
     case field_kind::datetime: serialize_binary_datetime(ctx, input.get_datetime()); break;
     case field_kind::time: serialize_binary_time(ctx, input.get_time()); break;
-    default: BOOST_ASSERT(false); break;
+    default: BOOST_ASSERT(false); break;  // LCOV_EXCL_LINE
     }
 }
 
