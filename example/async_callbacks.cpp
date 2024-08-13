@@ -10,13 +10,11 @@
 #include <boost/mysql/connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/throw_on_error.hpp>
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -43,6 +41,7 @@ class application
     boost::mysql::tcp_ssl_connection conn;             // Represents the connection to the MySQL server
     boost::mysql::statement stmt;                      // A prepared statement
     boost::mysql::results result;                      // A result from a query
+    boost::mysql::error_code errc;                     // Will be set in case of error
     boost::mysql::diagnostics diag;                    // Will be populated with info about server errors
     const char* company_id;  // The ID of the company whose employees we want to list. Untrusted.
 public:
@@ -55,6 +54,9 @@ public:
     {
     }
 
+    error_code get_error() const { return errc; }
+    const boost::mysql::diagnostics& get_diagnostics() const { return diag; }
+
     void start(const char* hostname) { resolve_hostname(hostname); }
 
     void resolve_hostname(const char* hostname)
@@ -63,9 +65,12 @@ public:
             hostname,
             boost::mysql::default_port_string,
             [this](error_code err, boost::asio::ip::tcp::resolver::results_type results) {
-                boost::mysql::throw_on_error(err);
-                eps = std::move(results);
-                connect();
+                errc = err;
+                if (!err)
+                {
+                    eps = std::move(results);
+                    connect();
+                }
             }
         );
     }
@@ -73,8 +78,9 @@ public:
     void connect()
     {
         conn.async_connect(*eps.begin(), conn_params, diag, [this](error_code err) {
-            boost::mysql::throw_on_error(err, diag);
-            prepare_statement();
+            errc = err;
+            if (!err)
+                prepare_statement();
         });
     }
 
@@ -86,9 +92,12 @@ public:
             "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
             diag,
             [this](error_code err, boost::mysql::statement temp_stmt) {
-                boost::mysql::throw_on_error(err, diag);
-                stmt = temp_stmt;
-                query_employees();
+                errc = err;
+                if (!err)
+                {
+                    stmt = temp_stmt;
+                    query_employees();
+                }
             }
         );
     }
@@ -96,19 +105,22 @@ public:
     void query_employees()
     {
         conn.async_execute(stmt.bind(company_id), result, diag, [this](error_code err) {
-            boost::mysql::throw_on_error(err, diag);
-            for (boost::mysql::row_view employee : result.rows())
+            errc = err;
+            if (!err)
             {
-                print_employee(employee);
+                for (boost::mysql::row_view employee : result.rows())
+                {
+                    print_employee(employee);
+                }
+                close();
             }
-            close();
         });
     }
 
     void close()
     {
         // Notify the MySQL server we want to quit and then close the socket
-        conn.async_close(diag, [this](error_code err) { boost::mysql::throw_on_error(err, diag); });
+        conn.async_close(diag, [this](error_code err) { errc = err; });
     }
 
     void run() { ctx.run(); }
@@ -129,6 +141,14 @@ void main_impl(int argc, char** argv)
     application app(argv[1], argv[2], company_id);
     app.start(argv[3]);  // starts the async chain
     app.run();           // run the asio::io_context until the async chain finishes
+
+    // Check for errors
+    if (error_code ec = app.get_error())
+    {
+        std::cerr << "Error: " << ec << ": " << ec.message() << '\n'
+                  << "Server diagnostics: " << app.get_diagnostics().server_message() << std::endl;
+        exit(1);
+    }
 }
 
 int main(int argc, char** argv)
@@ -136,16 +156,6 @@ int main(int argc, char** argv)
     try
     {
         main_impl(argc, argv);
-    }
-    catch (const boost::mysql::error_with_diagnostics& err)
-    {
-        // Some errors include additional diagnostics, like server-provided error messages.
-        // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
-        // field value that caused the error) and is encoded using to the connection's character set
-        // (UTF-8 by default). Treat is as untrusted input.
-        std::cerr << "Error: " << err.what() << '\n'
-                  << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
-        return 1;
     }
     catch (const std::exception& err)
     {

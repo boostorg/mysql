@@ -11,15 +11,21 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/static_execution_state.hpp>
 
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/deferred.hpp>
-#include <boost/asio/io_context.hpp>
+#include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
+#include <exception>
 #include <stdexcept>
-#include <string>
+#include <tuple>
 
 #include "test_common/printing.hpp"
+#include "test_unit/test_any_connection.hpp"
 
 using namespace boost::mysql;
 namespace asio = boost::asio;
@@ -114,35 +120,30 @@ BOOST_AUTO_TEST_CASE(set_meta_mode)
 // spotcheck: deferred compiles even in C++11
 void deferred_spotcheck()
 {
-    asio::io_context ctx;
-    any_connection conn(ctx);
+    auto conn = test::create_test_any_connection();
     connect_params params;
     diagnostics diag;
     results result;
     execution_state st;
     statement stmt;
-    std::string str;
-    const std::string const_str;
 
     (void)conn.async_connect(params, deferred);
     (void)conn.async_connect(params, diag, deferred);
 
     (void)conn.async_execute("SELECT 1", result, deferred);
-    (void)conn.async_execute(str, result, deferred);
-    (void)conn.async_execute(const_str, result, deferred);
     (void)conn.async_execute("SELECT 1", result, diag, deferred);
-    (void)conn.async_execute(str, result, diag, deferred);
-    (void)conn.async_execute(const_str, result, diag, deferred);
 
     (void)conn.async_start_execution("SELECT 1", st, deferred);
-    (void)conn.async_start_execution(str, st, deferred);
-    (void)conn.async_start_execution(const_str, st, deferred);
     (void)conn.async_start_execution("SELECT 1", st, diag, deferred);
-    (void)conn.async_start_execution(str, st, diag, deferred);
-    (void)conn.async_start_execution(const_str, st, diag, deferred);
 
     (void)conn.async_read_some_rows(st, deferred);
     (void)conn.async_read_some_rows(st, diag, deferred);
+
+#ifdef BOOST_MYSQL_CXX14
+    static_execution_state<std::tuple<>> st2;
+    (void)conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, deferred);
+    (void)conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, diag, deferred);
+#endif
 
     (void)conn.async_read_resultset_head(st, deferred);
     (void)conn.async_read_resultset_head(st, diag, deferred);
@@ -161,6 +162,108 @@ void deferred_spotcheck()
 
     (void)conn.async_close(deferred);
     (void)conn.async_close(diag, deferred);
+}
+
+// Spotcheck: all any_connection functions support default completion tokens
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+asio::awaitable<void> spotcheck_default_tokens()
+{
+    auto conn = test::create_test_any_connection();
+    connect_params params;
+    diagnostics diag;
+    results result;
+    execution_state st;
+    statement stmt;
+    static_execution_state<std::tuple<>> st2;
+
+    co_await conn.async_connect(params);
+    co_await conn.async_connect(params, diag);
+
+    co_await conn.async_execute("SELECT 1", result);
+    co_await conn.async_execute("SELECT 1", result, diag);
+
+    co_await conn.async_start_execution("SELECT 1", st);
+    co_await conn.async_start_execution("SELECT 1", st, diag);
+
+    co_await conn.async_read_some_rows(st);
+    co_await conn.async_read_some_rows(st, diag);
+
+    co_await conn.async_read_some_rows(st2, boost::span<std::tuple<>>{});
+    co_await conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, diag);
+
+    co_await conn.async_read_resultset_head(st);
+    co_await conn.async_read_resultset_head(st, diag);
+
+    co_await conn.async_prepare_statement("SELECT 1");
+    co_await conn.async_prepare_statement("SELECT 1", diag);
+
+    co_await conn.async_close_statement(stmt);
+    co_await conn.async_close_statement(stmt, diag);
+
+    co_await conn.async_reset_connection();
+    co_await conn.async_reset_connection(diag);
+
+    co_await conn.async_ping();
+    co_await conn.async_ping(diag);
+
+    co_await conn.async_close();
+    co_await conn.async_close(diag);
+}
+#endif
+
+// Spotcheck: any_connection ops support partial tokens,
+// and they get passed the correct default token
+template <class T, class... SigArgs, class... Rest>
+void check_op(asio::deferred_async_operation<void(T, SigArgs...), Rest...>)
+{
+    static_assert(std::is_same<T, std::exception_ptr>::value, "");
+}
+
+void spotcheck_partial_tokens()
+{
+    auto conn = test::create_test_any_connection();
+    connect_params params;
+    diagnostics diag;
+    results result;
+    execution_state st;
+    statement stmt;
+    auto tok = asio::cancel_after(std::chrono::seconds(10));
+
+    check_op(conn.async_connect(params, tok));
+    check_op(conn.async_connect(params, diag, tok));
+
+    check_op(conn.async_execute("SELECT 1", result, tok));
+    check_op(conn.async_execute("SELECT 1", result, diag, tok));
+
+    check_op(conn.async_start_execution("SELECT 1", st, tok));
+    check_op(conn.async_start_execution("SELECT 1", st, diag, tok));
+
+    check_op(conn.async_read_some_rows(st, tok));
+    check_op(conn.async_read_some_rows(st, diag, tok));
+
+#ifdef BOOST_MYSQL_CXX14
+    static_execution_state<std::tuple<>> st2;
+    check_op(conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, tok));
+    check_op(conn.async_read_some_rows(st2, boost::span<std::tuple<>>{}, diag, tok));
+#endif
+
+    check_op(conn.async_read_resultset_head(st, tok));
+    check_op(conn.async_read_resultset_head(st, diag, tok));
+
+    check_op(conn.async_prepare_statement("SELECT 1", tok));
+    check_op(conn.async_prepare_statement("SELECT 1", diag, tok));
+
+    check_op(conn.async_close_statement(stmt, tok));
+    check_op(conn.async_close_statement(stmt, diag, tok));
+
+    check_op(conn.async_reset_connection(tok));
+    check_op(conn.async_reset_connection(diag, tok));
+
+    check_op(conn.async_ping(tok));
+    check_op(conn.async_ping(diag, tok));
+
+    check_op(conn.async_close(tok));
+    check_op(conn.async_close(diag, tok));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
