@@ -14,17 +14,17 @@ asciidoc:
 content:
   sources:
     - url: .
-      start_path: mysql
+      start_path: doc/adoc/mysql
       branches: HEAD
 
 ui:
   bundle:
     url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
     snapshot: true
-  supplemental_files: ./supplemental-ui
+  supplemental_files: ./doc/supplemental-ui
 
 output:
-  dir: ./out
+  dir: ./private/out
 
 # https://docs.antora.org/antora/latest/playbook/runtime-log-failure-level/
 runtime:
