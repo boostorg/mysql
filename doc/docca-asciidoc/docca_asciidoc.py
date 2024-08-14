@@ -19,6 +19,8 @@ import xml.etree.ElementTree as ET
 from typing import Dict, Optional, List as PyList
 from os import makedirs
 
+DEFAULT_TPLT_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'templates'))
+
 class Nullcontext():
     def __init__(self):
         pass
@@ -1166,22 +1168,13 @@ def parse_args(args):
     parser.add_argument(
         '-o',
         '--output',
-        action=AcceptOneorNone,
-        help='Output file; STDOUT by default')
+        required=True,
+        help='Output directory')
     parser.add_argument(
         '-c', '--config',
         action='append',
         default=[],
         help='Configuration files')
-    parser.add_argument(
-        '-T', '--template',
-        action=AcceptOneorNone,
-        help='Jinja2 template to use for output')
-    parser.add_argument(
-        '-I', '--include',
-        action='append',
-        default=[],
-        help='Directory with template partials')
     parser.add_argument(
         '-D', '--directory',
         action=AcceptOneorNone,
@@ -1203,14 +1196,6 @@ def open_input(stdin, args, cwd):
         data_dir = data_dir or cwd
     return (file, ctx, data_dir)
 
-def open_output(stdout, args):
-    if args.output:
-        file = open(args.output, 'w', encoding='utf-8')
-        ctx = file
-    else:
-        file = stdout
-        ctx = Nullcontext()
-    return (file, ctx)
 
 def load_configs(args):
     result = {
@@ -1270,17 +1255,6 @@ def collect_data(parent_dir, refs) -> Dict[str, Entity]:
 
     return result
 
-def docca_include_dir(script):
-    return os.path.join(os.path.dirname(script), 'include')
-
-def template_file_name(includes, args):
-    return (args.template
-         or os.path.join(includes, 'docca/quickbook.jinja2'))
-
-def collect_include_dirs(template, include_dir, args):
-    result =  [os.path.dirname(template), include_dir]
-    result.extend(args.include)
-    return result
 
 def construct_environment(loader, config):
     env = jinja2.Environment(
@@ -1339,22 +1313,22 @@ def construct_environment(loader, config):
 
     return env
 
-def render(env: jinja2.Environment, file_name, output_file, entity):
-    template = env.get_template(os.path.basename(file_name))
-    
-    makedirs(os.path.dirname(output_file), exist_ok=True)
-    with open(output_file, 'wt', encoding='utf-8') as f:
-        template.stream(entity=entity).dump(f)
-
-
-def render_quickref(env: jinja2.Environment, **kwargs):
-    template = env.get_template(os.path.basename('quickref.jinja2'))
-    output_file = 'mysql/modules/ROOT/pages/reference.adoc'
-    with open(output_file, 'wt', encoding='utf-8') as f:
+def render(env: jinja2.Environment, template_file: str, output_dir: str, output_file: str, **kwargs):
+    output_path = os.path.join(output_dir, output_file)
+    template = env.get_template(template_file)
+    makedirs(output_dir, exist_ok=True)
+    with open(output_path, 'wt', encoding='utf-8') as f:
         template.stream(**kwargs).dump(f)
 
 
-def main(args, stdin, stdout, script):
+def render_entities(env: jinja2.Environment, template_file: str, output_dir: str, entities: PyList[Entity]):
+    for e in entities:
+        print(f'Rendering {e.fully_qualified_name}')
+        render(env, template_file, output_dir, e.asciidoc_file, entity=e)
+
+
+
+def main(args, stdin):
     args = parse_args(args)
 
     file, ctx, data_dir = open_input(stdin, args, os.getcwd())
@@ -1362,39 +1336,37 @@ def main(args, stdin, stdout, script):
         refs = list(collect_compound_refs(file))
     data = collect_data(data_dir, refs)
 
+    output_dir: str = args.output
+
     config = load_configs(args)
 
     env = construct_environment(
-        jinja2.FileSystemLoader('templates'), config)
+        jinja2.FileSystemLoader(DEFAULT_TPLT_DIR), config)
 
     # Classes (including member types)
     classes = [e for e in data.values() if isinstance(e, Class) and e.access == Access.public]
-    for e in classes:
-        render(env, 'class.jinja2', f'mysql/modules/ROOT/pages/{e.asciidoc_file}', e)
+    render_entities(env, 'class.jinja2', output_dir, classes)
 
-    # Functions. TODO: free functions
+    # Functions
     fns = []
     for e in [e2 for e2 in data.values() if isinstance(e2, Compound)]:
         fns += [mem for mem in e.members.values() if isinstance(mem, OverloadSet) and mem.access == Access.public]
-    for e in fns:
-        # print(f'Rendering {e.fully_qualified_name}', flush=True)
-        render(env, 'overload-set.jinja2', f'mysql/modules/ROOT/pages/{e.asciidoc_file}', e)
+    render_entities(env, 'overload-set.jinja2', output_dir, fns)
     
     # Type aliases
     type_alias = [e for e in data.values() if isinstance(e, TypeAlias)]
-    for e in type_alias:
-        # print(f'Rendering {e.fully_qualified_name}', flush=True)
-        render(env, 'type-alias.jinja2', f'mysql/modules/ROOT/pages/{e.asciidoc_file}', e)
+    render_entities(env, 'type-alias.jinja2', output_dir, type_alias)
     
     # Enums
     enums = [e for e in data.values() if isinstance(e, Enum)]
-    for e in enums:
-        # print(f'Rendering {e.fully_qualified_name}', flush=True)
-        render(env, 'enum.jinja2', f'mysql/modules/ROOT/pages/{e.asciidoc_file}', e)
+    render_entities(env, 'enum.jinja2', output_dir, enums)
     
     # Quickref
-    render_quickref(
+    render(
         env,
+        'quickref.jinja2',
+        output_dir,
+        'reference.adoc',
         classes=classes,
         enums=enums,
         free_functions=[e for e in fns if isinstance(e.scope, Namespace)],
@@ -1402,6 +1374,5 @@ def main(args, stdin, stdout, script):
     )
 
 
-
 if __name__ == '__main__':
-    main(sys.argv, sys.stdin, sys.stdout, os.path.realpath(__file__))
+    main(sys.argv, sys.stdin)
