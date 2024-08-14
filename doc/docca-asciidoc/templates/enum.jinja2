@@ -1,9 +1,9 @@
-{% from "common.jinja2" import phrase, template_parameters, description %}
+{% from "common.jinja2" import phrase, template_parameters, description, header_file %}
 
 == {{ entity.fully_qualified_name }}
 
 
-Defined in header [link-to-entity bg-white]`<{{ entity.location.file.replace('libs/mysql/include/', '') }}>`
+{{ header_file(entity) }}
 
 [source, cpp, subs="+macros", role="raw-code"]
 ----

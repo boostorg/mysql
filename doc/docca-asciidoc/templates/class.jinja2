@@ -1,9 +1,9 @@
-{% from "common.jinja2" import description, link, template_parameters, phrase %}
+{% from "common.jinja2" import description, link, template_parameters, phrase, header_file %}
 
-== boost::mysql::{{ entity.name }}
+== {{ entity.fully_qualified_name }}
 
 
-Defined in header [link-to-entity bg-white]`<{{ entity.location.file.replace('libs/mysql/include/', '') }}>`
+{{ header_file(entity) }}
 
 {{ description(entity.brief) }}
 
