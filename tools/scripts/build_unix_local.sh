@@ -10,8 +10,8 @@ set -e
 
 repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
-BK=b2
-IMAGE=build-gcc5
+BK=docs
+IMAGE=build-docs
 SHA=1e06ba22fc5ab038a3c4ce4a73d0d624848c8f70
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
