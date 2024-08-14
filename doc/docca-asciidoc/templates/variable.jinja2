@@ -1,0 +1,34 @@
+{% from "common.jinja2" import phrase, template_parameters, description, header_file %}
+
+== {{ entity.fully_qualified_name }}
+
+
+{{ header_file(entity) }}
+
+[source, cpp, subs="+macros", role="raw-code"]
+----
+{{ template_parameters(entity) }}
+{%- set qualifiers = [] -%}
+{%- if entity.is_static -%}
+    {%- set qualifiers = qualifiers + ['static'] -%}
+{%- endif -%}
+{%- if entity.is_constexpr -%}
+    {%- set qualifiers = qualifiers + ['constexpr'] -%}
+{%- endif -%}
+{%- if entity.is_inline -%}
+    {%- set qualifiers = qualifiers + ['inline'] -%}
+{%- endif -%}
+
+{%- if qualifiers | length -%}
+    {{ qualifiers | join(' ') }}{{' '}}
+{%- endif -%}
+
+{{ phrase(entity.type) }} {{ entity.name }}
+{%- if entity.value %} {{ phrase(entity.value) }}{% endif -%}
+;
+----
+
+{{ description(entity.brief) }}
+
+{{ description(entity.description) }}
+

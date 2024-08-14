@@ -577,6 +577,10 @@ class Entity():
 
         self.index = index
         index[self.id] = self
+    
+
+    def __repr__(self) -> str:
+        return f'{type(self).__name__}({self.fully_qualified_name})'
 
 
     @property
@@ -932,13 +936,6 @@ class Function(Value):
 
         self._parameters = element.findall('param')
     
-    def __repr__(self) -> str:
-        return 'Function({})'.format(json.dumps({
-            'id': self.id,
-            'name': self.name,
-            'brief': str(self.brief) if hasattr(self, 'brief') else '<!!!!! no brief !!!!!!>',
-        }, indent=4))
-
     @property
     def kind(self):
         if self.is_friend:
@@ -1048,6 +1045,9 @@ class OverloadSet():
         self.funcs = funcs
         assert len(funcs)
         self._resort()
+    
+    def __repr__(self) -> str:
+        return f'OverloadSet({self.fully_qualified_name})'
 
     def append(self, func):
         self.funcs.append(func)
@@ -1321,7 +1321,7 @@ def render(env: jinja2.Environment, template_file: str, output_dir: str, output_
 
 def render_entities(env: jinja2.Environment, template_file: str, output_dir: str, entities: PyList[Entity]):
     for e in entities:
-        print(f'Rendering {e.fully_qualified_name}')
+        print(f'Rendering {e}')
         render(env, template_file, output_dir, e.asciidoc_file, entity=e)
 
 
@@ -1341,6 +1341,9 @@ def main(args, stdin):
     env = construct_environment(
         jinja2.FileSystemLoader(DEFAULT_TPLT_DIR), config)
 
+    # Namespaces (not rendered directly)
+    namespaces = [e for e in data.values() if isinstance(e, Namespace)]
+
     # Classes (including member types)
     classes = [e for e in data.values() if isinstance(e, Class) and e.access == Access.public]
     render_entities(env, 'class.jinja2', output_dir, classes)
@@ -1358,6 +1361,12 @@ def main(args, stdin):
     # Enums
     enums = [e for e in data.values() if isinstance(e, Enum)]
     render_entities(env, 'enum.jinja2', output_dir, enums)
+
+    # Constants
+    constants = []
+    for ns in namespaces:
+        constants += [e for e in ns.members.values() if isinstance(e, Variable)]
+    render_entities(env, 'variable.jinja2', output_dir, constants)
     
     # Quickref
     render(
@@ -1369,6 +1378,7 @@ def main(args, stdin):
         enums=enums,
         free_functions=[e for e in fns if isinstance(e.scope, Namespace)],
         type_aliases=[e for e in type_alias if isinstance(e.scope, Namespace)],
+        constants=constants
     )
 
 

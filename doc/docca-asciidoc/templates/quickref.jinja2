@@ -37,6 +37,11 @@ a| [.pb-1]*Enumerations*
 {{ reflink(e) }}
 {%- endfor %}
 
+[.pb-1]*Constants*
+
+{% for e in constants | sort -%}
+{{ reflink(e) }}
+{%- endfor %}
 
 |===
 
