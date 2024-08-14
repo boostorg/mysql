@@ -100,3 +100,41 @@
 |===
 {% endif %}
 {%- endfor  -%}
+
+
+{# TODO: this is duplicate #}
+{% for mem in entity.members.values() 
+    | select("Variable")
+    | selectattr("access", "eq", Access.public) 
+    | selectattr("is_static", "eq", True) %}
+
+{% if loop.first %}
+=== Static data members
+
+[cols="1", grid=none, frame=none, role="mt-0 space-rows"]
+|===
+{% endif %}
+.^a|
+[source, cpp, subs="+macros", id={{ mem.name }}]
+----
+{{ template_parameters(mem) }}
+{%- set qualifiers = ['static'] -%}
+{%- if mem.is_constexpr -%}
+    {%- set qualifiers = qualifiers + ['constexpr'] -%}
+{%- endif -%}
+{%- if mem.is_inline -%}
+    {%- set qualifiers = qualifiers + ['inline'] -%}
+{%- endif -%}
+
+{{ qualifiers | join(' ') }} {{ phrase(mem.type) }} {{ mem.name }}{%- if mem.value %} {{ phrase(mem.value) }} {%- endif -%};
+----
+
+
+{{ description(mem.brief) }}
+
+{{ description(mem.description) }}
+
+{% if loop.last %}
+|===
+{% endif %}
+{%- endfor  -%}
