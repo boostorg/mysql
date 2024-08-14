@@ -1,0 +1,17 @@
+{% from "common.jinja2" import phrase, template_parameters, description %}
+
+== {{ entity.fully_qualified_name }}
+
+
+Defined in header [link-to-entity bg-white]`<{{ entity.location.file.replace('libs/mysql/include/', '') }}>`
+
+[source, cpp, subs="+macros", role="raw-code"]
+----
+{{ template_parameters(entity) }}
+{{ entity.declarator }} {{ entity.name }} = {{ phrase(entity.aliased) }};
+----
+
+{{ description(entity.brief) }}
+
+{{ description(entity.description) }}
+

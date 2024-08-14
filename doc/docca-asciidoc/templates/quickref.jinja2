@@ -1,0 +1,42 @@
+
+{% from "common.jinja2" import link %}
+
+{% macro reflink(entity) %}
+[.m-0]
+{{ link(entity, '[link-to-entity bg-white]`' + entity.name + '`') }}
+{% endmacro %}
+
+[#reference]
+= Reference
+:role: quickref
+
+[cols="1,1"]
+|===
+
+a| [.pb-1]*Classes*
+
+{% for e in classes | sort -%}
+{{ reflink(e) }}
+{%- endfor %}
+
+a| [.pb-1]*Enumerations*
+
+{% for e in enums | sort -%}
+{{ reflink(e) }}
+{%- endfor %}
+
+[.pb-1]*Functions*
+
+{% for e in free_functions | sort -%}
+{{ reflink(e) }}
+{%- endfor %}
+
+[.pb-1]*Type aliases*
+
+{% for e in type_aliases | sort -%}
+{{ reflink(e) }}
+{%- endfor %}
+
+
+|===
+

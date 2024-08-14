@@ -1,0 +1,72 @@
+{% from "common.jinja2" import description, link, template_parameters, phrase %}
+
+== boost::mysql::{{ entity.name }}
+
+
+Defined in header [link-to-entity bg-white]`<{{ entity.location.file.replace('libs/mysql/include/', '') }}>`
+
+{{ description(entity.brief) }}
+
+[source, cpp, subs="+macros", role="raw-code"]
+----
+{{ template_parameters(entity) }}
+{{ entity.declarator }} {{ entity.name }}
+{%- for entry in entity.bases -%}
+    {% if loop.first %}:{% else %},{% endif -%}
+    {{ ' ' ~ entry.access ~ ' ' }}
+    {%- if entry.is_virtual %}virtual {% endif -%}
+    {{ phrase(entry.base, in_code=True) }}
+{%- endfor -%}
+;
+----
+
+{{ description(entity.description) }}
+
+{% for type in entity.public_types %}
+{% if loop.first %}
+=== Member types
+
+[cols="1,2", grid=rows, frame=none, role="mt-0"]
+|===
+{% endif %}
+.^|{{ link(type, '[link-to-entity bg-white]`' + type.name + '`') }}
+.^|{{ description(type.brief) }}
+
+{% if loop.last %}
+|===
+{% endif %}
+
+{%- endfor  -%}
+
+
+{% for fn in entity.public_member_functions %}
+{% if loop.first %}
+=== Member functions
+
+[cols="1,2", grid=rows, frame=none, role="mt-0"]
+|===
+{% endif %}
+.^|{{ link(fn, '[link-to-entity bg-white]`' + fn.name + '`') }}
+.^|{{ description(fn.brief[0]) }}
+
+{% if loop.last %}
+|===
+{% endif %}
+
+{%- endfor  -%}
+
+{% for fn in entity.public_static_functions %}
+{% if loop.first %}
+=== Static functions
+
+[cols="1,2", grid=rows, frame=none, role="mt-0"]
+|===
+{% endif %}
+.^|{{ link(fn, '[link-to-entity bg-white]`' + fn.name + '`') }}
+.^|{{ description(fn.brief[0]) }}
+
+{% if loop.last %}
+|===
+{% endif %}
+
+{%- endfor  -%}

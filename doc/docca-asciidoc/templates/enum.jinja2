@@ -1,0 +1,34 @@
+{% from "common.jinja2" import phrase, template_parameters, description %}
+
+== {{ entity.fully_qualified_name }}
+
+
+Defined in header [link-to-entity bg-white]`<{{ entity.location.file.replace('libs/mysql/include/', '') }}>`
+
+[source, cpp, subs="+macros", role="raw-code"]
+----
+{{ entity.declarator }} {{ entity.name }} 
+{%- if entity.underlying_type -%}
+: {{ phrase(entity.underlying_type) }}
+{%- endif -%};
+----
+
+{{ description(entity.brief) }}
+
+{{ description(entity.description) }}
+
+{% for enum in entity.objects %}
+{% if loop.first %}
+=== Enumerators
+
+[cols="1,2", grid=rows, frame=none, role="mt-0"]
+|===
+{% endif %}
+.^|[link-to-entity bg-white]`{{ enum.name }}`
+.^|{{ description(enum.brief) }} {{ description(enum.description) }}
+
+{% if loop.last %}
+|===
+{% endif %}
+
+{% endfor %}

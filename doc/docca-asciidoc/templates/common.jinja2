@@ -1,0 +1,171 @@
+{% macro escape(s) -%}
+    {{ s.replace("[", "\\[").replace("]", "\\]") }}
+{%- endmacro %}
+
+
+{% macro subsection(sub) -%}
+{% if sub.title %}
+
+=== {{ phrase(sub.title) }}
+{% elif sub.kind %}
+
+=== {%- if sub.kind == 'see' %} See Also
+    {%- elif sub.kind == 'return' %} Return Value
+    {%- elif sub.kind == 'author' %} Author
+    {%- elif sub.kind == 'authors' %} Authors
+    {%- elif sub.kind == 'version' %} Version
+    {%- elif sub.kind == 'since' %} Since
+    {%- elif sub.kind == 'date' %} Date
+    {%- elif sub.kind == 'note' %} Remarks
+    {%- elif sub.kind == 'warning' %} Warning
+    {%- elif sub.kind == 'pre' %} Preconditions
+    {%- elif sub.kind == 'post' %} Postconditions
+    {%- elif sub.kind == 'copyright' %} Copyright
+    {%- elif sub.kind == 'invariant' %} Invariants
+    {%- elif sub.kind == 'remark' %} Remarks
+    {%- elif sub.kind == 'attention' %} Attention
+    {%- elif sub.kind == 'par' %} Paragraph
+    {%- elif sub.kind == 'rcs'%} RCS
+    {%- else %} Unknown
+    {%- endif -%}
+{%- endif %}
+{{ description(sub) }}
+{%- endmacro %}
+
+{% macro link(entity, text) -%}
+    {%- if entity is Enumerator -%}
+        {{ link(entity.enum, text) }}
+    {%- else -%}
+        xref:{{ entity.asciidoc_file }}[{{ text }}]
+    {%- endif -%}
+{%- endmacro %}
+
+{%- macro itemised(lst, nesting='') -%}
+    {%- for item in lst -%}
+        {{ nesting }}
+        {%- if lst.is_ordered -%}
+            #
+        {%- else -%}
+            *
+        {%- endif %} {{ description(item, nesting + '       ') }}
+    {%- endfor -%}
+{%- endmacro %}
+
+
+{% macro text_helper(s, in_code=False) -%}
+    {%- if s -%}
+        {%- set replacements=Config.get('replace_strings', {}) -%}
+
+        {%- set ns = namespace(s=s) -%}
+        {%- if in_code -%}
+            {%- set ns.s = ns.s | replace("  ", " ")
+                                | replace("  ", " ")
+                                | replace("  ", " ")
+                                | replace("  ", " ")
+            -%}
+            {%- if ns.s.endswith(" &") -%}
+                {%- set ns.s = ns.s[:-2] + "&" -%}
+            {%- elif ns.s.endswith(" *") -%}
+                {%- set ns.s = ns.s[:-2] + "*" -%}
+            {%- elif ns.s.endswith(" &&") -%}
+                {%- set ns.s = ns.s[:-3] + "&&" -%}
+            {%- elif ns.s.endswith(" &...") -%}
+                {%- set ns.s = ns.s[:-5] + "&..." -%}
+            {%- elif ns.s.endswith(" *...") -%}
+                {%- set ns.s = ns.s[:-5] + "*..." -%}
+            {%- elif ns.s.endswith(" &&...") -%}
+                {%- set ns.s = ns.s[:-6] + "&&..." -%}
+            {%- endif -%}
+        {%- else -%}
+            {%- set ns.s = escape(s) -%}
+        {%- endif -%}
+        {%- for src, tgt in replacements.items() -%}
+            {%- set ns.s = ns.s.replace(src, tgt) -%}
+        {%- endfor -%}
+        {{ ns.s }}
+    {%- else -%}
+        {{ s }}
+    {%- endif -%}
+{%- endmacro %}
+
+
+
+
+{% macro phrase(para, in_code=False) -%}
+{%- for part in para -%}{{ phrase_part(part, in_code=in_code) }}{%- endfor -%}
+{%- endmacro %}
+
+{% macro phrase_part(part, in_code=False) -%}
+    {%- if part is string -%}
+        {{ text_helper(part, in_code=in_code) }}
+    {%- elif part is Monospaced -%}
+        `+++{{ phrase(part, in_code=True) }}+++`
+    {%- elif part is Emphasised -%}
+        _{{ phrase(part, in_code=in_code) }}_
+    {%- elif part is Strong -%}
+        *{{ phrase(part, in_code=in_code) }}*
+    {%- elif part is EntityRef -%}
+        {{ link(part.entity, part.entity.name) }}
+    {%- elif part is UrlLink -%}
+        [@{{ part.url }} {{ phrase(part, in_code=in_code) }}]
+    {%- elif part is Linebreak %}{# indent is intentional here #}
+
+{% elif part is Phrase -%}
+    {{ phrase(part, in_code=in_code) }}
+    {%- else -%}
+        {{ part.unhandled_type() }}
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro description(parts, nesting='') -%}
+
+{%- for part in parts -%}
+
+{%- if part is Paragraph -%}
+{{ phrase(part) }}
+{% elif part is List -%}
+{{ itemised(part, nesting) }}
+{%- elif part is Section -%}
+{{ subsection(part) }}
+{%- elif part is CodeBlock %}
+{{ nesting }}```
+{% for line in part -%}
+{{nesting}}{{line}}
+{% endfor -%}
+{{ nesting }}```
+{% elif part is ParameterList -%}
+{# {{ parameter_list(part) }} #}
+{% elif part is Table -%}
+{{ table(part) }}
+{%- else -%}
+{{ part.unhandled_type() }}
+{%- endif -%}
+
+{%- endfor -%}
+
+{%- endmacro %}
+
+{%- macro template_parameters(entity) -%}
+{%- if entity.template_parameters or entity.is_specialization -%}template<{%- endif -%}
+{%- for tparam in entity.template_parameters %}
+    {{ phrase(tparam.type, in_code=True) }}
+    {%- if tparam.array %} (&{% endif -%}
+    {%- if tparam.name -%}
+        {%- if not tparam.array %} {% endif -%}
+        {{ tparam.name }}
+    {%- endif -%}
+    {%- if tparam.array %}) {{ phrase(tparam.array, in_code=True) }}{% endif -%}
+    {%- if tparam.default_value %} = {{ phrase(tparam.default_value, in_code=True) }}{% endif -%}
+
+{%- if loop.last -%}
+>
+{%- else -%}
+,
+{%- endif -%}
+
+{%- else -%}
+{%- if entity.is_specialization -%}
+>
+{%- endif -%}
+{%- endfor %}
+{%- endmacro %}

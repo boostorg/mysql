@@ -1,0 +1,80 @@
+
+{%- from "common.jinja2" import template_parameters, description, phrase -%}
+
+== {{ entity.fully_qualified_name }}
+
+
+[cols="8,1", grid=rows, frame=none, role="mt-0"]
+|===
+
+{% for fn in entity %}
+
+a|
+[source, cpp, subs="+macros", role="raw-code"]
+----
+{{ template_parameters(fn) }}
+{%- set qualifiers = [] -%}
+{%- if fn.is_explicit -%}
+    {%- set qualifiers = qualifiers + ['explicit'] -%}
+{%- endif -%}
+{%- if fn.is_static -%}
+    {%- set qualifiers = qualifiers + ['static'] -%}
+{%- endif -%}
+{%- if fn.is_constexpr -%}
+    {%- set qualifiers = qualifiers + ['constexpr'] -%}
+{%- endif -%}
+
+{%- if qualifiers | length -%}
+    {{ qualifiers | join(' ') }}{{' '}}
+{%- endif -%}
+{{ phrase(fn.return_type, in_code=True) }}
+{{ fn.name }}(
+{%- for param in fn.parameters %}
+    {{ phrase(param.type, in_code=True) }}
+    {%- if param.array %} (&{% endif -%}
+    {%- if param.name -%}
+        {%- if not param.array %} {% endif -%}
+        {{ param.name }}
+    {%- endif -%}
+    {%- if param.array %}) {{ phrase(param.array, in_code=True) }}{% endif -%}
+    {%- if param.default_value %} = {{ phrase(param.default_value, in_code=True) }}{% endif -%}
+
+    {%- if not loop.last %},{% endif -%}
+{%- endfor -%}
+)
+{%- if fn.refqual or fn.is_const -%}
+    {{ " " }}
+    {%- if fn.is_const %}const{% endif -%}
+    {%- if "lvalue" == fn.refqual %}&
+    {%- elif "rvalue" == fn.refqual %}&&
+    {%- endif -%}
+{%- endif -%}
+{%- if fn.is_noexcept and not fn.is_destructor %} noexcept{% endif -%}
+{%- if not fn.is_noexcept and fn.is_destructor %} noexcept(false){% endif -%}
+{%- if fn.is_deleted %} = delete
+{%- elif fn.is_defaulted %} = default
+{%- endif -%}
+;
+----
+
+.^| {%- if entity | length > 1 -%} ({{ loop.index }}) {%- endif -%}
+
+{% endfor %}
+
+|===
+
+{{ description(entity.brief[0]) }}
+
+{{ description(entity.description) }}
+
+{%- if entity | length > 1 -%}
+[cols="1,8", grid=rows, frame=none, role="mt-0"]
+|===
+{% for fn in entity -%}
+    {%- if fn.overload_specific | length -%}
+        .^|({{ loop.index }})
+        |{{ description(fn.overload_specific) }}
+    {%- endif -%}
+{%- endfor %}
+|===
+{%- endif -%}
