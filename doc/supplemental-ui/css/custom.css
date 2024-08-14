@@ -25,7 +25,12 @@
 }
 
 .pb-1 {
-  padding-bottom: 1vh;
+  padding-bottom: 1vh !important;
+}
+
+.space-rows td {
+  padding-top: 2em !important;
+  padding-bottom: 2em !important;
 }
 
 .indent {

@@ -55,6 +55,8 @@
 
 {%- endfor  -%}
 
+
+
 {% for fn in entity.public_static_functions %}
 {% if loop.first %}
 === Static functions
@@ -68,5 +70,33 @@
 {% if loop.last %}
 |===
 {% endif %}
+{%- endfor  -%}
 
+
+
+{% for mem in entity.members.values() 
+    | select("Variable")
+    | selectattr("access", "eq", Access.public) 
+    | selectattr("is_static", "eq", False) %}
+
+{% if loop.first %}
+=== Data members
+
+[cols="1", grid=none, frame=none, role="mt-0 space-rows"]
+|===
+{% endif %}
+.^a|
+[source, cpp, subs="+macros"]
+----
+{{ phrase(mem.type) }} {{ mem.name }}{%- if mem.value %} {{ phrase(mem.value) }} {%- endif -%};
+----
+
+
+{{ description(mem.brief) }}
+
+{{ description(mem.description) }}
+
+{% if loop.last %}
+|===
+{% endif %}
 {%- endfor  -%}
