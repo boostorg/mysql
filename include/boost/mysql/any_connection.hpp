@@ -75,8 +75,7 @@ struct any_connection_params
      * If the connection is configured to use TLS and this member is `nullptr`,
      * an internal `asio::ssl::context` object with suitable default options
      * will be created.
-     *
-     * \par Object lifetimes
+     * \n
      * If set to non-null, the pointee object must be kept alive until
      * all \ref any_connection objects constructed from `*this` are destroyed.
      */
