@@ -111,7 +111,7 @@
     {%- elif part is EntityRef -%}
         {{ link(part.entity, part.entity.name) }}
     {%- elif part is UrlLink -%}
-        [@{{ part.url }} {{ phrase(part, in_code=in_code) }}]
+        {{ part.url }}:[{{ phrase(part, in_code=in_code) }}]
     {%- elif part is Linebreak %}{# indent is intentional here #}
 
 {% elif part is Phrase -%}
