@@ -86,7 +86,7 @@
 |===
 {% endif %}
 .^a|
-[source, cpp, subs="+macros"]
+[source, cpp, subs="+macros", id={{ mem.name }}]
 ----
 {{ phrase(mem.type) }} {{ mem.name }}{%- if mem.value %} {{ phrase(mem.value) }} {%- endif -%};
 ----

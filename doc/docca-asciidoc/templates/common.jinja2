@@ -39,6 +39,8 @@
 {% macro link(entity, text) -%}
     {%- if entity is Enumerator -%}
         {{ link(entity.enum, text) }}
+    {%- elif entity is Variable and entity.scope is Class -%}
+        xref:{{ entity.scope.asciidoc_file }}#{{ entity.name }}[{{ text }}]
     {%- else -%}
         xref:{{ entity.asciidoc_file }}[{{ text }}]
     {%- endif -%}
