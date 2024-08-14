@@ -45,6 +45,10 @@
   max-width: 80% !important;
 }
 
+.whitespace-nowrap {
+  white-space: nowrap !important;
+}
+
 /* highlight.js */
 
 /*! Adapted from the GitHub style by Vasily Polovnyov <vast@whiteants.net> */
