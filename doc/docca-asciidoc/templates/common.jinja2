@@ -111,7 +111,12 @@
     {%- elif part is Strong -%}
         *{{ phrase(part, in_code=in_code) }}*
     {%- elif part is EntityRef -%}
-        {{ link(part.entity, part.entity.name) }}
+        {# Qualify only entities that are not in a namespace #}
+        {%- if part.entity.scope is Namespace -%}
+            {{ link(part.entity, part.entity.name) }}
+        {%- else -%}
+            {{ link(part.entity, part.entity.scope.name + '::' + part.entity.name) }}
+        {%- endif -%}
     {%- elif part is UrlLink -%}
         {{ part.url }}:[{{ phrase(part, in_code=in_code) }}]
     {%- elif part is Linebreak %}{# indent is intentional here #}
