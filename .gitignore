@@ -14,3 +14,5 @@ compile_commands.json
 .cache/
 __build*__/
 __pycache__/
+node_modules/
+doc/adoc/mysql/modules/reference/

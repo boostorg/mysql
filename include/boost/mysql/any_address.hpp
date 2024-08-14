@@ -99,29 +99,24 @@ class any_address
 
 public:
     /**
-     * \brief Constructs an empty address.
-     * \details Results in an address with `this->type() == address_type::host_and_port`,
+     * \brief Constructor.
+     * \xrefitem overload_specific "overload_specific" "overload_specific"
+     * Constructs an empty address. Results in an address with `this->type() == address_type::host_and_port`,
      * `this->hostname() == ""` and `this->port() == default_port`, which identifies
      * a server running on `localhost` using the default port.
-     * \par Exception safety
-     * No-throw guarantee.
      */
     any_address() noexcept : any_address(address_type::host_and_port, std::string(), default_port) {}
 
     /**
-     * \brief Copy constructor.
-     * \par Exception safety
-     * Strong guarantee. Exceptions may be thrown by memory allocations.
-     * \par Object lifetimes
-     * `*this` and `other` will have independent lifetimes (regular value semantics).
+     * \xrefitem overload_specific "overload_specific" "overload_specific"
+     * Copy constructor. May throw on allocation failure.
+     * After construction, `*this` and `other` will have independent lifetimes (regular value semantics).
      */
     any_address(const any_address& other) = default;
 
     /**
-     * \brief Move constructor.
-     * \details Leaves `other` in a valid but unspecified state.
-     * \par Exception safety
-     * No-throw guarantee.
+     * \xrefitem overload_specific "overload_specific" "overload_specific"
+     * Move constructor. Leaves `other` in a valid but unspecified state.
      */
     any_address(any_address&& other) = default;
 
@@ -146,15 +141,11 @@ public:
     ~any_address() = default;
 
     /**
-     * \brief Constructs an address containing a host and a port.
-     * \details Results in an address with `this->type() == address_type::host_and_port`,
+     * \xrefitem overload_specific "overload_specific" "overload_specific"
+     * Constructs an address containing a host and a port.
+     * Results in an address with `this->type() == address_type::host_and_port`,
      * `this->hostname() == value.hostname()` and `this->port() == value.port()`.
-     *
-     * \par Object lifetimes
-     * `*this` and `value` will have independent lifetimes (regular value semantics).
-     *
-     * \par Exception safety
-     * No-throw guarantee.
+     * After construction, `*this` and `value` will have independent lifetimes (regular value semantics).
      */
     any_address(host_and_port value) noexcept
         : impl_{address_type::host_and_port, std::move(value.host), value.port}
@@ -162,15 +153,11 @@ public:
     }
 
     /**
-     * \brief Constructs an address containing a UNIX socket path.
-     * \details Results in an address with `this->type() == address_type::unix_path`,
+     * \xrefitem overload_specific "overload_specific" "overload_specific"
+     * Constructs an address containing a UNIX socket path.
+     * Results in an address with `this->type() == address_type::unix_path`,
      * `this->unix_socket_path() == value.path()`.
-     *
-     * \par Object lifetimes
-     * `*this` and `value` will have independent lifetimes (regular value semantics).
-     *
-     * \par Exception safety
-     * No-throw guarantee.
+     * After construction, `*this` and `value` will have independent lifetimes (regular value semantics).
      */
     any_address(unix_path value) noexcept : impl_{address_type::unix_path, std::move(value.path), 0} {}
 

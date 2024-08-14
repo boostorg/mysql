@@ -1,0 +1,32 @@
+site:
+  url: https://localhost/
+  title: Boost.MySQL docs
+  start_page: mysql::index.adoc
+
+asciidoc:
+  attributes:
+    # Enable pagination
+    page-pagination: ''
+    hide-toc: ''
+  extensions:
+    - '@asciidoctor/tabs'
+
+content:
+  sources:
+    - url: .
+      start_path: doc/adoc/mysql
+      branches: HEAD
+
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+    snapshot: true
+  supplemental_files: ./doc/supplemental-ui
+
+output:
+  dir: ./private/out
+
+# https://docs.antora.org/antora/latest/playbook/runtime-log-failure-level/
+runtime:
+  log:
+    failure_level: error

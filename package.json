@@ -1,0 +1,6 @@
+{
+  "devDependencies": {
+    "@asciidoctor/tabs": "1.0.0-beta.6",
+    "antora": "3.1.9"
+  }
+}
