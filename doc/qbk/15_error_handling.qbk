@@ -36,8 +36,8 @@ functions:
         ]
     ]
     [
-        [[reflink throw_on_error]]
-        [A utility function to check an `error_code` and throw an `error_with_diagnostics` if the operation failed.]
+        [[reflink with_diagnostics]]
+        [A completion token that embeds diagnostics in exceptions thrown by async functions.]
     ]
     [
         [[reflink is_fatal_error]]

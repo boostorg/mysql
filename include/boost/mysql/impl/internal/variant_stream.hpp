@@ -292,7 +292,7 @@ public:
                 break;
             case vsconnect_action_type::immediate: break;  // has effect only for async
             case vsconnect_action_type::none: output_ec = act.data.err; return;
-            default: BOOST_ASSERT(false);
+            default: BOOST_ASSERT(false);  // LCOV_EXCL_LINE
             }
         }
     }
@@ -352,7 +352,7 @@ private:
                 algo_.reset();
                 self.complete(act.data.err);
                 break;
-            default: BOOST_ASSERT(false);
+            default: BOOST_ASSERT(false);  // LCOV_EXCL_LINE
             }
         }
 

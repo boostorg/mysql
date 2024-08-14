@@ -115,7 +115,7 @@ class run_pipeline_algo
             read_response_algo_.reset_connection = {temp_diag_, stage.seqnum};
             break;
         case pipeline_stage_kind::ping: read_response_algo_.ping = {temp_diag_, stage.seqnum}; break;
-        default: BOOST_ASSERT(false);
+        default: BOOST_ASSERT(false);  // LCOV_EXCL_LINE
         }
     }
 
@@ -177,7 +177,7 @@ class run_pipeline_algo
             return read_response_algo_.set_character_set.resume(st, ec);
         case pipeline_stage_kind::ping: return read_response_algo_.ping.resume(st, ec);
         case pipeline_stage_kind::close_statement: return next_action();  // has no response
-        default: BOOST_ASSERT(false); return next_action();
+        default: BOOST_ASSERT(false); return next_action();               // LCOV_EXCL_LINE
         }
     }
 

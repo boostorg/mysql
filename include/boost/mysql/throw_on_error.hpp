@@ -15,9 +15,15 @@ namespace mysql {
 
 /**
  * \brief Throws an exception in case of error, including diagnostic information.
- * \details If err indicates a failure (`err.failed() == true`), throws an exception that
+ * \details
+ * If err indicates a failure (`err.failed() == true`), throws an exception that
  * derives from \ref error_with_diagnostics. The exception will make
  * `diag` available in \ref error_with_diagnostics::get_diagnostics.
+ *
+ * \par Legacy feature
+ * The introduction of \ref with_diagnostics obsoletes almost all uses
+ * of this function. New code should attempt to use \ref with_diagnostics
+ * instead of manually checking for errors.
  */
 inline void throw_on_error(error_code err, const diagnostics& diag = {})
 {

@@ -226,6 +226,12 @@ int boost::mysql::test::current_executor_id()
     return g_executor_call_stack.empty() ? -1 : g_executor_call_stack.back();
 }
 
+int boost::mysql::test::get_executor_id(asio::any_io_executor ex)
+{
+    auto* typed_ex = ex.target<tracker_executor>();
+    return typed_ex ? typed_ex->id() : -1;
+}
+
 boost::mysql::test::initiation_guard::initiation_guard()
 {
     BOOST_ASSERT(!g_is_running_initiation);

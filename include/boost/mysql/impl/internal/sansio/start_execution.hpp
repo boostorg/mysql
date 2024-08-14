@@ -74,7 +74,7 @@ class start_execution_algo
         case any_execution_request::type_t::query:
         case any_execution_request::type_t::query_with_params: return resultset_encoding::text;
         case any_execution_request::type_t::stmt: return resultset_encoding::binary;
-        default: BOOST_ASSERT(false); return resultset_encoding::text;
+        default: BOOST_ASSERT(false); return resultset_encoding::text;  // LCOV_EXCL_LINE
         }
     }
 
@@ -109,7 +109,7 @@ class start_execution_algo
         case any_execution_request::type_t::query_with_params:
             return write_query_with_params(st, req_.data.query_with_params);
         case any_execution_request::type_t::stmt: return write_stmt(st, req_.data.stmt);
-        default: BOOST_ASSERT(false); return next_action();
+        default: BOOST_ASSERT(false); return next_action();  // LCOV_EXCL_LINE
         }
     }
 

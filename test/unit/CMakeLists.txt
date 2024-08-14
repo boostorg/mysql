@@ -65,6 +65,7 @@ add_executable(
     test/detail/connect_params_helpers.cpp
     test/detail/output_string.cpp
     test/detail/engine_impl.cpp
+    test/detail/intermediate_handler.cpp
 
     test/detail/typing/meta_check_context.cpp
     test/detail/typing/pos_map.cpp
@@ -125,6 +126,7 @@ add_executable(
     test/constant_string_view.cpp
     test/pfr.cpp
     test/pipeline.cpp
+    test/with_diagnostics.cpp
 )
 target_include_directories(
     boost_mysql_unittests

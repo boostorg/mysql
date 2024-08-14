@@ -170,7 +170,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 );
                 break;
             case next_connection_action::none: self.complete(error_code()); break;
-            default: BOOST_ASSERT(false);
+            default: BOOST_ASSERT(false);  // LCOV_EXCL_LINE
             }
         }
     };
