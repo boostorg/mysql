@@ -1345,7 +1345,9 @@ def main(args, stdin):
     namespaces = [e for e in data.values() if isinstance(e, Namespace)]
 
     # Classes (including member types)
-    classes = [e for e in data.values() if isinstance(e, Class) and e.access == Access.public]
+    classes = [e for e in data.values()
+               if isinstance(e, Class) and e.access == Access.public and
+                    not e.is_specialization]
     render_entities(env, 'class.jinja2', output_dir, classes)
 
     # Functions
