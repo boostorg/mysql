@@ -81,7 +81,7 @@ std::ostream& boost::mysql::operator<<(std::ostream& os, const field_view& value
     case field_kind::date: return os << value.get_date();
     case field_kind::datetime: return os << value.get_datetime();
     case field_kind::time: return detail::print_time(os, value.get_time());
-    default: BOOST_ASSERT(false); return os;
+    default: BOOST_ASSERT(false); return os;  // LCOV_EXCL_LINE
     }
 }
 

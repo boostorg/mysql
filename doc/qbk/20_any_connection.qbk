@@ -25,7 +25,8 @@ When compared to [reflink connection], `any_connection`:
   `connection` can't make this guarantee, especially when using TLS.
 * Doesn't allow to customize the internal `Stream` type. Doing this
   allows supporting the point above.
-* Doesn't support default completion tokens.
+* Has `with_diagnostics(asio::deferred)` as default completion token,
+  which allows using `co_await` and getting exceptions with extra information.
 * Has equivalent performance.
 * Other than session establishment, it has the same API as `connection`.
 

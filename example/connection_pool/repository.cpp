@@ -14,12 +14,10 @@
 // File: repository.cpp
 //
 
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>
-#include <boost/mysql/throw_on_error.hpp>
+#include <boost/mysql/with_diagnostics.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <iterator>
@@ -31,6 +29,7 @@
 
 using namespace notes;
 namespace mysql = boost::mysql;
+using mysql::with_diagnostics;
 
 // SQL code to create the notes table is located under $REPO_ROOT/example/db_setup.sql
 // The table looks like this:
@@ -43,20 +42,16 @@ namespace mysql = boost::mysql;
 
 std::vector<note_t> note_repository::get_notes(boost::asio::yield_context yield)
 {
-    mysql::diagnostics diag;
-    mysql::error_code ec;
-
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
     // pool when the proxy object is destroyed.
-    mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
-    mysql::throw_on_error(ec, diag);
+    // with_diagnostics ensures that thrown exceptions include diagnostic information
+    mysql::pooled_connection conn = pool_.async_get_connection(with_diagnostics(yield));
 
     // Execute the query to retrieve all notes. We use the static interface to
     // parse results directly into static_results.
     mysql::static_results<note_t> result;
-    conn->async_execute("SELECT id, title, content FROM notes", result, diag, yield[ec]);
-    mysql::throw_on_error(ec, diag);
+    conn->async_execute("SELECT id, title, content FROM notes", result, with_diagnostics(yield));
 
     // By default, connections are reset after they are returned to the pool
     // (by using any_connection::async_reset_connection). This will reset any
@@ -79,14 +74,10 @@ std::vector<note_t> note_repository::get_notes(boost::asio::yield_context yield)
 
 optional<note_t> note_repository::get_note(std::int64_t note_id, boost::asio::yield_context yield)
 {
-    mysql::diagnostics diag;
-    mysql::error_code ec;
-
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
     // pool when the proxy object is destroyed.
-    mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
-    mysql::throw_on_error(ec, diag);
+    mysql::pooled_connection conn = pool_.async_get_connection(with_diagnostics(yield));
 
     // When executed, with_params expands a query client-side before sending it to the server.
     // Placeholders are marked with {}
@@ -94,10 +85,8 @@ optional<note_t> note_repository::get_note(std::int64_t note_id, boost::asio::yi
     conn->async_execute(
         mysql::with_params("SELECT id, title, content FROM notes WHERE id = {}", note_id),
         result,
-        diag,
-        yield[ec]
+        with_diagnostics(yield)
     );
-    mysql::throw_on_error(ec, diag);
 
     // We did nothing to mutate session state, so we can skip reset
     conn.return_without_reset();
@@ -111,14 +100,10 @@ optional<note_t> note_repository::get_note(std::int64_t note_id, boost::asio::yi
 
 note_t note_repository::create_note(string_view title, string_view content, boost::asio::yield_context yield)
 {
-    mysql::diagnostics diag;
-    mysql::error_code ec;
-
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
     // pool when the proxy object is destroyed.
-    mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
-    mysql::throw_on_error(ec, diag);
+    mysql::pooled_connection conn = pool_.async_get_connection(with_diagnostics(yield));
 
     // We will use statements in this function for the sake of example.
     // We don't need to deallocate the statement explicitly,
@@ -126,16 +111,13 @@ note_t note_repository::create_note(string_view title, string_view content, boos
     // You can also use with_params instead of statements.
     mysql::statement stmt = conn->async_prepare_statement(
         "INSERT INTO notes (title, content) VALUES (?, ?)",
-        diag,
-        yield[ec]
+        with_diagnostics(yield)
     );
-    mysql::throw_on_error(ec, diag);
 
     // Execute the statement. The statement won't produce any rows,
     // so we can use static_results<std::tuple<>>
     mysql::static_results<std::tuple<>> result;
-    conn->async_execute(stmt.bind(title, content), result, diag, yield[ec]);
-    mysql::throw_on_error(ec, diag);
+    conn->async_execute(stmt.bind(title, content), result, with_diagnostics(yield));
 
     // MySQL reports last_insert_id as a uint64_t regardless of the actual ID type.
     // Given our table definition, this cast is safe
@@ -154,14 +136,10 @@ optional<note_t> note_repository::replace_note(
     boost::asio::yield_context yield
 )
 {
-    mysql::diagnostics diag;
-    mysql::error_code ec;
-
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
     // pool when the proxy object is destroyed.
-    mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
-    mysql::throw_on_error(ec, diag);
+    mysql::pooled_connection conn = pool_.async_get_connection(with_diagnostics(yield));
 
     // Expand and execute the query.
     // It won't produce any rows, so we can use static_results<std::tuple<>>
@@ -174,10 +152,8 @@ optional<note_t> note_repository::replace_note(
             note_id
         ),
         empty_result,
-        diag,
-        yield[ec]
+        with_diagnostics(yield)
     );
-    mysql::throw_on_error(ec, diag);
 
     // We didn't mutate session state, so we can skip reset
     conn.return_without_reset();
@@ -191,14 +167,10 @@ optional<note_t> note_repository::replace_note(
 
 bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_context yield)
 {
-    mysql::diagnostics diag;
-    mysql::error_code ec;
-
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
     // pool when the proxy object is destroyed.
-    mysql::pooled_connection conn = pool_.async_get_connection(diag, yield[ec]);
-    mysql::throw_on_error(ec, diag);
+    mysql::pooled_connection conn = pool_.async_get_connection(with_diagnostics(yield));
 
     // Expand and execute the query.
     // It won't produce any rows, so we can use static_results<std::tuple<>>
@@ -206,10 +178,8 @@ bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_conte
     conn->async_execute(
         mysql::with_params("DELETE FROM notes WHERE id = {}", note_id),
         empty_result,
-        diag,
-        yield[ec]
+        with_diagnostics(yield)
     );
-    mysql::throw_on_error(ec, diag);
 
     // We didn't mutate session state, so we can skip reset
     conn.return_without_reset();

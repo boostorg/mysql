@@ -7,25 +7,20 @@
 
 //[example_async_coroutinescpp20
 
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/throw_on_error.hpp>
 
-#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
+#include <boost/asio/deferred.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/use_awaitable.hpp>
 
 #include <exception>
 #include <iostream>
-
-using boost::mysql::error_code;
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
@@ -35,14 +30,6 @@ void print_employee(boost::mysql::row_view employee)
               << employee.at(1) << "' earns "            // last_name  (string)
               << employee.at(2) << " dollars yearly\n";  // salary     (double)
 }
-
-// Using this completion token instead of plain use_awaitable prevents
-// co_await from throwing exceptions. Instead, co_await will return a std::tuple<error_code>
-// with a non-zero code on error. We will then use boost::mysql::throw_on_error
-// to throw exceptions with embedded diagnostics, if available. If you
-// employ plain use_awaitable, you will get boost::system::system_error exceptions
-// instead of boost::mysql::error_with_diagnostics exceptions. This is a limitation of use_awaitable.
-constexpr auto tuple_awaitable = boost::asio::as_tuple(boost::asio::use_awaitable);
 
 /**
  * Our coroutine. It must have a return type of boost::asio::awaitable<T>.
@@ -61,6 +48,10 @@ constexpr auto tuple_awaitable = boost::asio::as_tuple(boost::asio::use_awaitabl
  * is the second argument to the handler signature for the asynchronous operation.
  * If any of the asynchronous operations fail, an exception will be raised
  * within the coroutine.
+ *
+ * Note that we're not specifying any completion token to our initiating functions.
+ * The default token for Boost.MySQL is mysql::with_diagnostics(asio::deferred),
+ * which allows using co_await and throws on error.
  */
 boost::asio::awaitable<void> coro_main(
     boost::mysql::tcp_ssl_connection& conn,
@@ -70,35 +61,22 @@ boost::asio::awaitable<void> coro_main(
     const char* company_id
 )
 {
-    error_code ec;
-    boost::mysql::diagnostics diag;
-
     // Resolve hostname. We may use use_awaitable here, as hostname resolution
     // never produces any diagnostics.
-    auto endpoints = co_await resolver.async_resolve(
-        hostname,
-        boost::mysql::default_port_string,
-        boost::asio::use_awaitable
-    );
+    auto endpoints = co_await resolver.async_resolve(hostname, boost::mysql::default_port_string);
 
     // Connect to server
-    std::tie(ec) = co_await conn.async_connect(*endpoints.begin(), params, diag, tuple_awaitable);
-    boost::mysql::throw_on_error(ec, diag);
+    co_await conn.async_connect(*endpoints.begin(), params);
 
     // We will be using company_id, which is untrusted user input, so we will use a prepared
     // statement.
-    boost::mysql::statement stmt;
-    std::tie(ec, stmt) = co_await conn.async_prepare_statement(
-        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
-        diag,
-        tuple_awaitable
+    boost::mysql::statement stmt = co_await conn.async_prepare_statement(
+        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?"
     );
-    boost::mysql::throw_on_error(ec, diag);
 
     // Execute the statement
     boost::mysql::results result;
-    std::tie(ec) = co_await conn.async_execute(stmt.bind(company_id), result, diag, tuple_awaitable);
-    boost::mysql::throw_on_error(ec, diag);
+    co_await conn.async_execute(stmt.bind(company_id), result);
 
     // Print all employees
     for (boost::mysql::row_view employee : result.rows())
@@ -107,8 +85,7 @@ boost::asio::awaitable<void> coro_main(
     }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
-    std::tie(ec) = co_await conn.async_close(diag, tuple_awaitable);
-    boost::mysql::throw_on_error(ec, diag);
+    co_await conn.async_close();
 }
 
 void main_impl(int argc, char** argv)
@@ -178,7 +155,6 @@ int main(int argc, char** argv)
     }
     catch (const boost::mysql::error_with_diagnostics& err)
     {
-        // You will only get this type of exceptions if you use throw_on_error.
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
         // field value that caused the error) and is encoded using to the connection's character set
