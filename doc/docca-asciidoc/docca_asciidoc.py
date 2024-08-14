@@ -968,7 +968,6 @@ class Function(Value):
         assert self._description is not None
         node = self._description.find('.//xrefsect/..')
         if node is not None:
-            print(f'Got xrefsect for {self.name}')
             subnode = node.find('xrefsect')
             assert subnode is not None
             xreftitle = subnode.find('xreftitle')
@@ -978,7 +977,6 @@ class Function(Value):
             assert xrefdescription is not None
             self.overload_specific = make_blocks(xrefdescription, self.index)
             node.remove(subnode)
-            print(self.overload_specific)
         else:
             self.overload_specific = []
         super().resolve_references()
@@ -1316,7 +1314,7 @@ def construct_environment(loader, config):
 def render(env: jinja2.Environment, template_file: str, output_dir: str, output_file: str, **kwargs):
     output_path = os.path.join(output_dir, output_file)
     template = env.get_template(template_file)
-    makedirs(output_dir, exist_ok=True)
+    makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'wt', encoding='utf-8') as f:
         template.stream(**kwargs).dump(f)
 
