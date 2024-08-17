@@ -32,6 +32,9 @@ tracker_executor_result create_tracker_executor(asio::any_io_executor inner);
 // Get the ID of the executor we're currently running on, or -1 if none
 int current_executor_id();
 
+// Get the ID of a tracker executor, or -1 if it's not a tracker executor
+int get_executor_id(asio::any_io_executor);
+
 // We maintain a thread-local state variable that tracks whether we're running
 // in the context of an initiation function or not.
 // Use this guard when invoking initiation functions to set/clear the flag,

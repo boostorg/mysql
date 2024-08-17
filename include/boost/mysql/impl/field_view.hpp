@@ -178,7 +178,7 @@ BOOST_CXX14_CONSTEXPR bool boost::mysql::field_view::operator==(const field_view
     case field_kind::date: return rhs_k == field_kind::date && get_date() == rhs.get_date();
     case field_kind::datetime: return rhs_k == field_kind::datetime && get_datetime() == rhs.get_datetime();
     case field_kind::time: return rhs_k == field_kind::time && get_time() == rhs.get_time();
-    default: BOOST_ASSERT(false); return false;
+    default: BOOST_ASSERT(false); return false;  // LCOV_EXCL_LINE
     }
 }
 

@@ -62,6 +62,7 @@
           <member><link linkend="mysql.ref.boost__mysql__static_execution_state">static_execution_state</link></member>
           <member><link linkend="mysql.ref.boost__mysql__static_results">static_results</link></member>
           <member><link linkend="mysql.ref.boost__mysql__unix_path">unix_path</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__with_diagnostics_t">with_diagnostics_t</link></member>
           <member><link linkend="mysql.ref.boost__mysql__with_params_t">with_params_t</link></member>
         </simplelist>
       </entry>
@@ -104,6 +105,7 @@
           <member><link linkend="mysql.ref.boost__mysql__runtime">runtime</link></member>
           <member><link linkend="mysql.ref.boost__mysql__sequence">sequence</link></member>
           <member><link linkend="mysql.ref.boost__mysql__throw_on_error">throw_on_error</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__with_diagnostics">with_diagnostics</link></member>
           <member><link linkend="mysql.ref.boost__mysql__with_params">with_params</link></member>
         </simplelist>
       </entry>
