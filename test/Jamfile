@@ -26,6 +26,10 @@ feature.feature boost.mysql.use-ts-executor : off on : propagated composite ;
 # Support builds forcing !BOOST_ASIO_HAS_LOCAL_SOCKETS
 feature.feature boost.mysql.disable-local-sockets : off on : propagated composite ;
 
+# Support valgrind
+feature.feature boost.mysql.valgrind : off on : propagated composite ;
+feature.compose <boost.mysql.valgrind>on : <define>BOOST_USE_VALGRIND ;
+
 # Configure openssl if it hasn't been done yet
 using openssl ;
 
@@ -152,7 +156,7 @@ alias boost_mysql_test
 # an intermediate Python runner, so just setting testing.launcher globally is incorrect
 alias launch_with_valgrind
     : usage-requirements
-        <valgrind>on:<testing.launcher>"valgrind --leak-check=full --error-limit=yes --error-exitcode=1 --gen-suppressions=all"
+        <boost.mysql.valgrind>on:<testing.launcher>"valgrind --leak-check=full --error-limit=yes --error-exitcode=1 --gen-suppressions=all"
     ;
 
 build-project unit ;

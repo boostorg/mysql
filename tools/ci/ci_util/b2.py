@@ -82,7 +82,7 @@ def b2_build(
         _conditional('address-sanitizer=norecover', address_sanitizer),
         _conditional('undefined-sanitizer=norecover', undefined_sanitizer),
         _conditional('coverage=on', coverage),
-        _conditional('valgrind=on', valgrind),
+        _conditional('boost.mysql.valgrind=on', valgrind),
         'warnings=extra',
         'warnings-as-errors=on',
         '-j4',
