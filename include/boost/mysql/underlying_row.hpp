@@ -21,7 +21,7 @@ namespace mysql {
  * Given an input type `T` satisfying the `StaticRow` concept,
  * this trait is an alias for its underlying row type. It is defined as follows:
  * \n
- * \li If `T` is a marker type, like \ref pfr_by_name "pfr_by_name<U>", `underlying_row_t`
+ * \li If `T` is a marker type, like \ref pfr_by_name "pfr_by_name< U >", `underlying_row_t`
  *     is an alias for the marker's inner type `U`.
  * \li If `T` is not a marker type (e.g. it's a Boost.Describe struct or a `std::tuple`),
  *     `underlying_row_t` is an alias for `T`.
