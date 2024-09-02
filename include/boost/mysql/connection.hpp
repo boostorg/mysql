@@ -606,10 +606,6 @@ public:
      * \brief Closes a statement, deallocating it from the server.
      * \details
      * After this operation succeeds, `stmt` must not be used again for execution.
-     * \par Performance warning
-     * This function is currently affected by a peformance issue described
-     * in https://github.com/boostorg/mysql/issues/181. Consider using
-     * \ref reset_connection or \ref async_reset_connection instead.
      * \n
      * \par Preconditions
      *    `stmt.valid() == true`
