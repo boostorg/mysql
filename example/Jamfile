@@ -80,8 +80,8 @@ for local example in $(order_examples)
 # Other examples that need a Python script
 run_python_example patch_updates : run_patch_updates.py : patch_updates.cpp ;
 run_python_example dynamic_filters : run_dynamic_filters.py : dynamic_filters.cpp /boost/mysql/test//boost_context_lib ;
-run_python_example batch_inserts : run_batch_inserts.py : batch_inserts.cpp /boost/json//boost_json ;
-run_python_example batch_inserts_generic : run_batch_inserts.py : batch_inserts_generic.cpp /boost/json//boost_json ;
+run_python_example batch_inserts : run_batch_inserts.py : batch_inserts.cpp /boost/mysql/test//boost_json_lib ;
+run_python_example batch_inserts_generic : run_batch_inserts.py : batch_inserts_generic.cpp /boost/mysql/test//boost_json_lib ;
 
 # UNIX. Don't run under Windows systems
 run
@@ -110,9 +110,9 @@ run
         connection_pool/server.cpp
         /boost/mysql/test//boost_mysql_compiled
         /boost/mysql/test//boost_context_lib
-        /boost/json//boost_json
+        /boost/mysql/test//boost_json_lib
         /boost/url//boost_url
-        /boost/beast//boost_beast
+        /boost/mysql/test//boost_beast_lib
     : requirements
             <testing.launcher>"python $(this_dir)/private/run_connection_pool.py"
             <testing.arg>$(hostname)

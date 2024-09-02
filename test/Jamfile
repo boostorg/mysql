@@ -140,6 +140,10 @@ alias boost_context_lib
         <toolset>gcc-14:<cxxflags>-fcf-protection=none
     ;
 
+# Beast and JSON depend on Container, which causes trouble with <warnings-as-errors>on
+alias boost_beast_lib : /boost/beast//boost_beast/<warnings-as-errors>off ;
+alias boost_json_lib : /boost/json//boost_json/<warnings-as-errors>off ;
+
 alias boost_mysql_test
     :
         boost_mysql_compiled
