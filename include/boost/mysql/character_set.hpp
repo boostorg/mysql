@@ -49,10 +49,6 @@ struct character_set
      * trying to interpret the first character, it should return 0 to signal the error.
      * \n
      * This function must not throw exceptions or have side effects.
-     * \n
-     * \par Function signature
-     * The function signature should be:
-     * `std::size_t (*next_char)(boost::span<const unsigned char> r)`.
      */
     std::size_t (*next_char)(span<const unsigned char>);
 };
