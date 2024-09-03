@@ -48,8 +48,10 @@ COMMON_ERROR_LAST = 1880
 SERVER_ERROR_LAST = 5000
 
 COMMON_SERVER_ERRC_ENTRY = '''
-    /// Common server error. Error number: {number}, symbol:
-    /// <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_{symbol_lower}">{symbol_upper}</a>.
+    /**
+     * \\brief Common server error. Error number: {number}, symbol:
+     * <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_{symbol_lower}">{symbol_upper}</a>.
+     */
     {symbol_lower} = {number},
 '''
 
