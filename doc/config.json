@@ -20,6 +20,7 @@
         "\\bclass StaticRow\\b": "class __StaticRow__",
         "\\bclass Stream\\b": "class __Stream__",
         "\\bclass WritableField\\b": "class __WritableField__",
-        "\\bclass WritableFieldTuple\\b": "class __WritableFieldTuple__"
+        "\\bclass WritableFieldTuple\\b": "class __WritableFieldTuple__",
+        "\\bBOOST_MYSQL_FORMATTABLE\\b": "class"
     }
 }
