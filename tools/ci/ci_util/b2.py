@@ -67,6 +67,12 @@ def b2_build(
     # Setup DB
     db_setup(source_dir, server_host)
 
+    # TODO: remove this
+    os.chdir(os.path.join('libs', 'beast'))
+    run(['git', 'fetch', 'origin', 'pull/2924/head:jamfile-cleanup'])
+    run(['git', 'checkout', 'jamfile-cleanup'])
+    os.chdir(os.path.join('..', '..'))
+
     # Invoke b2
     _conditional_run([
         'b2',
