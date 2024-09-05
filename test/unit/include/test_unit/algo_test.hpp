@@ -121,6 +121,10 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
             BOOST_TEST_CONTEXT("Step " << i)
             {
                 const auto& step = steps_[i];
+                if (act.is_done())
+                {
+                    BOOST_TEST_REQUIRE(false, "Algorithm finished early: " << act.error());
+                }
                 BOOST_TEST_REQUIRE(act.type() == step.type);
                 if (step.type == detail::next_action_type::read)
                     handle_read(st, step);
