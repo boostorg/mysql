@@ -27,7 +27,7 @@ def docs_build(
     # Write the config file
     config_path = os.path.expanduser('~/user-config.jam')
     with open(config_path, 'wt') as f:
-        f.writelines(['using doxygen ;\n', 'using boostbook ;\n', 'using saxonhe ;\n'])
+        f.writelines(['using doxygen ;\n', 'using boostbook ;\n'])
 
     # Run b2
     run(['b2', '-j4', 'cxxstd=17', 'libs/mysql/doc//boostrelease'])
@@ -37,5 +37,3 @@ def docs_build(
     if output_dir.exists():
         rmtree(output_dir)
     copytree(BOOST_ROOT.joinpath('libs', 'mysql', 'doc', 'html'), output_dir)
-
-
