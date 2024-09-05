@@ -5,14 +5,17 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+require-b2 5.0.1 ;
+import-search /boost/config/checks ;
+
 import os ;
 import path ;
 import feature ;
 import ac ;
 import indirect ;
-import ../config/checks/config : requires ;
+import config : requires ;
 
-project /boost/mysql/test ;
+project : requirements <library>/boost/mysql//boost_mysql ;
 
 # Support header-only builds
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
@@ -22,6 +25,10 @@ feature.feature boost.mysql.use-ts-executor : off on : propagated composite ;
 
 # Support builds forcing !BOOST_ASIO_HAS_LOCAL_SOCKETS
 feature.feature boost.mysql.disable-local-sockets : off on : propagated composite ;
+
+# Support valgrind
+feature.feature boost.mysql.valgrind : off on : propagated composite ;
+feature.compose <boost.mysql.valgrind>on : <define>BOOST_USE_VALGRIND ;
 
 # Configure openssl if it hasn't been done yet
 using openssl ;
@@ -43,7 +50,7 @@ alias fail_if_no_openssl
 explicit fail_if_no_openssl ;
 
 # Requirements to use across targets
-local requirements = 
+local requirements =
         <define>BOOST_ALL_NO_LIB=1
         <define>BOOST_ASIO_NO_DEPRECATED=1
         <define>BOOST_ASIO_DISABLE_BOOST_ARRAY=1
@@ -53,7 +60,7 @@ local requirements =
         <define>BOOST_ASIO_DISABLE_BOOST_COROUTINE=1
         <define>BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
         <define>BOOST_ALLOW_DEPRECATED_HEADERS=1
-        # Disable warning C4702: unreachable code, produced by Boost.Asio buffer.hpp 
+        # Disable warning C4702: unreachable code, produced by Boost.Asio buffer.hpp
         <toolset>msvc:<cxxflags>"/bigobj /wd4702 /permissive-"
         <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS=1
         <toolset>msvc:<define>_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
@@ -68,7 +75,6 @@ local requirements =
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
-        <include>../include
         <boost.mysql.use-ts-executor>on:<define>BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT
         # Disable assertions when doing coverage, as they distort coverage data
         <coverage>on:<define>BOOST_DISABLE_ASSERTS
@@ -134,6 +140,10 @@ alias boost_context_lib
         <toolset>gcc-14:<cxxflags>-fcf-protection=none
     ;
 
+# Beast and JSON depend on Container, which causes trouble with <warnings-as-errors>on
+alias boost_beast_lib : /boost/beast//boost_beast/<warnings-as-errors>off ;
+alias boost_json_lib : /boost/json//boost_json/<warnings-as-errors>off ;
+
 alias boost_mysql_test
     :
         boost_mysql_compiled
@@ -150,7 +160,7 @@ alias boost_mysql_test
 # an intermediate Python runner, so just setting testing.launcher globally is incorrect
 alias launch_with_valgrind
     : usage-requirements
-        <valgrind>on:<testing.launcher>"valgrind --leak-check=full --error-limit=yes --error-exitcode=1 --gen-suppressions=all"
+        <boost.mysql.valgrind>on:<testing.launcher>"valgrind --leak-check=full --error-limit=yes --error-exitcode=1 --gen-suppressions=all"
     ;
 
 build-project unit ;

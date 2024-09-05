@@ -11,7 +11,8 @@ project mysql/doc ;
 import boostbook ;
 import os ;
 import path ;
-import ../../../tools/docca/docca.jam ;
+import-search /boost/docca ;
+import docca ;
 
 
 # Note: adding server-specific error codes and collations to the reference
