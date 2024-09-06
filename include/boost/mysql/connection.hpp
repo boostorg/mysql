@@ -457,6 +457,7 @@ public:
      * \n
      * When using the static interface, this function will detect schema mismatches for the first
      * resultset. Further errors may be detected by \ref read_resultset_head and \ref read_some_rows.
+     * \n
      */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
@@ -606,10 +607,6 @@ public:
      * \brief Closes a statement, deallocating it from the server.
      * \details
      * After this operation succeeds, `stmt` must not be used again for execution.
-     * \par Performance warning
-     * This function is currently affected by a peformance issue described
-     * in https://github.com/boostorg/mysql/issues/181. Consider using
-     * \ref reset_connection or \ref async_reset_connection instead.
      * \n
      * \par Preconditions
      *    `stmt.valid() == true`
@@ -923,6 +920,7 @@ public:
      * When using the static interface, this function will detect schema mismatches for the resultset
      * currently being read. Further errors may be detected by subsequent invocations of this function
      * and by \ref read_some_rows.
+     * \n
      */
     template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
     void read_resultset_head(ExecutionStateType& st, error_code& err, diagnostics& diag)
@@ -1101,6 +1099,7 @@ public:
      * \n
      * Sends a quit request, performs the TLS shutdown (if required)
      * and closes the underlying stream. Prefer this function to \ref connection::quit.
+     * \n
      */
     void close(error_code& err, diagnostics& diag)
     {

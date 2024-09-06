@@ -5,7 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-FROM openjdk:11
+FROM ubuntu:22.04
 
 COPY tools/docker/install_build_docs.sh /
 

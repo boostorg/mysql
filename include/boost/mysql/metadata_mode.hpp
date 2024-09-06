@@ -14,13 +14,17 @@ namespace mysql {
 /// Describes how to handle metadata when running a query or statement.
 enum class metadata_mode
 {
-    /// Retain the minimum metadata possible to be able to execute the operation.
-    /// This is the most efficient mode, but will leave some fields in the \ref metadata
-    /// class empty.
+    /**
+     * \brief Retain the minimum metadata possible to be able to execute the operation.
+     * This is the most efficient mode, but will leave some fields in the \ref metadata
+     * class empty.
+     */
     minimal,
 
-    /// Retain as much metadata as possible. All the fields in \ref metadata are usable,
-    /// but causes more allocations.
+    /**
+     * \brief Retain as much metadata as possible. All the fields in \ref metadata are usable,
+     * but causes more allocations.
+     */
     full
 };
 
