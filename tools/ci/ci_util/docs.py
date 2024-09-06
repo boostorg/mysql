@@ -30,7 +30,7 @@ def docs_build(
         f.writelines(['using doxygen ;\n', 'using boostbook ;\n'])
 
     # Run b2
-    run(['b2', '-j4', 'cxxstd=17', 'libs/mysql/doc//boostrelease'])
+    run(['b2', 'libs/mysql/doc//boostrelease'])
 
     # Copy the resulting docs into a well-known path
     output_dir = source_dir.joinpath('doc', 'html')
