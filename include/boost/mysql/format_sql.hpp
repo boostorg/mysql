@@ -346,8 +346,10 @@ public:
      * \par Exception safety
      * Strong guarantee: exceptions thrown by default-constructing `OutputString` are propagated.
      */
-    explicit basic_format_context(format_options opts
-    ) noexcept(std::is_nothrow_default_constructible<OutputString>::value)
+    explicit basic_format_context(format_options opts)
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_default_constructible<OutputString>::value)
+#endif
         : format_context_base(ref(), opts)
     {
     }
@@ -364,9 +366,10 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context(format_options opts, OutputString&& storage) noexcept(
-        std::is_nothrow_move_constructible<OutputString>::value
-    )
+    basic_format_context(format_options opts, OutputString&& storage)
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+#endif
         : format_context_base(ref(), opts), output_(std::move(storage))
     {
         output_.clear();
@@ -387,8 +390,10 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context(basic_format_context&& rhs
-    ) noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+    basic_format_context(basic_format_context&& rhs)
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+#endif
         : format_context_base(ref(), rhs), output_(std::move(rhs.output_))
     {
     }
@@ -403,8 +408,10 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context& operator=(basic_format_context&& rhs
-    ) noexcept(std::is_nothrow_move_assignable<OutputString>::value)
+    basic_format_context& operator=(basic_format_context&& rhs)
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_move_assignable<OutputString>::value)
+#endif
     {
         output_ = std::move(rhs.output_);
         assign(rhs);
@@ -426,7 +433,10 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    system::result<OutputString> get() && noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+    system::result<OutputString> get() &&
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+#endif
     {
         auto ec = error_state();
         if (ec)
