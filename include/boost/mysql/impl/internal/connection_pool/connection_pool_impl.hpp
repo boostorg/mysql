@@ -31,12 +31,14 @@
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/post.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/core/ignore_unused.hpp>
 
 #include <chrono>
 #include <cstddef>
 #include <list>
 #include <memory>
+#include <utility>
 
 namespace boost {
 namespace mysql {
@@ -67,10 +69,13 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         cancelled,
     };
 
-    state_t state_{state_t::initial};
-    internal_pool_params params_;
-    asio::any_io_executor ex_;
+    // Params
+    asio::any_io_executor pool_ex_;
     asio::any_io_executor conn_ex_;
+    internal_pool_params params_;
+
+    // State
+    state_t state_{state_t::initial};
     std::list<node_type> all_conns_;
     shared_state_type shared_st_;
     wait_group wait_gp_;
@@ -83,9 +88,18 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         return static_cast<std::enable_shared_from_this<this_type>*>(this)->shared_from_this();
     }
 
+    // Do we have room for a new connection?
+    // Don't create new connections if we have other connections pending
+    // (i.e. being connected, reset... ) - otherwise pool size increases
+    // for no reason when there is no connectivity.
+    bool can_create_connection() const
+    {
+        return all_conns_.size() < params_.max_size && shared_st_.num_pending_connections == 0u;
+    }
+
     void create_connection()
     {
-        all_conns_.emplace_back(params_, ex_, conn_ex_, shared_st_, &reset_pipeline_req_);
+        all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_, &reset_pipeline_req_);
         wait_gp_.run_task(all_conns_.back().async_run(asio::deferred));
     }
 
@@ -107,6 +121,21 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         }
     }
 
+    template <class OpSelf>
+    void enter_strand(OpSelf& self)
+    {
+        asio::dispatch(asio::bind_executor(pool_ex_, std::move(self)));
+    }
+
+    template <class OpSelf>
+    void exit_strand(OpSelf& self)
+    {
+        asio::post(
+            pool_ex_.template target<asio::strand<asio::any_io_executor>>()->get_inner_executor(),
+            std::move(self)
+        );
+    }
+
     struct run_op
     {
         int resume_point_{0};
@@ -122,9 +151,11 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
             switch (resume_point_)
             {
             case 0:
-
-                // Ensure we run within the pool executor (possibly a strand)
-                BOOST_MYSQL_YIELD(resume_point_, 1, asio::dispatch(obj_->ex_, std::move(self)))
+                // Ensure we run within the strand
+                if (obj_->params_.thread_safe)
+                {
+                    BOOST_MYSQL_YIELD(resume_point_, 1, obj_->enter_strand(self))
+                }
 
                 // Check that we're not running and set the state adequately
                 BOOST_ASSERT(obj_->state_ == state_t::initial);
@@ -137,10 +168,11 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 // Wait for the cancel notification to arrive.
                 BOOST_MYSQL_YIELD(resume_point_, 2, obj_->cancel_timer_.async_wait(std::move(self)))
 
-                // If the token passed to async_run had a bound executor,
-                // the handler will be invoked within that executor.
-                // Dispatch so we run within the pool's executor.
-                BOOST_MYSQL_YIELD(resume_point_, 3, asio::dispatch(obj_->ex_, std::move(self)))
+                // Ensure we run within the strand
+                if (obj_->params_.thread_safe)
+                {
+                    BOOST_MYSQL_YIELD(resume_point_, 3, obj_->enter_strand(self))
+                }
 
                 // Deliver the cancel notification to all other tasks
                 obj_->state_ = state_t::cancelled;
@@ -162,39 +194,36 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     {
         int resume_point_{0};
         std::shared_ptr<this_type> obj_;
-        std::chrono::steady_clock::time_point timeout_;
         diagnostics* diag_;
+        std::chrono::steady_clock::time_point timeout_;
         std::unique_ptr<timer_block_type> timer_;
-        error_code stored_ec_;
+        error_code result_ec_;
+        basic_connection_node<IoTraits>* result_conn_{};
 
         get_connection_op(
             std::shared_ptr<this_type> obj,
             std::chrono::steady_clock::time_point timeout,
             diagnostics* diag
         ) noexcept
-            : obj_(std::move(obj)), timeout_(timeout), diag_(diag)
+            : obj_(std::move(obj)), diag_(diag), timeout_(timeout)
         {
         }
 
+        bool thread_safe() const { return obj_->params_.thread_safe; }
+
         template <class Self>
-        void do_complete(Self& self, error_code ec, ConnectionWrapper conn)
+        void do_complete(Self& self)
         {
-            // Resetting the timer will remove it from the list thanks to the auto-unlink feature
-            timer_.reset();
+            auto wr = result_ec_ ? ConnectionWrapper() : ConnectionWrapper(*result_conn_, std::move(obj_));
             obj_.reset();
-            self.complete(ec, std::move(conn));
-        }
-
-        template <class Self>
-        void complete_success(Self& self, node_type& node)
-        {
-            node.mark_as_in_use();
-            do_complete(self, error_code(), ConnectionWrapper(node, std::move(obj_)));
+            self.complete(result_ec_, std::move(wr));
         }
 
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
+            bool has_waited{};
+
             switch (resume_point_)
             {
             case 0:
@@ -203,39 +232,40 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                 if (diag_)
                     diag_->clear();
 
-                // Ensure we run within the pool's executor (or the handler's) (possibly a strand)
-                BOOST_MYSQL_YIELD(resume_point_, 1, asio::post(obj_->ex_, std::move(self)))
+                // Enter the strand
+                if (thread_safe())
+                {
+                    BOOST_MYSQL_YIELD(resume_point_, 1, obj_->enter_strand(self))
+                }
 
                 // This loop guards us against possible race conditions
-                // between waiting on the pending request timer and getting the connection
+                // between waiting on the pending request timer and getting the
+                // connection
                 while (true)
                 {
                     // If we're not running yet, or were cancelled, just return
-                    if (obj_->state_ != state_t::running)
+                    if (obj_->state_ == state_t::initial)
                     {
-                        do_complete(
-                            self,
-                            obj_->state_ == state_t::initial ? client_errc::pool_not_running
-                                                             : client_errc::cancelled,
-                            ConnectionWrapper()
-                        );
-                        return;
+                        result_ec_ = client_errc::pool_not_running;
+                        break;
+                    }
+                    else if (obj_->state_ == state_t::cancelled)
+                    {
+                        result_ec_ = client_errc::cancelled;
+                        break;
                     }
 
-                    // Try to get a connection without blocking
+                    // Try to get a connection
                     if (!obj_->shared_st_.idle_list.empty())
                     {
-                        // There was a connection. Done.
-                        complete_success(self, obj_->shared_st_.idle_list.front());
-                        return;
+                        // There was a connection
+                        result_conn_ = &obj_->shared_st_.idle_list.front();
+                        result_conn_->mark_as_in_use();
+                        break;
                     }
 
                     // No luck. If there is room for more connections, create one.
-                    // Don't create new connections if we have other connections pending
-                    // (i.e. being connected, reset... ) - otherwise pool size increases for
-                    // no reason when there is no connectivity.
-                    if (obj_->all_conns_.size() < obj_->params_.max_size &&
-                        obj_->shared_st_.num_pending_connections == 0u)
+                    if (obj_->can_create_connection())
                     {
                         obj_->create_connection();
                     }
@@ -243,44 +273,79 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                     // Allocate a timer to perform waits.
                     if (!timer_)
                     {
-                        timer_.reset(new timer_block_type(obj_->ex_));
+                        timer_.reset(new timer_block<typename IoTraits::timer_type>(obj_->pool_ex_));
                         obj_->shared_st_.pending_requests.push_back(*timer_);
                     }
 
                     // Wait to be notified, or until a timeout happens
                     timer_->timer.expires_at(timeout_);
-                    BOOST_MYSQL_YIELD(resume_point_, 2, timer_->timer.async_wait(std::move(self)))
-                    stored_ec_ = ec;
+                    if (thread_safe())
+                    {
+                        BOOST_MYSQL_YIELD(
+                            resume_point_,
+                            2,
+                            timer_->timer.async_wait(asio::bind_executor(obj_->pool_ex_, std::move(self)))
+                        )
+                    }
+                    else
+                    {
+                        BOOST_MYSQL_YIELD(resume_point_, 3, timer_->timer.async_wait(std::move(self)))
+                    }
 
-                    // If the token passed to async_run had a bound executor,
-                    // the handler will be invoked within that executor.
-                    // Dispatch so we run within the pool's executor.
-                    BOOST_MYSQL_YIELD(resume_point_, 3, asio::dispatch(obj_->ex_, std::move(self)))
-
-                    if (!stored_ec_)
+                    if (!ec)
                     {
                         // We've got a timeout. Try to give as much info as possible
-                        do_complete(self, obj_->get_diagnostics(diag_), ConnectionWrapper());
-                        return;
+                        result_ec_ = obj_->get_diagnostics(diag_);
+                        break;
                     }
                 }
+
+                // Clean up the timer, which removes it from the list.
+                // Must be done within the strand, as it affects global state
+                has_waited = timer_.get();
+                timer_.reset();
+
+                // Perform any required dispatching before completing
+                if (thread_safe())
+                {
+                    // Exit the strand
+                    BOOST_MYSQL_YIELD(resume_point_, 4, obj_->exit_strand(self))
+                }
+                else if (!has_waited)
+                {
+                    // This is an immediate completion
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        5,
+                        asio::dispatch(
+                            asio::get_associated_immediate_executor(self, self.get_io_executor()),
+                            std::move(self)
+                        )
+                    )
+                }
+
+                // Done
+                do_complete(self);
             }
         }
     };
 
 public:
     basic_pool_impl(pool_executor_params&& ex_params, pool_params&& params)
-        : params_(make_internal_pool_params(std::move(params))),
-          ex_(std::move(ex_params.pool_executor)),
+        : pool_ex_(
+              params.thread_safe ? asio::make_strand(std::move(ex_params.pool_executor))
+                                 : std::move(ex_params.pool_executor)
+          ),
           conn_ex_(std::move(ex_params.connection_executor)),
-          wait_gp_(ex_),
-          cancel_timer_(ex_, (std::chrono::steady_clock::time_point::max)())
+          params_(make_internal_pool_params(std::move(params))),
+          wait_gp_(pool_ex_),
+          cancel_timer_(pool_ex_, (std::chrono::steady_clock::time_point::max)())
     {
     }
 
     using executor_type = asio::any_io_executor;
 
-    executor_type get_executor() { return ex_; }
+    executor_type get_executor() { return pool_ex_; }
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -289,7 +354,7 @@ public:
         return asio::async_compose<CompletionToken, void(error_code)>(
             run_op(shared_from_this_wrapper()),
             token,
-            ex_
+            pool_ex_
         );
     }
 
@@ -307,7 +372,7 @@ public:
         return asio::async_compose<CompletionToken, void(error_code, ConnectionWrapper)>(
             get_connection_op(shared_from_this_wrapper(), timeout, diag),
             token,
-            ex_
+            pool_ex_
         );
     }
 

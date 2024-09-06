@@ -178,7 +178,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
 public:
     basic_connection_node(
         internal_pool_params& params,
-        boost::asio::any_io_executor ex,
+        boost::asio::any_io_executor pool_ex,
         boost::asio::any_io_executor conn_ex,
         conn_shared_state<IoTraits>& shared_st,
         const pipeline_request* reset_pipeline_req
@@ -186,8 +186,8 @@ public:
         : params_(&params),
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
-          timer_(ex),
-          collection_timer_(ex, (std::chrono::steady_clock::time_point::max)()),
+          timer_(pool_ex),
+          collection_timer_(pool_ex, (std::chrono::steady_clock::time_point::max)()),
           reset_pipeline_req_(reset_pipeline_req)
     {
     }
