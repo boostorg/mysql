@@ -32,7 +32,6 @@ enum class address_type
  * \brief (EXPERIMENTAL) A host and port identifying how to connect to a MySQL server.
  * \details
  * This is an owning type with value semantics.
- * \see any_address
  *
  * \par Experimental
  * This part of the API is experimental, and may change in successive
@@ -58,7 +57,6 @@ struct host_and_port
  * This type is defined in all systems, regardless of their UNIX socket support.
  * \n
  * This is an owning type with value semantics.
- * \see any_address
  */
 struct unix_path
 {

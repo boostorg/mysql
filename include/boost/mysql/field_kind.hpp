@@ -31,12 +31,16 @@ enum class field_kind
     /// The field contains a `std::uint64_t`.
     uint64,
 
-    /// The field contains a string (`std::string` for `field` and `string_view` for
-    /// `field_view`).
+    /**
+     * \brief The field contains a string (`std::string` for `field` and \ref string_view for
+     * `field_view`).
+     */
     string,
 
-    /// The field contains a binary string (\ref blob for `field` and \ref blob_view for
-    /// `field_view`).
+    /**
+     * \brief The field contains a binary string (\ref blob for `field` and \ref blob_view for
+     * `field_view`).
+     */
     blob,
 
     /// The field contains a `float`.

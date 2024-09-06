@@ -629,6 +629,7 @@ public:
      * When the pool is constructed with adequate executor configuration, this function
      * is safe to be called concurrently with \ref async_run, \ref cancel,
      * `~pooled_connection` and \ref pooled_connection::return_without_reset.
+     * \n
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
@@ -698,6 +699,7 @@ public:
      * When the pool is constructed with adequate executor configuration, this function
      * is safe to be called concurrently with \ref async_run, \ref cancel,
      * `~pooled_connection` and \ref pooled_connection::return_without_reset.
+     * \n
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
