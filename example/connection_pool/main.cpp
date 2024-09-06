@@ -92,16 +92,16 @@ int main(int argc, char* argv[])
         "boost_mysql_examples",
     };
 
-    // Create the connection pool
-    auto shared_st = std::make_shared<shared_state>(boost::mysql::connection_pool(
-        // Using thread_safe will create a strand for the connection pool.
-        // This allows us to share the pool between sessions, which may run
-        // concurrently, on different threads.
-        boost::mysql::pool_executor_params::thread_safe(th_pool.get_executor()),
+    // Using thread_safe will make the pool thread-safe by internally
+    // creating and using a strand.
+    // This allows us to share the pool between sessions, which may run
+    // concurrently, on different threads.
+    pool_prms.thread_safe = true;
 
-        // Pool config
-        std::move(pool_prms)
-    ));
+    // Create the connection pool
+    auto shared_st = std::make_shared<shared_state>(
+        boost::mysql::connection_pool(th_pool, std::move(pool_prms))
+    );
 
     // A signal_set allows us to intercept SIGINT and SIGTERM and
     // exit gracefully
