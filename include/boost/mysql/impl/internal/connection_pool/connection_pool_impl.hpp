@@ -223,6 +223,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         void operator()(Self& self, error_code ec = {})
         {
             bool has_waited{};
+            timer_type* tim{};
 
             switch (resume_point_)
             {
@@ -278,18 +279,20 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                     }
 
                     // Wait to be notified, or until a timeout happens
-                    timer_->timer.expires_at(timeout_);
+                    // Moving self may cause the unique_ptr we store to be set to null before the method call
+                    tim = &timer_->timer;
+                    tim->expires_at(timeout_);
                     if (thread_safe())
                     {
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             2,
-                            timer_->timer.async_wait(asio::bind_executor(obj_->pool_ex_, std::move(self)))
+                            tim->async_wait(asio::bind_executor(obj_->pool_ex_, std::move(self)))
                         )
                     }
                     else
                     {
-                        BOOST_MYSQL_YIELD(resume_point_, 3, timer_->timer.async_wait(std::move(self)))
+                        BOOST_MYSQL_YIELD(resume_point_, 3, tim->async_wait(std::move(self)))
                     }
 
                     if (!ec)
