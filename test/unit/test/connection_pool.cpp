@@ -244,6 +244,18 @@ BOOST_AUTO_TEST_CASE(ctor_from_execution_context)
     BOOST_TEST(pool.valid());
 }
 
+BOOST_AUTO_TEST_CASE(get_executor_thread_safe)
+{
+    // Construct
+    asio::io_context ctx;
+    pool_params params;
+    params.thread_safe = true;
+    connection_pool pool(ctx, std::move(params));
+
+    // get_executor() should return ctx's executor, not any internally created strand
+    BOOST_TEST((pool.get_executor() == ctx.get_executor()));
+}
+
 BOOST_FIXTURE_TEST_CASE(move_ctor_valid, pool_fixture)
 {
     // Move-constructing a pool leaves the original object invalid
