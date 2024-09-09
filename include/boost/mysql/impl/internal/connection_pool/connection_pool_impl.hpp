@@ -30,6 +30,7 @@
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
+#include <boost/asio/immediate.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/core/ignore_unused.hpp>
@@ -320,10 +321,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                     BOOST_MYSQL_YIELD(
                         resume_point_,
                         5,
-                        asio::dispatch(
-                            asio::get_associated_immediate_executor(self, self.get_io_executor()),
-                            std::move(self)
-                        )
+                        asio::async_immediate(self.get_io_executor(), std::move(self))
                     )
                 }
 
