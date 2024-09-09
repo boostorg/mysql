@@ -7,7 +7,6 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
-#include <boost/mysql/connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>

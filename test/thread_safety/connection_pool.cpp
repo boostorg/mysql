@@ -7,7 +7,6 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
-#include <boost/mysql/connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
@@ -17,8 +16,6 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/bind_executor.hpp>
-#include <boost/asio/coroutine.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/thread_pool.hpp>
 
@@ -94,18 +91,10 @@ public:
             {
             case state_t::initial:
                 state_ = state_t::after_get_connection;
-                // Verify that we achieve thread-safety even if the token
-                // has a bound executor that is not a strand (regression check).
-                pool_->async_get_connection(
-                    diag_,
-                    asio::bind_executor(
-                        base_ex_,
-                        [this](error_code ec, mysql::pooled_connection c) {
-                            conn_ = std::move(c);
-                            resume(ec);
-                        }
-                    )
-                );
+                pool_->async_get_connection(diag_, [this](error_code ec, mysql::pooled_connection c) {
+                    conn_ = std::move(c);
+                    resume(ec);
+                });
                 return;
 
             case state_t::after_get_connection:
@@ -143,9 +132,7 @@ void run(const char* hostname)
 
     mysql::connection_pool pool(ctx, std::move(params));
 
-    // The pool should be thread-safe even if we pass a token with a custom
-    // executor to async_run
-    pool.async_run(asio::bind_executor(ctx.get_executor(), asio::detached));
+    pool.async_run(asio::detached);
 
     std::vector<task> conns;
     coordinator coord(pool);

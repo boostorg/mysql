@@ -17,6 +17,7 @@ if $(hostname) = ""
 local tests = 
     connection_pool
     connection_pool_two_contexts
+    connection_pool_coroutines
 ;
 
 for test in $(tests)
