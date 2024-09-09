@@ -79,7 +79,14 @@ pool_params create_pool_params(std::size_t max_size = 151)
     return res;
 }
 
-static void check_err(error_code ec) { BOOST_TEST(ec == error_code()); }
+static void check_run(error_code ec)
+{
+    // Should complete successfully
+    BOOST_TEST(ec == error_code());
+
+    // Should never complete immediately
+    BOOST_TEST(!is_initiation_function());
+}
 
 struct pool_deleter
 {
@@ -114,7 +121,7 @@ BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
         // Create and run the pool
         connection_pool pool(pool_executor_params{pool_ex, conn_ex}, create_pool_params());
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -134,7 +141,7 @@ BOOST_FIXTURE_TEST_CASE(return_connection_with_reset, fixture)
         // Create a pool with max_size 1, so the same connection gets always returned
         connection_pool pool(yield.get_executor(), create_pool_params(1));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -167,7 +174,7 @@ BOOST_FIXTURE_TEST_CASE(return_connection_without_reset, fixture)
         // Create a connection pool with max_size 1, so the same connection gets always returned
         connection_pool pool(yield.get_executor(), create_pool_params(1));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -202,7 +209,7 @@ BOOST_FIXTURE_TEST_CASE(pooled_connection_destructor, fixture)
         // Create a connection pool with max_size 1, so the same connection gets always returned
         connection_pool pool(yield.get_executor(), create_pool_params(1));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         {
             // Get a connection
@@ -252,7 +259,7 @@ BOOST_FIXTURE_TEST_CASE(charset, fixture)
         // Create and run the pool
         connection_pool pool(yield.get_executor(), create_pool_params(1));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(yield);
@@ -277,7 +284,7 @@ BOOST_FIXTURE_TEST_CASE(connections_created_if_required, fixture)
 
         connection_pool pool(yield.get_executor(), create_pool_params());
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn1 = pool.async_get_connection(diag, yield[ec]);
@@ -314,7 +321,7 @@ BOOST_FIXTURE_TEST_CASE(connection_upper_limit, fixture)
 
         connection_pool pool(yield.get_executor(), create_pool_params(1));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -367,7 +374,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_before_run, fixture)
         pool.cancel();
 
         // Run returns immediately
-        pool.async_run(check_err);
+        pool.async_run(check_run);
     });
 }
 
@@ -481,7 +488,7 @@ BOOST_FIXTURE_TEST_CASE(get_connection_overloads, fixture)
     run_stackful_coro([&](asio::yield_context yield) {
         connection_pool pool(yield.get_executor(), create_pool_params());
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // With all params
         auto conn = pool.async_get_connection(std::chrono::hours(1), diag, yield);
@@ -510,7 +517,7 @@ BOOST_FIXTURE_TEST_CASE(get_connection_timeout, fixture)
         connection_pool pool(yield.get_executor(), std::move(params));
         pool_guard grd(&pool);
 
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Getting a connection will timeout. The error may be a generic
         // timeout or a "bad password" error, depending on timing
@@ -531,7 +538,7 @@ BOOST_FIXTURE_TEST_CASE(unix_sockets, fixture)
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -554,7 +561,7 @@ BOOST_FIXTURE_TEST_CASE(ssl, fixture)
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -578,7 +585,7 @@ BOOST_FIXTURE_TEST_CASE(custom_ctor_params, fixture)
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -603,7 +610,7 @@ BOOST_FIXTURE_TEST_CASE(zero_timeuts, fixture)
 
         connection_pool pool(yield.get_executor(), std::move(params));
         pool_guard grd(&pool);
-        pool.async_run(check_err);
+        pool.async_run(check_run);
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, yield[ec]);
@@ -629,7 +636,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
 
         connection_pool pool(yield.get_executor(), create_pool_params());
         pool_guard grd(&pool);
-        pool.async_run(asio::cancel_after(timeout, check_err));
+        pool.async_run(asio::cancel_after(timeout, check_run));
 
         // Get a connection
         auto conn = pool.async_get_connection(diag, asio::cancel_after(timeout, yield[ec]));
