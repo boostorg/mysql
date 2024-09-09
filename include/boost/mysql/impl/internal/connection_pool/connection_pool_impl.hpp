@@ -70,9 +70,13 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         cancelled,
     };
 
-    // Params
+    // If thread_safe, a strand wrapping inner_pool_ex_, otherwise inner_pool_ex_
     asio::any_io_executor pool_ex_;
+
+    // executor to be used by connections
     asio::any_io_executor conn_ex_;
+
+    // Rest of the parameters
     internal_pool_params params_;
 
     // State
@@ -131,10 +135,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
     template <class OpSelf>
     void exit_strand(OpSelf& self)
     {
-        asio::post(
-            pool_ex_.template target<asio::strand<asio::any_io_executor>>()->get_inner_executor(),
-            std::move(self)
-        );
+        asio::post(get_executor(), std::move(self));
     }
 
     struct run_op
@@ -346,7 +347,7 @@ public:
 
     using executor_type = asio::any_io_executor;
 
-    executor_type get_executor() { return pool_ex_; }
+    executor_type get_executor() { return params_.thread_safe ? strand().get_inner_executor() : pool_ex_; }
 
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
@@ -391,6 +392,12 @@ public:
             diag,
             std::forward<CompletionToken>(token)
         );
+    }
+
+    asio::strand<asio::any_io_executor> strand()
+    {
+        BOOST_ASSERT(params_.thread_safe);
+        return *pool_ex_.template target<asio::strand<asio::any_io_executor>>();
     }
 
     // Exposed for testing
