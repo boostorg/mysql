@@ -250,8 +250,9 @@ class as_netres_handler
     void complete(error_code ec) const
     {
         // Check executor
+        const int expected_stack[] = {ex_.executor_id};
         BOOST_TEST(!is_initiation_function());
-        BOOST_TEST(current_executor_id() == ex_.executor_id);
+        BOOST_TEST(executor_stack() == expected_stack, boost::test_tools::per_element());
 
         // Assign error code and diagnostics
         target_->err = ec;
