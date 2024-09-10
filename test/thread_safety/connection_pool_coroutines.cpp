@@ -91,12 +91,12 @@ void run(const char* hostname)
 
     // The pool should be thread-safe even if we pass a token with a custom
     // executor to async_run (as happens with coroutines)
-    asio::co_spawn(ctx, [&] -> asio::awaitable<void> { co_await pool.async_run(); }, rethrow_on_err);
+    asio::co_spawn(ctx, [&]() -> asio::awaitable<void> { co_await pool.async_run(); }, rethrow_on_err);
 
     // Create and launch tasks
     for (std::size_t i = 0; i < num_parallel; ++i)
     {
-        asio::co_spawn(ctx, [&] -> asio::awaitable<void> { return task(pool, coord); }, rethrow_on_err);
+        asio::co_spawn(ctx, [&]() -> asio::awaitable<void> { return task(pool, coord); }, rethrow_on_err);
     }
 
     // Run
