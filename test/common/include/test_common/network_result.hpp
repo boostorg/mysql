@@ -19,10 +19,12 @@
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
+#include <boost/core/span.hpp>
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/list.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -244,15 +246,32 @@ class as_netres_handler
 {
     network_result<R>* target_;
     tracker_executor_result ex_;
+    tracker_executor_result immediate_ex_;
     asio::cancellation_slot slot_;
     const diagnostics* diag_ptr;
 
     void complete(error_code ec) const
     {
-        // Check executor
-        const int expected_stack[] = {ex_.executor_id};
-        BOOST_TEST(!is_initiation_function());
-        BOOST_TEST(executor_stack() == expected_stack, boost::test_tools::per_element());
+        // Check executor. The passed executor must be the top one in all cases.
+        // Immediate completions must be dispatched through the immediate executor, too.
+        // In all cases, we may encounter a bigger stack because of previous immediate completions.
+        const std::array<int, 1> stack_data_regular{{ex_.executor_id}};
+        const std::array<int, 2> stack_data_immediate{
+            {immediate_ex_.executor_id, ex_.executor_id}
+        };
+
+        // Expected top of the executor stack
+        boost::span<const int> expected_stack_top = is_initiation_function()
+                                                        ? boost::span<const int>(stack_data_immediate)
+                                                        : boost::span<const int>(stack_data_regular);
+
+        // Actual top of the executor stack
+        auto actual_stack_top = executor_stack().last(
+            (std::min)(executor_stack().size(), expected_stack_top.size())
+        );
+
+        // Compare
+        BOOST_TEST(actual_stack_top == expected_stack_top, boost::test_tools::per_element());
 
         // Assign error code and diagnostics
         target_->err = ec;
@@ -270,6 +289,7 @@ public:
     )
         : target_(&netresult),
           ex_(create_tracker_executor(global_context_executor())),
+          immediate_ex_(create_tracker_executor(global_context_executor())),
           slot_(slot),
           diag_ptr(output_diag)
     {
@@ -278,6 +298,10 @@ public:
     // Executor
     using executor_type = asio::any_io_executor;
     asio::any_io_executor get_executor() const { return ex_.ex; }
+
+    // Immediate executor
+    using immediate_executor_type = asio::any_io_executor;
+    asio::any_io_executor get_immediate_executor() const { return immediate_ex_.ex; }
 
     // Cancellation slot
     using cancellation_slot_type = asio::cancellation_slot;
