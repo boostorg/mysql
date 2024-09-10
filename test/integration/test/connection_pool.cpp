@@ -6,11 +6,9 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
@@ -21,9 +19,7 @@
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/spawn.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -35,6 +31,7 @@
 #include <utility>
 
 #include "test_common/ci_server.hpp"
+#include "test_common/create_basic.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
@@ -43,6 +40,7 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using boost::test_tools::per_element;
 namespace asio = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_connection_pool)
@@ -122,7 +120,7 @@ BOOST_FIXTURE_TEST_CASE(return_connection_with_reset, fixture)
     // The same connection is returned, but session state has been cleared
     BOOST_TEST_REQUIRE(conn.valid());
     conn->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
-    BOOST_TEST(r.rows().at(0).at(0) == field_view());
+    BOOST_TEST(r.rows() == makerows(1, nullptr), per_element());
 
     // Cleanup the pool
     pool.cancel();
@@ -152,7 +150,7 @@ BOOST_FIXTURE_TEST_CASE(return_connection_without_reset, fixture)
     // The same connection is returned, and no reset has been issued
     BOOST_TEST_REQUIRE(conn.valid());
     conn->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
-    BOOST_TEST(r.rows().at(0).at(0) == field_view("abc"));
+    BOOST_TEST(r.rows() == makerows(1, "abc"), per_element());
 
     // Cleanup the pool
     pool.cancel();
@@ -181,7 +179,7 @@ BOOST_FIXTURE_TEST_CASE(pooled_connection_destructor, fixture)
     // The same connection is returned, but session state has been cleared
     BOOST_TEST_REQUIRE(conn.valid());
     conn->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
-    BOOST_TEST(r.rows().at(0).at(0) == field_view());
+    BOOST_TEST(r.rows() == makerows(1, nullptr), per_element());
 
     // Cleanup the pool
     pool.cancel();
@@ -203,10 +201,7 @@ static void validate_charset(any_connection& conn)
             as_netresult
     )
         .validate_no_error();
-    const auto rw = r.rows().at(0);
-    BOOST_TEST(rw.at(0).as_string() == "utf8mb4");
-    BOOST_TEST(rw.at(1).as_string() == "utf8mb4");
-    BOOST_TEST(rw.at(2).as_string() == "utf8mb4");
+    BOOST_TEST(r.rows() == makerows(3, "utf8mb4", "utf8mb4", "utf8mb4"), per_element());
 }
 
 BOOST_FIXTURE_TEST_CASE(charset, fixture)
@@ -255,9 +250,9 @@ BOOST_FIXTURE_TEST_CASE(connections_created_if_required, fixture)
 
     // They are different connections
     conn1->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
-    BOOST_TEST(r.rows().at(0).at(0) == field_view("1"));
+    BOOST_TEST(r.rows() == makerows(1, "1"), per_element());
     conn2->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
-    BOOST_TEST(r.rows().at(0).at(0) == field_view("2"));
+    BOOST_TEST(r.rows() == makerows(1, "2"), per_element());
 
     // Cleanup the pool
     pool.cancel();
