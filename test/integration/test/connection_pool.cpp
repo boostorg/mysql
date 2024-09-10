@@ -68,21 +68,12 @@ static void check_run(error_code ec)
     BOOST_TEST(!is_initiation_function());
 }
 
-struct pool_deleter
-{
-    void operator()(connection_pool* pool) const { pool->cancel(); }
-};
-
-using pool_guard = std::unique_ptr<connection_pool, pool_deleter>;
-
 struct fixture
 {
     // async_get_connection actually passes nullptr as diagnostics* to initiation
     // functions if no diagnostics is provided (unlike any_connection)
     diagnostics diag;
     results r;
-
-    ~fixture() { stop_global_context(); }
 };
 
 // The pool and individual connections use the correct executors
@@ -564,7 +555,6 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 {
     run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
         connection_pool pool(global_context_executor(), create_pool_params());
-        pool_guard grd(&pool);
 
         // Run can be used without a token. Defaults to deferred
         auto run_op = pool.async_run();
@@ -589,6 +579,9 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
         // Success case
         auto conn = co_await pool.async_get_connection();
         co_await conn->async_ping();
+
+        // Finish
+        pool.cancel();
     });
 }
 
