@@ -28,7 +28,9 @@ inline void run_coro(boost::asio::any_io_executor ex, std::function<boost::asio:
             std::rethrow_exception(ptr);
         }
     });
-    static_cast<boost::asio::io_context&>(ex.context()).run();
+    auto& ctx = static_cast<boost::asio::io_context&>(ex.context());
+    ctx.restart();
+    ctx.run();
 }
 #endif
 

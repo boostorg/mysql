@@ -14,6 +14,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <atomic>
+#include <chrono>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -250,4 +252,26 @@ void boost::mysql::test::run_global_context()
 {
     g_ctx.restart();
     g_ctx.run();
+}
+
+void boost::mysql::test::poll_global_context(const bool* done)
+{
+    using std::chrono::steady_clock;
+
+    // Restart the context, in case it was stopped
+    g_ctx.restart();
+
+    // Poll until this time point
+    constexpr std::chrono::seconds timeout(5);
+    auto timeout_tp = steady_clock::now() + timeout;
+
+    // Perform the polling
+    do
+    {
+        g_ctx.poll();
+        std::this_thread::yield();
+    } while (!*done && steady_clock::now() < timeout_tp);
+
+    // Check for timeout
+    BOOST_TEST_REQUIRE(*done);
 }

@@ -52,6 +52,7 @@ bool is_initiation_function();
 
 asio::any_io_executor global_context_executor();
 void run_global_context();
+void poll_global_context(const bool* done);  // run until *done == true
 
 }  // namespace test
 }  // namespace mysql

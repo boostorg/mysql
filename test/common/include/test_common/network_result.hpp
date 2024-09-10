@@ -128,10 +128,17 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result : network_result_base
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
+    value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
         validate_no_error(loc);
-        return value;
+        return std::move(value);
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    value_type get_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    {
+        validate_no_error_nodiag(loc);
+        return std::move(value);
     }
 };
 
@@ -145,6 +152,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
             common_server_errc::er_no,
             create_server_diag("network_result_v2 - diagnostics not cleared")
         };
+        bool done{false};
     };
 
     std::unique_ptr<impl_t> impl;
@@ -153,7 +161,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
 
     network_result<R> run() &&
     {
-        run_global_context();
+        poll_global_context(&impl->done);
         return std::move(impl->netres);
     }
 
@@ -215,6 +223,12 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
     {
         return std::move(*this).run().get(loc);
     }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    typename network_result<R>::value_type get_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    {
+        return std::move(*this).run().get_nodiag(loc);
+    }
 };
 
 struct as_netresult_t
@@ -244,7 +258,7 @@ struct as_netres_sig_to_rtype<void(error_code, T)>
 template <class R>
 class as_netres_handler
 {
-    network_result<R>* target_;
+    typename runnable_network_result<R>::impl_t* target_;
     tracker_executor_result ex_;
     tracker_executor_result immediate_ex_;
     asio::cancellation_slot slot_;
@@ -274,20 +288,23 @@ class as_netres_handler
         BOOST_TEST(actual_stack_top == expected_stack_top, boost::test_tools::per_element());
 
         // Assign error code and diagnostics
-        target_->err = ec;
+        target_->netres.err = ec;
         if (diag_ptr)
-            target_->diag = *diag_ptr;
+            target_->netres.diag = *diag_ptr;
         else
-            target_->diag = create_server_diag("<diagnostics unavailable>");
+            target_->netres.diag = create_server_diag("<diagnostics unavailable>");
+
+        // Mark the operation as done
+        target_->done = true;
     }
 
 public:
     as_netres_handler(
-        network_result<R>& netresult,
+        runnable_network_result<R>& netresult,
         const diagnostics* output_diag,
         asio::cancellation_slot slot
     )
-        : target_(&netresult),
+        : target_(netresult.impl.get()),
           ex_(create_tracker_executor(global_context_executor())),
           immediate_ex_(create_tracker_executor(global_context_executor())),
           slot_(slot),
@@ -312,7 +329,7 @@ public:
     template <class Arg>
     void operator()(error_code ec, Arg&& arg) const
     {
-        target_->value = std::forward<Arg>(arg);
+        target_->netres.value = std::forward<Arg>(arg);
         complete(ec);
     }
 };
@@ -340,7 +357,7 @@ public:
         using diag_pos = mp11::mp_find<types, mysql::diagnostics*>;
         constexpr std::size_t actual_pos = diag_pos::value == sizeof...(Args) ? 0u : diag_pos::value;
         return do_initiate(
-            std::move(initiation),
+            std::forward<Initiation>(initiation),
             token.slot,
             std::get<actual_pos>(std::tuple<Args&...>{args...}),
             std::forward<Args>(args)...
@@ -356,7 +373,13 @@ public:
         Args&&... args
     )
     {
-        return do_initiate_impl(std::move(initiation), token.slot, diag, diag, std::forward<Args>(args)...);
+        return do_initiate_impl(
+            std::forward<Initiation>(initiation),
+            token.slot,
+            diag,
+            diag,
+            std::forward<Args>(args)...
+        );
     }
 
 private:
@@ -369,14 +392,24 @@ private:
         Args&&... args
     )
     {
-        return do_initiate_impl(std::move(initiation), slot, diag, std::forward<Args>(args)...);
+        return do_initiate_impl(
+            std::forward<Initiation>(initiation),
+            slot,
+            diag,
+            std::forward<Args>(args)...
+        );
     }
 
     // No diagnostics* was found
     template <typename Initiation, class T, typename... Args>
     static return_type do_initiate(Initiation&& initiation, asio::cancellation_slot slot, T&&, Args&&... args)
     {
-        return do_initiate_impl(std::move(initiation), slot, nullptr, std::forward<Args>(args)...);
+        return do_initiate_impl(
+            std::forward<Initiation>(initiation),
+            slot,
+            nullptr,
+            std::forward<Args>(args)...
+        );
     }
 
     template <typename Initiation, typename... Args>
@@ -398,9 +431,9 @@ private:
         mysql::test::initiation_guard guard;
 
         // Actually call the initiation function
-        std::move(initiation)(
-            mysql::test::test_detail::as_netres_handler<R>(netres.impl->netres, diag, slot),
-            std::move(args)...
+        std::forward<Initiation>(initiation)(
+            mysql::test::test_detail::as_netres_handler<R>(netres, diag, slot),
+            std::forward<Args>(args)...
         );
 
         return netres;
