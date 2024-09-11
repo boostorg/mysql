@@ -409,6 +409,23 @@ BOOST_FIXTURE_TEST_CASE(async_get_connection_initation_extends_pool_lifetime, fi
     std::move(op)(as_netresult).validate_error(client_errc::pool_not_running);
 }
 
+// In thread-safe mode, cancel() is dispatched to the strand, and doesn't cause lifetime issues
+BOOST_FIXTURE_TEST_CASE(cancel_extends_pool_lifetime, fixture)
+{
+    auto params = create_pool_params();
+    params.thread_safe = true;
+    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), std::move(params)));
+
+    // Cancel
+    pool->cancel();
+
+    // Destroy the pool
+    pool.reset();
+
+    // Dispatch any pending handler. We didn't crash
+    run_global_context();
+}
+
 // Spotcheck: the different async_get_connection overloads work
 BOOST_FIXTURE_TEST_CASE(get_connection_overloads, fixture)
 {
