@@ -21,6 +21,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
@@ -41,6 +42,7 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 using boost::test_tools::per_element;
+namespace data = boost::unit_test::data;
 namespace asio = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_connection_pool)
@@ -119,10 +121,12 @@ BOOST_FIXTURE_TEST_CASE(pool_executors_thread_safe, fixture)
     std::move(run_result).validate_no_error_nodiag();
 }
 
-BOOST_FIXTURE_TEST_CASE(return_connection_with_reset, fixture)
+BOOST_DATA_TEST_CASE_F(fixture, return_connection_with_reset, data::make({false, true}))
 {
     // Create a pool with max_size 1, so the same connection gets always returned
-    connection_pool pool(global_context_executor(), create_pool_params(1));
+    auto params = create_pool_params(1);
+    params.thread_safe = sample;
+    connection_pool pool(global_context_executor(), std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -148,10 +152,12 @@ BOOST_FIXTURE_TEST_CASE(return_connection_with_reset, fixture)
     std::move(run_result).validate_no_error_nodiag();
 }
 
-BOOST_FIXTURE_TEST_CASE(return_connection_without_reset, fixture)
+BOOST_DATA_TEST_CASE_F(fixture, return_connection_without_reset, data::make({false, true}))
 {
     // Create a connection pool with max_size 1, so the same connection gets always returned
-    connection_pool pool(global_context_executor(), create_pool_params(1));
+    auto params = create_pool_params(1);
+    params.thread_safe = sample;
+    connection_pool pool(global_context_executor(), std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -328,10 +334,12 @@ BOOST_FIXTURE_TEST_CASE(cancel_before_run, fixture)
     pool.async_run(as_netresult).validate_no_error_nodiag();
 }
 
-BOOST_FIXTURE_TEST_CASE(cancel_get_connection, fixture)
+BOOST_DATA_TEST_CASE_F(fixture, cancel_get_connection, data::make({false, true}))
 {
     // Construct a pool and run it
-    connection_pool pool(global_context_executor(), create_pool_params(1));
+    auto params = create_pool_params(1);
+    params.thread_safe = sample;
+    connection_pool pool(global_context_executor(), std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -360,10 +368,11 @@ BOOST_FIXTURE_TEST_CASE(get_connection_pool_not_running, fixture)
 }
 
 // Having a valid pooled_connection alive extends the pool's lifetime
-BOOST_FIXTURE_TEST_CASE(pooled_connection_extends_pool_lifetime, fixture)
+BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::make({false, true}))
 {
-    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), create_pool_params())
-    );
+    auto params = create_pool_params();
+    params.thread_safe = sample;
+    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), std::move(params)));
 
     // Run the pool
     auto run_result = pool->async_run(as_netresult);
@@ -379,6 +388,7 @@ BOOST_FIXTURE_TEST_CASE(pooled_connection_extends_pool_lifetime, fixture)
     std::move(run_result).validate_no_error_nodiag();
 
     // The connection we got can still be used and returned
+    // In thread-safe mode, strand dispatching doesn't cause lifetime problems
     conn->async_ping(as_netresult).validate_no_error();
     conn.return_without_reset();
 }
