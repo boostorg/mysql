@@ -17,6 +17,7 @@
 #include <boost/asio/thread_pool.hpp>
 
 #include <iostream>
+#include <memory>
 
 using boost::mysql::error_code;
 namespace mysql = boost::mysql;
@@ -38,13 +39,13 @@ void run(const char* hostname)
     for (int i = 0; i < 1000; ++i)
     {
         // Create a pool
-        mysql::connection_pool pool(ctx, std::move(params));
+        auto pool = std::make_shared<mysql::connection_pool>(ctx, std::move(params));
 
         // Run the pool within the thread pool
-        asio::post(asio::bind_executor(ctx.get_executor(), [&]() { pool.async_run(asio::detached); }));
+        asio::post(asio::bind_executor(ctx.get_executor(), [pool]() { pool->async_run(asio::detached); }));
 
         // Issue a cancellation
-        asio::post(asio::bind_executor(ctx.get_executor(), [&]() { pool.cancel(); }));
+        asio::post(asio::bind_executor(ctx.get_executor(), [pool]() { pool->cancel(); }));
     }
 
     // Run
