@@ -119,7 +119,6 @@ public:
 
                 if (!coord_->on_loop_finish())
                 {
-                    conn_ = mysql::pooled_connection();
                     coord_->on_finish();
                     return;
                 }

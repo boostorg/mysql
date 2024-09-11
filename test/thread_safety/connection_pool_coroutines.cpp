@@ -55,13 +55,13 @@ asio::awaitable<void> task(mysql::connection_pool& pool, coordinator& coord)
     {
         // Coroutine handlers always have a bound executor.
         // Verify that we achieve thread-safety even in this case (regression check)
+        // Exercise return_without_reset, too
         auto conn = co_await pool.async_get_connection();
         co_await conn->async_execute("SELECT 1", r);
-        conn = mysql::pooled_connection();
+        conn.return_without_reset();
 
         if (!coord.on_loop_finish())
         {
-            conn = mysql::pooled_connection();
             coord.on_finish();
             co_return;
         }
