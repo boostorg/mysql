@@ -98,6 +98,27 @@ BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
     std::move(run_result).validate_no_error_nodiag();
 }
 
+BOOST_FIXTURE_TEST_CASE(pool_executors_thread_safe, fixture)
+{
+    // Create and run the pool
+    auto params = create_pool_params();
+    params.thread_safe = true;
+    connection_pool pool(global_context_executor(), create_pool_params());
+    auto run_result = pool.async_run(as_netresult);
+
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
+
+    // Check executors. The internal strand is never exposed,
+    // and doesn't get propagated to connections
+    BOOST_TEST((pool.get_executor() == global_context_executor()));
+    BOOST_TEST((conn->get_executor() == global_context_executor()));
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
+}
+
 BOOST_FIXTURE_TEST_CASE(return_connection_with_reset, fixture)
 {
     // Create a pool with max_size 1, so the same connection gets always returned
