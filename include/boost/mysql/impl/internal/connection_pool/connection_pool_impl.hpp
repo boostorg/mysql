@@ -363,6 +363,67 @@ public:
     // Not thread-safe
     void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
 
+    void cancel()
+    {
+        if (params_.thread_safe)
+        {
+            // A handler to be passed to dispatch. Binds the executor
+            // and keeps the pool alive
+            struct dispatch_handler
+            {
+                std::shared_ptr<detail::pool_impl> pool_ptr;
+
+                using executor_type = asio::any_io_executor;
+                executor_type get_executor() const noexcept { return pool_ptr->strand(); }
+
+                void operator()() const { pool_ptr->cancel_unsafe(); }
+            };
+
+            asio::dispatch(dispatch_handler{shared_from_this_wrapper()});
+        }
+        else
+        {
+            cancel_unsafe();
+        }
+    }
+
+    void return_connection(connection_node& node, bool should_reset) noexcept
+    {
+        // This is safe to be called from any thread
+        node.mark_as_collectable(should_reset);
+
+        // The notification isn't thread-safe
+        if (params_.thread_safe)
+        {
+            // A handler to be passed to dispatch. Binds the executor
+            // and keeps the pool alive
+            struct dispatch_handler
+            {
+                std::shared_ptr<pool_impl> pool_ptr;
+                connection_node* node_ptr;
+
+                using executor_type = asio::any_io_executor;
+                executor_type get_executor() const noexcept { return pool_ptr->strand(); }
+
+                void operator()() const { node_ptr->notify_collectable(); }
+            };
+
+            // If, for any reason, this notification fails, the connection will
+            // be collected when the next ping is due.
+            try
+            {
+                asio::dispatch(dispatch_handler{shared_from_this_wrapper(), &node});
+            }
+            catch (...)
+            {
+            }
+        }
+        else
+        {
+            node.notify_collectable();
+        }
+    }
+
     template <class CompletionToken>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ConnectionWrapper))
     async_get_connection(

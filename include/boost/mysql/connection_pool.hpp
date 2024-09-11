@@ -113,7 +113,7 @@ public:
     pooled_connection& operator=(pooled_connection&& other) noexcept
     {
         if (impl_)
-            detail::return_connection(std::move(pool_impl_), *impl_, true);
+            detail::return_connection(*pool_impl_, *impl_, true);
         impl_ = other.impl_;
         other.impl_ = nullptr;
         pool_impl_ = std::move(other.pool_impl_);
@@ -141,7 +141,7 @@ public:
     ~pooled_connection()
     {
         if (impl_)
-            detail::return_connection(std::move(pool_impl_), *impl_, true);
+            detail::return_connection(*pool_impl_, *impl_, true);
     }
 
     /**
@@ -206,8 +206,9 @@ public:
     void return_without_reset() noexcept
     {
         BOOST_ASSERT(valid());
-        detail::return_connection(std::move(pool_impl_), *impl_, false);
+        detail::return_connection(*pool_impl_, *impl_, false);
         impl_ = nullptr;
+        pool_impl_.reset();
     }
 };
 
