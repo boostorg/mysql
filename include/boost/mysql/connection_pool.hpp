@@ -61,12 +61,16 @@ class pooled_connection
     friend class detail::basic_pool_impl<detail::io_traits, pooled_connection>;
 #endif
 
-    detail::connection_node* impl_{nullptr};
-    std::shared_ptr<detail::pool_impl> pool_impl_;
+    struct impl_t
+    {
+        detail::connection_node* node{nullptr};
+        std::shared_ptr<detail::pool_impl> pool;
+    } impl_;
 
     pooled_connection(detail::connection_node& node, std::shared_ptr<detail::pool_impl> pool_impl) noexcept
-        : impl_(&node), pool_impl_(std::move(pool_impl))
+        : impl_{&node, std::move(pool_impl)}
     {
+        BOOST_ASSERT(impl_.pool);
     }
 
 public:
@@ -91,11 +95,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    pooled_connection(pooled_connection&& other) noexcept
-        : impl_(other.impl_), pool_impl_(std::move(other.pool_impl_))
-    {
-        other.impl_ = nullptr;
-    }
+    pooled_connection(pooled_connection&& other) noexcept : impl_(std::move(other.impl_)) {}
 
     /**
      * \brief Move assignment.
@@ -112,11 +112,11 @@ public:
      */
     pooled_connection& operator=(pooled_connection&& other) noexcept
     {
-        if (impl_)
-            detail::return_connection(*pool_impl_, *impl_, true);
-        impl_ = other.impl_;
-        other.impl_ = nullptr;
-        pool_impl_ = std::move(other.pool_impl_);
+        if (valid())
+        {
+            detail::return_connection(*impl_.pool, *impl_.node, true);
+        }
+        impl_ = std::move(other.impl_);
         return *this;
     }
 
@@ -140,8 +140,8 @@ public:
      */
     ~pooled_connection()
     {
-        if (impl_)
-            detail::return_connection(*pool_impl_, *impl_, true);
+        if (valid())
+            detail::return_connection(*impl_.pool, *impl_.node, true);
     }
 
     /**
@@ -149,7 +149,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool valid() const noexcept { return impl_ != nullptr; }
+    bool valid() const noexcept { return impl_.pool.get() != nullptr; }
 
     /**
      * \brief Retrieves the connection owned by this object.
@@ -163,10 +163,10 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    any_connection& get() noexcept { return detail::get_connection(*impl_); }
+    any_connection& get() noexcept { return detail::get_connection(*impl_.node); }
 
     /// \copydoc get
-    const any_connection& get() const noexcept { return detail::get_connection(*impl_); }
+    const any_connection& get() const noexcept { return detail::get_connection(*impl_.node); }
 
     /// \copydoc get
     any_connection* operator->() noexcept { return &get(); }
@@ -206,9 +206,8 @@ public:
     void return_without_reset() noexcept
     {
         BOOST_ASSERT(valid());
-        detail::return_connection(*pool_impl_, *impl_, false);
-        impl_ = nullptr;
-        pool_impl_.reset();
+        detail::return_connection(*impl_.pool, *impl_.node, false);
+        impl_ = impl_t{};
     }
 };
 
