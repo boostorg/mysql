@@ -18,9 +18,11 @@
 #include <boost/asio/use_awaitable.hpp>
 
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <exception>
 #include <iostream>
+#include <thread>
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
@@ -97,6 +99,10 @@ void run(const char* hostname)
         [&]() -> asio::awaitable<void> { return pool.async_run(asio::use_awaitable); },
         rethrow_on_err
     );
+
+    // async_get_connection fails immediately if the pool is not running.
+    // Grant it a small period of time to bootstrap
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     // Create and launch tasks
     for (std::size_t i = 0; i < num_parallel; ++i)
