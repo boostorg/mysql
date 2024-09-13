@@ -53,8 +53,15 @@ class mock_timer_service : public service_base<0>
 {
 public:
     // Required by all Boost.Asio services
-    void shutdown() final {}
     mock_timer_service(asio::execution_context& owner) : service_base<0>(owner) {}
+
+    void shutdown() final
+    {
+        // Cancel all operations. Operations may allocate I/O objects for other services,
+        // which must be destroyed before services are actually destroyed.
+        while (!pending_.empty())
+            erase_and_post_handler(pending_.begin(), asio::error::operation_aborted);
+    }
 
     // A pending timer
     struct pending_timer
