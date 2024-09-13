@@ -14,6 +14,8 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
+#include <boost/asio/steady_timer.hpp>
+#include <boost/asio/this_coro.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/use_awaitable.hpp>
 
@@ -22,7 +24,6 @@
 #include <cstddef>
 #include <exception>
 #include <iostream>
-#include <thread>
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
@@ -53,6 +54,12 @@ public:
 asio::awaitable<void> task(mysql::connection_pool& pool, coordinator& coord)
 {
     mysql::results r;
+
+    // async_get_connection fails immediately if the pool is not running.
+    // Grant it a small period of time to bootstrap
+    asio::steady_timer timer(co_await asio::this_coro::executor);
+    timer.expires_after(std::chrono::milliseconds(1));
+    co_await timer.async_wait();
 
     while (true)
     {
@@ -99,10 +106,6 @@ void run(const char* hostname)
         [&]() -> asio::awaitable<void> { return pool.async_run(asio::use_awaitable); },
         rethrow_on_err
     );
-
-    // async_get_connection fails immediately if the pool is not running.
-    // Grant it a small period of time to bootstrap
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     // Create and launch tasks
     for (std::size_t i = 0; i < num_parallel; ++i)
