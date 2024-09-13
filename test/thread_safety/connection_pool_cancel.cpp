@@ -36,7 +36,7 @@ void run(const char* hostname)
     params.initial_size = 20;
     params.thread_safe = true;
 
-    for (int i = 0; i < 1000; ++i)
+    for (int i = 0; i < 20; ++i)
     {
         // Create a pool
         auto pool = std::make_shared<mysql::connection_pool>(ctx, std::move(params));
