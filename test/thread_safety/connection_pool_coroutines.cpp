@@ -15,6 +15,7 @@
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/thread_pool.hpp>
+#include <boost/asio/use_awaitable.hpp>
 
 #include <atomic>
 #include <cstddef>
@@ -91,7 +92,11 @@ void run(const char* hostname)
 
     // The pool should be thread-safe even if we pass a token with a custom
     // executor to async_run (as happens with coroutines)
-    asio::co_spawn(ctx, [&]() -> asio::awaitable<void> { co_await pool.async_run(); }, rethrow_on_err);
+    asio::co_spawn(
+        ctx,
+        [&]() -> asio::awaitable<void> { return pool.async_run(asio::use_awaitable); },
+        rethrow_on_err
+    );
 
     // Create and launch tasks
     for (std::size_t i = 0; i < num_parallel; ++i)
