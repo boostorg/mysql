@@ -504,7 +504,7 @@ public:
      * \details
      * Returns the pool executor passed to the constructor, as per
      * \ref pool_executor_params::pool_executor.
-     * This is the case even when using \ref pool_params::thread_safe:
+     * This is the case even when using \ref pool_params::thread_safe -
      * the internal strand created in this case is never exposed.
      *
      * \par Exception safety
