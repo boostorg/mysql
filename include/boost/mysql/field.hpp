@@ -189,7 +189,7 @@ public:
 
 #if defined(__cpp_lib_string_view)
     /// \copydoc field(const std::string&)
-    explicit field(std::string_view v) noexcept : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
+    explicit field(std::string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 #endif
 
     /**
