@@ -63,7 +63,7 @@ class pooled_connection
 
     struct impl_t
     {
-        detail::connection_node* node{nullptr};
+        detail::connection_node* node;
         std::shared_ptr<detail::pool_impl> pool;
     } impl_;
 
