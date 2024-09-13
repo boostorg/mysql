@@ -576,7 +576,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
     connection_pool pool(global_context_executor(), create_pool_params());
     pool.async_run(asio::cancel_after(timeout, check_run));
 
-    // Get a connection. TODO: is this testing what we expect?
+    // Get a connection
     auto conn = pool.async_get_connection(diag, asio::cancel_after(timeout, asio::deferred))(as_netresult)
                     .get();
     conn->async_ping(as_netresult).validate_no_error();
