@@ -184,7 +184,7 @@ struct pool_params
     /**
      * \brief Enables or disables thread-safety.
      * \details
-     * When set to `true`, the resulting connection pool will be able to
+     * When set to `true`, the resulting connection pool are able to
      * be shared between threads at the cost of some performance.
      *
      * Enabling thread safety for a pool creates an internal `asio::strand` object

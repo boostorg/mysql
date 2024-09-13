@@ -48,13 +48,13 @@ namespace mysql {
  * even if the connection pool used to obtain them was constructed with
  * \ref pool_params::thread_safe set to true.
  *
- * Some functions cause this object to return the underlying connection to the
- * pool it was obtained from, thus mutating pool state. Calling such functions
- * on `pooled_connection` objects that were obtained from the same pool
+ * Functions that return the underlying connection to the pool
+ * cause a state mutation on the pool object. Calling such functions
+ * on objects obtained from the same pool
  * is thread-safe only if the pool was constructed with \ref pool_params::thread_safe set to true.
  *
  * In other words, individual connections can't be shared between threads. Pools can
- * only if they're constructed with \ref pool_params::thread_safe set to true.
+ * be shared only if they're constructed with \ref pool_params::thread_safe set to true.
  *
  * - Distinct objects: safe if the \ref connection_pool that was used to obtain the objects
  *   was created with \ref pool_params::thread_safe set to true. Otherwise, unsafe.
@@ -256,10 +256,10 @@ public:
  *
  * \par Thread-safety
  * By default, connection pools are **not** thread-safe, but can be made safe
- * by setting \ref pool_params::thread_safe to `true` before construction.
+ * by constructing them with \ref pool_params::thread_safe set to `true`.
  *
  * - Distinct objects: safe. \n
- * - Shared objects: by default, unsafe, unless constructed with \ref pool_params::thread_safe
+ * - Shared objects: unsafe, unless constructed with \ref pool_params::thread_safe
  *   set to `true`. Some functions (like assignment) are never thread-safe. Consult
  *   the documentation of each function to find out about thread-safety.
  *
