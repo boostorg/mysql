@@ -12,6 +12,12 @@
 
 #include <boost/config.hpp>
 
+// Silence MSVC 14.1 warnings caused by https://github.com/boostorg/pfr/issues/167
+#if defined(BOOST_MSVC) && BOOST_MSVC < 1920
+#pragma warning(push)
+#pragma warning(disable : 4100)
+#endif
+
 // Silence PFR warnings caused by https://github.com/boostorg/pfr/issues/166
 // Only affecting gcc-11+, and caused during the inclusion of the library
 #if BOOST_GCC >= 110000
@@ -19,10 +25,10 @@
 #pragma GCC diagnostic ignored "-Wpragmas"
 #endif
 
-// Silence MSVC 14.1 warnings caused by https://github.com/boostorg/pfr/issues/167
-#if defined(BOOST_MSVC) && BOOST_MSVC < 1920
-#pragma warning(push)
-#pragma warning(disable : 4100)
+// Silence PFR warnings caused by https://github.com/boostorg/pfr/pull/183
+#if defined(BOOST_CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-parameter"
 #endif
 
 #include <boost/mysql/pfr.hpp>
@@ -45,6 +51,10 @@
 
 #if BOOST_GCC >= 110000
 #pragma GCC diagnostic pop
+#endif
+
+#if defined(BOOST_CLANG)
+#pragma clang diagnostic pop
 #endif
 
 namespace boost {
