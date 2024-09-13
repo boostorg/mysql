@@ -65,7 +65,7 @@ class pooled_connection
     {
         detail::connection_node* node;
         std::shared_ptr<detail::pool_impl> pool;
-    } impl_;
+    } impl_{};
 
     pooled_connection(detail::connection_node& node, std::shared_ptr<detail::pool_impl> pool_impl) noexcept
         : impl_{&node, std::move(pool_impl)}
