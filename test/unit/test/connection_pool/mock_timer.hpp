@@ -179,8 +179,9 @@ private:
             }
         };
 
+        auto timer_ex = t.timer_work.get_executor();
         asio::post(
-            t.timer_work.get_executor(),
+            std::move(timer_ex),
             post_handler{std::move(t.timer_work), std::move(t.handler_work), std::move(t.handler), ec}
         );
     }
