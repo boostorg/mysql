@@ -36,7 +36,7 @@ namespace mysql {
  * A `pooled_connection` behaves like to a `std::unique_ptr`: it has exclusive ownership of an
  * \ref any_connection created by the pool. When destroyed, it returns the connection to the pool.
  * A `pooled_connection` may own nothing. We say such a connection is invalid (`this->valid() == false`).
- * \n
+ *
  * This class is movable but not copyable.
  *
  * \par Object lifetimes
@@ -44,11 +44,22 @@ namespace mysql {
  * automatically. It's safe to destroy the `connection_pool` object before `*this`.
  *
  * \par Thread safety
- * By default, individual connections created by the pool are **not** thread-safe,
- * even if the pool was created using \ref pool_executor_params::thread_safe.
- * \n
- * Distinct objects: safe. \n
- * Shared objects: unsafe. \n
+ * This object and the \ref any_connection object it may point to are **not thread safe**,
+ * even if the connection pool used to obtain them was constructed with
+ * \ref pool_params::thread_safe set to true.
+ *
+ * Some functions cause this object to return the underlying connection to the
+ * pool it was obtained from, thus mutating pool state. Calling such functions
+ * on `pooled_connection` objects that were obtained from the same pool
+ * is thread-safe only if the pool was constructed with \ref pool_params::thread_safe set to true.
+ *
+ * In other words, individual connections can't be shared between threads. Pools can
+ * only if they're constructed with \ref pool_params::thread_safe set to true.
+ *
+ * - Distinct objects: safe if the \ref connection_pool that was used to obtain the objects
+ *   was created with \ref pool_params::thread_safe set to true. Otherwise, unsafe.
+ * - Shared objects: always unsafe.
+ *
  *
  * \par Experimental
  * This part of the API is experimental, and may change in successive
@@ -88,7 +99,7 @@ public:
      * \brief Move constructor.
      * \details
      * Transfers connection ownership from `other` to `*this`.
-     * \n
+     *
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
      * In any case, `other` will become invalid (`other.valid() == false`).
      *
@@ -103,9 +114,14 @@ public:
      * If `this->valid()`, returns the connection owned by `*this` to the pool and marks
      * it as pending reset (as if the destructor was called).
      * It then transfers connection ownership from `other` to `*this`.
-     * \n
+     *
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
      * In any case, `other` will become invalid (`other.valid() == false`).
+     *
+     * \par Thread-safety
+     * May cause a mutation on the connection pool that `this` points to.
+     * Thread-safe for a shared pool only if it was constructed with
+     * \ref pool_params::thread_safe set to true.
      *
      * \par Exception safety
      * No-throw guarantee.
@@ -132,11 +148,10 @@ public:
      * and marks it as pending reset. If your connection doesn't need to be reset
      * (e.g. because you didn't mutate session state), use \ref return_without_reset.
      *
-     * \par Thead-safety
-     * If the \ref connection_pool object that `*this` references has been constructed
-     * with adequate executor configuration, this function is safe to be called concurrently
-     * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
-     * \ref connection_pool::cancel and \ref return_without_reset on other `pooled_connection` objects.
+     * \par Thread-safety
+     * May cause a mutation on the connection pool that `this` points to.
+     * Thread-safe for a shared pool only if it was constructed with
+     * \ref pool_params::thread_safe set to true.
      */
     ~pooled_connection()
     {
@@ -197,11 +212,10 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * If the \ref connection_pool object that `*this` references has been constructed
-     * with adequate executor configuration, this function is safe to be called concurrently
-     * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
-     * \ref connection_pool::cancel and `~pooled_connection`.
+     * \par Thread-safety
+     * Causes a mutation on the connection pool that `this` points to.
+     * Thread-safe for a shared pool only if it was constructed with
+     * \ref pool_params::thread_safe set to true.
      */
     void return_without_reset() noexcept
     {
@@ -218,21 +232,21 @@ public:
  * Using a pool allows to reuse sessions, avoiding part of the overhead associated
  * to session establishment. It also features built-in error handling and reconnection.
  * See the discussion and examples for more details on when to use this class.
- * \n
+ *
  * Connections are retrieved by \ref async_get_connection, which yields a
  * \ref pooled_connection object. They are returned to the pool when the
  * `pooled_connection` is destroyed, or by calling \ref pooled_connection::return_without_reset.
- * \n
+ *
  * A pool needs to be run before it can return any connection. Use \ref async_run for this.
  * Pools can only be run once.
- * \n
+ *
  * Connections are created, connected and managed internally by the pool, following
  * a well-defined state model. Please refer to the discussion for details.
- * \n
+ *
  * Due to oddities in Boost.Asio's universal async model, this class only
  * exposes async functions. You can use `asio::use_future` to transform them
  * into sync functions (please read the discussion for details).
- * \n
+ *
  * This is a move-only type.
  *
  * \par Default completion tokens
@@ -241,13 +255,13 @@ public:
  * and have the expected exceptions thrown on error.
  *
  * \par Thread-safety
- * By default, connection pools are *not* thread-safe, but most functions can
- * be made thread-safe by passing an adequate \ref pool_executor_params objects
- * to the constructor. See \ref pool_executor_params::thread_safe and the discussion
- * for details.
- * \n
- * Distinct objects: safe. \n
- * Shared objects: unsafe, unless passing adequate values to the constructor.
+ * By default, connection pools are **not** thread-safe, but can be made safe
+ * by setting \ref pool_params::thread_safe to `true` before construction.
+ *
+ * - Distinct objects: safe. \n
+ * - Shared objects: by default, unsafe, unless constructed with \ref pool_params::thread_safe
+ *   set to `true`. Some functions (like assignment) are never thread-safe. Consult
+ *   the documentation of each function to find out about thread-safety.
  *
  * \par Object lifetimes
  * Connection pool objects create an internal state object that is referenced
@@ -347,13 +361,11 @@ public:
      * \details
      * Internal I/O objects (like timers) are constructed using
      * `ex_params.pool_executor`. Connections are constructed using
-     * `ex_params.connection_executor`. This can be used to create
-     * thread-safe pools.
-     * \n
+     * `ex_params.connection_executor`.
+     *
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
-     * with \ref client_errc::cancelled.
-     * \n
+     * "running" state.
+     *
      * The constructed pool is always valid (`this->valid() == true`).
      *
      * \par Exception safety
@@ -370,11 +382,10 @@ public:
      * \brief Constructs a connection pool.
      * \details
      * Both internal I/O objects and connections are constructed using the passed executor.
-     * \n
+     *
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
-     * with \ref client_errc::cancelled.
-     * \n
+     * "running" state.
+     *
      * The constructed pool is always valid (`this->valid() == true`).
      *
      * \par Exception safety
@@ -391,13 +402,12 @@ public:
      * \brief Constructs a connection pool.
      * \details
      * Both internal I/O objects and connections are constructed using `ctx.get_executor()`.
-     * \n
+     *
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
-     * with \ref client_errc::cancelled.
-     * \n
+     * "running" state.
+     *
      * The constructed pool is always valid (`this->valid() == true`).
-     * \n
+     *
      * This function participates in overload resolution only if `ExecutionContext`
      * satisfies the `ExecutionContext` requirements imposed by Boost.Asio.
      *
@@ -429,20 +439,20 @@ public:
      * \brief Move-constructor.
      * \details
      * Constructs a connection pool by taking ownership of `other`.
-     * \n
+     *
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
      * In any case, `other` will become invalid (`other.valid() == false`).
-     * \n
+     *
      * Moving a connection pool with outstanding async operations
      * is safe.
      *
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * This function is never thread-safe, regardless of the executor
-     * configuration passed to the constructor. Calling this function
-     * concurrently with any other function introduces data races.
+     * \par Thread-safety
+     * **This function is never thread-safe**, even for pools created
+     * with \ref pool_params::thread_safe set to true.
+     * Calling this function concurrently with any other function introduces data races.
      */
     connection_pool(connection_pool&& other) = default;
 
@@ -450,19 +460,19 @@ public:
      * \brief Move assignment.
      * \details
      * Assigns `other` to `*this`, transferring ownership.
-     * \n
+     *
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
      * In any case, `other` will become invalid (`other.valid() == false`).
-     * \n
+     *
      * Moving a connection pool with outstanding async operations
      * is safe.
      *
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * This function is never thread-safe, regardless of the executor
-     * configuration passed to the constructor. Calling this function
+     * \par Thread-safety
+     * **This function is never thread-safe**, even for pools created
+     * with \ref pool_params::thread_safe set to true. Calling this function
      * concurrently with any other function introduces data races.
      */
     connection_pool& operator=(connection_pool&& other) = default;
@@ -480,10 +490,9 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * This function is never thread-safe, regardless of the executor
-     * configuration passed to the constructor. Calling this function
-     * concurrently with any other function introduces data races.
+     * \par Thread-safety
+     * Safe for pools built with \ref pool_params::thread_safe. Can be called
+     * concurrently with other safe functions.
      */
     bool valid() const noexcept { return impl_.get() != nullptr; }
 
@@ -499,10 +508,9 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * This function is never thread-safe, regardless of the executor
-     * configuration passed to the constructor. Calling this function
-     * concurrently with any other function introduces data races.
+     * \par Thread-safety
+     * Safe for pools built with \ref pool_params::thread_safe. Can be called
+     * concurrently with other safe functions.
      */
     BOOST_MYSQL_DECL
     executor_type get_executor() noexcept;
@@ -513,19 +521,19 @@ public:
      * This function creates and connects new connections, and resets and pings
      * already created ones. You need to call this function for \ref async_get_connection
      * to succeed.
-     * \n
+     *
      * The async operation will run indefinitely, until the pool is cancelled
      * (by being destroyed or calling \ref cancel). The operation completes once
      * all internal connection operations (including connects, pings and resets)
      * complete.
-     * \n
+     *
      * It is safe to call this function after calling \ref cancel.
      *
      * \par Preconditions
      * This function can be called at most once for a single pool.
      * Formally, `async_run` hasn't been called before on `*this` or any object
      * used to move-construct or move-assign `*this`.
-     * \n
+     *
      * Additionally, `this->valid() == true`.
      *
      * \par Object lifetimes
@@ -539,15 +547,9 @@ public:
      * This function always complete successfully. The handler signature ensures
      * maximum compatibility with Boost.Asio infrastructure.
      *
-     * \par Executor
-     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
-     * No internal data will be accessed or modified as part of the initiating function.
-     * This simplifies thread-safety.
-     *
-     * \par Thead-safety
-     * When the pool is constructed with adequate executor configuration, this function
-     * is safe to be called concurrently with \ref async_get_connection, \ref cancel,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
+     * \par Thread-safety
+     * Safe for pools built with \ref pool_params::thread_safe. Can be called
+     * concurrently with other safe functions.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -588,16 +590,16 @@ public:
      * \brief Retrieves a connection from the pool.
      * \details
      * Retrieves an idle connection from the pool to be used.
-     * \n
+     *
      * If this function completes successfully (empty error code), the return \ref pooled_connection
      * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
      * it will have `valid() == false`.
-     * \n
+     *
      * If a connection is idle when the operation is started, it will complete immediately
      * with that connection. Otherwise, it will wait for a connection to become idle
      * (possibly creating one in the process, if pool configuration allows it), up to
      * a duration of 30 seconds.
-     * \n
+     *
      * If a timeout happens because connection establishment has failed, appropriate
      * diagnostics will be returned.
      *
@@ -620,16 +622,9 @@ public:
      * \li \ref client_errc::cancelled if \ref cancel was called before the operation is started or while
      *     it is outstanding, or if the pool is not running.
      *
-     * \par Executor
-     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
-     * No internal data will be accessed or modified as part of the initiating function.
-     * This simplifies thread-safety.
-     *
-     * \par Thead-safety
-     * When the pool is constructed with adequate executor configuration, this function
-     * is safe to be called concurrently with \ref async_run, \ref cancel,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
-     * \n
+     * \par Thread-safety
+     * Safe for pools built with \ref pool_params::thread_safe. Can be called
+     * concurrently with other safe functions.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
@@ -657,16 +652,16 @@ public:
      * \brief Retrieves a connection from the pool.
      * \details
      * Retrieves an idle connection from the pool to be used.
-     * \n
+     *
      * If this function completes successfully (empty error code), the return \ref pooled_connection
      * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
      * it will have `valid() == false`.
-     * \n
+     *
      * If a connection is idle when the operation is started, it will complete immediately
      * with that connection. Otherwise, it will wait for a connection to become idle
      * (possibly creating one in the process, if pool configuration allows it), up to
      * a duration of `timeout`. A zero timeout disables it.
-     * \n
+     *
      * If a timeout happens because connection establishment has failed, appropriate
      * diagnostics will be returned.
      *
@@ -690,16 +685,9 @@ public:
      * \li \ref client_errc::cancelled if \ref cancel was called before the operation is started or while
      *     it is outstanding, or if the pool is not running.
      *
-     * \par Executor
-     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
-     * No internal data will be accessed or modified as part of the initiating function.
-     * This simplifies thread-safety.
-     *
-     * \par Thead-safety
-     * When the pool is constructed with adequate executor configuration, this function
-     * is safe to be called concurrently with \ref async_run, \ref cancel,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
-     * \n
+     * \par Thread-safety
+     * Safe for pools built with \ref pool_params::thread_safe. Can be called
+     * concurrently with other safe functions.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
@@ -720,16 +708,16 @@ public:
      * \brief Stops any current outstanding operation and marks the pool as cancelled.
      * \details
      * This function has the following effects:
-     * \n
+     *
      * \li Stops the currently outstanding \ref async_run operation, if any, which will complete
      *     with a success error code.
      * \li Cancels any outstanding \ref async_get_connection operations, which will complete with
      *     \ref client_errc::cancelled.
      * \li Marks the pool as cancelled. Successive `async_get_connection` calls will complete
      *     immediately with \ref client_errc::cancelled.
-     * \n
+     *
      * This function will return immediately, without waiting for the cancelled operations to complete.
-     * \n
+     *
      * You may call this function any number of times. Successive calls will have no effect.
      *
      * \par Preconditions
@@ -738,10 +726,9 @@ public:
      * \par Exception safety
      * Basic guarantee. Memory allocations and acquiring mutexes may throw.
      *
-     * \par Thead-safety
-     * When the pool is constructed with adequate executor configuration, this function
-     * is safe to be called concurrently with \ref async_run, \ref async_get_connection,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
+     * \par Thread-safety
+     * Safe for pools built with \ref pool_params::thread_safe. Can be called
+     * concurrently with other safe functions.
      */
     BOOST_MYSQL_DECL
     void cancel();

@@ -183,15 +183,10 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
         params.username = mysql_username;
         params.password = mysql_password;
         params.database = "boost_mysql_examples";
+        params.thread_safe = true;  // enable thread safety
 
-        // By passing pool_executor_params::thread_safe to connection_pool,
-        // we make all its member functions thread-safe.
-        // This works by creating a strand.
-        // TODO: review this
-        // boost::mysql::connection_pool pool(
-        //     boost::mysql::pool_executor_params::thread_safe(ctx.get_executor()),
-        //     std::move(params)
-        // );
+        // Construct a thread-safe pool
+        boost::mysql::connection_pool pool(ctx, std::move(params));
 
         // We can now pass a reference to pool to other threads,
         // and call async_get_connection concurrently without problem.
