@@ -29,8 +29,8 @@ struct tracker_executor_result
 // Create
 tracker_executor_result create_tracker_executor(asio::any_io_executor inner);
 
-// Get the ID of the executor we're currently running on, or -1 if none
-int current_executor_id();
+// Get the executor call stack, as a span of IDs. Most recent call last.
+boost::span<const int> executor_stack();
 
 // Get the ID of a tracker executor, or -1 if it's not a tracker executor
 int get_executor_id(asio::any_io_executor);
@@ -52,6 +52,7 @@ bool is_initiation_function();
 
 asio::any_io_executor global_context_executor();
 void run_global_context();
+void poll_global_context(const bool* done);  // run until *done == true
 
 }  // namespace test
 }  // namespace mysql

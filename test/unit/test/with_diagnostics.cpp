@@ -143,7 +143,8 @@ BOOST_AUTO_TEST_CASE(associated_properties)
     bool called = false;
     auto check_fn = [&](std::exception_ptr exc) {
         called = true;
-        BOOST_TEST(current_executor_id() == ex_result.executor_id);
+        const int expected_stack[] = {ex_result.executor_id};
+        BOOST_TEST(executor_stack() == expected_stack, boost::test_tools::per_element());
         check_exception(exc, common_server_errc::er_no_such_user, create_server_diag("Invalid user"));
     };
 

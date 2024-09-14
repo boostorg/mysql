@@ -53,8 +53,15 @@ class mock_timer_service : public service_base<0>
 {
 public:
     // Required by all Boost.Asio services
-    void shutdown() final {}
     mock_timer_service(asio::execution_context& owner) : service_base<0>(owner) {}
+
+    void shutdown() final
+    {
+        // Cancel all operations. Operations may allocate I/O objects for other services,
+        // which must be destroyed before services are actually destroyed.
+        while (!pending_.empty())
+            erase_and_post_handler(pending_.begin(), asio::error::operation_aborted);
+    }
 
     // A pending timer
     struct pending_timer
@@ -62,11 +69,11 @@ public:
         // When does the timer expire?
         std::chrono::steady_clock::time_point expiry;
 
-        // The executor to use
-        asio::any_io_executor ex;
+        // The timer's executor work guard
+        asio::executor_work_guard<asio::any_io_executor> timer_work;
 
-        // Maintain work for the executor
-        asio::executor_work_guard<asio::any_io_executor> work_guard;
+        // The handler's executor work guard
+        asio::executor_work_guard<asio::any_io_executor> handler_work;
 
         // What handler should we call?
         asio::any_completion_handler<void(error_code)> handler;
@@ -160,21 +167,30 @@ private:
 
         struct post_handler
         {
-            asio::executor_work_guard<asio::any_io_executor> work;
+            asio::executor_work_guard<asio::any_io_executor> timer_work;
+            asio::executor_work_guard<asio::any_io_executor> handler_work;
             asio::any_completion_handler<void(error_code)> handler;
             error_code ec;
 
             void operator()()
             {
-                work.reset();
+                timer_work.reset();
+                handler_work.reset();
                 std::move(handler)(ec);
             }
 
             using executor_type = asio::any_completion_executor;
-            executor_type get_executor() const { return asio::get_associated_executor(handler); }
+            executor_type get_executor() const
+            {
+                return asio::get_associated_executor(handler, timer_work.get_executor());
+            }
         };
 
-        asio::post(std::move(t.ex), post_handler{std::move(t.work_guard), std::move(t.handler), ec});
+        auto timer_ex = t.timer_work.get_executor();
+        asio::post(
+            std::move(timer_ex),
+            post_handler{std::move(t.timer_work), std::move(t.handler_work), std::move(t.handler), ec}
+        );
     }
 
     // Same, but also removes the op from the list
@@ -210,11 +226,13 @@ class mock_timer
         template <class Handler>
         void operator()(Handler&& h, mock_timer* self)
         {
-            // If the handler had an executor, use this. Otherwise, use the timer's
-            auto ex = asio::get_associated_executor(h, self->ex_);
-            self->svc_->add_timer(
-                {self->expiry_, ex, asio::make_work_guard(ex), std::forward<Handler>(h), self->timer_id_}
-            );
+            self->svc_->add_timer({
+                self->expiry_,
+                asio::make_work_guard(self->ex_),
+                asio::make_work_guard(asio::any_io_executor(asio::get_associated_executor(h))),
+                std::forward<Handler>(h),
+                self->timer_id_,
+            });
         }
     };
 

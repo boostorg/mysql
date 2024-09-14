@@ -16,6 +16,8 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/coroutine.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/thread_pool.hpp>
 
@@ -91,10 +93,18 @@ public:
             {
             case state_t::initial:
                 state_ = state_t::after_get_connection;
-                pool_->async_get_connection(diag_, [this](error_code ec, mysql::pooled_connection c) {
-                    conn_ = std::move(c);
-                    resume(ec);
-                });
+                // Verify that we achieve thread-safety even if the token
+                // has a bound executor that is not a strand (regression check).
+                pool_->async_get_connection(
+                    diag_,
+                    asio::bind_executor(
+                        base_ex_,
+                        [this](error_code ec, mysql::pooled_connection c) {
+                            conn_ = std::move(c);
+                            resume(ec);
+                        }
+                    )
+                );
                 return;
 
             case state_t::after_get_connection:
@@ -121,6 +131,7 @@ void run(const char* hostname)
 {
     // Setup
     asio::thread_pool ctx(8);
+    asio::thread_pool ctx2(4);
     mysql::pool_params params;
     params.server_address.emplace_host_and_port(hostname);
     params.username = "integ_user";
@@ -131,14 +142,16 @@ void run(const char* hostname)
 
     mysql::connection_pool pool(ctx, std::move(params));
 
-    pool.async_run(asio::detached);
+    // The pool should be thread-safe even if we pass a token with a custom
+    // executor to async_run
+    pool.async_run(asio::bind_executor(ctx.get_executor(), asio::detached));
 
     std::vector<task> conns;
     coordinator coord(pool);
 
     // Create connections
     for (std::size_t i = 0; i < num_parallel; ++i)
-        conns.emplace_back(pool, coord, ctx.get_executor());
+        conns.emplace_back(pool, coord, ctx2.get_executor());
 
     // Launch
     for (auto& conn : conns)
@@ -146,6 +159,7 @@ void run(const char* hostname)
 
     // Run
     ctx.join();
+    ctx2.join();
 }
 
 void usage(const char* progname)

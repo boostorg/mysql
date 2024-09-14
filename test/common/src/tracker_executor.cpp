@@ -14,6 +14,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <atomic>
+#include <chrono>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -221,17 +223,13 @@ boost::mysql::test::tracker_executor_result boost::mysql::test::create_tracker_e
     return {id, tracker_executor(id, std::move(inner))};
 }
 
-int boost::mysql::test::current_executor_id()
-{
-    return g_executor_call_stack.empty() ? -1 : g_executor_call_stack.back();
-}
+boost::span<const int> boost::mysql::test::executor_stack() { return g_executor_call_stack; }
 
 int boost::mysql::test::get_executor_id(asio::any_io_executor ex)
 {
     auto* typed_ex = ex.target<tracker_executor>();
     return typed_ex ? typed_ex->id() : -1;
 }
-
 boost::mysql::test::initiation_guard::initiation_guard()
 {
     BOOST_ASSERT(!g_is_running_initiation);
@@ -254,4 +252,26 @@ void boost::mysql::test::run_global_context()
 {
     g_ctx.restart();
     g_ctx.run();
+}
+
+void boost::mysql::test::poll_global_context(const bool* done)
+{
+    using std::chrono::steady_clock;
+
+    // Restart the context, in case it was stopped
+    g_ctx.restart();
+
+    // Poll until this time point
+    constexpr std::chrono::seconds timeout(5);
+    auto timeout_tp = steady_clock::now() + timeout;
+
+    // Perform the polling
+    do
+    {
+        g_ctx.poll();
+        std::this_thread::yield();
+    } while (!*done && steady_clock::now() < timeout_tp);
+
+    // Check for timeout
+    BOOST_TEST_REQUIRE(*done);
 }

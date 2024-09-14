@@ -14,16 +14,25 @@ if $(hostname) = ""
     hostname = "127.0.0.1" ;
 }
 
-
-# In OSX, tsan reports a race condition in Asio's kqueue reactor. Ignore this for now.
-# Net TS executors use std::atomic_thread_fence, unsupported by TSAN, which yields false positives.
-run
-        /boost/mysql/test//boost_mysql_compiled
-        connection_pool.cpp
-    : requirements
-        <testing.arg>$(hostname)
-        <target-os>darwin:<build>no
-        <boost.mysql.use-ts-executor>on:<build>no
-        <thread-sanitizer>norecover
-    : target-name boost_mysql_thread_safety
+local tests = 
+    connection_pool
+    connection_pool_two_contexts
+    connection_pool_coroutines
+    connection_pool_cancel
 ;
+
+for test in $(tests)
+{
+    # In OSX, tsan reports a race condition in Asio's kqueue reactor. Ignore this for now.
+    # Net TS executors use std::atomic_thread_fence, unsupported by TSAN, which yields false positives.
+    run
+            /boost/mysql/test//boost_mysql_compiled
+            $(test).cpp
+        : requirements
+            <testing.arg>$(hostname)
+            <target-os>darwin:<build>no
+            <boost.mysql.use-ts-executor>on:<build>no
+            <thread-sanitizer>norecover
+        : target-name $(test)
+    ;
+}
