@@ -32,6 +32,7 @@
 #include <boost/asio/bind_immediate_executor.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
+#include <boost/asio/dispatch.hpp>
 #include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
@@ -49,6 +50,7 @@
 #include <utility>
 
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/mock_timer.hpp"
@@ -193,7 +195,7 @@ class mock_connection
         {
             // Done
             BOOST_TEST(ec == error_code());
-            self.complete();
+            self.complete(error_code());
         }
     };
 
@@ -250,16 +252,17 @@ public:
         return impl_.op_impl(fn_type::pipeline, nullptr, std::forward<CompletionToken>(token));
     }
 
-    void step(
-        fn_type expected_op_type,
-        asio::any_completion_handler<void()> handler,
-        error_code ec = {},
-        diagnostics diag = {}
-    )
-    {
-        return asio::async_compose<asio::any_completion_handler<void()>, void()>(
+    template <class CompletionToken>
+    auto step(fn_type expected_op_type, CompletionToken&& token, error_code ec = {}, diagnostics diag = {})
+        -> decltype(asio::async_compose<CompletionToken, void(error_code)>(
             step_op{impl_, expected_op_type, ec, std::move(diag)},
-            handler,
+            token,
+            impl_.from_test_chan_
+        ))
+    {
+        return asio::async_compose<CompletionToken, void(error_code)>(
+            step_op{impl_, expected_op_type, ec, std::move(diag)},
+            token,
             impl_.from_test_chan_
         );
     }
@@ -288,50 +291,26 @@ class get_connection_task
 {
     struct impl_t
     {
-        asio::steady_timer tim;  // condition-variable-like
+        asio::experimental::channel<void(error_code)> cv;  // condition-variable-like
         mock_pool& pool;
         mock_node* actual_node{};
         mock_pool* actual_pool{};
         error_code actual_ec;
         bool was_immediate{};  // was the completion immediate?
 
-        impl_t(mock_pool& p) : tim(p.get_executor(), (steady_clock::time_point::max)()), pool(p) {}
+        impl_t(mock_pool& p) : cv(p.get_executor(), 1), pool(p) {}
     };
 
     std::shared_ptr<impl_t> impl_;
 
-    void wait_impl(
-        mock_node* expected_node,
-        error_code expected_ec,
-        asio::any_completion_handler<void()> handler,
-        bool expect_immediate
-    )
+    void wait_impl(mock_node* expected_node, error_code expected_ec, bool expect_immediate)
     {
-        struct intermediate_handler
-        {
-            std::shared_ptr<impl_t> impl;
-            mock_node* expected_node;
-            error_code expected_ec;
-            bool expect_immediate;
-            asio::any_completion_handler<void()> final_handler;
-
-            using executor_type = asio::any_io_executor;
-            executor_type get_executor() const { return impl->pool.get_executor(); }
-
-            void operator()(error_code)
-            {
-                auto* expected_pool = expected_ec ? nullptr : &impl->pool;
-                BOOST_TEST(impl->actual_ec == expected_ec);
-                BOOST_TEST(impl->actual_pool == expected_pool);
-                BOOST_TEST(impl->actual_node == expected_node);
-                BOOST_TEST(impl->was_immediate == expect_immediate);
-                std::move(final_handler)();
-            }
-        };
-
-        impl_->tim.async_wait(
-            intermediate_handler{impl_, expected_node, expected_ec, expect_immediate, std::move(handler)}
-        );
+        impl_->cv.async_receive(as_netresult).validate_no_error_nodiag();
+        auto* expected_pool = expected_ec ? nullptr : &impl_->pool;
+        BOOST_TEST(impl_->actual_ec == expected_ec);
+        BOOST_TEST(impl_->actual_pool == expected_pool);
+        BOOST_TEST(impl_->actual_node == expected_node);
+        BOOST_TEST(impl_->was_immediate == expect_immediate);
     }
 
 public:
@@ -340,68 +319,72 @@ public:
     get_connection_task(mock_pool& pool, diagnostics* diag, std::chrono::steady_clock::duration timeout)
         : impl_(std::make_shared<impl_t>(pool))
     {
-        auto pool_ex = pool.get_executor();
+        // Call the initiating function.
+        // We need to dispatch it so the initiation runs in the io_context, and we can see immediate
+        // completions
         auto impl = impl_;
+        asio::dispatch(asio::bind_executor(global_context_executor(), [impl, &pool, timeout, diag]() {
+            auto pool_ex = pool.get_executor();
 
-        // Create a tracker executor
-        auto ex_result = create_tracker_executor(pool_ex);
-        auto ex_id = ex_result.executor_id;
-        auto immediate_ex_result = create_tracker_executor(pool_ex);
-        auto immediate_ex_id = immediate_ex_result.executor_id;
+            // Create a tracker executor
+            auto ex_result = create_tracker_executor(pool_ex);
+            auto ex_id = ex_result.executor_id;
+            auto immediate_ex_result = create_tracker_executor(pool_ex);
+            auto immediate_ex_id = immediate_ex_result.executor_id;
 
-        // Mark that we're calling an initiating function
-        initiation_guard guard;
+            // Mark that we're calling an initiating function
+            initiation_guard guard;
 
-        // Call the initiating function
-        pool.async_get_connection(
-            mock_clock::now() + timeout,
-            diag,
-            asio::bind_executor(
-                ex_result.ex,
-                asio::bind_immediate_executor(
-                    immediate_ex_result.ex,
-                    [ex_id, immediate_ex_id, impl](error_code ec, mock_pooled_connection c) {
-                        // Check executor
-                        bool was_immediate = is_initiation_function();
-                        if (was_immediate)
-                        {
-                            // An immediate completion dispatches to the immediate executor,
-                            // then to the token's executor
-                            const int expected_stack[] = {immediate_ex_id, ex_id};
-                            BOOST_TEST(executor_stack() == expected_stack, per_element());
+            pool.async_get_connection(
+                mock_clock::now() + timeout,
+                diag,
+                asio::bind_executor(
+                    ex_result.ex,
+                    asio::bind_immediate_executor(
+                        immediate_ex_result.ex,
+                        [ex_id, immediate_ex_id, impl](error_code ec, mock_pooled_connection c) {
+                            // Check executor
+                            bool was_immediate = is_initiation_function();
+                            if (was_immediate)
+                            {
+                                // An immediate completion dispatches to the immediate executor,
+                                // then to the token's executor
+                                const int expected_stack[] = {immediate_ex_id, ex_id};
+                                BOOST_TEST(executor_stack() == expected_stack, per_element());
+                            }
+                            else
+                            {
+                                const int expected_stack[] = {ex_id};
+                                BOOST_TEST(executor_stack() == expected_stack, per_element());
+                            }
+
+                            // If the pool was thread-safe, the callback should never be happening from the
+                            // pool's strand
+                            if (impl->pool.params().thread_safe)
+                            {
+                                BOOST_TEST(!impl->pool.strand().running_in_this_thread());
+                            }
+
+                            impl->was_immediate = was_immediate;
+                            impl->actual_node = c.node;
+                            impl->actual_pool = c.pool.get();
+                            impl->actual_ec = ec;
+                            impl->cv.try_send(error_code());
                         }
-                        else
-                        {
-                            const int expected_stack[] = {ex_id};
-                            BOOST_TEST(executor_stack() == expected_stack, per_element());
-                        }
-
-                        // If the pool was thread-safe, the callback should never be happening from the pool's
-                        // strand
-                        if (impl->pool.params().thread_safe)
-                        {
-                            BOOST_TEST(!impl->pool.strand().running_in_this_thread());
-                        }
-
-                        impl->was_immediate = was_immediate;
-                        impl->actual_node = c.node;
-                        impl->actual_pool = c.pool.get();
-                        impl->actual_ec = ec;
-                        impl->tim.expires_at((steady_clock::time_point::min)());
-                    }
+                    )
                 )
-            )
-        );
+            );
+        }));
     }
 
-    void wait(mock_node& expected_node, asio::any_completion_handler<void()> handler, bool expect_immediate)
+    void wait(mock_node& expected_node, bool expect_immediate)
     {
-        wait_impl(&expected_node, error_code(), std::move(handler), expect_immediate);
+        wait_impl(&expected_node, error_code(), expect_immediate);
     }
 
-    void wait(error_code expected_ec, asio::any_completion_handler<void()> handler, bool expect_immediate)
+    void wait(error_code expected_ec, bool expect_immediate)
     {
-        wait_impl(nullptr, expected_ec, std::move(handler), expect_immediate);
+        wait_impl(nullptr, expected_ec, expect_immediate);
     }
 };
 
@@ -411,14 +394,13 @@ public:
 class pool_test_op_base : public asio::coroutine
 {
 public:
-    pool_test_op_base(mock_pool& pool, bool& finished) : pool_(pool), finished_(finished) {}
+    pool_test_op_base(mock_pool& pool) : pool_(pool) {}
 
     using executor_type = asio::any_io_executor;
     asio::any_io_executor get_executor() const { return pool_.get_executor(); }
 
 protected:
     mock_pool& pool_;
-    bool& finished_;
     bool initial_{true};
 
     void return_connection(mock_node& node, bool should_reset)
@@ -460,22 +442,38 @@ protected:
     // Wrapper for waiting for a status on a certain node
     void wait_for_status(mock_node& node, connection_status status)
     {
-        poll();
-        BOOST_TEST(node.status() == status);
+        poll_global_context([&node, status]() { return node.status() == status; });
     }
 
     // Waits until the number of pending requests in the pool equals a certain number
     void wait_for_num_requests(std::size_t num_requests)
     {
-        poll();
-        BOOST_TEST(num_pending_requests() == num_requests);
+        poll_global_context([this, num_requests]() { return num_pending_requests() == num_requests; });
     }
 
     // Waits until there is at least num_nodes connections in the list
     void wait_for_num_nodes(std::size_t num_nodes)
     {
-        poll();
-        BOOST_TEST(pool_.nodes().size() == num_nodes);
+        poll_global_context([this, num_nodes]() { return pool_.nodes().size() == num_nodes; });
+    }
+
+    // Wrapper for calling mock_connection::step()
+    void step(mock_node& node, fn_type next_act, error_code ec = {}, diagnostics diag = {})
+    {
+        node.connection().step(next_act, as_netresult, ec, diag).validate_no_error_nodiag();
+    }
+
+    // Wrapper for get_connection_task::wait(). It helps prevent lifetime
+    // issues with std::move(*this)
+    // TODO: these can be removed
+    void wait_for_task(get_connection_task task, mock_node& expected_node, bool expect_immediate)
+    {
+        task.wait(expected_node, expect_immediate);
+    }
+
+    void wait_for_task(get_connection_task task, error_code expected_ec, bool expect_immediate)
+    {
+        task.wait(expected_ec, expect_immediate);
     }
 };
 
@@ -487,24 +485,6 @@ class pool_test_op : public pool_test_op_base
 public:
     using pool_test_op_base::pool_test_op_base;
 
-    // Wrapper for calling mock_connection::step()
-    void step(mock_node& node, fn_type next_act, error_code ec = {}, diagnostics diag = {})
-    {
-        node.connection().step(next_act, std::move(derived_this()), ec, diag);
-    }
-
-    // Wrapper for get_connection_task::wait(). It helps prevent lifetime
-    // issues with std::move(*this)
-    void wait_for_task(get_connection_task task, mock_node& expected_node, bool expect_immediate)
-    {
-        task.wait(expected_node, std::move(derived_this()), expect_immediate);
-    }
-
-    void wait_for_task(get_connection_task task, error_code expected_ec, bool expect_immediate)
-    {
-        task.wait(expected_ec, std::move(derived_this()), expect_immediate);
-    }
-
     void operator()()
     {
         if (initial_)
@@ -513,47 +493,31 @@ public:
             wait_for_num_nodes(initial_num_nodes);
         }
         derived_this().invoke();
-        if (derived_this().is_complete())
-        {
-            pool_.cancel_unsafe();
-            finished_ = true;
-        }
+        pool_.cancel();
     }
 };
-
-static void check_err(error_code ec) { BOOST_TEST(ec == error_code()); }
 
 // The test body
 template <class TestOp, class... Args>
 static void pool_test(boost::mysql::pool_params params, Args&&... args)
 {
-    // I/O context
-    asio::io_context ctx;
-
     // Pool (must be created using dynamic memory)
     auto pool = std::make_shared<mock_pool>(
-        pool_executor_params{ctx.get_executor(), ctx.get_executor()},
+        pool_executor_params{global_context_executor(), global_context_executor()},
         std::move(params)
     );
 
-    // This flag is only set to true after the test finishes.
-    // If the test timeouts, it will be false
-    bool finished = false;
-
     // Create the test
-    TestOp test(*pool, finished, std::forward<Args>(args)...);
+    TestOp test(*pool, std::forward<Args>(args)...);
 
     // Run the pool
-    pool->async_run(check_err);
+    auto res = pool->async_run(as_netresult);
 
-    // Launch the test
+    // Run the test
     test();
 
-    // If the test doesn't complete in this time, there was an error
-    ctx.run_for(std::chrono::seconds(100));
-
-    // Check that we didn't timeout
-    BOOST_TEST(finished == true);
+    // Run the test
+    std::move(res).validate_no_error_nodiag();
 }
 
 // connection lifecycle
@@ -569,29 +533,25 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connection trying to connect
-                wait_for_status(node, connection_status::connect_in_progress);
-                check_shared_st(error_code(), diagnostics(), 1, 0);
+            // Connection trying to connect
+            wait_for_status(node, connection_status::connect_in_progress);
+            check_shared_st(error_code(), diagnostics(), 1, 0);
 
-                // Connect fails, so the connection goes to sleep. Diagnostics are stored in shared state.
-                BOOST_ASIO_CORO_YIELD
-                step(node, fn_type::connect, common_server_errc::er_aborting_connection, expected_diag());
-                wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-                check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
+            // Connect fails, so the connection goes to sleep. Diagnostics are stored in shared state.
+            step(node, fn_type::connect, common_server_errc::er_aborting_connection, expected_diag());
+            wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+            check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
 
-                // Advance until it's time to retry again
-                advance_time_by(std::chrono::seconds(2));
-                wait_for_status(node, connection_status::connect_in_progress);
-                check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
+            // Advance until it's time to retry again
+            advance_time_by(std::chrono::seconds(2));
+            wait_for_status(node, connection_status::connect_in_progress);
+            check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
 
-                // Connection connects successfully this time. Diagnostics have
-                // been cleared and the connection is marked as idle
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Connection connects successfully this time. Diagnostics have
+            // been cleared and the connection is marked as idle
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -611,26 +571,23 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connection trying to connect
-                wait_for_status(node, connection_status::connect_in_progress);
+            // Connection trying to connect
+            wait_for_status(node, connection_status::connect_in_progress);
 
-                // Timeout ellapses. Connect is considered failed
-                advance_time_by(std::chrono::seconds(5));
-                wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-                check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
+            // Timeout ellapses. Connect is considered failed
+            advance_time_by(std::chrono::seconds(5));
+            wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+            check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
 
-                // Advance until it's time to retry again
-                advance_time_by(std::chrono::seconds(2));
-                wait_for_status(node, connection_status::connect_in_progress);
-                check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
+            // Advance until it's time to retry again
+            advance_time_by(std::chrono::seconds(2));
+            wait_for_status(node, connection_status::connect_in_progress);
+            check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
 
-                // Connection connects successfully this time
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Connection connects successfully this time
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -651,24 +608,21 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
+            // Wait until a connection is successfully connected
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
 
-                // Simulate a user picking the connection
-                node.mark_as_in_use();
-                check_shared_st(error_code(), diagnostics(), 0, 0);
+            // Simulate a user picking the connection
+            node.mark_as_in_use();
+            check_shared_st(error_code(), diagnostics(), 0, 0);
 
-                // Simulate a user returning the connection (without reset)
-                return_connection(node, false);
+            // Simulate a user returning the connection (without reset)
+            return_connection(node, false);
 
-                // The connection goes back to idle without invoking resets
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // The connection goes back to idle without invoking resets
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -685,25 +639,22 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait until a connection is successfully connected, then pick it up
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                node.mark_as_in_use();
+            // Wait until a connection is successfully connected, then pick it up
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            node.mark_as_in_use();
 
-                // Simulate a user returning the connection (with reset)
-                return_connection(node, true);
+            // Simulate a user returning the connection (with reset)
+            return_connection(node, true);
 
-                // A reset is issued
-                wait_for_status(node, connection_status::reset_in_progress);
-                check_shared_st(error_code(), diagnostics(), 1, 0);
+            // A reset is issued
+            wait_for_status(node, connection_status::reset_in_progress);
+            check_shared_st(error_code(), diagnostics(), 1, 0);
 
-                // Successful reset makes the connection idle again
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::pipeline);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Successful reset makes the connection idle again
+            step(node, fn_type::pipeline);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -720,26 +671,22 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connect, pick up and return a connection
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                node.mark_as_in_use();
-                return_connection(node, true);
-                wait_for_status(node, connection_status::reset_in_progress);
+            // Connect, pick up and return a connection
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            node.mark_as_in_use();
+            return_connection(node, true);
+            wait_for_status(node, connection_status::reset_in_progress);
 
-                // Reset fails. This triggers a reconnection. Diagnostics are not saved
-                BOOST_ASIO_CORO_YIELD
-                step(node, fn_type::pipeline, common_server_errc::er_aborting_connection);
-                wait_for_status(node, connection_status::connect_in_progress);
-                check_shared_st(error_code(), diagnostics(), 1, 0);
+            // Reset fails. This triggers a reconnection. Diagnostics are not saved
+            step(node, fn_type::pipeline, common_server_errc::er_aborting_connection);
+            wait_for_status(node, connection_status::connect_in_progress);
+            check_shared_st(error_code(), diagnostics(), 1, 0);
 
-                // Reconnect succeeds. We're idle again
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Reconnect succeeds. We're idle again
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -756,25 +703,22 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connect, pick up and return a connection
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                node.mark_as_in_use();
-                return_connection(node, true);
-                wait_for_status(node, connection_status::reset_in_progress);
+            // Connect, pick up and return a connection
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            node.mark_as_in_use();
+            return_connection(node, true);
+            wait_for_status(node, connection_status::reset_in_progress);
 
-                // Reset times out. This triggers a reconnection
-                advance_time_by(std::chrono::seconds(1));
-                wait_for_status(node, connection_status::connect_in_progress);
-                check_shared_st(error_code(), diagnostics(), 1, 0);
+            // Reset times out. This triggers a reconnection
+            advance_time_by(std::chrono::seconds(1));
+            wait_for_status(node, connection_status::connect_in_progress);
+            check_shared_st(error_code(), diagnostics(), 1, 0);
 
-                // Reconnect succeeds. We're idle again
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Reconnect succeeds. We're idle again
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -794,26 +738,22 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connect, pick up and return a connection
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                node.mark_as_in_use();
-                return_connection(node, true);
-                wait_for_status(node, connection_status::reset_in_progress);
+            // Connect, pick up and return a connection
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            node.mark_as_in_use();
+            return_connection(node, true);
+            wait_for_status(node, connection_status::reset_in_progress);
 
-                // Reset doesn't time out, regardless of how much time we wait
-                advance_time_by(std::chrono::hours(9999));
-                BOOST_ASIO_CORO_YIELD asio::post(std::move(*this));
-                BOOST_TEST(node.status() == connection_status::reset_in_progress);
-                check_shared_st(error_code(), diagnostics(), 1, 0);
+            // Reset doesn't time out, regardless of how much time we wait
+            advance_time_by(std::chrono::hours(9999));
+            poll_global_context([&]() { return node.status() == connection_status::reset_in_progress; });
+            check_shared_st(error_code(), diagnostics(), 1, 0);
 
-                // Reset succeeds
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::pipeline);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Reset succeeds
+            step(node, fn_type::pipeline);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -833,22 +773,19 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
+            // Wait until a connection is successfully connected
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
 
-                // Wait until ping interval ellapses. This triggers a ping
-                advance_time_by(std::chrono::seconds(100));
-                wait_for_status(node, connection_status::ping_in_progress);
-                check_shared_st(error_code(), diagnostics(), 1, 0);
+            // Wait until ping interval ellapses. This triggers a ping
+            advance_time_by(std::chrono::seconds(100));
+            wait_for_status(node, connection_status::ping_in_progress);
+            check_shared_st(error_code(), diagnostics(), 1, 0);
 
-                // After ping succeeds, connection goes back to idle
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::ping);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // After ping succeeds, connection goes back to idle
+            step(node, fn_type::ping);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -868,26 +805,22 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
+            // Wait until a connection is successfully connected
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
 
-                // Wait until ping interval ellapses
-                advance_time_by(std::chrono::seconds(100));
+            // Wait until ping interval ellapses
+            advance_time_by(std::chrono::seconds(100));
 
-                // Ping fails. This triggers a reconnection. Diagnostics are not saved
-                BOOST_ASIO_CORO_YIELD
-                step(node, fn_type::ping, common_server_errc::er_aborting_connection);
-                wait_for_status(node, connection_status::connect_in_progress);
-                check_shared_st(error_code(), diagnostics(), 1, 0);
+            // Ping fails. This triggers a reconnection. Diagnostics are not saved
+            step(node, fn_type::ping, common_server_errc::er_aborting_connection);
+            wait_for_status(node, connection_status::connect_in_progress);
+            check_shared_st(error_code(), diagnostics(), 1, 0);
 
-                // Reconnection succeeds
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Reconnection succeeds
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -907,25 +840,22 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
+            // Wait until a connection is successfully connected
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
 
-                // Wait until ping interval ellapses
-                advance_time_by(std::chrono::seconds(100));
-                wait_for_status(node, connection_status::ping_in_progress);
+            // Wait until ping interval ellapses
+            advance_time_by(std::chrono::seconds(100));
+            wait_for_status(node, connection_status::ping_in_progress);
 
-                // Ping times out. This triggers a reconnection. Diagnostics are not saved
-                advance_time_by(std::chrono::seconds(2));
-                wait_for_status(node, connection_status::connect_in_progress);
+            // Ping times out. This triggers a reconnection. Diagnostics are not saved
+            advance_time_by(std::chrono::seconds(2));
+            wait_for_status(node, connection_status::connect_in_progress);
 
-                // Reconnection succeeds
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Reconnection succeeds
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -946,26 +876,22 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
+            // Wait until a connection is successfully connected
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
 
-                // Wait until ping interval ellapses
-                advance_time_by(std::chrono::seconds(100));
-                wait_for_status(node, connection_status::ping_in_progress);
+            // Wait until ping interval ellapses
+            advance_time_by(std::chrono::seconds(100));
+            wait_for_status(node, connection_status::ping_in_progress);
 
-                // Ping doesn't time out, regardless of how much we wait
-                advance_time_by(std::chrono::hours(9999));
-                BOOST_ASIO_CORO_YIELD asio::post(std::move(*this));
-                BOOST_TEST(node.status() == connection_status::ping_in_progress);
+            // Ping doesn't time out, regardless of how much we wait
+            advance_time_by(std::chrono::hours(9999));
+            poll_global_context([&]() { return node.status() == connection_status::ping_in_progress; });
 
-                // Ping succeeds
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::ping);
-                wait_for_status(node, connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Ping succeeds
+            step(node, fn_type::ping);
+            wait_for_status(node, connection_status::idle);
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -986,18 +912,14 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait until a connection is successfully connected
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
+            // Wait until a connection is successfully connected
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
 
-                // Connection won't ping, regardless of how much time we wait
-                advance_time_by(std::chrono::hours(9999));
-                BOOST_ASIO_CORO_YIELD asio::post(std::move(*this));
-                BOOST_TEST(node.status() == connection_status::idle);
-                check_shared_st(error_code(), diagnostics(), 0, 1);
-            }
+            // Connection won't ping, regardless of how much time we wait
+            advance_time_by(std::chrono::hours(9999));
+            poll_global_context([&]() { return node.status() == connection_status::idle; });
+            check_shared_st(error_code(), diagnostics(), 0, 1);
         }
     };
 
@@ -1019,29 +941,25 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connection tries to connect and fails
-                BOOST_ASIO_CORO_YIELD
-                step(node, fn_type::connect, common_server_errc::er_aborting_connection);
-                wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+            // Connection tries to connect and fails
+            step(node, fn_type::connect, common_server_errc::er_aborting_connection);
+            wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
 
-                // A request for a connection is issued. The request doesn't find
-                // any available connection, and the current one is pending, so no new connections are created
-                task = create_task();
-                wait_for_num_requests(1);
-                BOOST_TEST(pool_.nodes().size() == 1u);
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            task = create_task();
+            wait_for_num_requests(1);
+            BOOST_TEST(pool_.nodes().size() == 1u);
 
-                // Retry interval ellapses and connection retries and succeeds
-                advance_time_by(std::chrono::seconds(2));
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
+            // Retry interval ellapses and connection retries and succeeds
+            advance_time_by(std::chrono::seconds(2));
+            step(node, fn_type::connect);
 
-                // Request is fulfilled
-                BOOST_ASIO_CORO_YIELD wait_for_task(task, node, false);
-                BOOST_TEST(node.status() == connection_status::in_use);
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(num_pending_requests() == 0u);
-            }
+            // Request is fulfilled
+            wait_for_task(task, node, false);
+            BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            BOOST_TEST(num_pending_requests() == 0u);
         }
     };
 
@@ -1061,21 +979,18 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 
         void invoke()
         {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // A request for a connection is issued. The request doesn't find
-                // any available connection, and the current one is pending, so no new connections are created
-                task = create_task(diag.get(), std::chrono::seconds(1));
-                wait_for_num_requests(1);
-                BOOST_TEST(pool_.nodes().size() == 1u);
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            task = create_task(diag.get(), std::chrono::seconds(1));
+            wait_for_num_requests(1);
+            BOOST_TEST(pool_.nodes().size() == 1u);
 
-                // The request timeout ellapses, so the request fails
-                advance_time_by(std::chrono::seconds(1));
-                BOOST_ASIO_CORO_YIELD wait_for_task(task, client_errc::timeout, false);
-                BOOST_TEST(*diag == diagnostics());
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(num_pending_requests() == 0u);
-            }
+            // The request timeout ellapses, so the request fails
+            advance_time_by(std::chrono::seconds(1));
+            wait_for_task(task, client_errc::timeout, false);
+            BOOST_TEST(*diag == diagnostics());
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            BOOST_TEST(num_pending_requests() == 0u);
         }
     };
 
@@ -1092,30 +1007,26 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
 
         void invoke()
         {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // A request for a connection is issued. The request doesn't find
-                // any available connection, and the current one is pending, so no new connections are created
-                task = create_task(diag.get(), std::chrono::seconds(1));
-                wait_for_num_requests(1);
-                BOOST_TEST(pool_.nodes().size() == 1u);
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            task = create_task(diag.get(), std::chrono::seconds(1));
+            wait_for_num_requests(1);
+            BOOST_TEST(pool_.nodes().size() == 1u);
 
-                // The connection fails to connect
-                BOOST_ASIO_CORO_YIELD
-                step(
-                    *pool_.nodes().begin(),
-                    fn_type::connect,
-                    common_server_errc::er_bad_db_error,
-                    create_server_diag("Bad db")
-                );
+            // The connection fails to connect
+            step(
+                *pool_.nodes().begin(),
+                fn_type::connect,
+                common_server_errc::er_bad_db_error,
+                create_server_diag("Bad db")
+            );
 
-                // The request timeout ellapses, so the request fails
-                advance_time_by(std::chrono::seconds(1));
-                BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error, false);
-                BOOST_TEST(*diag == create_server_diag("Bad db"));
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(num_pending_requests() == 0u);
-            }
+            // The request timeout ellapses, so the request fails
+            advance_time_by(std::chrono::seconds(1));
+            wait_for_task(task, common_server_errc::er_bad_db_error, false);
+            BOOST_TEST(*diag == create_server_diag("Bad db"));
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            BOOST_TEST(num_pending_requests() == 0u);
         }
     };
 
@@ -1133,29 +1044,25 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 
         void invoke()
         {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // A request for a connection is issued. The request doesn't find
-                // any available connection, and the current one is pending, so no new connections are created
-                task = create_task(nullptr, std::chrono::seconds(1));
-                wait_for_num_requests(1);
-                BOOST_TEST(pool_.nodes().size() == 1u);
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            task = create_task(nullptr, std::chrono::seconds(1));
+            wait_for_num_requests(1);
+            BOOST_TEST(pool_.nodes().size() == 1u);
 
-                // The connection fails to connect
-                BOOST_ASIO_CORO_YIELD
-                step(
-                    *pool_.nodes().begin(),
-                    fn_type::connect,
-                    common_server_errc::er_bad_db_error,
-                    create_server_diag("Bad db")
-                );
+            // The connection fails to connect
+            step(
+                *pool_.nodes().begin(),
+                fn_type::connect,
+                common_server_errc::er_bad_db_error,
+                create_server_diag("Bad db")
+            );
 
-                // The request timeout ellapses, so the request fails
-                advance_time_by(std::chrono::seconds(1));
-                BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error, false);
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(num_pending_requests() == 0u);
-            }
+            // The request timeout ellapses, so the request fails
+            advance_time_by(std::chrono::seconds(1));
+            wait_for_task(task, common_server_errc::er_bad_db_error, false);
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            BOOST_TEST(num_pending_requests() == 0u);
         }
     };
 
@@ -1172,18 +1079,15 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait for a connection to be ready
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
+            // Wait for a connection to be ready
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
 
-                // A request for a connection is issued. The request completes immediately
-                BOOST_ASIO_CORO_YIELD wait_for_task(create_task(), node, true);
-                BOOST_TEST(node.status() == connection_status::in_use);
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(num_pending_requests() == 0u);
-            }
+            // A request for a connection is issued. The request completes immediately
+            wait_for_task(create_task(), node, true);
+            BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            BOOST_TEST(num_pending_requests() == 0u);
         }
     };
 
@@ -1202,38 +1106,35 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
         {
             auto& node1 = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait for a connection to be ready, then get it from the pool
-                BOOST_ASIO_CORO_YIELD step(node1, fn_type::connect);
-                wait_for_status(node1, connection_status::idle);
-                BOOST_ASIO_CORO_YIELD wait_for_task(create_task(), node1, true);
+            // Wait for a connection to be ready, then get it from the pool
+            step(node1, fn_type::connect);
+            wait_for_status(node1, connection_status::idle);
+            wait_for_task(create_task(), node1, true);
 
-                // Another request is issued. The connection we have is in use, so another one is created.
-                // Since this is not immediate, the task will need to wait
-                task2 = create_task();
-                wait_for_num_requests(1);
-                node2 = &*std::next(pool_.nodes().begin());
+            // Another request is issued. The connection we have is in use, so another one is created.
+            // Since this is not immediate, the task will need to wait
+            task2 = create_task();
+            wait_for_num_requests(1);
+            node2 = &*std::next(pool_.nodes().begin());
 
-                // Connection connects successfully and is handed to us
-                BOOST_ASIO_CORO_YIELD step(*node2, fn_type::connect);
-                BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2, false);
-                BOOST_TEST(node2->status() == connection_status::in_use);
-                BOOST_TEST(pool_.nodes().size() == 2u);
-                BOOST_TEST(num_pending_requests() == 0u);
+            // Connection connects successfully and is handed to us
+            step(*node2, fn_type::connect);
+            wait_for_task(task2, *node2, false);
+            BOOST_TEST(node2->status() == connection_status::in_use);
+            BOOST_TEST(pool_.nodes().size() == 2u);
+            BOOST_TEST(num_pending_requests() == 0u);
 
-                // Another request is issued. All connections are in use but max size is already
-                // reached, so no new connection is created
-                task3 = create_task();
-                wait_for_num_requests(1);
-                BOOST_TEST(pool_.nodes().size() == 2u);
+            // Another request is issued. All connections are in use but max size is already
+            // reached, so no new connection is created
+            task3 = create_task();
+            wait_for_num_requests(1);
+            BOOST_TEST(pool_.nodes().size() == 2u);
 
-                // When one of the connections is returned, the request is fulfilled
-                return_connection(*node2, false);
-                BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node2, false);
-                BOOST_TEST(num_pending_requests() == 0u);
-                BOOST_TEST(pool_.nodes().size() == 2u);
-            }
+            // When one of the connections is returned, the request is fulfilled
+            return_connection(*node2, false);
+            wait_for_task(task3, *node2, false);
+            BOOST_TEST(num_pending_requests() == 0u);
+            BOOST_TEST(pool_.nodes().size() == 2u);
         }
     };
 
@@ -1255,40 +1156,37 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 
         void invoke()
         {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Issue some parallel requests
-                task1 = create_task();
-                task2 = create_task();
-                task3 = create_task();
-                task4 = create_task(nullptr, std::chrono::seconds(2));
-                task5 = create_task();
+            // Issue some parallel requests
+            task1 = create_task();
+            task2 = create_task();
+            task3 = create_task();
+            task4 = create_task(nullptr, std::chrono::seconds(2));
+            task5 = create_task();
 
-                // Two connections can be created. These fulfill two requests
-                node1 = &pool_.nodes().front();
-                node2 = &*std::next(pool_.nodes().begin());
-                BOOST_ASIO_CORO_YIELD step(*node1, fn_type::connect);
-                BOOST_ASIO_CORO_YIELD step(*node2, fn_type::connect);
-                BOOST_ASIO_CORO_YIELD wait_for_task(task1, *node1, false);
-                BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2, false);
+            // Two connections can be created. These fulfill two requests
+            node1 = &pool_.nodes().front();
+            node2 = &*std::next(pool_.nodes().begin());
+            step(*node1, fn_type::connect);
+            step(*node2, fn_type::connect);
+            wait_for_task(task1, *node1, false);
+            wait_for_task(task2, *node2, false);
 
-                // Time ellapses and task4 times out
-                advance_time_by(std::chrono::seconds(2));
-                BOOST_ASIO_CORO_YIELD wait_for_task(task4, client_errc::timeout, false);
+            // Time ellapses and task4 times out
+            advance_time_by(std::chrono::seconds(2));
+            wait_for_task(task4, client_errc::timeout, false);
 
-                // A connection is returned. The first task to enter is served
-                return_connection(*node1, true);
-                BOOST_ASIO_CORO_YIELD step(*node1, fn_type::pipeline);
-                BOOST_ASIO_CORO_YIELD wait_for_task(task3, *node1, false);
+            // A connection is returned. The first task to enter is served
+            return_connection(*node1, true);
+            step(*node1, fn_type::pipeline);
+            wait_for_task(task3, *node1, false);
 
-                // The next connection to be returned is for task5
-                return_connection(*node2, false);
-                BOOST_ASIO_CORO_YIELD wait_for_task(task5, *node2, false);
+            // The next connection to be returned is for task5
+            return_connection(*node2, false);
+            wait_for_task(task5, *node2, false);
 
-                // Done
-                BOOST_TEST(num_pending_requests() == 0u);
-                BOOST_TEST(pool_.nodes().size() == 2u);
-            }
+            // Done
+            BOOST_TEST(num_pending_requests() == 0u);
+            BOOST_TEST(pool_.nodes().size() == 2u);
         }
     };
 
@@ -1309,23 +1207,20 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
 
         void invoke()
         {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Issue some requests
-                task1 = create_task();
-                task2 = create_task();
-                wait_for_num_requests(2);
+            // Issue some requests
+            task1 = create_task();
+            task2 = create_task();
+            wait_for_num_requests(2);
 
-                // While in flight, cancel the pool
-                pool_.cancel_unsafe();
+            // While in flight, cancel the pool
+            pool_.cancel_unsafe();
 
-                // All tasks fail with a cancelled code
-                BOOST_ASIO_CORO_YIELD wait_for_task(task1, client_errc::cancelled, false);
-                BOOST_ASIO_CORO_YIELD wait_for_task(task2, client_errc::cancelled, false);
+            // All tasks fail with a cancelled code
+            wait_for_task(task1, client_errc::cancelled, false);
+            wait_for_task(task2, client_errc::cancelled, false);
 
-                // Further tasks fail immediately
-                BOOST_ASIO_CORO_YIELD wait_for_task(create_task(), client_errc::cancelled, true);
-            }
+            // Further tasks fail immediately
+            wait_for_task(create_task(), client_errc::cancelled, true);
         }
     };
 
@@ -1344,29 +1239,25 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connection tries to connect and fails
-                BOOST_ASIO_CORO_YIELD
-                step(node, fn_type::connect, common_server_errc::er_aborting_connection);
-                wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+            // Connection tries to connect and fails
+            step(node, fn_type::connect, common_server_errc::er_aborting_connection);
+            wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
 
-                // A request for a connection is issued. The request doesn't find
-                // any available connection, and the current one is pending, so no new connections are created
-                task = create_task();
-                wait_for_num_requests(1);
-                BOOST_TEST(pool_.nodes().size() == 1u);
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            task = create_task();
+            wait_for_num_requests(1);
+            BOOST_TEST(pool_.nodes().size() == 1u);
 
-                // Retry interval ellapses and connection retries and succeeds
-                advance_time_by(std::chrono::seconds(2));
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
+            // Retry interval ellapses and connection retries and succeeds
+            advance_time_by(std::chrono::seconds(2));
+            step(node, fn_type::connect);
 
-                // Request is fulfilled
-                BOOST_ASIO_CORO_YIELD wait_for_task(task, node, false);
-                BOOST_TEST(node.status() == connection_status::in_use);
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(num_pending_requests() == 0u);
-            }
+            // Request is fulfilled
+            wait_for_task(task, node, false);
+            BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            BOOST_TEST(num_pending_requests() == 0u);
         }
     };
 
@@ -1387,30 +1278,26 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
 
         void invoke()
         {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // A request for a connection is issued. The request doesn't find
-                // any available connection, and the current one is pending, so no new connections are created
-                task = create_task(diag.get(), std::chrono::seconds(1));
-                wait_for_num_requests(1);
-                BOOST_TEST(pool_.nodes().size() == 1u);
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            task = create_task(diag.get(), std::chrono::seconds(1));
+            wait_for_num_requests(1);
+            BOOST_TEST(pool_.nodes().size() == 1u);
 
-                // The connection fails to connect
-                BOOST_ASIO_CORO_YIELD
-                step(
-                    *pool_.nodes().begin(),
-                    fn_type::connect,
-                    common_server_errc::er_bad_db_error,
-                    create_server_diag("Bad db")
-                );
+            // The connection fails to connect
+            step(
+                *pool_.nodes().begin(),
+                fn_type::connect,
+                common_server_errc::er_bad_db_error,
+                create_server_diag("Bad db")
+            );
 
-                // The request timeout ellapses, so the request fails
-                advance_time_by(std::chrono::seconds(1));
-                BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error, false);
-                BOOST_TEST(*diag == create_server_diag("Bad db"));
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(num_pending_requests() == 0u);
-            }
+            // The request timeout ellapses, so the request fails
+            advance_time_by(std::chrono::seconds(1));
+            wait_for_task(task, common_server_errc::er_bad_db_error, false);
+            BOOST_TEST(*diag == create_server_diag("Bad db"));
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            BOOST_TEST(num_pending_requests() == 0u);
         }
     };
 
@@ -1430,18 +1317,15 @@ BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Wait for a connection to be ready
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
-                wait_for_status(node, connection_status::idle);
+            // Wait for a connection to be ready
+            step(node, fn_type::connect);
+            wait_for_status(node, connection_status::idle);
 
-                // A request for a connection is issued. The request completes immediately
-                BOOST_ASIO_CORO_YIELD wait_for_task(create_task(), node, false);
-                BOOST_TEST(node.status() == connection_status::in_use);
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_TEST(num_pending_requests() == 0u);
-            }
+            // A request for a connection is issued. The request completes immediately
+            wait_for_task(create_task(), node, false);
+            BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            BOOST_TEST(num_pending_requests() == 0u);
         }
     };
 
@@ -1461,18 +1345,15 @@ BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
 
         void invoke()
         {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // No connections created at this point. A connection request arrives
-                BOOST_TEST(pool_.nodes().size() == 0u);
-                task = create_task();
+            // No connections created at this point. A connection request arrives
+            BOOST_TEST(pool_.nodes().size() == 0u);
+            task = create_task();
 
-                // This creates a new connection, which fulfills the request
-                wait_for_num_requests(1);
-                BOOST_TEST(pool_.nodes().size() == 1u);
-                BOOST_ASIO_CORO_YIELD step(pool_.nodes().front(), fn_type::connect);
-                BOOST_ASIO_CORO_YIELD wait_for_task(task, pool_.nodes().front(), false);
-            }
+            // This creates a new connection, which fulfills the request
+            wait_for_num_requests(1);
+            BOOST_TEST(pool_.nodes().size() == 1u);
+            step(pool_.nodes().front(), fn_type::connect);
+            wait_for_task(task, pool_.nodes().front(), false);
         }
     };
 
@@ -1489,20 +1370,17 @@ BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
     {
         asio::ssl::context::native_handle_type expected_handle;
 
-        op(mock_pool& pool, bool& finished, asio::ssl::context::native_handle_type ssl_handle)
-            : pool_test_op<op>(pool, finished), expected_handle(ssl_handle)
+        op(mock_pool& pool, asio::ssl::context::native_handle_type ssl_handle)
+            : pool_test_op<op>(pool), expected_handle(ssl_handle)
         {
         }
 
         void invoke()
         {
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                auto ctor_params = pool_.nodes().front().connection().ctor_params;
-                BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
-                BOOST_TEST(ctor_params.ssl_context->native_handle() == expected_handle);
-                BOOST_TEST(ctor_params.initial_buffer_size == 16u);
-            }
+            auto ctor_params = pool_.nodes().front().connection().ctor_params;
+            BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
+            BOOST_TEST(ctor_params.ssl_context->native_handle() == expected_handle);
+            BOOST_TEST(ctor_params.initial_buffer_size == 16u);
         }
     };
 
@@ -1528,22 +1406,19 @@ BOOST_AUTO_TEST_CASE(params_connect_1)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connect
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
+            // Connect
+            step(node, fn_type::connect);
 
-                // Check params
-                const auto& cparams = node.connection().last_connect_params;
-                BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
-                BOOST_TEST(cparams.server_address.hostname() == "myhost");
-                BOOST_TEST(cparams.server_address.port() == std::uint16_t(1234));
-                BOOST_TEST(cparams.username == "myuser");
-                BOOST_TEST(cparams.password == "mypasswd");
-                BOOST_TEST(cparams.database == "mydb");
-                BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::disable);
-                BOOST_TEST(cparams.multi_queries == true);
-            }
+            // Check params
+            const auto& cparams = node.connection().last_connect_params;
+            BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
+            BOOST_TEST(cparams.server_address.hostname() == "myhost");
+            BOOST_TEST(cparams.server_address.port() == std::uint16_t(1234));
+            BOOST_TEST(cparams.username == "myuser");
+            BOOST_TEST(cparams.password == "mypasswd");
+            BOOST_TEST(cparams.database == "mydb");
+            BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::disable);
+            BOOST_TEST(cparams.multi_queries == true);
         }
     };
 
@@ -1568,21 +1443,18 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
         {
             auto& node = pool_.nodes().front();
 
-            BOOST_ASIO_CORO_REENTER(*this)
-            {
-                // Connect
-                BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
+            // Connect
+            step(node, fn_type::connect);
 
-                // Check params
-                const auto& cparams = node.connection().last_connect_params;
-                BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
-                BOOST_TEST(cparams.server_address.unix_socket_path() == "/mysock");
-                BOOST_TEST(cparams.username == "myuser2");
-                BOOST_TEST(cparams.password == "mypasswd2");
-                BOOST_TEST(cparams.database == "mydb2");
-                BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
-                BOOST_TEST(cparams.multi_queries == false);
-            }
+            // Check params
+            const auto& cparams = node.connection().last_connect_params;
+            BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
+            BOOST_TEST(cparams.server_address.unix_socket_path() == "/mysock");
+            BOOST_TEST(cparams.username == "myuser2");
+            BOOST_TEST(cparams.password == "mypasswd2");
+            BOOST_TEST(cparams.database == "mydb2");
+            BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
+            BOOST_TEST(cparams.multi_queries == false);
         }
     };
 

@@ -11,6 +11,8 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/core/span.hpp>
 
+#include <functional>
+
 namespace boost {
 namespace mysql {
 namespace test {
@@ -52,7 +54,8 @@ bool is_initiation_function();
 
 asio::any_io_executor global_context_executor();
 void run_global_context();
-void poll_global_context(const bool* done);  // run until *done == true
+void poll_global_context(const bool* done);                   // run until *done == true
+void poll_global_context(const std::function<bool()>& done);  // run until done() == true
 
 }  // namespace test
 }  // namespace mysql
