@@ -11,6 +11,7 @@ add_executable(
     # Helpers
     src/test_stream.cpp
     src/printing.cpp
+    src/mock_timer.cpp
 
     # Actual tests
     test/auth/auth.cpp

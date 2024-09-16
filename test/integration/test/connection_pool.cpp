@@ -423,7 +423,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_extends_pool_lifetime, fixture)
     pool.reset();
 
     // Dispatch any pending handler. We didn't crash
-    run_global_context();
+    poll_global_context();
 }
 
 // Spotcheck: the different async_get_connection overloads work

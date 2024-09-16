@@ -32,14 +32,16 @@
 #include <chrono>
 #include <utility>
 
-#include "mock_timer.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/tracker_executor.hpp"
+#include "test_unit/mock_timer.hpp"
 
 #ifdef __cpp_lib_polymorphic_allocator
 #include <memory_resource>
 #endif
 
 using namespace boost::mysql;
+using namespace boost::mysql::test;
 namespace asio = boost::asio;
 using detail::run_with_timeout;
 using std::chrono::seconds;
@@ -92,10 +94,10 @@ class mock_io_obj
 public:
     template <class CompletionToken>
     auto async_f(CompletionToken&& token) -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-        initiate_f{},
-        token,
-        std::declval<mock_io_obj*>()
-    ))
+                                              initiate_f{},
+                                              token,
+                                              std::declval<mock_io_obj*>()
+                                          ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(initiate_f{}, token, this);
     }
@@ -115,16 +117,13 @@ public:
 struct fixture
 {
     // Context and objects
-    asio::io_context ctx;
     mock_io_obj io;
-    test::mock_timer tim{ctx.get_executor()};
+    test::mock_timer tim{global_context_executor()};
 
     // Ensure the operation finished
     bool finished{false};
 
     void set_finished() noexcept { finished = true; }
-
-    ~fixture() { BOOST_TEST(finished); }
 };
 
 // The operation finishes first and successfully
@@ -137,8 +136,8 @@ BOOST_FIXTURE_TEST_CASE(op_first_ok, fixture)
     });
 
     // Complete
-    io.complete(error_code(), ctx.get_executor());
-    ctx.poll();
+    io.complete(error_code(), global_context_executor());
+    poll_global_context(&finished);
 }
 
 // The operation finishes first with an error
@@ -151,8 +150,8 @@ BOOST_FIXTURE_TEST_CASE(op_first_error, fixture)
     });
 
     // Complete with an error
-    io.complete(client_errc::extra_bytes, ctx.get_executor());
-    ctx.poll();
+    io.complete(client_errc::extra_bytes, global_context_executor());
+    poll_global_context(&finished);
 }
 
 // The operation finishes first and at the same time than the timer
@@ -165,11 +164,11 @@ BOOST_FIXTURE_TEST_CASE(op_first_timer_ok, fixture)
     });
 
     // Time elapses
-    test::advance_time_by(ctx, seconds(60));
+    mock_clock::advance_time_by(seconds(60));
 
     // Operation completes successfully
-    io.complete(error_code(), ctx.get_executor());
-    ctx.poll();
+    io.complete(error_code(), global_context_executor());
+    poll_global_context(&finished);
 }
 
 // The timer finishes first without an error (timeout)
@@ -182,8 +181,8 @@ BOOST_FIXTURE_TEST_CASE(timer_first_ok, fixture)
     });
 
     // Advance time
-    test::advance_time_by(ctx, seconds(60));
-    ctx.poll();
+    mock_clock::advance_time_by(seconds(60));
+    poll_global_context(&finished);
 }
 
 // The timer finishes first because it was cancelled
@@ -197,7 +196,7 @@ BOOST_FIXTURE_TEST_CASE(timer_first_cancelled, fixture)
 
     // Cancel the timer
     tim.cancel();
-    ctx.poll();
+    poll_global_context(&finished);
 }
 
 // Zero timeout disables it
@@ -210,13 +209,13 @@ BOOST_FIXTURE_TEST_CASE(timeout_zero, fixture)
     });
 
     // Advancing time does nothing
-    test::advance_time_by(ctx, seconds(60));
-    ctx.poll();
+    mock_clock::advance_time_by(seconds(60));
+    static_cast<asio::io_context&>(global_context_executor().context()).poll();
     BOOST_TEST(!finished);
 
     // Complete
-    io.complete(error_code(), ctx.get_executor());
-    ctx.poll();
+    io.complete(error_code(), global_context_executor());
+    poll_global_context(&finished);
 }
 
 // We release any allocated memory before calling the final handler
@@ -266,8 +265,8 @@ BOOST_FIXTURE_TEST_CASE(memory_released_before_calling_handler, fixture)
 
     // Run the op and complete
     run_with_timeout(io.async_f(asio::deferred), tim, seconds(60), handler{&resource, this});
-    io.complete(error_code(), ctx.get_executor());
-    ctx.poll();
+    io.complete(error_code(), global_context_executor());
+    poll_global_context(&finished);
 }
 #endif
 

@@ -11,10 +11,12 @@
 #include <boost/asio/execution_context.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/require.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -248,30 +250,38 @@ static boost::asio::io_context g_ctx;
 
 boost::asio::any_io_executor boost::mysql::test::global_context_executor() { return g_ctx.get_executor(); }
 
-void boost::mysql::test::run_global_context()
+void boost::mysql::test::poll_global_context()
 {
     g_ctx.restart();
-    g_ctx.run();
+    g_ctx.poll();
 }
 
-void boost::mysql::test::poll_global_context(const bool* done)
+void boost::mysql::test::poll_global_context(const bool* done, source_location loc)
 {
-    using std::chrono::steady_clock;
+    poll_global_context([done]() { return *done; }, loc);
+}
 
-    // Restart the context, in case it was stopped
-    g_ctx.restart();
-
-    // Poll until this time point
-    constexpr std::chrono::seconds timeout(5);
-    auto timeout_tp = steady_clock::now() + timeout;
-
-    // Perform the polling
-    do
+void boost::mysql::test::poll_global_context(const std::function<bool()>& done, source_location loc)
+{
+    BOOST_TEST_CONTEXT("Called from " << loc)
     {
-        g_ctx.poll();
-        std::this_thread::yield();
-    } while (!*done && steady_clock::now() < timeout_tp);
+        using std::chrono::steady_clock;
 
-    // Check for timeout
-    BOOST_TEST_REQUIRE(*done);
+        // Restart the context, in case it was stopped
+        g_ctx.restart();
+
+        // Poll until this time point
+        constexpr std::chrono::seconds timeout(5);
+        auto timeout_tp = steady_clock::now() + timeout;
+
+        // Perform the polling
+        while (!done() && steady_clock::now() < timeout_tp)
+        {
+            g_ctx.poll();
+            std::this_thread::yield();
+        }
+
+        // Check for timeout
+        BOOST_TEST_REQUIRE(done());
+    }
 }

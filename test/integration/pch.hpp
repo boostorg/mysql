@@ -33,6 +33,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <functional>
 #include <iterator>
 #include <ostream>
 #include <stdexcept>
