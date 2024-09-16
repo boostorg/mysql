@@ -23,6 +23,7 @@
 #include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/steady_timer.hpp>
@@ -37,23 +38,12 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Traits to use by default for nodes. Templating on traits provides
-// a way to mock dependencies in tests. Production code only uses
-// instantiations that use io_traits.
-// Having this as a traits type (as opposed to individual template params)
-// allows us to forward-declare io_traits without having to include steady_timer
-struct io_traits
-{
-    using connection_type = any_connection;
-    using timer_type = asio::steady_timer;
-};
-
 // State shared between connection tasks
-template <class IoTraits>
+template <class ConnectionType, class ClockType>
 struct conn_shared_state
 {
-    intrusive::list<basic_connection_node<IoTraits>> idle_list;
-    timer_list<typename IoTraits::timer_type> pending_requests;
+    intrusive::list<basic_connection_node<ConnectionType, ClockType>> idle_list;
+    timer_list<ClockType> pending_requests;
     std::size_t num_pending_connections{0};
     error_code last_ec;
     diagnostics last_diag;
@@ -61,18 +51,17 @@ struct conn_shared_state
 
 // The templated type is never exposed to the user. We template
 // so tests can inject mocks.
-template <class IoTraits>
+template <class ConnectionType, class ClockType>
 class basic_connection_node : public intrusive::list_base_hook<>,
-                              public sansio_connection_node<basic_connection_node<IoTraits>>
+                              public sansio_connection_node<basic_connection_node<ConnectionType, ClockType>>
 {
-    using this_type = basic_connection_node<IoTraits>;
-    using connection_type = typename IoTraits::connection_type;
-    using timer_type = typename IoTraits::timer_type;
+    using this_type = basic_connection_node<ConnectionType, ClockType>;
+    using timer_type = asio::basic_waitable_timer<ClockType>;
 
     // Not thread-safe, must be manipulated within the pool's executor
     const internal_pool_params* params_;
-    conn_shared_state<IoTraits>* shared_st_;
-    connection_type conn_;
+    conn_shared_state<ConnectionType, ClockType>* shared_st_;
+    ConnectionType conn_;
     timer_type timer_;
     diagnostics connect_diag_;
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
@@ -84,7 +73,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     std::atomic<collection_state> collection_state_{collection_state::none};
 
     // Hooks for sansio_connection_node
-    friend class sansio_connection_node<basic_connection_node<IoTraits>>;
+    friend class sansio_connection_node<this_type>;
     void entering_idle()
     {
         shared_st_->idle_list.push_back(*this);
@@ -180,7 +169,7 @@ public:
         internal_pool_params& params,
         boost::asio::any_io_executor pool_ex,
         boost::asio::any_io_executor conn_ex,
-        conn_shared_state<IoTraits>& shared_st,
+        conn_shared_state<ConnectionType, ClockType>& shared_st,
         const pipeline_request* reset_pipeline_req
     )
         : params_(&params),
@@ -207,8 +196,8 @@ public:
         return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token);
     }
 
-    connection_type& connection() noexcept { return conn_; }
-    const connection_type& connection() const noexcept { return conn_; }
+    ConnectionType& connection() noexcept { return conn_; }
+    const ConnectionType& connection() const noexcept { return conn_; }
 
     // Not thread-safe, must be called within the pool's executor
     void notify_collectable() { collection_timer_.cancel(); }

@@ -25,6 +25,7 @@
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
@@ -54,14 +55,15 @@ inline pipeline_request make_reset_pipeline()
 
 // Templating on ConnectionWrapper is useful for mocking in tests.
 // Production code always uses ConnectionWrapper = pooled_connection.
-template <class IoTraits, class ConnectionWrapper>
-class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTraits, ConnectionWrapper>>
+template <class ConnectionType, class ClockType, class ConnectionWrapper>
+class basic_pool_impl
+    : public std::enable_shared_from_this<basic_pool_impl<ConnectionType, ClockType, ConnectionWrapper>>
 {
-    using this_type = basic_pool_impl<IoTraits, ConnectionWrapper>;
-    using node_type = basic_connection_node<IoTraits>;
-    using timer_type = typename IoTraits::timer_type;
-    using timer_block_type = timer_block<timer_type>;
-    using shared_state_type = conn_shared_state<IoTraits>;
+    using this_type = basic_pool_impl<ConnectionType, ClockType, ConnectionWrapper>;
+    using node_type = basic_connection_node<ConnectionType, ClockType>;
+    using timer_type = asio::basic_waitable_timer<ClockType>;
+    using timer_block_type = timer_block<ClockType>;
+    using shared_state_type = conn_shared_state<ConnectionType, ClockType>;
 
     enum class state_t
     {
@@ -200,7 +202,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
         std::chrono::steady_clock::time_point timeout_;
         std::unique_ptr<timer_block_type> timer_;
         error_code result_ec_;
-        basic_connection_node<IoTraits>* result_conn_{};
+        node_type* result_conn_{};
 
         get_connection_op(
             std::shared_ptr<this_type> obj,
@@ -276,7 +278,7 @@ class basic_pool_impl : public std::enable_shared_from_this<basic_pool_impl<IoTr
                     // Allocate a timer to perform waits.
                     if (!timer_)
                     {
-                        timer_.reset(new timer_block<typename IoTraits::timer_type>(obj_->pool_ex_));
+                        timer_.reset(new timer_block_type(obj_->pool_ex_));
                         obj_->shared_st_.pending_requests.push_back(*timer_);
                     }
 

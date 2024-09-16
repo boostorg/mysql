@@ -48,10 +48,10 @@
 #include <ostream>
 #include <utility>
 
-#include "mock_timer.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
+#include "test_unit/mock_timer.hpp"
 #include "test_unit/printing.hpp"
 
 // These tests rely on channels, which are not compatible with this
@@ -265,16 +265,9 @@ public:
     }
 };
 
-// Mock for io_traits
-struct mock_io_traits
-{
-    using connection_type = mock_connection;
-    using timer_type = mock_timer;
-};
-
 struct mock_pooled_connection;
-using mock_node = detail::basic_connection_node<mock_io_traits>;
-using mock_pool = detail::basic_pool_impl<mock_io_traits, mock_pooled_connection>;
+using mock_node = detail::basic_connection_node<mock_connection, mock_clock>;
+using mock_pool = detail::basic_pool_impl<mock_connection, mock_clock, mock_pooled_connection>;
 
 // Mock for pooled_connection
 struct mock_pooled_connection

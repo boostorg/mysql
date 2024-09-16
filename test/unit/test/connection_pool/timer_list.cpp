@@ -23,8 +23,8 @@ BOOST_AUTO_TEST_SUITE(test_timer_list)
 
 // We use real timers to verify that cancel semantics integrate
 // correctly with our code
-using list_t = timer_list<asio::steady_timer>;
-using block_t = timer_block<asio::steady_timer>;
+using list_t = timer_list<std::chrono::steady_clock>;
+using block_t = timer_block<std::chrono::steady_clock>;
 
 struct fixture
 {

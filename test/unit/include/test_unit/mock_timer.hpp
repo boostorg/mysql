@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_TEST_CONNECTION_POOL_MOCK_TIMER_HPP
-#define BOOST_MYSQL_TEST_UNIT_TEST_CONNECTION_POOL_MOCK_TIMER_HPP
+#ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_MOCK_TIMER_HPP
+#define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_MOCK_TIMER_HPP
 
 #include <boost/mysql/error_code.hpp>
 
@@ -16,10 +16,12 @@
 #include <boost/asio/append.hpp>
 #include <boost/asio/associated_cancellation_slot.hpp>
 #include <boost/asio/associated_executor.hpp>
+#include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/execution_context.hpp>
 #include <boost/asio/executor_work_guard.hpp>
 #include <boost/asio/post.hpp>
+#include <boost/asio/wait_traits.hpp>
 
 #include <chrono>
 #include <cstddef>
@@ -85,7 +87,7 @@ public:
     // Used by timer's wait initiation
     void add_timer(pending_timer&& t)
     {
-        if (t.expiry <= current_time_)
+        if (t.expiry <= current_time())
         {
             // If the timer's expiry is in the past, directly call the handler
             post_handler(std::move(t), error_code());
@@ -133,21 +135,22 @@ public:
             else
                 ++it;
         }
-        current_time_ = new_time;
+        set_current_time(new_time);
     }
 
     // Same, but with a duration
-    void advance_time_by(std::chrono::steady_clock::duration by) { advance_time_to(current_time_ + by); }
+    void advance_time_by(std::chrono::steady_clock::duration by) { advance_time_to(current_time() + by); }
 
     // Used by timers, to retrieve their timer id
     int allocate_timer_id() { return ++current_timer_id_; }
 
-    std::chrono::steady_clock::time_point current_time() const noexcept { return current_time_; }
+    std::chrono::steady_clock::time_point current_time() const;
 
 private:
     std::list<pending_timer> pending_;
-    std::chrono::steady_clock::time_point current_time_;
     int current_timer_id_{0};
+
+    void set_current_time(std::chrono::steady_clock::time_point to);
 
     struct cancel_handler
     {
@@ -214,7 +217,7 @@ void advance_time_by(ExecutionContext& ctx, std::chrono::steady_clock::duration 
 }
 
 // A mock for asio::steady_timer
-class mock_timer
+class mock_timer_impl
 {
     mock_timer_service* svc_;
     int timer_id_;
@@ -224,7 +227,7 @@ class mock_timer
     struct initiate_wait
     {
         template <class Handler>
-        void operator()(Handler&& h, mock_timer* self)
+        void operator()(Handler&& h, mock_timer_impl* self)
         {
             self->svc_->add_timer({
                 self->expiry_,
@@ -237,7 +240,7 @@ class mock_timer
     };
 
 public:
-    mock_timer(asio::any_io_executor ex)
+    mock_timer_impl(asio::any_io_executor ex)
         : svc_(&asio::use_service<mock_timer_service>(ex.context())),
           timer_id_(svc_->allocate_timer_id()),
           ex_(std::move(ex)),
@@ -245,7 +248,8 @@ public:
     {
     }
 
-    mock_timer(asio::any_io_executor ex, std::chrono::steady_clock::time_point tp) : mock_timer(std::move(ex))
+    mock_timer_impl(asio::any_io_executor ex, std::chrono::steady_clock::time_point tp)
+        : mock_timer_impl(std::move(ex))
     {
         expires_at(tp);
     }
@@ -272,14 +276,47 @@ public:
         -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
             initiate_wait(),
             token,
-            std::declval<mock_timer*>()
+            std::declval<mock_timer_impl*>()
         ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(initiate_wait(), token, this);
     }
 };
 
+struct mock_clock
+{
+    using rep = typename std::chrono::steady_clock::rep;
+    using period = typename std::chrono::steady_clock::period;
+    using duration = typename std::chrono::steady_clock::duration;
+    using time_point = typename std::chrono::steady_clock::time_point;
+    static constexpr bool is_steady = true;
+    time_point now();
+};
+
 }  // namespace test
+}  // namespace mysql
+}  // namespace boost
+
+namespace boost {
+namespace asio {
+
+template <>
+class basic_waitable_timer<mysql::test::mock_clock> : public mysql::test::mock_timer_impl
+{
+public:
+    using mysql::test::mock_timer_impl::mock_timer_impl;
+};
+
+}  // namespace asio
+}  // namespace boost
+
+namespace boost {
+namespace mysql {
+namespace test {
+
+using mock_timer = asio::basic_waitable_timer<mysql::test::mock_clock>;
+
+}
 }  // namespace mysql
 }  // namespace boost
 
