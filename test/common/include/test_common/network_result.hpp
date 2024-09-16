@@ -15,6 +15,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/associated_cancellation_slot.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/io_context.hpp>
@@ -235,7 +236,6 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
 
 struct as_netresult_t
 {
-    asio::cancellation_slot slot;
 };
 
 constexpr as_netresult_t as_netresult{};
@@ -364,7 +364,7 @@ public:
             std::integral_constant<bool, diag_found>{},
             diag_pos{},
             std::forward<Initiation>(initiation),
-            token.slot,
+            token,
             std::forward<Args>(args)...
         );
     }
@@ -380,7 +380,7 @@ public:
     {
         return do_initiate_impl(
             std::forward<Initiation>(initiation),
-            token.slot,
+            token,
             diag,
             diag,
             std::forward<Args>(args)...
@@ -394,13 +394,13 @@ private:
         std::true_type /* diag_found */,
         mp11::mp_size_t<N> /* diag_pos */,
         Initiation&& initiation,
-        asio::cancellation_slot slot,
+        mysql::test::as_netresult_t token,
         Args&&... args
     )
     {
         return do_initiate_impl(
             std::forward<Initiation>(initiation),
-            slot,
+            token,
             std::get<N>(std::tuple<Args&...>{args...}),
             std::forward<Args>(args)...
         );
@@ -412,13 +412,13 @@ private:
         std::false_type /* diag_found */,
         mp11::mp_size_t<N> /* diag_pos */,
         Initiation&& initiation,
-        asio::cancellation_slot slot,
+        mysql::test::as_netresult_t token,
         Args&&... args
     )
     {
         return do_initiate_impl(
             std::forward<Initiation>(initiation),
-            slot,
+            token,
             nullptr,
             std::forward<Args>(args)...
         );
@@ -427,7 +427,7 @@ private:
     template <typename Initiation, typename... Args>
     static return_type do_initiate_impl(
         Initiation&& initiation,
-        asio::cancellation_slot slot,
+        mysql::test::as_netresult_t token,
         mysql::diagnostics* diag,
         Args&&... args
     )
@@ -444,7 +444,11 @@ private:
 
         // Actually call the initiation function
         std::forward<Initiation>(initiation)(
-            mysql::test::test_detail::as_netres_handler<R>(netres, diag, slot),
+            mysql::test::test_detail::as_netres_handler<R>(
+                netres,
+                diag,
+                asio::get_associated_cancellation_slot(token)
+            ),
             std::forward<Args>(args)...
         );
 
