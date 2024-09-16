@@ -275,14 +275,13 @@ void boost::mysql::test::poll_global_context(const std::function<bool()>& done, 
         auto timeout_tp = steady_clock::now() + timeout;
 
         // Perform the polling
-        bool done_value = false;
-        while (!(done_value = done()) && steady_clock::now() < timeout_tp)
+        while (!done() && steady_clock::now() < timeout_tp)
         {
             g_ctx.poll();
             std::this_thread::yield();
         }
 
         // Check for timeout
-        BOOST_TEST_REQUIRE(done_value);
+        BOOST_TEST_REQUIRE(done());
     }
 }
