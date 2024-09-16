@@ -393,10 +393,10 @@ public:
 // The base class for all test ops. All test must define an op struct derived
 // from pool_test_op, defining an invoke() coroutine running the test,
 // then call pool_test<op>
-class pool_test_op_base : public asio::coroutine
+class pool_test_op
 {
 public:
-    pool_test_op_base(mock_pool& pool) : pool_(pool) {}
+    pool_test_op(mock_pool& pool) : pool_(pool) {}
 
     using executor_type = asio::any_io_executor;
     asio::any_io_executor get_executor() const { return pool_.get_executor(); }
@@ -490,21 +490,6 @@ protected:
     }
 };
 
-template <class D>
-class pool_test_op : public pool_test_op_base
-{
-    D& derived_this() { return static_cast<D&>(*this); }
-
-public:
-    using pool_test_op_base::pool_test_op_base;
-
-    void operator()()
-    {
-        derived_this().invoke();
-        pool_.cancel();
-    }
-};
-
 // The test body
 template <class TestOp, class... Args>
 static void pool_test(boost::mysql::pool_params params, Args&&... args)
@@ -522,18 +507,19 @@ static void pool_test(boost::mysql::pool_params params, Args&&... args)
     auto res = pool->async_run(as_netresult);
 
     // Run the test
-    test();
+    test.invoke();
 
-    // Run the test
+    // Finish the pool
+    pool->cancel();
     std::move(res).validate_no_error_nodiag();
 }
 
 // connection lifecycle
 BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         static diagnostics expected_diag() { return create_server_diag("Connection error!"); }
 
@@ -572,9 +558,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 
 BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -610,9 +596,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
 
 BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -642,9 +628,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -675,9 +661,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -708,9 +694,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -744,9 +730,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -780,9 +766,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -813,9 +799,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -849,9 +835,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -886,9 +872,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -923,9 +909,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -952,9 +938,9 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
 // async_get_connection
 BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         get_connection_task task;
 
         void invoke()
@@ -992,9 +978,9 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         get_connection_task task;
         std::unique_ptr<diagnostics> diag{new diagnostics()};
 
@@ -1022,9 +1008,9 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         get_connection_task task;
         std::unique_ptr<diagnostics> diag{new diagnostics()};
 
@@ -1062,9 +1048,9 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 {
     // We don't crash if diag is nullptr
 
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         get_connection_task task;
 
         void invoke()
@@ -1098,9 +1084,9 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 
 BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -1124,9 +1110,9 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 
 BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         mock_node* node2{};
         get_connection_task task2, task3;
 
@@ -1177,9 +1163,9 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 {
     // 2 connection nodes are created from the beginning
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         mock_node *node1{}, *node2{};
         get_connection_task task1, task2, task3, task4, task5;
 
@@ -1230,9 +1216,9 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 
 BOOST_AUTO_TEST_CASE(get_connection_cancel)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         mock_node *node1{}, *node2{};
         get_connection_task task1, task2;
 
@@ -1263,9 +1249,9 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
 // thread_safe works as intended
 BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         get_connection_task task;
 
         void invoke()
@@ -1304,9 +1290,9 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
 
 BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         get_connection_task task;
         std::unique_ptr<diagnostics> diag{new diagnostics()};
 
@@ -1345,9 +1331,9 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
 
 BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -1375,9 +1361,9 @@ BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
 // pool size 0 works
 BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
         get_connection_task task;
 
         void invoke()
@@ -1403,12 +1389,12 @@ BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
 // pool_params have the intended effect
 BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
         asio::ssl::context::native_handle_type expected_handle;
 
         op(mock_pool& pool, asio::ssl::context::native_handle_type ssl_handle)
-            : pool_test_op<op>(pool), expected_handle(ssl_handle)
+            : pool_test_op(pool), expected_handle(ssl_handle)
         {
         }
 
@@ -1436,9 +1422,9 @@ BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
 
 BOOST_AUTO_TEST_CASE(params_connect_1)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
@@ -1474,9 +1460,9 @@ BOOST_AUTO_TEST_CASE(params_connect_1)
 
 BOOST_AUTO_TEST_CASE(params_connect_2)
 {
-    struct op : pool_test_op<op>
+    struct op : pool_test_op
     {
-        using pool_test_op<op>::pool_test_op;
+        using pool_test_op::pool_test_op;
 
         void invoke()
         {
