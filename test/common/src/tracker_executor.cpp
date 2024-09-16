@@ -250,10 +250,10 @@ static boost::asio::io_context g_ctx;
 
 boost::asio::any_io_executor boost::mysql::test::global_context_executor() { return g_ctx.get_executor(); }
 
-void boost::mysql::test::run_global_context()
+void boost::mysql::test::poll_global_context()
 {
     g_ctx.restart();
-    g_ctx.run();
+    g_ctx.poll();
 }
 
 void boost::mysql::test::poll_global_context(const bool* done, source_location loc)

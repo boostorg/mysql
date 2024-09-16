@@ -55,17 +55,17 @@ struct initiation_guard
 };
 bool is_initiation_function();
 
+// Global I/O context
 asio::any_io_executor global_context_executor();
-void run_global_context();
-
-// run until *done == true
-void poll_global_context(const bool* done, source_location loc = BOOST_MYSQL_CURRENT_LOCATION);
-
-// run until done() == true
+void poll_global_context();  // poll once
+void poll_global_context(
+    const bool* done,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);  // poll until *done == true
 void poll_global_context(
     const std::function<bool()>& done,
     source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-);
+);  // poll until done() == true
 
 }  // namespace test
 }  // namespace mysql
