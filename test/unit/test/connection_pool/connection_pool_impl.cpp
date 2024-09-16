@@ -403,7 +403,6 @@ public:
 
 protected:
     mock_pool& pool_;
-    bool initial_{true};
 
     void return_connection(mock_node& node, bool should_reset)
     {
@@ -491,7 +490,7 @@ protected:
     }
 };
 
-template <class D, std::size_t initial_num_nodes = 1u>
+template <class D>
 class pool_test_op : public pool_test_op_base
 {
     D& derived_this() { return static_cast<D&>(*this); }
@@ -501,11 +500,6 @@ public:
 
     void operator()()
     {
-        if (initial_)
-        {
-            initial_ = false;
-            wait_for_num_nodes(initial_num_nodes);
-        }
         derived_this().invoke();
         pool_.cancel();
     }
@@ -545,6 +539,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connection trying to connect
@@ -583,6 +578,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connection trying to connect
@@ -620,6 +616,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait until a connection is successfully connected
@@ -651,6 +648,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait until a connection is successfully connected, then pick it up
@@ -683,6 +681,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connect, pick up and return a connection
@@ -715,6 +714,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connect, pick up and return a connection
@@ -750,6 +750,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connect, pick up and return a connection
@@ -785,6 +786,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait until a connection is successfully connected
@@ -817,6 +819,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait until a connection is successfully connected
@@ -852,6 +855,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait until a connection is successfully connected
@@ -888,6 +892,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait until a connection is successfully connected
@@ -924,6 +929,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait until a connection is successfully connected
@@ -953,6 +959,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connection tries to connect and fails
@@ -993,6 +1000,8 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
+
             // A request for a connection is issued. The request doesn't find
             // any available connection, and the current one is pending, so no new connections are created
             task = create_task(diag.get(), std::chrono::seconds(1));
@@ -1021,6 +1030,8 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
+
             // A request for a connection is issued. The request doesn't find
             // any available connection, and the current one is pending, so no new connections are created
             task = create_task(diag.get(), std::chrono::seconds(1));
@@ -1058,6 +1069,8 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
+
             // A request for a connection is issued. The request doesn't find
             // any available connection, and the current one is pending, so no new connections are created
             task = create_task(nullptr, std::chrono::seconds(1));
@@ -1091,6 +1104,7 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait for a connection to be ready
@@ -1118,6 +1132,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node1 = pool_.nodes().front();
 
             // Wait for a connection to be ready, then get it from the pool
@@ -1162,14 +1177,16 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 {
     // 2 connection nodes are created from the beginning
-    struct op : pool_test_op<op, 2>
+    struct op : pool_test_op<op>
     {
-        using pool_test_op<op, 2>::pool_test_op;
+        using pool_test_op<op>::pool_test_op;
         mock_node *node1{}, *node2{};
         get_connection_task task1, task2, task3, task4, task5;
 
         void invoke()
         {
+            wait_for_num_nodes(2);
+
             // Issue some parallel requests
             task1 = create_task();
             task2 = create_task();
@@ -1221,6 +1238,8 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
+
             // Issue some requests
             task1 = create_task();
             task2 = create_task();
@@ -1251,6 +1270,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connection tries to connect and fails
@@ -1292,6 +1312,8 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
+
             // A request for a connection is issued. The request doesn't find
             // any available connection, and the current one is pending, so no new connections are created
             task = create_task(diag.get(), std::chrono::seconds(1));
@@ -1329,6 +1351,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Wait for a connection to be ready
@@ -1352,9 +1375,9 @@ BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
 // pool size 0 works
 BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
 {
-    struct op : pool_test_op<op, 0>
+    struct op : pool_test_op<op>
     {
-        using pool_test_op<op, 0>::pool_test_op;
+        using pool_test_op<op>::pool_test_op;
         get_connection_task task;
 
         void invoke()
@@ -1391,6 +1414,7 @@ BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto ctor_params = pool_.nodes().front().connection().ctor_params;
             BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
             BOOST_TEST(ctor_params.ssl_context->native_handle() == expected_handle);
@@ -1418,6 +1442,7 @@ BOOST_AUTO_TEST_CASE(params_connect_1)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connect
@@ -1455,6 +1480,7 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
 
         void invoke()
         {
+            wait_for_num_nodes(1);
             auto& node = pool_.nodes().front();
 
             // Connect
