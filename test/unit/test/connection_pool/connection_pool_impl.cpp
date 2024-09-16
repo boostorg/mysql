@@ -390,34 +390,40 @@ public:
     }
 };
 
-// The base class for all test ops. All test must define an op struct derived
-// from pool_test_op, defining an invoke() coroutine running the test,
-// then call pool_test<op>
-class pool_test_op
+class fixture
 {
+private:
+    // Pool (must be created using dynamic memory)
+    std::shared_ptr<mock_pool> pool_;
+    runnable_network_result<void> run_res_;
+
 public:
-    pool_test_op(mock_pool& pool) : pool_(pool) {}
-
-    using executor_type = asio::any_io_executor;
-    asio::any_io_executor get_executor() const { return pool_.get_executor(); }
-
-protected:
-    mock_pool& pool_;
-
-    void return_connection(mock_node& node, bool should_reset)
+    fixture(pool_params&& params)
+        : pool_(std::make_shared<mock_pool>(
+              pool_executor_params{global_context_executor(), global_context_executor()},
+              std::move(params)
+          )),
+          run_res_(pool_->async_run(as_netresult))
     {
-        node.mark_as_collectable(should_reset);
-        node.notify_collectable();
     }
 
-    std::size_t num_pending_requests() const noexcept { return pool_.shared_state().pending_requests.size(); }
+    ~fixture()
+    {
+        // Finish the pool
+        pool_->cancel();
+        std::move(run_res_).validate_no_error_nodiag();
+    }
+
+    mock_pool& pool() { return *pool_; }
+
+    std::size_t num_pending_requests() const { return pool_->shared_state().pending_requests.size(); }
 
     get_connection_task create_task(
         diagnostics* diag = nullptr,
         steady_clock::duration timeout = std::chrono::seconds(5)
     )
     {
-        return get_connection_task(pool_, diag, timeout);
+        return get_connection_task(*pool_, diag, timeout);
     }
 
     void check_shared_st(
@@ -427,7 +433,7 @@ protected:
         std::size_t expected_num_idle
     )
     {
-        const auto& st = pool_.shared_state();
+        const auto& st = pool_->shared_state();
         BOOST_TEST(st.last_ec == expected_ec);
         BOOST_TEST(st.last_diag == expected_diag);
         BOOST_TEST(st.num_pending_connections == expected_num_pending);
@@ -436,7 +442,7 @@ protected:
 
     void advance_time_by(std::chrono::steady_clock::duration by)
     {
-        boost::mysql::test::advance_time_by(pool_.get_executor().context(), by);
+        boost::mysql::test::advance_time_by(pool_->get_executor().context(), by);
     }
 
     // Wrapper for waiting for a status on a certain node
@@ -461,7 +467,7 @@ protected:
     // Waits until there is at least num_nodes connections in the list
     void wait_for_num_nodes(std::size_t num_nodes, boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION)
     {
-        poll_global_context([this, num_nodes]() { return pool_.nodes().size() == num_nodes; }, loc);
+        poll_global_context([this, num_nodes]() { return pool_->nodes().size() == num_nodes; }, loc);
     }
 
     // Wrapper for calling mock_connection::step()
@@ -477,963 +483,704 @@ protected:
     }
 };
 
-// The test body
-template <class TestOp, class... Args>
-static void pool_test(boost::mysql::pool_params params, Args&&... args)
-{
-    // Pool (must be created using dynamic memory)
-    auto pool = std::make_shared<mock_pool>(
-        pool_executor_params{global_context_executor(), global_context_executor()},
-        std::move(params)
-    );
-
-    // Create the test
-    TestOp test(*pool, std::forward<Args>(args)...);
-
-    // Run the pool
-    auto res = pool->async_run(as_netresult);
-
-    // Run the test
-    test.invoke();
-
-    // Finish the pool
-    pool->cancel();
-    std::move(res).validate_no_error_nodiag();
-}
-
 // connection lifecycle
 BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        static diagnostics expected_diag() { return create_server_diag("Connection error!"); }
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Connection trying to connect
-            wait_for_status(node, connection_status::connect_in_progress);
-            check_shared_st(error_code(), diagnostics(), 1, 0);
-
-            // Connect fails, so the connection goes to sleep. Diagnostics are stored in shared state.
-            step(node, fn_type::connect, common_server_errc::er_aborting_connection, expected_diag());
-            wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-            check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
-
-            // Advance until it's time to retry again
-            advance_time_by(std::chrono::seconds(2));
-            wait_for_status(node, connection_status::connect_in_progress);
-            check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
-
-            // Connection connects successfully this time. Diagnostics have
-            // been cleared and the connection is marked as idle
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
+    auto expected_diag = create_server_diag("Connection error!");
     pool_params params;
     params.retry_interval = std::chrono::seconds(2);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Connection trying to connect
+    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+
+    // Connect fails, so the connection goes to sleep. Diagnostics are stored in shared state.
+    fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection, expected_diag);
+    fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+    fix.check_shared_st(common_server_errc::er_aborting_connection, expected_diag, 1, 0);
+
+    // Advance until it's time to retry again
+    fix.advance_time_by(std::chrono::seconds(2));
+    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.check_shared_st(common_server_errc::er_aborting_connection, expected_diag, 1, 0);
+
+    // Connection connects successfully this time. Diagnostics have
+    // been cleared and the connection is marked as idle
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Connection trying to connect
-            wait_for_status(node, connection_status::connect_in_progress);
-
-            // Timeout ellapses. Connect is considered failed
-            advance_time_by(std::chrono::seconds(5));
-            wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-            check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
-
-            // Advance until it's time to retry again
-            advance_time_by(std::chrono::seconds(2));
-            wait_for_status(node, connection_status::connect_in_progress);
-            check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
-
-            // Connection connects successfully this time
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.connect_timeout = std::chrono::seconds(5);
     params.retry_interval = std::chrono::seconds(2);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Connection trying to connect
+    fix.wait_for_status(node, connection_status::connect_in_progress);
+
+    // Timeout ellapses. Connect is considered failed
+    fix.advance_time_by(std::chrono::seconds(5));
+    fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+    fix.check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
+
+    // Advance until it's time to retry again
+    fix.advance_time_by(std::chrono::seconds(2));
+    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
+
+    // Connection connects successfully this time
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
+    // Setup
+    fixture fix(pool_params{});
 
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
 
-            // Wait until a connection is successfully connected
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
+    // Wait until a connection is successfully connected
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 
-            // Simulate a user picking the connection
-            node.mark_as_in_use();
-            check_shared_st(error_code(), diagnostics(), 0, 0);
+    // Simulate a user picking the connection
+    node.mark_as_in_use();
+    fix.check_shared_st(error_code(), diagnostics(), 0, 0);
 
-            // Simulate a user returning the connection (without reset)
-            return_connection(node, false);
+    // Simulate a user returning the connection (without reset)
+    fix.pool().return_connection(node, false);
 
-            // The connection goes back to idle without invoking resets
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
-    pool_test<op>(pool_params{});
+    // The connection goes back to idle without invoking resets
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
+    // Setup
+    fixture fix(pool_params{});
 
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
 
-            // Wait until a connection is successfully connected, then pick it up
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            node.mark_as_in_use();
+    // Wait until a connection is successfully connected, then pick it up
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    node.mark_as_in_use();
 
-            // Simulate a user returning the connection (with reset)
-            return_connection(node, true);
+    // Simulate a user returning the connection (with reset)
+    fix.pool().return_connection(node, true);
 
-            // A reset is issued
-            wait_for_status(node, connection_status::reset_in_progress);
-            check_shared_st(error_code(), diagnostics(), 1, 0);
+    // A reset is issued
+    fix.wait_for_status(node, connection_status::reset_in_progress);
+    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
 
-            // Successful reset makes the connection idle again
-            step(node, fn_type::pipeline);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
-    pool_test<op>(pool_params{});
+    // Successful reset makes the connection idle again
+    fix.step(node, fn_type::pipeline);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
+    // Setup
+    fixture fix(pool_params{});
 
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
 
-            // Connect, pick up and return a connection
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            node.mark_as_in_use();
-            return_connection(node, true);
-            wait_for_status(node, connection_status::reset_in_progress);
+    // Connect, pick up and return a connection
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    node.mark_as_in_use();
+    fix.pool().return_connection(node, true);
+    fix.wait_for_status(node, connection_status::reset_in_progress);
 
-            // Reset fails. This triggers a reconnection. Diagnostics are not saved
-            step(node, fn_type::pipeline, common_server_errc::er_aborting_connection);
-            wait_for_status(node, connection_status::connect_in_progress);
-            check_shared_st(error_code(), diagnostics(), 1, 0);
+    // Reset fails. This triggers a reconnection. Diagnostics are not saved
+    fix.step(node, fn_type::pipeline, common_server_errc::er_aborting_connection);
+    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
 
-            // Reconnect succeeds. We're idle again
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
-    pool_test<op>(pool_params{});
+    // Reconnect succeeds. We're idle again
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Connect, pick up and return a connection
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            node.mark_as_in_use();
-            return_connection(node, true);
-            wait_for_status(node, connection_status::reset_in_progress);
-
-            // Reset times out. This triggers a reconnection
-            advance_time_by(std::chrono::seconds(1));
-            wait_for_status(node, connection_status::connect_in_progress);
-            check_shared_st(error_code(), diagnostics(), 1, 0);
-
-            // Reconnect succeeds. We're idle again
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.ping_timeout = std::chrono::seconds(1);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Connect, pick up and return a connection
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    node.mark_as_in_use();
+    fix.pool().return_connection(node, true);
+    fix.wait_for_status(node, connection_status::reset_in_progress);
+
+    // Reset times out. This triggers a reconnection
+    fix.advance_time_by(std::chrono::seconds(1));
+    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+
+    // Reconnect succeeds. We're idle again
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Connect, pick up and return a connection
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            node.mark_as_in_use();
-            return_connection(node, true);
-            wait_for_status(node, connection_status::reset_in_progress);
-
-            // Reset doesn't time out, regardless of how much time we wait
-            advance_time_by(std::chrono::hours(9999));
-            poll_global_context([&]() { return node.status() == connection_status::reset_in_progress; });
-            check_shared_st(error_code(), diagnostics(), 1, 0);
-
-            // Reset succeeds
-            step(node, fn_type::pipeline);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.ping_timeout = std::chrono::seconds(0);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Connect, pick up and return a connection
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    node.mark_as_in_use();
+    fix.pool().return_connection(node, true);
+    fix.wait_for_status(node, connection_status::reset_in_progress);
+
+    // Reset doesn't time out, regardless of how much time we wait
+    fix.advance_time_by(std::chrono::hours(9999));
+    poll_global_context([&]() { return node.status() == connection_status::reset_in_progress; });
+    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+
+    // Reset succeeds
+    fix.step(node, fn_type::pipeline);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Wait until a connection is successfully connected
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-
-            // Wait until ping interval ellapses. This triggers a ping
-            advance_time_by(std::chrono::seconds(100));
-            wait_for_status(node, connection_status::ping_in_progress);
-            check_shared_st(error_code(), diagnostics(), 1, 0);
-
-            // After ping succeeds, connection goes back to idle
-            step(node, fn_type::ping);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.ping_interval = std::chrono::seconds(100);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Wait until a connection is successfully connected
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+
+    // Wait until ping interval ellapses. This triggers a ping
+    fix.advance_time_by(std::chrono::seconds(100));
+    fix.wait_for_status(node, connection_status::ping_in_progress);
+    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+
+    // After ping succeeds, connection goes back to idle
+    fix.step(node, fn_type::ping);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Wait until a connection is successfully connected
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-
-            // Wait until ping interval ellapses
-            advance_time_by(std::chrono::seconds(100));
-
-            // Ping fails. This triggers a reconnection. Diagnostics are not saved
-            step(node, fn_type::ping, common_server_errc::er_aborting_connection);
-            wait_for_status(node, connection_status::connect_in_progress);
-            check_shared_st(error_code(), diagnostics(), 1, 0);
-
-            // Reconnection succeeds
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.ping_interval = std::chrono::seconds(100);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Wait until a connection is successfully connected
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+
+    // Wait until ping interval ellapses
+    fix.advance_time_by(std::chrono::seconds(100));
+
+    // Ping fails. This triggers a reconnection. Diagnostics are not saved
+    fix.step(node, fn_type::ping, common_server_errc::er_aborting_connection);
+    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+
+    // Reconnection succeeds
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Wait until a connection is successfully connected
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-
-            // Wait until ping interval ellapses
-            advance_time_by(std::chrono::seconds(100));
-            wait_for_status(node, connection_status::ping_in_progress);
-
-            // Ping times out. This triggers a reconnection. Diagnostics are not saved
-            advance_time_by(std::chrono::seconds(2));
-            wait_for_status(node, connection_status::connect_in_progress);
-
-            // Reconnection succeeds
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.ping_interval = std::chrono::seconds(100);
     params.ping_timeout = std::chrono::seconds(2);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Wait until a connection is successfully connected
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+
+    // Wait until ping interval ellapses
+    fix.advance_time_by(std::chrono::seconds(100));
+    fix.wait_for_status(node, connection_status::ping_in_progress);
+
+    // Ping times out. This triggers a reconnection. Diagnostics are not saved
+    fix.advance_time_by(std::chrono::seconds(2));
+    fix.wait_for_status(node, connection_status::connect_in_progress);
+
+    // Reconnection succeeds
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Wait until a connection is successfully connected
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-
-            // Wait until ping interval ellapses
-            advance_time_by(std::chrono::seconds(100));
-            wait_for_status(node, connection_status::ping_in_progress);
-
-            // Ping doesn't time out, regardless of how much we wait
-            advance_time_by(std::chrono::hours(9999));
-            poll_global_context([&]() { return node.status() == connection_status::ping_in_progress; });
-
-            // Ping succeeds
-            step(node, fn_type::ping);
-            wait_for_status(node, connection_status::idle);
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.ping_interval = std::chrono::seconds(100);
     params.ping_timeout = std::chrono::seconds(0);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Wait until a connection is successfully connected
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+
+    // Wait until ping interval ellapses
+    fix.advance_time_by(std::chrono::seconds(100));
+    fix.wait_for_status(node, connection_status::ping_in_progress);
+
+    // Ping doesn't time out, regardless of how much we wait
+    fix.advance_time_by(std::chrono::hours(9999));
+    poll_global_context([&]() { return node.status() == connection_status::ping_in_progress; });
+
+    // Ping succeeds
+    fix.step(node, fn_type::ping);
+    fix.wait_for_status(node, connection_status::idle);
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Wait until a connection is successfully connected
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-
-            // Connection won't ping, regardless of how much time we wait
-            advance_time_by(std::chrono::hours(9999));
-            poll_global_context([&]() { return node.status() == connection_status::idle; });
-            check_shared_st(error_code(), diagnostics(), 0, 1);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.ping_interval = std::chrono::seconds(0);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Wait until a connection is successfully connected
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+
+    // Connection won't ping, regardless of how much time we wait
+    fix.advance_time_by(std::chrono::hours(9999));
+    poll_global_context([&]() { return node.status() == connection_status::idle; });
+    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
 
 // async_get_connection
 BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        get_connection_task task;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Connection tries to connect and fails
-            step(node, fn_type::connect, common_server_errc::er_aborting_connection);
-            wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            task = create_task();
-            wait_for_num_requests(1);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-
-            // Retry interval ellapses and connection retries and succeeds
-            advance_time_by(std::chrono::seconds(2));
-            step(node, fn_type::connect);
-
-            // Request is fulfilled
-            task.wait(node, false);
-            BOOST_TEST(node.status() == connection_status::in_use);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            BOOST_TEST(num_pending_requests() == 0u);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.retry_interval = std::chrono::seconds(2);
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Connection tries to connect and fails
+    fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection);
+    fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+
+    // A request for a connection is issued. The request doesn't find
+    // any available connection, and the current one is pending, so no new connections are created
+    auto task = fix.create_task();
+    fix.wait_for_num_requests(1);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+
+    // Retry interval ellapses and connection retries and succeeds
+    fix.advance_time_by(std::chrono::seconds(2));
+    fix.step(node, fn_type::connect);
+
+    // Request is fulfilled
+    task.wait(node, false);
+    BOOST_TEST(node.status() == connection_status::in_use);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        get_connection_task task;
-        std::unique_ptr<diagnostics> diag{new diagnostics()};
+    // Setup
+    fixture fix(pool_params{});
+    diagnostics diag;
 
-        void invoke()
-        {
-            wait_for_num_nodes(1);
+    fix.wait_for_num_nodes(1);
 
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            task = create_task(diag.get(), std::chrono::seconds(1));
-            wait_for_num_requests(1);
-            BOOST_TEST(pool_.nodes().size() == 1u);
+    // A request for a connection is issued. The request doesn't find
+    // any available connection, and the current one is pending, so no new connections are created
+    auto task = fix.create_task(&diag, std::chrono::seconds(1));
+    fix.wait_for_num_requests(1);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
 
-            // The request timeout ellapses, so the request fails
-            advance_time_by(std::chrono::seconds(1));
-            task.wait(client_errc::timeout, false);
-            BOOST_TEST(*diag == diagnostics());
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            BOOST_TEST(num_pending_requests() == 0u);
-        }
-    };
-
-    pool_test<op>(pool_params{});
+    // The request timeout ellapses, so the request fails
+    fix.advance_time_by(std::chrono::seconds(1));
+    task.wait(client_errc::timeout, false);
+    BOOST_TEST(diag == diagnostics());
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        get_connection_task task;
-        std::unique_ptr<diagnostics> diag{new diagnostics()};
+    // Setup
+    fixture fix(pool_params{});
+    diagnostics diag;
 
-        void invoke()
-        {
-            wait_for_num_nodes(1);
+    fix.wait_for_num_nodes(1);
 
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            task = create_task(diag.get(), std::chrono::seconds(1));
-            wait_for_num_requests(1);
-            BOOST_TEST(pool_.nodes().size() == 1u);
+    // A request for a connection is issued. The request doesn't find
+    // any available connection, and the current one is pending, so no new connections are created
+    auto task = fix.create_task(&diag, std::chrono::seconds(1));
+    fix.wait_for_num_requests(1);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
 
-            // The connection fails to connect
-            step(
-                *pool_.nodes().begin(),
-                fn_type::connect,
-                common_server_errc::er_bad_db_error,
-                create_server_diag("Bad db")
-            );
+    // The connection fails to connect
+    fix.step(
+        *fix.pool().nodes().begin(),
+        fn_type::connect,
+        common_server_errc::er_bad_db_error,
+        create_server_diag("Bad db")
+    );
 
-            // The request timeout ellapses, so the request fails
-            advance_time_by(std::chrono::seconds(1));
-            task.wait(common_server_errc::er_bad_db_error, false);
-            BOOST_TEST(*diag == create_server_diag("Bad db"));
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            BOOST_TEST(num_pending_requests() == 0u);
-        }
-    };
-
-    pool_test<op>(pool_params{});
+    // The request timeout ellapses, so the request fails
+    fix.advance_time_by(std::chrono::seconds(1));
+    task.wait(common_server_errc::er_bad_db_error, false);
+    BOOST_TEST(diag == create_server_diag("Bad db"));
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 {
+    // Setup
     // We don't crash if diag is nullptr
+    fixture fix(pool_params{});
 
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        get_connection_task task;
+    fix.wait_for_num_nodes(1);
 
-        void invoke()
-        {
-            wait_for_num_nodes(1);
+    // A request for a connection is issued. The request doesn't find
+    // any available connection, and the current one is pending, so no new connections are created
+    auto task = fix.create_task(nullptr, std::chrono::seconds(1));
+    fix.wait_for_num_requests(1);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
 
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            task = create_task(nullptr, std::chrono::seconds(1));
-            wait_for_num_requests(1);
-            BOOST_TEST(pool_.nodes().size() == 1u);
+    // The connection fails to connect
+    fix.step(
+        *fix.pool().nodes().begin(),
+        fn_type::connect,
+        common_server_errc::er_bad_db_error,
+        create_server_diag("Bad db")
+    );
 
-            // The connection fails to connect
-            step(
-                *pool_.nodes().begin(),
-                fn_type::connect,
-                common_server_errc::er_bad_db_error,
-                create_server_diag("Bad db")
-            );
-
-            // The request timeout ellapses, so the request fails
-            advance_time_by(std::chrono::seconds(1));
-            task.wait(common_server_errc::er_bad_db_error, false);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            BOOST_TEST(num_pending_requests() == 0u);
-        }
-    };
-
-    pool_test<op>(pool_params{});
+    // The request timeout ellapses, so the request fails
+    fix.advance_time_by(std::chrono::seconds(1));
+    task.wait(common_server_errc::er_bad_db_error, false);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
+    // Setup
+    fixture fix(pool_params{});
 
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
 
-            // Wait for a connection to be ready
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
+    // Wait for a connection to be ready
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
 
-            // A request for a connection is issued. The request completes immediately
-            create_task().wait(node, true);
-            BOOST_TEST(node.status() == connection_status::in_use);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            BOOST_TEST(num_pending_requests() == 0u);
-        }
-    };
-
-    pool_test<op>(pool_params{});
+    // A request for a connection is issued. The request completes immediately
+    fix.create_task().wait(node, true);
+    BOOST_TEST(node.status() == connection_status::in_use);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        mock_node* node2{};
-        get_connection_task task2, task3;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node1 = pool_.nodes().front();
-
-            // Wait for a connection to be ready, then get it from the pool
-            step(node1, fn_type::connect);
-            wait_for_status(node1, connection_status::idle);
-            create_task().wait(node1, true);
-
-            // Another request is issued. The connection we have is in use, so another one is created.
-            // Since this is not immediate, the task will need to wait
-            task2 = create_task();
-            wait_for_num_requests(1);
-            node2 = &*std::next(pool_.nodes().begin());
-
-            // Connection connects successfully and is handed to us
-            step(*node2, fn_type::connect);
-            task2.wait(*node2, false);
-            BOOST_TEST(node2->status() == connection_status::in_use);
-            BOOST_TEST(pool_.nodes().size() == 2u);
-            BOOST_TEST(num_pending_requests() == 0u);
-
-            // Another request is issued. All connections are in use but max size is already
-            // reached, so no new connection is created
-            task3 = create_task();
-            wait_for_num_requests(1);
-            BOOST_TEST(pool_.nodes().size() == 2u);
-
-            // When one of the connections is returned, the request is fulfilled
-            return_connection(*node2, false);
-            task3.wait(*node2, false);
-            BOOST_TEST(num_pending_requests() == 0u);
-            BOOST_TEST(pool_.nodes().size() == 2u);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.initial_size = 1;
     params.max_size = 2;
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node1 = fix.pool().nodes().front();
+
+    // Wait for a connection to be ready, then get it from the pool
+    fix.step(node1, fn_type::connect);
+    fix.wait_for_status(node1, connection_status::idle);
+    fix.create_task().wait(node1, true);
+
+    // Another request is issued. The connection we have is in use, so another one is created.
+    // Since this is not immediate, the task will need to wait
+    auto task2 = fix.create_task();
+    fix.wait_for_num_requests(1);
+    auto node2 = &*std::next(fix.pool().nodes().begin());
+
+    // Connection connects successfully and is handed to us
+    fix.step(*node2, fn_type::connect);
+    task2.wait(*node2, false);
+    BOOST_TEST(node2->status() == connection_status::in_use);
+    BOOST_TEST(fix.pool().nodes().size() == 2u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
+
+    // Another request is issued. All connections are in use but max size is already
+    // reached, so no new connection is created
+    auto task3 = fix.create_task();
+    fix.wait_for_num_requests(1);
+    BOOST_TEST(fix.pool().nodes().size() == 2u);
+
+    // When one of the connections is returned, the request is fulfilled
+    fix.pool().return_connection(*node2, false);
+    task3.wait(*node2, false);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
+    BOOST_TEST(fix.pool().nodes().size() == 2u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 {
-    // 2 connection nodes are created from the beginning
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        mock_node *node1{}, *node2{};
-        get_connection_task task1, task2, task3, task4, task5;
-
-        void invoke()
-        {
-            wait_for_num_nodes(2);
-
-            // Issue some parallel requests
-            task1 = create_task();
-            task2 = create_task();
-            task3 = create_task();
-            task4 = create_task(nullptr, std::chrono::seconds(2));
-            task5 = create_task();
-
-            // Two connections can be created. These fulfill two requests
-            node1 = &pool_.nodes().front();
-            node2 = &*std::next(pool_.nodes().begin());
-            step(*node1, fn_type::connect);
-            step(*node2, fn_type::connect);
-            task1.wait(*node1, false);
-            task2.wait(*node2, false);
-
-            // Time ellapses and task4 times out
-            advance_time_by(std::chrono::seconds(2));
-            task4.wait(client_errc::timeout, false);
-
-            // A connection is returned. The first task to enter is served
-            return_connection(*node1, true);
-            step(*node1, fn_type::pipeline);
-            task3.wait(*node1, false);
-
-            // The next connection to be returned is for task5
-            return_connection(*node2, false);
-            task5.wait(*node2, false);
-
-            // Done
-            BOOST_TEST(num_pending_requests() == 0u);
-            BOOST_TEST(pool_.nodes().size() == 2u);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.initial_size = 2;
     params.max_size = 2;
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    // 2 connection nodes are created from the beginning
+    fix.wait_for_num_nodes(2);
+
+    // Issue some parallel requests
+    auto task1 = fix.create_task();
+    auto task2 = fix.create_task();
+    auto task3 = fix.create_task();
+    auto task4 = fix.create_task(nullptr, std::chrono::seconds(2));
+    auto task5 = fix.create_task();
+
+    // Two connections can be created. These fulfill two requests
+    auto node1 = &fix.pool().nodes().front();
+    auto node2 = &*std::next(fix.pool().nodes().begin());
+    fix.step(*node1, fn_type::connect);
+    fix.step(*node2, fn_type::connect);
+    task1.wait(*node1, false);
+    task2.wait(*node2, false);
+
+    // Time ellapses and task4 times out
+    fix.advance_time_by(std::chrono::seconds(2));
+    task4.wait(client_errc::timeout, false);
+
+    // A connection is returned. The first task to enter is served
+    fix.pool().return_connection(*node1, true);
+    fix.step(*node1, fn_type::pipeline);
+    task3.wait(*node1, false);
+
+    // The next connection to be returned is for task5
+    fix.pool().return_connection(*node2, false);
+    task5.wait(*node2, false);
+
+    // Done
+    BOOST_TEST(fix.num_pending_requests() == 0u);
+    BOOST_TEST(fix.pool().nodes().size() == 2u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_cancel)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        mock_node *node1{}, *node2{};
-        get_connection_task task1, task2;
+    // Setup
+    fixture fix(pool_params{});
 
-        void invoke()
-        {
-            wait_for_num_nodes(1);
+    fix.wait_for_num_nodes(1);
 
-            // Issue some requests
-            task1 = create_task();
-            task2 = create_task();
-            wait_for_num_requests(2);
+    // Issue some requests
+    auto task1 = fix.create_task();
+    auto task2 = fix.create_task();
+    fix.wait_for_num_requests(2);
 
-            // While in flight, cancel the pool
-            pool_.cancel_unsafe();
+    // While in flight, cancel the pool
+    fix.pool().cancel_unsafe();
 
-            // All tasks fail with a cancelled code
-            task1.wait(client_errc::cancelled, false);
-            task2.wait(client_errc::cancelled, false);
+    // All tasks fail with a cancelled code
+    task1.wait(client_errc::cancelled, false);
+    task2.wait(client_errc::cancelled, false);
 
-            // Further tasks fail immediately
-            create_task().wait(client_errc::cancelled, true);
-        }
-    };
-
-    pool_test<op>(pool_params{});
+    // Further tasks fail immediately
+    fix.create_task().wait(client_errc::cancelled, true);
 }
 
 // thread_safe works as intended
 BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        get_connection_task task;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Connection tries to connect and fails
-            step(node, fn_type::connect, common_server_errc::er_aborting_connection);
-            wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            task = create_task();
-            wait_for_num_requests(1);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-
-            // Retry interval ellapses and connection retries and succeeds
-            advance_time_by(std::chrono::seconds(2));
-            step(node, fn_type::connect);
-
-            // Request is fulfilled
-            task.wait(node, false);
-            BOOST_TEST(node.status() == connection_status::in_use);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            BOOST_TEST(num_pending_requests() == 0u);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.retry_interval = std::chrono::seconds(2);
     params.thread_safe = true;
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Connection tries to connect and fails
+    fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection);
+    fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+
+    // A request for a connection is issued. The request doesn't find
+    // any available connection, and the current one is pending, so no new connections are created
+    auto task = fix.create_task();
+    fix.wait_for_num_requests(1);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+
+    // Retry interval ellapses and connection retries and succeeds
+    fix.advance_time_by(std::chrono::seconds(2));
+    fix.step(node, fn_type::connect);
+
+    // Request is fulfilled
+    task.wait(node, false);
+    BOOST_TEST(node.status() == connection_status::in_use);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        get_connection_task task;
-        std::unique_ptr<diagnostics> diag{new diagnostics()};
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-
-            // A request for a connection is issued. The request doesn't find
-            // any available connection, and the current one is pending, so no new connections are created
-            task = create_task(diag.get(), std::chrono::seconds(1));
-            wait_for_num_requests(1);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-
-            // The connection fails to connect
-            step(
-                *pool_.nodes().begin(),
-                fn_type::connect,
-                common_server_errc::er_bad_db_error,
-                create_server_diag("Bad db")
-            );
-
-            // The request timeout ellapses, so the request fails
-            advance_time_by(std::chrono::seconds(1));
-            task.wait(common_server_errc::er_bad_db_error, false);
-            BOOST_TEST(*diag == create_server_diag("Bad db"));
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            BOOST_TEST(num_pending_requests() == 0u);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.thread_safe = true;
+    fixture fix(std::move(params));
+    diagnostics diag;
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+
+    // A request for a connection is issued. The request doesn't find
+    // any available connection, and the current one is pending, so no new connections are created
+    auto task = fix.create_task(&diag, std::chrono::seconds(1));
+    fix.wait_for_num_requests(1);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+
+    // The connection fails to connect
+    fix.step(
+        *fix.pool().nodes().begin(),
+        fn_type::connect,
+        common_server_errc::er_bad_db_error,
+        create_server_diag("Bad db")
+    );
+
+    // The request timeout ellapses, so the request fails
+    fix.advance_time_by(std::chrono::seconds(1));
+    task.wait(common_server_errc::er_bad_db_error, false);
+    BOOST_TEST(diag == create_server_diag("Bad db"));
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Wait for a connection to be ready
-            step(node, fn_type::connect);
-            wait_for_status(node, connection_status::idle);
-
-            // A request for a connection is issued. The request completes immediately
-            create_task().wait(node, false);
-            BOOST_TEST(node.status() == connection_status::in_use);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            BOOST_TEST(num_pending_requests() == 0u);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.thread_safe = true;
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Wait for a connection to be ready
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+
+    // A request for a connection is issued. The request completes immediately
+    fix.create_task().wait(node, false);
+    BOOST_TEST(node.status() == connection_status::in_use);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 // pool size 0 works
 BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-        get_connection_task task;
-
-        void invoke()
-        {
-            // No connections created at this point. A connection request arrives
-            BOOST_TEST(pool_.nodes().size() == 0u);
-            task = create_task();
-
-            // This creates a new connection, which fulfills the request
-            wait_for_num_requests(1);
-            BOOST_TEST(pool_.nodes().size() == 1u);
-            step(pool_.nodes().front(), fn_type::connect);
-            task.wait(pool_.nodes().front(), false);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.initial_size = 0;
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    // No connections created at this point. A connection request arrives
+    BOOST_TEST(fix.pool().nodes().size() == 0u);
+    auto task = fix.create_task();
+
+    // This creates a new connection, which fulfills the request
+    fix.wait_for_num_requests(1);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    fix.step(fix.pool().nodes().front(), fn_type::connect);
+    task.wait(fix.pool().nodes().front(), false);
 }
 
 // pool_params have the intended effect
 BOOST_AUTO_TEST_CASE(params_ssl_ctx_buffsize)
 {
-    struct op : pool_test_op
-    {
-        asio::ssl::context::native_handle_type expected_handle;
-
-        op(mock_pool& pool, asio::ssl::context::native_handle_type ssl_handle)
-            : pool_test_op(pool), expected_handle(ssl_handle)
-        {
-        }
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto ctor_params = pool_.nodes().front().connection().ctor_params;
-            BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
-            BOOST_TEST(ctor_params.ssl_context->native_handle() == expected_handle);
-            BOOST_TEST(ctor_params.initial_buffer_size == 16u);
-        }
-    };
-
-    // Pass a custom ssl context and buffer size
+    // Setup. Pass a custom ssl context and buffer size
+    // SSL context matching is performed using the underlying handle
+    // because ssl::context provides no way to query the options previously set
     pool_params params;
     params.ssl_ctx.emplace(boost::asio::ssl::context::tlsv12_client);
     params.initial_buffer_size = 16u;
-
-    // SSL context matching is performed using the underlying handle
-    // because ssl::context provides no way to query the options previously set
     auto handle = params.ssl_ctx->native_handle();
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params), handle);
+    // Wait for the node to be created
+    fix.wait_for_num_nodes(1);
+
+    // Check
+    auto ctor_params = fix.pool().nodes().front().connection().ctor_params;
+    BOOST_TEST_REQUIRE(ctor_params.ssl_context != nullptr);
+    BOOST_TEST(ctor_params.ssl_context->native_handle() == handle);
+    BOOST_TEST(ctor_params.initial_buffer_size == 16u);
 }
 
 BOOST_AUTO_TEST_CASE(params_connect_1)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Connect
-            step(node, fn_type::connect);
-
-            // Check params
-            const auto& cparams = node.connection().last_connect_params;
-            BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
-            BOOST_TEST(cparams.server_address.hostname() == "myhost");
-            BOOST_TEST(cparams.server_address.port() == std::uint16_t(1234));
-            BOOST_TEST(cparams.username == "myuser");
-            BOOST_TEST(cparams.password == "mypasswd");
-            BOOST_TEST(cparams.database == "mydb");
-            BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::disable);
-            BOOST_TEST(cparams.multi_queries == true);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.server_address.emplace_host_and_port("myhost", 1234);
     params.username = "myuser";
@@ -1441,36 +1188,30 @@ BOOST_AUTO_TEST_CASE(params_connect_1)
     params.database = "mydb";
     params.ssl = boost::mysql::ssl_mode::disable;
     params.multi_queries = true;
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    // Wait for the node to be created
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Connect
+    fix.step(node, fn_type::connect);
+
+    // Check params
+    const auto& cparams = node.connection().last_connect_params;
+    BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
+    BOOST_TEST(cparams.server_address.hostname() == "myhost");
+    BOOST_TEST(cparams.server_address.port() == std::uint16_t(1234));
+    BOOST_TEST(cparams.username == "myuser");
+    BOOST_TEST(cparams.password == "mypasswd");
+    BOOST_TEST(cparams.database == "mydb");
+    BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::disable);
+    BOOST_TEST(cparams.multi_queries == true);
 }
 
 BOOST_AUTO_TEST_CASE(params_connect_2)
 {
-    struct op : pool_test_op
-    {
-        using pool_test_op::pool_test_op;
-
-        void invoke()
-        {
-            wait_for_num_nodes(1);
-            auto& node = pool_.nodes().front();
-
-            // Connect
-            step(node, fn_type::connect);
-
-            // Check params
-            const auto& cparams = node.connection().last_connect_params;
-            BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
-            BOOST_TEST(cparams.server_address.unix_socket_path() == "/mysock");
-            BOOST_TEST(cparams.username == "myuser2");
-            BOOST_TEST(cparams.password == "mypasswd2");
-            BOOST_TEST(cparams.database == "mydb2");
-            BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
-            BOOST_TEST(cparams.multi_queries == false);
-        }
-    };
-
+    // Setup
     pool_params params;
     params.server_address.emplace_unix_path("/mysock");
     params.username = "myuser2";
@@ -1478,8 +1219,24 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
     params.database = "mydb2";
     params.ssl = boost::mysql::ssl_mode::require;
     params.multi_queries = false;
+    fixture fix(std::move(params));
 
-    pool_test<op>(std::move(params));
+    // Wait for the node to be created
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Connect
+    fix.step(node, fn_type::connect);
+
+    // Check params
+    const auto& cparams = node.connection().last_connect_params;
+    BOOST_TEST(cparams.connection_collation == mysql_collations::utf8mb4_general_ci);
+    BOOST_TEST(cparams.server_address.unix_socket_path() == "/mysock");
+    BOOST_TEST(cparams.username == "myuser2");
+    BOOST_TEST(cparams.password == "mypasswd2");
+    BOOST_TEST(cparams.database == "mydb2");
+    BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
+    BOOST_TEST(cparams.multi_queries == false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

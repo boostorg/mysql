@@ -389,7 +389,7 @@ public:
         }
     }
 
-    void return_connection(connection_node& node, bool should_reset) noexcept
+    void return_connection(node_type& node, bool should_reset) noexcept
     {
         // This is safe to be called from any thread
         node.mark_as_collectable(should_reset);
@@ -402,7 +402,7 @@ public:
             struct dispatch_handler
             {
                 std::shared_ptr<this_type> pool_ptr;
-                connection_node* node_ptr;
+                node_type* node_ptr;
 
                 using executor_type = asio::any_io_executor;
                 executor_type get_executor() const noexcept { return pool_ptr->strand(); }
