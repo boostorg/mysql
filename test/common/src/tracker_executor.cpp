@@ -11,6 +11,7 @@
 #include <boost/asio/execution_context.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/require.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <atomic>
@@ -255,30 +256,33 @@ void boost::mysql::test::run_global_context()
     g_ctx.run();
 }
 
-void boost::mysql::test::poll_global_context(const bool* done)
+void boost::mysql::test::poll_global_context(const bool* done, source_location loc)
 {
-    poll_global_context([done]() { return *done; });
+    poll_global_context([done]() { return *done; }, loc);
 }
 
-void boost::mysql::test::poll_global_context(const std::function<bool()>& done)
+void boost::mysql::test::poll_global_context(const std::function<bool()>& done, source_location loc)
 {
-    using std::chrono::steady_clock;
-
-    // Restart the context, in case it was stopped
-    g_ctx.restart();
-
-    // Poll until this time point
-    constexpr std::chrono::seconds timeout(5);
-    auto timeout_tp = steady_clock::now() + timeout;
-
-    // Perform the polling
-    bool done_value = false;
-    while (!(done_value = done()) && steady_clock::now() < timeout_tp)
+    BOOST_TEST_CONTEXT("Called from " << loc)
     {
-        g_ctx.poll();
-        std::this_thread::yield();
-    }
+        using std::chrono::steady_clock;
 
-    // Check for timeout
-    BOOST_TEST_REQUIRE(done_value);
+        // Restart the context, in case it was stopped
+        g_ctx.restart();
+
+        // Poll until this time point
+        constexpr std::chrono::seconds timeout(5);
+        auto timeout_tp = steady_clock::now() + timeout;
+
+        // Perform the polling
+        bool done_value = false;
+        while (!(done_value = done()) && steady_clock::now() < timeout_tp)
+        {
+            g_ctx.poll();
+            std::this_thread::yield();
+        }
+
+        // Check for timeout
+        BOOST_TEST_REQUIRE(done_value);
+    }
 }

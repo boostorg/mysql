@@ -39,6 +39,7 @@
 #include <boost/asio/ssl/context.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/unit_test.hpp>
@@ -52,6 +53,7 @@
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
+#include "test_common/source_location.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/mock_timer.hpp"
 #include "test_unit/printing.hpp"
@@ -409,9 +411,8 @@ protected:
         node.notify_collectable();
     }
 
-    void poll() { static_cast<asio::io_context&>(pool_.get_executor().context()).poll(); }
-
     std::size_t num_pending_requests() const noexcept { return pool_.shared_state().pending_requests.size(); }
+
     get_connection_task create_task(
         diagnostics* diag = nullptr,
         steady_clock::duration timeout = std::chrono::seconds(5)
@@ -440,27 +441,40 @@ protected:
     }
 
     // Wrapper for waiting for a status on a certain node
-    void wait_for_status(mock_node& node, connection_status status)
+    void wait_for_status(
+        mock_node& node,
+        connection_status status,
+        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    )
     {
-        poll_global_context([&node, status]() { return node.status() == status; });
+        poll_global_context([&node, status]() { return node.status() == status; }, loc);
     }
 
     // Waits until the number of pending requests in the pool equals a certain number
-    void wait_for_num_requests(std::size_t num_requests)
+    void wait_for_num_requests(
+        std::size_t num_requests,
+        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    )
     {
-        poll_global_context([this, num_requests]() { return num_pending_requests() == num_requests; });
+        poll_global_context([this, num_requests]() { return num_pending_requests() == num_requests; }, loc);
     }
 
     // Waits until there is at least num_nodes connections in the list
-    void wait_for_num_nodes(std::size_t num_nodes)
+    void wait_for_num_nodes(std::size_t num_nodes, boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION)
     {
-        poll_global_context([this, num_nodes]() { return pool_.nodes().size() == num_nodes; });
+        poll_global_context([this, num_nodes]() { return pool_.nodes().size() == num_nodes; }, loc);
     }
 
     // Wrapper for calling mock_connection::step()
-    void step(mock_node& node, fn_type next_act, error_code ec = {}, diagnostics diag = {})
+    void step(
+        mock_node& node,
+        fn_type next_act,
+        error_code ec = {},
+        diagnostics diag = {},
+        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    )
     {
-        node.connection().step(next_act, as_netresult, ec, diag).validate_no_error_nodiag();
+        node.connection().step(next_act, as_netresult, ec, diag).validate_no_error_nodiag(loc);
     }
 
     // Wrapper for get_connection_task::wait(). It helps prevent lifetime
