@@ -28,8 +28,10 @@
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/bind_immediate_executor.hpp>
+#include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -390,6 +392,14 @@ public:
     }
 };
 
+std::shared_ptr<mock_pool> create_mock_pool(pool_params&& params)
+{
+    return std::make_shared<mock_pool>(
+        pool_executor_params{global_context_executor(), global_context_executor()},
+        std::move(params)
+    );
+}
+
 class fixture
 {
 private:
@@ -399,11 +409,7 @@ private:
 
 public:
     fixture(pool_params&& params)
-        : pool_(std::make_shared<mock_pool>(
-              pool_executor_params{global_context_executor(), global_context_executor()},
-              std::move(params)
-          )),
-          run_res_(pool_->async_run(as_netresult))
+        : pool_(create_mock_pool(std::move(params))), run_res_(pool_->async_run(as_netresult))
     {
     }
 
@@ -1232,6 +1238,26 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
     BOOST_TEST(cparams.database == "mydb2");
     BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
     BOOST_TEST(cparams.multi_queries == false);
+}
+
+// per-operation cancellation does the right thing
+BOOST_AUTO_TEST_CASE(async_run_cancel)
+{
+    // Create a pool. thread_safe introduces extra latency (regression check)
+    pool_params params;
+    params.thread_safe = true;
+    auto pool = create_mock_pool(std::move(params));
+
+    // Run with a bound signal
+    asio::cancellation_signal sig;
+    auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
+
+    // Emit the signal. run should finish
+    sig.emit(asio::cancellation_type_t::terminal);
+    std::move(run_result).validate_no_error_nodiag();
+
+    // The pool has effectively been cancelled, as if cancel() had been called
+    get_connection_task(*pool, nullptr, std::chrono::seconds(0)).wait(client_errc::cancelled, false);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
