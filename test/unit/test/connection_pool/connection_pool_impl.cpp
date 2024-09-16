@@ -475,19 +475,6 @@ protected:
     {
         node.connection().step(next_act, as_netresult, ec, diag).validate_no_error_nodiag(loc);
     }
-
-    // Wrapper for get_connection_task::wait(). It helps prevent lifetime
-    // issues with std::move(*this)
-    // TODO: these can be removed
-    void wait_for_task(get_connection_task task, mock_node& expected_node, bool expect_immediate)
-    {
-        task.wait(expected_node, expect_immediate);
-    }
-
-    void wait_for_task(get_connection_task task, error_code expected_ec, bool expect_immediate)
-    {
-        task.wait(expected_ec, expect_immediate);
-    }
 };
 
 // The test body
@@ -963,7 +950,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
             step(node, fn_type::connect);
 
             // Request is fulfilled
-            wait_for_task(task, node, false);
+            task.wait(node, false);
             BOOST_TEST(node.status() == connection_status::in_use);
             BOOST_TEST(pool_.nodes().size() == 1u);
             BOOST_TEST(num_pending_requests() == 0u);
@@ -996,7 +983,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 
             // The request timeout ellapses, so the request fails
             advance_time_by(std::chrono::seconds(1));
-            wait_for_task(task, client_errc::timeout, false);
+            task.wait(client_errc::timeout, false);
             BOOST_TEST(*diag == diagnostics());
             BOOST_TEST(pool_.nodes().size() == 1u);
             BOOST_TEST(num_pending_requests() == 0u);
@@ -1034,7 +1021,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
 
             // The request timeout ellapses, so the request fails
             advance_time_by(std::chrono::seconds(1));
-            wait_for_task(task, common_server_errc::er_bad_db_error, false);
+            task.wait(common_server_errc::er_bad_db_error, false);
             BOOST_TEST(*diag == create_server_diag("Bad db"));
             BOOST_TEST(pool_.nodes().size() == 1u);
             BOOST_TEST(num_pending_requests() == 0u);
@@ -1073,7 +1060,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 
             // The request timeout ellapses, so the request fails
             advance_time_by(std::chrono::seconds(1));
-            wait_for_task(task, common_server_errc::er_bad_db_error, false);
+            task.wait(common_server_errc::er_bad_db_error, false);
             BOOST_TEST(pool_.nodes().size() == 1u);
             BOOST_TEST(num_pending_requests() == 0u);
         }
@@ -1098,7 +1085,7 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
             wait_for_status(node, connection_status::idle);
 
             // A request for a connection is issued. The request completes immediately
-            wait_for_task(create_task(), node, true);
+            create_task().wait(node, true);
             BOOST_TEST(node.status() == connection_status::in_use);
             BOOST_TEST(pool_.nodes().size() == 1u);
             BOOST_TEST(num_pending_requests() == 0u);
@@ -1124,7 +1111,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
             // Wait for a connection to be ready, then get it from the pool
             step(node1, fn_type::connect);
             wait_for_status(node1, connection_status::idle);
-            wait_for_task(create_task(), node1, true);
+            create_task().wait(node1, true);
 
             // Another request is issued. The connection we have is in use, so another one is created.
             // Since this is not immediate, the task will need to wait
@@ -1134,7 +1121,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 
             // Connection connects successfully and is handed to us
             step(*node2, fn_type::connect);
-            wait_for_task(task2, *node2, false);
+            task2.wait(*node2, false);
             BOOST_TEST(node2->status() == connection_status::in_use);
             BOOST_TEST(pool_.nodes().size() == 2u);
             BOOST_TEST(num_pending_requests() == 0u);
@@ -1147,7 +1134,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 
             // When one of the connections is returned, the request is fulfilled
             return_connection(*node2, false);
-            wait_for_task(task3, *node2, false);
+            task3.wait(*node2, false);
             BOOST_TEST(num_pending_requests() == 0u);
             BOOST_TEST(pool_.nodes().size() == 2u);
         }
@@ -1185,21 +1172,21 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
             node2 = &*std::next(pool_.nodes().begin());
             step(*node1, fn_type::connect);
             step(*node2, fn_type::connect);
-            wait_for_task(task1, *node1, false);
-            wait_for_task(task2, *node2, false);
+            task1.wait(*node1, false);
+            task2.wait(*node2, false);
 
             // Time ellapses and task4 times out
             advance_time_by(std::chrono::seconds(2));
-            wait_for_task(task4, client_errc::timeout, false);
+            task4.wait(client_errc::timeout, false);
 
             // A connection is returned. The first task to enter is served
             return_connection(*node1, true);
             step(*node1, fn_type::pipeline);
-            wait_for_task(task3, *node1, false);
+            task3.wait(*node1, false);
 
             // The next connection to be returned is for task5
             return_connection(*node2, false);
-            wait_for_task(task5, *node2, false);
+            task5.wait(*node2, false);
 
             // Done
             BOOST_TEST(num_pending_requests() == 0u);
@@ -1235,11 +1222,11 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel)
             pool_.cancel_unsafe();
 
             // All tasks fail with a cancelled code
-            wait_for_task(task1, client_errc::cancelled, false);
-            wait_for_task(task2, client_errc::cancelled, false);
+            task1.wait(client_errc::cancelled, false);
+            task2.wait(client_errc::cancelled, false);
 
             // Further tasks fail immediately
-            wait_for_task(create_task(), client_errc::cancelled, true);
+            create_task().wait(client_errc::cancelled, true);
         }
     };
 
@@ -1274,7 +1261,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
             step(node, fn_type::connect);
 
             // Request is fulfilled
-            wait_for_task(task, node, false);
+            task.wait(node, false);
             BOOST_TEST(node.status() == connection_status::in_use);
             BOOST_TEST(pool_.nodes().size() == 1u);
             BOOST_TEST(num_pending_requests() == 0u);
@@ -1316,7 +1303,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
 
             // The request timeout ellapses, so the request fails
             advance_time_by(std::chrono::seconds(1));
-            wait_for_task(task, common_server_errc::er_bad_db_error, false);
+            task.wait(common_server_errc::er_bad_db_error, false);
             BOOST_TEST(*diag == create_server_diag("Bad db"));
             BOOST_TEST(pool_.nodes().size() == 1u);
             BOOST_TEST(num_pending_requests() == 0u);
@@ -1345,7 +1332,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
             wait_for_status(node, connection_status::idle);
 
             // A request for a connection is issued. The request completes immediately
-            wait_for_task(create_task(), node, false);
+            create_task().wait(node, false);
             BOOST_TEST(node.status() == connection_status::in_use);
             BOOST_TEST(pool_.nodes().size() == 1u);
             BOOST_TEST(num_pending_requests() == 0u);
@@ -1376,7 +1363,7 @@ BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
             wait_for_num_requests(1);
             BOOST_TEST(pool_.nodes().size() == 1u);
             step(pool_.nodes().front(), fn_type::connect);
-            wait_for_task(task, pool_.nodes().front(), false);
+            task.wait(pool_.nodes().front(), false);
         }
     };
 
