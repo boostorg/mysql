@@ -9,7 +9,12 @@
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_TRACKER_EXECUTOR_HPP
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
+
+#include <functional>
+
+#include "test_common/source_location.hpp"
 
 namespace boost {
 namespace mysql {
@@ -50,9 +55,17 @@ struct initiation_guard
 };
 bool is_initiation_function();
 
+// Global I/O context
 asio::any_io_executor global_context_executor();
-void run_global_context();
-void poll_global_context(const bool* done);  // run until *done == true
+void poll_global_context();  // poll once
+void poll_global_context(
+    const bool* done,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);  // poll until *done == true
+void poll_global_context(
+    const std::function<bool()>& done,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);  // poll until done() == true
 
 }  // namespace test
 }  // namespace mysql

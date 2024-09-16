@@ -69,7 +69,7 @@ class pooled_connection
 {
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-    friend class detail::basic_pool_impl<detail::io_traits, pooled_connection>;
+    friend class detail::basic_pool_impl<any_connection, std::chrono::steady_clock, pooled_connection>;
 #endif
 
     struct impl_t
