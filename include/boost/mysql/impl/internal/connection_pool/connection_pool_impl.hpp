@@ -373,7 +373,7 @@ public:
             // and keeps the pool alive
             struct dispatch_handler
             {
-                std::shared_ptr<detail::pool_impl> pool_ptr;
+                std::shared_ptr<this_type> pool_ptr;
 
                 using executor_type = asio::any_io_executor;
                 executor_type get_executor() const noexcept { return pool_ptr->strand(); }
@@ -401,7 +401,7 @@ public:
             // and keeps the pool alive
             struct dispatch_handler
             {
-                std::shared_ptr<pool_impl> pool_ptr;
+                std::shared_ptr<this_type> pool_ptr;
                 connection_node* node_ptr;
 
                 using executor_type = asio::any_io_executor;
