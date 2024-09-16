@@ -354,7 +354,7 @@ public:
 
         // Call the initiating function
         pool.async_get_connection(
-            asio::use_service<mock_timer_service>(ex_result.ex.context()).current_time() + timeout,
+            mock_clock::now() + timeout,
             diag,
             asio::bind_executor(
                 ex_result.ex,
@@ -452,9 +452,9 @@ protected:
         BOOST_TEST(st.idle_list.size() == expected_num_idle);
     }
 
-    mock_timer_service& get_timer_service()
+    void advance_time_by(std::chrono::steady_clock::duration by)
     {
-        return asio::use_service<mock_timer_service>(pool_.get_executor().context());
+        boost::mysql::test::advance_time_by(pool_.get_executor().context(), by);
     }
 
     // Wrapper for waiting for a status on a certain node
@@ -582,7 +582,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
                 check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
 
                 // Advance until it's time to retry again
-                get_timer_service().advance_time_by(std::chrono::seconds(2));
+                advance_time_by(std::chrono::seconds(2));
                 wait_for_status(node, connection_status::connect_in_progress);
                 check_shared_st(common_server_errc::er_aborting_connection, expected_diag(), 1, 0);
 
@@ -617,12 +617,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
                 wait_for_status(node, connection_status::connect_in_progress);
 
                 // Timeout ellapses. Connect is considered failed
-                get_timer_service().advance_time_by(std::chrono::seconds(5));
+                advance_time_by(std::chrono::seconds(5));
                 wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
                 check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
 
                 // Advance until it's time to retry again
-                get_timer_service().advance_time_by(std::chrono::seconds(2));
+                advance_time_by(std::chrono::seconds(2));
                 wait_for_status(node, connection_status::connect_in_progress);
                 check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
 
@@ -766,7 +766,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
                 wait_for_status(node, connection_status::reset_in_progress);
 
                 // Reset times out. This triggers a reconnection
-                get_timer_service().advance_time_by(std::chrono::seconds(1));
+                advance_time_by(std::chrono::seconds(1));
                 wait_for_status(node, connection_status::connect_in_progress);
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
@@ -804,7 +804,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
                 wait_for_status(node, connection_status::reset_in_progress);
 
                 // Reset doesn't time out, regardless of how much time we wait
-                get_timer_service().advance_time_by(std::chrono::hours(9999));
+                advance_time_by(std::chrono::hours(9999));
                 BOOST_ASIO_CORO_YIELD asio::post(std::move(*this));
                 BOOST_TEST(node.status() == connection_status::reset_in_progress);
                 check_shared_st(error_code(), diagnostics(), 1, 0);
@@ -840,7 +840,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
                 wait_for_status(node, connection_status::idle);
 
                 // Wait until ping interval ellapses. This triggers a ping
-                get_timer_service().advance_time_by(std::chrono::seconds(100));
+                advance_time_by(std::chrono::seconds(100));
                 wait_for_status(node, connection_status::ping_in_progress);
                 check_shared_st(error_code(), diagnostics(), 1, 0);
 
@@ -875,7 +875,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
                 wait_for_status(node, connection_status::idle);
 
                 // Wait until ping interval ellapses
-                get_timer_service().advance_time_by(std::chrono::seconds(100));
+                advance_time_by(std::chrono::seconds(100));
 
                 // Ping fails. This triggers a reconnection. Diagnostics are not saved
                 BOOST_ASIO_CORO_YIELD
@@ -914,11 +914,11 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
                 wait_for_status(node, connection_status::idle);
 
                 // Wait until ping interval ellapses
-                get_timer_service().advance_time_by(std::chrono::seconds(100));
+                advance_time_by(std::chrono::seconds(100));
                 wait_for_status(node, connection_status::ping_in_progress);
 
                 // Ping times out. This triggers a reconnection. Diagnostics are not saved
-                get_timer_service().advance_time_by(std::chrono::seconds(2));
+                advance_time_by(std::chrono::seconds(2));
                 wait_for_status(node, connection_status::connect_in_progress);
 
                 // Reconnection succeeds
@@ -953,11 +953,11 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
                 wait_for_status(node, connection_status::idle);
 
                 // Wait until ping interval ellapses
-                get_timer_service().advance_time_by(std::chrono::seconds(100));
+                advance_time_by(std::chrono::seconds(100));
                 wait_for_status(node, connection_status::ping_in_progress);
 
                 // Ping doesn't time out, regardless of how much we wait
-                get_timer_service().advance_time_by(std::chrono::hours(9999));
+                advance_time_by(std::chrono::hours(9999));
                 BOOST_ASIO_CORO_YIELD asio::post(std::move(*this));
                 BOOST_TEST(node.status() == connection_status::ping_in_progress);
 
@@ -993,7 +993,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
                 wait_for_status(node, connection_status::idle);
 
                 // Connection won't ping, regardless of how much time we wait
-                get_timer_service().advance_time_by(std::chrono::hours(9999));
+                advance_time_by(std::chrono::hours(9999));
                 BOOST_ASIO_CORO_YIELD asio::post(std::move(*this));
                 BOOST_TEST(node.status() == connection_status::idle);
                 check_shared_st(error_code(), diagnostics(), 0, 1);
@@ -1033,7 +1033,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
                 BOOST_TEST(pool_.nodes().size() == 1u);
 
                 // Retry interval ellapses and connection retries and succeeds
-                get_timer_service().advance_time_by(std::chrono::seconds(2));
+                advance_time_by(std::chrono::seconds(2));
                 BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
 
                 // Request is fulfilled
@@ -1070,7 +1070,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
                 BOOST_TEST(pool_.nodes().size() == 1u);
 
                 // The request timeout ellapses, so the request fails
-                get_timer_service().advance_time_by(std::chrono::seconds(1));
+                advance_time_by(std::chrono::seconds(1));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, client_errc::timeout, false);
                 BOOST_TEST(*diag == diagnostics());
                 BOOST_TEST(pool_.nodes().size() == 1u);
@@ -1110,7 +1110,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
                 );
 
                 // The request timeout ellapses, so the request fails
-                get_timer_service().advance_time_by(std::chrono::seconds(1));
+                advance_time_by(std::chrono::seconds(1));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error, false);
                 BOOST_TEST(*diag == create_server_diag("Bad db"));
                 BOOST_TEST(pool_.nodes().size() == 1u);
@@ -1151,7 +1151,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
                 );
 
                 // The request timeout ellapses, so the request fails
-                get_timer_service().advance_time_by(std::chrono::seconds(1));
+                advance_time_by(std::chrono::seconds(1));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error, false);
                 BOOST_TEST(pool_.nodes().size() == 1u);
                 BOOST_TEST(num_pending_requests() == 0u);
@@ -1273,7 +1273,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
                 BOOST_ASIO_CORO_YIELD wait_for_task(task2, *node2, false);
 
                 // Time ellapses and task4 times out
-                get_timer_service().advance_time_by(std::chrono::seconds(2));
+                advance_time_by(std::chrono::seconds(2));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task4, client_errc::timeout, false);
 
                 // A connection is returned. The first task to enter is served
@@ -1358,7 +1358,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
                 BOOST_TEST(pool_.nodes().size() == 1u);
 
                 // Retry interval ellapses and connection retries and succeeds
-                get_timer_service().advance_time_by(std::chrono::seconds(2));
+                advance_time_by(std::chrono::seconds(2));
                 BOOST_ASIO_CORO_YIELD step(node, fn_type::connect);
 
                 // Request is fulfilled
@@ -1405,7 +1405,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
                 );
 
                 // The request timeout ellapses, so the request fails
-                get_timer_service().advance_time_by(std::chrono::seconds(1));
+                advance_time_by(std::chrono::seconds(1));
                 BOOST_ASIO_CORO_YIELD wait_for_task(task, common_server_errc::er_bad_db_error, false);
                 BOOST_TEST(*diag == create_server_diag("Bad db"));
                 BOOST_TEST(pool_.nodes().size() == 1u);
