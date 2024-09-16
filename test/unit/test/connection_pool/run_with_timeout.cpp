@@ -164,7 +164,7 @@ BOOST_FIXTURE_TEST_CASE(op_first_timer_ok, fixture)
     });
 
     // Time elapses
-    test::advance_time_by(global_context_executor().context(), seconds(60));
+    mock_clock::advance_time_by(seconds(60));
 
     // Operation completes successfully
     io.complete(error_code(), global_context_executor());
@@ -181,7 +181,7 @@ BOOST_FIXTURE_TEST_CASE(timer_first_ok, fixture)
     });
 
     // Advance time
-    test::advance_time_by(global_context_executor().context(), seconds(60));
+    mock_clock::advance_time_by(seconds(60));
     poll_global_context(&finished);
 }
 
@@ -209,7 +209,7 @@ BOOST_FIXTURE_TEST_CASE(timeout_zero, fixture)
     });
 
     // Advancing time does nothing
-    test::advance_time_by(global_context_executor().context(), seconds(60));
+    mock_clock::advance_time_by(seconds(60));
     static_cast<asio::io_context&>(global_context_executor().context()).poll();
     BOOST_TEST(!finished);
 

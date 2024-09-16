@@ -440,12 +440,7 @@ public:
         BOOST_TEST(st.idle_list.size() == expected_num_idle);
     }
 
-    void advance_time_by(std::chrono::steady_clock::duration by)
-    {
-        boost::mysql::test::advance_time_by(pool_->get_executor().context(), by);
-    }
-
-    // Wrapper for waiting for a status on a certain node
+    // Waits for a status on a certain node
     void wait_for_status(
         mock_node& node,
         connection_status status,
@@ -505,7 +500,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
     fix.check_shared_st(common_server_errc::er_aborting_connection, expected_diag, 1, 0);
 
     // Advance until it's time to retry again
-    fix.advance_time_by(std::chrono::seconds(2));
+    mock_clock::advance_time_by(std::chrono::seconds(2));
     fix.wait_for_status(node, connection_status::connect_in_progress);
     fix.check_shared_st(common_server_errc::er_aborting_connection, expected_diag, 1, 0);
 
@@ -531,12 +526,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
     fix.wait_for_status(node, connection_status::connect_in_progress);
 
     // Timeout ellapses. Connect is considered failed
-    fix.advance_time_by(std::chrono::seconds(5));
+    mock_clock::advance_time_by(std::chrono::seconds(5));
     fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
     fix.check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
 
     // Advance until it's time to retry again
-    fix.advance_time_by(std::chrono::seconds(2));
+    mock_clock::advance_time_by(std::chrono::seconds(2));
     fix.wait_for_status(node, connection_status::connect_in_progress);
     fix.check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
 
@@ -641,7 +636,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
     fix.wait_for_status(node, connection_status::reset_in_progress);
 
     // Reset times out. This triggers a reconnection
-    fix.advance_time_by(std::chrono::seconds(1));
+    mock_clock::advance_time_by(std::chrono::seconds(1));
     fix.wait_for_status(node, connection_status::connect_in_progress);
     fix.check_shared_st(error_code(), diagnostics(), 1, 0);
 
@@ -669,7 +664,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
     fix.wait_for_status(node, connection_status::reset_in_progress);
 
     // Reset doesn't time out, regardless of how much time we wait
-    fix.advance_time_by(std::chrono::hours(9999));
+    mock_clock::advance_time_by(std::chrono::hours(9999));
     poll_global_context([&]() { return node.status() == connection_status::reset_in_progress; });
     fix.check_shared_st(error_code(), diagnostics(), 1, 0);
 
@@ -694,7 +689,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
     fix.wait_for_status(node, connection_status::idle);
 
     // Wait until ping interval ellapses. This triggers a ping
-    fix.advance_time_by(std::chrono::seconds(100));
+    mock_clock::advance_time_by(std::chrono::seconds(100));
     fix.wait_for_status(node, connection_status::ping_in_progress);
     fix.check_shared_st(error_code(), diagnostics(), 1, 0);
 
@@ -719,7 +714,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
     fix.wait_for_status(node, connection_status::idle);
 
     // Wait until ping interval ellapses
-    fix.advance_time_by(std::chrono::seconds(100));
+    mock_clock::advance_time_by(std::chrono::seconds(100));
 
     // Ping fails. This triggers a reconnection. Diagnostics are not saved
     fix.step(node, fn_type::ping, common_server_errc::er_aborting_connection);
@@ -748,11 +743,11 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
     fix.wait_for_status(node, connection_status::idle);
 
     // Wait until ping interval ellapses
-    fix.advance_time_by(std::chrono::seconds(100));
+    mock_clock::advance_time_by(std::chrono::seconds(100));
     fix.wait_for_status(node, connection_status::ping_in_progress);
 
     // Ping times out. This triggers a reconnection. Diagnostics are not saved
-    fix.advance_time_by(std::chrono::seconds(2));
+    mock_clock::advance_time_by(std::chrono::seconds(2));
     fix.wait_for_status(node, connection_status::connect_in_progress);
 
     // Reconnection succeeds
@@ -777,11 +772,11 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
     fix.wait_for_status(node, connection_status::idle);
 
     // Wait until ping interval ellapses
-    fix.advance_time_by(std::chrono::seconds(100));
+    mock_clock::advance_time_by(std::chrono::seconds(100));
     fix.wait_for_status(node, connection_status::ping_in_progress);
 
     // Ping doesn't time out, regardless of how much we wait
-    fix.advance_time_by(std::chrono::hours(9999));
+    mock_clock::advance_time_by(std::chrono::hours(9999));
     poll_global_context([&]() { return node.status() == connection_status::ping_in_progress; });
 
     // Ping succeeds
@@ -805,7 +800,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
     fix.wait_for_status(node, connection_status::idle);
 
     // Connection won't ping, regardless of how much time we wait
-    fix.advance_time_by(std::chrono::hours(9999));
+    mock_clock::advance_time_by(std::chrono::hours(9999));
     poll_global_context([&]() { return node.status() == connection_status::idle; });
     fix.check_shared_st(error_code(), diagnostics(), 0, 1);
 }
@@ -832,7 +827,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // Retry interval ellapses and connection retries and succeeds
-    fix.advance_time_by(std::chrono::seconds(2));
+    mock_clock::advance_time_by(std::chrono::seconds(2));
     fix.step(node, fn_type::connect);
 
     // Request is fulfilled
@@ -857,7 +852,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // The request timeout ellapses, so the request fails
-    fix.advance_time_by(std::chrono::seconds(1));
+    mock_clock::advance_time_by(std::chrono::seconds(1));
     task.wait(client_errc::timeout, false);
     BOOST_TEST(diag == diagnostics());
     BOOST_TEST(fix.pool().nodes().size() == 1u);
@@ -887,7 +882,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
     );
 
     // The request timeout ellapses, so the request fails
-    fix.advance_time_by(std::chrono::seconds(1));
+    mock_clock::advance_time_by(std::chrono::seconds(1));
     task.wait(common_server_errc::er_bad_db_error, false);
     BOOST_TEST(diag == create_server_diag("Bad db"));
     BOOST_TEST(fix.pool().nodes().size() == 1u);
@@ -917,7 +912,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
     );
 
     // The request timeout ellapses, so the request fails
-    fix.advance_time_by(std::chrono::seconds(1));
+    mock_clock::advance_time_by(std::chrono::seconds(1));
     task.wait(common_server_errc::er_bad_db_error, false);
     BOOST_TEST(fix.pool().nodes().size() == 1u);
     BOOST_TEST(fix.num_pending_requests() == 0u);
@@ -1011,7 +1006,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     task2.wait(*node2, false);
 
     // Time ellapses and task4 times out
-    fix.advance_time_by(std::chrono::seconds(2));
+    mock_clock::advance_time_by(std::chrono::seconds(2));
     task4.wait(client_errc::timeout, false);
 
     // A connection is returned. The first task to enter is served
@@ -1074,7 +1069,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // Retry interval ellapses and connection retries and succeeds
-    fix.advance_time_by(std::chrono::seconds(2));
+    mock_clock::advance_time_by(std::chrono::seconds(2));
     fix.step(node, fn_type::connect);
 
     // Request is fulfilled
@@ -1109,7 +1104,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
     );
 
     // The request timeout ellapses, so the request fails
-    fix.advance_time_by(std::chrono::seconds(1));
+    mock_clock::advance_time_by(std::chrono::seconds(1));
     task.wait(common_server_errc::er_bad_db_error, false);
     BOOST_TEST(diag == create_server_diag("Bad db"));
     BOOST_TEST(fix.pool().nodes().size() == 1u);

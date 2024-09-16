@@ -8,11 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_MOCK_TIMER_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_MOCK_TIMER_HPP
 
-#include <boost/asio/any_completion_handler.hpp>
-#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
-#include <boost/asio/execution_context.hpp>
-#include <boost/system/detail/error_code.hpp>
+#include <boost/asio/wait_traits.hpp>
 
 #include <chrono>
 
@@ -29,16 +26,11 @@ struct mock_clock
     using time_point = typename std::chrono::steady_clock::time_point;
     static constexpr bool is_steady = true;
     static time_point now();
+    static void advance_time_by(std::chrono::steady_clock::duration dur);
 };
-
-// Advance mock_clock and call relevant handlers for timers associated with the given context
-void advance_time_by(asio::execution_context& ctx, std::chrono::steady_clock::duration dur);
 
 // Helper typedef
 using mock_timer = asio::basic_waitable_timer<mysql::test::mock_clock>;
-
-// Forward decl
-class mock_timer_service;
 
 }  // namespace test
 }  // namespace mysql
@@ -47,53 +39,20 @@ class mock_timer_service;
 namespace boost {
 namespace asio {
 
-// Defining this as a specialization allows for better compatibility with other Asio code.
-// Using just a custom WaitTraits object doesn't suit, because Asio will still use its internal
-// timer service, which makes tests less predictable
+// Specialization suitable to use for tests. Instructs Asio to
+// create physical timers that wait for a zero duration, effectively
+// causing Asio's timer service to poll for ready handlers
 template <>
-class basic_waitable_timer<mysql::test::mock_clock>
+struct wait_traits<mysql::test::mock_clock>
 {
-    using this_type = basic_waitable_timer<mysql::test::mock_clock>;
-
-    mysql::test::mock_timer_service* svc_;
-    int timer_id_;
-    any_io_executor ex_;
-    std::chrono::steady_clock::time_point expiry_;
-
-    void add_to_service(any_completion_handler<void(system::error_code)> handler);
-
-    struct initiate_wait
+    static std::chrono::steady_clock::duration to_wait_duration(std::chrono::steady_clock::duration)
     {
-        template <class Handler>
-        void operator()(Handler&& h, this_type* self)
-        {
-            self->add_to_service(std::forward<Handler>(h));
-        }
-    };
-
-public:
-    basic_waitable_timer(asio::any_io_executor ex);
-
-    basic_waitable_timer(asio::any_io_executor ex, std::chrono::steady_clock::time_point tp)
-        : basic_waitable_timer(std::move(ex))
-    {
-        expires_at(tp);
+        return std::chrono::nanoseconds(0);
     }
 
-    asio::any_io_executor get_executor() { return ex_; }
-    std::size_t expires_at(std::chrono::steady_clock::time_point new_expiry);
-    std::size_t expires_after(std::chrono::steady_clock::duration dur);
-    std::size_t cancel();
-
-    template <class CompletionToken>
-    auto async_wait(CompletionToken&& token)
-        -> decltype(asio::async_initiate<CompletionToken, void(system::error_code)>(
-            initiate_wait(),
-            token,
-            std::declval<this_type*>()
-        ))
+    static std::chrono::steady_clock::duration to_wait_duration(std::chrono::steady_clock::time_point)
     {
-        return asio::async_initiate<CompletionToken, void(system::error_code)>(initiate_wait(), token, this);
+        return std::chrono::nanoseconds(0);
     }
 };
 
