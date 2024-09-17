@@ -12,13 +12,6 @@
 
 #include <boost/config.hpp>
 
-// Silence PFR warnings caused by https://github.com/boostorg/pfr/issues/166
-// Only affecting gcc-11+, and caused during the inclusion of the library
-#if BOOST_GCC >= 110000
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpragmas"
-#endif
-
 // Silence MSVC 14.1 warnings caused by https://github.com/boostorg/pfr/issues/167
 #if defined(BOOST_MSVC) && BOOST_MSVC < 1920
 #pragma warning(push)
@@ -41,10 +34,6 @@
 #include <array>
 #include <cstddef>
 #include <string_view>
-#endif
-
-#if BOOST_GCC >= 110000
-#pragma GCC diagnostic pop
 #endif
 
 namespace boost {
