@@ -16,6 +16,7 @@
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
@@ -32,6 +33,7 @@
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/bind_immediate_executor.hpp>
 #include <boost/asio/cancellation_signal.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -43,7 +45,8 @@
 #include <boost/asio/strand.hpp>
 #include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
-#include <boost/test/tools/detail/per_element_manip.hpp>
+#include <boost/test/data/test_case.hpp>
+#include <boost/test/tools/detail/print_helper.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
@@ -70,6 +73,8 @@ namespace asio = boost::asio;
 using boost::test_tools::per_element;
 using detail::connection_status;
 using std::chrono::steady_clock;
+
+BOOST_TEST_DONT_PRINT_LOG_VALUE(asio::cancellation_type_t)
 
 /**
  * These tests verify step-by-step that all interactions between
@@ -483,6 +488,35 @@ public:
         node.connection().step(next_act, as_netresult, ec, diag).validate_no_error_nodiag(loc);
     }
 };
+
+BOOST_AUTO_TEST_CASE(is_known_cancel_type_)
+{
+    using ct = asio::cancellation_type_t;
+
+    struct
+    {
+        string_view name;
+        asio::cancellation_type_t input;
+        bool expected;
+    } test_cases[] = {
+        {"none",                       ct::none,                               false},
+        {"all",                        ct::all,                                true },
+        {"terminal",                   ct::terminal,                           true },
+        {"partial",                    ct::partial,                            true },
+        {"total",                      ct::total,                              true },
+        {"terminal | partial",         ct::terminal | ct::partial,             true },
+        {"terminal | total",           ct::terminal | ct::total,               true },
+        {"partial | total",            ct::partial | ct::total,                true },
+        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
+        {"unknown",                    static_cast<ct>(0xf000),                false},
+        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name) { BOOST_TEST(detail::is_known_cancel_type(tc.input) == tc.expected); }
+    }
+}
 
 // connection lifecycle
 BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
@@ -1241,7 +1275,10 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
 }
 
 // per-operation cancellation does the right thing
-BOOST_AUTO_TEST_CASE(async_run_cancel)
+BOOST_DATA_TEST_CASE(
+    async_run_cancel,
+    boost::unit_test::data::make({asio::cancellation_type_t::terminal, asio::cancellation_type_t::total})
+)
 {
     // Create a pool. thread_safe introduces extra latency (regression check)
     pool_params params;
@@ -1253,7 +1290,7 @@ BOOST_AUTO_TEST_CASE(async_run_cancel)
     auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
 
     // Emit the signal. run should finish
-    sig.emit(asio::cancellation_type_t::terminal);
+    sig.emit(sample);
     std::move(run_result).validate_no_error_nodiag();
 
     // The pool has effectively been cancelled, as if cancel() had been called

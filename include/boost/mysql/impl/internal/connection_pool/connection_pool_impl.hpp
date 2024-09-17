@@ -57,6 +57,14 @@ inline pipeline_request make_reset_pipeline()
     return req;
 }
 
+inline bool is_known_cancel_type(asio::cancellation_type_t v)
+{
+    return !!(
+        v & (asio::cancellation_type_t::partial | asio::cancellation_type_t::total |
+             asio::cancellation_type_t::terminal)
+    );
+}
+
 // Templating on ConnectionWrapper is useful for mocking in tests.
 // Production code always uses ConnectionWrapper = pooled_connection.
 template <class ConnectionType, class ClockType, class ConnectionWrapper>
@@ -159,10 +167,10 @@ class basic_pool_impl
         {
             this_type* self;
 
-            void operator()(asio::cancellation_type_t) const
+            void operator()(asio::cancellation_type_t type) const
             {
-                // TODO: check cancel_type
-                self->cancel();
+                if (is_known_cancel_type(type))
+                    self->cancel();
             }
         };
 
