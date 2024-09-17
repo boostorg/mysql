@@ -11,17 +11,15 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/bind_executor.hpp>
-#include <boost/asio/cancellation_signal.hpp>
-#include <boost/asio/cancellation_type.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/thread_pool.hpp>
 
+#include <chrono>
 #include <iostream>
 #include <memory>
-#include <utility>
 
 using boost::mysql::error_code;
 namespace mysql = boost::mysql;
@@ -61,29 +59,11 @@ void run(const char* hostname)
     // Using per-operation cancellation
     for (int i = 0; i < 20; ++i)
     {
-        // Create a pool and a signal
-        struct pool_and_signal
-        {
-            mysql::connection_pool pool;
-            asio::cancellation_signal sig;
+        // Create a pool
+        mysql::connection_pool pool(ctx, make_params(hostname));
 
-            pool_and_signal(asio::any_io_executor ex, mysql::pool_params p)
-                : pool(std::move(ex), std::move(p))
-            {
-            }
-        };
-
-        auto pool_sig = std::make_shared<pool_and_signal>(ctx.get_executor(), make_params(hostname));
-
-        // Run the pool within the thread pool
-        asio::post(asio::bind_executor(ctx.get_executor(), [pool_sig]() {
-            pool_sig->pool.async_run(asio::bind_cancellation_slot(pool_sig->sig.slot(), asio::detached));
-        }));
-
-        // Issue a cancellation
-        asio::post(asio::bind_executor(ctx.get_executor(), [pool_sig]() {
-            pool_sig->sig.emit(asio::cancellation_type_t::terminal);
-        }));
+        // Run the pool for a short period of time
+        pool.async_run(asio::cancel_after(std::chrono::milliseconds(1), asio::detached));
     }
 
     // Run
