@@ -25,8 +25,12 @@
 
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/associated_cancellation_slot.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
+#include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/bind_executor.hpp>
+#include <boost/asio/cancellation_signal.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -144,17 +148,37 @@ class basic_pool_impl
     {
         int resume_point_{0};
         std::shared_ptr<this_type> obj_;
+        asio::cancellation_slot cancel_slot_;
 
-        run_op(std::shared_ptr<this_type> obj) noexcept : obj_(std::move(obj)) {}
+        run_op(std::shared_ptr<this_type> obj, asio::cancellation_slot slot) noexcept
+            : obj_(std::move(obj)), cancel_slot_(slot)
+        {
+        }
+
+        struct cancel_handler
+        {
+            this_type* self;
+
+            void operator()(asio::cancellation_type_t) const
+            {
+                // TODO: check cancel_type
+                self->cancel();
+            }
+        };
 
         template <class Self>
         void operator()(Self& self, error_code ec = {})
         {
-            // TODO: per-operation cancellation here doesn't do the right thing
             boost::ignore_unused(ec);
             switch (resume_point_)
             {
             case 0:
+                // Emplace a cancellation handler, if required
+                if (cancel_slot_.is_connected())
+                {
+                    cancel_slot_.template emplace<cancel_handler>(cancel_handler{obj_.get()});
+                }
+
                 // Ensure we run within the strand
                 if (obj_->params_.thread_safe)
                 {
@@ -188,6 +212,7 @@ class basic_pool_impl
                 BOOST_MYSQL_YIELD(resume_point_, 4, obj_->wait_gp_.async_wait(std::move(self)))
 
                 // Done
+                cancel_slot_.clear();
                 obj_.reset();
                 self.complete(error_code());
             }
@@ -355,9 +380,14 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_run(CompletionToken&& token)
     {
-        return asio::async_compose<CompletionToken, void(error_code)>(
-            run_op(shared_from_this_wrapper()),
-            token,
+        auto slot = asio::get_associated_cancellation_slot(token);
+        auto tok = asio::bind_cancellation_slot(
+            asio::cancellation_slot(),
+            std::forward<CompletionToken>(token)
+        );
+        return asio::async_compose<decltype(tok), void(error_code)>(
+            run_op(shared_from_this_wrapper(), slot),
+            tok,
             pool_ex_
         );
     }
