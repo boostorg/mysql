@@ -569,6 +569,8 @@ BOOST_FIXTURE_TEST_CASE(zero_timeuts, fixture)
 
 // Spotcheck: we can use completion tokens that require
 // initiations to have a bound executor, like cancel_after
+// This also tests that running ops with a connected cancel slot
+// without triggering cancellation doesn't crash
 BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
 {
     constexpr std::chrono::seconds timeout(10);
@@ -590,6 +592,14 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
     pool.cancel();
 }
 
+// Spotcheck: per-operation cancellation works with async_run
+BOOST_FIXTURE_TEST_CASE(async_run_per_operation_cancellation, fixture)
+{
+    connection_pool pool(global_context_executor(), create_pool_params());
+    pool.async_run(asio::cancel_after(std::chrono::milliseconds(1), asio::deferred))(as_netresult)
+        .validate_no_error_nodiag();
+}
+
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 // Spotcheck: we can co_await async functions in any_connection,
@@ -599,7 +609,7 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
     run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
         connection_pool pool(global_context_executor(), create_pool_params());
 
-        // Run can be used without a token. Defaults to deferred
+        // Run can be used without a token. Defaults to with_diagnostics(deferred)
         auto run_op = pool.async_run();
 
         // Error case (pool not running)
