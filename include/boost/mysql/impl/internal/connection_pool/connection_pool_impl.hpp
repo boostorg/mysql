@@ -170,6 +170,7 @@ class basic_pool_impl
         void operator()(Self& self, error_code ec = {})
         {
             boost::ignore_unused(ec);
+
             switch (resume_point_)
             {
             case 0:
@@ -380,14 +381,17 @@ public:
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_run(CompletionToken&& token)
     {
+        // Completely disable composed cancellation handling, as it's not what we want
         auto slot = asio::get_associated_cancellation_slot(token);
-        auto tok = asio::bind_cancellation_slot(
+        auto token_without_slot = asio::bind_cancellation_slot(
             asio::cancellation_slot(),
             std::forward<CompletionToken>(token)
         );
-        return asio::async_compose<decltype(tok), void(error_code)>(
+
+        // Initiate passing the original token's slot manually
+        return asio::async_compose<decltype(token_without_slot), void(error_code)>(
             run_op(shared_from_this_wrapper(), slot),
-            tok,
+            token_without_slot,
             pool_ex_
         );
     }
