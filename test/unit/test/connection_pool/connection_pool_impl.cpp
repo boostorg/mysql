@@ -1275,6 +1275,7 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
 }
 
 // per-operation cancellation does the right thing
+// TODO: maybe these are best as integration tests?
 BOOST_DATA_TEST_CASE(
     async_run_cancel,
     boost::unit_test::data::make({asio::cancellation_type_t::terminal, asio::cancellation_type_t::total})
@@ -1295,6 +1296,37 @@ BOOST_DATA_TEST_CASE(
 
     // The pool has effectively been cancelled, as if cancel() had been called
     get_connection_task(*pool, nullptr, std::chrono::seconds(0)).wait(client_errc::cancelled, false);
+}
+
+BOOST_DATA_TEST_CASE(
+    async_get_connection_cancel,
+    boost::unit_test::data::make({asio::cancellation_type_t::terminal, asio::cancellation_type_t::total})
+)
+{
+    // Create a pool
+    pool_params params;
+    params.thread_safe = true;  // TODO
+    auto pool = create_mock_pool(std::move(params));
+    auto run_result = pool->async_run(as_netresult);
+
+    // Run with a bound signal
+    asio::cancellation_signal sig;
+    diagnostics diag;
+    auto getconn_result = pool->async_get_connection(
+        std::chrono::seconds(0),
+        &diag,
+        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+    );
+
+    // Emit the signal. get connection should return
+    sig.emit(sample);
+    std::move(getconn_result).validate_error(client_errc::cancelled);
+
+    // TODO: this is per-operation, further connections are supported
+
+    // Finish the pool
+    pool->cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
