@@ -15,7 +15,9 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
@@ -596,7 +598,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
 BOOST_FIXTURE_TEST_CASE(async_run_per_operation_cancellation, fixture)
 {
     connection_pool pool(global_context_executor(), create_pool_params());
-    pool.async_run(asio::cancel_after(std::chrono::milliseconds(1), asio::deferred))(as_netresult)
+    pool.async_run(asio::cancel_after(std::chrono::microseconds(1), asio::deferred))(as_netresult)
         .validate_no_error_nodiag();
     pool.async_get_connection(diag, as_netresult).validate_error(client_errc::cancelled);
 }
@@ -612,7 +614,7 @@ BOOST_FIXTURE_TEST_CASE(async_get_connection_per_operation_cancellation, fixture
     auto conn = pool.async_get_connection(diag, as_netresult).get();
 
     // Getting another connection times out
-    pool.async_get_connection(diag, asio::cancel_after(std::chrono::milliseconds(1), asio::deferred))(
+    pool.async_get_connection(diag, asio::cancel_after(std::chrono::microseconds(1), asio::deferred))(
             as_netresult
     )
         .validate_error(client_errc::cancelled);
@@ -660,8 +662,43 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
     });
 }
 
-// TODO: test cancel_after as a partial token used with async_get_connection.
-// This requires https://github.com/boostorg/mysql/issues/197
+// cancel_after can be used as a partial token with async_run and async_get_connection.
+BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
+{
+    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
+        connection_pool pool(global_context_executor(), create_pool_params(1));
+
+        // Run can be used with cancel_after
+        asio::co_spawn(
+            global_context_executor(),
+            [&]() -> asio::awaitable<void> {
+                co_await pool.async_run(asio::cancel_after(std::chrono::seconds(1)));
+            },
+            [](std::exception_ptr exc) {
+                if (exc)
+                    std::rethrow_exception(exc);
+            }
+        );
+
+        // Success case
+        auto conn = co_await pool.async_get_connection(asio::cancel_after(std::chrono::seconds(1)));
+        co_await conn->async_ping();
+
+        // Error case (operation cancelled)
+        BOOST_CHECK_EXCEPTION(
+            co_await pool.async_get_connection(asio::cancel_after(std::chrono::microseconds(1))),
+            error_with_diagnostics,
+            [](const error_with_diagnostics& err) {
+                BOOST_TEST(err.code() == client_errc::cancelled);
+                BOOST_TEST(err.get_diagnostics() == diagnostics());
+                return true;
+            }
+        );
+
+        // Finish
+        pool.cancel();
+    });
+}
 
 #endif
 
