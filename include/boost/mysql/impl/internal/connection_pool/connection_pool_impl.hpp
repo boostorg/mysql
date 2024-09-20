@@ -30,7 +30,6 @@
 #include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/cancellation_signal.hpp>
-#include <boost/asio/cancellation_state.hpp>
 #include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
@@ -58,6 +57,7 @@ inline pipeline_request make_reset_pipeline()
     return req;
 }
 
+// Does the input value contain any of the known cancellation types?
 inline bool is_known_cancel_type(asio::cancellation_type_t v)
 {
     return !!(
