@@ -17,8 +17,11 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/bind_executor.hpp>
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/dispatch.hpp>
+#include <boost/asio/strand.hpp>
 #include <boost/asio/thread_pool.hpp>
 
 #include <atomic>
@@ -33,7 +36,7 @@ namespace asio = boost::asio;
 namespace {
 
 static constexpr int num_parallel = 100;
-static constexpr int total = num_parallel * 20;
+static constexpr int total = num_parallel * 4;
 
 static void check_ec(error_code ec, mysql::diagnostics& diag)
 {
@@ -65,6 +68,7 @@ class task
     enum class state_t
     {
         initial,
+        after_enter_strand,
         after_get_connection,
         after_execute
     };
@@ -75,32 +79,38 @@ class task
     coordinator* coord_{};
     mysql::pooled_connection conn_;
     state_t state_{state_t::initial};
-    asio::any_io_executor base_ex_;
+    asio::strand<asio::any_io_executor> strand_;
 
 public:
     task(mysql::connection_pool& pool, coordinator& coord, asio::any_io_executor base_ex)
-        : pool_(&pool), coord_(&coord), base_ex_(std::move(base_ex))
+        : pool_(&pool), coord_(&coord), strand_(asio::make_strand(std::move(base_ex)))
     {
     }
 
     void resume(error_code ec = {})
     {
-        // Error checking
-
-        switch (state_)
+        while (true)
         {
-            while (true)
+            switch (state_)
             {
             case state_t::initial:
+                state_ = state_t::after_enter_strand;
+                asio::dispatch(asio::bind_executor(strand_, [this]() { resume(error_code()); }));
+                return;
+
+            case state_t::after_enter_strand:
                 state_ = state_t::after_get_connection;
                 pool_->async_get_connection(
                     diag_,
                     asio::cancel_after(
                         std::chrono::microseconds(1),  // make it likely to get some cancellations
-                        [this](error_code ec, mysql::pooled_connection c) {
-                            conn_ = std::move(c);
-                            resume(ec);
-                        }
+                        asio::bind_executor(
+                            strand_,
+                            [this](error_code ec, mysql::pooled_connection c) {
+                                conn_ = std::move(c);
+                                resume(ec);
+                            }
+                        )
                     )
                 );
                 return;
@@ -109,12 +119,17 @@ public:
                 if (ec == boost::mysql::client_errc::cancelled)
                 {
                     state_ = state_t::initial;
-                    continue;
+                    break;
                 }
                 check_ec(ec, diag_);
 
                 state_ = state_t::after_execute;
-                conn_->async_execute("SELECT 1", r_, diag_, [this](error_code ec) { resume(ec); });
+                conn_->async_execute(
+                    "SELECT 1",
+                    r_,
+                    diag_,
+                    asio::bind_executor(strand_, [this](error_code ec) { resume(ec); })
+                );
                 return;
 
             case state_t::after_execute:
@@ -122,7 +137,11 @@ public:
                 check_ec(ec, diag_);
                 conn_ = boost::mysql::pooled_connection();
 
-                if (!coord_->on_loop_finish())
+                if (coord_->on_loop_finish())
+                {
+                    state_ = state_t::after_enter_strand;
+                }
+                else
                 {
                     coord_->on_finish();
                     return;
