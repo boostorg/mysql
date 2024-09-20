@@ -550,7 +550,7 @@ public:
 
                 // Start
                 asio::async_compose<decltype(bound_handler), void(error_code, ConnectionWrapper)>(
-                    get_connection_op(std::move(self), timeout, diag, std::move(sig)),
+                    get_connection_op(self, timeout, diag, std::move(sig)),
                     bound_handler,
                     self->pool_ex_
                 );
@@ -559,7 +559,7 @@ public:
             {
                 // Just start
                 asio::async_compose<Handler, void(error_code, ConnectionWrapper)>(
-                    get_connection_op(std::move(self), timeout, diag, nullptr),
+                    get_connection_op(self, timeout, diag, nullptr),
                     handler,
                     self->pool_ex_
                 );
