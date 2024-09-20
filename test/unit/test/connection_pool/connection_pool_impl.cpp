@@ -1274,14 +1274,49 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
     BOOST_TEST(cparams.multi_queries == false);
 }
 
-// per-operation cancellation does the right thing
-// TODO: maybe these are best as integration tests?
-BOOST_DATA_TEST_CASE(
-    async_run_cancel,
-    boost::unit_test::data::make({asio::cancellation_type_t::terminal, asio::cancellation_type_t::total})
-)
+// per-operation cancellation does the right thing for async_run
+BOOST_AUTO_TEST_CASE(async_run_cancel)
 {
-    // Create a pool. thread_safe introduces extra latency (regression check)
+    struct test_case
+    {
+        string_view name;
+        asio::cancellation_type_t cancel_type;
+        bool thread_safe;  // Introduces extra latency. Regression check, so we have more tests here
+    } test_cases[]{
+        {"terminal",        asio::cancellation_type_t::terminal, true },
+        {"partial",         asio::cancellation_type_t::partial,  true },
+        {"total",           asio::cancellation_type_t::total,    true },
+        {"not_thread_safe", asio::cancellation_type_t::terminal, false},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Create a pool
+            pool_params params;
+            params.thread_safe = tc.thread_safe;
+            auto pool = create_mock_pool(std::move(params));
+
+            // Run with a bound signal
+            asio::cancellation_signal sig;
+            auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
+
+            // Emit the signal. run should finish
+            sig.emit(tc.cancel_type);
+            std::move(run_result).validate_no_error_nodiag();
+
+            // The pool has effectively been cancelled, as if cancel() had been called
+            get_connection_task(*pool, nullptr, std::chrono::seconds(0))
+                .wait(client_errc::cancelled, !tc.thread_safe);
+        }
+    }
+}
+
+// async_run with a bound signal that doesn't get emitted doesn't cause trouble
+BOOST_AUTO_TEST_CASE(async_run_bound_signal)
+{
+    // Create a pool
     pool_params params;
     params.thread_safe = true;
     auto pool = create_mock_pool(std::move(params));
@@ -1290,43 +1325,82 @@ BOOST_DATA_TEST_CASE(
     asio::cancellation_signal sig;
     auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
 
-    // Emit the signal. run should finish
-    sig.emit(sample);
-    std::move(run_result).validate_no_error_nodiag();
+    // Cancel (but not using the signal)
+    pool->cancel();
 
-    // The pool has effectively been cancelled, as if cancel() had been called
-    get_connection_task(*pool, nullptr, std::chrono::seconds(0)).wait(client_errc::cancelled, false);
+    // Finish successfully
+    std::move(run_result).validate_no_error_nodiag();
 }
 
-BOOST_DATA_TEST_CASE(
-    async_get_connection_cancel,
-    boost::unit_test::data::make({asio::cancellation_type_t::terminal, asio::cancellation_type_t::total})
-)
+// per-operation cancellation does the right thing for async_get_connection
+BOOST_AUTO_TEST_CASE(async_get_connection_cancel)
 {
-    // Create a pool
+    struct test_case
+    {
+        string_view name;
+        asio::cancellation_type_t cancel_type;
+        bool thread_safe;  // Introduces extra latency. Regression check, so we have more tests here
+    } test_cases[]{
+        {"terminal",        asio::cancellation_type_t::terminal, true },
+        {"partial",         asio::cancellation_type_t::partial,  true },
+        {"total",           asio::cancellation_type_t::total,    true },
+        {"not_thread_safe", asio::cancellation_type_t::terminal, false},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Create a pool
+            pool_params params;
+            params.thread_safe = tc.thread_safe;
+            auto pool = create_mock_pool(std::move(params));
+            auto run_result = pool->async_run(as_netresult);
+
+            // Run with a bound signal
+            asio::cancellation_signal sig;
+            diagnostics diag;
+            auto getconn_result = pool->async_get_connection(
+                std::chrono::seconds(0),
+                &diag,
+                asio::bind_cancellation_slot(sig.slot(), as_netresult)
+            );
+
+            // Emit the signal. get connection should return
+            sig.emit(tc.cancel_type);
+            std::move(getconn_result).validate_error(client_errc::cancelled);
+
+            // Finish the pool
+            pool->cancel();
+            std::move(run_result).validate_no_error_nodiag();
+        }
+    }
+}
+
+// async_run with a bound signal that doesn't get emitted doesn't cause trouble
+BOOST_AUTO_TEST_CASE(async_get_connection_bound_signal)
+{
+    // Setup
     pool_params params;
-    params.thread_safe = true;  // TODO
-    auto pool = create_mock_pool(std::move(params));
-    auto run_result = pool->async_run(as_netresult);
+    params.thread_safe = true;
+    fixture fix(std::move(params));
+
+    // Connect one of the connections
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
 
     // Run with a bound signal
     asio::cancellation_signal sig;
     diagnostics diag;
-    auto getconn_result = pool->async_get_connection(
-        std::chrono::seconds(0),
-        &diag,
-        asio::bind_cancellation_slot(sig.slot(), as_netresult)
-    );
-
-    // Emit the signal. get connection should return
-    sig.emit(sample);
-    std::move(getconn_result).validate_error(client_errc::cancelled);
-
-    // TODO: this is per-operation, further connections are supported
-
-    // Finish the pool
-    pool->cancel();
-    std::move(run_result).validate_no_error_nodiag();
+    auto conn = fix.pool()
+                    .async_get_connection(
+                        std::chrono::seconds(0),
+                        &diag,
+                        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+                    )
+                    .get();
+    BOOST_TEST(conn.node == &node);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
