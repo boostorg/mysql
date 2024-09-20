@@ -598,6 +598,7 @@ BOOST_FIXTURE_TEST_CASE(async_run_per_operation_cancellation, fixture)
     connection_pool pool(global_context_executor(), create_pool_params());
     pool.async_run(asio::cancel_after(std::chrono::milliseconds(1), asio::deferred))(as_netresult)
         .validate_no_error_nodiag();
+    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::cancelled);
 }
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
