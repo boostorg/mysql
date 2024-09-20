@@ -601,6 +601,27 @@ BOOST_FIXTURE_TEST_CASE(async_run_per_operation_cancellation, fixture)
     pool.async_get_connection(diag, as_netresult).validate_error(client_errc::cancelled);
 }
 
+// Spotcheck: per-operation cancellation works with async_get_connection
+BOOST_FIXTURE_TEST_CASE(async_get_connection_per_operation_cancellation, fixture)
+{
+    // Create and run the pool
+    connection_pool pool(global_context_executor(), create_pool_params(1));
+    auto run_result = pool.async_run(as_netresult);
+
+    // Get the only connection the pool has
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
+
+    // Getting another connection times out
+    pool.async_get_connection(diag, asio::cancel_after(std::chrono::milliseconds(1), asio::deferred))(
+            as_netresult
+    )
+        .validate_error(client_errc::cancelled);
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
+}
+
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 // Spotcheck: we can co_await async functions in any_connection,
