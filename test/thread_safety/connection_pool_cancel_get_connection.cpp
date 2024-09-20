@@ -80,6 +80,7 @@ class task
     mysql::pooled_connection conn_;
     state_t state_{state_t::initial};
     asio::strand<asio::any_io_executor> strand_;
+    std::chrono::milliseconds timeout_{1};  // make it likely to get some cancellations
 
 public:
     task(mysql::connection_pool& pool, coordinator& coord, asio::any_io_executor base_ex)
@@ -103,7 +104,7 @@ public:
                 pool_->async_get_connection(
                     diag_,
                     asio::cancel_after(
-                        std::chrono::microseconds(1),  // make it likely to get some cancellations
+                        timeout_,
                         asio::bind_executor(
                             strand_,
                             [this](error_code ec, mysql::pooled_connection c) {
@@ -119,6 +120,7 @@ public:
                 if (ec == boost::mysql::client_errc::cancelled)
                 {
                     state_ = state_t::initial;
+                    timeout_ *= 2;  // Make sure the test doesn't get stuck
                     break;
                 }
                 check_ec(ec, diag_);
