@@ -15,17 +15,11 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline asio::ssl::context create_default_ssl_context()
+inline asio::ssl::context& default_ssl_context()
 {
     // As of MySQL 5.7.35, support for previous TLS versions is deprecated,
     // so this is a secure default. User can override it if they want
-    asio::ssl::context ctx(asio::ssl::context::tlsv12_client);
-    return ctx;
-}
-
-inline asio::ssl::context& default_ssl_context()
-{
-    static asio::ssl::context ctx = create_default_ssl_context();
+    static asio::ssl::context ctx(asio::ssl::context::tlsv12_client);
     return ctx;
 }
 
