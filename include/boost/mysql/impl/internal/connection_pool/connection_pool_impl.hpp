@@ -57,15 +57,6 @@ inline pipeline_request make_reset_pipeline()
     return req;
 }
 
-// Does the input value contain any of the known cancellation types?
-inline bool is_known_cancel_type(asio::cancellation_type_t v)
-{
-    return !!(
-        v & (asio::cancellation_type_t::partial | asio::cancellation_type_t::total |
-             asio::cancellation_type_t::terminal)
-    );
-}
-
 // Templating on ConnectionWrapper is useful for mocking in tests.
 // Production code always uses ConnectionWrapper = pooled_connection.
 template <class ConnectionType, class ClockType, class ConnectionWrapper>
@@ -170,7 +161,7 @@ class basic_pool_impl
 
             void operator()(asio::cancellation_type_t type) const
             {
-                if (is_known_cancel_type(type))
+                if (run_supports_cancel_type(type))
                     self->cancel();
             }
         };
@@ -293,7 +284,8 @@ class basic_pool_impl
                         result_ec_ = client_errc::pool_not_running;
                         break;
                     }
-                    else if (obj_->state_ == state_t::cancelled || is_known_cancel_type(self.cancelled()))
+                    else if (obj_->state_ == state_t::cancelled ||
+                             get_connection_supports_cancel_type(self.cancelled()))
                     {
                         result_ec_ = client_errc::cancelled;
                         break;
@@ -515,7 +507,7 @@ public:
                 }
             };
 
-            if (is_known_cancel_type(type))
+            if (get_connection_supports_cancel_type(type))
             {
                 asio::dispatch(dispatch_handler{std::move(sig_ptr), std::move(self), type});
             }
@@ -607,6 +599,21 @@ public:
     }
 
     // Exposed for testing
+    static bool run_supports_cancel_type(asio::cancellation_type_t v)
+    {
+        // run doesn't support total, as the pool state is always modified
+        return !!(v & (asio::cancellation_type_t::partial | asio::cancellation_type_t::terminal));
+    }
+
+    static bool get_connection_supports_cancel_type(asio::cancellation_type_t v)
+    {
+        // get_connection supports all cancel types
+        return !!(
+            v & (asio::cancellation_type_t::partial | asio::cancellation_type_t::total |
+                 asio::cancellation_type_t::terminal)
+        );
+    }
+
     std::list<node_type>& nodes() noexcept { return all_conns_; }
     shared_state_type& shared_state() noexcept { return shared_st_; }
     internal_pool_params& params() noexcept { return params_; }

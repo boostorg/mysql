@@ -489,35 +489,6 @@ public:
     }
 };
 
-BOOST_AUTO_TEST_CASE(is_known_cancel_type_)
-{
-    using ct = asio::cancellation_type_t;
-
-    struct
-    {
-        string_view name;
-        asio::cancellation_type_t input;
-        bool expected;
-    } test_cases[] = {
-        {"none",                       ct::none,                               false},
-        {"all",                        ct::all,                                true },
-        {"terminal",                   ct::terminal,                           true },
-        {"partial",                    ct::partial,                            true },
-        {"total",                      ct::total,                              true },
-        {"terminal | partial",         ct::terminal | ct::partial,             true },
-        {"terminal | total",           ct::terminal | ct::total,               true },
-        {"partial | total",            ct::partial | ct::total,                true },
-        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
-        {"unknown",                    static_cast<ct>(0xf000),                false},
-        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name) { BOOST_TEST(detail::is_known_cancel_type(tc.input) == tc.expected); }
-    }
-}
-
 // connection lifecycle
 BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 {
@@ -1274,19 +1245,52 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
     BOOST_TEST(cparams.multi_queries == false);
 }
 
-// per-operation cancellation does the right thing for async_run
+// per-operation cancellation for async_run
+BOOST_AUTO_TEST_CASE(run_supports_cancel_type_)
+{
+    using ct = asio::cancellation_type_t;
+
+    struct
+    {
+        string_view name;
+        asio::cancellation_type_t input;
+        bool expected;
+    } test_cases[] = {
+        {"none",                       ct::none,                               false},
+        {"all",                        ct::all,                                true },
+        {"terminal",                   ct::terminal,                           true },
+        {"partial",                    ct::partial,                            true },
+        {"total",                      ct::total,                              false},
+        {"terminal | partial",         ct::terminal | ct::partial,             true },
+        {"terminal | total",           ct::terminal | ct::total,               true },
+        {"partial | total",            ct::partial | ct::total,                true },
+        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
+        {"unknown",                    static_cast<ct>(0xf000),                false},
+        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
+        {"unknown | total",            static_cast<ct>(0xf000) | ct::total,    false},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_TEST(mock_pool::run_supports_cancel_type(tc.input) == tc.expected);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(async_run_cancel)
 {
     struct test_case
     {
         string_view name;
         asio::cancellation_type_t cancel_type;
-        bool thread_safe;  // Introduces extra latency. Regression check, so we have more tests here
+        bool thread_safe;
     } test_cases[]{
-        {"terminal",        asio::cancellation_type_t::terminal, true },
-        {"partial",         asio::cancellation_type_t::partial,  true },
-        {"total",           asio::cancellation_type_t::total,    true },
-        {"not_thread_safe", asio::cancellation_type_t::terminal, false},
+        {"terminal",      asio::cancellation_type_t::terminal, false},
+        {"partial",       asio::cancellation_type_t::partial,  false},
+        {"safe_terminal", asio::cancellation_type_t::terminal, true },
+        {"safe_partial",  asio::cancellation_type_t::partial,  true },
     };
 
     for (const auto& tc : test_cases)
@@ -1332,19 +1336,54 @@ BOOST_AUTO_TEST_CASE(async_run_bound_signal)
     std::move(run_result).validate_no_error_nodiag();
 }
 
-// per-operation cancellation does the right thing for async_get_connection
+// per-operation cancellation for async_get_connection
+BOOST_AUTO_TEST_CASE(get_connection_supports_cancel_type_)
+{
+    using ct = asio::cancellation_type_t;
+
+    struct
+    {
+        string_view name;
+        asio::cancellation_type_t input;
+        bool expected;
+    } test_cases[] = {
+        {"none",                       ct::none,                               false},
+        {"all",                        ct::all,                                true },
+        {"terminal",                   ct::terminal,                           true },
+        {"partial",                    ct::partial,                            true },
+        {"total",                      ct::total,                              true },
+        {"terminal | partial",         ct::terminal | ct::partial,             true },
+        {"terminal | total",           ct::terminal | ct::total,               true },
+        {"partial | total",            ct::partial | ct::total,                true },
+        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
+        {"unknown",                    static_cast<ct>(0xf000),                false},
+        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
+        {"unknown | total",            static_cast<ct>(0xf000) | ct::total,    true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_TEST(mock_pool::get_connection_supports_cancel_type(tc.input) == tc.expected);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(async_get_connection_cancel)
 {
     struct test_case
     {
         string_view name;
         asio::cancellation_type_t cancel_type;
-        bool thread_safe;  // Introduces extra latency. Regression check, so we have more tests here
+        bool thread_safe;
     } test_cases[]{
-        {"terminal",        asio::cancellation_type_t::terminal, true },
-        {"partial",         asio::cancellation_type_t::partial,  true },
-        {"total",           asio::cancellation_type_t::total,    true },
-        {"not_thread_safe", asio::cancellation_type_t::terminal, false},
+        {"terminal",      asio::cancellation_type_t::terminal, false},
+        {"partial",       asio::cancellation_type_t::partial,  false},
+        {"total",         asio::cancellation_type_t::total,    false},
+        {"safe_terminal", asio::cancellation_type_t::terminal, true },
+        {"safe_partial",  asio::cancellation_type_t::partial,  true },
+        {"safe_total",    asio::cancellation_type_t::total,    true },
     };
 
     for (const auto& tc : test_cases)
