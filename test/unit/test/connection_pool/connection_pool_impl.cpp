@@ -46,7 +46,6 @@
 #include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/data/test_case.hpp>
-#include <boost/test/tools/detail/print_helper.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
@@ -73,8 +72,6 @@ namespace asio = boost::asio;
 using boost::test_tools::per_element;
 using detail::connection_status;
 using std::chrono::steady_clock;
-
-BOOST_TEST_DONT_PRINT_LOG_VALUE(asio::cancellation_type_t)
 
 /**
  * These tests verify step-by-step that all interactions between
