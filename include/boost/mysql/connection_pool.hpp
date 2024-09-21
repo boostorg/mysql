@@ -545,13 +545,25 @@ public:
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`
      *
+     * \par Per-operation cancellation
+     * This operation supports per-operation cancellation. Cancelling `async_run`
+     * is equivalent to calling \ref connection_pool::cancel.
+     * The following `asio::cancellation_type_t` values are supported:
+     *
+     *   - `asio::cancellation_type_t::terminal`
+     *   - `asio::cancellation_type_t::partial`
+     *
+     * Note that `asio::cancellation_type_t::total` is not supported because invoking
+     * `async_run` always has observable side effects.
+     *
      * \par Errors
      * This function always complete successfully. The handler signature ensures
      * maximum compatibility with Boost.Asio infrastructure.
      *
      * \par Thread-safety
      * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions.
+     * concurrently with other safe functions. For thread-safe pools, cancellation
+     * signals can be emitted safely from any thread.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -616,6 +628,15 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
      *
+     * \par Per-operation cancellation
+     * This operation supports per-operation cancellation.
+     * Cancelling `async_get_connection` has no observable side effects.
+     * The following `asio::cancellation_type_t` values are supported:
+     *
+     *   - `asio::cancellation_type_t::terminal`
+     *   - `asio::cancellation_type_t::partial`
+     *   - `asio::cancellation_type_t::total`
+     *
      * \par Errors
      * \li Any error returned by \ref any_connection::async_connect, if a timeout
      *     happens because connection establishment is failing.
@@ -626,7 +647,8 @@ public:
      *
      * \par Thread-safety
      * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions.
+     * concurrently with other safe functions. For thread-safe pools, cancellation
+     * signals can be safely emitted from any thread.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
@@ -679,6 +701,15 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
      *
+     * \par Per-operation cancellation
+     * This operation supports per-operation cancellation.
+     * Cancelling `async_get_connection` has no observable side effects.
+     * The following `asio::cancellation_type_t` values are supported:
+     *
+     *   - `asio::cancellation_type_t::terminal`
+     *   - `asio::cancellation_type_t::partial`
+     *   - `asio::cancellation_type_t::total`
+     *
      * \par Errors
      * \li Any error returned by \ref any_connection::async_connect, if a timeout
      *     happens because connection establishment is failing.
@@ -689,7 +720,8 @@ public:
      *
      * \par Thread-safety
      * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions.
+     * concurrently with other safe functions. For thread-safe pools, cancellation
+     * signals can be safely emitted from any thread.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))

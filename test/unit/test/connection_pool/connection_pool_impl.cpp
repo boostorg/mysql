@@ -16,6 +16,7 @@
 #include <boost/mysql/pipeline.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/ssl_mode.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
@@ -28,8 +29,11 @@
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/bind_immediate_executor.hpp>
+#include <boost/asio/cancellation_signal.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -41,7 +45,7 @@
 #include <boost/asio/strand.hpp>
 #include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
-#include <boost/test/tools/detail/per_element_manip.hpp>
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
@@ -390,6 +394,14 @@ public:
     }
 };
 
+std::shared_ptr<mock_pool> create_mock_pool(pool_params&& params)
+{
+    return std::make_shared<mock_pool>(
+        pool_executor_params{global_context_executor(), global_context_executor()},
+        std::move(params)
+    );
+}
+
 class fixture
 {
 private:
@@ -399,11 +411,7 @@ private:
 
 public:
     fixture(pool_params&& params)
-        : pool_(std::make_shared<mock_pool>(
-              pool_executor_params{global_context_executor(), global_context_executor()},
-              std::move(params)
-          )),
-          run_res_(pool_->async_run(as_netresult))
+        : pool_(create_mock_pool(std::move(params))), run_res_(pool_->async_run(as_netresult))
     {
     }
 
@@ -1232,6 +1240,203 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
     BOOST_TEST(cparams.database == "mydb2");
     BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
     BOOST_TEST(cparams.multi_queries == false);
+}
+
+// per-operation cancellation for async_run
+BOOST_AUTO_TEST_CASE(run_supports_cancel_type_)
+{
+    using ct = asio::cancellation_type_t;
+
+    struct
+    {
+        string_view name;
+        asio::cancellation_type_t input;
+        bool expected;
+    } test_cases[] = {
+        {"none",                       ct::none,                               false},
+        {"all",                        ct::all,                                true },
+        {"terminal",                   ct::terminal,                           true },
+        {"partial",                    ct::partial,                            true },
+        {"total",                      ct::total,                              false},
+        {"terminal | partial",         ct::terminal | ct::partial,             true },
+        {"terminal | total",           ct::terminal | ct::total,               true },
+        {"partial | total",            ct::partial | ct::total,                true },
+        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
+        {"unknown",                    static_cast<ct>(0xf000),                false},
+        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
+        {"unknown | total",            static_cast<ct>(0xf000) | ct::total,    false},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_TEST(mock_pool::run_supports_cancel_type(tc.input) == tc.expected);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(async_run_cancel)
+{
+    struct test_case
+    {
+        string_view name;
+        asio::cancellation_type_t cancel_type;
+        bool thread_safe;
+    } test_cases[]{
+        {"terminal",      asio::cancellation_type_t::terminal, false},
+        {"partial",       asio::cancellation_type_t::partial,  false},
+        {"safe_terminal", asio::cancellation_type_t::terminal, true },
+        {"safe_partial",  asio::cancellation_type_t::partial,  true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Create a pool
+            pool_params params;
+            params.thread_safe = tc.thread_safe;
+            auto pool = create_mock_pool(std::move(params));
+
+            // Run with a bound signal
+            asio::cancellation_signal sig;
+            auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
+
+            // Emit the signal. run should finish
+            sig.emit(tc.cancel_type);
+            std::move(run_result).validate_no_error_nodiag();
+
+            // The pool has effectively been cancelled, as if cancel() had been called
+            get_connection_task(*pool, nullptr, std::chrono::seconds(0))
+                .wait(client_errc::cancelled, !tc.thread_safe);
+        }
+    }
+}
+
+// async_run with a bound signal that doesn't get emitted doesn't cause trouble
+BOOST_AUTO_TEST_CASE(async_run_bound_signal)
+{
+    // Create a pool
+    pool_params params;
+    params.thread_safe = true;
+    auto pool = create_mock_pool(std::move(params));
+
+    // Run with a bound signal
+    asio::cancellation_signal sig;
+    auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
+
+    // Cancel (but not using the signal)
+    pool->cancel();
+
+    // Finish successfully
+    std::move(run_result).validate_no_error_nodiag();
+}
+
+// per-operation cancellation for async_get_connection
+BOOST_AUTO_TEST_CASE(get_connection_supports_cancel_type_)
+{
+    using ct = asio::cancellation_type_t;
+
+    struct
+    {
+        string_view name;
+        asio::cancellation_type_t input;
+        bool expected;
+    } test_cases[] = {
+        {"none",                       ct::none,                               false},
+        {"all",                        ct::all,                                true },
+        {"terminal",                   ct::terminal,                           true },
+        {"partial",                    ct::partial,                            true },
+        {"total",                      ct::total,                              true },
+        {"terminal | partial",         ct::terminal | ct::partial,             true },
+        {"terminal | total",           ct::terminal | ct::total,               true },
+        {"partial | total",            ct::partial | ct::total,                true },
+        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
+        {"unknown",                    static_cast<ct>(0xf000),                false},
+        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
+        {"unknown | total",            static_cast<ct>(0xf000) | ct::total,    true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_TEST(mock_pool::get_connection_supports_cancel_type(tc.input) == tc.expected);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(async_get_connection_cancel)
+{
+    struct test_case
+    {
+        string_view name;
+        asio::cancellation_type_t cancel_type;
+        bool thread_safe;
+    } test_cases[]{
+        {"terminal",      asio::cancellation_type_t::terminal, false},
+        {"partial",       asio::cancellation_type_t::partial,  false},
+        {"total",         asio::cancellation_type_t::total,    false},
+        {"safe_terminal", asio::cancellation_type_t::terminal, true },
+        {"safe_partial",  asio::cancellation_type_t::partial,  true },
+        {"safe_total",    asio::cancellation_type_t::total,    true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Create a pool
+            pool_params params;
+            params.thread_safe = tc.thread_safe;
+            auto pool = create_mock_pool(std::move(params));
+            auto run_result = pool->async_run(as_netresult);
+
+            // Run with a bound signal
+            asio::cancellation_signal sig;
+            diagnostics diag;
+            auto getconn_result = pool->async_get_connection(
+                std::chrono::seconds(0),
+                &diag,
+                asio::bind_cancellation_slot(sig.slot(), as_netresult)
+            );
+
+            // Emit the signal. get connection should return
+            sig.emit(tc.cancel_type);
+            std::move(getconn_result).validate_error(client_errc::cancelled);
+
+            // Finish the pool
+            pool->cancel();
+            std::move(run_result).validate_no_error_nodiag();
+        }
+    }
+}
+
+// async_run with a bound signal that doesn't get emitted doesn't cause trouble
+BOOST_AUTO_TEST_CASE(async_get_connection_bound_signal)
+{
+    // Setup
+    pool_params params;
+    params.thread_safe = true;
+    fixture fix(std::move(params));
+
+    // Connect one of the connections
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+    fix.step(node, fn_type::connect);
+
+    // Run with a bound signal
+    asio::cancellation_signal sig;
+    diagnostics diag;
+    auto conn = fix.pool()
+                    .async_get_connection(
+                        std::chrono::seconds(0),
+                        &diag,
+                        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+                    )
+                    .get();
+    BOOST_TEST(conn.node == &node);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

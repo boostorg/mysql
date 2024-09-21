@@ -35,6 +35,14 @@
  * \par Handler signature
  * The handler signature for this operation is `void(boost::mysql::error_code)`
  *
+ * \par Per-operation cancellation
+ * This operation supports per-operation cancellation. <Describe effects>
+ * The following `asio::cancellation_type_t` values are supported:
+ *
+ *   - `asio::cancellation_type_t::terminal`
+ *   - `asio::cancellation_type_t::partial`
+ *   - `asio::cancellation_type_t::total`
+ *
  * Specify this where it adds any value.
  * \par Thread safety
  * Distinct objects: safe. \n
