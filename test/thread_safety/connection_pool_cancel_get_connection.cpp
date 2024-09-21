@@ -19,6 +19,7 @@
 #include <boost/asio/strand.hpp>
 #include <boost/asio/thread_pool.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 
@@ -95,6 +96,8 @@ public:
         };
         conn_->async_execute("SELECT 1", r_, diag_, asio::bind_executor(strand_, std::move(callback)));
     }
+
+    bool had_cancellations() const { return timeout_.count() > 1; }
 };
 
 void run(const char* hostname)
@@ -119,6 +122,13 @@ void run(const char* hostname)
 
     // Run
     ctx.join();
+
+    // Verify that at least one task had a cancellation
+    if (!std::any_of(tasks.begin(), tasks.end(), [](const task& t) { return t.had_cancellations(); }))
+    {
+        std::cerr << "No task had any cancellations\n";
+        exit(1);
+    }
 }
 
 }  // namespace
