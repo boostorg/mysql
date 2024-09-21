@@ -49,7 +49,6 @@ public:
         conn_->async_execute("SELECT 1", r_, diag_, [this](error_code ec) {
             check_ec(ec, diag_);
             conn_ = boost::mysql::pooled_connection();
-
             if (coord_.on_iteration_finish())
             {
                 start_get_connection();
@@ -69,7 +68,7 @@ void run(const char* hostname)
     // Run the pool
     pool.async_run(asio::detached);
 
-    // Create connections
+    // Create tasks
     for (std::size_t i = 0; i < num_tasks; ++i)
         tasks.emplace_back(pool, coord);
 
