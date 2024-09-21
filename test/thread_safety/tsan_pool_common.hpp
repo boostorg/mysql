@@ -15,6 +15,7 @@
 #include <boost/mysql/ssl_mode.hpp>
 
 #include <atomic>
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <mutex>
@@ -66,15 +67,15 @@ public:
 };
 
 // Default pool params
-inline pool_params create_pool_params(const char* hostname)
+inline pool_params create_pool_params(const char* hostname, std::size_t initial_size = 1)
 {
     pool_params params;
     params.server_address.emplace_host_and_port(hostname);
     params.username = "integ_user";
     params.password = "integ_password";
-    params.max_size = num_tasks - 10;  // create some contention
-    // params.ssl = mysql::ssl_mode::require;  // double check sharing SSL contexts is OK
-    params.ssl = mysql::ssl_mode::disable;  // TODO: restore this
+    params.initial_size = initial_size;
+    params.max_size = num_tasks - 10;       // create some contention
+    params.ssl = mysql::ssl_mode::require;  // double check sharing SSL contexts is OK
     params.thread_safe = true;
     return params;
 }
