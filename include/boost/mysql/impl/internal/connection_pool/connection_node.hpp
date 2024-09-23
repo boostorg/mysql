@@ -15,6 +15,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pipeline.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
@@ -26,6 +27,7 @@
 #include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/list_hook.hpp>
@@ -38,6 +40,48 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Composes a diagnostics object containing info about the last connect error.
+// Suitable for the diagnostics output of async_get_connection
+inline diagnostics create_last_connect_diag(error_code connect_ec, const diagnostics& connect_diag)
+{
+    diagnostics res;
+    if (connect_ec)
+    {
+        // Manipulating the internal representations is more efficient here,
+        // and better than using stringstream
+        auto& res_impl = access::get_impl(res);
+        const auto& connect_diag_impl = access::get_impl(connect_diag);
+
+        if (connect_ec == asio::error::operation_aborted)
+        {
+            // operation_aborted in this context means timeout
+            res_impl.msg = "Last connection attempt timed out";
+            res_impl.is_server = false;
+        }
+        else
+        {
+            // Add the error code information
+            res_impl.msg = "Last connection attempt failed with error code ";
+            res_impl.msg += connect_ec.to_string();
+
+            // Add any diagnostics
+            if (connect_diag_impl.msg.empty())
+            {
+                // The resulting object doesn't contain server-supplied info
+                res_impl.is_server = false;
+            }
+            else
+            {
+                // The resulting object may contain server-supplied info
+                res_impl.msg += ": ";
+                res_impl.msg += connect_diag_impl.msg;
+                res_impl.is_server = connect_diag_impl.is_server;
+            }
+        }
+    }
+    return res;
+}
+
 // State shared between connection tasks
 template <class ConnectionType, class ClockType>
 struct conn_shared_state
@@ -45,8 +89,7 @@ struct conn_shared_state
     intrusive::list<basic_connection_node<ConnectionType, ClockType>> idle_list;
     timer_list<ClockType> pending_requests;
     std::size_t num_pending_connections{0};
-    error_code last_ec;
-    diagnostics last_diag;
+    diagnostics last_connect_diag;
 
     conn_shared_state(asio::any_io_executor ex) : pending_requests(std::move(ex)) {}
 };
@@ -88,8 +131,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     // Helpers
     void propagate_connect_diag(error_code ec)
     {
-        shared_st_->last_ec = ec;
-        shared_st_->last_diag = connect_diag_;
+        shared_st_->last_connect_diag = create_last_connect_diag(ec, connect_diag_);
     }
 
     struct connection_task_op

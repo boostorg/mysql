@@ -435,15 +435,13 @@ public:
     get_connection_task create_task(diagnostics* diag = nullptr) { return get_connection_task(*pool_, diag); }
 
     void check_shared_st(
-        error_code expected_ec,
         const diagnostics& expected_diag,
         std::size_t expected_num_pending,
         std::size_t expected_num_idle
     )
     {
         const auto& st = pool_->shared_state();
-        BOOST_TEST(st.last_ec == expected_ec);
-        BOOST_TEST(st.last_diag == expected_diag);
+        BOOST_TEST(st.last_connect_diag == expected_diag);
         BOOST_TEST(st.num_pending_connections == expected_num_pending);
         BOOST_TEST(st.idle_list.size() == expected_num_idle);
     }
@@ -481,7 +479,10 @@ public:
 BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 {
     // Setup
-    auto expected_diag = create_server_diag("Connection error!");
+    const auto connect_diag = create_server_diag("Connection error!");
+    const auto expected_diag = create_server_diag(
+        "Last connection attempt failed with error code mysql.common-server:1152: Connection error!"
+    );
     pool_params params;
     params.retry_interval = std::chrono::seconds(2);
     fixture fix(std::move(params));
@@ -491,23 +492,23 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
 
     // Connection trying to connect
     fix.wait_for_status(node, connection_status::connect_in_progress);
-    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+    fix.check_shared_st(diagnostics(), 1, 0);
 
     // Connect fails, so the connection goes to sleep. Diagnostics are stored in shared state.
-    fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection, expected_diag);
+    fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection, connect_diag);
     fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-    fix.check_shared_st(common_server_errc::er_aborting_connection, expected_diag, 1, 0);
+    fix.check_shared_st(expected_diag, 1, 0);
 
     // Advance until it's time to retry again
     mock_clock::advance_time_by(std::chrono::seconds(2));
     fix.wait_for_status(node, connection_status::connect_in_progress);
-    fix.check_shared_st(common_server_errc::er_aborting_connection, expected_diag, 1, 0);
+    fix.check_shared_st(expected_diag, 1, 0);
 
     // Connection connects successfully this time. Diagnostics have
     // been cleared and the connection is marked as idle
     fix.step(node, fn_type::connect);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
@@ -524,20 +525,21 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
     // Connection trying to connect
     fix.wait_for_status(node, connection_status::connect_in_progress);
 
-    // Timeout ellapses. Connect is considered failed
+    // Timeout elapses. Connect is considered failed
+    const auto expected_diag = create_client_diag("Last connection attempt timed out");
     mock_clock::advance_time_by(std::chrono::seconds(5));
     fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-    fix.check_shared_st(asio::error::operation_aborted, diagnostics(), 1, 0);
+    fix.check_shared_st(expected_diag, 1, 0);
 
     // Advance until it's time to retry again
     mock_clock::advance_time_by(std::chrono::seconds(2));
     fix.wait_for_status(node, connection_status::connect_in_progress);
-    fix.check_shared_st(asio::error::operation_aborted, diagnostics(), 1, 0);
+    fix.check_shared_st(expected_diag, 1, 0);
 
     // Connection connects successfully this time
     fix.step(node, fn_type::connect);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
@@ -551,18 +553,18 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
     // Wait until a connection is successfully connected
     fix.step(node, fn_type::connect);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 
     // Simulate a user picking the connection
     node.mark_as_in_use();
-    fix.check_shared_st(error_code(), diagnostics(), 0, 0);
+    fix.check_shared_st(diagnostics(), 0, 0);
 
     // Simulate a user returning the connection (without reset)
     fix.pool().return_connection(node, false);
 
     // The connection goes back to idle without invoking resets
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
@@ -583,12 +585,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
 
     // A reset is issued
     fix.wait_for_status(node, connection_status::reset_in_progress);
-    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+    fix.check_shared_st(diagnostics(), 1, 0);
 
     // Successful reset makes the connection idle again
     fix.step(node, fn_type::pipeline);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
@@ -609,12 +611,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
     // Reset fails. This triggers a reconnection. Diagnostics are not saved
     fix.step(node, fn_type::pipeline, common_server_errc::er_aborting_connection);
     fix.wait_for_status(node, connection_status::connect_in_progress);
-    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+    fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reconnect succeeds. We're idle again
     fix.step(node, fn_type::connect);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
@@ -637,12 +639,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
     // Reset times out. This triggers a reconnection
     mock_clock::advance_time_by(std::chrono::seconds(1));
     fix.wait_for_status(node, connection_status::connect_in_progress);
-    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+    fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reconnect succeeds. We're idle again
     fix.step(node, fn_type::connect);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
@@ -665,12 +667,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
     // Reset doesn't time out, regardless of how much time we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
     poll_global_context([&]() { return node.status() == connection_status::reset_in_progress; });
-    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+    fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reset succeeds
     fix.step(node, fn_type::pipeline);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
@@ -690,12 +692,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
     // Wait until ping interval ellapses. This triggers a ping
     mock_clock::advance_time_by(std::chrono::seconds(100));
     fix.wait_for_status(node, connection_status::ping_in_progress);
-    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+    fix.check_shared_st(diagnostics(), 1, 0);
 
     // After ping succeeds, connection goes back to idle
     fix.step(node, fn_type::ping);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
@@ -718,12 +720,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
     // Ping fails. This triggers a reconnection. Diagnostics are not saved
     fix.step(node, fn_type::ping, common_server_errc::er_aborting_connection);
     fix.wait_for_status(node, connection_status::connect_in_progress);
-    fix.check_shared_st(error_code(), diagnostics(), 1, 0);
+    fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reconnection succeeds
     fix.step(node, fn_type::connect);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
@@ -752,7 +754,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
     // Reconnection succeeds
     fix.step(node, fn_type::connect);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
@@ -781,7 +783,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
     // Ping succeeds
     fix.step(node, fn_type::ping);
     fix.wait_for_status(node, connection_status::idle);
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
@@ -801,7 +803,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
     // Connection won't ping, regardless of how much time we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
     poll_global_context([&]() { return node.status() == connection_status::idle; });
-    fix.check_shared_st(error_code(), diagnostics(), 0, 1);
+    fix.check_shared_st(diagnostics(), 0, 1);
 }
 
 // async_get_connection

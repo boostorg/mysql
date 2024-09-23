@@ -45,7 +45,6 @@
 #include <cstddef>
 #include <list>
 #include <memory>
-#include <sstream>
 #include <utility>
 
 namespace boost {
@@ -113,21 +112,6 @@ class basic_pool_impl
     {
         all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_, &reset_pipeline_req_);
         wait_gp_.run_task(all_conns_.back().async_run(asio::deferred));
-    }
-
-    void get_diagnostics(diagnostics* diag) const
-    {
-        if (diag && shared_st_.last_ec)
-        {
-            // TODO: can we do this better?
-            // TODO: test
-            std::ostringstream oss;
-            oss << "Last connection attempt failed with error code " << shared_st_.last_ec;
-            const auto& diag_impl = access::get_impl(shared_st_.last_diag);
-            if (!diag_impl.msg.empty())
-                oss << ": " << diag_impl.msg;
-            access::get_impl(*diag).assign(diag_impl.is_server, oss.str());
-        }
     }
 
     template <class OpSelf>
@@ -282,15 +266,15 @@ class basic_pool_impl
                     else if (obj_->state_ == state_t::cancelled)
                     {
                         // The pool was cancelled
-                        // TODO: could we provide diagnostics here?
                         result_ec_ = asio::error::operation_aborted;
                         break;
                     }
                     else if (get_connection_supports_cancel_type(self.cancelled()))
                     {
-                        // The operation was cancelled
+                        // The operation was cancelled. Try to provide diagnostics
                         result_ec_ = asio::error::operation_aborted;
-                        obj_->get_diagnostics(diag_);
+                        if (diag_)
+                            *diag_ = obj_->shared_st_.last_connect_diag;
                         break;
                     }
 

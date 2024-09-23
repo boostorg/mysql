@@ -101,11 +101,6 @@ private:
             is_server = true;
         }
 
-        void assign(bool new_is_server, std::string new_msg)
-        {
-            msg = std::move(new_msg);
-            is_server = new_is_server;
-        }
     } impl_;
 
     friend bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept;
