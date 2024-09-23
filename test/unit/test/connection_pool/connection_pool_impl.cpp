@@ -811,99 +811,168 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
-// async_get_connection
+// async_get_connection. Some cases are run with/without binding a cancel slot,
+// and in thread-safe/unsafe mode
 BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 {
-    // Setup
-    fixture fix(pool_params{});
+    struct
+    {
+        bool bind_slot;
+        bool thread_safe;
+    } test_cases[] = {
+        {false, false},
+        {true,  false},
+        {false, true },
+        {true,  true },
+    };
 
-    fix.wait_for_num_nodes(1);
-    auto& node = fix.pool().nodes().front();
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT("bind_slot: " << tc.bind_slot << ", thread_safe: " << tc.thread_safe)
+        {
+            // Setup
+            pool_params params;
+            params.thread_safe = tc.thread_safe;
+            fixture fix(std::move(params));
 
-    // Wait for a connection to be ready
-    fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+            fix.wait_for_num_nodes(1);
+            auto& node = fix.pool().nodes().front();
 
-    // A request for a connection is issued. The request completes immediately
-    fix.create_task().wait(node, true);
-    BOOST_TEST(node.status() == connection_status::in_use);
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
+            // Wait for a connection to be ready
+            fix.step(node, fn_type::connect);
+            fix.wait_for_status(node, connection_status::idle);
+
+            // A request for a connection is issued. The request completes immediately.
+            // In thread-safe mode, we still need to exit the strand, so we won't see an inline completion
+            fix.create_task(nullptr, tc.bind_slot).wait(node, !tc.thread_safe);
+            BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(fix.pool().nodes().size() == 1u);
+        }
+    }
 }
 
-// Sample means whether to bind a cancel slot to the op or not
-BOOST_DATA_TEST_CASE(get_connection_wait_success, data::make({false, true}))
+BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 {
-    // Setup
-    pool_params params;
-    params.retry_interval = std::chrono::seconds(2);
-    fixture fix(std::move(params));
+    struct
+    {
+        bool bind_slot;
+        bool thread_safe;
+    } test_cases[] = {
+        {false, false},
+        {true,  false},
+        {false, true },
+        {true,  true },
+    };
 
-    fix.wait_for_num_nodes(1);
-    auto& node = fix.pool().nodes().front();
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT("bind_slot: " << tc.bind_slot << ", thread_safe: " << tc.thread_safe)
+        {
+            // Setup
+            pool_params params;
+            params.retry_interval = std::chrono::seconds(2);
+            params.thread_safe = tc.thread_safe;
+            fixture fix(std::move(params));
 
-    // Connection tries to connect and fails
-    fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection);
-    fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+            fix.wait_for_num_nodes(1);
+            auto& node = fix.pool().nodes().front();
 
-    // A request for a connection is issued. The request doesn't find
-    // any available connection, and the current one is pending, so no new connections are created
-    auto task = fix.create_task(nullptr, sample);
-    poll_global_context();
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
+            // Connection tries to connect and fails
+            fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection);
+            fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
 
-    // Retry interval ellapses and connection retries and succeeds
-    mock_clock::advance_time_by(std::chrono::seconds(2));
-    fix.step(node, fn_type::connect);
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            auto task = fix.create_task(nullptr, tc.bind_slot);
+            poll_global_context();
+            BOOST_TEST(fix.pool().nodes().size() == 1u);
 
-    // Request is fulfilled
-    task.wait(node, false);
-    BOOST_TEST(node.status() == connection_status::in_use);
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
+            // Retry interval ellapses and connection retries and succeeds
+            mock_clock::advance_time_by(std::chrono::seconds(2));
+            fix.step(node, fn_type::connect);
+
+            // Request is fulfilled
+            task.wait(node, false);
+            BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(fix.pool().nodes().size() == 1u);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
 {
+    // verify that cancelling works for all cancel types and thread-safety modes
+    struct
+    {
+        string_view name;
+        asio::cancellation_type_t cancel_type;
+        bool thread_safe;
+    } test_cases[]{
+        {"terminal",      asio::cancellation_type_t::terminal, false},
+        {"partial",       asio::cancellation_type_t::partial,  false},
+        {"total",         asio::cancellation_type_t::total,    false},
+        {"safe_terminal", asio::cancellation_type_t::terminal, true },
+        {"safe_partial",  asio::cancellation_type_t::partial,  true },
+        {"safe_total",    asio::cancellation_type_t::total,    true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            fixture fix(pool_params{});
+            diagnostics diag;
+
+            fix.wait_for_num_nodes(1);
+
+            // A request for a connection is issued. The request doesn't find
+            // any available connection, and the current one is pending, so no new connections are created
+            auto task = fix.create_task(&diag);
+            poll_global_context();
+            BOOST_TEST(fix.pool().nodes().size() == 1u);
+
+            // The connection fails to connect
+            fix.step(
+                *fix.pool().nodes().begin(),
+                fn_type::connect,
+                common_server_errc::er_bad_db_error,
+                create_server_diag("Bad db")
+            );
+
+            // The request gets cancelled. Appropriate diagnostics are returned
+            task.cancel(tc.cancel_type);
+            task.wait(asio::error::operation_aborted, false);
+            BOOST_TEST(
+                diag == create_server_diag(
+                            "Last connection attempt failed with error code mysql.common-server:1049: Bad db"
+                        )
+            );
+            BOOST_TEST(fix.pool().nodes().size() == 1u);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_no_diag_available)
+{
+    // No diagnostics are returned if the first connect op hasn't finished yet
     // Setup
     fixture fix(pool_params{});
     diagnostics diag;
 
-    fix.wait_for_num_nodes(1);
-
-    // A request for a connection is issued. The request doesn't find
-    // any available connection, and the current one is pending, so no new connections are created
+    // A request for a connection is issued
     auto task = fix.create_task(&diag);
     poll_global_context();
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
 
-    // The request gets cancelled. No diagnostics are available yet
+    // The request gets cancelled. No diagnostics is available, so nothing is returned
     task.cancel();
     task.wait(asio::error::operation_aborted, false);
     BOOST_TEST(diag == diagnostics());
-
-    // Another request is issued
-    task = fix.create_task(&diag);
-
-    // The connection fails to connect
-    fix.step(
-        *fix.pool().nodes().begin(),
-        fn_type::connect,
-        common_server_errc::er_bad_db_error,
-        create_server_diag("Bad db")
-    );
-
-    // The request gets cancelled
-    task.cancel();
-    task.wait(asio::error::operation_aborted, false);
-    BOOST_TEST(
-        diag ==
-        create_server_diag("Last connection attempt failed with error code mysql.common-server:1049: Bad db")
-    );
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
 {
-    // When connect timed out, appropriate diagnostics are generated
+    // When connect times out, appropriate diagnostics are generated
     // Setup
     pool_params params;
     params.connect_timeout = std::chrono::seconds(5);
@@ -957,10 +1026,12 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
-BOOST_AUTO_TEST_CASE(get_connection_wait_pool_cancelled)
+BOOST_DATA_TEST_CASE(get_connection_wait_pool_cancelled, data::make({false, true}))
 {
     // Setup
-    fixture fix(pool_params{});
+    pool_params params;
+    params.thread_safe = sample;
+    fixture fix(std::move(params));
     diagnostics diag;
 
     fix.wait_for_num_nodes(1);
@@ -1104,8 +1175,41 @@ BOOST_AUTO_TEST_CASE(get_connection_supports_cancel_type)
     }
 }
 
-// We correctly handle the different cancel types in async_get_connection
-BOOST_AUTO_TEST_CASE(get_connection_cancel_types)
+// async_run
+BOOST_AUTO_TEST_CASE(run_supports_cancel_type)
+{
+    using ct = asio::cancellation_type_t;
+
+    struct
+    {
+        string_view name;
+        asio::cancellation_type_t input;
+        bool expected;
+    } test_cases[] = {
+        {"none",                       ct::none,                               false},
+        {"all",                        ct::all,                                true },
+        {"terminal",                   ct::terminal,                           true },
+        {"partial",                    ct::partial,                            true },
+        {"total",                      ct::total,                              false},
+        {"terminal | partial",         ct::terminal | ct::partial,             true },
+        {"terminal | total",           ct::terminal | ct::total,               true },
+        {"partial | total",            ct::partial | ct::total,                true },
+        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
+        {"unknown",                    static_cast<ct>(0xf000),                false},
+        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
+        {"unknown | total",            static_cast<ct>(0xf000) | ct::total,    false},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_TEST(mock_pool::run_supports_cancel_type(tc.input) == tc.expected);
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(run_op_cancel)
 {
     struct test_case
     {
@@ -1115,10 +1219,8 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel_types)
     } test_cases[]{
         {"terminal",      asio::cancellation_type_t::terminal, false},
         {"partial",       asio::cancellation_type_t::partial,  false},
-        {"total",         asio::cancellation_type_t::total,    false},
         {"safe_terminal", asio::cancellation_type_t::terminal, true },
         {"safe_partial",  asio::cancellation_type_t::partial,  true },
-        {"safe_total",    asio::cancellation_type_t::total,    true },
     };
 
     for (const auto& tc : test_cases)
@@ -1128,104 +1230,39 @@ BOOST_AUTO_TEST_CASE(get_connection_cancel_types)
             // Create a pool
             pool_params params;
             params.thread_safe = tc.thread_safe;
-            fixture fix(std::move(params));
+            auto pool = create_mock_pool(std::move(params));
 
-            // Launch the op
-            auto task = fix.create_task();
-            poll_global_context();
+            // Run with a bound signal
+            asio::cancellation_signal sig;
+            auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
 
-            // Emit the signal. get connection should return
-            task.cancel(tc.cancel_type);
-            task.wait(asio::error::operation_aborted, false);
+            // Emit the signal. run should finish
+            sig.emit(tc.cancel_type);
+            std::move(run_result).validate_no_error_nodiag();
+
+            // The pool has effectively been cancelled, as if cancel() had been called
+            get_connection_task(*pool, nullptr).wait(asio::error::operation_aborted, !tc.thread_safe);
         }
     }
 }
 
-// thread_safe works as intended
-// TODO: can we merge these?
-BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
+// async_run with a bound signal that doesn't get emitted doesn't cause trouble
+BOOST_AUTO_TEST_CASE(run_bound_signal)
 {
-    // Setup
-    pool_params params;
-    params.retry_interval = std::chrono::seconds(2);
-    params.thread_safe = true;
-    fixture fix(std::move(params));
-
-    fix.wait_for_num_nodes(1);
-    auto& node = fix.pool().nodes().front();
-
-    // Connection tries to connect and fails
-    fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection);
-    fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-
-    // A request for a connection is issued. The request doesn't find
-    // any available connection, and the current one is pending, so no new connections are created
-    auto task = fix.create_task();
-    poll_global_context();
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
-
-    // Retry interval ellapses and connection retries and succeeds
-    mock_clock::advance_time_by(std::chrono::seconds(2));
-    fix.step(node, fn_type::connect);
-
-    // Request is fulfilled
-    task.wait(node, false);
-    BOOST_TEST(node.status() == connection_status::in_use);
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
-}
-
-BOOST_AUTO_TEST_CASE(thread_safe_wait_op_cancelled)
-{
-    // Setup
+    // Create a pool
     pool_params params;
     params.thread_safe = true;
-    fixture fix(std::move(params));
-    diagnostics diag;
+    auto pool = create_mock_pool(std::move(params));
 
-    fix.wait_for_num_nodes(1);
+    // Run with a bound signal
+    asio::cancellation_signal sig;
+    auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
 
-    // A request for a connection is issued. The request doesn't find
-    // any available connection, and the current one is pending, so no new connections are created
-    auto task = fix.create_task(&diag);
-    poll_global_context();
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    // Cancel (but not using the signal)
+    pool->cancel();
 
-    // The connection fails to connect
-    fix.step(
-        *fix.pool().nodes().begin(),
-        fn_type::connect,
-        common_server_errc::er_bad_db_error,
-        create_server_diag("Bad db")
-    );
-
-    // The request gets cancelled
-    task.cancel();
-    task.wait(asio::error::operation_aborted, false);
-    BOOST_TEST(
-        diag ==
-        create_server_diag("Last connection attempt failed with error code mysql.common-server:1049: Bad db")
-    );
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
-}
-
-BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
-{
-    // Setup
-    pool_params params;
-    params.thread_safe = true;
-    fixture fix(std::move(params));
-
-    fix.wait_for_num_nodes(1);
-    auto& node = fix.pool().nodes().front();
-
-    // Wait for a connection to be ready
-    fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
-
-    // A request for a connection is issued. The request completes immediately
-    fix.create_task().wait(node, false);
-    BOOST_TEST(node.status() == connection_status::in_use);
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
+    // Finish successfully
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 // pool size 0 works
@@ -1328,96 +1365,6 @@ BOOST_AUTO_TEST_CASE(params_connect_2)
     BOOST_TEST(cparams.database == "mydb2");
     BOOST_TEST(cparams.ssl == boost::mysql::ssl_mode::require);
     BOOST_TEST(cparams.multi_queries == false);
-}
-
-// per-operation cancellation for async_run
-BOOST_AUTO_TEST_CASE(run_supports_cancel_type_)
-{
-    using ct = asio::cancellation_type_t;
-
-    struct
-    {
-        string_view name;
-        asio::cancellation_type_t input;
-        bool expected;
-    } test_cases[] = {
-        {"none",                       ct::none,                               false},
-        {"all",                        ct::all,                                true },
-        {"terminal",                   ct::terminal,                           true },
-        {"partial",                    ct::partial,                            true },
-        {"total",                      ct::total,                              false},
-        {"terminal | partial",         ct::terminal | ct::partial,             true },
-        {"terminal | total",           ct::terminal | ct::total,               true },
-        {"partial | total",            ct::partial | ct::total,                true },
-        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
-        {"unknown",                    static_cast<ct>(0xf000),                false},
-        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
-        {"unknown | total",            static_cast<ct>(0xf000) | ct::total,    false},
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            BOOST_TEST(mock_pool::run_supports_cancel_type(tc.input) == tc.expected);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(async_run_cancel)
-{
-    struct test_case
-    {
-        string_view name;
-        asio::cancellation_type_t cancel_type;
-        bool thread_safe;
-    } test_cases[]{
-        {"terminal",      asio::cancellation_type_t::terminal, false},
-        {"partial",       asio::cancellation_type_t::partial,  false},
-        {"safe_terminal", asio::cancellation_type_t::terminal, true },
-        {"safe_partial",  asio::cancellation_type_t::partial,  true },
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Create a pool
-            pool_params params;
-            params.thread_safe = tc.thread_safe;
-            auto pool = create_mock_pool(std::move(params));
-
-            // Run with a bound signal
-            asio::cancellation_signal sig;
-            auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
-
-            // Emit the signal. run should finish
-            sig.emit(tc.cancel_type);
-            std::move(run_result).validate_no_error_nodiag();
-
-            // The pool has effectively been cancelled, as if cancel() had been called
-            get_connection_task(*pool, nullptr).wait(asio::error::operation_aborted, !tc.thread_safe);
-        }
-    }
-}
-
-// async_run with a bound signal that doesn't get emitted doesn't cause trouble
-BOOST_AUTO_TEST_CASE(async_run_bound_signal)
-{
-    // Create a pool
-    pool_params params;
-    params.thread_safe = true;
-    auto pool = create_mock_pool(std::move(params));
-
-    // Run with a bound signal
-    asio::cancellation_signal sig;
-    auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
-
-    // Cancel (but not using the signal)
-    pool->cancel();
-
-    // Finish successfully
-    std::move(run_result).validate_no_error_nodiag();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
