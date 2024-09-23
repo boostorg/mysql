@@ -15,7 +15,6 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
 
-#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
@@ -38,7 +37,6 @@
 #include <boost/asio/immediate.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/strand.hpp>
-#include <boost/core/ignore_unused.hpp>
 
 #include <chrono>
 #include <cstddef>
@@ -168,10 +166,8 @@ class basic_pool_impl
         };
 
         template <class Self>
-        void operator()(Self& self, error_code ec = {})
+        void operator()(Self& self, error_code = {})
         {
-            boost::ignore_unused(ec);
-
             switch (resume_point_)
             {
             case 0:
