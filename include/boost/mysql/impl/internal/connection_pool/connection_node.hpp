@@ -40,48 +40,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Composes a diagnostics object containing info about the last connect error.
-// Suitable for the diagnostics output of async_get_connection
-inline diagnostics create_last_connect_diag(error_code connect_ec, const diagnostics& connect_diag)
-{
-    diagnostics res;
-    if (connect_ec)
-    {
-        // Manipulating the internal representations is more efficient here,
-        // and better than using stringstream
-        auto& res_impl = access::get_impl(res);
-        const auto& connect_diag_impl = access::get_impl(connect_diag);
-
-        if (connect_ec == asio::error::operation_aborted)
-        {
-            // operation_aborted in this context means timeout
-            res_impl.msg = "Last connection attempt timed out";
-            res_impl.is_server = false;
-        }
-        else
-        {
-            // Add the error code information
-            res_impl.msg = "Last connection attempt failed with error code ";
-            res_impl.msg += connect_ec.to_string();
-
-            // Add any diagnostics
-            if (connect_diag_impl.msg.empty())
-            {
-                // The resulting object doesn't contain server-supplied info
-                res_impl.is_server = false;
-            }
-            else
-            {
-                // The resulting object may contain server-supplied info
-                res_impl.msg += ": ";
-                res_impl.msg += connect_diag_impl.msg;
-                res_impl.is_server = connect_diag_impl.is_server;
-            }
-        }
-    }
-    return res;
-}
-
 // State shared between connection tasks
 template <class ConnectionType, class ClockType>
 struct conn_shared_state
@@ -131,7 +89,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     // Helpers
     void propagate_connect_diag(error_code ec)
     {
-        shared_st_->last_connect_diag = create_last_connect_diag(ec, connect_diag_);
+        shared_st_->last_connect_diag = create_connect_diagnostics(ec, connect_diag_);
     }
 
     struct connection_task_op
