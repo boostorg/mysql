@@ -807,6 +807,24 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
 }
 
 // async_get_connection
+BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
+{
+    // Setup
+    fixture fix(pool_params{});
+
+    fix.wait_for_num_nodes(1);
+    auto& node = fix.pool().nodes().front();
+
+    // Wait for a connection to be ready
+    fix.step(node, fn_type::connect);
+    fix.wait_for_status(node, connection_status::idle);
+
+    // A request for a connection is issued. The request completes immediately
+    fix.create_task().wait(node, true);
+    BOOST_TEST(node.status() == connection_status::in_use);
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+}
+
 BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 {
     // Setup
@@ -837,8 +855,6 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
-// TODO: we used to have a diag/no diag case here.
-// This is likely not the place to test it, but don't lose it
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
 {
     // Setup
@@ -852,6 +868,14 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
     auto task = fix.create_task(&diag);
     poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
+
+    // The request gets cancelled. No diagnostics are available yet
+    task.cancel();
+    task.wait(asio::error::operation_aborted, false);
+    BOOST_TEST(diag == diagnostics());
+
+    // Another request is issued
+    task = fix.create_task(&diag);
 
     // The connection fails to connect
     fix.step(
@@ -871,10 +895,38 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
+BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
+{
+    // When connect timed out, appropriate diagnostics are generated
+    // Setup
+    pool_params params;
+    params.connect_timeout = std::chrono::seconds(5);
+    fixture fix(std::move(params));
+    diagnostics diag;
+
+    fix.wait_for_num_nodes(1);
+
+    // A request for a connection is issued. The request doesn't find
+    // any available connection, and the current one is pending, so no new connections are created
+    auto task = fix.create_task(&diag);
+    poll_global_context();
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+
+    // The connection attempt times out
+    mock_clock::advance_time_by(std::chrono::seconds(6));
+    fix.wait_for_status(fix.pool().nodes().front(), connection_status::sleep_connect_failed_in_progress);
+
+    // The request gets cancelled. We get the expected error
+    task.cancel();
+    task.wait(asio::error::operation_aborted, false);
+    BOOST_TEST(diag == create_client_diag("Last connection attempt timed out"));
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+}
+
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
 {
-    // Setup
     // We don't crash if diag is nullptr
+    // Setup
     fixture fix(pool_params{});
 
     fix.wait_for_num_nodes(1);
@@ -900,24 +952,6 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
 }
 
 // TODO: cancel because pool is cancelled
-
-BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
-{
-    // Setup
-    fixture fix(pool_params{});
-
-    fix.wait_for_num_nodes(1);
-    auto& node = fix.pool().nodes().front();
-
-    // Wait for a connection to be ready
-    fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
-
-    // A request for a connection is issued. The request completes immediately
-    fix.create_task().wait(node, true);
-    BOOST_TEST(node.status() == connection_status::in_use);
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
-}
 
 BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 {
@@ -1089,7 +1123,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
 }
 
 // pool size 0 works
-BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
+BOOST_AUTO_TEST_CASE(initial_size_0)
 {
     // Setup
     pool_params params;
