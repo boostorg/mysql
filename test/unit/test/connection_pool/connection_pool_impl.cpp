@@ -426,19 +426,22 @@ class fixture
 private:
     // Pool (must be created using dynamic memory)
     std::shared_ptr<mock_pool> pool_;
-    runnable_network_result<void> run_res_;
+    bool run_finished_{false};
 
 public:
-    fixture(pool_params&& params)
-        : pool_(create_mock_pool(std::move(params))), run_res_(pool_->async_run(as_netresult))
+    fixture(pool_params&& params) : pool_(create_mock_pool(std::move(params)))
     {
+        pool_->async_run([this](error_code ec) {
+            run_finished_ = true;
+            BOOST_TEST(ec == error_code());
+        });
     }
 
     ~fixture()
     {
         // Finish the pool
         pool_->cancel();
-        std::move(run_res_).validate_no_error_nodiag();
+        poll_global_context(&run_finished_);
     }
 
     mock_pool& pool() { return *pool_; }
@@ -1242,12 +1245,16 @@ BOOST_AUTO_TEST_CASE(run_op_cancel)
             auto pool = create_mock_pool(std::move(params));
 
             // Run with a bound signal
+            bool run_finished = false;
             asio::cancellation_signal sig;
-            auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
+            pool->async_run(asio::bind_cancellation_slot(sig.slot(), [&run_finished](error_code ec) {
+                run_finished = true;
+                BOOST_TEST(ec == error_code());
+            }));
 
             // Emit the signal. run should finish
             sig.emit(tc.cancel_type);
-            std::move(run_result).validate_no_error_nodiag();
+            poll_global_context(&run_finished);
 
             // The pool has effectively been cancelled, as if cancel() had been called
             get_connection_task(*pool, nullptr).wait(asio::error::operation_aborted, !tc.thread_safe);
@@ -1264,14 +1271,18 @@ BOOST_AUTO_TEST_CASE(run_bound_signal)
     auto pool = create_mock_pool(std::move(params));
 
     // Run with a bound signal
+    bool run_finished = false;
     asio::cancellation_signal sig;
-    auto run_result = pool->async_run(asio::bind_cancellation_slot(sig.slot(), as_netresult));
+    pool->async_run(asio::bind_cancellation_slot(sig.slot(), [&run_finished](error_code ec) {
+        run_finished = true;
+        BOOST_TEST(ec == error_code());
+    }));
 
     // Cancel (but not using the signal)
     pool->cancel();
 
     // Finish successfully
-    std::move(run_result).validate_no_error_nodiag();
+    poll_global_context(&run_finished);
 }
 
 // pool size 0 works

@@ -399,25 +399,62 @@ public:
     {
     }
 
-    using executor_type = asio::any_io_executor;
+    asio::strand<asio::any_io_executor> strand()
+    {
+        BOOST_ASSERT(params_.thread_safe);
+        return *pool_ex_.template target<asio::strand<asio::any_io_executor>>();
+    }
 
+    using executor_type = asio::any_io_executor;
     executor_type get_executor() { return params_.thread_safe ? strand().get_inner_executor() : pool_ex_; }
 
-    template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
-    async_run(CompletionToken&& token)
+    void async_run(asio::any_completion_handler<void(error_code)> handler)
     {
         // Completely disable composed cancellation handling, as it's not what we want
-        auto slot = asio::get_associated_cancellation_slot(token);
-        auto token_without_slot = asio::bind_cancellation_slot(
-            asio::cancellation_slot(),
-            std::forward<CompletionToken>(token)
-        );
+        auto slot = asio::get_associated_cancellation_slot(handler);
+        auto token_without_slot = asio::bind_cancellation_slot(asio::cancellation_slot(), std::move(handler));
 
         // Initiate passing the original token's slot manually
-        return asio::async_compose<decltype(token_without_slot), void(error_code)>(
+        asio::async_compose<decltype(token_without_slot), void(error_code)>(
             run_op(shared_from_this_wrapper(), slot),
             token_without_slot,
+            pool_ex_
+        );
+    }
+
+    void async_get_connection(
+        diagnostics* diag,
+        asio::any_completion_handler<void(error_code, ConnectionWrapper)> handler
+    )
+    {
+        // Allocate the state object
+        auto alloc = asio::get_associated_allocator(handler);
+        using alloc_t = typename std::allocator_traits<decltype(alloc
+        )>::template rebind_alloc<get_connection_state>;
+        auto st = std::allocate_shared<get_connection_state>(
+            alloc_t(alloc),
+            shared_from_this_wrapper(),
+            diag
+        );
+
+        // In thread-safe mode, the cancel handler must be run through the strand
+        auto slot = asio::get_associated_cancellation_slot(handler);
+        if (params_.thread_safe && slot.is_connected())
+        {
+            // The original slot will call the handler, which dispatches to the strand
+            slot.template emplace<get_connection_cancel_handler>(get_connection_cancel_handler{st});
+
+            // The slot is replaced by the proxy signal's slot
+            slot = st->sig.slot();
+        }
+
+        // Bind the handler to the slot
+        auto bound_handler = asio::bind_cancellation_slot(slot, std::move(handler));
+
+        // Start
+        asio::async_compose<decltype(bound_handler), void(error_code, ConnectionWrapper)>(
+            get_connection_op(std::move(st)),
+            bound_handler,
             pool_ex_
         );
     }
@@ -481,49 +518,6 @@ public:
         {
             node.notify_collectable();
         }
-    }
-
-    void async_get_connection(
-        diagnostics* diag,
-        asio::any_completion_handler<void(error_code, ConnectionWrapper)> handler
-    )
-    {
-        // Allocate the state object
-        auto alloc = asio::get_associated_allocator(handler);
-        using alloc_t = typename std::allocator_traits<decltype(alloc
-        )>::template rebind_alloc<get_connection_state>;
-        auto st = std::allocate_shared<get_connection_state>(
-            alloc_t(alloc),
-            shared_from_this_wrapper(),
-            diag
-        );
-
-        // In thread-safe mode, the cancel handler must be run through the strand
-        auto slot = asio::get_associated_cancellation_slot(handler);
-        if (params_.thread_safe && slot.is_connected())
-        {
-            // The original slot will call the handler, which dispatches to the strand
-            slot.template emplace<get_connection_cancel_handler>(get_connection_cancel_handler{st});
-
-            // The slot is replaced by the proxy signal's slot
-            slot = st->sig.slot();
-        }
-
-        // Bind the handler to the slot
-        auto bound_handler = asio::bind_cancellation_slot(slot, std::move(handler));
-
-        // Start
-        asio::async_compose<decltype(bound_handler), void(error_code, ConnectionWrapper)>(
-            get_connection_op(std::move(st)),
-            bound_handler,
-            pool_ex_
-        );
-    }
-
-    asio::strand<asio::any_io_executor> strand()
-    {
-        BOOST_ASSERT(params_.thread_safe);
-        return *pool_ex_.template target<asio::strand<asio::any_io_executor>>();
     }
 
     // Exposed for testing
