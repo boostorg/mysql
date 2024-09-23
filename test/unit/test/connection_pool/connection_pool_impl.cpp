@@ -527,12 +527,12 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
     // Timeout ellapses. Connect is considered failed
     mock_clock::advance_time_by(std::chrono::seconds(5));
     fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
-    fix.check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
+    fix.check_shared_st(asio::error::operation_aborted, diagnostics(), 1, 0);
 
     // Advance until it's time to retry again
     mock_clock::advance_time_by(std::chrono::seconds(2));
     fix.wait_for_status(node, connection_status::connect_in_progress);
-    fix.check_shared_st(client_errc::timeout, diagnostics(), 1, 0);
+    fix.check_shared_st(asio::error::operation_aborted, diagnostics(), 1, 0);
 
     // Connection connects successfully this time
     fix.step(node, fn_type::connect);
@@ -861,7 +861,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
 
     // The request gets cancelled
     task.cancel();
-    task.wait(client_errc::cancelled, false);
+    task.wait(asio::error::operation_aborted, false);
     BOOST_TEST(
         diag ==
         create_server_diag("Last connection attempt failed with error code mysql.common-server:1049: Bad db")
@@ -893,7 +893,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
 
     // The request gets cancelled
     task.cancel();
-    task.wait(client_errc::cancelled, false);
+    task.wait(asio::error::operation_aborted, false);
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
@@ -985,7 +985,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 
     // task4 gets cancelled
     task4.cancel();
-    task4.wait(client_errc::cancelled, false);
+    task4.wait(asio::error::operation_aborted, false);
 
     // A connection is returned. The first task to enter is served
     fix.pool().return_connection(*node1, true);
@@ -1058,7 +1058,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_op_cancelled)
 
     // The request gets cancelled
     task.cancel();
-    task.wait(client_errc::cancelled, false);
+    task.wait(asio::error::operation_aborted, false);
     BOOST_TEST(
         diag ==
         create_server_diag("Last connection attempt failed with error code mysql.common-server:1049: Bad db")
@@ -1254,7 +1254,7 @@ BOOST_AUTO_TEST_CASE(async_run_cancel)
             std::move(run_result).validate_no_error_nodiag();
 
             // The pool has effectively been cancelled, as if cancel() had been called
-            get_connection_task(*pool, nullptr).wait(client_errc::cancelled, !tc.thread_safe);
+            get_connection_task(*pool, nullptr).wait(asio::error::operation_aborted, !tc.thread_safe);
         }
     }
 }
@@ -1348,7 +1348,7 @@ BOOST_AUTO_TEST_CASE(async_get_connection_cancel)
 
             // Emit the signal. get connection should return
             sig.emit(tc.cancel_type);
-            std::move(getconn_result).validate_error(client_errc::cancelled);
+            std::move(getconn_result).validate_error(asio::error::operation_aborted);
 
             // Finish the pool
             pool->cancel();

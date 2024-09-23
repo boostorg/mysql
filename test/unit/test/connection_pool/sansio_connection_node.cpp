@@ -10,6 +10,7 @@
 
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 
+#include <boost/asio/error.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
@@ -19,6 +20,7 @@
 using namespace boost::mysql::detail;
 using boost::mysql::client_errc;
 using boost::mysql::error_code;
+namespace asio = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_sansio_connection_node)
 
@@ -153,7 +155,7 @@ BOOST_AUTO_TEST_CASE(connect_error)
     mock_node nod(connection_status::connect_in_progress);
 
     // Fail connecting
-    auto act = nod.resume(client_errc::timeout, collection_state::none);
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::sleep_connect_failed);
     nod.check(connection_status::sleep_connect_failed_in_progress, 0);
 
@@ -179,7 +181,7 @@ BOOST_AUTO_TEST_CASE(ping_error)
     nod.check(connection_status::ping_in_progress, exit_idle | enter_pending);
 
     // Ping fails
-    act = nod.resume(client_errc::cancelled, collection_state::none);
+    act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
     nod.check(connection_status::connect_in_progress, 0);
 
@@ -200,7 +202,7 @@ BOOST_AUTO_TEST_CASE(reset_error)
     nod.check(connection_status::reset_in_progress, enter_pending);
 
     // Reset fails
-    act = nod.resume(client_errc::timeout, collection_state::none);
+    act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
     nod.check(connection_status::connect_in_progress, 0);
 
@@ -219,12 +221,12 @@ BOOST_AUTO_TEST_CASE(sleep_between_retries_fail)
     mock_node nod(connection_status::connect_in_progress);
 
     // Fail connecting
-    auto act = nod.resume(client_errc::timeout, collection_state::none);
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::sleep_connect_failed);
     nod.check(connection_status::sleep_connect_failed_in_progress, 0);
 
     // Sleep reports an error. It will get ignored
-    act = nod.resume(client_errc::cancelled, collection_state::none);
+    act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
     nod.check(connection_status::connect_in_progress, 0);
 }
@@ -238,7 +240,7 @@ BOOST_AUTO_TEST_CASE(idle_wait_fail)
     mock_node nod(connection_status::idle);
 
     // Idle wait failed. Error gets ignored
-    auto act = nod.resume(client_errc::cancelled, collection_state::none);
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::ping);
     nod.check(connection_status::ping_in_progress, exit_idle | enter_pending);
 }
@@ -252,7 +254,7 @@ BOOST_AUTO_TEST_CASE(idle_wait_fail_in_use)
     mock_node nod(connection_status::in_use);
 
     // Idle wait failed. Error gets ignored
-    auto act = nod.resume(client_errc::cancelled, collection_state::needs_collect_with_reset);
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::needs_collect_with_reset);
     BOOST_TEST(act == next_connection_action::reset);
     nod.check(connection_status::reset_in_progress, enter_pending);
 }
@@ -283,13 +285,13 @@ BOOST_AUTO_TEST_CASE(cancel)
             nod.cancel();
 
             // Next action will always return none
-            auto act = nod.resume(client_errc::cancelled, collection_state::none);
+            auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
             BOOST_TEST(act == next_connection_action::none);
             nod.check(connection_status::terminated, tc.hooks);
 
             // Cancel again does nothing
             nod.cancel();
-            act = nod.resume(client_errc::cancelled, collection_state::none);
+            act = nod.resume(asio::error::operation_aborted, collection_state::none);
             BOOST_TEST(act == next_connection_action::none);
             nod.check(connection_status::terminated, 0);
         }

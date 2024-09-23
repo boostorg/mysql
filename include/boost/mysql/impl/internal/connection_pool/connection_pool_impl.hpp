@@ -283,13 +283,13 @@ class basic_pool_impl
                     {
                         // The pool was cancelled
                         // TODO: could we provide diagnostics here?
-                        result_ec_ = client_errc::cancelled;
+                        result_ec_ = asio::error::operation_aborted;
                         break;
                     }
                     else if (get_connection_supports_cancel_type(self.cancelled()))
                     {
                         // The operation was cancelled
-                        result_ec_ = client_errc::cancelled;
+                        result_ec_ = asio::error::operation_aborted;
                         obj_->get_diagnostics(diag_);
                         break;
                     }

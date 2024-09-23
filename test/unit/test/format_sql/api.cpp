@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(format_sql_invalid_args)
         [&](const boost::system::system_error& err) {
             std::string expected_diag =
                 "A string passed to a formatting function contains a byte sequence that can't be decoded "
-                "with the current character set. [mysql.client:17]";
+                "with the current character set. [mysql.client:15]";
             BOOST_TEST(err.code() == client_errc::invalid_encoding);
             BOOST_TEST(err.what() == expected_diag);
             return true;
@@ -71,7 +71,7 @@ BOOST_AUTO_TEST_CASE(format_sql_invalid_format_string)
         [&](const boost::system::system_error& err) {
             std::string expected_diag =
                 "A format argument referenced by a format string was not found. Check the number of format "
-                "arguments passed and their names. [mysql.client:23]";
+                "arguments passed and their names. [mysql.client:21]";
             BOOST_TEST(err.code() == client_errc::format_arg_not_found);
             BOOST_TEST(err.what() == expected_diag);
             return true;

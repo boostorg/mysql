@@ -176,7 +176,7 @@ BOOST_FIXTURE_TEST_CASE(timer_first_ok, fixture)
 {
     // Run the op
     run_with_timeout(io.async_f(asio::deferred), tim, seconds(60), [this](error_code ec) {
-        BOOST_TEST(ec == client_errc::timeout);
+        BOOST_TEST(ec == asio::error::operation_aborted);
         set_finished();
     });
 
@@ -190,7 +190,7 @@ BOOST_FIXTURE_TEST_CASE(timer_first_cancelled, fixture)
 {
     // Run the op
     run_with_timeout(io.async_f(asio::deferred), tim, seconds(60), [this](error_code ec) {
-        BOOST_TEST(ec == client_errc::cancelled);
+        BOOST_TEST(ec == asio::error::operation_aborted);
         set_finished();
     });
 
