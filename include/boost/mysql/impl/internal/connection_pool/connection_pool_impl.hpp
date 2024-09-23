@@ -20,7 +20,6 @@
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
-#include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
 #include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 #include <boost/mysql/impl/internal/coroutine.hpp>
 
@@ -189,7 +188,7 @@ class basic_pool_impl
                 obj_->state_ = state_t::cancelled;
                 for (auto& conn : obj_->all_conns_)
                     conn.cancel();
-                obj_->shared_st_.pending_requests.notify_all();
+                obj_->shared_st_.idle_connections_cv.expires_at((ClockType::time_point::min)());
 
                 // Wait for all connection tasks to exit
                 BOOST_MYSQL_YIELD(resume_point_, 4, obj_->wait_gp_.async_wait(std::move(self)))
@@ -299,7 +298,7 @@ class basic_pool_impl
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             2,
-                            obj_->shared_st_.pending_requests.async_wait(
+                            obj_->shared_st_.idle_connections_cv.async_wait(
                                 asio::bind_executor(obj_->pool_ex_, std::move(self))
                             )
                         )
@@ -309,7 +308,7 @@ class basic_pool_impl
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             3,
-                            obj_->shared_st_.pending_requests.async_wait(std::move(self))
+                            obj_->shared_st_.idle_connections_cv.async_wait(std::move(self))
                         )
                     }
 

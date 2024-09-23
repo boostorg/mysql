@@ -21,7 +21,6 @@
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/impl/internal/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
-#include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
@@ -44,12 +43,24 @@ namespace detail {
 template <class ConnectionType, class ClockType>
 struct conn_shared_state
 {
+    // The list of connections that are currently idle. Non-owning.
     intrusive::list<basic_connection_node<ConnectionType, ClockType>> idle_list;
-    timer_list<ClockType> pending_requests;
+
+    // Timer acting as a condition variable to wait for idle connections
+    asio::basic_waitable_timer<ClockType> idle_connections_cv;
+
+    // The number of pending connections (currently getting ready).
+    // Controls that we don't create connections while some are still connecting
     std::size_t num_pending_connections{0};
+
+    // Info about the last connection attempt. Already processed, suitable to be used
+    // as the result of an async_get_connection op
     diagnostics last_connect_diag;
 
-    conn_shared_state(asio::any_io_executor ex) : pending_requests(std::move(ex)) {}
+    conn_shared_state(asio::any_io_executor ex)
+        : idle_connections_cv(std::move(ex), (ClockType::time_point::max)())
+    {
+    }
 };
 
 // The templated type is never exposed to the user. We template
@@ -80,7 +91,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     void entering_idle()
     {
         shared_st_->idle_list.push_back(*this);
-        shared_st_->pending_requests.notify_one();
+        shared_st_->idle_connections_cv.cancel_one();
     }
     void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
