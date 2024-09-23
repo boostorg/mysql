@@ -72,6 +72,7 @@ namespace asio = boost::asio;
 using boost::test_tools::per_element;
 using detail::connection_status;
 using std::chrono::steady_clock;
+namespace data = boost::unit_test::data;
 
 /**
  * These tests verify step-by-step that all interactions between
@@ -323,14 +324,15 @@ class get_connection_task
 public:
     get_connection_task() = default;
 
-    get_connection_task(mock_pool& pool, diagnostics* diag) : impl_(std::make_shared<impl_t>(pool))
+    // TODO: rework this
+    get_connection_task(mock_pool& pool, diagnostics* diag, bool bind_slot = true)
+        : impl_(std::make_shared<impl_t>(pool))
     {
         // Call the initiating function.
         // We need to dispatch it so the initiation runs in the io_context, and we can see immediate
         // completions
-        // TODO: we should be able to run this without a bound signal, too
         auto impl = impl_;
-        asio::dispatch(asio::bind_executor(global_context_executor(), [impl, &pool, diag]() {
+        asio::dispatch(asio::bind_executor(global_context_executor(), [impl, &pool, diag, bind_slot]() {
             auto pool_ex = pool.get_executor();
 
             // Create a tracker executor
@@ -349,7 +351,7 @@ public:
                     asio::bind_immediate_executor(
                         immediate_ex_result.ex,
                         asio::bind_cancellation_slot(
-                            impl->sig.slot(),
+                            bind_slot ? impl->sig.slot() : asio::cancellation_slot(),
                             [ex_id, immediate_ex_id, impl](error_code ec, mock_pooled_connection c) {
                                 // Check executor
                                 bool was_immediate = is_initiation_function();
@@ -432,7 +434,10 @@ public:
 
     mock_pool& pool() { return *pool_; }
 
-    get_connection_task create_task(diagnostics* diag = nullptr) { return get_connection_task(*pool_, diag); }
+    get_connection_task create_task(diagnostics* diag = nullptr, bool bind_slot = true)
+    {
+        return get_connection_task(*pool_, diag, bind_slot);
+    }
 
     void check_shared_st(
         const diagnostics& expected_diag,
@@ -825,7 +830,8 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
-BOOST_AUTO_TEST_CASE(get_connection_wait_success)
+// Sample means whether to bind a cancel slot to the op or not
+BOOST_DATA_TEST_CASE(get_connection_wait_success, data::make({false, true}))
 {
     // Setup
     pool_params params;
@@ -841,7 +847,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
-    auto task = fix.create_task();
+    auto task = fix.create_task(nullptr, sample);
     poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
@@ -951,7 +957,36 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
-// TODO: cancel because pool is cancelled
+BOOST_AUTO_TEST_CASE(get_connection_wait_pool_cancelled)
+{
+    // Setup
+    fixture fix(pool_params{});
+    diagnostics diag;
+
+    fix.wait_for_num_nodes(1);
+
+    // A request for a connection is issued. The request doesn't find
+    // any available connection, and the current one is pending, so no new connections are created
+    auto task = fix.create_task(&diag);
+    poll_global_context();
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+
+    // The connection fails to connect
+    fix.step(
+        *fix.pool().nodes().begin(),
+        fn_type::connect,
+        common_server_errc::er_bad_db_error,
+        create_server_diag("Bad db")
+    );
+
+    // The pool gets cancelled
+    fix.pool().cancel();
+
+    // This causes the request to get cancelled.
+    // No diagnostics are provided here, as they're usually misleading
+    task.wait(asio::error::operation_aborted, false);
+    BOOST_TEST(diag == diagnostics());
+}
 
 BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 {
@@ -1036,7 +1071,78 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     BOOST_TEST(fix.pool().nodes().size() == 2u);
 }
 
+BOOST_AUTO_TEST_CASE(get_connection_supports_cancel_type)
+{
+    using ct = asio::cancellation_type_t;
+
+    struct
+    {
+        string_view name;
+        asio::cancellation_type_t input;
+        bool expected;
+    } test_cases[] = {
+        {"none",                       ct::none,                               false},
+        {"all",                        ct::all,                                true },
+        {"terminal",                   ct::terminal,                           true },
+        {"partial",                    ct::partial,                            true },
+        {"total",                      ct::total,                              true },
+        {"terminal | partial",         ct::terminal | ct::partial,             true },
+        {"terminal | total",           ct::terminal | ct::total,               true },
+        {"partial | total",            ct::partial | ct::total,                true },
+        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
+        {"unknown",                    static_cast<ct>(0xf000),                false},
+        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
+        {"unknown | total",            static_cast<ct>(0xf000) | ct::total,    true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            BOOST_TEST(mock_pool::get_connection_supports_cancel_type(tc.input) == tc.expected);
+        }
+    }
+}
+
+// We correctly handle the different cancel types in async_get_connection
+BOOST_AUTO_TEST_CASE(get_connection_cancel_types)
+{
+    struct test_case
+    {
+        string_view name;
+        asio::cancellation_type_t cancel_type;
+        bool thread_safe;
+    } test_cases[]{
+        {"terminal",      asio::cancellation_type_t::terminal, false},
+        {"partial",       asio::cancellation_type_t::partial,  false},
+        {"total",         asio::cancellation_type_t::total,    false},
+        {"safe_terminal", asio::cancellation_type_t::terminal, true },
+        {"safe_partial",  asio::cancellation_type_t::partial,  true },
+        {"safe_total",    asio::cancellation_type_t::total,    true },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Create a pool
+            pool_params params;
+            params.thread_safe = tc.thread_safe;
+            fixture fix(std::move(params));
+
+            // Launch the op
+            auto task = fix.create_task();
+            poll_global_context();
+
+            // Emit the signal. get connection should return
+            task.cancel(tc.cancel_type);
+            task.wait(asio::error::operation_aborted, false);
+        }
+    }
+}
+
 // thread_safe works as intended
+// TODO: can we merge these?
 BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
 {
     // Setup
@@ -1312,108 +1418,6 @@ BOOST_AUTO_TEST_CASE(async_run_bound_signal)
 
     // Finish successfully
     std::move(run_result).validate_no_error_nodiag();
-}
-
-// per-operation cancellation for async_get_connection
-BOOST_AUTO_TEST_CASE(get_connection_supports_cancel_type_)
-{
-    using ct = asio::cancellation_type_t;
-
-    struct
-    {
-        string_view name;
-        asio::cancellation_type_t input;
-        bool expected;
-    } test_cases[] = {
-        {"none",                       ct::none,                               false},
-        {"all",                        ct::all,                                true },
-        {"terminal",                   ct::terminal,                           true },
-        {"partial",                    ct::partial,                            true },
-        {"total",                      ct::total,                              true },
-        {"terminal | partial",         ct::terminal | ct::partial,             true },
-        {"terminal | total",           ct::terminal | ct::total,               true },
-        {"partial | total",            ct::partial | ct::total,                true },
-        {"total | terminal | partial", ct::total | ct::terminal | ct::partial, true },
-        {"unknown",                    static_cast<ct>(0xf000),                false},
-        {"unknown | terminal",         static_cast<ct>(0xf000) | ct::terminal, true },
-        {"unknown | total",            static_cast<ct>(0xf000) | ct::total,    true },
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            BOOST_TEST(mock_pool::get_connection_supports_cancel_type(tc.input) == tc.expected);
-        }
-    }
-}
-
-BOOST_AUTO_TEST_CASE(async_get_connection_cancel)
-{
-    struct test_case
-    {
-        string_view name;
-        asio::cancellation_type_t cancel_type;
-        bool thread_safe;
-    } test_cases[]{
-        {"terminal",      asio::cancellation_type_t::terminal, false},
-        {"partial",       asio::cancellation_type_t::partial,  false},
-        {"total",         asio::cancellation_type_t::total,    false},
-        {"safe_terminal", asio::cancellation_type_t::terminal, true },
-        {"safe_partial",  asio::cancellation_type_t::partial,  true },
-        {"safe_total",    asio::cancellation_type_t::total,    true },
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.name)
-        {
-            // Create a pool
-            pool_params params;
-            params.thread_safe = tc.thread_safe;
-            auto pool = create_mock_pool(std::move(params));
-            auto run_result = pool->async_run(as_netresult);
-
-            // Run with a bound signal
-            asio::cancellation_signal sig;
-            diagnostics diag;
-            auto getconn_result = pool->async_get_connection(
-                &diag,
-                asio::bind_cancellation_slot(sig.slot(), as_netresult)
-            );
-
-            // Emit the signal. get connection should return
-            sig.emit(tc.cancel_type);
-            std::move(getconn_result).validate_error(asio::error::operation_aborted);
-
-            // Finish the pool
-            pool->cancel();
-            std::move(run_result).validate_no_error_nodiag();
-        }
-    }
-}
-
-// async_run with a bound signal that doesn't get emitted doesn't cause trouble
-// TODO: duplicated
-BOOST_AUTO_TEST_CASE(async_get_connection_bound_signal)
-{
-    // Setup
-    pool_params params;
-    params.thread_safe = true;
-    fixture fix(std::move(params));
-
-    // Connect one of the connections
-    fix.wait_for_num_nodes(1);
-    auto& node = fix.pool().nodes().front();
-    fix.step(node, fn_type::connect);
-
-    // Run with a bound signal
-    asio::cancellation_signal sig;
-    diagnostics diag;
-    auto conn = fix.pool()
-                    .async_get_connection(&diag, asio::bind_cancellation_slot(sig.slot(), as_netresult))
-                    .get();
-    BOOST_TEST(conn.node == &node);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
