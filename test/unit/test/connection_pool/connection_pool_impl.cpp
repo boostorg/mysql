@@ -309,6 +309,65 @@ class get_connection_task
         impl_t(mock_pool& p) : cv(p.get_executor(), 1), pool(p) {}
     };
 
+    struct handler
+    {
+        tracker_executor_result ex_result;
+        tracker_executor_result immediate_ex_result;
+        std::shared_ptr<impl_t> state;
+        bool bind_slot;
+
+        handler(std::shared_ptr<impl_t> st, bool bind_slot)
+            : ex_result(create_tracker_executor(global_context_executor())),
+              immediate_ex_result(create_tracker_executor(global_context_executor())),
+              state(std::move(st)),
+              bind_slot(bind_slot)
+        {
+        }
+
+        using executor_type = asio::any_io_executor;
+        executor_type get_executor() const { return ex_result.ex; }
+
+        using immediate_executor_type = asio::any_io_executor;
+        immediate_executor_type get_immediate_executor() const { return immediate_ex_result.ex; }
+
+        using cancellation_slot_type = asio::cancellation_slot;
+        cancellation_slot_type get_cancellation_slot() const
+        {
+            return bind_slot ? state->sig.slot() : asio::cancellation_slot();
+        }
+
+        void operator()(error_code ec, mock_pooled_connection conn)
+        {
+            // Check executor
+            bool was_immediate = is_initiation_function();
+            if (was_immediate)
+            {
+                // An immediate completion dispatches to the immediate executor,
+                // then to the token's executor
+                const int expected_stack[] = {immediate_ex_result.executor_id, ex_result.executor_id};
+                BOOST_TEST(executor_stack() == expected_stack, per_element());
+            }
+            else
+            {
+                const int expected_stack[] = {ex_result.executor_id};
+                BOOST_TEST(executor_stack() == expected_stack, per_element());
+            }
+
+            // If the pool was thread-safe, the callback should never be happening from
+            // the pool's strand
+            if (state->pool.params().thread_safe)
+            {
+                BOOST_TEST(!state->pool.strand().running_in_this_thread());
+            }
+
+            state->was_immediate = was_immediate;
+            state->actual_node = conn.node;
+            state->actual_pool = conn.pool.get();
+            state->actual_ec = ec;
+            state->cv.try_send(error_code());
+        }
+    };
+
     std::shared_ptr<impl_t> impl_;
 
     void wait_impl(mock_node* expected_node, error_code expected_ec, bool expect_immediate)
@@ -322,9 +381,6 @@ class get_connection_task
     }
 
 public:
-    get_connection_task() = default;
-
-    // TODO: rework this
     get_connection_task(mock_pool& pool, diagnostics* diag, bool bind_slot = true)
         : impl_(std::make_shared<impl_t>(pool))
     {
@@ -333,58 +389,11 @@ public:
         // completions
         auto impl = impl_;
         asio::dispatch(asio::bind_executor(global_context_executor(), [impl, &pool, diag, bind_slot]() {
-            auto pool_ex = pool.get_executor();
-
-            // Create a tracker executor
-            auto ex_result = create_tracker_executor(pool_ex);
-            auto ex_id = ex_result.executor_id;
-            auto immediate_ex_result = create_tracker_executor(pool_ex);
-            auto immediate_ex_id = immediate_ex_result.executor_id;
-
             // Mark that we're calling an initiating function
             initiation_guard guard;
 
-            pool.async_get_connection(
-                diag,
-                asio::bind_executor(
-                    ex_result.ex,
-                    asio::bind_immediate_executor(
-                        immediate_ex_result.ex,
-                        asio::bind_cancellation_slot(
-                            bind_slot ? impl->sig.slot() : asio::cancellation_slot(),
-                            [ex_id, immediate_ex_id, impl](error_code ec, mock_pooled_connection c) {
-                                // Check executor
-                                bool was_immediate = is_initiation_function();
-                                if (was_immediate)
-                                {
-                                    // An immediate completion dispatches to the immediate executor,
-                                    // then to the token's executor
-                                    const int expected_stack[] = {immediate_ex_id, ex_id};
-                                    BOOST_TEST(executor_stack() == expected_stack, per_element());
-                                }
-                                else
-                                {
-                                    const int expected_stack[] = {ex_id};
-                                    BOOST_TEST(executor_stack() == expected_stack, per_element());
-                                }
-
-                                // If the pool was thread-safe, the callback should never be happening from
-                                // the pool's strand
-                                if (impl->pool.params().thread_safe)
-                                {
-                                    BOOST_TEST(!impl->pool.strand().running_in_this_thread());
-                                }
-
-                                impl->was_immediate = was_immediate;
-                                impl->actual_node = c.node;
-                                impl->actual_pool = c.pool.get();
-                                impl->actual_ec = ec;
-                                impl->cv.try_send(error_code());
-                            }
-                        )
-                    )
-                )
-            );
+            // Initiate
+            pool.async_get_connection(diag, handler{impl, bind_slot});
         }));
     }
 
