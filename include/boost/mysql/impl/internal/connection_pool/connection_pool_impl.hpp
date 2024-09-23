@@ -382,42 +382,6 @@ class basic_pool_impl
         }
     };
 
-    struct get_connection_initiation
-    {
-        template <class Handler>
-        void operator()(Handler&& handler, diagnostics* diag, std::shared_ptr<this_type> self)
-        {
-            // TODO: can we make it always a callback?
-
-            // Allocate the state object
-            auto alloc = asio::get_associated_allocator(handler);
-            using alloc_t = typename std::allocator_traits<decltype(alloc
-            )>::template rebind_alloc<get_connection_state>;
-            auto st = std::allocate_shared<get_connection_state>(alloc_t(alloc), self, diag);
-
-            // In thread-safe mode, the cancel handler must be run through the strand
-            auto slot = asio::get_associated_cancellation_slot(handler);
-            if (self->params().thread_safe && slot.is_connected())
-            {
-                // The original slot will call the handler, which dispatches to the strand
-                slot.template emplace<get_connection_cancel_handler>(get_connection_cancel_handler{st});
-
-                // The slot is replaced by the proxy signal's slot
-                slot = st->sig.slot();
-            }
-
-            // Bind the handler to the slot
-            auto bound_handler = asio::bind_cancellation_slot(slot, std::forward<Handler>(handler));
-
-            // Start
-            asio::async_compose<decltype(bound_handler), void(error_code, ConnectionWrapper)>(
-                get_connection_op(std::move(st)),
-                bound_handler,
-                self->pool_ex_
-            );
-        }
-    };
-
     // Not thread-safe
     void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
 
@@ -519,20 +483,40 @@ public:
         }
     }
 
-    template <class CompletionToken>
-    auto async_get_connection(diagnostics* diag, CompletionToken&& token)
-        -> decltype(asio::async_initiate<CompletionToken, void(error_code, ConnectionWrapper)>(
-            get_connection_initiation{},
-            token,
-            std::move(diag),
-            shared_from_this_wrapper()
-        ))
+    void async_get_connection(
+        diagnostics* diag,
+        asio::any_completion_handler<void(error_code, ConnectionWrapper)> handler
+    )
     {
-        return asio::async_initiate<CompletionToken, void(error_code, ConnectionWrapper)>(
-            get_connection_initiation{},
-            token,
-            std::move(diag),  // get diagnostics* instead of diagnostics*&. Helps test tooling
-            shared_from_this_wrapper()
+        // Allocate the state object
+        auto alloc = asio::get_associated_allocator(handler);
+        using alloc_t = typename std::allocator_traits<decltype(alloc
+        )>::template rebind_alloc<get_connection_state>;
+        auto st = std::allocate_shared<get_connection_state>(
+            alloc_t(alloc),
+            shared_from_this_wrapper(),
+            diag
+        );
+
+        // In thread-safe mode, the cancel handler must be run through the strand
+        auto slot = asio::get_associated_cancellation_slot(handler);
+        if (params_.thread_safe && slot.is_connected())
+        {
+            // The original slot will call the handler, which dispatches to the strand
+            slot.template emplace<get_connection_cancel_handler>(get_connection_cancel_handler{st});
+
+            // The slot is replaced by the proxy signal's slot
+            slot = st->sig.slot();
+        }
+
+        // Bind the handler to the slot
+        auto bound_handler = asio::bind_cancellation_slot(slot, std::move(handler));
+
+        // Start
+        asio::async_compose<decltype(bound_handler), void(error_code, ConnectionWrapper)>(
+            get_connection_op(std::move(st)),
+            bound_handler,
+            pool_ex_
         );
     }
 
