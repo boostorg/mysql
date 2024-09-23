@@ -113,6 +113,26 @@ class basic_pool_impl
         wait_gp_.run_task(all_conns_.back().async_run(asio::deferred));
     }
 
+    void maybe_create_connection()
+    {
+        if (can_create_connection())
+            create_connection();
+    }
+
+    node_type* try_get_connection()
+    {
+        if (!shared_st_.idle_list.empty())
+        {
+            node_type& res = shared_st_.idle_list.front();
+            res.mark_as_in_use();
+            return &res;
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+
     template <class OpSelf>
     void enter_strand(OpSelf& self)
     {
@@ -201,40 +221,46 @@ class basic_pool_impl
         }
     };
 
-    struct get_connection_op
+    // State for the get_connection op.
+    // Referenced by the cancel handler, too.
+    struct get_connection_state
     {
-        int resume_point_{0};
-        std::shared_ptr<this_type> obj_;
-        diagnostics* diag_;
-        error_code result_ec_;
-        node_type* result_conn_{};
-        std::shared_ptr<asio::cancellation_signal> sig_;
-        bool has_waited_{false};
+        int resume_point{0};
+        std::shared_ptr<this_type> obj;
+        diagnostics* diag;
+        error_code result_ec;
+        node_type* result_conn{};
+        asio::cancellation_signal sig;
+        bool has_waited{false};
 
-        get_connection_op(
-            std::shared_ptr<this_type> obj,
-            diagnostics* diag,
-            std::shared_ptr<asio::cancellation_signal> sig
-        ) noexcept
-            : obj_(std::move(obj)), diag_(diag), sig_(std::move(sig))
+        get_connection_state(std::shared_ptr<this_type> obj, diagnostics* diag) noexcept
+            : obj(std::move(obj)), diag(diag)
         {
         }
+    };
 
-        bool thread_safe() const { return obj_->params_.thread_safe; }
+    struct get_connection_op
+    {
+        std::shared_ptr<get_connection_state> st_;
+
+        get_connection_op(std::shared_ptr<get_connection_state> st) noexcept : st_(std::move(st)) {}
+
+        this_type& pool() { return *st_->obj; }
+        bool thread_safe() const { return st_->obj->params_.thread_safe; }
 
         template <class Self>
         void do_complete(Self& self)
         {
-            auto wr = result_ec_ ? ConnectionWrapper() : ConnectionWrapper(*result_conn_, std::move(obj_));
-            obj_.reset();
-            sig_.reset();
-            self.complete(result_ec_, std::move(wr));
+            error_code ec = st_->result_ec;
+            auto wr = ec ? ConnectionWrapper() : ConnectionWrapper(*st_->result_conn, std::move(st_->obj));
+            st_.reset();
+            self.complete(ec, std::move(wr));
         }
 
         template <class Self>
         void operator()(Self& self, error_code = {})
         {
-            switch (resume_point_)
+            switch (st_->resume_point)
             {
             case 0:
                 // This op supports total cancellation. Must be explicitly enabled,
@@ -242,13 +268,13 @@ class basic_pool_impl
                 self.reset_cancellation_state(asio::enable_total_cancellation());
 
                 // Clear diagnostics
-                if (diag_)
-                    diag_->clear();
+                if (st_->diag)
+                    st_->diag->clear();
 
                 // Enter the strand
                 if (thread_safe())
                 {
-                    BOOST_MYSQL_YIELD(resume_point_, 1, obj_->enter_strand(self))
+                    BOOST_MYSQL_YIELD(st_->resume_point, 1, pool().enter_strand(self))
                 }
 
                 // This loop guards us against possible race conditions
@@ -257,76 +283,71 @@ class basic_pool_impl
                 while (true)
                 {
                     // If we're not running yet, or were cancelled, just return
-                    if (obj_->state_ == state_t::initial)
+                    if (pool().state_ == state_t::initial)
                     {
-                        result_ec_ = client_errc::pool_not_running;
+                        st_->result_ec = client_errc::pool_not_running;
                         break;
                     }
-                    else if (obj_->state_ == state_t::cancelled)
+                    else if (pool().state_ == state_t::cancelled)
                     {
                         // The pool was cancelled
-                        result_ec_ = asio::error::operation_aborted;
+                        st_->result_ec = asio::error::operation_aborted;
                         break;
                     }
                     else if (get_connection_supports_cancel_type(self.cancelled()))
                     {
                         // The operation was cancelled. Try to provide diagnostics
-                        result_ec_ = asio::error::operation_aborted;
-                        if (diag_)
-                            *diag_ = obj_->shared_st_.last_connect_diag;
+                        st_->result_ec = asio::error::operation_aborted;
+                        if (st_->diag)
+                            *st_->diag = pool().shared_st_.last_connect_diag;
                         break;
                     }
 
                     // Try to get a connection
-                    if (!obj_->shared_st_.idle_list.empty())
+                    if ((st_->result_conn = pool().try_get_connection()) != nullptr)
                     {
                         // There was a connection
-                        result_conn_ = &obj_->shared_st_.idle_list.front();
-                        result_conn_->mark_as_in_use();
                         break;
                     }
 
                     // No luck. If there is room for more connections, create one.
-                    if (obj_->can_create_connection())
-                    {
-                        obj_->create_connection();
-                    }
+                    pool().maybe_create_connection();
 
                     // Wait to be notified, or until a timeout happens
                     if (thread_safe())
                     {
                         BOOST_MYSQL_YIELD(
-                            resume_point_,
+                            st_->resume_point,
                             2,
-                            obj_->shared_st_.idle_connections_cv.async_wait(
-                                asio::bind_executor(obj_->pool_ex_, std::move(self))
+                            pool().shared_st_.idle_connections_cv.async_wait(
+                                asio::bind_executor(pool().pool_ex_, std::move(self))
                             )
                         )
                     }
                     else
                     {
                         BOOST_MYSQL_YIELD(
-                            resume_point_,
+                            st_->resume_point,
                             3,
-                            obj_->shared_st_.idle_connections_cv.async_wait(std::move(self))
+                            pool().shared_st_.idle_connections_cv.async_wait(std::move(self))
                         )
                     }
 
                     // Remember that we have waited, so completions are dispatched correctly
-                    has_waited_ = true;
+                    st_->has_waited = true;
                 }
 
                 // Perform any required dispatching before completing
                 if (thread_safe())
                 {
                     // Exit the strand
-                    BOOST_MYSQL_YIELD(resume_point_, 4, obj_->exit_strand(self))
+                    BOOST_MYSQL_YIELD(st_->resume_point, 4, pool().exit_strand(self))
                 }
-                else if (!has_waited_)
+                else if (!st_->has_waited)
                 {
                     // This is an immediate completion
                     BOOST_MYSQL_YIELD(
-                        resume_point_,
+                        st_->resume_point,
                         5,
                         asio::async_immediate(self.get_io_executor(), std::move(self))
                     )
@@ -335,6 +356,65 @@ class basic_pool_impl
                 // Done
                 do_complete(self);
             }
+        }
+    };
+
+    // Cancel handler to use for get_connection in thread-safe mode.
+    // This imitates what Asio does for composed ops
+    struct get_connection_cancel_handler
+    {
+        // Pointer to the operation state object
+        // Lifetime managed by the get_connection composed op
+        std::weak_ptr<get_connection_state> st;
+
+        void operator()(asio::cancellation_type_t type)
+        {
+            if (get_connection_supports_cancel_type(type))
+            {
+                auto st_ptr = st.lock();
+                if (st_ptr)
+                {
+                    asio::dispatch(asio::bind_executor(st_ptr->obj->strand(), [st_ptr, type]() {
+                        st_ptr->sig.emit(type);
+                    }));
+                }
+            }
+        }
+    };
+
+    struct get_connection_initiation
+    {
+        template <class Handler>
+        void operator()(Handler&& handler, diagnostics* diag, std::shared_ptr<this_type> self)
+        {
+            // TODO: can we make it always a callback?
+
+            // Allocate the state object
+            auto alloc = asio::get_associated_allocator(handler);
+            using alloc_t = typename std::allocator_traits<decltype(alloc
+            )>::template rebind_alloc<get_connection_state>;
+            auto st = std::allocate_shared<get_connection_state>(alloc_t(alloc), self, diag);
+
+            // In thread-safe mode, the cancel handler must be run through the strand
+            auto slot = asio::get_associated_cancellation_slot(handler);
+            if (self->params().thread_safe && slot.is_connected())
+            {
+                // The original slot will call the handler, which dispatches to the strand
+                slot.template emplace<get_connection_cancel_handler>(get_connection_cancel_handler{st});
+
+                // The slot is replaced by the proxy signal's slot
+                slot = st->sig.slot();
+            }
+
+            // Bind the handler to the slot
+            auto bound_handler = asio::bind_cancellation_slot(slot, std::forward<Handler>(handler));
+
+            // Start
+            asio::async_compose<decltype(bound_handler), void(error_code, ConnectionWrapper)>(
+                get_connection_op(std::move(st)),
+                bound_handler,
+                self->pool_ex_
+            );
         }
     };
 
@@ -438,95 +518,6 @@ public:
             node.notify_collectable();
         }
     }
-
-    // Cancel handler to use for get_connection in thread-safe mode.
-    // This imitates what Asio does for composed ops
-    struct get_connection_cancel_handler
-    {
-        // The child cancellation signal to be emitted.
-        // Lifetime managed by the get_connection composed op
-        std::weak_ptr<asio::cancellation_signal> sig_ptr;
-
-        // The pool, required to get the strand
-        std::shared_ptr<this_type> self;
-
-        get_connection_cancel_handler(
-            std::weak_ptr<asio::cancellation_signal> sig_ptr,
-            std::shared_ptr<this_type> self
-        ) noexcept
-            : sig_ptr(std::move(sig_ptr)), self(std::move(self))
-        {
-        }
-
-        void operator()(asio::cancellation_type_t type)
-        {
-            // The handler that should run through the strand
-            struct dispatch_handler
-            {
-                std::weak_ptr<asio::cancellation_signal> sig_ptr;
-                std::shared_ptr<this_type> self;
-                asio::cancellation_type_t cancel_type;
-
-                using executor_type = asio::any_io_executor;
-                executor_type get_executor() const { return self->strand(); }
-
-                void operator()()
-                {
-                    // If the operation hans't completed yet
-                    if (auto signal = sig_ptr.lock())
-                    {
-                        // Emit the child signal, which effectively causes the op to be cancelled
-                        signal->emit(cancel_type);
-                    }
-                }
-            };
-
-            if (get_connection_supports_cancel_type(type))
-            {
-                asio::dispatch(dispatch_handler{std::move(sig_ptr), std::move(self), type});
-            }
-        }
-    };
-
-    struct get_connection_initiation
-    {
-        template <class Handler>
-        void operator()(Handler&& handler, diagnostics* diag, std::shared_ptr<this_type> self)
-        {
-            // In thread-safe mode, the cancel handler must be run through the strand
-            auto slot = asio::get_associated_cancellation_slot(handler);
-            if (self->params().thread_safe && slot.is_connected())
-            {
-                // Create the child signal
-                auto sig = std::make_shared<asio::cancellation_signal>();
-
-                // The original slot will call the handler, which dispatches to the strand
-                slot.template emplace<get_connection_cancel_handler>(sig, self);
-
-                // Bind the handler to the new slot
-                auto bound_handler = asio::bind_cancellation_slot(
-                    sig->slot(),
-                    std::forward<Handler>(handler)
-                );
-
-                // Start
-                asio::async_compose<decltype(bound_handler), void(error_code, ConnectionWrapper)>(
-                    get_connection_op(self, diag, std::move(sig)),
-                    bound_handler,
-                    self->pool_ex_
-                );
-            }
-            else
-            {
-                // Just start
-                asio::async_compose<Handler, void(error_code, ConnectionWrapper)>(
-                    get_connection_op(self, diag, nullptr),
-                    handler,
-                    self->pool_ex_
-                );
-            }
-        }
-    };
 
     template <class CompletionToken>
     auto async_get_connection(diagnostics* diag, CompletionToken&& token)
