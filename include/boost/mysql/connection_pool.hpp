@@ -272,6 +272,7 @@ public:
  * \par Experimental
  * This part of the API is experimental, and may change in successive
  * releases without previous notice.
+ * TODO: review docs
  */
 class connection_pool
 {
@@ -280,11 +281,6 @@ class connection_pool
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
 #endif
-
-    static constexpr std::chrono::steady_clock::duration get_default_timeout() noexcept
-    {
-        return std::chrono::seconds(30);
-    }
 
     struct initiate_run : detail::initiation_base
     {
@@ -309,37 +305,26 @@ class connection_pool
         using detail::initiation_base::initiation_base;
 
         template <class Handler>
-        void operator()(
-            Handler&& h,
-            diagnostics* diag,
-            std::shared_ptr<detail::pool_impl> self,
-            std::chrono::steady_clock::duration timeout
-        )
+        void operator()(Handler&& h, diagnostics* diag, std::shared_ptr<detail::pool_impl> self)
         {
-            async_get_connection_erased(std::move(self), timeout, diag, std::forward<Handler>(h));
+            async_get_connection_erased(std::move(self), diag, std::forward<Handler>(h));
         }
     };
 
     BOOST_MYSQL_DECL
     static void async_get_connection_erased(
         std::shared_ptr<detail::pool_impl> pool,
-        std::chrono::steady_clock::duration timeout,
         diagnostics* diag,
         asio::any_completion_handler<void(error_code, pooled_connection)> handler
     );
 
     template <class CompletionToken>
-    auto async_get_connection_impl(
-        std::chrono::steady_clock::duration timeout,
-        diagnostics* diag,
-        CompletionToken&& token
-    )
+    auto async_get_connection_impl(diagnostics* diag, CompletionToken&& token)
         -> decltype(asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
             std::declval<initiate_get_connection>(),
             token,
             diag,
-            impl_,
-            timeout
+            impl_
         ))
     {
         BOOST_ASSERT(valid());
@@ -347,8 +332,7 @@ class connection_pool
             initiate_get_connection{get_executor()},
             token,
             diag,
-            impl_,
-            timeout
+            impl_
         );
     }
 
@@ -585,19 +569,15 @@ public:
         );
     }
 
-    /// \copydoc async_get_connection(diagnostics&,CompletionToken&&)
+    /// \copydoc async_get_connection
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_get_connection(CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
-        decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
+        decltype(async_get_connection_impl(nullptr, std::forward<CompletionToken>(token)))
     )
     {
-        return async_get_connection_impl(
-            get_default_timeout(),
-            nullptr,
-            std::forward<CompletionToken>(token)
-        );
+        return async_get_connection_impl(nullptr, std::forward<CompletionToken>(token));
     }
 
     /**
@@ -649,93 +629,16 @@ public:
      * Safe for pools built with \ref pool_params::thread_safe. Can be called
      * concurrently with other safe functions. For thread-safe pools, cancellation
      * signals can be safely emitted from any thread.
+     * TODO: review docs
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_get_connection(diagnostics& diag, CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
-        decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
+        decltype(async_get_connection_impl(nullptr, std::forward<CompletionToken>(token)))
     )
     {
-        return async_get_connection_impl(get_default_timeout(), &diag, std::forward<CompletionToken>(token));
-    }
-
-    /// \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken = with_diagnostics_t<asio::deferred_t>>
-    auto async_get_connection(std::chrono::steady_clock::duration timeout, CompletionToken&& token = {})
-        BOOST_MYSQL_RETURN_TYPE(
-            decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
-        )
-    {
-        return async_get_connection_impl(timeout, nullptr, std::forward<CompletionToken>(token));
-    }
-
-    /**
-     * \brief Retrieves a connection from the pool.
-     * \details
-     * Retrieves an idle connection from the pool to be used.
-     *
-     * If this function completes successfully (empty error code), the return \ref pooled_connection
-     * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
-     * it will have `valid() == false`.
-     *
-     * If a connection is idle when the operation is started, it will complete immediately
-     * with that connection. Otherwise, it will wait for a connection to become idle
-     * (possibly creating one in the process, if pool configuration allows it), up to
-     * a duration of `timeout`. A zero timeout disables it.
-     *
-     * If a timeout happens because connection establishment has failed, appropriate
-     * diagnostics will be returned.
-     *
-     * \par Preconditions
-     * `this->valid() == true` \n
-     * Timeout values must be positive: `timeout.count() >= 0`.
-     *
-     * \par Object lifetimes
-     * While the operation is outstanding, the pool's internal data will be kept alive.
-     * It is safe to destroy `*this` while the operation is outstanding.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
-     *
-     * \par Per-operation cancellation
-     * This operation supports per-operation cancellation.
-     * Cancelling `async_get_connection` has no observable side effects.
-     * The following `asio::cancellation_type_t` values are supported:
-     *
-     *   - `asio::cancellation_type_t::terminal`
-     *   - `asio::cancellation_type_t::partial`
-     *   - `asio::cancellation_type_t::total`
-     *
-     * \par Errors
-     * \li Any error returned by \ref any_connection::async_connect, if a timeout
-     *     happens because connection establishment is failing.
-     * \li \ref client_errc::timeout, if a timeout happens for any other reason
-     *     (e.g. all connections are in use and limits forbid creating more).
-     * \li \ref client_errc::cancelled if \ref cancel was called before the operation is started or while
-     *     it is outstanding, or if the pool is not running.
-     *
-     * \par Thread-safety
-     * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions. For thread-safe pools, cancellation
-     * signals can be safely emitted from any thread.
-     */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken = with_diagnostics_t<asio::deferred_t>>
-    auto async_get_connection(
-        std::chrono::steady_clock::duration timeout,
-        diagnostics& diag,
-        CompletionToken&& token = {}
-    )
-        BOOST_MYSQL_RETURN_TYPE(
-            decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
-        )
-    {
-        return async_get_connection_impl(timeout, &diag, std::forward<CompletionToken>(token));
+        return async_get_connection_impl(&diag, std::forward<CompletionToken>(token));
     }
 
     /**

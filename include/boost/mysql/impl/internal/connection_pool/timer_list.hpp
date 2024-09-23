@@ -10,45 +10,33 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
-#include <boost/intrusive/list.hpp>
-#include <boost/intrusive/list_hook.hpp>
 
-#include <cstddef>
+#include <utility>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
-template <class ClockType>
-struct timer_block : intrusive::list_base_hook<intrusive::link_mode<intrusive::auto_unlink>>
-{
-    asio::basic_waitable_timer<ClockType> timer;
-
-    timer_block(asio::any_io_executor ex) : timer(std::move(ex)) {}
-};
-
+// TODO: do we want to keep this file?
+// TODO: rename
 template <class ClockType>
 class timer_list
 {
-    intrusive::list<timer_block<ClockType>, intrusive::constant_time_size<false>> requests_;
+    asio::basic_waitable_timer<ClockType> timer_;
 
 public:
-    timer_list() = default;
-    void push_back(timer_block<ClockType>& req) noexcept { requests_.push_back(req); }
-    void notify_one()
+    timer_list(asio::any_io_executor ex) : timer_(ex, (ClockType::time_point::max)()) {}
+
+    // TODO: c++11
+    template <class CompletionToken>
+    auto async_wait(CompletionToken&& token)
     {
-        for (auto& req : requests_)
-        {
-            if (req.timer.cancel())
-                return;
-        }
+        return timer_.async_wait(std::forward<CompletionToken>(token));
     }
-    void notify_all()
-    {
-        for (auto& req : requests_)
-            req.timer.cancel();
-    }
-    std::size_t size() const noexcept { return requests_.size(); }
+
+    void notify_one() { timer_.cancel_one(); }
+
+    void notify_all() { timer_.expires_at((ClockType::time_point::min)()); }
 };
 
 }  // namespace detail

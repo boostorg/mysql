@@ -13,6 +13,7 @@
 #include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/thread_pool.hpp>
@@ -102,7 +103,18 @@ public:
         // use_future returns a std::future<pooled_connection>.
         // Calling get() waits for the future to complete and throws an exception on failure.
         // with_diagnostics ensures that the exception contains any server-supplied information.
-        return conn_pool_.async_get_connection(timeout, with_diagnostics(boost::asio::use_future)).get();
+        // cancel_after applies a timeout to the operation
+        // <-
+        // clang-format off
+        // ->
+        return conn_pool_
+            .async_get_connection(
+                with_diagnostics(boost::asio::cancel_after(timeout, boost::asio::use_future))
+            )
+            .get();
+        // <-
+        // clang-format on
+        // ->
     }
 };
 //]

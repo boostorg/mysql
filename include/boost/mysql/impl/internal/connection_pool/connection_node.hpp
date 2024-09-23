@@ -47,6 +47,8 @@ struct conn_shared_state
     std::size_t num_pending_connections{0};
     error_code last_ec;
     diagnostics last_diag;
+
+    conn_shared_state(asio::any_io_executor ex) : pending_requests(std::move(ex)) {}
 };
 
 // The templated type is never exposed to the user. We template

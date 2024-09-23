@@ -15,6 +15,7 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pool_params.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/config.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
@@ -44,6 +45,7 @@
 #include <cstddef>
 #include <list>
 #include <memory>
+#include <sstream>
 #include <utility>
 
 namespace boost {
@@ -66,7 +68,6 @@ class basic_pool_impl
     using this_type = basic_pool_impl<ConnectionType, ClockType, ConnectionWrapper>;
     using node_type = basic_connection_node<ConnectionType, ClockType>;
     using timer_type = asio::basic_waitable_timer<ClockType>;
-    using timer_block_type = timer_block<ClockType>;
     using shared_state_type = conn_shared_state<ConnectionType, ClockType>;
 
     enum class state_t
@@ -114,21 +115,18 @@ class basic_pool_impl
         wait_gp_.run_task(all_conns_.back().async_run(asio::deferred));
     }
 
-    error_code get_diagnostics(diagnostics* diag) const
+    void get_diagnostics(diagnostics* diag) const
     {
-        if (state_ == state_t::cancelled)
+        if (diag && shared_st_.last_ec)
         {
-            return client_errc::cancelled;
-        }
-        else if (shared_st_.last_ec)
-        {
-            if (diag)
-                *diag = shared_st_.last_diag;
-            return shared_st_.last_ec;
-        }
-        else
-        {
-            return client_errc::timeout;
+            // TODO: can we do this better?
+            // TODO: test
+            std::ostringstream oss;
+            oss << "Last connection attempt failed with error code " << shared_st_.last_ec;
+            const auto& diag_impl = access::get_impl(shared_st_.last_diag);
+            if (!diag_impl.msg.empty())
+                oss << ": " << diag_impl.msg;
+            access::get_impl(*diag).assign(diag_impl.is_server, oss.str());
         }
     }
 
@@ -225,19 +223,17 @@ class basic_pool_impl
         int resume_point_{0};
         std::shared_ptr<this_type> obj_;
         diagnostics* diag_;
-        std::chrono::steady_clock::time_point timeout_;
-        std::unique_ptr<timer_block_type> timer_;
         error_code result_ec_;
         node_type* result_conn_{};
         std::shared_ptr<asio::cancellation_signal> sig_;
+        bool has_waited_{false};
 
         get_connection_op(
             std::shared_ptr<this_type> obj,
-            std::chrono::steady_clock::time_point timeout,
             diagnostics* diag,
             std::shared_ptr<asio::cancellation_signal> sig
         ) noexcept
-            : obj_(std::move(obj)), diag_(diag), timeout_(timeout), sig_(std::move(sig))
+            : obj_(std::move(obj)), diag_(diag), sig_(std::move(sig))
         {
         }
 
@@ -253,14 +249,13 @@ class basic_pool_impl
         }
 
         template <class Self>
-        void operator()(Self& self, error_code ec = {})
+        void operator()(Self& self, error_code = {})
         {
-            bool has_waited{};
-            timer_type* tim{};
-
             switch (resume_point_)
             {
             case 0:
+                // This op supports total cancellation. Must be explicitly enabled,
+                // as composed ops only support terminal cancellation by default.
                 self.reset_cancellation_state(asio::enable_total_cancellation());
 
                 // Clear diagnostics
@@ -284,10 +279,18 @@ class basic_pool_impl
                         result_ec_ = client_errc::pool_not_running;
                         break;
                     }
-                    else if (obj_->state_ == state_t::cancelled ||
-                             get_connection_supports_cancel_type(self.cancelled()))
+                    else if (obj_->state_ == state_t::cancelled)
                     {
+                        // The pool was cancelled
+                        // TODO: could we provide diagnostics here?
                         result_ec_ = client_errc::cancelled;
+                        break;
+                    }
+                    else if (get_connection_supports_cancel_type(self.cancelled()))
+                    {
+                        // The operation was cancelled
+                        result_ec_ = client_errc::cancelled;
+                        obj_->get_diagnostics(diag_);
                         break;
                     }
 
@@ -306,42 +309,29 @@ class basic_pool_impl
                         obj_->create_connection();
                     }
 
-                    // Allocate a timer to perform waits.
-                    if (!timer_)
-                    {
-                        timer_.reset(new timer_block_type(obj_->pool_ex_));
-                        obj_->shared_st_.pending_requests.push_back(*timer_);
-                    }
-
                     // Wait to be notified, or until a timeout happens
-                    // Moving self may cause the unique_ptr we store to be set to null before the method call
-                    tim = &timer_->timer;
-                    tim->expires_at(timeout_);
                     if (thread_safe())
                     {
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             2,
-                            tim->async_wait(asio::bind_executor(obj_->pool_ex_, std::move(self)))
+                            obj_->shared_st_.pending_requests.async_wait(
+                                asio::bind_executor(obj_->pool_ex_, std::move(self))
+                            )
                         )
                     }
                     else
                     {
-                        BOOST_MYSQL_YIELD(resume_point_, 3, tim->async_wait(std::move(self)))
+                        BOOST_MYSQL_YIELD(
+                            resume_point_,
+                            3,
+                            obj_->shared_st_.pending_requests.async_wait(std::move(self))
+                        )
                     }
 
-                    if (!ec)
-                    {
-                        // We've got a timeout. Try to give as much info as possible
-                        result_ec_ = obj_->get_diagnostics(diag_);
-                        break;
-                    }
+                    // Remember that we have waited, so completions are dispatched correctly
+                    has_waited_ = true;
                 }
-
-                // Clean up the timer, which removes it from the list.
-                // Must be done within the strand, as it affects global state
-                has_waited = timer_.get();
-                timer_.reset();
 
                 // Perform any required dispatching before completing
                 if (thread_safe())
@@ -349,7 +339,7 @@ class basic_pool_impl
                     // Exit the strand
                     BOOST_MYSQL_YIELD(resume_point_, 4, obj_->exit_strand(self))
                 }
-                else if (!has_waited)
+                else if (!has_waited_)
                 {
                     // This is an immediate completion
                     BOOST_MYSQL_YIELD(
@@ -373,6 +363,7 @@ public:
           ),
           conn_ex_(std::move(ex_params.connection_executor)),
           params_(make_internal_pool_params(std::move(params))),
+          shared_st_(pool_ex_),
           wait_gp_(pool_ex_),
           cancel_timer_(pool_ex_, (std::chrono::steady_clock::time_point::max)())
     {
@@ -517,12 +508,7 @@ public:
     struct get_connection_initiation
     {
         template <class Handler>
-        void operator()(
-            Handler&& handler,
-            diagnostics* diag,
-            std::shared_ptr<this_type> self,
-            std::chrono::steady_clock::time_point timeout
-        )
+        void operator()(Handler&& handler, diagnostics* diag, std::shared_ptr<this_type> self)
         {
             // In thread-safe mode, the cancel handler must be run through the strand
             auto slot = asio::get_associated_cancellation_slot(handler);
@@ -542,7 +528,7 @@ public:
 
                 // Start
                 asio::async_compose<decltype(bound_handler), void(error_code, ConnectionWrapper)>(
-                    get_connection_op(self, timeout, diag, std::move(sig)),
+                    get_connection_op(self, diag, std::move(sig)),
                     bound_handler,
                     self->pool_ex_
                 );
@@ -551,7 +537,7 @@ public:
             {
                 // Just start
                 asio::async_compose<Handler, void(error_code, ConnectionWrapper)>(
-                    get_connection_op(self, timeout, diag, nullptr),
+                    get_connection_op(self, diag, nullptr),
                     handler,
                     self->pool_ex_
                 );
@@ -560,35 +546,19 @@ public:
     };
 
     template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ConnectionWrapper))
-    async_get_connection(
-        std::chrono::steady_clock::time_point timeout,
-        diagnostics* diag,
-        CompletionToken&& token
-    )
+    auto async_get_connection(diagnostics* diag, CompletionToken&& token)
+        -> decltype(asio::async_initiate<CompletionToken, void(error_code, ConnectionWrapper)>(
+            get_connection_initiation{},
+            token,
+            std::move(diag),
+            shared_from_this_wrapper()
+        ))
     {
         return asio::async_initiate<CompletionToken, void(error_code, ConnectionWrapper)>(
             get_connection_initiation{},
             token,
-            std::move(diag),
-            shared_from_this_wrapper(),
-            timeout
-        );
-    }
-
-    template <class CompletionToken>
-    BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, ConnectionWrapper))
-    async_get_connection(
-        std::chrono::steady_clock::duration timeout,
-        diagnostics* diag,
-        CompletionToken&& token
-    )
-    {
-        return async_get_connection(
-            timeout.count() > 0 ? std::chrono::steady_clock::now() + timeout
-                                : (std::chrono::steady_clock::time_point::max)(),
-            diag,
-            std::forward<CompletionToken>(token)
+            std::move(diag),  // get diagnostics* instead of diagnostics*&. Helps test tooling
+            shared_from_this_wrapper()
         );
     }
 
