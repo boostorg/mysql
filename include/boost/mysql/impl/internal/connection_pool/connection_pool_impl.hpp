@@ -418,6 +418,9 @@ class basic_pool_impl
         }
     };
 
+    // Not thread-safe
+    void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
+
 public:
     basic_pool_impl(pool_executor_params&& ex_params, pool_params&& params)
         : pool_ex_(
@@ -454,9 +457,6 @@ public:
             pool_ex_
         );
     }
-
-    // Not thread-safe
-    void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
 
     void cancel()
     {
