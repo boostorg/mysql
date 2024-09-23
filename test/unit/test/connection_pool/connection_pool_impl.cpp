@@ -298,7 +298,7 @@ class get_connection_task
 {
     struct impl_t
     {
-        asio::experimental::channel<void(error_code)> cv;  // condition-variable-like
+        bool called{};
         mock_pool& pool;
         mock_node* actual_node{};
         mock_pool* actual_pool{};
@@ -306,7 +306,7 @@ class get_connection_task
         bool was_immediate{};  // was the completion immediate?
         asio::cancellation_signal sig;
 
-        impl_t(mock_pool& p) : cv(p.get_executor(), 1), pool(p) {}
+        impl_t(mock_pool& p) : pool(p) {}
     };
 
     struct handler
@@ -364,7 +364,7 @@ class get_connection_task
             state->actual_node = conn.node;
             state->actual_pool = conn.pool.get();
             state->actual_ec = ec;
-            state->cv.try_send(error_code());
+            state->called = true;
         }
     };
 
@@ -372,7 +372,7 @@ class get_connection_task
 
     void wait_impl(mock_node* expected_node, error_code expected_ec, bool expect_immediate)
     {
-        impl_->cv.async_receive(as_netresult).validate_no_error_nodiag();
+        poll_global_context(&impl_->called);
         auto* expected_pool = expected_ec ? nullptr : &impl_->pool;
         BOOST_TEST(impl_->actual_ec == expected_ec);
         BOOST_TEST(impl_->actual_pool == expected_pool);
