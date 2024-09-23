@@ -303,6 +303,7 @@ class get_connection_task
         mock_pool* actual_pool{};
         error_code actual_ec;
         bool was_immediate{};  // was the completion immediate?
+        asio::cancellation_signal sig;
 
         impl_t(mock_pool& p) : cv(p.get_executor(), 1), pool(p) {}
     };
@@ -322,14 +323,14 @@ class get_connection_task
 public:
     get_connection_task() = default;
 
-    get_connection_task(mock_pool& pool, diagnostics* diag, std::chrono::steady_clock::duration timeout)
-        : impl_(std::make_shared<impl_t>(pool))
+    get_connection_task(mock_pool& pool, diagnostics* diag) : impl_(std::make_shared<impl_t>(pool))
     {
         // Call the initiating function.
         // We need to dispatch it so the initiation runs in the io_context, and we can see immediate
         // completions
+        // TODO: we should be able to run this without a bound signal, too
         auto impl = impl_;
-        asio::dispatch(asio::bind_executor(global_context_executor(), [impl, &pool, timeout, diag]() {
+        asio::dispatch(asio::bind_executor(global_context_executor(), [impl, &pool, diag]() {
             auto pool_ex = pool.get_executor();
 
             // Create a tracker executor
@@ -342,41 +343,43 @@ public:
             initiation_guard guard;
 
             pool.async_get_connection(
-                mock_clock::now() + timeout,
                 diag,
                 asio::bind_executor(
                     ex_result.ex,
                     asio::bind_immediate_executor(
                         immediate_ex_result.ex,
-                        [ex_id, immediate_ex_id, impl](error_code ec, mock_pooled_connection c) {
-                            // Check executor
-                            bool was_immediate = is_initiation_function();
-                            if (was_immediate)
-                            {
-                                // An immediate completion dispatches to the immediate executor,
-                                // then to the token's executor
-                                const int expected_stack[] = {immediate_ex_id, ex_id};
-                                BOOST_TEST(executor_stack() == expected_stack, per_element());
-                            }
-                            else
-                            {
-                                const int expected_stack[] = {ex_id};
-                                BOOST_TEST(executor_stack() == expected_stack, per_element());
-                            }
+                        asio::bind_cancellation_slot(
+                            impl->sig.slot(),
+                            [ex_id, immediate_ex_id, impl](error_code ec, mock_pooled_connection c) {
+                                // Check executor
+                                bool was_immediate = is_initiation_function();
+                                if (was_immediate)
+                                {
+                                    // An immediate completion dispatches to the immediate executor,
+                                    // then to the token's executor
+                                    const int expected_stack[] = {immediate_ex_id, ex_id};
+                                    BOOST_TEST(executor_stack() == expected_stack, per_element());
+                                }
+                                else
+                                {
+                                    const int expected_stack[] = {ex_id};
+                                    BOOST_TEST(executor_stack() == expected_stack, per_element());
+                                }
 
-                            // If the pool was thread-safe, the callback should never be happening from the
-                            // pool's strand
-                            if (impl->pool.params().thread_safe)
-                            {
-                                BOOST_TEST(!impl->pool.strand().running_in_this_thread());
-                            }
+                                // If the pool was thread-safe, the callback should never be happening from
+                                // the pool's strand
+                                if (impl->pool.params().thread_safe)
+                                {
+                                    BOOST_TEST(!impl->pool.strand().running_in_this_thread());
+                                }
 
-                            impl->was_immediate = was_immediate;
-                            impl->actual_node = c.node;
-                            impl->actual_pool = c.pool.get();
-                            impl->actual_ec = ec;
-                            impl->cv.try_send(error_code());
-                        }
+                                impl->was_immediate = was_immediate;
+                                impl->actual_node = c.node;
+                                impl->actual_pool = c.pool.get();
+                                impl->actual_ec = ec;
+                                impl->cv.try_send(error_code());
+                            }
+                        )
                     )
                 )
             );
@@ -391,6 +394,11 @@ public:
     void wait(error_code expected_ec, bool expect_immediate)
     {
         wait_impl(nullptr, expected_ec, expect_immediate);
+    }
+
+    void cancel(asio::cancellation_type_t type = asio::cancellation_type_t::terminal)
+    {
+        impl_->sig.emit(type);
     }
 };
 
@@ -424,15 +432,7 @@ public:
 
     mock_pool& pool() { return *pool_; }
 
-    std::size_t num_pending_requests() const { return pool_->shared_state().pending_requests.size(); }
-
-    get_connection_task create_task(
-        diagnostics* diag = nullptr,
-        steady_clock::duration timeout = std::chrono::seconds(5)
-    )
-    {
-        return get_connection_task(*pool_, diag, timeout);
-    }
+    get_connection_task create_task(diagnostics* diag = nullptr) { return get_connection_task(*pool_, diag); }
 
     void check_shared_st(
         error_code expected_ec,
@@ -456,15 +456,6 @@ public:
     )
     {
         poll_global_context([&node, status]() { return node.status() == status; }, loc);
-    }
-
-    // Waits until the number of pending requests in the pool equals a certain number
-    void wait_for_num_requests(
-        std::size_t num_requests,
-        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-    )
-    {
-        poll_global_context([this, num_requests]() { return num_pending_requests() == num_requests; }, loc);
     }
 
     // Waits until there is at least num_nodes connections in the list
@@ -831,7 +822,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
     auto task = fix.create_task();
-    fix.wait_for_num_requests(1);
+    poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // Retry interval ellapses and connection retries and succeeds
@@ -842,10 +833,11 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
     task.wait(node, false);
     BOOST_TEST(node.status() == connection_status::in_use);
     BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
-BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
+// TODO: we used to have a diag/no diag case here.
+// This is likely not the place to test it, but don't lose it
+BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
 {
     // Setup
     fixture fix(pool_params{});
@@ -855,30 +847,8 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_no_diag)
 
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
-    auto task = fix.create_task(&diag, std::chrono::seconds(1));
-    fix.wait_for_num_requests(1);
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
-
-    // The request timeout ellapses, so the request fails
-    mock_clock::advance_time_by(std::chrono::seconds(1));
-    task.wait(client_errc::timeout, false);
-    BOOST_TEST(diag == diagnostics());
-    BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
-}
-
-BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
-{
-    // Setup
-    fixture fix(pool_params{});
-    diagnostics diag;
-
-    fix.wait_for_num_nodes(1);
-
-    // A request for a connection is issued. The request doesn't find
-    // any available connection, and the current one is pending, so no new connections are created
-    auto task = fix.create_task(&diag, std::chrono::seconds(1));
-    fix.wait_for_num_requests(1);
+    auto task = fix.create_task(&diag);
+    poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // The connection fails to connect
@@ -889,15 +859,17 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag)
         create_server_diag("Bad db")
     );
 
-    // The request timeout ellapses, so the request fails
-    mock_clock::advance_time_by(std::chrono::seconds(1));
-    task.wait(common_server_errc::er_bad_db_error, false);
-    BOOST_TEST(diag == create_server_diag("Bad db"));
+    // The request gets cancelled
+    task.cancel();
+    task.wait(client_errc::cancelled, false);
+    BOOST_TEST(
+        diag ==
+        create_server_diag("Last connection attempt failed with error code mysql.common-server:1049: Bad db")
+    );
     BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
-BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
+BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
 {
     // Setup
     // We don't crash if diag is nullptr
@@ -907,8 +879,8 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
 
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
-    auto task = fix.create_task(nullptr, std::chrono::seconds(1));
-    fix.wait_for_num_requests(1);
+    auto task = fix.create_task(nullptr);
+    poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // The connection fails to connect
@@ -919,12 +891,13 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_timeout_with_diag_nullptr)
         create_server_diag("Bad db")
     );
 
-    // The request timeout ellapses, so the request fails
-    mock_clock::advance_time_by(std::chrono::seconds(1));
-    task.wait(common_server_errc::er_bad_db_error, false);
+    // The request gets cancelled
+    task.cancel();
+    task.wait(client_errc::cancelled, false);
     BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
+
+// TODO: cancel because pool is cancelled
 
 BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 {
@@ -942,7 +915,6 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
     fix.create_task().wait(node, true);
     BOOST_TEST(node.status() == connection_status::in_use);
     BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
@@ -964,7 +936,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     // Another request is issued. The connection we have is in use, so another one is created.
     // Since this is not immediate, the task will need to wait
     auto task2 = fix.create_task();
-    fix.wait_for_num_requests(1);
+    poll_global_context();
     auto node2 = &*std::next(fix.pool().nodes().begin());
 
     // Connection connects successfully and is handed to us
@@ -972,18 +944,16 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     task2.wait(*node2, false);
     BOOST_TEST(node2->status() == connection_status::in_use);
     BOOST_TEST(fix.pool().nodes().size() == 2u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
 
     // Another request is issued. All connections are in use but max size is already
     // reached, so no new connection is created
     auto task3 = fix.create_task();
-    fix.wait_for_num_requests(1);
+    poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 2u);
 
     // When one of the connections is returned, the request is fulfilled
     fix.pool().return_connection(*node2, false);
     task3.wait(*node2, false);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
     BOOST_TEST(fix.pool().nodes().size() == 2u);
 }
 
@@ -1002,7 +972,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     auto task1 = fix.create_task();
     auto task2 = fix.create_task();
     auto task3 = fix.create_task();
-    auto task4 = fix.create_task(nullptr, std::chrono::seconds(2));
+    auto task4 = fix.create_task(nullptr);
     auto task5 = fix.create_task();
 
     // Two connections can be created. These fulfill two requests
@@ -1013,9 +983,9 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     task1.wait(*node1, false);
     task2.wait(*node2, false);
 
-    // Time ellapses and task4 times out
-    mock_clock::advance_time_by(std::chrono::seconds(2));
-    task4.wait(client_errc::timeout, false);
+    // task4 gets cancelled
+    task4.cancel();
+    task4.wait(client_errc::cancelled, false);
 
     // A connection is returned. The first task to enter is served
     fix.pool().return_connection(*node1, true);
@@ -1027,31 +997,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     task5.wait(*node2, false);
 
     // Done
-    BOOST_TEST(fix.num_pending_requests() == 0u);
     BOOST_TEST(fix.pool().nodes().size() == 2u);
-}
-
-BOOST_AUTO_TEST_CASE(get_connection_cancel)
-{
-    // Setup
-    fixture fix(pool_params{});
-
-    fix.wait_for_num_nodes(1);
-
-    // Issue some requests
-    auto task1 = fix.create_task();
-    auto task2 = fix.create_task();
-    fix.wait_for_num_requests(2);
-
-    // While in flight, cancel the pool
-    fix.pool().cancel_unsafe();
-
-    // All tasks fail with a cancelled code
-    task1.wait(client_errc::cancelled, false);
-    task2.wait(client_errc::cancelled, false);
-
-    // Further tasks fail immediately
-    fix.create_task().wait(client_errc::cancelled, true);
 }
 
 // thread_safe works as intended
@@ -1073,7 +1019,7 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
     auto task = fix.create_task();
-    fix.wait_for_num_requests(1);
+    poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // Retry interval ellapses and connection retries and succeeds
@@ -1084,10 +1030,9 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_success)
     task.wait(node, false);
     BOOST_TEST(node.status() == connection_status::in_use);
     BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
-BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
+BOOST_AUTO_TEST_CASE(thread_safe_wait_op_cancelled)
 {
     // Setup
     pool_params params;
@@ -1099,8 +1044,8 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
 
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
-    auto task = fix.create_task(&diag, std::chrono::seconds(1));
-    fix.wait_for_num_requests(1);
+    auto task = fix.create_task(&diag);
+    poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // The connection fails to connect
@@ -1111,12 +1056,14 @@ BOOST_AUTO_TEST_CASE(thread_safe_wait_timeout)
         create_server_diag("Bad db")
     );
 
-    // The request timeout ellapses, so the request fails
-    mock_clock::advance_time_by(std::chrono::seconds(1));
-    task.wait(common_server_errc::er_bad_db_error, false);
-    BOOST_TEST(diag == create_server_diag("Bad db"));
+    // The request gets cancelled
+    task.cancel();
+    task.wait(client_errc::cancelled, false);
+    BOOST_TEST(
+        diag ==
+        create_server_diag("Last connection attempt failed with error code mysql.common-server:1049: Bad db")
+    );
     BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
@@ -1137,7 +1084,6 @@ BOOST_AUTO_TEST_CASE(thread_safe_immediate_completion)
     fix.create_task().wait(node, false);
     BOOST_TEST(node.status() == connection_status::in_use);
     BOOST_TEST(fix.pool().nodes().size() == 1u);
-    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 // pool size 0 works
@@ -1153,7 +1099,7 @@ BOOST_AUTO_TEST_CASE(get_connection_initial_size_0)
     auto task = fix.create_task();
 
     // This creates a new connection, which fulfills the request
-    fix.wait_for_num_requests(1);
+    poll_global_context();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
     fix.step(fix.pool().nodes().front(), fn_type::connect);
     task.wait(fix.pool().nodes().front(), false);
@@ -1308,8 +1254,7 @@ BOOST_AUTO_TEST_CASE(async_run_cancel)
             std::move(run_result).validate_no_error_nodiag();
 
             // The pool has effectively been cancelled, as if cancel() had been called
-            get_connection_task(*pool, nullptr, std::chrono::seconds(0))
-                .wait(client_errc::cancelled, !tc.thread_safe);
+            get_connection_task(*pool, nullptr).wait(client_errc::cancelled, !tc.thread_safe);
         }
     }
 }
@@ -1397,7 +1342,6 @@ BOOST_AUTO_TEST_CASE(async_get_connection_cancel)
             asio::cancellation_signal sig;
             diagnostics diag;
             auto getconn_result = pool->async_get_connection(
-                std::chrono::seconds(0),
                 &diag,
                 asio::bind_cancellation_slot(sig.slot(), as_netresult)
             );
@@ -1414,6 +1358,7 @@ BOOST_AUTO_TEST_CASE(async_get_connection_cancel)
 }
 
 // async_run with a bound signal that doesn't get emitted doesn't cause trouble
+// TODO: duplicated
 BOOST_AUTO_TEST_CASE(async_get_connection_bound_signal)
 {
     // Setup
@@ -1430,11 +1375,7 @@ BOOST_AUTO_TEST_CASE(async_get_connection_bound_signal)
     asio::cancellation_signal sig;
     diagnostics diag;
     auto conn = fix.pool()
-                    .async_get_connection(
-                        std::chrono::seconds(0),
-                        &diag,
-                        asio::bind_cancellation_slot(sig.slot(), as_netresult)
-                    )
+                    .async_get_connection(&diag, asio::bind_cancellation_slot(sig.slot(), as_netresult))
                     .get();
     BOOST_TEST(conn.node == &node);
 }
