@@ -248,6 +248,35 @@ bool boost::mysql::test::is_initiation_function() { return g_is_running_initiati
 
 static boost::asio::io_context g_ctx;
 
+static void poll_context_impl(
+    boost::asio::io_context& ctx,
+    const std::function<bool()>& done,
+    boost::source_location loc
+)
+{
+    BOOST_TEST_CONTEXT("Called from " << loc)
+    {
+        using std::chrono::steady_clock;
+
+        // Restart the context, in case it was stopped
+        ctx.restart();
+
+        // Poll until this time point
+        constexpr std::chrono::seconds timeout(5);
+        auto timeout_tp = steady_clock::now() + timeout;
+
+        // Perform the polling
+        while (!done() && steady_clock::now() < timeout_tp)
+        {
+            ctx.poll();
+            std::this_thread::yield();
+        }
+
+        // Check for timeout
+        BOOST_TEST_REQUIRE(done());
+    }
+}
+
 boost::asio::any_io_executor boost::mysql::test::global_context_executor() { return g_ctx.get_executor(); }
 
 void boost::mysql::test::poll_global_context()
@@ -258,30 +287,15 @@ void boost::mysql::test::poll_global_context()
 
 void boost::mysql::test::poll_global_context(const bool* done, source_location loc)
 {
-    poll_global_context([done]() { return *done; }, loc);
+    poll_context_impl(g_ctx, [done]() { return *done; }, loc);
 }
 
 void boost::mysql::test::poll_global_context(const std::function<bool()>& done, source_location loc)
 {
-    BOOST_TEST_CONTEXT("Called from " << loc)
-    {
-        using std::chrono::steady_clock;
+    poll_context_impl(g_ctx, done, loc);
+}
 
-        // Restart the context, in case it was stopped
-        g_ctx.restart();
-
-        // Poll until this time point
-        constexpr std::chrono::seconds timeout(5);
-        auto timeout_tp = steady_clock::now() + timeout;
-
-        // Perform the polling
-        while (!done() && steady_clock::now() < timeout_tp)
-        {
-            g_ctx.poll();
-            std::this_thread::yield();
-        }
-
-        // Check for timeout
-        BOOST_TEST_REQUIRE(done());
-    }
+void boost::mysql::test::poll_context(asio::any_io_executor ex, const bool* done, source_location loc)
+{
+    poll_context_impl(static_cast<asio::io_context&>(ex.context()), [done]() { return *done; }, loc);
 }

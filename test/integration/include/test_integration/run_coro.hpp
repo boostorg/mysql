@@ -12,25 +12,33 @@
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/assert/source_location.hpp>
 
 #include <functional>
+
+#include "test_common/source_location.hpp"
+#include "test_common/tracker_executor.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
-inline void run_coro(boost::asio::any_io_executor ex, std::function<boost::asio::awaitable<void>(void)> fn)
+inline void run_coro(
+    boost::asio::any_io_executor ex,
+    std::function<boost::asio::awaitable<void>(void)> fn,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+)
 {
-    boost::asio::co_spawn(ex, fn, [](std::exception_ptr ptr) {
+    bool done = false;
+    boost::asio::co_spawn(ex, fn, [&](std::exception_ptr ptr) {
+        done = true;
         if (ptr)
         {
             std::rethrow_exception(ptr);
         }
     });
-    auto& ctx = static_cast<boost::asio::io_context&>(ex.context());
-    ctx.restart();
-    ctx.run();
+    poll_context(ex, &done, loc);
 }
 #endif
 
