@@ -370,14 +370,22 @@ class get_connection_task
 
     std::shared_ptr<impl_t> impl_;
 
-    void wait_impl(mock_node* expected_node, error_code expected_ec, bool expect_immediate)
+    void wait_impl(
+        mock_node* expected_node,
+        error_code expected_ec,
+        bool expect_immediate,
+        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    )
     {
-        poll_global_context(&impl_->called);
-        auto* expected_pool = expected_ec ? nullptr : &impl_->pool;
-        BOOST_TEST(impl_->actual_ec == expected_ec);
-        BOOST_TEST(impl_->actual_pool == expected_pool);
-        BOOST_TEST(impl_->actual_node == expected_node);
-        BOOST_TEST(impl_->was_immediate == expect_immediate);
+        poll_global_context(&impl_->called, loc);
+        BOOST_TEST_CONTEXT("Called from " << loc)
+        {
+            auto* expected_pool = expected_ec ? nullptr : &impl_->pool;
+            BOOST_TEST(impl_->actual_ec == expected_ec);
+            BOOST_TEST(impl_->actual_pool == expected_pool);
+            BOOST_TEST(impl_->actual_node == expected_node);
+            BOOST_TEST(impl_->was_immediate == expect_immediate);
+        }
     }
 
 public:
@@ -397,14 +405,22 @@ public:
         }));
     }
 
-    void wait(mock_node& expected_node, bool expect_immediate)
+    void wait(
+        mock_node& expected_node,
+        bool expect_immediate,
+        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    )
     {
-        wait_impl(&expected_node, error_code(), expect_immediate);
+        wait_impl(&expected_node, error_code(), expect_immediate, loc);
     }
 
-    void wait(error_code expected_ec, bool expect_immediate)
+    void wait(
+        error_code expected_ec,
+        bool expect_immediate,
+        boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    )
     {
-        wait_impl(nullptr, expected_ec, expect_immediate);
+        wait_impl(nullptr, expected_ec, expect_immediate, loc);
     }
 
     void cancel(asio::cancellation_type_t type = asio::cancellation_type_t::terminal)
