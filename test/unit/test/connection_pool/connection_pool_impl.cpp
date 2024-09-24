@@ -971,7 +971,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
 
             // The request gets cancelled. Appropriate diagnostics are returned
             task.cancel(tc.cancel_type);
-            task.wait(asio::error::operation_aborted, false);
+            task.wait(client_errc::no_connection_available, false);
             BOOST_TEST(
                 diag ==
                 create_server_diag(
@@ -996,7 +996,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_no_diag_available)
 
     // The request gets cancelled. No diagnostics is available, so nothing is returned
     task.cancel();
-    task.wait(asio::error::operation_aborted, false);
+    task.wait(client_errc::no_connection_available, false);
     BOOST_TEST(diag == diagnostics());
 }
 
@@ -1023,7 +1023,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
 
     // The request gets cancelled. We get the expected error
     task.cancel();
-    task.wait(asio::error::operation_aborted, false);
+    task.wait(client_errc::no_connection_available, false);
     BOOST_TEST(diag == create_client_diag("Last connection attempt timed out"));
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
@@ -1052,7 +1052,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
 
     // The request gets cancelled
     task.cancel();
-    task.wait(asio::error::operation_aborted, false);
+    task.wait(client_errc::no_connection_available, false);
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
@@ -1085,7 +1085,7 @@ BOOST_DATA_TEST_CASE(get_connection_wait_pool_cancelled, data::make({false, true
 
     // This causes the request to get cancelled.
     // No diagnostics are provided here, as they're usually misleading
-    task.wait(asio::error::operation_aborted, false);
+    task.wait(client_errc::pool_cancelled, false);
     BOOST_TEST(diag == diagnostics());
 }
 
@@ -1157,7 +1157,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 
     // task4 gets cancelled
     task4.cancel();
-    task4.wait(asio::error::operation_aborted, false);
+    task4.wait(client_errc::no_connection_available, false);
 
     // A connection is returned. The first task to enter is served
     fix.pool().return_connection(*node1, true);
@@ -1275,7 +1275,7 @@ BOOST_AUTO_TEST_CASE(run_op_cancel)
             poll_global_context(&run_finished);
 
             // The pool has effectively been cancelled, as if cancel() had been called
-            get_connection_task(*pool, nullptr).wait(asio::error::operation_aborted, !tc.thread_safe);
+            get_connection_task(*pool, nullptr).wait(client_errc::pool_cancelled, !tc.thread_safe);
         }
     }
 }

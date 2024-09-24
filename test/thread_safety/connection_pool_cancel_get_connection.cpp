@@ -65,7 +65,7 @@ public:
                 asio::bind_executor(
                     strand_,
                     [this](error_code ec, mysql::pooled_connection c) {
-                        if (ec == asio::error::operation_aborted)
+                        if (ec == boost::mysql::client_errc::no_connection_available)
                         {
                             // We got a cancellation. Increase timeout so we don't get stuck
                             // and try again

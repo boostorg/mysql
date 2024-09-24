@@ -291,13 +291,13 @@ class basic_pool_impl
                     else if (obj->state_ == state_t::cancelled)
                     {
                         // The pool was cancelled
-                        result_ec = asio::error::operation_aborted;
+                        result_ec = client_errc::pool_cancelled;
                         break;
                     }
                     else if (get_connection_supports_cancel_type(self.cancelled()))
                     {
                         // The operation was cancelled. Try to provide diagnostics
-                        result_ec = asio::error::operation_aborted;
+                        result_ec = client_errc::no_connection_available;
                         if (diag)
                             *diag = obj->shared_st_.last_connect_diag;
                         break;

@@ -87,6 +87,18 @@ enum class client_errc : int
      */
     pool_not_running,
 
+    /**
+     * \brief (EXPERIMENTAL) Getting a connection from a connection_pool failed because the
+     * pool was cancelled.
+     */
+    pool_cancelled,
+
+    /**
+     * \brief (EXPERIMENTAL) Getting a connection from a connection_pool was cancelled before
+     * a connection was available.
+     */
+    no_connection_available,
+
     /// (EXPERIMENTAL) An invalid byte sequence was found while trying to decode a string.
     invalid_encoding,
 
