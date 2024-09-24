@@ -19,6 +19,8 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 
+#include <boost/asio/cancel_after.hpp>
+#include <boost/asio/spawn.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/serialize.hpp>
 #include <boost/json/value_from.hpp>
@@ -27,9 +29,9 @@
 #include <boost/url/parse.hpp>
 #include <boost/variant2/variant.hpp>
 
+#include <chrono>
 #include <cstdint>
 #include <exception>
-#include <iostream>
 #include <string>
 
 #include "handle_request.hpp"
@@ -325,8 +327,13 @@ public:
     {
         try
         {
-            // Attempt to handle the request
-            return handle_request_impl(yield);
+            // Attempt to handle the request. We use cancel_after to set
+            // a timeout to the overall operation
+            return asio::spawn(
+                yield.get_executor(),
+                [this](asio::yield_context yield2) { return handle_request_impl(yield2); },
+                asio::cancel_after(std::chrono::seconds(30), yield)
+            );
         }
         catch (const boost::mysql::error_with_diagnostics& err)
         {
