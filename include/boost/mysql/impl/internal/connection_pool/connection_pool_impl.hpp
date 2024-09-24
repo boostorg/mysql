@@ -224,6 +224,7 @@ class basic_pool_impl
         int resume_point{0};
         std::shared_ptr<this_type> obj;
         diagnostics* diag;
+        asio::cancellation_slot parent_slot;
         error_code result_ec;
         node_type* result_conn{};
         asio::cancellation_signal sig;
@@ -249,6 +250,7 @@ class basic_pool_impl
         {
             error_code ec = st_->result_ec;
             auto wr = ec ? ConnectionWrapper() : ConnectionWrapper(*st_->result_conn, std::move(st_->obj));
+            st_->parent_slot.clear();
             st_.reset();
             self.complete(ec, std::move(wr));
         }
@@ -363,15 +365,30 @@ class basic_pool_impl
         // Lifetime managed by the get_connection composed op
         std::weak_ptr<get_connection_state> st;
 
+        asio::any_io_executor try_get_strand()
+        {
+            if (auto ptr = st.lock())
+            {
+                return ptr->obj->strand();
+            }
+            return {};
+        }
+
         void operator()(asio::cancellation_type_t type)
         {
             if (get_connection_supports_cancel_type(type))
             {
-                auto st_ptr = st.lock();
-                if (st_ptr)
+                auto st_copy = st;
+                auto s = try_get_strand();
+                if (s)
                 {
-                    asio::dispatch(asio::bind_executor(st_ptr->obj->strand(), [st_ptr, type]() {
-                        st_ptr->sig.emit(type);
+                    asio::dispatch(asio::bind_executor(std::move(s), [st_copy, type]() {
+                        if (auto st_ptr = st_copy.lock())
+                        {
+                            auto* st_raw = st_ptr.get();
+                            st_ptr.reset();
+                            st_raw->sig.emit(type);
+                        }
                     }));
                 }
             }
@@ -423,15 +440,11 @@ public:
         asio::any_completion_handler<void(error_code, ConnectionWrapper)> handler
     )
     {
-        // Allocate the state object
-        auto alloc = asio::get_associated_allocator(handler);
-        using alloc_t = typename std::allocator_traits<decltype(alloc
-        )>::template rebind_alloc<get_connection_state>;
-        auto st = std::allocate_shared<get_connection_state>(
-            alloc_t(alloc),
-            shared_from_this_wrapper(),
-            diag
-        );
+        // Allocate the state object. In thread-safe mode and when a cancellation
+        // has been requested but not delivered yet, this object may outlive the
+        // async op for a small period of time. This means we can't use the handler's allocator
+        // TODO: we may want to only allocate the signal as we had before
+        auto st = std::make_shared<get_connection_state>(shared_from_this_wrapper(), diag);
 
         // In thread-safe mode, the cancel handler must be run through the strand
         auto slot = asio::get_associated_cancellation_slot(handler);
@@ -439,6 +452,9 @@ public:
         {
             // The original slot will call the handler, which dispatches to the strand
             slot.template emplace<get_connection_cancel_handler>(get_connection_cancel_handler{st});
+
+            // Record the original slot, so we can clear its handler
+            st->parent_slot = slot;
 
             // The slot is replaced by the proxy signal's slot
             slot = st->sig.slot();
