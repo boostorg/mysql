@@ -143,6 +143,20 @@ class basic_pool_impl
         asio::post(get_executor(), std::move(self));
     }
 
+    template <class OpSelf>
+    void wait_for_connections(OpSelf& self)
+    {
+        // Having this encapsulated helps prevent subtle use-after-move errors
+        if (params_.thread_safe)
+        {
+            shared_st_.idle_connections_cv.async_wait(asio::bind_executor(pool_ex_, std::move(self)));
+        }
+        else
+        {
+            shared_st_.idle_connections_cv.async_wait(std::move(self));
+        }
+    }
+
     struct run_op
     {
         int resume_point_{0};
@@ -223,7 +237,8 @@ class basic_pool_impl
         std::shared_ptr<this_type> obj;
         diagnostics* diag;
 
-        // The proxy signal. Used in thread-safe mode. Present here only for lifetime management
+        // The proxy signal. Used in thread-safe mode. Present here only for
+        // lifetime management
         std::shared_ptr<asio::cancellation_signal> sig;
 
         // The original cancellation slot. Needed for proper cleanup after we proxy
@@ -313,27 +328,11 @@ class basic_pool_impl
                     // No luck. If there is room for more connections, create one.
                     obj->maybe_create_connection();
 
-                    // Wait to be notified, or until a timeout happens
-                    if (thread_safe())
-                    {
-                        BOOST_MYSQL_YIELD(
-                            resume_point,
-                            2,
-                            obj->shared_st_.idle_connections_cv.async_wait(
-                                asio::bind_executor(obj->pool_ex_, std::move(self))
-                            )
-                        )
-                    }
-                    else
-                    {
-                        BOOST_MYSQL_YIELD(
-                            resume_point,
-                            3,
-                            obj->shared_st_.idle_connections_cv.async_wait(std::move(self))
-                        )
-                    }
+                    // Wait to be notified, or until a cancellation happens
+                    BOOST_MYSQL_YIELD(resume_point, 2, obj->wait_for_connections(self);)
 
-                    // Remember that we have waited, so completions are dispatched correctly
+                    // Remember that we have waited, so completions are dispatched
+                    // correctly
                     has_waited = true;
                 }
 
@@ -341,14 +340,14 @@ class basic_pool_impl
                 if (thread_safe())
                 {
                     // Exit the strand
-                    BOOST_MYSQL_YIELD(resume_point, 4, obj->exit_strand(self))
+                    BOOST_MYSQL_YIELD(resume_point, 3, obj->exit_strand(self))
                 }
                 else if (!has_waited)
                 {
                     // This is an immediate completion
                     BOOST_MYSQL_YIELD(
                         resume_point,
-                        5,
+                        4,
                         asio::async_immediate(self.get_io_executor(), std::move(self))
                     )
                 }
@@ -386,11 +385,13 @@ class basic_pool_impl
                 std::shared_ptr<this_type> obj_shared = obj.lock();
                 if (obj_shared)
                 {
-                    // Dispatch to the strand. We don't need to keep a reference to the pool
-                    // because even if it was destroyed before running the handler, the strand would be alive.
+                    // Dispatch to the strand. We don't need to keep a reference to the
+                    // pool because even if it was destroyed before running the handler,
+                    // the strand would be alive.
                     auto sig_copy = sig;
                     asio::dispatch(asio::bind_executor(obj_shared->strand(), [sig_copy, type]() {
-                        // If the operation has already completed, the weak ptr will be invalid
+                        // If the operation has already completed, the weak ptr will be
+                        // invalid
                         auto sig_shared = sig_copy.lock();
                         if (sig_shared)
                         {
@@ -430,7 +431,8 @@ public:
 
     void async_run(asio::any_completion_handler<void(error_code)> handler)
     {
-        // Completely disable composed cancellation handling, as it's not what we want
+        // Completely disable composed cancellation handling, as it's not what we
+        // want
         auto slot = asio::get_associated_cancellation_slot(handler);
         auto token_without_slot = asio::bind_cancellation_slot(asio::cancellation_slot(), std::move(handler));
 
@@ -453,17 +455,17 @@ public:
         // The signal pointer. Will only be created if required
         std::shared_ptr<asio::cancellation_signal> sig;
 
-        // In thread-safe mode, and if we have a connected slot, create a proxy signal
-        // that dispatches to the strand
+        // In thread-safe mode, and if we have a connected slot, create a proxy
+        // signal that dispatches to the strand
         if (params_.thread_safe)
         {
             parent_slot = asio::get_associated_cancellation_slot(handler);
             if (parent_slot.is_connected())
             {
                 // Create a signal. In rare cases, the memory acquired here may outlive
-                // the async operation (e.g. the completion handler runs after the signal
-                // is emitted and before the strand dispatch runs).
-                // This means we can't use the handler's allocator.
+                // the async operation (e.g. the completion handler runs after the
+                // signal is emitted and before the strand dispatch runs). This means we
+                // can't use the handler's allocator.
                 sig = std::make_shared<asio::cancellation_signal>();
 
                 // Emplace the handler
