@@ -216,8 +216,11 @@ inline diagnostics create_connect_diagnostics(error_code connect_ec, const diagn
         else
         {
             // Add the error code information
-            res_impl.msg = "Last connection attempt failed with error code ";
+            res_impl.msg = "Last connection attempt failed with: ";
+            res_impl.msg += connect_ec.message();
+            res_impl.msg += " [";
             res_impl.msg += connect_ec.to_string();
+            res_impl.msg += "]";
 
             // Add any diagnostics
             if (connect_diag_impl.msg.empty())

@@ -498,7 +498,8 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
     // Setup
     const auto connect_diag = create_server_diag("Connection error!");
     const auto expected_diag = create_server_diag(
-        "Last connection attempt failed with error code mysql.common-server:1152: Connection error!"
+        "Last connection attempt failed with: er_aborting_connection [mysql.common-server:1152]: Connection "
+        "error!"
     );
     pool_params params;
     params.retry_interval = std::chrono::seconds(2);
@@ -956,9 +957,10 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
             task.cancel(tc.cancel_type);
             task.wait(asio::error::operation_aborted, false);
             BOOST_TEST(
-                diag == create_server_diag(
-                            "Last connection attempt failed with error code mysql.common-server:1049: Bad db"
-                        )
+                diag ==
+                create_server_diag(
+                    "Last connection attempt failed with: er_bad_db_error [mysql.common-server:1049]: Bad db"
+                )
             );
             BOOST_TEST(fix.pool().nodes().size() == 1u);
         }
