@@ -228,7 +228,6 @@ class basic_pool_impl
 
         // The original cancellation slot. Needed for proper cleanup after we proxy
         // the signal in thread-safe mode
-        // TODO: maybe we can place this with the signal?
         asio::cancellation_slot parent_slot;
 
         // State
@@ -379,19 +378,6 @@ class basic_pool_impl
         {
         }
 
-        static void try_emit_signal(
-            std::weak_ptr<asio::cancellation_signal> weak_sig,
-            asio::cancellation_type_t cancel_type
-        )
-        {
-            // If the operation has already completed, the weak ptr will be invalid
-            auto sig_shared = weak_sig.lock();
-            if (sig_shared)
-            {
-                sig_shared->emit(cancel_type);
-            }
-        }
-
         void operator()(asio::cancellation_type_t type)
         {
             if (get_connection_supports_cancel_type(type))
@@ -404,7 +390,12 @@ class basic_pool_impl
                     // because even if it was destroyed before running the handler, the strand would be alive.
                     auto sig_copy = sig;
                     asio::dispatch(asio::bind_executor(obj_shared->strand(), [sig_copy, type]() {
-                        try_emit_signal(sig_copy, type);
+                        // If the operation has already completed, the weak ptr will be invalid
+                        auto sig_shared = sig_copy.lock();
+                        if (sig_shared)
+                        {
+                            sig_shared->emit(type);
+                        }
                     }));
                 }
             }
@@ -457,26 +448,30 @@ public:
     )
     {
         // The slot to pass for cleanup
-        asio::cancellation_slot parent_slot = asio::get_associated_cancellation_slot(handler);
+        asio::cancellation_slot parent_slot;
 
         // The signal pointer. Will only be created if required
         std::shared_ptr<asio::cancellation_signal> sig;
 
         // In thread-safe mode, and if we have a connected slot, create a proxy signal
         // that dispatches to the strand
-        if (params_.thread_safe && parent_slot.is_connected())
+        if (params_.thread_safe)
         {
-            // Create a signal. In rare cases, the memory acquired here may outlive
-            // the async operation (e.g. the completion handler runs after the signal
-            // is emitted and before the strand dispatch runs).
-            // This means we can't use the handler's allocator.
-            sig = std::make_shared<asio::cancellation_signal>();
+            parent_slot = asio::get_associated_cancellation_slot(handler);
+            if (parent_slot.is_connected())
+            {
+                // Create a signal. In rare cases, the memory acquired here may outlive
+                // the async operation (e.g. the completion handler runs after the signal
+                // is emitted and before the strand dispatch runs).
+                // This means we can't use the handler's allocator.
+                sig = std::make_shared<asio::cancellation_signal>();
 
-            // Emplace the handler
-            parent_slot.template emplace<get_connection_cancel_handler>(sig, shared_from_this_wrapper());
+                // Emplace the handler
+                parent_slot.template emplace<get_connection_cancel_handler>(sig, shared_from_this_wrapper());
 
-            // Bind the handler to the slot
-            handler = asio::bind_cancellation_slot(sig->slot(), std::move(handler));
+                // Bind the handler to the slot
+                handler = asio::bind_cancellation_slot(sig->slot(), std::move(handler));
+            }
         }
 
         // Start
