@@ -508,10 +508,9 @@ public:
      * to succeed.
      *
      * The async operation will run indefinitely, until the pool is cancelled
-     * (by being destroyed or calling \ref cancel). The operation completes once
-     * all internal connection operations (including connects, pings and resets)
-     * complete.
-     * TODO: atm destroy doesn't call cancel
+     * (by calling \ref cancel or using per-operation cancellation on the `async_run` operation).
+     * The operation completes once all internal connection operations
+     * (including connects, pings and resets) complete.
      *
      * It is safe to call this function after calling \ref cancel.
      *
@@ -569,17 +568,6 @@ public:
         );
     }
 
-    /// \copydoc async_get_connection
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken = with_diagnostics_t<asio::deferred_t>>
-    auto async_get_connection(CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
-        decltype(async_get_connection_impl(nullptr, std::forward<CompletionToken>(token)))
-    )
-    {
-        return async_get_connection_impl(nullptr, std::forward<CompletionToken>(token));
-    }
-
     /**
      * \brief Retrieves a connection from the pool.
      * \details
@@ -623,16 +611,30 @@ public:
      *   - `asio::cancellation_type_t::total`
      *
      * \par Errors
-     * \li `asio::error::operation_aborted`, if either the operation or the pool
-     *     is cancelled before an idle connection can be obtained.
-     * \li \ref client_errc::pool_not_running, if the pool is not running
+     *   - \ref client_errc::no_connection_available, if the `async_get_connection`
+     *     operation is cancelled before a connection becomes available.
+     *   - \ref client_errc::pool_not_running, if the pool is not running
      *     when the operation is started.
+     *   - \ref client_errc::pool_cancelled, if the pool is cancelled before
+     *     the operation completes, or `async_get_connection` is called
+     *     on a pool that has been cancelled.
      *
      * \par Thread-safety
      * Safe for pools built with \ref pool_params::thread_safe. Can be called
      * concurrently with other safe functions. For thread-safe pools, cancellation
      * signals can be safely emitted from any thread.
      */
+    template <
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
+            CompletionToken = with_diagnostics_t<asio::deferred_t>>
+    auto async_get_connection(CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
+        decltype(async_get_connection_impl(nullptr, std::forward<CompletionToken>(token)))
+    )
+    {
+        return async_get_connection_impl(nullptr, std::forward<CompletionToken>(token));
+    }
+
+    /// \copydoc async_get_connection
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
@@ -650,10 +652,9 @@ public:
      *
      * \li Stops the currently outstanding \ref async_run operation, if any, which will complete
      *     with a success error code.
-     * \li Cancels any outstanding \ref async_get_connection operations, which will complete with
-     *     `asio::error::operation_aborted`.
-     * \li Marks the pool as cancelled. Successive `async_get_connection` calls will complete
-     *     immediately with `asio::error::operation_aborted`.
+     * \li Cancels any outstanding \ref async_get_connection operations.
+     * \li Marks the pool as cancelled. Successive `async_get_connection` calls will
+     *     fail immediately.
      *
      * This function will return immediately, without waiting for the cancelled operations to complete.
      *
