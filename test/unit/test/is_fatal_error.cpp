@@ -66,10 +66,6 @@ BOOST_AUTO_TEST_CASE(test_is_fatal_error)
         {"row_type_mismatch",               client_errc::row_type_mismatch,                                 true },
         {"static_row_parsing_error",        client_errc::static_row_parsing_error,                          true },
 
-        // Client errors representing cancellations
-        {"client_timeout",                  client_errc::timeout,                                           true },
-        {"client_cancelled",                client_errc::cancelled,                                         true },
-
         // Client errors affecting handshake
         {"server_unsupported",              client_errc::server_unsupported,                                true },
         {"unknown_auth_plugin",             client_errc::unknown_auth_plugin,                               true },

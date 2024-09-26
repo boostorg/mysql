@@ -298,8 +298,10 @@ BOOST_FIXTURE_TEST_CASE(connection_upper_limit, fixture)
 
     // Getting another connection will block until one is returned.
     // Since we won't return the one we have, the function time outs
-    pool.async_get_connection(std::chrono::milliseconds(1), diag, as_netresult)
-        .validate_error(client_errc::timeout);
+    pool.async_get_connection(diag, asio::cancel_after(std::chrono::milliseconds(1), asio::deferred))(
+            as_netresult
+    )
+        .validate_error(client_errc::no_connection_available);
 
     // Cleanup the pool
     pool.cancel();
@@ -354,10 +356,10 @@ BOOST_DATA_TEST_CASE_F(fixture, cancel_get_connection, data::make({false, true})
     // Cancel. This will make run and get_connection return
     pool.cancel();
     std::move(run_result).validate_no_error_nodiag();
-    std::move(getconn_result).validate_error(client_errc::cancelled);
+    std::move(getconn_result).validate_error(client_errc::pool_cancelled);
 
-    // Calling get_connection after cancel will return client_errc::cancelled
-    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::cancelled);
+    // Calling get_connection after cancel will error
+    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_cancelled);
 }
 
 BOOST_FIXTURE_TEST_CASE(get_connection_pool_not_running, fixture)
@@ -428,45 +430,14 @@ BOOST_FIXTURE_TEST_CASE(cancel_extends_pool_lifetime, fixture)
     poll_global_context();
 }
 
-// Spotcheck: the different async_get_connection overloads work
-BOOST_FIXTURE_TEST_CASE(get_connection_overloads, fixture)
+// Spotcheck: the overload without diagnostics work
+BOOST_FIXTURE_TEST_CASE(get_connection_no_diag, fixture)
 {
     connection_pool pool(global_context_executor(), create_pool_params());
     auto run_result = pool.async_run(as_netresult);
 
-    // With all params
-    auto conn = pool.async_get_connection(std::chrono::hours(1), diag, as_netresult).get();
+    auto conn = pool.async_get_connection(as_netresult).get_nodiag();
     conn->async_ping(as_netresult).validate_no_error();
-
-    // With timeout, without diag
-    conn = pool.async_get_connection(std::chrono::hours(1), as_netresult).get_nodiag();
-    conn->async_ping(as_netresult).validate_no_error();
-
-    // With diag, without timeout
-    conn = pool.async_get_connection(diag, as_netresult).get();
-    conn->async_ping(as_netresult).validate_no_error();
-
-    // Without diag, without timeout
-    conn = pool.async_get_connection(as_netresult).get_nodiag();
-    conn->async_ping(as_netresult).validate_no_error();
-
-    // Cleanup the pool
-    pool.cancel();
-    std::move(run_result).validate_no_error_nodiag();
-}
-
-// Spotcheck: async_get_connection timeouts work
-BOOST_FIXTURE_TEST_CASE(get_connection_timeout, fixture)
-{
-    // Create and run the pool
-    auto params = create_pool_params();
-    params.password = "bad_password";  // Guarantee that no connection will ever become available
-    connection_pool pool(global_context_executor(), std::move(params));
-    auto run_result = pool.async_run(as_netresult);
-
-    // Getting a connection will timeout. The error may be a generic
-    // timeout or a "bad password" error, depending on timing
-    pool.async_get_connection(std::chrono::milliseconds(1), diag, as_netresult).validate_any_error();
 
     // Cleanup the pool
     pool.cancel();
@@ -557,13 +528,6 @@ BOOST_FIXTURE_TEST_CASE(zero_timeuts, fixture)
     auto conn = pool.async_get_connection(diag, as_netresult).get();
     conn->async_ping(as_netresult).validate_no_error();
 
-    // Return the connection
-    conn = pooled_connection();
-
-    // Get the same connection again. A zero timeout for async_get_connection works, too
-    conn = pool.async_get_connection(std::chrono::seconds(0), diag, as_netresult).get();
-    conn->async_ping(as_netresult).validate_no_error();
-
     // Cleanup the pool
     pool.cancel();
     std::move(run_result).validate_no_error_nodiag();
@@ -585,11 +549,6 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
                     .get();
     conn->async_ping(as_netresult).validate_no_error();
 
-    // The overload with a timeout also works
-    conn = pool.async_get_connection(timeout, diag, asio::cancel_after(timeout, asio::deferred))(as_netresult)
-               .get();
-    conn->async_ping(as_netresult).validate_no_error();
-
     // Cleanup the pool
     pool.cancel();
 }
@@ -600,7 +559,7 @@ BOOST_FIXTURE_TEST_CASE(async_run_per_operation_cancellation, fixture)
     connection_pool pool(global_context_executor(), create_pool_params());
     pool.async_run(asio::cancel_after(std::chrono::microseconds(1), asio::deferred))(as_netresult)
         .validate_no_error_nodiag();
-    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::cancelled);
+    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_cancelled);
 }
 
 // Spotcheck: per-operation cancellation works with async_get_connection
@@ -617,7 +576,7 @@ BOOST_FIXTURE_TEST_CASE(async_get_connection_per_operation_cancellation, fixture
     pool.async_get_connection(diag, asio::cancel_after(std::chrono::microseconds(1), asio::deferred))(
             as_netresult
     )
-        .validate_error(client_errc::cancelled);
+        .validate_error(client_errc::no_connection_available);
 
     // Cleanup the pool
     pool.cancel();
@@ -689,7 +648,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
             co_await pool.async_get_connection(asio::cancel_after(std::chrono::microseconds(1))),
             error_with_diagnostics,
             [](const error_with_diagnostics& err) {
-                BOOST_TEST(err.code() == client_errc::cancelled);
+                BOOST_TEST(err.code() == client_errc::no_connection_available);
                 BOOST_TEST(err.get_diagnostics() == diagnostics());
                 return true;
             }

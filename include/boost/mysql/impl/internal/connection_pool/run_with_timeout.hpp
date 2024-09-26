@@ -15,6 +15,7 @@
 #include <boost/asio/associated_allocator.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/cancellation_signal.hpp>
+#include <boost/asio/error.hpp>
 
 #include <chrono>
 #include <cstddef>
@@ -80,13 +81,13 @@ struct run_with_timeout_state
     {
         std::shared_ptr<this_type> st;
 
-        void operator()(error_code ec)
+        void operator()(error_code)
         {
             // If the op has already completed, we don't care about the timer's result
             // Emitting the signal may call the handler inline, so we decrement first
             if (st->remaining-- == 2u)
             {
-                st->final_ec = ec ? client_errc::cancelled : client_errc::timeout;
+                st->final_ec = asio::error::operation_aborted;
                 st->op_signal.emit(asio::cancellation_type::terminal);
             }
 
@@ -128,8 +129,7 @@ struct run_with_timeout_state
 // Handler must be a suitable completion handler. Arbitrary completion tokens are not supported.
 // Handler is called with the following error code:
 //   - If the op finishes first, with op's error code.
-//   - If the timer finishes first, without interruptions, with client_errc::timeout.
-//   - If the timer finishes first because it was cancelled, with client_errc::cancelled.
+//   - If the timer finishes first, with asio::error::operation_aborted
 // Both op and timer are run within the timer's executor.
 // If timeout == 0, the timeout is disabled.
 template <class Op, class Timer, class Handler>

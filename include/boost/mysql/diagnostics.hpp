@@ -100,6 +100,7 @@ private:
             msg = std::move(from);
             is_server = true;
         }
+
     } impl_;
 
     friend bool operator==(const diagnostics& lhs, const diagnostics& rhs) noexcept;

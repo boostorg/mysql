@@ -67,6 +67,13 @@ void poll_global_context(
     source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 );  // poll until done() == true
 
+// TODO: refactor this
+void poll_context(
+    asio::any_io_executor ex,
+    const bool* done,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost

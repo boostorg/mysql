@@ -11,6 +11,7 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/asio/error.hpp>
 #include <boost/assert.hpp>
 
 namespace boost {
@@ -193,6 +194,51 @@ public:
     // Exposed for testing
     connection_status status() const noexcept { return status_; }
 };
+
+// Composes a diagnostics object containing info about the last connect error.
+// Suitable for the diagnostics output of async_get_connection
+inline diagnostics create_connect_diagnostics(error_code connect_ec, const diagnostics& connect_diag)
+{
+    diagnostics res;
+    if (connect_ec)
+    {
+        // Manipulating the internal representations is more efficient here,
+        // and better than using stringstream
+        auto& res_impl = access::get_impl(res);
+        const auto& connect_diag_impl = access::get_impl(connect_diag);
+
+        if (connect_ec == asio::error::operation_aborted)
+        {
+            // operation_aborted in this context means timeout
+            res_impl.msg = "Last connection attempt timed out";
+            res_impl.is_server = false;
+        }
+        else
+        {
+            // Add the error code information
+            res_impl.msg = "Last connection attempt failed with: ";
+            res_impl.msg += connect_ec.message();
+            res_impl.msg += " [";
+            res_impl.msg += connect_ec.to_string();
+            res_impl.msg += "]";
+
+            // Add any diagnostics
+            if (connect_diag_impl.msg.empty())
+            {
+                // The resulting object doesn't contain server-supplied info
+                res_impl.is_server = false;
+            }
+            else
+            {
+                // The resulting object may contain server-supplied info
+                res_impl.msg += ": ";
+                res_impl.msg += connect_diag_impl.msg;
+                res_impl.is_server = connect_diag_impl.is_server;
+            }
+        }
+    }
+    return res;
+}
 
 }  // namespace detail
 }  // namespace mysql

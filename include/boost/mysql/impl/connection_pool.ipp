@@ -53,12 +53,11 @@ void boost::mysql::connection_pool::async_run_erased(
 
 void boost::mysql::connection_pool::async_get_connection_erased(
     std::shared_ptr<detail::pool_impl> pool,
-    std::chrono::steady_clock::duration timeout,
     diagnostics* diag,
     asio::any_completion_handler<void(error_code, pooled_connection)> handler
 )
 {
-    pool->async_get_connection(timeout, diag, std::move(handler));
+    pool->async_get_connection(diag, std::move(handler));
 }
 
 void boost::mysql::connection_pool::cancel()
