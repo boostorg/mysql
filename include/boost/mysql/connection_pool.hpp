@@ -336,31 +336,9 @@ class connection_pool
     }
 
     BOOST_MYSQL_DECL
-    connection_pool(pool_executor_params&& ex_params, pool_params&& params, int);
+    connection_pool(asio::any_io_executor ex, pool_params&& params, int);
 
 public:
-    /**
-     * \brief Constructs a connection pool.
-     * \details
-     * Internal I/O objects (like timers) are constructed using
-     * `ex_params.pool_executor`. Connections are constructed using
-     * `ex_params.connection_executor`.
-     *
-     * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state.
-     *
-     * The constructed pool is always valid (`this->valid() == true`).
-     *
-     * \par Exception safety
-     * Strong guarantee. Exceptions may be thrown by memory allocations.
-     * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
-     *         pool_params.
-     */
-    connection_pool(pool_executor_params ex_params, pool_params params)
-        : connection_pool(std::move(ex_params), std::move(params), 0)
-    {
-    }
-
     /**
      * \brief Constructs a connection pool.
      * \details
@@ -377,7 +355,7 @@ public:
      *         pool_params.
      */
     connection_pool(asio::any_io_executor ex, pool_params params)
-        : connection_pool(pool_executor_params{ex, ex}, std::move(params), 0)
+        : connection_pool(std::move(ex), std::move(params), 0)
     {
     }
 
@@ -409,7 +387,7 @@ public:
 #endif
         >
     connection_pool(ExecutionContext& ctx, pool_params params)
-        : connection_pool({ctx.get_executor(), ctx.get_executor()}, std::move(params), 0)
+        : connection_pool(ctx.get_executor(), std::move(params), 0)
     {
     }
 

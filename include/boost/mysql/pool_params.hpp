@@ -12,11 +12,8 @@
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
-#include <boost/mysql/detail/access.hpp>
-
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/strand.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <chrono>
@@ -25,25 +22,6 @@
 
 namespace boost {
 namespace mysql {
-
-/**
- * \brief (EXPERIMENTAL) Executor configuration for connection pools.
- * \details
- * Contains two executors: one for the pool's internal objects, and another for the connections
- * created by the pool.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
- */
-struct pool_executor_params
-{
-    /// The executor to be used by the pool's internal objects.
-    asio::any_io_executor pool_executor;
-
-    /// The executor to be used by connections created by the pool.
-    asio::any_io_executor connection_executor;
-};
 
 /**
  * \brief (EXPERIMENTAL) Configuration parameters for \ref connection_pool.
@@ -197,6 +175,10 @@ struct pool_params
      * objects can't be shared between threads.
      */
     bool thread_safe{false};
+
+    // TODO: update this
+    /// The executor to be used by connections created by the pool.
+    asio::any_io_executor connection_executor;
 };
 
 }  // namespace mysql

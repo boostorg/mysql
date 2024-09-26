@@ -16,6 +16,8 @@
 
 #include <boost/mysql/impl/internal/connection_pool/connection_pool_impl.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
+
 #include <memory>
 
 void boost::mysql::detail::return_connection(
@@ -33,8 +35,8 @@ boost::mysql::any_connection& boost::mysql::detail::get_connection(boost::mysql:
     return node.connection();
 }
 
-boost::mysql::connection_pool::connection_pool(pool_executor_params&& ex_params, pool_params&& params, int)
-    : impl_(std::make_shared<detail::pool_impl>(std::move(ex_params), std::move(params)))
+boost::mysql::connection_pool::connection_pool(asio::any_io_executor ex, pool_params&& params, int)
+    : impl_(std::make_shared<detail::pool_impl>(std::move(ex), std::move(params)))
 {
 }
 

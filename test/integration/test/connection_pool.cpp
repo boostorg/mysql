@@ -79,7 +79,7 @@ struct fixture
 };
 
 // The pool and individual connections use the correct executors
-BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
+BOOST_FIXTURE_TEST_CASE(connection_executor, fixture)
 {
     // Create two different executors
     auto pool_ex = asio::make_strand(global_context_executor());
@@ -87,7 +87,9 @@ BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
     BOOST_TEST((pool_ex != conn_ex));
 
     // Create and run the pool
-    connection_pool pool(pool_executor_params{pool_ex, conn_ex}, create_pool_params());
+    auto params = create_pool_params();
+    params.connection_executor = conn_ex;
+    connection_pool pool(pool_ex, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection

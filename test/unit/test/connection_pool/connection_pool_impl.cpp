@@ -431,10 +431,7 @@ public:
 
 std::shared_ptr<mock_pool> create_mock_pool(pool_params&& params)
 {
-    return std::make_shared<mock_pool>(
-        pool_executor_params{global_context_executor(), global_context_executor()},
-        std::move(params)
-    );
+    return std::make_shared<mock_pool>(global_context_executor(), std::move(params));
 }
 
 class fixture

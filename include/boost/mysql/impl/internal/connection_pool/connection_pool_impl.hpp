@@ -73,6 +73,9 @@ class basic_pool_impl
         cancelled,
     };
 
+    // The passed pool executor, as is
+    asio::any_io_executor original_pool_ex_;
+
     // If thread_safe, a strand wrapping inner_pool_ex_, otherwise inner_pool_ex_
     asio::any_io_executor pool_ex_;
 
@@ -407,12 +410,10 @@ class basic_pool_impl
     void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
 
 public:
-    basic_pool_impl(pool_executor_params&& ex_params, pool_params&& params)
-        : pool_ex_(
-              params.thread_safe ? asio::make_strand(std::move(ex_params.pool_executor))
-                                 : std::move(ex_params.pool_executor)
-          ),
-          conn_ex_(std::move(ex_params.connection_executor)),
+    basic_pool_impl(asio::any_io_executor ex, pool_params&& params)
+        : original_pool_ex_(std::move(ex)),
+          pool_ex_(params.thread_safe ? asio::make_strand(original_pool_ex_) : original_pool_ex_),
+          conn_ex_(params.connection_executor ? std::move(params.connection_executor) : original_pool_ex_),
           params_(make_internal_pool_params(std::move(params))),
           shared_st_(pool_ex_),
           wait_gp_(pool_ex_),
@@ -427,7 +428,7 @@ public:
     }
 
     using executor_type = asio::any_io_executor;
-    executor_type get_executor() { return params_.thread_safe ? strand().get_inner_executor() : pool_ex_; }
+    executor_type get_executor() { return original_pool_ex_; }
 
     void async_run(asio::any_completion_handler<void(error_code)> handler)
     {
