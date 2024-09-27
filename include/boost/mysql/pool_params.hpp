@@ -166,7 +166,7 @@ struct pool_params
      * be shared between threads at the cost of some performance.
      *
      * Enabling thread safety for a pool creates an internal `asio::strand` object
-     * wrapping the executor passed in \ref pool_executor_params::pool_executor.
+     * wrapping the executor passed to the pool's constructor.
      * All state-mutating functions (including \ref connection_pool::async_run,
      * \ref connection_pool::async_get_connection and returning connections)
      * will be run through the created strand.
@@ -176,8 +176,15 @@ struct pool_params
      */
     bool thread_safe{false};
 
-    // TODO: update this
-    /// The executor to be used by connections created by the pool.
+    /**
+     * \brief The executor to be used by individual connections created by the pool.
+     * \details
+     * If this member is set to a non-empty value
+     * (that is, `static_cast<bool>(connection_executor) == true`),
+     * individual connections will be created using this executor.
+     * Otherwise, connections will use the pool's executor
+     * (as per \ref connection_pool::get_executor).
+     */
     asio::any_io_executor connection_executor;
 };
 

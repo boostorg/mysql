@@ -342,12 +342,22 @@ public:
     /**
      * \brief Constructs a connection pool.
      * \details
-     * Both internal I/O objects and connections are constructed using the passed executor.
      *
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
      * "running" state.
      *
      * The constructed pool is always valid (`this->valid() == true`).
+     *
+     * \par Executor
+     * The passed executor becomes the pool executor, available through \ref get_executor.
+     * `ex` is used as follows:
+     *
+     *   - If `params.thread_safe == true`, `ex` is used to build a strand. The strand is used
+     *     to build internal I/O objects, like timers.
+     *   - If `params.thread_safe == false`, `ex` is used directly to build internal I/O objects.
+     *   - If `params.connection_executor` is empty, `ex` is used to build individual connections,
+     *     regardless of the chosen thread-safety mode. Otherwise, `params.connection_executor`
+     *     is used.
      *
      * \par Exception safety
      * Strong guarantee. Exceptions may be thrown by memory allocations.
@@ -362,12 +372,7 @@ public:
     /**
      * \brief Constructs a connection pool.
      * \details
-     * Both internal I/O objects and connections are constructed using `ctx.get_executor()`.
-     *
-     * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state.
-     *
-     * The constructed pool is always valid (`this->valid() == true`).
+     * Equivalent to `connection_pool(ctx.get_executor(), params)`.
      *
      * This function participates in overload resolution only if `ExecutionContext`
      * satisfies the `ExecutionContext` requirements imposed by Boost.Asio.
@@ -463,8 +468,7 @@ public:
     /**
      * \brief Retrieves the executor associated to this object.
      * \details
-     * Returns the pool executor passed to the constructor, as per
-     * \ref pool_executor_params::pool_executor.
+     * Returns the executor used to construct the pool as first argument.
      * This is the case even when using \ref pool_params::thread_safe -
      * the internal strand created in this case is never exposed.
      *
