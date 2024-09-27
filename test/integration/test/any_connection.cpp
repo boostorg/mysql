@@ -317,6 +317,24 @@ BOOST_FIXTURE_TEST_CASE(default_token_cancel_after, any_connection_fixture)
     });
 }
 
+// Spotcheck: immediate completions dispatched to the immediate executor
+BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
+{
+    run_in_global_context([this]() {
+        // Setup
+        connect();
+        results r;
+
+        // Prepare a statement
+        auto stmt = conn.async_prepare_statement("SELECT 1", as_netresult).get();
+
+        // Executing with the wrong number of params is an immediate error
+        conn.async_execute(stmt.bind(0), r, as_netresult)
+            .run(completion_check::immediate)
+            .validate_error(client_errc::wrong_num_params);
+    });
+}
+
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()
