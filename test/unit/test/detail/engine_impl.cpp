@@ -453,14 +453,13 @@ BOOST_AUTO_TEST_CASE(resume_error_immediate_async)
     {
         BOOST_TEST_CONTEXT(tc.name)
         {
-            // Setup
-            mock_algo algo(next_action(tc.ec));
-            test_engine eng{global_context_executor()};
-            bool finished = false;
-
             // We need to call the initiation function from a context thread
             // to get immediate completions
-            asio::dispatch(asio::bind_executor(global_context_executor(), [&]() {
+            run_in_global_context([&]() {
+                // Setup
+                mock_algo algo(next_action(tc.ec));
+                test_engine eng{global_context_executor()};
+
                 // Run the function
                 eng.async_run(any_resumable_ref(algo), as_netresult)
                     .run(completion_check::immediate)
@@ -471,13 +470,7 @@ BOOST_AUTO_TEST_CASE(resume_error_immediate_async)
                 algo.check_calls({
                     {error_code(), 0u}
                 });
-
-                // Mark as finished
-                finished = true;
-            }));
-
-            // Run
-            poll_global_context(&finished);
+            });
         }
     }
 }

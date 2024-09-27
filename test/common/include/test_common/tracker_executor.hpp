@@ -74,6 +74,12 @@ void poll_context(
     source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 );
 
+// Run fn in the global context, then poll
+void run_in_global_context(
+    const std::function<void()>& fn,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost

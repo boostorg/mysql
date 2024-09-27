@@ -6,6 +6,8 @@
 //
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/dispatch.hpp>
 #include <boost/asio/execution/blocking.hpp>
 #include <boost/asio/execution/relationship.hpp>
 #include <boost/asio/execution_context.hpp>
@@ -298,4 +300,14 @@ void boost::mysql::test::poll_global_context(const std::function<bool()>& done, 
 void boost::mysql::test::poll_context(asio::any_io_executor ex, const bool* done, source_location loc)
 {
     poll_context_impl(static_cast<asio::io_context&>(ex.context()), [done]() { return *done; }, loc);
+}
+
+void boost::mysql::test::run_in_global_context(const std::function<void()>& fn, source_location loc)
+{
+    bool finished = false;
+    asio::dispatch(asio::bind_executor(global_context_executor(), [&]() {
+        fn();
+        finished = true;
+    }));
+    poll_global_context(&finished, loc);
 }
