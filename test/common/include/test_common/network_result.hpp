@@ -145,6 +145,14 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result : network_result_base
     }
 };
 
+// The type of completion check to perform when running something with as_netresult
+enum class completion_check
+{
+    immediate,      // Op should perform an immediate completion
+    not_immediate,  // Op should never perform an immediate completion
+    dont_care,      // Don't check
+};
+
 // Wraps a network_result and an executor. The result of as_netresult_t.
 template <class R>
 struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
@@ -156,16 +164,30 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
             create_server_diag("network_result_v2 - diagnostics not cleared")
         };
         bool done{false};
+        bool was_immediate{false};
     };
 
     std::unique_ptr<impl_t> impl;
 
     runnable_network_result() : impl(new impl_t) {}
 
-    network_result<R> run(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    network_result<R> run(completion_check check, source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
         poll_global_context(&impl->done, loc);
+        if (check != completion_check::dont_care)
+        {
+            BOOST_TEST_CONTEXT("Called from " << loc)
+            {
+                bool expected = check == completion_check::immediate;
+                BOOST_TEST(impl->was_immediate == expected);
+            }
+        }
         return std::move(impl->netres);
+    }
+
+    network_result<R> run(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    {
+        return std::move(*this).run(completion_check::dont_care, loc);
     }
 
     void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
@@ -277,7 +299,8 @@ class as_netres_handler
         };
 
         // Expected top of the executor stack
-        boost::span<const int> expected_stack_top = is_initiation_function()
+        bool is_immediate = is_initiation_function();
+        boost::span<const int> expected_stack_top = is_immediate
                                                         ? boost::span<const int>(stack_data_immediate)
                                                         : boost::span<const int>(stack_data_regular);
 
@@ -297,6 +320,7 @@ class as_netres_handler
             target_->netres.diag = create_server_diag("<diagnostics unavailable>");
 
         // Mark the operation as done
+        target_->was_immediate = is_immediate;
         target_->done = true;
     }
 
