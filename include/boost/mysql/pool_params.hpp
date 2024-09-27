@@ -185,7 +185,7 @@ struct pool_params
      * Otherwise, connections will use the pool's executor
      * (as per \ref connection_pool::get_executor).
      */
-    asio::any_io_executor connection_executor;
+    asio::any_io_executor connection_executor{};
 };
 
 }  // namespace mysql
