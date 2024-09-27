@@ -15,17 +15,22 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/associated_cancellation_slot.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
+#include <boost/core/span.hpp>
 #include <boost/mp11/algorithm.hpp>
+#include <boost/mp11/integral.hpp>
 #include <boost/mp11/list.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -126,10 +131,17 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result : network_result_base
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
+    value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
         validate_no_error(loc);
-        return value;
+        return std::move(value);
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    value_type get_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    {
+        validate_no_error_nodiag(loc);
+        return std::move(value);
     }
 };
 
@@ -143,26 +155,27 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
             common_server_errc::er_no,
             create_server_diag("network_result_v2 - diagnostics not cleared")
         };
+        bool done{false};
     };
 
     std::unique_ptr<impl_t> impl;
 
     runnable_network_result() : impl(new impl_t) {}
 
-    network_result<R> run() &&
+    network_result<R> run(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
-        run_global_context();
+        poll_global_context(&impl->done, loc);
         return std::move(impl->netres);
     }
 
     void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
-        std::move(*this).run().validate_no_error(loc);
+        std::move(*this).run(loc).validate_no_error(loc);
     }
 
     void validate_no_error_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
-        std::move(*this).run().validate_no_error_nodiag(loc);
+        std::move(*this).run(loc).validate_no_error_nodiag(loc);
     }
 
     void validate_error(
@@ -171,7 +184,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) &&
     {
-        std::move(*this).run().validate_error(expected_err, expected_diag, loc);
+        std::move(*this).run(loc).validate_error(expected_err, expected_diag, loc);
     }
 
     void validate_error(
@@ -180,7 +193,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) &&
     {
-        std::move(*this).run().validate_error(expected_err, expected_msg, loc);
+        std::move(*this).run(loc).validate_error(expected_err, expected_msg, loc);
     }
 
     void validate_error(
@@ -189,7 +202,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) &&
     {
-        std::move(*this).run().validate_error(expected_err, expected_msg, loc);
+        std::move(*this).run(loc).validate_error(expected_err, expected_msg, loc);
     }
 
     // Use when the exact message isn't known, but some of its contents are
@@ -199,25 +212,30 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) &&
     {
-        std::move(*this).run().validate_error_contains(expected_err, pieces, loc);
+        std::move(*this).run(loc).validate_error_contains(expected_err, pieces, loc);
     }
 
     // Use when you don't care or can't determine the kind of error
     void validate_any_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
-        std::move(*this).run().validate_any_error(loc);
+        std::move(*this).run(loc).validate_any_error(loc);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
     typename network_result<R>::value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
-        return std::move(*this).run().get(loc);
+        return std::move(*this).run(loc).get(loc);
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    typename network_result<R>::value_type get_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
+    {
+        return std::move(*this).run(loc).get_nodiag(loc);
     }
 };
 
 struct as_netresult_t
 {
-    asio::cancellation_slot slot;
 };
 
 constexpr as_netresult_t as_netresult{};
@@ -242,33 +260,55 @@ struct as_netres_sig_to_rtype<void(error_code, T)>
 template <class R>
 class as_netres_handler
 {
-    network_result<R>* target_;
+    typename runnable_network_result<R>::impl_t* target_;
     tracker_executor_result ex_;
+    tracker_executor_result immediate_ex_;
     asio::cancellation_slot slot_;
     const diagnostics* diag_ptr;
 
     void complete(error_code ec) const
     {
-        // Check executor
-        BOOST_TEST(!is_initiation_function());
-        BOOST_TEST(current_executor_id() == ex_.executor_id);
+        // Check executor. The passed executor must be the top one in all cases.
+        // Immediate completions must be dispatched through the immediate executor, too.
+        // In all cases, we may encounter a bigger stack because of previous immediate completions.
+        const std::array<int, 1> stack_data_regular{{ex_.executor_id}};
+        const std::array<int, 2> stack_data_immediate{
+            {immediate_ex_.executor_id, ex_.executor_id}
+        };
+
+        // Expected top of the executor stack
+        boost::span<const int> expected_stack_top = is_initiation_function()
+                                                        ? boost::span<const int>(stack_data_immediate)
+                                                        : boost::span<const int>(stack_data_regular);
+
+        // Actual top of the executor stack
+        auto actual_stack_top = executor_stack().last(
+            (std::min)(executor_stack().size(), expected_stack_top.size())
+        );
+
+        // Compare
+        BOOST_TEST(actual_stack_top == expected_stack_top, boost::test_tools::per_element());
 
         // Assign error code and diagnostics
-        target_->err = ec;
+        target_->netres.err = ec;
         if (diag_ptr)
-            target_->diag = *diag_ptr;
+            target_->netres.diag = *diag_ptr;
         else
-            target_->diag = create_server_diag("<diagnostics unavailable>");
+            target_->netres.diag = create_server_diag("<diagnostics unavailable>");
+
+        // Mark the operation as done
+        target_->done = true;
     }
 
 public:
     as_netres_handler(
-        network_result<R>& netresult,
+        runnable_network_result<R>& netresult,
         const diagnostics* output_diag,
         asio::cancellation_slot slot
     )
-        : target_(&netresult),
+        : target_(netresult.impl.get()),
           ex_(create_tracker_executor(global_context_executor())),
+          immediate_ex_(create_tracker_executor(global_context_executor())),
           slot_(slot),
           diag_ptr(output_diag)
     {
@@ -277,6 +317,10 @@ public:
     // Executor
     using executor_type = asio::any_io_executor;
     asio::any_io_executor get_executor() const { return ex_.ex; }
+
+    // Immediate executor
+    using immediate_executor_type = asio::any_io_executor;
+    asio::any_io_executor get_immediate_executor() const { return immediate_ex_.ex; }
 
     // Cancellation slot
     using cancellation_slot_type = asio::cancellation_slot;
@@ -287,7 +331,7 @@ public:
     template <class Arg>
     void operator()(error_code ec, Arg&& arg) const
     {
-        target_->value = std::forward<Arg>(arg);
+        target_->netres.value = std::forward<Arg>(arg);
         complete(ec);
     }
 };
@@ -311,13 +355,16 @@ public:
     template <typename Initiation, typename... Args>
     static return_type initiate(Initiation&& initiation, mysql::test::as_netresult_t token, Args&&... args)
     {
-        using types = mp11::mp_list<Args...>;
-        using diag_pos = mp11::mp_find<types, mysql::diagnostics*>;
-        constexpr std::size_t actual_pos = diag_pos::value == sizeof...(Args) ? 0u : diag_pos::value;
+        // Try to find a diagnostics* within the argument list
+        using diag_pos = mp11::mp_find<mp11::mp_list<Args...>, mysql::diagnostics*>;
+        constexpr bool diag_found = diag_pos::value < sizeof...(Args);
+
+        // Dispatch
         return do_initiate(
-            std::move(initiation),
-            token.slot,
-            std::get<actual_pos>(std::tuple<Args&...>{args...}),
+            std::integral_constant<bool, diag_found>{},
+            diag_pos{},
+            std::forward<Initiation>(initiation),
+            token,
             std::forward<Args>(args)...
         );
     }
@@ -331,33 +378,56 @@ public:
         Args&&... args
     )
     {
-        return do_initiate_impl(std::move(initiation), token.slot, diag, diag, std::forward<Args>(args)...);
+        return do_initiate_impl(
+            std::forward<Initiation>(initiation),
+            token,
+            diag,
+            diag,
+            std::forward<Args>(args)...
+        );
     }
 
 private:
     // A diagnostics* was found
-    template <typename Initiation, typename... Args>
+    template <std::size_t N, typename Initiation, typename... Args>
     static return_type do_initiate(
+        std::true_type /* diag_found */,
+        mp11::mp_size_t<N> /* diag_pos */,
         Initiation&& initiation,
-        asio::cancellation_slot slot,
-        mysql::diagnostics* diag,
+        mysql::test::as_netresult_t token,
         Args&&... args
     )
     {
-        return do_initiate_impl(std::move(initiation), slot, diag, std::forward<Args>(args)...);
+        return do_initiate_impl(
+            std::forward<Initiation>(initiation),
+            token,
+            std::get<N>(std::tuple<Args&...>{args...}),
+            std::forward<Args>(args)...
+        );
     }
 
-    // No diagnostics* was found
-    template <typename Initiation, class T, typename... Args>
-    static return_type do_initiate(Initiation&& initiation, asio::cancellation_slot slot, T&&, Args&&... args)
+    // A diagnostics* was not found
+    template <std::size_t N, typename Initiation, typename... Args>
+    static return_type do_initiate(
+        std::false_type /* diag_found */,
+        mp11::mp_size_t<N> /* diag_pos */,
+        Initiation&& initiation,
+        mysql::test::as_netresult_t token,
+        Args&&... args
+    )
     {
-        return do_initiate_impl(std::move(initiation), slot, nullptr, std::forward<Args>(args)...);
+        return do_initiate_impl(
+            std::forward<Initiation>(initiation),
+            token,
+            nullptr,
+            std::forward<Args>(args)...
+        );
     }
 
     template <typename Initiation, typename... Args>
     static return_type do_initiate_impl(
         Initiation&& initiation,
-        asio::cancellation_slot slot,
+        mysql::test::as_netresult_t token,
         mysql::diagnostics* diag,
         Args&&... args
     )
@@ -373,9 +443,13 @@ private:
         mysql::test::initiation_guard guard;
 
         // Actually call the initiation function
-        std::move(initiation)(
-            mysql::test::test_detail::as_netres_handler<R>(netres.impl->netres, diag, slot),
-            std::move(args)...
+        std::forward<Initiation>(initiation)(
+            mysql::test::test_detail::as_netres_handler<R>(
+                netres,
+                diag,
+                asio::get_associated_cancellation_slot(token)
+            ),
+            std::forward<Args>(args)...
         );
 
         return netres;

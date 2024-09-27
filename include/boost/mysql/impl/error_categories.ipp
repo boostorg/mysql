@@ -56,11 +56,14 @@ inline const char* error_to_string(client_errc error)
     case client_errc::row_type_mismatch:
         return "The StaticRow type passed to read_some_rows does not correspond to the resultset type being "
                "read";
-    case client_errc::timeout: return "An operation controlled by Boost.MySQL timed out";
-    case client_errc::cancelled: return "An operation controlled by Boost.MySQL was cancelled";
     case client_errc::pool_not_running:
         return "Getting a connection from a connection_pool failed because the pool is not running. Ensure "
                "that you're calling connection_pool::async_run.";
+    case client_errc::pool_cancelled:
+        return "Getting a connection from a connection_pool failed because the pool was cancelled.";
+    case client_errc::no_connection_available:
+        return "Getting a connection from a connection_pool was cancelled before "
+               "a connection was available.";
     case client_errc::invalid_encoding:
         return "A string passed to a formatting function contains a byte sequence that can't be decoded with "
                "the current character set.";

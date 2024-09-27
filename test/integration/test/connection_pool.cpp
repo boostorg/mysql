@@ -6,25 +6,24 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/field_view.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/spawn.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/test/data/test_case.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
@@ -32,40 +31,23 @@
 #include <exception>
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 #include "test_common/ci_server.hpp"
-#include "test_common/create_diagnostics.hpp"
+#include "test_common/create_basic.hpp"
+#include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_integration/run_coro.hpp"
-#include "test_integration/run_stackful_coro.hpp"
 #include "test_integration/server_features.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using boost::test_tools::per_element;
+namespace data = boost::unit_test::data;
 namespace asio = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_connection_pool)
-
-// For synchronization between tasks
-class condition_variable
-{
-    asio::steady_timer timer_;
-
-public:
-    condition_variable(asio::any_io_executor ex)
-        : timer_(std::move(ex), (std::chrono::steady_clock::time_point::max)())
-    {
-    }
-
-    void notify() { timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
-
-    void wait(asio::yield_context yield)
-    {
-        error_code ignored;
-        timer_.async_wait(yield[ignored]);
-    }
-};
 
 pool_params create_pool_params(std::size_t max_size = 151)
 {
@@ -79,155 +61,162 @@ pool_params create_pool_params(std::size_t max_size = 151)
     return res;
 }
 
-static void check_err(error_code ec) { BOOST_TEST(ec == error_code()); }
-
-struct pool_deleter
+static void check_run(error_code ec)
 {
-    void operator()(connection_pool* pool) const { pool->cancel(); }
-};
+    // Should complete successfully
+    BOOST_TEST(ec == error_code());
 
-using pool_guard = std::unique_ptr<connection_pool, pool_deleter>;
+    // Should never complete immediately
+    BOOST_TEST(!is_initiation_function());
+}
 
 struct fixture
 {
-    diagnostics diag{create_server_diag("diagnostics not cleared")};
-    error_code ec{client_errc::server_unsupported};
-
-    void check_success()
-    {
-        BOOST_TEST_REQUIRE(ec == error_code());
-        BOOST_TEST(diag == diagnostics());
-        ec = client_errc::server_unsupported;
-        diag = create_server_diag("diagnostics not cleared");  // restore for successive ops
-    }
+    // async_get_connection actually passes nullptr as diagnostics* to initiation
+    // functions if no diagnostics is provided (unlike any_connection)
+    diagnostics diag;
+    results r;
 };
 
 // The pool and individual connections use the correct executors
 BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        // Create two different executors
-        auto pool_ex = asio::make_strand(yield.get_executor());
-        auto conn_ex = yield.get_executor();
-        BOOST_TEST((pool_ex != conn_ex));
+    // Create two different executors
+    auto pool_ex = asio::make_strand(global_context_executor());
+    auto conn_ex = global_context_executor();
+    BOOST_TEST((pool_ex != conn_ex));
 
-        // Create and run the pool
-        connection_pool pool(pool_executor_params{pool_ex, conn_ex}, create_pool_params());
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Create and run the pool
+    connection_pool pool(pool_executor_params{pool_ex, conn_ex}, create_pool_params());
+    auto run_result = pool.async_run(as_netresult);
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Check executors
-        BOOST_TEST((pool.get_executor() == pool_ex));
-        BOOST_TEST((conn->get_executor() == conn_ex));
-    });
+    // Check executors
+    BOOST_TEST((pool.get_executor() == pool_ex));
+    BOOST_TEST((conn->get_executor() == conn_ex));
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
-BOOST_FIXTURE_TEST_CASE(return_connection_with_reset, fixture)
+BOOST_FIXTURE_TEST_CASE(pool_executors_thread_safe, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
+    // Create and run the pool
+    auto params = create_pool_params();
+    params.thread_safe = true;
+    connection_pool pool(global_context_executor(), create_pool_params());
+    auto run_result = pool.async_run(as_netresult);
 
-        // Create a pool with max_size 1, so the same connection gets always returned
-        connection_pool pool(yield.get_executor(), create_pool_params(1));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Check executors. The internal strand is never exposed,
+    // and doesn't get propagated to connections
+    BOOST_TEST((pool.get_executor() == global_context_executor()));
+    BOOST_TEST((conn->get_executor() == global_context_executor()));
 
-        // Alter session state
-        BOOST_TEST_REQUIRE(conn.valid());
-        conn->async_execute("SET @myvar = 'abc'", r, diag, yield[ec]);
-        check_success();
-
-        // Return the connection
-        conn = pooled_connection();
-
-        // Get the same connection again
-        conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
-
-        // The same connection is returned, but session state has been cleared
-        BOOST_TEST_REQUIRE(conn.valid());
-        conn->async_execute("SELECT @myvar", r, diag, yield[ec]);
-        BOOST_TEST(r.rows().at(0).at(0) == field_view());
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
-BOOST_FIXTURE_TEST_CASE(return_connection_without_reset, fixture)
+BOOST_DATA_TEST_CASE_F(fixture, return_connection_with_reset, data::make({false, true}))
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
+    // Create a pool with max_size 1, so the same connection gets always returned
+    auto params = create_pool_params(1);
+    params.thread_safe = sample;
+    connection_pool pool(global_context_executor(), std::move(params));
+    auto run_result = pool.async_run(as_netresult);
 
-        // Create a connection pool with max_size 1, so the same connection gets always returned
-        connection_pool pool(yield.get_executor(), create_pool_params(1));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Alter session state
+    BOOST_TEST_REQUIRE(conn.valid());
+    conn->async_execute("SET @myvar = 'abc'", r, as_netresult).validate_no_error();
 
-        // Alter session state
-        BOOST_TEST_REQUIRE(conn.valid());
-        conn->async_execute("SET @myvar = 'abc'", r, diag, yield[ec]);
-        check_success();
+    // Return the connection
+    conn = pooled_connection();
 
-        // Return the connection
-        conn.return_without_reset();
-        BOOST_TEST(!conn.valid());
+    // Get the same connection again
+    conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get the same connection again
-        conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // The same connection is returned, but session state has been cleared
+    BOOST_TEST_REQUIRE(conn.valid());
+    conn->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, nullptr), per_element());
 
-        // The same connection is returned, and no reset has been issued
-        BOOST_TEST_REQUIRE(conn.valid());
-        conn->async_execute("SELECT @myvar", r, diag, yield[ec]);
-        BOOST_TEST(r.rows().at(0).at(0) == field_view("abc"));
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
+}
+
+BOOST_DATA_TEST_CASE_F(fixture, return_connection_without_reset, data::make({false, true}))
+{
+    // Create a connection pool with max_size 1, so the same connection gets always returned
+    auto params = create_pool_params(1);
+    params.thread_safe = sample;
+    connection_pool pool(global_context_executor(), std::move(params));
+    auto run_result = pool.async_run(as_netresult);
+
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
+
+    // Alter session state
+    BOOST_TEST_REQUIRE(conn.valid());
+    conn->async_execute("SET @myvar = 'abc'", r, as_netresult).validate_no_error();
+
+    // Return the connection
+    conn.return_without_reset();
+    BOOST_TEST(!conn.valid());
+
+    // Get the same connection again
+    conn = pool.async_get_connection(diag, as_netresult).get();
+
+    // The same connection is returned, and no reset has been issued
+    BOOST_TEST_REQUIRE(conn.valid());
+    conn->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, "abc"), per_element());
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 // pooled_connection destructor is equivalent to return_connection with reset
 BOOST_FIXTURE_TEST_CASE(pooled_connection_destructor, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
+    // Create a connection pool with max_size 1, so the same connection gets always returned
+    connection_pool pool(global_context_executor(), create_pool_params(1));
+    auto run_result = pool.async_run(as_netresult);
 
-        // Create a connection pool with max_size 1, so the same connection gets always returned
-        connection_pool pool(yield.get_executor(), create_pool_params(1));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    {
+        // Get a connection
+        auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        {
-            // Get a connection
-            auto conn = pool.async_get_connection(diag, yield[ec]);
-            check_success();
-
-            // Alter session state
-            BOOST_TEST_REQUIRE(conn.valid());
-            conn->async_execute("SET @myvar = 'abc'", r, diag, yield[ec]);
-            check_success();
-        }
-
-        // Get the same connection again
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
-
-        // The same connection is returned, but session state has been cleared
+        // Alter session state
         BOOST_TEST_REQUIRE(conn.valid());
-        conn->async_execute("SELECT @myvar", r, diag, yield[ec]);
-        BOOST_TEST(r.rows().at(0).at(0) == field_view());
-    });
+        conn->async_execute("SET @myvar = 'abc'", r, as_netresult).validate_no_error();
+    }
+
+    // Get the same connection again
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
+
+    // The same connection is returned, but session state has been cleared
+    BOOST_TEST_REQUIRE(conn.valid());
+    conn->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, nullptr), per_element());
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 // Pooled connections use utf8mb4
-static void validate_charset(any_connection& conn, asio::yield_context yield)
+static void validate_charset(any_connection& conn)
 {
     // The connection knows its using utf8mb4
     BOOST_TEST(conn.current_character_set()->name == "utf8mb4");
@@ -236,287 +225,223 @@ static void validate_charset(any_connection& conn, asio::yield_context yield)
     // The connection is actually using utf8mb4
     results r;
     conn.async_execute(
-        "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
-        r,
-        yield
-    );
-    const auto rw = r.rows().at(0);
-    BOOST_TEST(rw.at(0).as_string() == "utf8mb4");
-    BOOST_TEST(rw.at(1).as_string() == "utf8mb4");
-    BOOST_TEST(rw.at(2).as_string() == "utf8mb4");
+            "SELECT @@character_set_client, @@character_set_connection, @@character_set_results",
+            r,
+            as_netresult
+    )
+        .validate_no_error();
+    BOOST_TEST(r.rows() == makerows(3, "utf8mb4", "utf8mb4", "utf8mb4"), per_element());
 }
 
 BOOST_FIXTURE_TEST_CASE(charset, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        // Create and run the pool
-        connection_pool pool(yield.get_executor(), create_pool_params(1));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Create and run the pool
+    connection_pool pool(global_context_executor(), create_pool_params(1));
+    auto run_result = pool.async_run(as_netresult);
 
-        // Get a connection
-        auto conn = pool.async_get_connection(yield);
-        validate_charset(conn.get(), yield);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
+    validate_charset(conn.get());
 
-        // Return the connection and retrieve it again
-        conn = pooled_connection();
-        conn = pool.async_get_connection(yield);
-        validate_charset(conn.get(), yield);
+    // Return the connection and retrieve it again
+    conn = pooled_connection();
+    conn = pool.async_get_connection(diag, as_netresult).get();
+    validate_charset(conn.get());
 
-        // Return the connection without reset and retrieve it again
-        conn.return_without_reset();
-        conn = pool.async_get_connection(yield);
-        validate_charset(conn.get(), yield);
-    });
+    // Return the connection without reset and retrieve it again
+    conn.return_without_reset();
+    conn = pool.async_get_connection(diag, as_netresult).get();
+    validate_charset(conn.get());
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 BOOST_FIXTURE_TEST_CASE(connections_created_if_required, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
+    connection_pool pool(global_context_executor(), create_pool_params());
+    auto run_result = pool.async_run(as_netresult);
 
-        connection_pool pool(yield.get_executor(), create_pool_params());
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Get a connection
+    auto conn1 = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn1 = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Check that it works
+    BOOST_TEST_REQUIRE(conn1.valid());
+    conn1->async_execute("SET @myvar = '1'", r, as_netresult).validate_no_error();
 
-        // Check that it works
-        BOOST_TEST_REQUIRE(conn1.valid());
-        conn1->async_execute("SET @myvar = '1'", r, diag, yield[ec]);
-        check_success();
+    // Get another connection. This will create a new one, since the first one is in use
+    auto conn2 = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get another connection. This will create a new one, since the first one is in use
-        auto conn2 = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Check that it works
+    BOOST_TEST_REQUIRE(conn1.valid());
+    conn2->async_execute("SET @myvar = '2'", r, as_netresult).validate_no_error();
 
-        // Check that it works
-        BOOST_TEST_REQUIRE(conn1.valid());
-        conn2->async_execute("SET @myvar = '2'", r, diag, yield[ec]);
-        check_success();
+    // They are different connections
+    conn1->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, "1"), per_element());
+    conn2->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(1, "2"), per_element());
 
-        // They are different connections
-        conn1->async_execute("SELECT @myvar", r, diag, yield[ec]);
-        check_success();
-        BOOST_TEST(r.rows().at(0).at(0) == field_view("1"));
-        conn2->async_execute("SELECT @myvar", r, diag, yield[ec]);
-        check_success();
-        BOOST_TEST(r.rows().at(0).at(0) == field_view("2"));
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 BOOST_FIXTURE_TEST_CASE(connection_upper_limit, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
+    connection_pool pool(global_context_executor(), create_pool_params(1));
+    auto run_result = pool.async_run(as_netresult);
 
-        connection_pool pool(yield.get_executor(), create_pool_params(1));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Getting another connection will block until one is returned.
+    // Since we won't return the one we have, the function time outs
+    pool.async_get_connection(diag, asio::cancel_after(std::chrono::milliseconds(1), asio::deferred))(
+            as_netresult
+    )
+        .validate_error(client_errc::no_connection_available);
 
-        // Getting another connection will block until one is returned.
-        // Since we won't return the one we have, the function time outs
-        auto conn2 = pool.async_get_connection(std::chrono::milliseconds(1), diag, yield[ec]);
-        BOOST_TEST(!conn2.valid());
-        BOOST_TEST(ec == client_errc::timeout);
-        BOOST_TEST(diag == diagnostics());
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 BOOST_FIXTURE_TEST_CASE(cancel_run, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
-        condition_variable run_cv(yield.get_executor());
+    // Construct a pool and run it
+    connection_pool pool(global_context_executor(), create_pool_params());
+    auto run_result = pool.async_run(as_netresult);
 
-        // Construct a pool and run it
-        connection_pool pool(yield.get_executor(), create_pool_params());
-        pool_guard grd(&pool);
-        pool.async_run([&run_cv](error_code run_ec) {
-            BOOST_TEST(run_ec == error_code());
-            run_cv.notify();
-        });
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Cancel. This will make run() return
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 
-        // Cancel. This will make run() return
-        pool.cancel();
-        run_cv.wait(yield);
-
-        // Cancel again does nothing
-        pool.cancel();
-    });
+    // Cancel again does nothing
+    pool.cancel();
 }
 
 // If the pool is cancelled before calling run, cancel still has effect
 BOOST_FIXTURE_TEST_CASE(cancel_before_run, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        // Create a pool
-        connection_pool pool(yield.get_executor(), create_pool_params());
+    // Create a pool
+    connection_pool pool(global_context_executor(), create_pool_params());
 
-        // Cancel
-        pool.cancel();
+    // Cancel
+    pool.cancel();
 
-        // Run returns immediately
-        pool.async_run(check_err);
-    });
+    // Run returns immediately
+    pool.async_run(as_netresult).validate_no_error_nodiag();
 }
 
-BOOST_FIXTURE_TEST_CASE(cancel_get_connection, fixture)
+BOOST_DATA_TEST_CASE_F(fixture, cancel_get_connection, data::make({false, true}))
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
-        condition_variable run_cv(yield.get_executor());
-        condition_variable getconn_cv(yield.get_executor());
+    // Construct a pool and run it
+    auto params = create_pool_params(1);
+    params.thread_safe = sample;
+    connection_pool pool(global_context_executor(), std::move(params));
+    auto run_result = pool.async_run(as_netresult);
 
-        // Construct a pool and run it
-        connection_pool pool(yield.get_executor(), create_pool_params(1));
-        pool_guard grd(&pool);
-        pool.async_run([&run_cv](error_code run_ec) {
-            BOOST_TEST(run_ec == error_code());
-            run_cv.notify();
-        });
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Try to get a new one. This will not complete, since there is no room for more connections
+    diagnostics diag2;
+    auto getconn_result = pool.async_get_connection(diag2, as_netresult);
 
-        // Try to get a new one. This will not complete, since there is no room for more connections
-        pool.async_get_connection(diag, [&](error_code getconn_ec, pooled_connection conn2) {
-            BOOST_TEST(getconn_ec == client_errc::cancelled);
-            BOOST_TEST(!conn2.valid());
-            getconn_cv.notify();
-        });
+    // Cancel. This will make run and get_connection return
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
+    std::move(getconn_result).validate_error(client_errc::pool_cancelled);
 
-        // Cancel. This will make run and get_connection return
-        pool.cancel();
-        run_cv.wait(yield);
-        getconn_cv.wait(yield);
-
-        // Calling get_connection after cancel will return client_errc::cancelled
-        conn = pool.async_get_connection(diag, yield[ec]);
-        BOOST_TEST(!conn.valid());
-        BOOST_TEST(ec == client_errc::cancelled);
-        BOOST_TEST(diag == diagnostics());
-    });
+    // Calling get_connection after cancel will error
+    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_cancelled);
 }
 
 BOOST_FIXTURE_TEST_CASE(get_connection_pool_not_running, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        // Create a pool but don't run it
-        connection_pool pool(yield.get_executor(), create_pool_params());
-        pool_guard grd(&pool);
+    // Create a pool but don't run it
+    connection_pool pool(global_context_executor(), create_pool_params());
 
-        // Getting a connection fails immediately with a descriptive error code
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        BOOST_TEST(ec == client_errc::pool_not_running);
-        BOOST_TEST(diag == diagnostics());
-    });
+    // Getting a connection fails immediately with a descriptive error code
+    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_not_running);
 }
 
 // Having a valid pooled_connection alive extends the pool's lifetime
-BOOST_FIXTURE_TEST_CASE(pooled_connection_extends_pool_lifetime, fixture)
+BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::make({false, true}))
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        std::unique_ptr<connection_pool> pool(new connection_pool(yield.get_executor(), create_pool_params())
-        );
+    auto params = create_pool_params();
+    params.thread_safe = sample;
+    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), std::move(params)));
 
-        // Run the pool in a way we can synchronize with
-        condition_variable run_cv(yield.get_executor());
-        pool->async_run([&run_cv](error_code run_ec) {
-            BOOST_TEST(run_ec == error_code());
-            run_cv.notify();
-        });
+    // Run the pool
+    auto run_result = pool->async_run(as_netresult);
 
-        // Get a connection
-        auto conn = pool->async_get_connection(diag, yield[ec]);
-        check_success();
+    // Get a connection
+    auto conn = pool->async_get_connection(diag, as_netresult).get();
 
-        // Cancel and destroy
-        pool->cancel();
-        pool.reset();
+    // Cancel and destroy
+    pool->cancel();
+    pool.reset();
 
-        // Wait for run to exit, since run extends lifetime, too
-        run_cv.wait(yield);
+    // Wait for run to exit, since run extends lifetime, too
+    std::move(run_result).validate_no_error_nodiag();
 
-        // The connection we got can still be used and returned
-        conn->async_ping(yield);
-        conn.return_without_reset();
-    });
+    // The connection we got can still be used and returned
+    // In thread-safe mode, strand dispatching doesn't cause lifetime problems
+    conn->async_ping(as_netresult).validate_no_error();
+    conn.return_without_reset();
 }
 
 // Having a packaged async_get_connection op extends lifetime
 BOOST_FIXTURE_TEST_CASE(async_get_connection_initation_extends_pool_lifetime, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        std::unique_ptr<connection_pool> pool(new connection_pool(yield.get_executor(), create_pool_params())
-        );
+    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), create_pool_params())
+    );
 
-        // Create a packaged op
-        auto op = pool->async_get_connection(diag, boost::asio::deferred);
+    // Create a packaged op
+    auto op = pool->async_get_connection(diag, boost::asio::deferred);
 
-        // Destroy the pool
-        pool.reset();
+    // Destroy the pool
+    pool.reset();
 
-        // We can run the operation without crashing, since it extends lifetime
-        auto conn = op(yield[ec]);
-        BOOST_TEST(ec == client_errc::pool_not_running);
-        BOOST_TEST(diag == diagnostics());
-    });
+    // We can run the operation without crashing, since it extends lifetime
+    std::move(op)(as_netresult).validate_error(client_errc::pool_not_running);
 }
 
-// Spotcheck: the different async_get_connection overloads work
-BOOST_FIXTURE_TEST_CASE(get_connection_overloads, fixture)
+// In thread-safe mode, cancel() is dispatched to the strand, and doesn't cause lifetime issues
+BOOST_FIXTURE_TEST_CASE(cancel_extends_pool_lifetime, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        connection_pool pool(yield.get_executor(), create_pool_params());
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    auto params = create_pool_params();
+    params.thread_safe = true;
+    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), std::move(params)));
 
-        // With all params
-        auto conn = pool.async_get_connection(std::chrono::hours(1), diag, yield);
-        conn->async_ping(yield);
+    // Cancel
+    pool->cancel();
 
-        // With timeout, without diag
-        conn = pool.async_get_connection(std::chrono::hours(1), yield);
-        conn->async_ping(yield);
+    // Destroy the pool
+    pool.reset();
 
-        // With diag, without timeout
-        conn = pool.async_get_connection(diag, yield);
-        conn->async_ping(yield);
-
-        // Without diag, without timeout
-        conn = pool.async_get_connection(yield);
-        conn->async_ping(yield);
-    });
+    // Dispatch any pending handler. We didn't crash
+    poll_global_context();
 }
 
-// Spotcheck: async_get_connection timeouts work
-BOOST_FIXTURE_TEST_CASE(get_connection_timeout, fixture)
+// Spotcheck: the overload without diagnostics work
+BOOST_FIXTURE_TEST_CASE(get_connection_no_diag, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        auto params = create_pool_params();
-        params.password = "bad_password";  // Guarantee that no connection will ever become available
-        connection_pool pool(yield.get_executor(), std::move(params));
-        pool_guard grd(&pool);
+    connection_pool pool(global_context_executor(), create_pool_params());
+    auto run_result = pool.async_run(as_netresult);
 
-        pool.async_run(check_err);
+    auto conn = pool.async_get_connection(as_netresult).get_nodiag();
+    conn->async_ping(as_netresult).validate_no_error();
 
-        // Getting a connection will timeout. The error may be a generic
-        // timeout or a "bad password" error, depending on timing
-        auto conn = pool.async_get_connection(std::chrono::milliseconds(1), diag, yield[ec]);
-        BOOST_TEST(ec != error_code());
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
@@ -524,122 +449,138 @@ BOOST_FIXTURE_TEST_CASE(get_connection_timeout, fixture)
 BOOST_TEST_DECORATOR(*run_if(&server_features::unix_sockets))
 BOOST_FIXTURE_TEST_CASE(unix_sockets, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
-        auto params = create_pool_params();
-        params.server_address.emplace_unix_path(default_unix_path);
+    // Create and run the pool
+    auto params = create_pool_params();
+    params.server_address.emplace_unix_path(default_unix_path);
+    connection_pool pool(global_context_executor(), std::move(params));
+    auto run_result = pool.async_run(as_netresult);
 
-        connection_pool pool(yield.get_executor(), std::move(params));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Verify that works
+    BOOST_TEST_REQUIRE(conn.valid());
+    conn->async_ping(as_netresult).validate_no_error();
 
-        // Verify that works
-        BOOST_TEST_REQUIRE(conn.valid());
-        conn->async_ping(yield);
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 #endif
 
 // Spotcheck: pool works with TLS
 BOOST_FIXTURE_TEST_CASE(ssl, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
-        auto params = create_pool_params();
-        params.ssl = ssl_mode::require;
+    // Create and run the pool
+    auto params = create_pool_params();
+    params.ssl = ssl_mode::require;
+    connection_pool pool(global_context_executor(), std::move(params));
+    auto run_result = pool.async_run(as_netresult);
 
-        connection_pool pool(yield.get_executor(), std::move(params));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Verify that works
+    BOOST_TEST_REQUIRE(conn.valid());
+    conn->async_ping(as_netresult).validate_no_error();
 
-        // Verify that works
-        BOOST_TEST_REQUIRE(conn.valid());
-        conn->async_ping(yield);
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 // Spotcheck: custom ctor params (SSL context and buffer size) can be passed to the connection pool
 BOOST_FIXTURE_TEST_CASE(custom_ctor_params, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
-        auto params = create_pool_params();
-        params.ssl = ssl_mode::require;
-        params.ssl_ctx.emplace(asio::ssl::context::sslv23_client);
-        params.initial_buffer_size = 16u;
+    // Create and run the pool
+    auto params = create_pool_params();
+    params.ssl = ssl_mode::require;
+    params.ssl_ctx.emplace(asio::ssl::context::sslv23_client);
+    params.initial_buffer_size = 16u;
+    connection_pool pool(global_context_executor(), std::move(params));
+    auto run_result = pool.async_run(as_netresult);
 
-        connection_pool pool(yield.get_executor(), std::move(params));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
+    // Verify that works
+    BOOST_TEST_REQUIRE(conn.valid());
+    conn->async_ping(as_netresult).validate_no_error();
 
-        // Verify that works
-        BOOST_TEST_REQUIRE(conn.valid());
-        conn->async_ping(yield);
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 // Spotcheck: the pool can work with zero timeouts
 BOOST_FIXTURE_TEST_CASE(zero_timeuts, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        results r;
-        auto params = create_pool_params();
-        params.max_size = 1u;  // so we force a reset
-        params.connect_timeout = std::chrono::seconds(0);
-        params.ping_timeout = std::chrono::seconds(0);
-        params.ping_interval = std::chrono::seconds(0);
+    // Create and run the pool
+    auto params = create_pool_params();
+    params.max_size = 1u;  // so we force a reset
+    params.connect_timeout = std::chrono::seconds(0);
+    params.ping_timeout = std::chrono::seconds(0);
+    params.ping_interval = std::chrono::seconds(0);
+    connection_pool pool(global_context_executor(), std::move(params));
+    auto run_result = pool.async_run(as_netresult);
 
-        connection_pool pool(yield.get_executor(), std::move(params));
-        pool_guard grd(&pool);
-        pool.async_run(check_err);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
+    conn->async_ping(as_netresult).validate_no_error();
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, yield[ec]);
-        check_success();
-        conn->async_ping(yield);
-
-        // Return the connection
-        conn = pooled_connection();
-
-        // Get the same connection again. A zero timeout for async_get_connection works, too
-        conn = pool.async_get_connection(std::chrono::seconds(0), diag, yield[ec]);
-        check_success();
-        conn->async_ping(yield);
-    });
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 // Spotcheck: we can use completion tokens that require
 // initiations to have a bound executor, like cancel_after
+// This also tests that running ops with a connected cancel slot
+// without triggering cancellation doesn't crash
 BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
 {
-    run_stackful_coro([&](asio::yield_context yield) {
-        constexpr std::chrono::seconds timeout(10);
+    constexpr std::chrono::seconds timeout(10);
 
-        connection_pool pool(yield.get_executor(), create_pool_params());
-        pool_guard grd(&pool);
-        pool.async_run(asio::cancel_after(timeout, check_err));
+    connection_pool pool(global_context_executor(), create_pool_params());
+    pool.async_run(asio::cancel_after(timeout, check_run));
 
-        // Get a connection
-        auto conn = pool.async_get_connection(diag, asio::cancel_after(timeout, yield[ec]));
-        check_success();
-        conn->async_ping(yield);
+    // Get a connection
+    auto conn = pool.async_get_connection(diag, asio::cancel_after(timeout, asio::deferred))(as_netresult)
+                    .get();
+    conn->async_ping(as_netresult).validate_no_error();
 
-        // The overload with a timeout also works
-        conn = pool.async_get_connection(timeout, diag, asio::cancel_after(timeout, yield[ec]));
-        conn->async_ping(yield);
-    });
+    // Cleanup the pool
+    pool.cancel();
+}
+
+// Spotcheck: per-operation cancellation works with async_run
+BOOST_FIXTURE_TEST_CASE(async_run_per_operation_cancellation, fixture)
+{
+    connection_pool pool(global_context_executor(), create_pool_params());
+    pool.async_run(asio::cancel_after(std::chrono::microseconds(1), asio::deferred))(as_netresult)
+        .validate_no_error_nodiag();
+    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_cancelled);
+}
+
+// Spotcheck: per-operation cancellation works with async_get_connection
+BOOST_FIXTURE_TEST_CASE(async_get_connection_per_operation_cancellation, fixture)
+{
+    // Create and run the pool
+    connection_pool pool(global_context_executor(), create_pool_params(1));
+    auto run_result = pool.async_run(as_netresult);
+
+    // Get the only connection the pool has
+    auto conn = pool.async_get_connection(diag, as_netresult).get();
+
+    // Getting another connection times out
+    pool.async_get_connection(diag, asio::cancel_after(std::chrono::microseconds(1), asio::deferred))(
+            as_netresult
+    )
+        .validate_error(client_errc::no_connection_available);
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
 }
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
@@ -650,9 +591,8 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 {
     run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
         connection_pool pool(global_context_executor(), create_pool_params());
-        pool_guard grd(&pool);
 
-        // Run can be used without a token. Defaults to deferred
+        // Run can be used without a token. Defaults to with_diagnostics(deferred)
         auto run_op = pool.async_run();
 
         // Error case (pool not running)
@@ -675,11 +615,49 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
         // Success case
         auto conn = co_await pool.async_get_connection();
         co_await conn->async_ping();
+
+        // Finish
+        pool.cancel();
     });
 }
 
-// TODO: test cancel_after as a partial token used with async_get_connection.
-// This requires https://github.com/boostorg/mysql/issues/197
+// cancel_after can be used as a partial token with async_run and async_get_connection.
+BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
+{
+    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
+        connection_pool pool(global_context_executor(), create_pool_params(1));
+
+        // Run can be used with cancel_after
+        asio::co_spawn(
+            global_context_executor(),
+            [&]() -> asio::awaitable<void> {
+                co_await pool.async_run(asio::cancel_after(std::chrono::seconds(1)));
+            },
+            [](std::exception_ptr exc) {
+                if (exc)
+                    std::rethrow_exception(exc);
+            }
+        );
+
+        // Success case
+        auto conn = co_await pool.async_get_connection(asio::cancel_after(std::chrono::seconds(1)));
+        co_await conn->async_ping();
+
+        // Error case (operation cancelled)
+        BOOST_CHECK_EXCEPTION(
+            co_await pool.async_get_connection(asio::cancel_after(std::chrono::microseconds(1))),
+            error_with_diagnostics,
+            [](const error_with_diagnostics& err) {
+                BOOST_TEST(err.code() == client_errc::no_connection_available);
+                BOOST_TEST(err.get_diagnostics() == diagnostics());
+                return true;
+            }
+        );
+
+        // Finish
+        pool.cancel();
+    });
+}
 
 #endif
 

@@ -9,7 +9,12 @@
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_TRACKER_EXECUTOR_HPP
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
+
+#include <functional>
+
+#include "test_common/source_location.hpp"
 
 namespace boost {
 namespace mysql {
@@ -29,8 +34,8 @@ struct tracker_executor_result
 // Create
 tracker_executor_result create_tracker_executor(asio::any_io_executor inner);
 
-// Get the ID of the executor we're currently running on, or -1 if none
-int current_executor_id();
+// Get the executor call stack, as a span of IDs. Most recent call last.
+boost::span<const int> executor_stack();
 
 // Get the ID of a tracker executor, or -1 if it's not a tracker executor
 int get_executor_id(asio::any_io_executor);
@@ -50,8 +55,24 @@ struct initiation_guard
 };
 bool is_initiation_function();
 
+// Global I/O context
 asio::any_io_executor global_context_executor();
-void run_global_context();
+void poll_global_context();  // poll once
+void poll_global_context(
+    const bool* done,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);  // poll until *done == true
+void poll_global_context(
+    const std::function<bool()>& done,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);  // poll until done() == true
+
+// TODO: refactor this
+void poll_context(
+    asio::any_io_executor ex,
+    const bool* done,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);
 
 }  // namespace test
 }  // namespace mysql

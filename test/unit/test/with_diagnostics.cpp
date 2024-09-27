@@ -63,10 +63,7 @@ BOOST_AUTO_TEST_CASE(success)
         called = true;
         BOOST_TEST((exc == nullptr));
     }));
-    run_global_context();
-
-    // Sanity check
-    BOOST_TEST(called);
+    poll_global_context(&called);
 }
 
 BOOST_AUTO_TEST_CASE(error)
@@ -85,10 +82,7 @@ BOOST_AUTO_TEST_CASE(error)
         called = true;
         check_exception(exc, common_server_errc::er_no_such_user, create_server_diag("Invalid user"));
     }));
-    run_global_context();
-
-    // Sanity check
-    BOOST_TEST(called);
+    poll_global_context(&called);
 }
 
 struct nulldiag_initiation
@@ -143,16 +137,14 @@ BOOST_AUTO_TEST_CASE(associated_properties)
     bool called = false;
     auto check_fn = [&](std::exception_ptr exc) {
         called = true;
-        BOOST_TEST(current_executor_id() == ex_result.executor_id);
+        const int expected_stack[] = {ex_result.executor_id};
+        BOOST_TEST(executor_stack() == expected_stack, boost::test_tools::per_element());
         check_exception(exc, common_server_errc::er_no_such_user, create_server_diag("Invalid user"));
     };
 
     // Call the op
     conn.async_reset_connection(with_diagnostics(asio::bind_executor(ex_result.ex, check_fn)));
-    run_global_context();
-
-    // Sanity check
-    BOOST_TEST(called);
+    poll_global_context(&called);
 }
 
 // We correctly forward initiation args
@@ -229,10 +221,7 @@ BOOST_AUTO_TEST_CASE(token_lvalue)
 
     // Call the op
     conn.async_reset_connection(token);
-    run_global_context();
-
-    // Sanity check
-    BOOST_TEST(called);
+    poll_global_context(&called);
 }
 
 BOOST_AUTO_TEST_CASE(token_const_lvalue)
@@ -245,10 +234,7 @@ BOOST_AUTO_TEST_CASE(token_const_lvalue)
 
     // Call the op
     conn.async_reset_connection(token);
-    run_global_context();
-
-    // Sanity check
-    BOOST_TEST(called);
+    poll_global_context(&called);
 }
 
 // with_diagnostics' initiation has the same executor as the initiation that gets passed,
@@ -263,10 +249,7 @@ BOOST_AUTO_TEST_CASE(initiation_propagates_executor)
 
     // Call the op
     conn.async_reset_connection(with_diagnostics(asio::cancel_after(std::chrono::seconds(1), cb)));
-    run_global_context();
-
-    // Sanity check
-    BOOST_TEST(called);
+    poll_global_context(&called);
 }
 
 // Edge case: if a diagnostics* gets passed as an argument
@@ -291,11 +274,10 @@ BOOST_AUTO_TEST_CASE(several_diagnostics_args)
         }),
         &other_diag
     ));
-    run_global_context();
+    poll_global_context(&called);
 
-    // Sanity check
-    BOOST_TEST(called);
-    BOOST_TEST(other_diag == diagnostics());  // unmodified
+    // Unmodified
+    BOOST_TEST(other_diag == diagnostics());
 }
 
 // with_diagnostics decays correctly

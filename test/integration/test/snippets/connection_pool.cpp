@@ -13,6 +13,7 @@
 #include <boost/mysql/with_diagnostics.hpp>
 
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/thread_pool.hpp>
@@ -39,12 +40,12 @@ boost::asio::awaitable<std::int64_t> get_num_employees(boost::mysql::connection_
 {
     // Get a fresh connection from the pool.
     // pooled_connection is a proxy to an any_connection object.
-    boost::mysql::pooled_connection conn = co_await pool.async_get_connection(boost::asio::use_awaitable);
+    boost::mysql::pooled_connection conn = co_await pool.async_get_connection();
 
     // Use pooled_connection::operator-> to access the underlying any_connection.
     // Let's use the connection
     results result;
-    co_await conn->async_execute("SELECT COUNT(*) FROM employee", result, boost::asio::use_awaitable);
+    co_await conn->async_execute("SELECT COUNT(*) FROM employee", result);
     co_return result.rows().at(0).at(0).as_int64();
 
     // When conn is destroyed, the connection is returned to the pool
@@ -55,17 +56,27 @@ boost::asio::awaitable<void> return_without_reset(boost::mysql::connection_pool&
 {
     //[connection_pool_return_without_reset
     // Get a connection from the pool
-    boost::mysql::pooled_connection conn = co_await pool.async_get_connection(boost::asio::use_awaitable);
+    boost::mysql::pooled_connection conn = co_await pool.async_get_connection();
 
     // Use the connection in a way that doesn't mutate session state.
     // We're not setting variables, preparing statements or starting transactions,
     // so it's safe to skip reset
     boost::mysql::results result;
-    co_await conn->async_execute("SELECT COUNT(*) FROM employee", result, boost::asio::use_awaitable);
+    co_await conn->async_execute("SELECT COUNT(*) FROM employee", result);
 
     // Explicitly return the connection to the pool, skipping reset
     conn.return_without_reset();
     //]
+}
+
+boost::asio::awaitable<void> apply_timeout(boost::mysql::connection_pool& pool)
+{
+    //[connection_pool_apply_timeout
+    // Get a connection from the pool, but don't wait more than 5 seconds
+    auto conn = co_await pool.async_get_connection(boost::asio::cancel_after(std::chrono::seconds(5)));
+    //]
+
+    conn.return_without_reset();
 }
 #endif
 
@@ -102,7 +113,18 @@ public:
         // use_future returns a std::future<pooled_connection>.
         // Calling get() waits for the future to complete and throws an exception on failure.
         // with_diagnostics ensures that the exception contains any server-supplied information.
-        return conn_pool_.async_get_connection(timeout, with_diagnostics(boost::asio::use_future)).get();
+        // cancel_after applies a timeout to the operation
+        // <-
+        // clang-format off
+        // ->
+        return conn_pool_
+            .async_get_connection(
+                with_diagnostics(boost::asio::cancel_after(timeout, boost::asio::use_future))
+            )
+            .get();
+        // <-
+        // clang-format on
+        // ->
     }
 };
 //]
@@ -168,6 +190,7 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
         pool.async_run(boost::asio::detached);
         run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
             co_await return_without_reset(pool);
+            co_await apply_timeout(pool);
             pool.cancel();
         });
 #endif
@@ -183,14 +206,10 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
         params.username = mysql_username;
         params.password = mysql_password;
         params.database = "boost_mysql_examples";
+        params.thread_safe = true;  // enable thread safety
 
-        // By passing pool_executor_params::thread_safe to connection_pool,
-        // we make all its member functions thread-safe.
-        // This works by creating a strand.
-        boost::mysql::connection_pool pool(
-            boost::mysql::pool_executor_params::thread_safe(ctx.get_executor()),
-            std::move(params)
-        );
+        // Construct a thread-safe pool
+        boost::mysql::connection_pool pool(ctx, std::move(params));
 
         // We can now pass a reference to pool to other threads,
         // and call async_get_connection concurrently without problem.

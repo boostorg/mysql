@@ -22,15 +22,6 @@ namespace asio = boost::asio;
 
 BOOST_AUTO_TEST_SUITE(test_pool_params)
 
-BOOST_AUTO_TEST_CASE(pool_executor_params_thread_safe)
-{
-    // The strand is only applied to the pool, and not to connections
-    asio::io_context ctx;
-    auto params = pool_executor_params::thread_safe(ctx.get_executor());
-    BOOST_TEST((params.pool_executor != ctx.get_executor()));
-    BOOST_TEST((params.connection_executor == ctx.get_executor()));
-}
-
 BOOST_AUTO_TEST_CASE(invalid_params)
 {
     struct
@@ -39,7 +30,7 @@ BOOST_AUTO_TEST_CASE(invalid_params)
         void (*params_fn)(pool_params&);
         string_view expected_msg;
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "max_size 0",
             [](pool_params& p) { p.max_size = 0; },
@@ -95,7 +86,7 @@ BOOST_AUTO_TEST_CASE(invalid_params)
             [](pool_params& p) { p.ping_timeout = (std::chrono::steady_clock::duration::min)(); },
             "pool_params::ping_timeout must not be negative"
         },
-  // clang-format on
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -117,7 +108,7 @@ BOOST_AUTO_TEST_CASE(valid_params)
         string_view name;
         void (*params_fn)(pool_params&);
     } test_cases[] = {
-  // clang-format off
+        // clang-format off
         {
             "initial_size == 0",
             [](pool_params& p) { p.initial_size = 0; },
@@ -154,7 +145,11 @@ BOOST_AUTO_TEST_CASE(valid_params)
             "ping_timeout == max",
             [](pool_params& p) { p.ping_timeout = (std::chrono::steady_clock::duration::max)(); },
         },
-  // clang-format on
+        {
+            "thread_safe == true",
+            [](pool_params& p) { p.thread_safe = true; },
+        }
+        // clang-format on
     };
 
     for (const auto& tc : test_cases)

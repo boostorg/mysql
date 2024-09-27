@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(move_assign)
     std::unique_ptr<archetype_context> source{new archetype_context(opts, string_archetype(42))};
     source->append_raw("SELECT ");
     archetype_context ctx(ascii_opts, string_archetype(42));
-    ctx.append_raw("abc").add_error(client_errc::cancelled);
+    ctx.append_raw("abc").add_error(client_errc::wrong_num_params);
 
     // Assign
     ctx = std::move(*source);

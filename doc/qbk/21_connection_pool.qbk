@@ -64,8 +64,7 @@ The resizing algorithm works like this:
 * If a connection is requested, but all available connections are in use, a
   new one is created, until `max_size` is reached. 
 * If a connection is requested, and there are `max_size` connections in use,
-  [refmem connection_pool async_get_connection] waits for a connection to become available,
-  up to a certain period of time. If no connection is available after this period, the operation fails.
+  [refmem connection_pool async_get_connection] waits for a connection to become available.
 * Once created, connections never get deallocated.
 
 By default, [refmem pool_params max_size] is 151, which is
@@ -82,6 +81,22 @@ This is how you configure pool sizes:
 
 [connection_pool_configure_size]
 
+
+[heading Applying a timeout to async_get_connection]
+
+By default, [refmem connection_pool async_get_connection] waits until a connection is available.
+This means that, if the server is unavailable, `async_get_connection` may wait forever.
+
+For this reason, you may consider setting a timeout to `async_get_connection`.
+You can do this using [asioreflink cancel_after cancel_after], which uses Asio's
+per-operation cancellation mechanism:
+
+[connection_pool_apply_timeout]
+
+You might consider setting the timeout at a higher level, instead. For instance,
+if you're handling an HTTP request, you can use `cancel_after` to set a timeout
+to the entire request. The [link mysql.examples.connection_pool connection pool example]
+takes this approach.
 
 
 [heading Session state]
@@ -155,27 +170,24 @@ In short:
   setting [refmem pool_params ping_interval] to zero.
 
 
-[heading Thread-safety and executors]
+[heading Thread-safety]
 
-By default, [reflink connection_pool] is [*NOT thread-safe], but it can
-be easily made thread-safe by using:
+By default, [reflink connection_pool] is [*not thread-safe], but it can
+be easily made thread-safe by setting [refmem pool_params thread_safe]:
 
 [connection_pool_thread_safe]
 
-This works by using strands. Recall that a [asioreflink strand strand] is Asio's method to enable concurrency
-without explicit locking. A strand is an executor that wraps another executor.
-All handlers dispatched through a strand will be serialized: no two handlers
-will be run in parallel, which avoids data races.
+Thread-safe connection pools create internally a [asioreflink strand strand],
+Asio's method to enable concurrency without explicit locking.
+Enabling thread-safety will ensure that all intermediate handlers run through
+the created strand, avoiding data races at the cost of some performance.
 
-We're passing a [reflink pool_executor_params] instance to the pool's
-constructor, which contains two executors:
+[note
+  Thread-safety only protects the pool. Individual connections are [*not] thread-safe.
+]
 
-* [refmem pool_executor_params pool_executor] is used to run [refmem connection_pool async_run]
-  and [refmem connection_pool async_get_connection] intermediate handlers. By using
-  [refmem pool_executor_params thread_safe], a strand is created, and all these handlers
-  will be serialized.
-* [refmem pool_executor_params connection_executor] is used to construct connections.
-  By default, this won't be wrapped in any strand, and inividual connections will not be thread-safe.
+Thread-safety extends to per-operation cancellation, too.
+Cancelling an operation on a thread-safe pool is safe.
 
 
 [heading Transport types and TLS]

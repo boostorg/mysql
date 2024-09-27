@@ -10,7 +10,7 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include <memory>
+#include <chrono>
 
 namespace boost {
 namespace mysql {
@@ -20,22 +20,16 @@ class any_connection;
 
 namespace detail {
 
-struct io_traits;
-
-template <class IoTraits>
+template <class ConnectionType, class ClockType>
 class basic_connection_node;
 
-template <class IoTraits, class ConnectionWrapper>
+template <class ConnectionType, class ClockType, class ConnectionWrapper>
 class basic_pool_impl;
 
-using connection_node = basic_connection_node<io_traits>;
-using pool_impl = basic_pool_impl<io_traits, pooled_connection>;
+using connection_node = basic_connection_node<any_connection, std::chrono::steady_clock>;
+using pool_impl = basic_pool_impl<any_connection, std::chrono::steady_clock, pooled_connection>;
 
-BOOST_MYSQL_DECL void return_connection(
-    std::shared_ptr<pool_impl> pool,
-    connection_node& node,
-    bool should_reset
-) noexcept;
+BOOST_MYSQL_DECL void return_connection(pool_impl& pool, connection_node& node, bool should_reset) noexcept;
 BOOST_MYSQL_DECL any_connection& get_connection(connection_node& node) noexcept;
 
 }  // namespace detail

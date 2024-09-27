@@ -20,6 +20,7 @@ run
         # Helpers
         src/test_stream.cpp
         src/printing.cpp
+        src/mock_timer.cpp
 
         # Actual tests
         test/auth/auth.cpp
@@ -59,7 +60,6 @@ run
         test/execution_processor/results_impl.cpp
         test/execution_processor/static_results_impl.cpp
 
-        test/connection_pool/timer_list.cpp
         test/connection_pool/wait_group.cpp
         test/connection_pool/run_with_timeout.cpp
         test/connection_pool/sansio_connection_node.cpp

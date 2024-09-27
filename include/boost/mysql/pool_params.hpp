@@ -31,9 +31,6 @@ namespace mysql {
  * \details
  * Contains two executors: one for the pool's internal objects, and another for the connections
  * created by the pool.
- * \n
- * You may use \ref thread_safe to create an instance of this class
- * that makes pools thread-safe.
  *
  * \par Experimental
  * This part of the API is experimental, and may change in successive
@@ -46,24 +43,6 @@ struct pool_executor_params
 
     /// The executor to be used by connections created by the pool.
     asio::any_io_executor connection_executor;
-
-    /**
-     * \brief Creates a pool_executor_params object that makes pools thread-safe.
-     * \details
-     * Creates an `asio::strand` object wrapping `ex` and uses it as the pool
-     * executor. Uses `ex` directly for the connections. The resulting configuration
-     * makes safe to call \ref connection_pool::async_get_connection,
-     * \ref connection_pool::async_run, \ref connection_pool::cancel,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset
-     * concurrently from different threads.
-     *
-     * \par Exception safety
-     * Strong guarantee. Creating the strand may throw.
-     */
-    static pool_executor_params thread_safe(asio::any_io_executor ex)
-    {
-        return pool_executor_params{asio::make_strand(ex), ex};
-    }
 };
 
 /**
@@ -201,6 +180,23 @@ struct pool_params
      * This value must not be negative.
      */
     std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
+
+    /**
+     * \brief Enables or disables thread-safety.
+     * \details
+     * When set to `true`, the resulting connection pool are able to
+     * be shared between threads at the cost of some performance.
+     *
+     * Enabling thread safety for a pool creates an internal `asio::strand` object
+     * wrapping the executor passed in \ref pool_executor_params::pool_executor.
+     * All state-mutating functions (including \ref connection_pool::async_run,
+     * \ref connection_pool::async_get_connection and returning connections)
+     * will be run through the created strand.
+     *
+     * Thread-safety doesn't extend to individual connections: \ref pooled_connection
+     * objects can't be shared between threads.
+     */
+    bool thread_safe{false};
 };
 
 }  // namespace mysql

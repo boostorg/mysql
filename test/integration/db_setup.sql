@@ -10,6 +10,7 @@ SET NAMES utf8;
 SET session sql_mode = 'ALLOW_INVALID_DATES'; -- allow zero and invalid dates
 SET session time_zone = '+02:00'; -- arbitrary, but should match whatever we use in database_types
 SET global max_allowed_packet = 83886080; -- 0x5000000 - for max packet size tests
+SET global max_connections = 5000; -- thread safety tests use a lot of connections and may be run in parallel
 
 START TRANSACTION;
 

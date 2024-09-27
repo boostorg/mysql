@@ -8,8 +8,11 @@
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/bind_executor.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/thread_pool.hpp>
 
@@ -18,9 +21,9 @@
 #include "tsan_pool_common.hpp"
 
 using boost::mysql::error_code;
+using namespace boost::mysql::test;
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
-using namespace boost::mysql::test;
 
 namespace {
 
@@ -28,20 +31,33 @@ class task
 {
     mysql::connection_pool& pool_;
     coordinator& coord_;
+    asio::any_io_executor token_ex_;
     mysql::results r_;
     mysql::diagnostics diag_;
     mysql::pooled_connection conn_;
 
 public:
-    task(mysql::connection_pool& pool, coordinator& coord) : pool_(pool), coord_(coord) {}
+    task(mysql::connection_pool& pool, coordinator& coord, asio::any_io_executor token_ex)
+        : pool_(pool), coord_(coord), token_ex_(std::move(token_ex))
+    {
+    }
 
     void start_get_connection()
     {
-        pool_.async_get_connection(diag_, [this](error_code ec, mysql::pooled_connection c) {
-            check_ec(ec, diag_);
-            conn_ = std::move(c);
-            start_execute();
-        });
+        // Verify that we achieve thread-safety even if the token
+        // has a bound executor associated to an execution context different
+        // from the one that the pool is using (regression check).
+        pool_.async_get_connection(
+            diag_,
+            asio::bind_executor(
+                token_ex_,
+                [this](error_code ec, mysql::pooled_connection c) {
+                    check_ec(ec, diag_);
+                    conn_ = std::move(c);
+                    start_execute();
+                }
+            )
+        );
     }
 
     void start_execute()
@@ -60,24 +76,27 @@ public:
 void run(const char* hostname)
 {
     // Setup
-    asio::thread_pool ctx(8);
-    mysql::connection_pool pool(ctx, create_pool_params(hostname));
+    asio::thread_pool pool_ctx(8);
+    asio::thread_pool external_ctx(4);
+    mysql::connection_pool pool(pool_ctx, create_pool_params(hostname));
     coordinator coord(pool);
     std::vector<task> tasks;
 
-    // Run the pool
-    pool.async_run(asio::detached);
+    // The pool should be thread-safe even if we pass a token with a custom
+    // executor to async_run
+    pool.async_run(asio::bind_executor(external_ctx.get_executor(), asio::detached));
 
     // Create tasks
     for (std::size_t i = 0; i < num_tasks; ++i)
-        tasks.emplace_back(pool, coord);
+        tasks.emplace_back(pool, coord, external_ctx.get_executor());
 
     // Launch
     for (auto& t : tasks)
         t.start_get_connection();
 
     // Run
-    ctx.join();
+    pool_ctx.join();
+    external_ctx.join();
 }
 
 }  // namespace

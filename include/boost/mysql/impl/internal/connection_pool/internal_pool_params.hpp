@@ -39,6 +39,7 @@ struct internal_pool_params
     std::chrono::steady_clock::duration ping_timeout;
     std::chrono::steady_clock::duration retry_interval;
     std::chrono::steady_clock::duration ping_interval;
+    bool thread_safe;
 
     any_connection_params make_ctor_params() noexcept
     {
@@ -93,6 +94,7 @@ inline internal_pool_params make_internal_pool_params(pool_params&& params)
         params.ping_timeout,
         params.retry_interval,
         params.ping_interval,
+        params.thread_safe,
     };
 }
 

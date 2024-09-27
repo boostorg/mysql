@@ -15,16 +15,18 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pipeline.hpp>
 
+#include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/impl/internal/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
-#include <boost/mysql/impl/internal/connection_pool/timer_list.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/basic_waitable_timer.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/list_hook.hpp>
@@ -37,42 +39,43 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Traits to use by default for nodes. Templating on traits provides
-// a way to mock dependencies in tests. Production code only uses
-// instantiations that use io_traits.
-// Having this as a traits type (as opposed to individual template params)
-// allows us to forward-declare io_traits without having to include steady_timer
-struct io_traits
-{
-    using connection_type = any_connection;
-    using timer_type = asio::steady_timer;
-};
-
 // State shared between connection tasks
-template <class IoTraits>
+template <class ConnectionType, class ClockType>
 struct conn_shared_state
 {
-    intrusive::list<basic_connection_node<IoTraits>> idle_list;
-    timer_list<typename IoTraits::timer_type> pending_requests;
+    // The list of connections that are currently idle. Non-owning.
+    intrusive::list<basic_connection_node<ConnectionType, ClockType>> idle_list;
+
+    // Timer acting as a condition variable to wait for idle connections
+    asio::basic_waitable_timer<ClockType> idle_connections_cv;
+
+    // The number of pending connections (currently getting ready).
+    // Controls that we don't create connections while some are still connecting
     std::size_t num_pending_connections{0};
-    error_code last_ec;
-    diagnostics last_diag;
+
+    // Info about the last connection attempt. Already processed, suitable to be used
+    // as the result of an async_get_connection op
+    diagnostics last_connect_diag;
+
+    conn_shared_state(asio::any_io_executor ex)
+        : idle_connections_cv(std::move(ex), (ClockType::time_point::max)())
+    {
+    }
 };
 
 // The templated type is never exposed to the user. We template
 // so tests can inject mocks.
-template <class IoTraits>
+template <class ConnectionType, class ClockType>
 class basic_connection_node : public intrusive::list_base_hook<>,
-                              public sansio_connection_node<basic_connection_node<IoTraits>>
+                              public sansio_connection_node<basic_connection_node<ConnectionType, ClockType>>
 {
-    using this_type = basic_connection_node<IoTraits>;
-    using connection_type = typename IoTraits::connection_type;
-    using timer_type = typename IoTraits::timer_type;
+    using this_type = basic_connection_node<ConnectionType, ClockType>;
+    using timer_type = asio::basic_waitable_timer<ClockType>;
 
     // Not thread-safe, must be manipulated within the pool's executor
     const internal_pool_params* params_;
-    conn_shared_state<IoTraits>* shared_st_;
-    connection_type conn_;
+    conn_shared_state<ConnectionType, ClockType>* shared_st_;
+    ConnectionType conn_;
     timer_type timer_;
     diagnostics connect_diag_;
     timer_type collection_timer_;  // Notifications about collections. A separate timer makes potential race
@@ -84,11 +87,11 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     std::atomic<collection_state> collection_state_{collection_state::none};
 
     // Hooks for sansio_connection_node
-    friend class sansio_connection_node<basic_connection_node<IoTraits>>;
+    friend class sansio_connection_node<this_type>;
     void entering_idle()
     {
         shared_st_->idle_list.push_back(*this);
-        shared_st_->pending_requests.notify_one();
+        shared_st_->idle_connections_cv.cancel_one();
     }
     void exiting_idle() { shared_st_->idle_list.erase(shared_st_->idle_list.iterator_to(*this)); }
     void entering_pending() { ++shared_st_->num_pending_connections; }
@@ -97,8 +100,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     // Helpers
     void propagate_connect_diag(error_code ec)
     {
-        shared_st_->last_ec = ec;
-        shared_st_->last_diag = connect_diag_;
+        shared_st_->last_connect_diag = create_connect_diagnostics(ec, connect_diag_);
     }
 
     struct connection_task_op
@@ -178,16 +180,16 @@ class basic_connection_node : public intrusive::list_base_hook<>,
 public:
     basic_connection_node(
         internal_pool_params& params,
-        boost::asio::any_io_executor ex,
+        boost::asio::any_io_executor pool_ex,
         boost::asio::any_io_executor conn_ex,
-        conn_shared_state<IoTraits>& shared_st,
+        conn_shared_state<ConnectionType, ClockType>& shared_st,
         const pipeline_request* reset_pipeline_req
     )
         : params_(&params),
           shared_st_(&shared_st),
           conn_(std::move(conn_ex), params.make_ctor_params()),
-          timer_(ex),
-          collection_timer_(ex, (std::chrono::steady_clock::time_point::max)()),
+          timer_(pool_ex),
+          collection_timer_(pool_ex, (std::chrono::steady_clock::time_point::max)()),
           reset_pipeline_req_(reset_pipeline_req)
     {
     }
@@ -207,8 +209,8 @@ public:
         return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token);
     }
 
-    connection_type& connection() noexcept { return conn_; }
-    const connection_type& connection() const noexcept { return conn_; }
+    ConnectionType& connection() noexcept { return conn_; }
+    const ConnectionType& connection() const noexcept { return conn_; }
 
     // Not thread-safe, must be called within the pool's executor
     void notify_collectable() { collection_timer_.cancel(); }

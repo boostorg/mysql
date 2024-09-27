@@ -81,17 +81,23 @@ enum class client_errc : int
     /// The static interface encountered an error when parsing a field into a C++ data structure.
     static_row_parsing_error,
 
-    /// (EXPERIMENTAL) An operation controlled by Boost.MySQL timed out.
-    timeout,
-
-    /// (EXPERIMENTAL) An operation controlled by Boost.MySQL was cancelled.
-    cancelled,
-
     /**
      * \brief (EXPERIMENTAL) Getting a connection from a connection_pool failed because the
      * pool is not running. Ensure that you're calling connection_pool::async_run.
      */
     pool_not_running,
+
+    /**
+     * \brief (EXPERIMENTAL) Getting a connection from a connection_pool failed because the
+     * pool was cancelled.
+     */
+    pool_cancelled,
+
+    /**
+     * \brief (EXPERIMENTAL) Getting a connection from a connection_pool was cancelled before
+     * a connection was available.
+     */
+    no_connection_available,
 
     /// (EXPERIMENTAL) An invalid byte sequence was found while trying to decode a string.
     invalid_encoding,

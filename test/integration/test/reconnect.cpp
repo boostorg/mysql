@@ -11,6 +11,7 @@
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/cancellation_type.hpp>
@@ -151,7 +152,11 @@ BOOST_FIXTURE_TEST_CASE(reconnect_after_cancel, any_connection_fixture)
 
     // Kick an operation that ends up cancelled
     asio::cancellation_signal sig;
-    auto netres = conn.async_execute("DO SLEEP(2)", r, as_netresult_t{sig.slot()});
+    auto netres = conn.async_execute(
+        "DO SLEEP(2)",
+        r,
+        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+    );
 
     // Return to the event loop and emit the signal
     asio::post(asio::bind_executor(global_context_executor(), [&]() {

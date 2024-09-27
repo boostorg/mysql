@@ -244,6 +244,18 @@ BOOST_AUTO_TEST_CASE(ctor_from_execution_context)
     BOOST_TEST(pool.valid());
 }
 
+BOOST_AUTO_TEST_CASE(get_executor_thread_safe)
+{
+    // Construct
+    asio::io_context ctx;
+    pool_params params;
+    params.thread_safe = true;
+    connection_pool pool(ctx, std::move(params));
+
+    // get_executor() should return ctx's executor, not any internally created strand
+    BOOST_TEST((pool.get_executor() == ctx.get_executor()));
+}
+
 BOOST_FIXTURE_TEST_CASE(move_ctor_valid, pool_fixture)
 {
     // Move-constructing a pool leaves the original object invalid
@@ -312,11 +324,8 @@ void deferred_spotcheck()
 {
     connection_pool pool(test::global_context_executor(), pool_params());
     diagnostics diag;
-    std::chrono::seconds timeout(5);
 
     (void)pool.async_run(asio::deferred);
-    (void)pool.async_get_connection(timeout, diag, asio::deferred);
-    (void)pool.async_get_connection(timeout, asio::deferred);
     (void)pool.async_get_connection(diag, asio::deferred);
     (void)pool.async_get_connection(asio::deferred);
 }
@@ -327,11 +336,8 @@ asio::awaitable<void> spotcheck_default_tokens()
 {
     connection_pool pool(test::global_context_executor(), pool_params());
     diagnostics diag;
-    std::chrono::seconds timeout(5);
 
     co_await pool.async_run();
-    co_await pool.async_get_connection(timeout, diag);
-    co_await pool.async_get_connection(timeout);
     co_await pool.async_get_connection(diag);
     co_await pool.async_get_connection();
 }
@@ -356,12 +362,9 @@ void spotcheck_partial_tokens()
 {
     connection_pool pool(test::global_context_executor(), pool_params());
     diagnostics diag;
-    std::chrono::seconds timeout(5);
     auto tok = asio::cancel_after(std::chrono::seconds(10));
 
     check_op(pool.async_run(tok));
-    check_op(pool.async_get_connection(timeout, diag, tok));
-    check_op(pool.async_get_connection(timeout, tok));
     check_op(pool.async_get_connection(diag, tok));
     check_op(pool.async_get_connection(tok));
 }
