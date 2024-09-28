@@ -34,12 +34,14 @@
 #include <chrono>
 #include <cstring>
 #include <functional>
+#include <iomanip>
 #include <ostream>
 #include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/poll_until.hpp"
 #include "test_common/printing.hpp"
@@ -47,6 +49,32 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+
+//
+// assert_buffer_equals.hpp
+//
+std::ostream& boost::mysql::test::operator<<(std::ostream& os, buffer_printer buff)
+{
+    os << std::setfill('0') << std::hex << "{ ";
+    for (std::size_t i = 0; i < buff.buff.size(); ++i)
+    {
+        os << "0x" << std::setw(2) << static_cast<int>(buff.buff.data()[i]) << ", ";
+    }
+    return os << "}";
+}
+
+bool boost::mysql::test::buffer_equals(span<const std::uint8_t> b1, span<const std::uint8_t> b2)
+{
+    // If any of the buffers are empty (data() == nullptr), prevent
+    // calling memcmp (UB)
+    if (b1.size() == 0 || b2.size() == 0)
+        return b1.size() == 0 && b2.size() == 0;
+
+    if (b1.size() != b2.size())
+        return false;
+
+    return ::std::memcmp(b1.data(), b2.data(), b1.size()) == 0;
+}
 
 //
 // printing.hpp
