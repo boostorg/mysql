@@ -10,13 +10,10 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/awaitable.hpp>
-#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/assert/source_location.hpp>
 
 #include <functional>
 
-#include "test_common/poll_until.hpp"
 #include "test_common/source_location.hpp"
 
 namespace boost {
@@ -24,22 +21,11 @@ namespace mysql {
 namespace test {
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
-inline void run_coro(
+void run_coro(
     boost::asio::any_io_executor ex,
     std::function<boost::asio::awaitable<void>(void)> fn,
     source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-)
-{
-    bool done = false;
-    boost::asio::co_spawn(ex, fn, [&](std::exception_ptr ptr) {
-        done = true;
-        if (ptr)
-        {
-            std::rethrow_exception(ptr);
-        }
-    });
-    poll_until(ex, &done, loc);
-}
+);
 #endif
 
 }  // namespace test

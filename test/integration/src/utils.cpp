@@ -8,19 +8,26 @@
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/handshake_params.hpp>
 
+#include <boost/asio/co_spawn.hpp>
 #include <boost/assert/source_location.hpp>
+
+#include <exception>
 
 #include "test_common/ci_server.hpp"
 #include "test_common/network_result.hpp"
-#include "test_common/tracker_executor.hpp"
+#include "test_common/poll_until.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
+#include "test_integration/run_coro.hpp"
 #include "test_integration/tcp_connection_fixture.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
 
+//
+// any_connection_fixture.hpp
+//
 static any_connection_params make_params(asio::ssl::context& ssl_ctx)
 {
     any_connection_params res;
@@ -28,7 +35,6 @@ static any_connection_params make_params(asio::ssl::context& ssl_ctx)
     return res;
 }
 
-// any_connection_fixture
 any_connection_fixture::any_connection_fixture(any_connection_params params) : conn(ctx, params)
 {
     conn.set_meta_mode(metadata_mode::full);
@@ -57,7 +63,9 @@ void any_connection_fixture::start_transaction(boost::source_location loc)
     conn.async_execute("START TRANSACTION", r, as_netresult).validate_no_error(loc);
 }
 
-// tcp_connection_fixture
+//
+// tcp_connection_fixture.hpp
+//
 static asio::ip::tcp::endpoint resolve_server_endpoint()
 {
     asio::io_context ctx;
@@ -86,7 +94,9 @@ asio::ip::tcp::endpoint boost::mysql::test::get_tcp_endpoint()
     return res;
 }
 
-// connect_params_builder
+//
+// connect_params_builder.hpp
+//
 connect_params connect_params_builder::build()
 {
     connect_params res;
@@ -99,3 +109,25 @@ connect_params connect_params_builder::build()
     res.connection_collation = res_.connection_collation();
     return res;
 }
+
+//
+// run_coro.hpp
+//
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+void boost::mysql::test::run_coro(
+    boost::asio::any_io_executor ex,
+    std::function<boost::asio::awaitable<void>(void)> fn,
+    source_location loc
+)
+{
+    bool done = false;
+    boost::asio::co_spawn(ex, fn, [&](std::exception_ptr ptr) {
+        done = true;
+        if (ptr)
+        {
+            std::rethrow_exception(ptr);
+        }
+    });
+    poll_until(ex, &done, loc);
+}
+#endif
