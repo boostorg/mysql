@@ -23,7 +23,7 @@
 
 #include <iosfwd>
 
-#include "test_common/context_utils.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/static_rows.hpp"

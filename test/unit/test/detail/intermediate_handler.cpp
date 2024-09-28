@@ -23,7 +23,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/context_utils.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/custom_allocator.hpp"

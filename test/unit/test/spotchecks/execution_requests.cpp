@@ -34,7 +34,7 @@
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
-#include "test_common/context_utils.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/create_ok.hpp"

@@ -32,8 +32,8 @@
 #include <vector>
 
 #include "test_common/ci_server.hpp"
-#include "test_common/context_utils.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/source_location.hpp"

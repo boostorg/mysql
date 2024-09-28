@@ -16,7 +16,7 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/context_utils.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_meta.hpp"

@@ -22,7 +22,7 @@
 #include <array>
 #include <ostream>
 
-#include "test_common/context_utils.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/printing.hpp"
 
 using namespace boost::mysql;

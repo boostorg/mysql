@@ -13,7 +13,7 @@
 
 #include <boost/assert/source_location.hpp>
 
-#include "test_common/context_utils.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/source_location.hpp"
 
 namespace boost {

@@ -125,8 +125,7 @@ lib boost_mysql_compiled
 alias common_test_sources
     :
         common/src/entry_point.cpp
-        common/src/tracker_executor.cpp
-        common/src/printing.cpp
+        common/src/utils.cpp
     ;
 
 # Boost.Context causes failures with warnings-as-errors
