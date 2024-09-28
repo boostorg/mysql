@@ -30,6 +30,7 @@
 #include <boost/assert/source_location.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstring>
@@ -43,9 +44,11 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/io_context_fixture.hpp"
+#include "test_common/network_result.hpp"
 #include "test_common/poll_until.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
+#include "test_common/validate_string_contains.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -419,4 +422,112 @@ boost::mysql::test::io_context_fixture::~io_context_fixture()
     // Verify that our tests don't leave unfinished work
     ctx.poll();
     BOOST_TEST(ctx.stopped());
+}
+
+//
+// network_result.hpp
+//
+void boost::mysql::test::network_result_base::validate_no_error(source_location loc) const
+{
+    validate_error(error_code(), diagnostics(), loc);
+}
+
+void boost::mysql::test::network_result_base::validate_no_error_nodiag(source_location loc) const
+{
+    validate_error(error_code(), create_server_diag("<diagnostics unavailable>"), loc);
+}
+
+void boost::mysql::test::network_result_base::validate_error(
+    error_code expected_err,
+    const diagnostics& expected_diag,
+    source_location loc
+) const
+{
+    BOOST_TEST_CONTEXT("Called from " << loc)
+    {
+        BOOST_TEST(diag == expected_diag);
+        BOOST_TEST_REQUIRE(err == expected_err);
+    }
+}
+
+void boost::mysql::test::network_result_base::validate_error(
+    common_server_errc expected_err,
+    string_view expected_msg,
+    source_location loc
+)
+{
+    validate_error(expected_err, create_server_diag(expected_msg), loc);
+}
+
+void boost::mysql::test::network_result_base::validate_error(
+    client_errc expected_err,
+    string_view expected_msg,
+    source_location loc
+)
+{
+    validate_error(expected_err, create_client_diag(expected_msg), loc);
+}
+
+void boost::mysql::test::network_result_base::validate_error_contains(
+    error_code expected_err,
+    const std::vector<std::string>& pieces,
+    source_location loc
+)
+{
+    BOOST_TEST_CONTEXT("Called from " << loc)
+    {
+        validate_string_contains(diag.server_message(), pieces);
+        BOOST_TEST_REQUIRE(err == expected_err);
+    }
+}
+
+void boost::mysql::test::network_result_base::validate_any_error(source_location loc) const
+{
+    BOOST_TEST_CONTEXT("Called from " << loc) { BOOST_TEST_REQUIRE(err != error_code()); }
+}
+
+boost::mysql::test::test_detail::as_netres_handler_base::as_netres_handler_base(
+    asio::io_context& ctx,
+    asio::cancellation_slot slot,
+    const diagnostics* diag
+)
+    : ex_(create_tracker_executor(ctx.get_executor())),
+      immediate_ex_(create_tracker_executor(ctx.get_executor())),
+      slot_(slot),
+      diag_ptr(diag)
+{
+}
+
+void boost::mysql::test::test_detail::as_netres_handler_base::complete_base(
+    error_code ec,
+    network_result_base& netres
+) const
+{
+    // Check executor. The passed executor must be the top one in all cases.
+    // Immediate completions must be dispatched through the immediate executor, too.
+    // In all cases, we may encounter a bigger stack because of previous immediate completions.
+    const std::array<int, 1> stack_data_regular{{ex_.executor_id}};
+    const std::array<int, 2> stack_data_immediate{
+        {immediate_ex_.executor_id, ex_.executor_id}
+    };
+
+    // Expected top of the executor stack
+    boost::span<const int> expected_stack_top = is_initiation_function()
+                                                    ? boost::span<const int>(stack_data_immediate)
+                                                    : boost::span<const int>(stack_data_regular);
+
+    // Actual top of the executor stack
+    auto actual_stack_top = executor_stack().last(
+        (std::min)(executor_stack().size(), expected_stack_top.size())
+    );
+
+    // Compare
+    BOOST_TEST(actual_stack_top == expected_stack_top, boost::test_tools::per_element());
+
+    // Assign error code and diagnostics
+    netres.err = ec;
+    if (diag_ptr)
+        netres.diag = *diag_ptr;
+    else
+        netres.diag = create_server_diag("<diagnostics unavailable>");
 }
