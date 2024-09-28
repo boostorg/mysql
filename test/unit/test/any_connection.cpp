@@ -16,6 +16,7 @@
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -120,7 +121,8 @@ BOOST_AUTO_TEST_CASE(set_meta_mode)
 // spotcheck: deferred compiles even in C++11
 void deferred_spotcheck()
 {
-    auto conn = test::create_test_any_connection();
+    asio::io_context ctx;
+    auto conn = test::create_test_any_connection(ctx);
     connect_params params;
     diagnostics diag;
     results result;
@@ -168,7 +170,8 @@ void deferred_spotcheck()
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 asio::awaitable<void> spotcheck_default_tokens()
 {
-    auto conn = test::create_test_any_connection();
+    asio::io_context ctx;
+    auto conn = test::create_test_any_connection(ctx);
     connect_params params;
     diagnostics diag;
     results result;
@@ -221,7 +224,8 @@ void check_op(asio::deferred_async_operation<void(T, SigArgs...), Rest...>)
 
 void spotcheck_partial_tokens()
 {
-    auto conn = test::create_test_any_connection();
+    asio::io_context ctx;
+    auto conn = test::create_test_any_connection(ctx);
     connect_params params;
     diagnostics diag;
     results result;

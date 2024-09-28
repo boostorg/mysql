@@ -11,9 +11,6 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <cstring>
-#include <iomanip>
-
 namespace boost {
 namespace mysql {
 namespace test {
@@ -25,28 +22,8 @@ struct buffer_printer
     constexpr buffer_printer(span<const std::uint8_t> b) noexcept : buff(b) {}
 };
 
-inline std::ostream& operator<<(std::ostream& os, buffer_printer buff)
-{
-    os << std::setfill('0') << std::hex << "{ ";
-    for (std::size_t i = 0; i < buff.buff.size(); ++i)
-    {
-        os << "0x" << std::setw(2) << static_cast<int>(buff.buff.data()[i]) << ", ";
-    }
-    return os << "}";
-}
-
-inline bool buffer_equals(span<const std::uint8_t> b1, span<const std::uint8_t> b2) noexcept
-{
-    // If any of the buffers are empty (data() == nullptr), prevent
-    // calling memcmp (UB)
-    if (b1.size() == 0 || b2.size() == 0)
-        return b1.size() == 0 && b2.size() == 0;
-
-    if (b1.size() != b2.size())
-        return false;
-
-    return ::std::memcmp(b1.data(), b2.data(), b1.size()) == 0;
-}
+std::ostream& operator<<(std::ostream& os, buffer_printer buff);
+bool buffer_equals(span<const std::uint8_t> b1, span<const std::uint8_t> b2);
 
 }  // namespace test
 }  // namespace mysql

@@ -55,7 +55,9 @@
 #include <utility>
 
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
+#include "test_common/poll_until.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/source_location.hpp"
 #include "test_common/tracker_executor.hpp"
@@ -317,8 +319,8 @@ class get_connection_task
         bool bind_slot;
 
         handler(std::shared_ptr<impl_t> st, bool bind_slot)
-            : ex_result(create_tracker_executor(global_context_executor())),
-              immediate_ex_result(create_tracker_executor(global_context_executor())),
+            : ex_result(create_tracker_executor(st->pool.get_executor())),
+              immediate_ex_result(create_tracker_executor(st->pool.get_executor())),
               state(std::move(st)),
               bind_slot(bind_slot)
         {
@@ -377,7 +379,8 @@ class get_connection_task
         boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     )
     {
-        poll_global_context(&impl_->called, loc);
+        auto& ctx = static_cast<asio::io_context&>(impl_->pool.get_executor().context());
+        poll_until(ctx, &impl_->called, loc);
         BOOST_TEST_CONTEXT("Called from " << loc)
         {
             auto* expected_pool = expected_ec ? nullptr : &impl_->pool;
@@ -396,7 +399,7 @@ public:
         // We need to dispatch it so the initiation runs in the io_context, and we can see immediate
         // completions
         auto impl = impl_;
-        asio::dispatch(asio::bind_executor(global_context_executor(), [impl, &pool, diag, bind_slot]() {
+        asio::dispatch(asio::bind_executor(pool.get_executor(), [impl, &pool, diag, bind_slot]() {
             // Mark that we're calling an initiating function
             initiation_guard guard;
 
@@ -429,15 +432,15 @@ public:
     }
 };
 
-std::shared_ptr<mock_pool> create_mock_pool(pool_params&& params)
+std::shared_ptr<mock_pool> create_mock_pool(asio::io_context& ctx, pool_params&& params)
 {
     return std::make_shared<mock_pool>(
-        pool_executor_params{global_context_executor(), global_context_executor()},
+        pool_executor_params{ctx.get_executor(), ctx.get_executor()},
         std::move(params)
     );
 }
 
-class fixture
+class fixture : public io_context_fixture
 {
 private:
     // Pool (must be created using dynamic memory)
@@ -445,7 +448,7 @@ private:
     bool run_finished_{false};
 
 public:
-    fixture(pool_params&& params) : pool_(create_mock_pool(std::move(params)))
+    fixture(pool_params&& params) : pool_(create_mock_pool(ctx, std::move(params)))
     {
         pool_->async_run([this](error_code ec) {
             run_finished_ = true;
@@ -457,7 +460,7 @@ public:
     {
         // Finish the pool
         pool_->cancel();
-        poll_global_context(&run_finished_);
+        poll_until(ctx, &run_finished_);
     }
 
     mock_pool& pool() { return *pool_; }
@@ -486,13 +489,13 @@ public:
         boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     )
     {
-        poll_global_context([&node, status]() { return node.status() == status; }, loc);
+        poll_until(ctx, [&node, status]() { return node.status() == status; }, loc);
     }
 
     // Waits until there is at least num_nodes connections in the list
     void wait_for_num_nodes(std::size_t num_nodes, boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION)
     {
-        poll_global_context([this, num_nodes]() { return pool_->nodes().size() == num_nodes; }, loc);
+        poll_until(ctx, [this, num_nodes]() { return pool_->nodes().size() == num_nodes; }, loc);
     }
 
     // Wrapper for calling mock_connection::step()
@@ -700,7 +703,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
 
     // Reset doesn't time out, regardless of how much time we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
-    poll_global_context([&]() { return node.status() == connection_status::reset_in_progress; });
+    poll_until(fix.ctx, [&]() { return node.status() == connection_status::reset_in_progress; });
     fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reset succeeds
@@ -812,7 +815,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
 
     // Ping doesn't time out, regardless of how much we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
-    poll_global_context([&]() { return node.status() == connection_status::ping_in_progress; });
+    poll_until(fix.ctx, [&]() { return node.status() == connection_status::ping_in_progress; });
 
     // Ping succeeds
     fix.step(node, fn_type::ping);
@@ -836,7 +839,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
 
     // Connection won't ping, regardless of how much time we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
-    poll_global_context([&]() { return node.status() == connection_status::idle; });
+    poll_until(fix.ctx, [&]() { return node.status() == connection_status::idle; });
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -913,7 +916,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
             // A request for a connection is issued. The request doesn't find
             // any available connection, and the current one is pending, so no new connections are created
             auto task = fix.create_task(nullptr, tc.bind_slot);
-            poll_global_context();
+            fix.ctx.poll();
             BOOST_TEST(fix.pool().nodes().size() == 1u);
 
             // Retry interval ellapses and connection retries and succeeds
@@ -958,7 +961,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
             // A request for a connection is issued. The request doesn't find
             // any available connection, and the current one is pending, so no new connections are created
             auto task = fix.create_task(&diag);
-            poll_global_context();
+            fix.ctx.poll();
             BOOST_TEST(fix.pool().nodes().size() == 1u);
 
             // The connection fails to connect
@@ -992,7 +995,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_no_diag_available)
 
     // A request for a connection is issued
     auto task = fix.create_task(&diag);
-    poll_global_context();
+    fix.ctx.poll();
 
     // The request gets cancelled. No diagnostics is available, so nothing is returned
     task.cancel();
@@ -1014,7 +1017,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
     auto task = fix.create_task(&diag);
-    poll_global_context();
+    fix.ctx.poll();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // The connection attempt times out
@@ -1039,7 +1042,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
     auto task = fix.create_task(nullptr);
-    poll_global_context();
+    fix.ctx.poll();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // The connection fails to connect
@@ -1069,7 +1072,7 @@ BOOST_DATA_TEST_CASE(get_connection_wait_pool_cancelled, data::make({false, true
     // A request for a connection is issued. The request doesn't find
     // any available connection, and the current one is pending, so no new connections are created
     auto task = fix.create_task(&diag);
-    poll_global_context();
+    fix.ctx.poll();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 
     // The connection fails to connect
@@ -1108,7 +1111,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     // Another request is issued. The connection we have is in use, so another one is created.
     // Since this is not immediate, the task will need to wait
     auto task2 = fix.create_task();
-    poll_global_context();
+    fix.ctx.poll();
     auto node2 = &*std::next(fix.pool().nodes().begin());
 
     // Connection connects successfully and is handed to us
@@ -1120,7 +1123,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     // Another request is issued. All connections are in use but max size is already
     // reached, so no new connection is created
     auto task3 = fix.create_task();
-    poll_global_context();
+    fix.ctx.poll();
     BOOST_TEST(fix.pool().nodes().size() == 2u);
 
     // When one of the connections is returned, the request is fulfilled
@@ -1258,9 +1261,10 @@ BOOST_AUTO_TEST_CASE(run_op_cancel)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Create a pool
+            io_context_fixture fix;
             pool_params params;
             params.thread_safe = tc.thread_safe;
-            auto pool = create_mock_pool(std::move(params));
+            auto pool = create_mock_pool(fix.ctx, std::move(params));
 
             // Run with a bound signal
             bool run_finished = false;
@@ -1272,7 +1276,7 @@ BOOST_AUTO_TEST_CASE(run_op_cancel)
 
             // Emit the signal. run should finish
             sig.emit(tc.cancel_type);
-            poll_global_context(&run_finished);
+            poll_until(fix.ctx, &run_finished);
 
             // The pool has effectively been cancelled, as if cancel() had been called
             get_connection_task(*pool, nullptr).wait(client_errc::pool_cancelled, !tc.thread_safe);
@@ -1281,12 +1285,12 @@ BOOST_AUTO_TEST_CASE(run_op_cancel)
 }
 
 // async_run with a bound signal that doesn't get emitted doesn't cause trouble
-BOOST_AUTO_TEST_CASE(run_bound_signal)
+BOOST_FIXTURE_TEST_CASE(run_bound_signal, io_context_fixture)
 {
     // Create a pool
     pool_params params;
     params.thread_safe = true;
-    auto pool = create_mock_pool(std::move(params));
+    auto pool = create_mock_pool(ctx, std::move(params));
 
     // Run with a bound signal
     bool run_finished = false;
@@ -1300,7 +1304,7 @@ BOOST_AUTO_TEST_CASE(run_bound_signal)
     pool->cancel();
 
     // Finish successfully
-    poll_global_context(&run_finished);
+    poll_until(ctx, &run_finished);
 }
 
 // pool size 0 works
@@ -1316,7 +1320,7 @@ BOOST_AUTO_TEST_CASE(initial_size_0)
     auto task = fix.create_task();
 
     // This creates a new connection, which fulfills the request
-    poll_global_context();
+    fix.ctx.poll();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
     fix.step(fix.pool().nodes().front(), fn_type::connect);
     task.wait(fix.pool().nodes().front(), false);

@@ -29,7 +29,7 @@ namespace test {
 class test_stream
 {
 public:
-    test_stream() = default;
+    test_stream(asio::any_io_executor ex) : ex_(std::move(ex)) {}
 
     // Support the layered stream model
     using lowest_layer_type = test_stream;
@@ -62,7 +62,7 @@ public:
 
     // Executor
     using executor_type = asio::any_io_executor;
-    executor_type get_executor();
+    executor_type get_executor() { return ex_; }
 
     // Reading
     std::size_t read_some(asio::mutable_buffer, error_code& ec);
@@ -79,6 +79,7 @@ private:
     std::vector<std::uint8_t> bytes_written_;
     fail_count fail_count_;
     std::size_t write_break_size_{1024};  // max number of bytes to be written in each write_some
+    asio::any_io_executor ex_;
 
     std::size_t get_size_to_read(std::size_t buffer_size) const;
     std::size_t do_read(asio::mutable_buffer buff, error_code& ec);

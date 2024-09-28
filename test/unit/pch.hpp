@@ -9,18 +9,11 @@
 #define BOOST_MYSQL_TEST_UNIT_PCH_HPP
 
 #include <boost/asio/async_result.hpp>
-#include <boost/asio/buffer.hpp>
-#include <boost/asio/compose.hpp>
-#include <boost/asio/post.hpp>
-#include <boost/asio/ssl/stream.hpp>
-#include <boost/asio/ssl/stream_base.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/assert.hpp>
 #include <boost/config.hpp>
 #include <boost/core/detail/string_view.hpp>
 #include <boost/core/span.hpp>
-#include <boost/describe/class.hpp>
-#include <boost/describe/members.hpp>
-#include <boost/describe/operators.hpp>
 #include <boost/endian/conversion.hpp>
 #include <boost/mp11.hpp>
 #include <boost/system/error_category.hpp>
@@ -31,7 +24,6 @@
 #include <boost/throw_exception.hpp>
 #include <boost/variant2/variant.hpp>
 
-#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>

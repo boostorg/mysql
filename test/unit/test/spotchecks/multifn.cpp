@@ -16,6 +16,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include "test_common/check_meta.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_frame.hpp"
@@ -31,10 +32,10 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_multifn)
 
-BOOST_AUTO_TEST_CASE(separate_batches)
+BOOST_FIXTURE_TEST_CASE(separate_batches, io_context_fixture)
 {
     execution_state st;
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn)
         .add_bytes(create_frame(1, {0x01}))
         .add_break()
@@ -91,12 +92,12 @@ BOOST_AUTO_TEST_CASE(separate_batches)
 }
 
 // The server sent us a single, big message with everything
-BOOST_AUTO_TEST_CASE(single_read)
+BOOST_FIXTURE_TEST_CASE(single_read, io_context_fixture)
 {
     execution_state st;
     any_connection_params params;
     params.initial_buffer_size = 4096;
-    auto conn = create_test_any_connection(params);
+    auto conn = create_test_any_connection(ctx, params);
 
     get_stream(conn)
         .add_bytes(create_frame(1, {0x01}))
@@ -136,12 +137,12 @@ BOOST_AUTO_TEST_CASE(single_read)
     BOOST_TEST(st.info() == "2nd");
 }
 
-BOOST_AUTO_TEST_CASE(empty_resultsets)
+BOOST_FIXTURE_TEST_CASE(empty_resultsets, io_context_fixture)
 {
     execution_state st;
     any_connection_params params;
     params.initial_buffer_size = 4096;
-    auto conn = create_test_any_connection(params);
+    auto conn = create_test_any_connection(ctx, params);
 
     get_stream(conn)
         .add_bytes(create_ok_frame(1, ok_builder().affected_rows(10u).info("1st").more_results(true).build()))

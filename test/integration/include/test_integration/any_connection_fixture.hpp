@@ -13,13 +13,14 @@
 
 #include <boost/assert/source_location.hpp>
 
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/source_location.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-struct any_connection_fixture
+struct any_connection_fixture : io_context_fixture
 {
     any_connection conn;
 

@@ -32,8 +32,9 @@
 #include <chrono>
 #include <utility>
 
+#include "test_common/io_context_fixture.hpp"
+#include "test_common/poll_until.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_unit/mock_timer.hpp"
 
 #ifdef __cpp_lib_polymorphic_allocator
@@ -114,11 +115,11 @@ public:
     }
 };
 
-struct fixture
+struct fixture : io_context_fixture
 {
     // Context and objects
     mock_io_obj io;
-    test::mock_timer tim{global_context_executor()};
+    test::mock_timer tim{ctx};
 
     // Ensure the operation finished
     bool finished{false};
@@ -136,8 +137,8 @@ BOOST_FIXTURE_TEST_CASE(op_first_ok, fixture)
     });
 
     // Complete
-    io.complete(error_code(), global_context_executor());
-    poll_global_context(&finished);
+    io.complete(error_code(), ctx.get_executor());
+    poll_until(ctx, &finished);
 }
 
 // The operation finishes first with an error
@@ -150,8 +151,8 @@ BOOST_FIXTURE_TEST_CASE(op_first_error, fixture)
     });
 
     // Complete with an error
-    io.complete(client_errc::extra_bytes, global_context_executor());
-    poll_global_context(&finished);
+    io.complete(client_errc::extra_bytes, ctx.get_executor());
+    poll_until(ctx, &finished);
 }
 
 // The operation finishes first and at the same time than the timer
@@ -167,8 +168,8 @@ BOOST_FIXTURE_TEST_CASE(op_first_timer_ok, fixture)
     mock_clock::advance_time_by(seconds(60));
 
     // Operation completes successfully
-    io.complete(error_code(), global_context_executor());
-    poll_global_context(&finished);
+    io.complete(error_code(), ctx.get_executor());
+    poll_until(ctx, &finished);
 }
 
 // The timer finishes first without an error (timeout)
@@ -182,7 +183,7 @@ BOOST_FIXTURE_TEST_CASE(timer_first_ok, fixture)
 
     // Advance time
     mock_clock::advance_time_by(seconds(60));
-    poll_global_context(&finished);
+    poll_until(ctx, &finished);
 }
 
 // The timer finishes first because it was cancelled
@@ -196,7 +197,7 @@ BOOST_FIXTURE_TEST_CASE(timer_first_cancelled, fixture)
 
     // Cancel the timer
     tim.cancel();
-    poll_global_context(&finished);
+    poll_until(ctx, &finished);
 }
 
 // Zero timeout disables it
@@ -210,12 +211,12 @@ BOOST_FIXTURE_TEST_CASE(timeout_zero, fixture)
 
     // Advancing time does nothing
     mock_clock::advance_time_by(seconds(60));
-    static_cast<asio::io_context&>(global_context_executor().context()).poll();
+    ctx.poll();
     BOOST_TEST(!finished);
 
     // Complete
-    io.complete(error_code(), global_context_executor());
-    poll_global_context(&finished);
+    io.complete(error_code(), ctx.get_executor());
+    poll_until(ctx, &finished);
 }
 
 // We release any allocated memory before calling the final handler
@@ -265,8 +266,8 @@ BOOST_FIXTURE_TEST_CASE(memory_released_before_calling_handler, fixture)
 
     // Run the op and complete
     run_with_timeout(io.async_f(asio::deferred), tim, seconds(60), handler{&resource, this});
-    io.complete(error_code(), global_context_executor());
-    poll_global_context(&finished);
+    io.complete(error_code(), ctx.get_executor());
+    poll_until(ctx, &finished);
 }
 #endif
 

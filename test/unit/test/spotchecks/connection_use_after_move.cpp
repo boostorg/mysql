@@ -9,6 +9,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
@@ -19,10 +20,10 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_connection_use_after_move)
 
-BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
+BOOST_FIXTURE_TEST_CASE(use_move_constructed_connection, io_context_fixture)
 {
     // Construct connection
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
 
     // Use it
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
@@ -38,11 +39,11 @@ BOOST_AUTO_TEST_CASE(use_move_constructed_connection)
     BOOST_TEST(result.affected_rows() == 42u);
 }
 
-BOOST_AUTO_TEST_CASE(use_move_assigned_connection)
+BOOST_FIXTURE_TEST_CASE(use_move_assigned_connection, io_context_fixture)
 {
     // Construct two connections
-    auto conn1 = create_test_any_connection();
-    auto conn2 = create_test_any_connection();
+    auto conn1 = create_test_any_connection(ctx);
+    auto conn2 = create_test_any_connection(ctx);
 
     // Use them
     get_stream(conn1).add_bytes(create_ok_frame(1, ok_builder().build()));
