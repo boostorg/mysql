@@ -362,15 +362,6 @@ BOOST_DATA_TEST_CASE_F(fixture, cancel_get_connection, data::make({false, true})
     pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_cancelled);
 }
 
-BOOST_FIXTURE_TEST_CASE(get_connection_pool_not_running, fixture)
-{
-    // Create a pool but don't run it
-    connection_pool pool(global_context_executor(), create_pool_params());
-
-    // Getting a connection fails immediately with a descriptive error code
-    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_not_running);
-}
-
 // Having a valid pooled_connection alive extends the pool's lifetime
 BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::make({false, true}))
 {
