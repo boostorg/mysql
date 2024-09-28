@@ -34,9 +34,9 @@
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/buffer_concat.hpp"
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_query_frame.hpp"
@@ -587,7 +587,7 @@ BOOST_FIXTURE_TEST_CASE(async_execute_side_effects_in_initiation, io_context_fix
     std::move(q1)(as_netresult).validate_no_error();
 
     // Check that we wrote Q2's message first, then Q1's
-    auto expected = concat_copy(
+    auto expected = concat(
         create_frame(0, {0x03, 0x51, 0x32}),  // query request Q2
         create_frame(0, {0x03, 0x51, 0x31})   // query request Q1
     );

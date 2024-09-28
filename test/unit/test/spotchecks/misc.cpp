@@ -128,7 +128,7 @@ BOOST_FIXTURE_TEST_CASE(async_close_statement_handle_deferred_tokens, io_context
     std::move(op)(as_netresult).validate_no_error();
 
     // verify that the op had the intended effects
-    const auto expected_message = concat_copy(
+    const auto expected_message = concat(
         create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}),
         create_frame(0, {0x0e})
     );

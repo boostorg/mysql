@@ -95,7 +95,7 @@ std::size_t boost::mysql::test::test_stream::do_write(asio::const_buffer buff, e
         static_cast<const std::uint8_t*>(buff.data()),
         num_bytes_to_transfer
     );
-    concat(bytes_written_, span_to_transfer);
+    bytes_written_.insert(bytes_written_.end(), span_to_transfer.begin(), span_to_transfer.end());
 
     // Clear errors
     ec = error_code();
@@ -180,7 +180,7 @@ void boost::mysql::test::test_stream::async_write_some(
 
 test_stream& boost::mysql::test::test_stream::add_bytes(span<const std::uint8_t> bytes)
 {
-    concat(bytes_to_read_, bytes);
+    bytes_to_read_.insert(bytes_to_read_.end(), bytes.begin(), bytes.end());
     return *this;
 }
 

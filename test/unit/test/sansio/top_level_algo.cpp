@@ -24,6 +24,7 @@
 #include <cstring>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/buffer_concat.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/mock_message.hpp"
@@ -89,7 +90,7 @@ BOOST_AUTO_TEST_CASE(read_cached)
     BOOST_TEST(!act.read_args().use_ssl);
 
     // Acknowledge the read request
-    auto bytes = concat_copy(create_frame(0, msg1), create_frame(1, msg2));
+    auto bytes = concat(create_frame(0, msg1), create_frame(1, msg2));
     transfer(act.read_args().buffer, bytes);
     act = algo.resume(error_code(), bytes.size());
 

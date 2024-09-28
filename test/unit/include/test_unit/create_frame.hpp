@@ -20,8 +20,6 @@
 #include <cstring>
 #include <vector>
 
-#include "test_common/buffer_concat.hpp"
-
 namespace boost {
 namespace mysql {
 namespace test {
@@ -34,7 +32,7 @@ inline std::vector<std::uint8_t> create_frame(std::uint8_t seqnum, span<const st
         span<std::uint8_t, detail::frame_header_size>{res.data(), detail::frame_header_size},
         detail::frame_header{static_cast<std::uint32_t>(body.size()), seqnum}
     );
-    concat(res, body);
+    res.insert(res.end(), body.begin(), body.end());
     return res;
 }
 

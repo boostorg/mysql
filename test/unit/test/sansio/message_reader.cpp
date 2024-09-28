@@ -127,7 +127,7 @@ BOOST_AUTO_TEST_CASE(parsing_algorithm_success)
          44},
         {"two_frames",
          buffer_builder().add(create_frame(42, u8vec(64, 0x04))).add(create_frame(43, {0x05, 0x06})).build(),
-         concat_copy(u8vec(64, 0x04), {0x05, 0x06}),
+         concat(u8vec(64, 0x04), {0x05, 0x06}),
          44},
         {"two_frames_max_size",
          buffer_builder()
@@ -135,7 +135,7 @@ BOOST_AUTO_TEST_CASE(parsing_algorithm_success)
              .add(create_frame(43, u8vec(64, 0x05)))
              .add(create_empty_frame(44))
              .build(),
-         concat_copy(u8vec(64, 0x04), u8vec(64, 0x05)),
+         concat(u8vec(64, 0x04), u8vec(64, 0x05)),
          45},
         {"three_frames",
          buffer_builder()
@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(seqnum_overflow)
 
     // all in one
     fix.read_bytes(64 + 4 * 2 + 3);
-    fix.check_message(concat_copy(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07}));
+    fix.check_message(concat(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07}));
     BOOST_TEST(fix.seqnum == 1u);
 
     // Buffer didn't reallocate
@@ -202,7 +202,7 @@ BOOST_AUTO_TEST_CASE(seqnum_mismatch)
         u8vec input;
     } test_cases[] = {
         {"1st_frame", create_frame(1, {0x01, 0x02})},
-        {"2nd_frame", concat_copy(create_frame(42, u8vec(64, 0x04)), create_frame(44, {0x01}))},
+        {"2nd_frame", concat(create_frame(42, u8vec(64, 0x04)), create_frame(44, {0x01}))},
     };
 
     for (const auto& tc : test_cases)
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(long_read)
     // message to be parsed
     std::vector<std::uint8_t> first_msg_body{0x01, 0x02, 0x03};
     std::vector<std::uint8_t> second_msg_body{0x04, 0x05, 0x06, 0x07};
-    reader_fixture fix(concat_copy(create_frame(42, first_msg_body), create_frame(2, second_msg_body)));
+    reader_fixture fix(concat(create_frame(42, first_msg_body), create_frame(2, second_msg_body)));
 
     // Prepare first read
     fix.reader.prepare_read(fix.seqnum);
@@ -311,7 +311,7 @@ BOOST_AUTO_TEST_CASE(short_reads_two_frames)
             .build(),
         64 + 16
     );
-    auto expected_message = concat_copy(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07});
+    auto expected_message = concat(std::vector<std::uint8_t>(64, 0x04), {0x05, 0x06, 0x07});
 
     // Setup
     fix.reader.prepare_read(fix.seqnum);
