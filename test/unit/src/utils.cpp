@@ -22,13 +22,18 @@
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
+#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/compose.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -36,14 +41,64 @@
 #include <utility>
 
 #include "test_common/printing.hpp"
+#include "test_unit/create_frame.hpp"
+#include "test_unit/create_ok_frame.hpp"
 #include "test_unit/mock_timer.hpp"
 #include "test_unit/printing.hpp"
+#include "test_unit/serialize_to_vector.hpp"
 #include "test_unit/test_any_connection.hpp"
 #include "test_unit/test_stream.hpp"
 
 using std::chrono::steady_clock;
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+
+//
+// create_frame.hpp
+//
+std::vector<std::uint8_t> boost::mysql::test::create_frame(std::uint8_t seqnum, span<const std::uint8_t> body)
+{
+    BOOST_ASSERT(body.size() <= 0xffffff);  // it should fit in a single frame
+
+    // Compose the frame header
+    std::array<std::uint8_t, detail::frame_header_size> frame_header{};
+    detail::serialize_frame_header(
+        frame_header,
+        detail::frame_header{static_cast<std::uint32_t>(body.size()), seqnum}
+    );
+
+    // Compose the frame.
+    // Inserting the header separately (instead of using the range constructor)
+    // avoids spurious gcc warnings
+    std::vector<std::uint8_t> res;
+    res.insert(res.end(), frame_header.begin(), frame_header.end());
+    res.insert(res.end(), body.begin(), body.end());
+    return res;
+}
+
+//
+// create_ok_frame.hpp
+//
+std::vector<std::uint8_t> boost::mysql::test::serialize_ok_impl(
+    const detail::ok_view& pack,
+    std::uint8_t header
+)
+{
+    return serialize_to_vector([=](detail::serialization_context& ctx) {
+        ctx.serialize(
+            detail::int1{header},
+            detail::int_lenenc{pack.affected_rows},
+            detail::int_lenenc{pack.last_insert_id},
+            detail::int2{pack.status_flags},
+            detail::int2{pack.warnings}
+        );
+        // When info is empty, it's actually omitted in the ok_packet
+        if (!pack.info.empty())
+        {
+            detail::string_lenenc{pack.info}.serialize(ctx);
+        }
+    });
+}
 
 //
 // mock_timer.hpp
@@ -177,6 +232,48 @@ struct boost::mysql::test::test_stream::write_op
         }
     }
 };
+
+std::size_t boost::mysql::test::test_stream::read_some(asio::mutable_buffer buff, error_code& ec)
+{
+    return do_read(buff, ec);
+}
+void boost::mysql::test::test_stream::async_read_some(
+    asio::mutable_buffer buff,
+    asio::any_completion_handler<void(error_code, std::size_t)> handler
+)
+{
+    asio::async_compose<
+        asio::any_completion_handler<void(error_code, std::size_t)>,
+        void(error_code, std::size_t)>(read_op(*this, buff), handler, get_executor());
+}
+
+std::size_t boost::mysql::test::test_stream::write_some(boost::asio::const_buffer buff, error_code& ec)
+{
+    return do_write(buff, ec);
+}
+
+void boost::mysql::test::test_stream::async_write_some(
+    asio::const_buffer buff,
+    asio::any_completion_handler<void(error_code, std::size_t)> handler
+)
+{
+    asio::async_compose<
+        asio::any_completion_handler<void(error_code, std::size_t)>,
+        void(error_code, std::size_t)>(write_op(*this, buff), handler, get_executor());
+}
+
+test_stream& boost::mysql::test::test_stream::add_bytes(span<const std::uint8_t> bytes)
+{
+    bytes_to_read_.insert(bytes_to_read_.end(), bytes.begin(), bytes.end());
+    return *this;
+}
+
+test_stream& boost::mysql::test::test_stream::add_break(std::size_t byte_num)
+{
+    BOOST_ASSERT(byte_num <= bytes_to_read_.size());
+    read_break_offsets_.insert(byte_num);
+    return *this;
+}
 
 //
 // printing.hpp
