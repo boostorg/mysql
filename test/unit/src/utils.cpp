@@ -44,7 +44,9 @@
 #include <ostream>
 #include <utility>
 
+#include "test_common/assert_buffer_equals.hpp"
 #include "test_common/printing.hpp"
+#include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_frame.hpp"
@@ -61,6 +63,119 @@
 using std::chrono::steady_clock;
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+
+//
+// algo_test.hpp
+//
+void boost::mysql::test::algo_test::handle_read(detail::connection_state_data& st, const step_t& op)
+{
+    if (!op.result)
+    {
+        std::size_t bytes_transferred = 0;
+        while (!st.reader.done() && bytes_transferred < op.bytes.size())
+        {
+            auto ec = st.reader.prepare_buffer();
+            BOOST_TEST_REQUIRE(ec == error_code());
+            auto buff = st.reader.buffer();
+            std::size_t size_to_copy = (std::min)(op.bytes.size() - bytes_transferred, buff.size());
+            std::memcpy(buff.data(), op.bytes.data() + bytes_transferred, size_to_copy);
+            bytes_transferred += size_to_copy;
+            st.reader.resume(size_to_copy);
+        }
+        BOOST_TEST_REQUIRE(st.reader.done());
+        BOOST_TEST_REQUIRE(st.reader.error() == error_code());
+    }
+}
+
+detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
+    detail::connection_state_data& st,
+    any_algo_ref algo,
+    std::size_t num_steps_to_run
+) const
+{
+    BOOST_ASSERT(num_steps_to_run <= num_steps());
+
+    // Start the op
+    auto act = algo.resume(st, error_code());
+
+    // Go through the requested steps
+    for (std::size_t i = 0; i < num_steps_to_run; ++i)
+    {
+        BOOST_TEST_CONTEXT("Step " << i)
+        {
+            const auto& step = steps_[i];
+            BOOST_TEST_REQUIRE(act.type() == step.type);
+            if (step.type == detail::next_action_type::read)
+                handle_read(st, step);
+            else if (step.type == detail::next_action_type::write)
+                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, step.bytes);
+            // Other actions don't need any handling
+
+            act = algo.resume(st, step.result);
+        }
+    }
+
+    return act;
+}
+
+void boost::mysql::test::algo_test::check_network_errors_impl(
+    detail::connection_state_data& st,
+    any_algo_ref algo,
+    std::size_t step_number,
+    const diagnostics& actual_diag,
+    source_location loc
+) const
+{
+    BOOST_TEST_CONTEXT("Called from " << loc << " at step " << step_number)
+    {
+        BOOST_ASSERT(step_number < num_steps());
+
+        // Run all the steps that shouldn't cause an error
+        auto act = run_algo_until_step(st, algo, step_number);
+        BOOST_TEST_REQUIRE(act.type() == steps_[step_number].type);
+
+        // Trigger an error in the requested step
+        act = algo.resume(st, asio::error::bad_descriptor);
+
+        // The operation finished and returned the network error
+        BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
+        BOOST_TEST(act.error() == error_code(asio::error::bad_descriptor));
+        BOOST_TEST(actual_diag == diagnostics());
+    }
+}
+
+boost::mysql::test::algo_test& boost::mysql::test::algo_test::add_step(
+    detail::next_action_type act_type,
+    std::vector<std::uint8_t> bytes,
+    error_code ec
+)
+{
+    steps_.push_back(step_t{act_type, std::move(bytes), ec});
+    return *this;
+}
+
+void boost::mysql::test::algo_test::check_impl(
+    detail::connection_state_data& st,
+    any_algo_ref algo,
+    const diagnostics& actual_diag,
+    error_code expected_ec,
+    const diagnostics& expected_diag,
+    source_location loc
+) const
+{
+    BOOST_TEST_CONTEXT("Called from " << loc)
+    {
+        // Run the op until completion
+        auto act = run_algo_until_step(st, algo, steps_.size());
+
+        // Check that we've finished
+        BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
+
+        // Check results
+        BOOST_TEST(act.error() == expected_ec);
+        BOOST_TEST(actual_diag == expected_diag);
+    }
+}
 
 //
 // create_frame.hpp
