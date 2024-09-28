@@ -9,9 +9,7 @@ add_executable(
     boost_mysql_unittests
 
     # Helpers
-    src/test_stream.cpp
-    src/printing.cpp
-    src/mock_timer.cpp
+    src/utils.cpp
 
     # Actual tests
     test/auth/auth.cpp

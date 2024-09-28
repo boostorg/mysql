@@ -6,9 +6,14 @@
 //
 
 #include <boost/mysql/any_address.hpp>
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 
+#include <boost/mysql/detail/access.hpp>
+#include <boost/mysql/detail/engine_impl.hpp>
+#include <boost/mysql/detail/engine_stream_adaptor.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 #include <boost/mysql/detail/pipeline.hpp>
 #include <boost/mysql/detail/results_iterator.hpp>
@@ -18,12 +23,164 @@
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 
+#include <boost/asio/buffer.hpp>
+#include <boost/asio/error.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/post.hpp>
+
+#include <algorithm>
+#include <chrono>
+#include <cstdint>
+#include <cstring>
 #include <ostream>
+#include <utility>
 
 #include "test_common/printing.hpp"
+#include "test_unit/mock_timer.hpp"
 #include "test_unit/printing.hpp"
+#include "test_unit/test_any_connection.hpp"
+#include "test_unit/test_stream.hpp"
 
+using std::chrono::steady_clock;
 using namespace boost::mysql;
+using namespace boost::mysql::test;
+
+//
+// mock_timer.hpp
+//
+// The current time
+static thread_local steady_clock::time_point g_mock_now{};
+
+boost::mysql::test::mock_clock::time_point boost::mysql::test::mock_clock::now() { return g_mock_now; }
+
+void boost::mysql::test::mock_clock::advance_time_by(steady_clock::duration dur) { g_mock_now += dur; }
+
+//
+// test_stream.hpp
+//
+
+std::size_t boost::mysql::test::test_stream::get_size_to_read(std::size_t buffer_size) const
+{
+    auto it = read_break_offsets_.upper_bound(num_bytes_read_);
+    std::size_t max_bytes_by_break = it == read_break_offsets_.end() ? std::size_t(-1)
+                                                                     : *it - num_bytes_read_;
+    return (std::min)({num_unread_bytes(), buffer_size, max_bytes_by_break});
+}
+
+std::size_t boost::mysql::test::test_stream::do_read(asio::mutable_buffer buff, error_code& ec)
+{
+    // Fail count
+    error_code err = fail_count_.maybe_fail();
+    if (err)
+    {
+        ec = err;
+        return 0;
+    }
+
+    // If the user requested some bytes but we don't have any,
+    // fail. In the real world, the stream would block until more
+    // bytes are received, but this is a test, and this condition
+    // indicates an error.
+    if (num_unread_bytes() == 0 && buff.size() != 0)
+    {
+        ec = boost::asio::error::eof;
+        return 0;
+    }
+
+    // Actually read
+    std::size_t bytes_to_transfer = get_size_to_read(buff.size());
+    if (bytes_to_transfer)
+    {
+        std::memcpy(buff.data(), bytes_to_read_.data() + num_bytes_read_, bytes_to_transfer);
+        num_bytes_read_ += bytes_to_transfer;
+    }
+
+    // Clear errors
+    ec = error_code();
+
+    return bytes_to_transfer;
+}
+
+std::size_t boost::mysql::test::test_stream::do_write(asio::const_buffer buff, error_code& ec)
+{
+    // Fail count
+    error_code err = fail_count_.maybe_fail();
+    if (err)
+    {
+        ec = err;
+        return 0;
+    }
+
+    // Actually write
+    std::size_t num_bytes_to_transfer = (std::min)(buff.size(), write_break_size_);
+    span<const std::uint8_t> span_to_transfer(
+        static_cast<const std::uint8_t*>(buff.data()),
+        num_bytes_to_transfer
+    );
+    bytes_written_.insert(bytes_written_.end(), span_to_transfer.begin(), span_to_transfer.end());
+
+    // Clear errors
+    ec = error_code();
+
+    return num_bytes_to_transfer;
+}
+
+struct boost::mysql::test::test_stream::read_op
+{
+    test_stream& stream_;
+    asio::mutable_buffer buff_;
+    bool has_posted_{};
+
+    read_op(test_stream& stream, asio::mutable_buffer buff) noexcept : stream_(stream), buff_(buff){};
+
+    template <class Self>
+    void operator()(Self& self)
+    {
+        if (!has_posted_)
+        {
+            // Post
+            has_posted_ = true;
+            asio::post(stream_.get_executor(), std::move(self));
+        }
+        else
+        {
+            // Complete
+            error_code err;
+            std::size_t bytes_read = stream_.do_read(buff_, err);
+            self.complete(err, bytes_read);
+        }
+    }
+};
+
+struct boost::mysql::test::test_stream::write_op
+{
+    test_stream& stream_;
+    asio::const_buffer buff_;
+    bool has_posted_{};
+
+    write_op(test_stream& stream, asio::const_buffer buff) noexcept : stream_(stream), buff_(buff){};
+
+    template <class Self>
+    void operator()(Self& self)
+    {
+        // Post
+        if (!has_posted_)
+        {
+            has_posted_ = true;
+            asio::post(stream_.get_executor(), std::move(self));
+        }
+        else
+        {
+            error_code err;
+            std::size_t bytes_written = stream_.do_write(buff_, err);
+            self.complete(err, bytes_written);
+        }
+    }
+};
+
+//
+// printing.hpp
+//
 
 // address_type
 static const char* to_string(address_type v)
@@ -203,4 +360,25 @@ static const char* to_string(detail::next_connection_action v)
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, next_connection_action v)
 {
     return os << ::to_string(v);
+}
+
+//
+// test_any_connection.hpp
+//
+boost::mysql::any_connection boost::mysql::test::create_test_any_connection(
+    asio::io_context& ctx,
+    any_connection_params params
+)
+{
+    return any_connection(detail::access::construct<any_connection>(
+        std::unique_ptr<detail::engine>(
+            new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
+        ),
+        params
+    ));
+}
+
+test_stream& boost::mysql::test::get_stream(any_connection& conn)
+{
+    return detail::stream_from_engine<test_stream>(detail::access::get_impl(conn).get_engine());
 }

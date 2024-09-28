@@ -18,9 +18,7 @@ run
         /boost/mysql/test//launch_with_valgrind
 
         # Helpers
-        src/test_stream.cpp
-        src/printing.cpp
-        src/mock_timer.cpp
+        src/utils.cpp
 
         # Actual tests
         test/auth/auth.cpp
