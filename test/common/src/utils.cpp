@@ -354,12 +354,6 @@ void boost::mysql::test::poll_until(asio::io_context& ctx, const bool* done, sou
     poll_until(ctx, [done]() { return *done; }, loc);
 }
 
-void boost::mysql::test::poll_until(asio::any_io_executor ex, const bool* done, source_location loc)
-{
-    poll_until(static_cast<asio::io_context&>(ex.context()), done, loc);
-}
-
-// poll until done() == true
 void boost::mysql::test::poll_until(
     asio::io_context& ctx,
     const std::function<bool()>& done,
@@ -389,19 +383,9 @@ void boost::mysql::test::poll_until(
     }
 }
 
-void boost::mysql::test::poll_until(
-    asio::any_io_executor ex,
-    const std::function<bool()>& done,
-    source_location loc
-)
-{
-    poll_until(static_cast<asio::io_context&>(ex.context()), done, loc);
-}
-
 //
 // io_context_fixture.hpp
 //
-
 boost::mysql::test::io_context_fixture::~io_context_fixture()
 {
     // Verify that our tests don't leave unfinished work

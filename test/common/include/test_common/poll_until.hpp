@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_POLL_UNTIL_HPP
 #define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_POLL_UNTIL_HPP
 
-#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/io_context.hpp>
 
 #include <functional>
@@ -19,23 +18,12 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-// TODO: remove the executor overloads
 // poll until *done == true
 void poll_until(asio::io_context& ctx, const bool* done, source_location loc = BOOST_MYSQL_CURRENT_LOCATION);
-void poll_until(
-    asio::any_io_executor ex,
-    const bool* done,
-    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-);
 
 // poll until done() == true
 void poll_until(
     asio::io_context& ctx,
-    const std::function<bool()>& done,
-    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-);
-void poll_until(
-    asio::any_io_executor ex,
     const std::function<bool()>& done,
     source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 );

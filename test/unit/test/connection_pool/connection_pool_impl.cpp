@@ -379,7 +379,8 @@ class get_connection_task
         boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     )
     {
-        poll_until(impl_->pool.get_executor(), &impl_->called, loc);
+        auto& ctx = static_cast<asio::io_context&>(impl_->pool.get_executor().context());
+        poll_until(ctx, &impl_->called, loc);
         BOOST_TEST_CONTEXT("Called from " << loc)
         {
             auto* expected_pool = expected_ec ? nullptr : &impl_->pool;
@@ -459,7 +460,7 @@ public:
     {
         // Finish the pool
         pool_->cancel();
-        poll_until(pool_->get_executor(), &run_finished_);
+        poll_until(ctx, &run_finished_);
     }
 
     mock_pool& pool() { return *pool_; }
@@ -488,17 +489,13 @@ public:
         boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     )
     {
-        poll_until(pool_->get_executor(), [&node, status]() { return node.status() == status; }, loc);
+        poll_until(ctx, [&node, status]() { return node.status() == status; }, loc);
     }
 
     // Waits until there is at least num_nodes connections in the list
     void wait_for_num_nodes(std::size_t num_nodes, boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION)
     {
-        poll_until(
-            pool_->get_executor(),
-            [this, num_nodes]() { return pool_->nodes().size() == num_nodes; },
-            loc
-        );
+        poll_until(ctx, [this, num_nodes]() { return pool_->nodes().size() == num_nodes; }, loc);
     }
 
     // Wrapper for calling mock_connection::step()

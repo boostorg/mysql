@@ -65,7 +65,7 @@ BOOST_FIXTURE_TEST_CASE(success, io_context_fixture)
         called = true;
         BOOST_TEST((exc == nullptr));
     }));
-    poll_until(conn.get_executor(), &called);
+    poll_until(ctx, &called);
 }
 
 BOOST_FIXTURE_TEST_CASE(error, io_context_fixture)
@@ -84,7 +84,7 @@ BOOST_FIXTURE_TEST_CASE(error, io_context_fixture)
         called = true;
         check_exception(exc, common_server_errc::er_no_such_user, create_server_diag("Invalid user"));
     }));
-    poll_until(conn.get_executor(), &called);
+    poll_until(ctx, &called);
 }
 
 struct nulldiag_initiation
