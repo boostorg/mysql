@@ -13,10 +13,12 @@
 #include <boost/mysql/detail/engine_impl.hpp>
 #include <boost/mysql/detail/engine_stream_adaptor.hpp>
 
+#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/error.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 
 #include <algorithm>
@@ -29,7 +31,6 @@
 #include <vector>
 
 #include "test_common/buffer_concat.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_unit/test_any_connection.hpp"
 #include "test_unit/test_stream.hpp"
 
@@ -146,11 +147,6 @@ struct boost::mysql::test::test_stream::write_op : boost::asio::coroutine
     }
 };
 
-boost::mysql::test::test_stream::executor_type boost::mysql::test::test_stream::get_executor()
-{
-    return global_context_executor();
-}
-
 // Reading
 std::size_t boost::mysql::test::test_stream::read_some(asio::mutable_buffer buff, error_code& ec)
 {
@@ -196,10 +192,14 @@ test_stream& boost::mysql::test::test_stream::add_break(std::size_t byte_num)
 }
 
 // test_any_connection
-boost::mysql::any_connection boost::mysql::test::create_test_any_connection(any_connection_params params)
+boost::mysql::any_connection boost::mysql::test::create_test_any_connection(
+    asio::io_context& ctx,
+    any_connection_params params
+)
 {
     return any_connection(detail::access::construct<any_connection>(
-        std::unique_ptr<detail::engine>(new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>()
+        std::unique_ptr<detail::engine>(
+            new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
         ),
         params
     ));

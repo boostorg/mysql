@@ -258,7 +258,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, any_connection_fixture)
 // and this throws the right exception type
 BOOST_FIXTURE_TEST_CASE(default_token, any_connection_fixture)
 {
-    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
+    run_coro(ctx.get_executor(), [&]() -> asio::awaitable<void> {
         // Connect
         co_await conn.async_connect(connect_params_builder().build());
 
@@ -290,7 +290,7 @@ BOOST_FIXTURE_TEST_CASE(default_token, any_connection_fixture)
 // The pattern co_await conn.fn(..., cancel_after(10s)) works
 BOOST_FIXTURE_TEST_CASE(default_token_cancel_after, any_connection_fixture)
 {
-    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
+    run_coro(ctx.get_executor(), [&]() -> asio::awaitable<void> {
         constexpr std::chrono::seconds timeout(10);
 
         // Connect

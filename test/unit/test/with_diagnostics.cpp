@@ -23,6 +23,7 @@
 #include <memory>
 #include <type_traits>
 
+#include "test_common/context_utils.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
@@ -51,10 +52,10 @@ void check_exception(std::exception_ptr exc, error_code expected_ec, const diagn
     );
 }
 
-BOOST_AUTO_TEST_CASE(success)
+BOOST_FIXTURE_TEST_CASE(success, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
     bool called = false;
 
@@ -63,13 +64,13 @@ BOOST_AUTO_TEST_CASE(success)
         called = true;
         BOOST_TEST((exc == nullptr));
     }));
-    poll_global_context(&called);
+    poll_until(conn.get_executor(), &called);
 }
 
-BOOST_AUTO_TEST_CASE(error)
+BOOST_FIXTURE_TEST_CASE(error, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn).add_bytes(err_builder()
                                    .code(common_server_errc::er_no_such_user)
                                    .message("Invalid user")
@@ -82,7 +83,7 @@ BOOST_AUTO_TEST_CASE(error)
         called = true;
         check_exception(exc, common_server_errc::er_no_such_user, create_server_diag("Invalid user"));
     }));
-    poll_global_context(&called);
+    poll_until(conn.get_executor(), &called);
 }
 
 struct nulldiag_initiation
@@ -123,12 +124,12 @@ BOOST_AUTO_TEST_CASE(diagnostics_null)
     BOOST_TEST(called);
 }
 
-BOOST_AUTO_TEST_CASE(associated_properties)
+BOOST_FIXTURE_TEST_CASE(associated_properties, io_context_fixture)
 {
     // Uses intermediate_handler internally, so we just perform a sanity check here
     // Setup
-    auto ex_result = create_tracker_executor(global_context_executor());
-    auto conn = create_test_any_connection();
+    auto ex_result = create_tracker_executor(ctx.get_executor());
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn).add_bytes(err_builder()
                                    .code(common_server_errc::er_no_such_user)
                                    .message("Invalid user")
@@ -144,7 +145,7 @@ BOOST_AUTO_TEST_CASE(associated_properties)
 
     // Call the op
     conn.async_reset_connection(with_diagnostics(asio::bind_executor(ex_result.ex, check_fn)));
-    poll_global_context(&called);
+    poll_until(ctx, &called);
 }
 
 // We correctly forward initiation args
@@ -211,53 +212,53 @@ BOOST_AUTO_TEST_CASE(initiation_args_forwarding)
 }
 
 // Works fine if the token is a lvalue
-BOOST_AUTO_TEST_CASE(token_lvalue)
+BOOST_FIXTURE_TEST_CASE(token_lvalue, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
     bool called = false;
     auto token = with_diagnostics([&](std::exception_ptr) { called = true; });
 
     // Call the op
     conn.async_reset_connection(token);
-    poll_global_context(&called);
+    poll_until(ctx, &called);
 }
 
-BOOST_AUTO_TEST_CASE(token_const_lvalue)
+BOOST_FIXTURE_TEST_CASE(token_const_lvalue, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
     bool called = false;
     const auto token = with_diagnostics([&](std::exception_ptr) { called = true; });
 
     // Call the op
     conn.async_reset_connection(token);
-    poll_global_context(&called);
+    poll_until(ctx, &called);
 }
 
 // with_diagnostics' initiation has the same executor as the initiation that gets passed,
 // and thus with_diagnostics(asio::cancel_after(...)) works
-BOOST_AUTO_TEST_CASE(initiation_propagates_executor)
+BOOST_FIXTURE_TEST_CASE(initiation_propagates_executor, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
     bool called = false;
     const auto cb = [&](std::exception_ptr) { called = true; };
 
     // Call the op
     conn.async_reset_connection(with_diagnostics(asio::cancel_after(std::chrono::seconds(1), cb)));
-    poll_global_context(&called);
+    poll_until(ctx, &called);
 }
 
 // Edge case: if a diagnostics* gets passed as an argument
 // to consign(), we don't mess things up
-BOOST_AUTO_TEST_CASE(several_diagnostics_args)
+BOOST_FIXTURE_TEST_CASE(several_diagnostics_args, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn).add_bytes(err_builder()
                                    .code(common_server_errc::er_no_such_user)
                                    .message("Invalid user")
@@ -274,7 +275,7 @@ BOOST_AUTO_TEST_CASE(several_diagnostics_args)
         }),
         &other_diag
     ));
-    poll_global_context(&called);
+    poll_until(ctx, &called);
 
     // Unmodified
     BOOST_TEST(other_diag == diagnostics());

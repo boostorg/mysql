@@ -23,8 +23,8 @@
 
 #include <iosfwd>
 
+#include "test_common/context_utils.hpp"
 #include "test_common/netfun_maker.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/static_rows.hpp"
 #include "test_integration/tcp_connection_fixture.hpp"
@@ -162,9 +162,9 @@ std::ostream& operator<<(std::ostream& os, const network_functions_any& v);
 
 // Fixtures. Like tcp_connection_fixture and any_connection_fixture,
 // but using a network_functions value
-struct netfn_fixture_connection
+struct netfn_fixture_connection : io_context_fixture
 {
-    tcp_connection conn{global_context_executor()};
+    tcp_connection conn{ctx};
     network_functions_connection net;
 
     netfn_fixture_connection(network_functions_connection n) : net(std::move(n))
@@ -179,9 +179,9 @@ struct netfn_fixture_connection
     }
 };
 
-struct netfn_fixture_any
+struct netfn_fixture_any : io_context_fixture
 {
-    any_connection conn{global_context_executor()};
+    any_connection conn{ctx};
     network_functions_any net;
 
     netfn_fixture_any(network_functions_any n) : net(std::move(n))

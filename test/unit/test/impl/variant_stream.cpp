@@ -22,8 +22,8 @@
 #include <array>
 #include <ostream>
 
+#include "test_common/context_utils.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/tracker_executor.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -63,9 +63,9 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_variant_stream)
 
-struct fixture
+struct fixture : io_context_fixture
 {
-    detail::variant_stream_state st{global_context_executor(), nullptr};
+    detail::variant_stream_state st{ctx.get_executor(), nullptr};
     any_address addr;
 
     std::array<tcp::endpoint, 2> tcp_endpoints() const

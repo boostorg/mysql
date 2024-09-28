@@ -29,8 +29,7 @@ static any_connection_params make_params(asio::ssl::context& ssl_ctx)
 }
 
 // any_connection_fixture
-any_connection_fixture::any_connection_fixture(any_connection_params params)
-    : conn(global_context_executor(), params)
+any_connection_fixture::any_connection_fixture(any_connection_params params) : conn(ctx, params)
 {
     conn.set_meta_mode(metadata_mode::full);
 }
@@ -67,10 +66,7 @@ static asio::ip::tcp::endpoint resolve_server_endpoint()
     return *results.begin();
 }
 
-tcp_connection_fixture::tcp_connection_fixture() : conn(global_context_executor())
-{
-    conn.set_meta_mode(metadata_mode::full);
-}
+tcp_connection_fixture::tcp_connection_fixture() : conn(ctx) { conn.set_meta_mode(metadata_mode::full); }
 
 tcp_connection_fixture::~tcp_connection_fixture() { conn.async_close(as_netresult).validate_no_error(); }
 

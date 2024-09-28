@@ -23,6 +23,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/context_utils.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
 #include "test_unit/custom_allocator.hpp"
@@ -105,11 +106,11 @@ void async_check(
     );
 }
 
-BOOST_AUTO_TEST_CASE(immediate_handler_propagates_properties)
+BOOST_FIXTURE_TEST_CASE(immediate_handler_propagates_properties, io_context_fixture)
 {
     // Setup
-    auto ex_result = create_tracker_executor(global_context_executor());
-    auto immediate_ex_result = create_tracker_executor(global_context_executor());
+    auto ex_result = create_tracker_executor(ctx.get_executor());
+    auto immediate_ex_result = create_tracker_executor(ctx.get_executor());
     asio::cancellation_signal sig;
     custom_allocator<void> alloc;
     bool called = false;

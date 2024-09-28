@@ -22,6 +22,10 @@
 #include <utility>
 #include <vector>
 
+// TODO: rename this file
+// TODO: do we want to refactor PCH?
+
+#include "test_common/context_utils.hpp"
 #include "test_common/tracker_executor.hpp"
 
 using namespace boost::mysql::test;
@@ -246,12 +250,22 @@ boost::mysql::test::initiation_guard::~initiation_guard()
 
 bool boost::mysql::test::is_initiation_function() { return g_is_running_initiation; }
 
-static boost::asio::io_context g_ctx;
+// context utils
+void boost::mysql::test::poll_until(asio::io_context& ctx, const bool* done, source_location loc)
+{
+    poll_until(ctx, [done]() { return *done; }, loc);
+}
 
-static void poll_context_impl(
-    boost::asio::io_context& ctx,
+void boost::mysql::test::poll_until(asio::any_io_executor ex, const bool* done, source_location loc)
+{
+    poll_until(static_cast<asio::io_context&>(ex.context()), done, loc);
+}
+
+// poll until done() == true
+void boost::mysql::test::poll_until(
+    asio::io_context& ctx,
     const std::function<bool()>& done,
-    boost::source_location loc
+    source_location loc
 )
 {
     BOOST_TEST_CONTEXT("Called from " << loc)
@@ -277,25 +291,18 @@ static void poll_context_impl(
     }
 }
 
-boost::asio::any_io_executor boost::mysql::test::global_context_executor() { return g_ctx.get_executor(); }
-
-void boost::mysql::test::poll_global_context()
+void boost::mysql::test::poll_until(
+    asio::any_io_executor ex,
+    const std::function<bool()>& done,
+    source_location loc
+)
 {
-    g_ctx.restart();
-    g_ctx.poll();
+    poll_until(static_cast<asio::io_context&>(ex.context()), done, loc);
 }
 
-void boost::mysql::test::poll_global_context(const bool* done, source_location loc)
+boost::mysql::test::io_context_fixture::~io_context_fixture()
 {
-    poll_context_impl(g_ctx, [done]() { return *done; }, loc);
-}
-
-void boost::mysql::test::poll_global_context(const std::function<bool()>& done, source_location loc)
-{
-    poll_context_impl(g_ctx, done, loc);
-}
-
-void boost::mysql::test::poll_context(asio::any_io_executor ex, const bool* done, source_location loc)
-{
-    poll_context_impl(static_cast<asio::io_context&>(ex.context()), [done]() { return *done; }, loc);
+    // Verify that our tests don't leave unfinished work
+    ctx.poll();
+    BOOST_TEST(ctx.stopped());
 }

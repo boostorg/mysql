@@ -16,8 +16,8 @@
 
 #include <functional>
 
+#include "test_common/context_utils.hpp"
 #include "test_common/source_location.hpp"
-#include "test_common/tracker_executor.hpp"
 
 namespace boost {
 namespace mysql {
@@ -38,7 +38,7 @@ inline void run_coro(
             std::rethrow_exception(ptr);
         }
     });
-    poll_context(ex, &done, loc);
+    poll_until(ex, &done, loc);
 }
 #endif
 

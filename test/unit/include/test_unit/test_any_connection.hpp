@@ -10,13 +10,15 @@
 
 #include <boost/mysql/any_connection.hpp>
 
+#include <boost/asio/io_context.hpp>
+
 #include "test_unit/test_stream.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-any_connection create_test_any_connection(any_connection_params params = {});
+any_connection create_test_any_connection(asio::io_context& ctx, any_connection_params params = {});
 test_stream& get_stream(any_connection& conn);
 
 }  // namespace test

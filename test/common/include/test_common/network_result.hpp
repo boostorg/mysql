@@ -16,6 +16,7 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/associated_cancellation_slot.hpp>
+#include <boost/asio/associated_executor.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/io_context.hpp>
@@ -34,6 +35,7 @@
 #include <utility>
 #include <vector>
 
+#include "test_common/context_utils.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/source_location.hpp"
@@ -151,20 +153,25 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
 {
     struct impl_t
     {
+        asio::io_context& ctx;
         network_result<R> netres{
             common_server_errc::er_no,
             create_server_diag("network_result_v2 - diagnostics not cleared")
         };
         bool done{false};
+
+        impl_t(asio::io_context& ctx) : ctx(ctx) {}
     };
 
     std::unique_ptr<impl_t> impl;
 
-    runnable_network_result() : impl(new impl_t) {}
+    runnable_network_result(asio::io_context& ctx) : impl(new impl_t(ctx)) {}
+
+    asio::io_context& context() { return impl->ctx; }
 
     network_result<R> run(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
-        poll_global_context(&impl->done, loc);
+        poll_until(context(), &impl->done, loc);
         return std::move(impl->netres);
     }
 
@@ -307,8 +314,8 @@ public:
         asio::cancellation_slot slot
     )
         : target_(netresult.impl.get()),
-          ex_(create_tracker_executor(global_context_executor())),
-          immediate_ex_(create_tracker_executor(global_context_executor())),
+          ex_(create_tracker_executor(netresult.context().get_executor())),
+          immediate_ex_(create_tracker_executor(netresult.context().get_executor())),
           slot_(slot),
           diag_ptr(output_diag)
     {
@@ -432,12 +439,16 @@ private:
         Args&&... args
     )
     {
+        // Retrieve the context associated to this operation.
+        // All our initiations have bound executors, to be compliant with asio::cancel_after
+        auto& ctx = static_cast<asio::io_context&>(asio::get_associated_executor(initiation).context());
+
         // Verify that we correctly set diagnostics in all cases
         if (diag)
             *diag = mysql::test::create_server_diag("Diagnostics not cleared properly");
 
         // Create the return type
-        mysql::test::runnable_network_result<R> netres;
+        mysql::test::runnable_network_result<R> netres(ctx);
 
         // Record that we're initiating
         mysql::test::initiation_guard guard;
