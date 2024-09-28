@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_RUN_CORO_HPP
 #define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_RUN_CORO_HPP
 
-#include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/io_context.hpp>
 
@@ -22,7 +21,7 @@ namespace test {
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 void run_coro(
-    boost::asio::any_io_executor ex,
+    asio::io_context& ctx,
     std::function<boost::asio::awaitable<void>(void)> fn,
     source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 );

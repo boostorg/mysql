@@ -9,6 +9,7 @@
 #include <boost/mysql/handshake_params.hpp>
 
 #include <boost/asio/co_spawn.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/assert/source_location.hpp>
 
 #include <exception>
@@ -115,19 +116,19 @@ connect_params connect_params_builder::build()
 //
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 void boost::mysql::test::run_coro(
-    boost::asio::any_io_executor ex,
+    asio::io_context& ctx,
     std::function<boost::asio::awaitable<void>(void)> fn,
     source_location loc
 )
 {
     bool done = false;
-    boost::asio::co_spawn(ex, fn, [&](std::exception_ptr ptr) {
+    boost::asio::co_spawn(ctx, fn, [&](std::exception_ptr ptr) {
         done = true;
         if (ptr)
         {
             std::rethrow_exception(ptr);
         }
     });
-    poll_until(ex, &done, loc);
+    poll_until(ctx, &done, loc);
 }
 #endif

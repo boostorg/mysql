@@ -589,7 +589,7 @@ BOOST_FIXTURE_TEST_CASE(async_get_connection_per_operation_cancellation, fixture
 // and this throws the right exception type
 BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 {
-    run_coro(ctx.get_executor(), [&]() -> asio::awaitable<void> {
+    run_coro(ctx, [&]() -> asio::awaitable<void> {
         connection_pool pool(ctx, create_pool_params());
 
         // Run can be used without a token. Defaults to with_diagnostics(deferred)
@@ -624,7 +624,7 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 // cancel_after can be used as a partial token with async_run and async_get_connection.
 BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
 {
-    run_coro(ctx.get_executor(), [&]() -> asio::awaitable<void> {
+    run_coro(ctx, [&]() -> asio::awaitable<void> {
         connection_pool pool(ctx, create_pool_params(1));
 
         // Run can be used with cancel_after

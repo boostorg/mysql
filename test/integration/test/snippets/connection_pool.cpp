@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
         //]
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
-        run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
+        run_coro(ctx, [&pool]() -> boost::asio::awaitable<void> {
             co_await get_num_employees(pool);
             pool.cancel();
         });
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
         pool.async_run(boost::asio::detached);
-        run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
+        run_coro(ctx, [&pool]() -> boost::asio::awaitable<void> {
             co_await return_without_reset(pool);
             co_await apply_timeout(pool);
             pool.cancel();
