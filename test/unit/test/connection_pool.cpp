@@ -322,7 +322,8 @@ BOOST_FIXTURE_TEST_CASE(move_assign_invalid_invalid, pool_fixture)
 // Regression check: deferred works even in C++11
 void deferred_spotcheck()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
 
     (void)pool.async_run(asio::deferred);
@@ -334,7 +335,8 @@ void deferred_spotcheck()
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 asio::awaitable<void> spotcheck_default_tokens()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
 
     co_await pool.async_run();
@@ -360,7 +362,8 @@ void check_run_op(asio::deferred_async_operation<void(T), Rest...>)
 
 void spotcheck_partial_tokens()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
     auto tok = asio::cancel_after(std::chrono::seconds(10));
 

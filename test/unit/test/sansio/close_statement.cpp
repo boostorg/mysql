@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_SUITE(test_close_statement)
 // A close_statement request pipelined with a ping (frame headers included)
 static std::vector<std::uint8_t> expected_request()
 {
-    return concat_copy(create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}), create_frame(0, {0x0e}));
+    return concat(create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}), create_frame(0, {0x0e}));
 }
 
 struct fixture : algo_fixture_base

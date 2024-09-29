@@ -35,6 +35,7 @@
 
 #include "test_common/ci_server.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/tracker_executor.hpp"
@@ -70,7 +71,7 @@ static void check_run(error_code ec)
     BOOST_TEST(!is_initiation_function());
 }
 
-struct fixture
+struct fixture : io_context_fixture
 {
     // async_get_connection actually passes nullptr as diagnostics* to initiation
     // functions if no diagnostics is provided (unlike any_connection)
@@ -82,8 +83,8 @@ struct fixture
 BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
 {
     // Create two different executors
-    auto pool_ex = asio::make_strand(global_context_executor());
-    auto conn_ex = global_context_executor();
+    asio::any_io_executor pool_ex = asio::make_strand(ctx);
+    asio::any_io_executor conn_ex = ctx.get_executor();
     BOOST_TEST((pool_ex != conn_ex));
 
     // Create and run the pool
@@ -107,7 +108,7 @@ BOOST_FIXTURE_TEST_CASE(pool_executors_thread_safe, fixture)
     // Create and run the pool
     auto params = create_pool_params();
     params.thread_safe = true;
-    connection_pool pool(global_context_executor(), create_pool_params());
+    connection_pool pool(ctx, create_pool_params());
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -115,8 +116,8 @@ BOOST_FIXTURE_TEST_CASE(pool_executors_thread_safe, fixture)
 
     // Check executors. The internal strand is never exposed,
     // and doesn't get propagated to connections
-    BOOST_TEST((pool.get_executor() == global_context_executor()));
-    BOOST_TEST((conn->get_executor() == global_context_executor()));
+    BOOST_TEST((pool.get_executor() == ctx.get_executor()));
+    BOOST_TEST((conn->get_executor() == ctx.get_executor()));
 
     // Cleanup the pool
     pool.cancel();
@@ -128,7 +129,7 @@ BOOST_DATA_TEST_CASE_F(fixture, return_connection_with_reset, data::make({false,
     // Create a pool with max_size 1, so the same connection gets always returned
     auto params = create_pool_params(1);
     params.thread_safe = sample;
-    connection_pool pool(global_context_executor(), std::move(params));
+    connection_pool pool(ctx, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -159,7 +160,7 @@ BOOST_DATA_TEST_CASE_F(fixture, return_connection_without_reset, data::make({fal
     // Create a connection pool with max_size 1, so the same connection gets always returned
     auto params = create_pool_params(1);
     params.thread_safe = sample;
-    connection_pool pool(global_context_executor(), std::move(params));
+    connection_pool pool(ctx, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -190,7 +191,7 @@ BOOST_DATA_TEST_CASE_F(fixture, return_connection_without_reset, data::make({fal
 BOOST_FIXTURE_TEST_CASE(pooled_connection_destructor, fixture)
 {
     // Create a connection pool with max_size 1, so the same connection gets always returned
-    connection_pool pool(global_context_executor(), create_pool_params(1));
+    connection_pool pool(ctx, create_pool_params(1));
     auto run_result = pool.async_run(as_netresult);
 
     {
@@ -236,7 +237,7 @@ static void validate_charset(any_connection& conn)
 BOOST_FIXTURE_TEST_CASE(charset, fixture)
 {
     // Create and run the pool
-    connection_pool pool(global_context_executor(), create_pool_params(1));
+    connection_pool pool(ctx, create_pool_params(1));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -260,7 +261,7 @@ BOOST_FIXTURE_TEST_CASE(charset, fixture)
 
 BOOST_FIXTURE_TEST_CASE(connections_created_if_required, fixture)
 {
-    connection_pool pool(global_context_executor(), create_pool_params());
+    connection_pool pool(ctx, create_pool_params());
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -290,7 +291,7 @@ BOOST_FIXTURE_TEST_CASE(connections_created_if_required, fixture)
 
 BOOST_FIXTURE_TEST_CASE(connection_upper_limit, fixture)
 {
-    connection_pool pool(global_context_executor(), create_pool_params(1));
+    connection_pool pool(ctx, create_pool_params(1));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -311,7 +312,7 @@ BOOST_FIXTURE_TEST_CASE(connection_upper_limit, fixture)
 BOOST_FIXTURE_TEST_CASE(cancel_run, fixture)
 {
     // Construct a pool and run it
-    connection_pool pool(global_context_executor(), create_pool_params());
+    connection_pool pool(ctx, create_pool_params());
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -329,7 +330,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_run, fixture)
 BOOST_FIXTURE_TEST_CASE(cancel_before_run, fixture)
 {
     // Create a pool
-    connection_pool pool(global_context_executor(), create_pool_params());
+    connection_pool pool(ctx, create_pool_params());
 
     // Cancel
     pool.cancel();
@@ -343,7 +344,7 @@ BOOST_DATA_TEST_CASE_F(fixture, cancel_get_connection, data::make({false, true})
     // Construct a pool and run it
     auto params = create_pool_params(1);
     params.thread_safe = sample;
-    connection_pool pool(global_context_executor(), std::move(params));
+    connection_pool pool(ctx, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -367,7 +368,7 @@ BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::m
 {
     auto params = create_pool_params();
     params.thread_safe = sample;
-    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), std::move(params)));
+    std::unique_ptr<connection_pool> pool(new connection_pool(ctx, std::move(params)));
 
     // Run the pool
     auto run_result = pool->async_run(as_netresult);
@@ -391,8 +392,7 @@ BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::m
 // Having a packaged async_get_connection op extends lifetime
 BOOST_FIXTURE_TEST_CASE(async_get_connection_initation_extends_pool_lifetime, fixture)
 {
-    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), create_pool_params())
-    );
+    std::unique_ptr<connection_pool> pool(new connection_pool(ctx, create_pool_params()));
 
     // Create a packaged op
     auto op = pool->async_get_connection(diag, boost::asio::deferred);
@@ -409,7 +409,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_extends_pool_lifetime, fixture)
 {
     auto params = create_pool_params();
     params.thread_safe = true;
-    std::unique_ptr<connection_pool> pool(new connection_pool(global_context_executor(), std::move(params)));
+    std::unique_ptr<connection_pool> pool(new connection_pool(ctx, std::move(params)));
 
     // Cancel
     pool->cancel();
@@ -418,13 +418,13 @@ BOOST_FIXTURE_TEST_CASE(cancel_extends_pool_lifetime, fixture)
     pool.reset();
 
     // Dispatch any pending handler. We didn't crash
-    poll_global_context();
+    ctx.poll();
 }
 
 // Spotcheck: the overload without diagnostics work
 BOOST_FIXTURE_TEST_CASE(get_connection_no_diag, fixture)
 {
-    connection_pool pool(global_context_executor(), create_pool_params());
+    connection_pool pool(ctx, create_pool_params());
     auto run_result = pool.async_run(as_netresult);
 
     auto conn = pool.async_get_connection(as_netresult).get_nodiag();
@@ -443,7 +443,7 @@ BOOST_FIXTURE_TEST_CASE(unix_sockets, fixture)
     // Create and run the pool
     auto params = create_pool_params();
     params.server_address.emplace_unix_path(default_unix_path);
-    connection_pool pool(global_context_executor(), std::move(params));
+    connection_pool pool(ctx, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -465,7 +465,7 @@ BOOST_FIXTURE_TEST_CASE(ssl, fixture)
     // Create and run the pool
     auto params = create_pool_params();
     params.ssl = ssl_mode::require;
-    connection_pool pool(global_context_executor(), std::move(params));
+    connection_pool pool(ctx, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -488,7 +488,7 @@ BOOST_FIXTURE_TEST_CASE(custom_ctor_params, fixture)
     params.ssl = ssl_mode::require;
     params.ssl_ctx.emplace(asio::ssl::context::sslv23_client);
     params.initial_buffer_size = 16u;
-    connection_pool pool(global_context_executor(), std::move(params));
+    connection_pool pool(ctx, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -512,7 +512,7 @@ BOOST_FIXTURE_TEST_CASE(zero_timeuts, fixture)
     params.connect_timeout = std::chrono::seconds(0);
     params.ping_timeout = std::chrono::seconds(0);
     params.ping_interval = std::chrono::seconds(0);
-    connection_pool pool(global_context_executor(), std::move(params));
+    connection_pool pool(ctx, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -532,7 +532,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
 {
     constexpr std::chrono::seconds timeout(10);
 
-    connection_pool pool(global_context_executor(), create_pool_params());
+    connection_pool pool(ctx, create_pool_params());
     pool.async_run(asio::cancel_after(timeout, check_run));
 
     // Get a connection
@@ -547,7 +547,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after, fixture)
 // Spotcheck: per-operation cancellation works with async_run
 BOOST_FIXTURE_TEST_CASE(async_run_per_operation_cancellation, fixture)
 {
-    connection_pool pool(global_context_executor(), create_pool_params());
+    connection_pool pool(ctx, create_pool_params());
     pool.async_run(asio::cancel_after(std::chrono::microseconds(1), asio::deferred))(as_netresult)
         .validate_no_error_nodiag();
     pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_cancelled);
@@ -557,7 +557,7 @@ BOOST_FIXTURE_TEST_CASE(async_run_per_operation_cancellation, fixture)
 BOOST_FIXTURE_TEST_CASE(async_get_connection_per_operation_cancellation, fixture)
 {
     // Create and run the pool
-    connection_pool pool(global_context_executor(), create_pool_params(1));
+    connection_pool pool(ctx, create_pool_params(1));
     auto run_result = pool.async_run(as_netresult);
 
     // Get the only connection the pool has
@@ -580,8 +580,8 @@ BOOST_FIXTURE_TEST_CASE(async_get_connection_per_operation_cancellation, fixture
 // and this throws the right exception type
 BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 {
-    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
-        connection_pool pool(global_context_executor(), create_pool_params());
+    run_coro(ctx, [&]() -> asio::awaitable<void> {
+        connection_pool pool(ctx, create_pool_params());
 
         // Run can be used without a token. Defaults to with_diagnostics(deferred)
         auto run_op = pool.async_run();
@@ -615,12 +615,12 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 // cancel_after can be used as a partial token with async_run and async_get_connection.
 BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
 {
-    run_coro(global_context_executor(), [&]() -> asio::awaitable<void> {
-        connection_pool pool(global_context_executor(), create_pool_params(1));
+    run_coro(ctx, [&]() -> asio::awaitable<void> {
+        connection_pool pool(ctx, create_pool_params(1));
 
         // Run can be used with cancel_after
         asio::co_spawn(
-            global_context_executor(),
+            ctx,
             [&]() -> asio::awaitable<void> {
                 co_await pool.async_run(asio::cancel_after(std::chrono::seconds(1)));
             },

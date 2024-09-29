@@ -16,6 +16,7 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
 #include "test_unit/create_execution_processor.hpp"
 #include "test_unit/create_meta.hpp"
@@ -35,10 +36,10 @@ using row2 = std::tuple<double>;
 
 using state_t = static_execution_state<row1, row1, row2, row1, row2>;
 
-struct fixture
+struct fixture : io_context_fixture
 {
     state_t st;
-    any_connection conn{create_test_any_connection()};
+    any_connection conn{create_test_any_connection(ctx)};
     std::array<row1, 3> storage1;
     std::array<row2, 3> storage2;
 

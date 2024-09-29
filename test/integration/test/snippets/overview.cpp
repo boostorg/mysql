@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE(section_overview)
     }
     {
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
-        run_coro(conn.get_executor(), [&conn]() -> boost::asio::awaitable<void> {
+        run_coro(ctx, [&conn]() -> boost::asio::awaitable<void> {
             //[overview_async_coroutinescpp20
             // Using this CompletionToken, you get C++20 coroutines that communicate
             // errors with error_codes. This way, you can access the diagnostics object.
@@ -312,9 +312,10 @@ BOOST_AUTO_TEST_CASE(section_async)
 {
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
     auto& conn = get_any_connection();
+    auto& ctx = static_cast<boost::asio::io_context&>(conn.get_executor().context());
     results result;
 
-    run_coro(conn.get_executor(), [&]() -> boost::asio::awaitable<void> {
+    run_coro(ctx, [&]() -> boost::asio::awaitable<void> {
         //[async_with_diagnostics_cpp20
         // C++20. Will throw error_with_diagnostics on error
         co_await conn.async_execute("SELECT 1", result, with_diagnostics(boost::asio::deferred));
