@@ -17,10 +17,8 @@
 #include <iostream>
 
 /**
- * For this example, we will be using the 'boost_mysql_examples' database.
- * You can get this database by running db_setup.sql.
- * This example assumes you are connecting to a localhost MySQL server.
- *
+ * This example uses the 'boost_mysql_examples' database, which you
+ * can get by running db_setup.sql.
  * This example uses synchronous functions and handles errors using exceptions.
  */
 
