@@ -26,6 +26,9 @@
 #include <exception>
 #include <iostream>
 
+namespace mysql = boost::mysql;
+namespace asio = boost::asio;
+
 /**
  * This example is analogous to the synchronous tutorial, but uses async functions
  * with C++20 coroutines, instead. It uses the 'boost_mysql_examples' database.
@@ -41,18 +44,14 @@
  * We use the same program structure as in the sync world, replacing
  * sync functions by their async equivalents and adding co_await in front of them.
  */
-boost::asio::awaitable<void> coro_main(
-    std::string server_hostname,
-    std::string username,
-    std::string password
-)
+asio::awaitable<void> coro_main(std::string server_hostname, std::string username, std::string password)
 {
     // Represents a connection to the MySQL server.
-    boost::mysql::any_connection conn(co_await boost::asio::this_coro::executor);
+    mysql::any_connection conn(co_await asio::this_coro::executor);
 
     // The hostname, username, password and database to use
-    boost::mysql::connect_params params{
-        .server_address = boost::mysql::host_and_port{std::move(server_hostname)},
+    mysql::connect_params params{
+        .server_address = mysql::host_and_port{std::move(server_hostname)},
         .username = std::move(username),
         .password = std::move(password),
         .database = "boost_mysql_examples"
@@ -63,7 +62,7 @@ boost::asio::awaitable<void> coro_main(
 
     // Issue the SQL query to the server
     const char* sql = "SELECT 'Hello world!'";
-    boost::mysql::results result;
+    mysql::results result;
     co_await conn.async_execute(sql, result);
 
     // Print the first field in the first row
@@ -82,12 +81,12 @@ void main_impl(int argc, char** argv)
     }
 
     // The execution context, required to run I/O operations.
-    boost::asio::io_context ctx;
+    asio::io_context ctx;
 
     // The entry point. We pass in a function returning
     // boost::asio::awaitable<void>, as required.
     // Calling co_spawn enqueues the coroutine for execution.
-    boost::asio::co_spawn(
+    asio::co_spawn(
         ctx,
         [argv] { return coro_main(argv[3], argv[1], argv[2]); },
         // If any exception is thrown in the coroutine body, rethrow it.
@@ -120,7 +119,7 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::error_with_diagnostics& err)
+    catch (const mysql::error_with_diagnostics& err)
     {
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the

@@ -16,6 +16,9 @@
 
 #include <iostream>
 
+namespace mysql = boost::mysql;
+namespace asio = boost::asio;
+
 /**
  * This example uses the 'boost_mysql_examples' database, which you
  * can get by running db_setup.sql.
@@ -32,15 +35,15 @@ void main_impl(int argc, char** argv)
 
     //[tutorial_connection
     // The execution context, required to run I/O operations.
-    boost::asio::io_context ctx;
+    asio::io_context ctx;
 
     // Represents a connection to the MySQL server.
-    boost::mysql::any_connection conn(ctx);
+    mysql::any_connection conn(ctx);
     //]
 
     //[tutorial_connect
     // The hostname, username, password and database to use
-    boost::mysql::connect_params params;
+    mysql::connect_params params;
     params.server_address.emplace_host_and_port(argv[3]);
     params.username = argv[1];
     params.password = argv[2];
@@ -53,7 +56,7 @@ void main_impl(int argc, char** argv)
     //[tutorial_query
     // Issue the SQL query to the server
     const char* sql = "SELECT 'Hello world!'";
-    boost::mysql::results result;
+    mysql::results result;
     conn.execute(sql, result);
     //]
 
@@ -74,7 +77,7 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::error_with_diagnostics& err)
+    catch (const mysql::error_with_diagnostics& err)
     {
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
