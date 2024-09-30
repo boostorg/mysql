@@ -11,6 +11,7 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/make_tuple_element.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
@@ -22,6 +23,8 @@
 #include <boost/core/span.hpp>
 #include <boost/system/result.hpp>
 
+#include <array>
+#include <cstddef>
 #include <initializer_list>
 #include <iterator>
 #include <string>
@@ -455,19 +458,18 @@ using format_context = basic_format_context<std::string>;
 /**
  * \brief (EXPERIMENTAL) The return type of \ref sequence.
  * \details
- * Contains a range view (as an interator/sentinel pair), a formatter function, and a glue string.
+ * Contains a range, a formatter function, and a glue string.
  * This type satisfies the `Formattable` concept. See \ref sequence for a detailed
  * description of what formatting this class does.
  * \n
  * Don't instantiate this class directly - use \ref sequence, instead.
  * The exact definition may vary between releases.
  */
-template <class It, class Sentinel, class FormatFn>
+template <class Range, class FormatFn>
 struct format_sequence_view
 #ifndef BOOST_MYSQL_DOXYGEN
 {
-    It it;
-    Sentinel sentinel;
+    Range range;
     FormatFn fn;
     constant_string_view glue;
 }
@@ -482,48 +484,93 @@ struct format_sequence_view
  * in the range. The glue string `glue` is output raw (as per \ref format_context_base::append_raw)
  * between consecutive invocations of the formatter function, generating an effect
  * similar to `std::ranges::views::join`.
- * \n
+ *
+ * Range is decay-copied into the resulting object. This behavior can be disabled
+ * by passing `std::reference_wrapper` objects, which are translated into references
+ * (as happens in `std::make_tuple`). C arrays are translated into `std::array` objects.
+ *
  * \par Type requirements
  *   - FormatFn should be move constructible.
  *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
  *     pair that can be compared for (in)equality.
  *   - The expression `static_cast<const FormatFn&>(fn)(* std::begin(range), ctx)`
  *     should be well formed, with `ctx` begin a `format_context_base&`.
- *
- * \par Object lifetimes
- * The input range is stored in \ref format_sequence_view as a view, using an iterator/sentinel pair,
- * and is never copied. The caller must make sure that the elements pointed by the obtained
- * iterator/sentinel are kept alive until the view is formatted.
+ *   - If `Range` is an instantiation of `std::reference_wrapper< U >`, no requirements are placed on `U`.
+ *   - If `Range` is a lvalue C array, its elements should be copy-constructible.
+ *   - If `Range` is a rvalue C array, its elements should be move-constructible.
+ *   - Otherwise, if `Range` is an lvalue, `Range` should be copy-constructible.
+ *   - Otherwise, if `Range` is an rvalue, `Range` should be copy-constructible.
  *
  * \par Exception safety
- * Strong-throw guarantee. Throws any exception that `std::begin`, `std::end`
- * or move-constructing `FormatFn` may throw.
+ * Basic guarantee. Propagates any exception that constructing the resulting
+ * range or `FormatFn` may throw.
  */
 template <class Range, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
-    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, Range>
+    requires std::move_constructible<FormatFn> &&
+                 detail::format_fn_for_range<FormatFn, make_tuple_element_t<Range>>
 #endif
 auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
-    -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
+    -> format_sequence_view<make_tuple_element_t<Range>, FormatFn>
 {
-    return {std::begin(range), std::end(range), std::move(fn), glue};
+    return {std::forward<Range>(range), std::move(fn), glue};
 }
 
-template <class It, class Sentinel, class FormatFn>
-struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
+/// \copydoc sequence
+template <class T, std::size_t N, class FormatFn>
+#if defined(BOOST_MYSQL_HAS_CONCEPTS)
+    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, std::array<T, N>>
+#endif
+format_sequence_view<std::array<T, N>, FormatFn> sequence(
+    T (&range)[N],
+    FormatFn fn,
+    constant_string_view glue = ", "
+)
+{
+    return {std::to_array(range), std::move(fn), glue};
+}
+
+/// \copydoc sequence
+template <class T, std::size_t N, class FormatFn>
+#if defined(BOOST_MYSQL_HAS_CONCEPTS)
+    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, std::array<T, N>>
+#endif
+format_sequence_view<std::array<T, N>, FormatFn> sequence(
+    T (&&range)[N],
+    FormatFn fn,
+    constant_string_view glue = ", "
+)
+{
+    return {std::to_array(std::move(range)), std::move(fn), glue};
+}
+
+template <class Range, class FormatFn>
+struct formatter<format_sequence_view<Range, FormatFn>>
 {
     const char* parse(const char* begin, const char*) { return begin; }
 
-    void format(const format_sequence_view<It, Sentinel, FormatFn>& value, format_context_base& ctx) const
+    // Should be usable for both const/mutable values
+    template <class U>
+    void format_impl(U& value, format_context_base& ctx) const
     {
         bool is_first = true;
-        for (auto it = value.it; it != value.sentinel; ++it)
+        for (auto it = std::begin(value.range); it != std::end(value.range); ++it)
         {
             if (!is_first)
                 ctx.append_raw(value.glue);
             is_first = false;
             value.fn(*it, ctx);
         }
+    }
+
+    void format(format_sequence_view<Range, FormatFn>& value, format_context_base& ctx) const
+    {
+        format_impl(value, ctx);
+    }
+
+    void format(const format_sequence_view<Range, FormatFn>& value, format_context_base& ctx) const
+    {
+        format_impl(value, ctx);
     }
 };
 

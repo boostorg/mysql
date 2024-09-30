@@ -9,6 +9,7 @@
 #define BOOST_MYSQL_WITH_PARAMS_HPP
 
 #include <boost/mysql/constant_string_view.hpp>
+#include <boost/mysql/make_tuple_element.hpp>
 
 #include <boost/mysql/detail/format_sql.hpp>
 
@@ -17,21 +18,6 @@
 
 namespace boost {
 namespace mysql {
-
-/**
- * \brief Type trait that applies the transformation performed by `std::make_tuple` to a single element.
- * \details
- * For example: \n
- *   - `make_tuple_element_t<int>` yields `int` \n
- *   - `make_tuple_element_t<const int&>` yields `int` \n
- *   - `make_tuple_element_t<std::reference_wrapper<int>>` yields `int&` \n
- * \n
- * Consult the <a href="https://en.cppreference.com/w/cpp/utility/tuple/make_tuple">`std::make_tuple`</a> docs
- * for more info.
- */
-template <class T>
-using make_tuple_element_t = typename std::tuple_element<0, decltype(std::make_tuple(std::declval<T&&>()))>::
-    type;
 
 /**
  * \brief A query format string and format arguments that can be executed.
