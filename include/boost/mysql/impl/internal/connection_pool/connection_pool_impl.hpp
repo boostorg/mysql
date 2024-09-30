@@ -102,7 +102,8 @@ class basic_pool_impl
     // for no reason when there is no connectivity.
     bool can_create_connection() const
     {
-        return all_conns_.size() < params_.max_size && shared_st_.num_pending_connections == 0u;
+        return all_conns_.size() < params_.max_size && shared_st_.num_pending_connections == 0u &&
+               state_ == state_t::running;
     }
 
     void create_connection()

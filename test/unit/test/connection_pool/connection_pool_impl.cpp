@@ -1031,25 +1031,32 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
     BOOST_TEST(fix.pool().nodes().size() == 1u);
 }
 
-BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_pool_not_running)
+BOOST_DATA_TEST_CASE_F(
+    io_context_fixture,
+    get_connection_wait_op_cancelled_pool_not_running,
+    data::make({false, true})
+)
 {
     // If the op is cancelled because the pool is not running, appropriate diagnostics are issued
     // Setup
-    auto pool = create_mock_pool(pool_params());
+    pool_params params;
+    params.thread_safe = sample;
+    auto pool = create_mock_pool(ctx, std::move(params));
     diagnostics diag;
 
     // A request for a connection is issued. The request finds the pool not running,
     // and waits
     get_connection_task task(*pool, &diag);
-    poll_global_context();
+    ctx.poll();
 
     // The request gets cancelled. We get the expected error
     task.cancel();
     task.wait(client_errc::pool_not_running, false);
     BOOST_TEST(diag == diagnostics());
+
+    pool->cancel();
 }
 
-// TODO: thread-safe
 // TODO: when getting a connection before run, we wait and succeed if run is called
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
