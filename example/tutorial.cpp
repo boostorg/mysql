@@ -7,18 +7,14 @@
 
 //[tutorial_listing
 
+#include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
-#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/tcp_ssl.hpp>
 
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/ssl/context.hpp>
-#include <boost/system/system_error.hpp>
 
 #include <iostream>
-#include <string>
 
 /**
  * For this example, we will be using the 'boost_mysql_examples' database.
@@ -40,28 +36,20 @@ void main_impl(int argc, char** argv)
     // The execution context, required to run I/O operations.
     boost::asio::io_context ctx;
 
-    // The SSL context, required to establish TLS connections.
-    // The default SSL options are good enough for us at this point.
-    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
-
     // Represents a connection to the MySQL server.
-    boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
+    boost::mysql::any_connection conn(ctx);
     //]
 
     //[tutorial_connect
-    // Resolve the hostname to get a collection of endpoints
-    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
-    auto endpoints = resolver.resolve(argv[3], boost::mysql::default_port_string);
+    // The hostname, username, password and database to use
+    boost::mysql::connect_params params;
+    params.server_address.emplace_host_and_port(argv[3]);
+    params.username = argv[1];
+    params.password = argv[2];
+    params.database = "boost_mysql_examples";
 
-    // The username, password and database to use
-    boost::mysql::handshake_params params(
-        argv[1],                // username
-        argv[2],                // password
-        "boost_mysql_examples"  // database
-    );
-
-    // Connect to the server using the first endpoint returned by the resolver
-    conn.connect(*endpoints.begin(), params);
+    // Connect to the server
+    conn.connect(params);
     //]
 
     //[tutorial_query
