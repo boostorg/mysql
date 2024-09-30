@@ -57,7 +57,7 @@ inline const char* error_to_string(client_errc error)
         return "The StaticRow type passed to read_some_rows does not correspond to the resultset type being "
                "read";
     case client_errc::pool_not_running:
-        return "Getting a connection from a connection_pool failed because the pool is not running. Ensure "
+        return "Getting a connection from a connection_pool was cancelled before the pool was run. Ensure "
                "that you're calling connection_pool::async_run.";
     case client_errc::pool_cancelled:
         return "Getting a connection from a connection_pool failed because the pool was cancelled.";
