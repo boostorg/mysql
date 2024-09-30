@@ -1057,8 +1057,6 @@ BOOST_DATA_TEST_CASE_F(
     pool->cancel();
 }
 
-// TODO: when getting a connection before run, we wait and succeed if run is called
-
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
 {
     // We don't crash if diag is nullptr
