@@ -47,6 +47,7 @@ namespace asio = boost::asio;
 asio::awaitable<void> coro_main(std::string server_hostname, std::string username, std::string password)
 {
     // Represents a connection to the MySQL server.
+    // The connection will use the same executor as the coroutine
     mysql::any_connection conn(co_await asio::this_coro::executor);
 
     // The hostname, username, password and database to use
