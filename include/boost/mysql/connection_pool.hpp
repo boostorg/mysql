@@ -595,8 +595,8 @@ public:
      * \par Errors
      *   - \ref client_errc::no_connection_available, if the `async_get_connection`
      *     operation is cancelled before a connection becomes available.
-     *   - \ref client_errc::pool_not_running, if the pool is not running
-     *     when the operation is started.
+     *   - \ref client_errc::pool_not_running, if the `async_get_connection`
+     *     operation is cancelled before async_run is called.
      *   - \ref client_errc::pool_cancelled, if the pool is cancelled before
      *     the operation completes, or `async_get_connection` is called
      *     on a pool that has been cancelled.

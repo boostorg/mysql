@@ -10,11 +10,9 @@
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/this_coro.hpp>
 #include <boost/asio/thread_pool.hpp>
 
-#include <chrono>
 #include <cstddef>
 #include <exception>
 
@@ -31,12 +29,6 @@ namespace {
 asio::awaitable<void> task(mysql::connection_pool& pool, coordinator& coord)
 {
     mysql::results r;
-
-    // async_get_connection fails immediately if the pool is not running.
-    // Grant it a small period of time to bootstrap
-    asio::steady_timer timer(co_await asio::this_coro::executor);
-    timer.expires_after(std::chrono::milliseconds(1));
-    co_await timer.async_wait();
 
     do
     {

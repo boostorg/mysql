@@ -105,7 +105,8 @@ class basic_pool_impl
     // for no reason when there is no connectivity.
     bool can_create_connection() const
     {
-        return all_conns_.size() < params_.max_size && shared_st_.num_pending_connections == 0u;
+        return all_conns_.size() < params_.max_size && shared_st_.num_pending_connections == 0u &&
+               state_ == state_t::running;
     }
 
     void create_connection()
@@ -300,13 +301,7 @@ class basic_pool_impl
                 // connection
                 while (true)
                 {
-                    // If we're not running yet, or were cancelled, just return
-                    if (obj->state_ == state_t::initial)
-                    {
-                        result_ec = client_errc::pool_not_running;
-                        break;
-                    }
-                    else if (obj->state_ == state_t::cancelled)
+                    if (obj->state_ == state_t::cancelled)
                     {
                         // The pool was cancelled
                         result_ec = client_errc::pool_cancelled;
@@ -315,9 +310,17 @@ class basic_pool_impl
                     else if (get_connection_supports_cancel_type(self.cancelled()))
                     {
                         // The operation was cancelled. Try to provide diagnostics
-                        result_ec = client_errc::no_connection_available;
-                        if (diag)
-                            *diag = obj->shared_st_.last_connect_diag;
+                        if (obj->state_ == state_t::initial)
+                        {
+                            // The operation failed because the pool is not running
+                            result_ec = client_errc::pool_not_running;
+                        }
+                        else
+                        {
+                            result_ec = client_errc::no_connection_available;
+                            if (diag)
+                                *diag = obj->shared_st_.last_connect_diag;
+                        }
                         break;
                     }
 

@@ -158,22 +158,22 @@ std::vector<std::shared_ptr<test_case>> make_all_cases()
         make_test(
             "1_byte_size_max",
             string_lenenc{get_string_N<250>()},
-            concat_copy({250}, std::vector<std::uint8_t>(250, 0x61))
+            concat({250}, std::vector<std::uint8_t>(250, 0x61))
         ),
         make_test(
             "2_byte_size_min",
             string_lenenc{get_string_N<251>()},
-            concat_copy({0xfc, 251, 0}, std::vector<std::uint8_t>(251, 0x61))
+            concat({0xfc, 251, 0}, std::vector<std::uint8_t>(251, 0x61))
         ),
         make_test(
             "2_byte_size_max",
             string_lenenc{get_string_N<0xffff>()},
-            concat_copy({0xfc, 0xff, 0xff}, std::vector<std::uint8_t>(0xffff, 0x61))
+            concat({0xfc, 0xff, 0xff}, std::vector<std::uint8_t>(0xffff, 0x61))
         ),
         make_test(
             "3_byte_size_min",
             string_lenenc{get_string_N<0x10000>()},
-            concat_copy({0xfd, 0x00, 0x00, 0x01}, std::vector<std::uint8_t>(0x10000, 0x61))
+            concat({0xfd, 0x00, 0x00, 0x01}, std::vector<std::uint8_t>(0x10000, 0x61))
         ),
     };
 }

@@ -5,10 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_RUN_CORO_HPP
-#define BOOST_MYSQL_TEST_INTEGRATION_INCLUDE_TEST_INTEGRATION_RUN_CORO_HPP
+#ifndef BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_POLL_UNTIL_HPP
+#define BOOST_MYSQL_TEST_COMMON_INCLUDE_TEST_COMMON_POLL_UNTIL_HPP
 
-#include <boost/asio/awaitable.hpp>
 #include <boost/asio/io_context.hpp>
 
 #include <functional>
@@ -19,13 +18,15 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-void run_coro(
+// poll until *done == true
+void poll_until(asio::io_context& ctx, const bool* done, source_location loc = BOOST_MYSQL_CURRENT_LOCATION);
+
+// poll until done() == true
+void poll_until(
     asio::io_context& ctx,
-    std::function<boost::asio::awaitable<void>(void)> fn,
+    const std::function<bool()>& done,
     source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 );
-#endif
 
 }  // namespace test
 }  // namespace mysql
