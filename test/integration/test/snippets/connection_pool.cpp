@@ -97,7 +97,7 @@ public:
     // Constructor: constructs the connection_pool object from
     // the single-thread pool and calls async_run.
     // The pool has a single thread, which creates an implicit strand.
-    // There is no need to use pool_executor_params::thread_safe
+    // There is no need to use pool_params::thread_safe
     sync_pool(boost::mysql::pool_params params) : conn_pool_(thread_pool_, std::move(params))
     {
         // Run the pool in the background (this is performed by the thread_pool thread).

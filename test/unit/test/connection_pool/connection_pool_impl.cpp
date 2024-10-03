@@ -434,10 +434,7 @@ public:
 
 std::shared_ptr<mock_pool> create_mock_pool(asio::io_context& ctx, pool_params&& params)
 {
-    return std::make_shared<mock_pool>(
-        pool_executor_params{ctx.get_executor(), ctx.get_executor()},
-        std::move(params)
-    );
+    return std::make_shared<mock_pool>(ctx.get_executor(), std::move(params));
 }
 
 class fixture : public io_context_fixture
