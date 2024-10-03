@@ -336,40 +336,28 @@ class connection_pool
     }
 
     BOOST_MYSQL_DECL
-    connection_pool(pool_executor_params&& ex_params, pool_params&& params, int);
+    connection_pool(asio::any_io_executor ex, pool_params&& params, int);
 
 public:
     /**
      * \brief Constructs a connection pool.
      * \details
-     * Internal I/O objects (like timers) are constructed using
-     * `ex_params.pool_executor`. Connections are constructed using
-     * `ex_params.connection_executor`.
      *
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
      * "running" state.
      *
      * The constructed pool is always valid (`this->valid() == true`).
      *
-     * \par Exception safety
-     * Strong guarantee. Exceptions may be thrown by memory allocations.
-     * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
-     *         pool_params.
-     */
-    connection_pool(pool_executor_params ex_params, pool_params params)
-        : connection_pool(std::move(ex_params), std::move(params), 0)
-    {
-    }
-
-    /**
-     * \brief Constructs a connection pool.
-     * \details
-     * Both internal I/O objects and connections are constructed using the passed executor.
+     * \par Executor
+     * The passed executor becomes the pool executor, available through \ref get_executor.
+     * `ex` is used as follows:
      *
-     * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state.
-     *
-     * The constructed pool is always valid (`this->valid() == true`).
+     *   - If `params.thread_safe == true`, `ex` is used to build a strand. The strand is used
+     *     to build internal I/O objects, like timers.
+     *   - If `params.thread_safe == false`, `ex` is used directly to build internal I/O objects.
+     *   - If `params.connection_executor` is empty, `ex` is used to build individual connections,
+     *     regardless of the chosen thread-safety mode. Otherwise, `params.connection_executor`
+     *     is used.
      *
      * \par Exception safety
      * Strong guarantee. Exceptions may be thrown by memory allocations.
@@ -377,19 +365,14 @@ public:
      *         pool_params.
      */
     connection_pool(asio::any_io_executor ex, pool_params params)
-        : connection_pool(pool_executor_params{ex, ex}, std::move(params), 0)
+        : connection_pool(std::move(ex), std::move(params), 0)
     {
     }
 
     /**
      * \brief Constructs a connection pool.
      * \details
-     * Both internal I/O objects and connections are constructed using `ctx.get_executor()`.
-     *
-     * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state.
-     *
-     * The constructed pool is always valid (`this->valid() == true`).
+     * Equivalent to `connection_pool(ctx.get_executor(), params)`.
      *
      * This function participates in overload resolution only if `ExecutionContext`
      * satisfies the `ExecutionContext` requirements imposed by Boost.Asio.
@@ -409,7 +392,7 @@ public:
 #endif
         >
     connection_pool(ExecutionContext& ctx, pool_params params)
-        : connection_pool({ctx.get_executor(), ctx.get_executor()}, std::move(params), 0)
+        : connection_pool(ctx.get_executor(), std::move(params), 0)
     {
     }
 
@@ -485,8 +468,7 @@ public:
     /**
      * \brief Retrieves the executor associated to this object.
      * \details
-     * Returns the pool executor passed to the constructor, as per
-     * \ref pool_executor_params::pool_executor.
+     * Returns the executor used to construct the pool as first argument.
      * This is the case even when using \ref pool_params::thread_safe -
      * the internal strand created in this case is never exposed.
      *
@@ -613,8 +595,8 @@ public:
      * \par Errors
      *   - \ref client_errc::no_connection_available, if the `async_get_connection`
      *     operation is cancelled before a connection becomes available.
-     *   - \ref client_errc::pool_not_running, if the pool is not running
-     *     when the operation is started.
+     *   - \ref client_errc::pool_not_running, if the `async_get_connection`
+     *     operation is cancelled before async_run is called.
      *   - \ref client_errc::pool_cancelled, if the pool is cancelled before
      *     the operation completes, or `async_get_connection` is called
      *     on a pool that has been cancelled.

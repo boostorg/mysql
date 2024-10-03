@@ -80,7 +80,7 @@ struct fixture : io_context_fixture
 };
 
 // The pool and individual connections use the correct executors
-BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
+BOOST_FIXTURE_TEST_CASE(connection_executor, fixture)
 {
     // Create two different executors
     asio::any_io_executor pool_ex = asio::make_strand(ctx);
@@ -88,7 +88,9 @@ BOOST_FIXTURE_TEST_CASE(pool_executors, fixture)
     BOOST_TEST((pool_ex != conn_ex));
 
     // Create and run the pool
-    connection_pool pool(pool_executor_params{pool_ex, conn_ex}, create_pool_params());
+    auto params = create_pool_params();
+    params.connection_executor = conn_ex;
+    connection_pool pool(pool_ex, std::move(params));
     auto run_result = pool.async_run(as_netresult);
 
     // Get a connection
@@ -309,6 +311,28 @@ BOOST_FIXTURE_TEST_CASE(connection_upper_limit, fixture)
     std::move(run_result).validate_no_error_nodiag();
 }
 
+// If a connection is requested before calling run, we wait
+BOOST_DATA_TEST_CASE_F(fixture, get_connection_before_run, data::make({false, true}))
+{
+    auto params = create_pool_params(1);
+    params.thread_safe = sample;
+    connection_pool pool(ctx, std::move(params));
+
+    // Get a connection before calling run
+    auto getconn_result = pool.async_get_connection(diag, as_netresult);
+
+    // Call run
+    auto run_result = pool.async_run(as_netresult);
+
+    // Success
+    auto conn = std::move(getconn_result).get();
+    conn->async_ping(as_netresult).validate_no_error();
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
+}
+
 BOOST_FIXTURE_TEST_CASE(cancel_run, fixture)
 {
     // Construct a pool and run it
@@ -363,15 +387,6 @@ BOOST_DATA_TEST_CASE_F(fixture, cancel_get_connection, data::make({false, true})
     pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_cancelled);
 }
 
-BOOST_FIXTURE_TEST_CASE(get_connection_pool_not_running, fixture)
-{
-    // Create a pool but don't run it
-    connection_pool pool(ctx, create_pool_params());
-
-    // Getting a connection fails immediately with a descriptive error code
-    pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_not_running);
-}
-
 // Having a valid pooled_connection alive extends the pool's lifetime
 BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::make({false, true}))
 {
@@ -410,7 +425,8 @@ BOOST_FIXTURE_TEST_CASE(async_get_connection_initation_extends_pool_lifetime, fi
     pool.reset();
 
     // We can run the operation without crashing, since it extends lifetime
-    std::move(op)(as_netresult).validate_error(client_errc::pool_not_running);
+    std::move(op)(asio::cancel_after(std::chrono::nanoseconds(1), as_netresult))
+        .validate_error(client_errc::pool_not_running);
 }
 
 // In thread-safe mode, cancel() is dispatched to the strand, and doesn't cause lifetime issues
@@ -597,7 +613,7 @@ BOOST_FIXTURE_TEST_CASE(default_token, fixture)
 
         // Error case (pool not running)
         BOOST_CHECK_EXCEPTION(
-            co_await pool.async_get_connection(),
+            co_await pool.async_get_connection(asio::cancel_after(std::chrono::nanoseconds(1))),
             error_with_diagnostics,
             [](const error_with_diagnostics& err) {
                 BOOST_TEST(err.code() == client_errc::pool_not_running);
@@ -645,7 +661,7 @@ BOOST_FIXTURE_TEST_CASE(cancel_after_partial_token, fixture)
 
         // Error case (operation cancelled)
         BOOST_CHECK_EXCEPTION(
-            co_await pool.async_get_connection(asio::cancel_after(std::chrono::microseconds(1))),
+            co_await pool.async_get_connection(asio::cancel_after(std::chrono::nanoseconds(1))),
             error_with_diagnostics,
             [](const error_with_diagnostics& err) {
                 BOOST_TEST(err.code() == client_errc::no_connection_available);

@@ -434,10 +434,7 @@ public:
 
 std::shared_ptr<mock_pool> create_mock_pool(asio::io_context& ctx, pool_params&& params)
 {
-    return std::make_shared<mock_pool>(
-        pool_executor_params{ctx.get_executor(), ctx.get_executor()},
-        std::move(params)
-    );
+    return std::make_shared<mock_pool>(ctx.get_executor(), std::move(params));
 }
 
 class fixture : public io_context_fixture
@@ -1029,6 +1026,32 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
     task.wait(client_errc::no_connection_available, false);
     BOOST_TEST(diag == create_client_diag("Last connection attempt timed out"));
     BOOST_TEST(fix.pool().nodes().size() == 1u);
+}
+
+BOOST_DATA_TEST_CASE_F(
+    io_context_fixture,
+    get_connection_wait_op_cancelled_pool_not_running,
+    data::make({false, true})
+)
+{
+    // If the op is cancelled because the pool is not running, appropriate diagnostics are issued
+    // Setup
+    pool_params params;
+    params.thread_safe = sample;
+    auto pool = create_mock_pool(ctx, std::move(params));
+    diagnostics diag;
+
+    // A request for a connection is issued. The request finds the pool not running,
+    // and waits
+    get_connection_task task(*pool, &diag);
+    ctx.poll();
+
+    // The request gets cancelled. We get the expected error
+    task.cancel();
+    task.wait(client_errc::pool_not_running, false);
+    BOOST_TEST(diag == diagnostics());
+
+    pool->cancel();
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_diag_nullptr)
