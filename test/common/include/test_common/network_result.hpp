@@ -53,6 +53,11 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
 {
     error_code err;
     diagnostics diag;
+    bool was_immediate{};
+
+    network_result_base(error_code ec = {}, diagnostics d = {}) noexcept : err(ec), diag(std::move(d)) {}
+
+    void validate_immediate(bool expect_immediate, source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
 
     void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
 
@@ -100,6 +105,16 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result : network_result_base
     {
     }
 
+    // Allow chaining
+    network_result<R>& validate_immediate(
+        bool expect_immediate,
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    )
+    {
+        network_result_base::validate_immediate(expect_immediate, loc);
+        return *this;
+    }
+
     BOOST_ATTRIBUTE_NODISCARD
     value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
@@ -127,6 +142,7 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
             create_server_diag("network_result_v2 - diagnostics not cleared")
         };
         bool done{false};
+        bool was_immediate{false};
 
         impl_t(asio::io_context& ctx) : ctx(ctx) {}
     };
