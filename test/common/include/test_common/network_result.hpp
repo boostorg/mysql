@@ -53,6 +53,11 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
 {
     error_code err;
     diagnostics diag;
+    bool was_immediate{};
+
+    network_result_base(error_code ec = {}, diagnostics d = {}) noexcept : err(ec), diag(std::move(d)) {}
+
+    void validate_immediate(bool expect_immediate, source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
 
     void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
 
@@ -100,6 +105,16 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result : network_result_base
     {
     }
 
+    // Allow chaining
+    network_result<R>& validate_immediate(
+        bool expect_immediate,
+        source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+    )
+    {
+        network_result_base::validate_immediate(expect_immediate, loc);
+        return *this;
+    }
+
     BOOST_ATTRIBUTE_NODISCARD
     value_type get(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
@@ -113,14 +128,6 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result : network_result_base
         validate_no_error_nodiag(loc);
         return std::move(value);
     }
-};
-
-// The type of completion check to perform when running something with as_netresult
-enum class completion_check
-{
-    immediate,      // Op should perform an immediate completion
-    not_immediate,  // Op should never perform an immediate completion
-    dont_care,      // Don't check
 };
 
 // Wraps a network_result and an executor. The result of as_netresult_t.
@@ -146,23 +153,10 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
 
     asio::io_context& context() { return impl->ctx; }
 
-    network_result<R> run(completion_check check, source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
-    {
-        poll_until(context(), &impl->done, loc);
-        if (check != completion_check::dont_care)
-        {
-            BOOST_TEST_CONTEXT("Called from " << loc)
-            {
-                bool expected = check == completion_check::immediate;
-                BOOST_TEST(impl->was_immediate == expected);
-            }
-        }
-        return std::move(impl->netres);
-    }
-
     network_result<R> run(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
-        return std::move(*this).run(completion_check::dont_care, loc);
+        poll_until(context(), &impl->done, loc);
+        return std::move(impl->netres);
     }
 
     void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&

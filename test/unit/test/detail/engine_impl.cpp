@@ -34,6 +34,7 @@
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
+#include "test_common/poll_until.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -466,14 +467,16 @@ BOOST_AUTO_TEST_CASE(resume_error_immediate_async)
         {
             // We need to call the initiation function from a context thread
             // to get immediate completions
-            run_in_global_context([&]() {
+            io_context_fixture fix;
+            run_in_context(fix.ctx, [&]() {
                 // Setup
                 mock_algo algo(next_action(tc.ec));
-                test_engine eng{global_context_executor()};
+                test_engine eng{fix.ctx.get_executor()};
 
                 // Run the function
                 eng.async_run(any_resumable_ref(algo), as_netresult)
-                    .run(completion_check::immediate)
+                    .run()
+                    .validate_immediate(true)
                     .validate_error(tc.ec, create_server_diag("<diagnostics unavailable>"));
 
                 // Check

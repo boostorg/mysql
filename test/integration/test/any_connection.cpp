@@ -35,8 +35,8 @@
 #include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/network_result.hpp"
+#include "test_common/poll_until.hpp"
 #include "test_common/printing.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/connect_params_builder.hpp"
 #include "test_integration/run_coro.hpp"
@@ -320,7 +320,7 @@ BOOST_FIXTURE_TEST_CASE(default_token_cancel_after, any_connection_fixture)
 // Spotcheck: immediate completions dispatched to the immediate executor
 BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
 {
-    run_in_global_context([this]() {
+    run_in_context(ctx, [this]() {
         // Setup
         connect();
         results r;
@@ -330,7 +330,8 @@ BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
 
         // Executing with the wrong number of params is an immediate error
         conn.async_execute(stmt.bind(0), r, as_netresult)
-            .run(completion_check::immediate)
+            .run()
+            .validate_immediate(true)
             .validate_error(client_errc::wrong_num_params);
     });
 }
