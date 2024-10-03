@@ -31,9 +31,9 @@
 #include <cstring>
 
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -185,6 +185,12 @@ struct test_engine
 
     struct initiation_t
     {
+        asio::any_io_executor ex;
+
+        // Required for compatibility with as_netresult
+        using executor_type = asio::any_io_executor;
+        executor_type get_executor() const { return ex; }
+
         void operator()(
             asio::any_completion_handler<void(error_code)> handler,
             engine* eng,
@@ -200,14 +206,14 @@ struct test_engine
     template <class CompletionToken>
     auto async_run(any_resumable_ref resumable, CompletionToken&& token)
         -> decltype(asio::async_initiate<CompletionToken, void(error_code)>(
-            initiation_t{},
+            initiation_t{value.get_executor()},
             token,
             &value,
             resumable
         ))
     {
         return asio::async_initiate<CompletionToken, void(error_code)>(
-            initiation_t{},
+            initiation_t{value.get_executor()},
             token,
             &value,
             resumable
@@ -262,9 +268,10 @@ BOOST_AUTO_TEST_CASE(next_action_read)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
+            io_context_fixture fix;
             std::array<std::uint8_t, 8> buff{};
             mock_algo algo(next_action::read({buff, tc.ssl_active}));
-            test_engine eng{global_context_executor()};
+            test_engine eng{fix.ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error_nodiag();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
@@ -301,9 +308,10 @@ BOOST_AUTO_TEST_CASE(next_action_write)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
+            io_context_fixture fix;
             const std::array<std::uint8_t, 4> buff{};
             mock_algo algo(next_action::write({buff, tc.ssl_active}));
-            test_engine eng{global_context_executor()};
+            test_engine eng{fix.ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error_nodiag();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
@@ -344,8 +352,9 @@ BOOST_AUTO_TEST_CASE(next_action_other)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
+            io_context_fixture fix;
             mock_algo algo(tc.act);
-            test_engine eng{global_context_executor()};
+            test_engine eng{fix.ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo)).validate_no_error_nodiag();
             BOOST_TEST(eng.value.stream().calls.size() == 1u);
@@ -390,9 +399,10 @@ BOOST_AUTO_TEST_CASE(stream_errors)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
+            io_context_fixture fix;
             mock_algo algo(tc.act);
             test_engine eng{
-                {global_context_executor(), asio::error::already_open}
+                {fix.ctx.get_executor(), asio::error::already_open}
             };
 
             tc.fn(eng, any_resumable_ref(algo))
@@ -425,8 +435,9 @@ BOOST_AUTO_TEST_CASE(resume_error_immediate_sync)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
+            io_context_fixture fix;
             mock_algo algo(next_action(tc.ec));
-            test_engine eng{global_context_executor()};
+            test_engine eng{fix.ctx.get_executor()};
 
             sync_fn(eng, any_resumable_ref(algo))
                 .validate_error(tc.ec, create_server_diag("<diagnostics unavailable>"));
@@ -495,8 +506,9 @@ BOOST_AUTO_TEST_CASE(resume_error_successive_calls)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
+            io_context_fixture fix;
             mock_algo algo(next_action::connect(), next_action(tc.ec));
-            test_engine eng{global_context_executor()};
+            test_engine eng{fix.ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo))
                 .validate_error(tc.ec, create_server_diag("<diagnostics unavailable>"));

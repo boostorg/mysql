@@ -12,11 +12,8 @@
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
-#include <boost/mysql/detail/access.hpp>
-
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/strand.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <chrono>
@@ -25,25 +22,6 @@
 
 namespace boost {
 namespace mysql {
-
-/**
- * \brief (EXPERIMENTAL) Executor configuration for connection pools.
- * \details
- * Contains two executors: one for the pool's internal objects, and another for the connections
- * created by the pool.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
- */
-struct pool_executor_params
-{
-    /// The executor to be used by the pool's internal objects.
-    asio::any_io_executor pool_executor;
-
-    /// The executor to be used by connections created by the pool.
-    asio::any_io_executor connection_executor;
-};
 
 /**
  * \brief (EXPERIMENTAL) Configuration parameters for \ref connection_pool.
@@ -188,7 +166,7 @@ struct pool_params
      * be shared between threads at the cost of some performance.
      *
      * Enabling thread safety for a pool creates an internal `asio::strand` object
-     * wrapping the executor passed in \ref pool_executor_params::pool_executor.
+     * wrapping the executor passed to the pool's constructor.
      * All state-mutating functions (including \ref connection_pool::async_run,
      * \ref connection_pool::async_get_connection and returning connections)
      * will be run through the created strand.
@@ -197,6 +175,17 @@ struct pool_params
      * objects can't be shared between threads.
      */
     bool thread_safe{false};
+
+    /**
+     * \brief The executor to be used by individual connections created by the pool.
+     * \details
+     * If this member is set to a non-empty value
+     * (that is, `static_cast<bool>(connection_executor) == true`),
+     * individual connections will be created using this executor.
+     * Otherwise, connections will use the pool's executor
+     * (as per \ref connection_pool::get_executor).
+     */
+    asio::any_io_executor connection_executor{};
 };
 
 }  // namespace mysql

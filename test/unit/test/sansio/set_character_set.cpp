@@ -17,8 +17,8 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_ok.hpp"

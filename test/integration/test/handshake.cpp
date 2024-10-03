@@ -33,6 +33,7 @@
 
 #include "test_common/ci_server.hpp"
 #include "test_common/create_basic.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/source_location.hpp"
@@ -323,11 +324,11 @@ BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
 }
 
 // Spotcheck: caching_sha2_password works with old connection
-BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
+BOOST_FIXTURE_TEST_CASE(tcp_ssl_connection_, io_context_fixture)
 {
     // Setup
     asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
-    tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
+    tcp_ssl_connection conn(ctx, ssl_ctx);
     auto params = connect_params_builder().credentials(regular_user, regular_passwd).build_hparams();
 
     // Connect succeeds
@@ -403,14 +404,14 @@ BOOST_AUTO_TEST_CASE(custom_certificate_verification_error)
 }
 
 // Spotcheck: a custom SSL context can be used with old connections
-BOOST_AUTO_TEST_CASE(tcp_ssl_connection_)
+BOOST_FIXTURE_TEST_CASE(tcp_ssl_connection_, io_context_fixture)
 {
     // Setup
     asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
     ssl_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     ssl_ctx.add_certificate_authority(boost::asio::buffer(CA_PEM));
     ssl_ctx.set_verify_callback(boost::asio::ssl::host_name_verification("host.name"));
-    tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
+    tcp_ssl_connection conn(ctx, ssl_ctx);
     auto params = connect_params_builder().build_hparams();
 
     // Connect fails
@@ -468,8 +469,9 @@ BOOST_AUTO_TEST_CASE(ssl_stream)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
+            io_context_fixture fix;
             asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
-            tcp_ssl_connection conn(global_context_executor(), ssl_ctx);
+            tcp_ssl_connection conn(fix.ctx, ssl_ctx);
             auto params = connect_params_builder().ssl(tc.mode).build_hparams();
 
             // Handshake succeeds
@@ -492,10 +494,10 @@ template <class Conn>
 struct fixture;
 
 template <>
-struct fixture<tcp_ssl_connection>
+struct fixture<tcp_ssl_connection> : io_context_fixture
 {
     asio::ssl::context ssl_ctx{asio::ssl::context::tls_client};
-    tcp_ssl_connection conn{global_context_executor(), ssl_ctx};
+    tcp_ssl_connection conn{ctx, ssl_ctx};
 
     using endpoint_type = asio::ip::tcp::endpoint;
     static endpoint_type get_endpoint() { return get_tcp_endpoint(); }
@@ -504,9 +506,9 @@ struct fixture<tcp_ssl_connection>
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 template <>
-struct fixture<unix_connection>
+struct fixture<unix_connection> : io_context_fixture
 {
-    unix_connection conn{global_context_executor()};
+    unix_connection conn{ctx};
 
     using endpoint_type = asio::local::stream_protocol::endpoint;
     static endpoint_type get_endpoint() { return default_unix_path; }
@@ -514,10 +516,10 @@ struct fixture<unix_connection>
 };
 
 template <>
-struct fixture<unix_ssl_connection>
+struct fixture<unix_ssl_connection> : io_context_fixture
 {
     asio::ssl::context ssl_ctx{asio::ssl::context::tls_client};
-    unix_ssl_connection conn{global_context_executor(), ssl_ctx};
+    unix_ssl_connection conn{ctx, ssl_ctx};
 
     using endpoint_type = asio::local::stream_protocol::endpoint;
     static endpoint_type get_endpoint() { return default_unix_path; }

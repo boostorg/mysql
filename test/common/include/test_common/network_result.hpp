@@ -16,17 +16,16 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/associated_cancellation_slot.hpp>
+#include <boost/asio/associated_executor.hpp>
 #include <boost/asio/async_result.hpp>
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/assert/source_location.hpp>
 #include <boost/core/span.hpp>
 #include <boost/mp11/algorithm.hpp>
 #include <boost/mp11/integral.hpp>
 #include <boost/mp11/list.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -35,10 +34,10 @@
 #include <vector>
 
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/poll_until.hpp"
 #include "test_common/printing.hpp"
 #include "test_common/source_location.hpp"
 #include "test_common/tracker_executor.hpp"
-#include "test_common/validate_string_contains.hpp"
 
 namespace boost {
 namespace mysql {
@@ -55,67 +54,38 @@ struct BOOST_ATTRIBUTE_NODISCARD network_result_base
     error_code err;
     diagnostics diag;
 
-    void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
-    {
-        validate_error(error_code(), diagnostics(), loc);
-    }
+    void validate_no_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
 
     // Use for functions without a diagnostics& parameter
-    void validate_no_error_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
-    {
-        validate_error(error_code(), create_server_diag("<diagnostics unavailable>"), loc);
-    }
+    void validate_no_error_nodiag(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
 
     void validate_error(
         error_code expected_err,
         const diagnostics& expected_diag = {},
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-    ) const
-    {
-        BOOST_TEST_CONTEXT("Called from " << loc)
-        {
-            BOOST_TEST(diag == expected_diag);
-            BOOST_TEST_REQUIRE(err == expected_err);
-        }
-    }
+    ) const;
 
     void validate_error(
         common_server_errc expected_err,
         string_view expected_msg = {},
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-    )
-    {
-        validate_error(expected_err, create_server_diag(expected_msg), loc);
-    }
+    );
 
     void validate_error(
         client_errc expected_err,
         string_view expected_msg = {},
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-    )
-    {
-        validate_error(expected_err, create_client_diag(expected_msg), loc);
-    }
+    );
 
     // Use when the exact message isn't known, but some of its contents are
     void validate_error_contains(
         error_code expected_err,
         const std::vector<std::string>& pieces,
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
-    )
-    {
-        BOOST_TEST_CONTEXT("Called from " << loc)
-        {
-            validate_string_contains(diag.server_message(), pieces);
-            BOOST_TEST_REQUIRE(err == expected_err);
-        }
-    }
+    );
 
     // Use when you don't care or can't determine the kind of error
-    void validate_any_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const
-    {
-        BOOST_TEST_CONTEXT("Called from " << loc) { BOOST_TEST_REQUIRE(err != error_code()); }
-    }
+    void validate_any_error(source_location loc = BOOST_MYSQL_CURRENT_LOCATION) const;
 };
 
 template <class R>
@@ -159,21 +129,26 @@ struct BOOST_ATTRIBUTE_NODISCARD runnable_network_result
 {
     struct impl_t
     {
+        asio::io_context& ctx;
         network_result<R> netres{
             common_server_errc::er_no,
             create_server_diag("network_result_v2 - diagnostics not cleared")
         };
         bool done{false};
         bool was_immediate{false};
+
+        impl_t(asio::io_context& ctx) : ctx(ctx) {}
     };
 
     std::unique_ptr<impl_t> impl;
 
-    runnable_network_result() : impl(new impl_t) {}
+    runnable_network_result(asio::io_context& ctx) : impl(new impl_t(ctx)) {}
+
+    asio::io_context& context() { return impl->ctx; }
 
     network_result<R> run(completion_check check, source_location loc = BOOST_MYSQL_CURRENT_LOCATION) &&
     {
-        poll_global_context(&impl->done, loc);
+        poll_until(context(), &impl->done, loc);
         if (check != completion_check::dont_care)
         {
             BOOST_TEST_CONTEXT("Called from " << loc)
@@ -279,65 +254,22 @@ struct as_netres_sig_to_rtype<void(error_code, T)>
     using type = T;
 };
 
-template <class R>
-class as_netres_handler
+class as_netres_handler_base
 {
-    typename runnable_network_result<R>::impl_t* target_;
     tracker_executor_result ex_;
     tracker_executor_result immediate_ex_;
     asio::cancellation_slot slot_;
     const diagnostics* diag_ptr;
 
-    void complete(error_code ec) const
-    {
-        // Check executor. The passed executor must be the top one in all cases.
-        // Immediate completions must be dispatched through the immediate executor, too.
-        // In all cases, we may encounter a bigger stack because of previous immediate completions.
-        const std::array<int, 1> stack_data_regular{{ex_.executor_id}};
-        const std::array<int, 2> stack_data_immediate{
-            {immediate_ex_.executor_id, ex_.executor_id}
-        };
-
-        // Expected top of the executor stack
-        bool is_immediate = is_initiation_function();
-        boost::span<const int> expected_stack_top = is_immediate
-                                                        ? boost::span<const int>(stack_data_immediate)
-                                                        : boost::span<const int>(stack_data_regular);
-
-        // Actual top of the executor stack
-        auto actual_stack_top = executor_stack().last(
-            (std::min)(executor_stack().size(), expected_stack_top.size())
-        );
-
-        // Compare
-        BOOST_TEST(actual_stack_top == expected_stack_top, boost::test_tools::per_element());
-
-        // Assign error code and diagnostics
-        target_->netres.err = ec;
-        if (diag_ptr)
-            target_->netres.diag = *diag_ptr;
-        else
-            target_->netres.diag = create_server_diag("<diagnostics unavailable>");
-
-        // Mark the operation as done
-        target_->was_immediate = is_immediate;
-        target_->done = true;
-    }
+protected:
+    as_netres_handler_base(
+        asio::io_context& ctx,
+        asio::cancellation_slot slot,
+        const diagnostics* output_diag
+    );
+    void complete_base(error_code ec, network_result_base& netres) const;
 
 public:
-    as_netres_handler(
-        runnable_network_result<R>& netresult,
-        const diagnostics* output_diag,
-        asio::cancellation_slot slot
-    )
-        : target_(netresult.impl.get()),
-          ex_(create_tracker_executor(global_context_executor())),
-          immediate_ex_(create_tracker_executor(global_context_executor())),
-          slot_(slot),
-          diag_ptr(output_diag)
-    {
-    }
-
     // Executor
     using executor_type = asio::any_io_executor;
     asio::any_io_executor get_executor() const { return ex_.ex; }
@@ -349,6 +281,28 @@ public:
     // Cancellation slot
     using cancellation_slot_type = asio::cancellation_slot;
     asio::cancellation_slot get_cancellation_slot() const noexcept { return slot_; }
+};
+
+template <class R>
+class as_netres_handler : public as_netres_handler_base
+{
+    typename runnable_network_result<R>::impl_t* target_;
+
+    void complete(error_code ec) const
+    {
+        this->complete_base(ec, target_->netres);
+        target_->done = true;
+    }
+
+public:
+    as_netres_handler(
+        runnable_network_result<R>& netresult,
+        const diagnostics* output_diag,
+        asio::cancellation_slot slot
+    )
+        : as_netres_handler_base(netresult.context(), slot, output_diag), target_(netresult.impl.get())
+    {
+    }
 
     void operator()(error_code ec) const { complete(ec); }
 
@@ -361,7 +315,6 @@ public:
 };
 
 }  // namespace test_detail
-
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost
@@ -456,12 +409,16 @@ private:
         Args&&... args
     )
     {
+        // Retrieve the context associated to this operation.
+        // All our initiations have bound executors, to be compliant with asio::cancel_after
+        auto& ctx = static_cast<asio::io_context&>(asio::get_associated_executor(initiation).context());
+
         // Verify that we correctly set diagnostics in all cases
         if (diag)
             *diag = mysql::test::create_server_diag("Diagnostics not cleared properly");
 
         // Create the return type
-        mysql::test::runnable_network_result<R> netres;
+        mysql::test::runnable_network_result<R> netres(ctx);
 
         // Record that we're initiating
         mysql::test::initiation_guard guard;

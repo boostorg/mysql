@@ -72,6 +72,8 @@ local requirements =
         # gcc-13+ complains about TSAN not supporting std::atomic_thread_fence,
         # used by Asio old net-ts type-erased executors.
         <toolset>gcc,<thread-sanitizer>norecover:<cxxflags>-Wno-tsan
+        # gcc-11 emits spurious warnings for valid vector::insert ops
+        <toolset>gcc-11:<cxxflags>-Wno-stringop-overflow
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
@@ -125,8 +127,7 @@ lib boost_mysql_compiled
 alias common_test_sources
     :
         common/src/entry_point.cpp
-        common/src/tracker_executor.cpp
-        common/src/printing.cpp
+        common/src/utils.cpp
     ;
 
 # Boost.Context causes failures with warnings-as-errors

@@ -97,7 +97,7 @@ public:
     // Constructor: constructs the connection_pool object from
     // the single-thread pool and calls async_run.
     // The pool has a single thread, which creates an implicit strand.
-    // There is no need to use pool_executor_params::thread_safe
+    // There is no need to use pool_params::thread_safe
     sync_pool(boost::mysql::pool_params params) : conn_pool_(thread_pool_, std::move(params))
     {
         // Run the pool in the background (this is performed by the thread_pool thread).
@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
         //]
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
-        run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
+        run_coro(ctx, [&pool]() -> boost::asio::awaitable<void> {
             co_await get_num_employees(pool);
             pool.cancel();
         });
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
         pool.async_run(boost::asio::detached);
-        run_coro(ctx.get_executor(), [&pool]() -> boost::asio::awaitable<void> {
+        run_coro(ctx, [&pool]() -> boost::asio::awaitable<void> {
             co_await return_without_reset(pool);
             co_await apply_timeout(pool);
             pool.cancel();

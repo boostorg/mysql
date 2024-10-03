@@ -434,11 +434,7 @@ BOOST_AUTO_TEST_CASE(add_incrementally)
         {pipeline_stage_kind::reset_connection, 1u, {}                      },
         {pipeline_stage_kind::execute,          1u, resultset_encoding::text}
     };
-    check_pipeline(
-        req,
-        concat_copy(create_frame(0, {0x1f}), create_query_frame(0, "SELECT 1")),
-        expected_stages
-    );
+    check_pipeline(req, concat(create_frame(0, {0x1f}), create_query_frame(0, "SELECT 1")), expected_stages);
 }
 
 BOOST_AUTO_TEST_CASE(all_stage_kinds)
@@ -495,7 +491,7 @@ BOOST_AUTO_TEST_CASE(clear)
     };
     check_pipeline(
         req,
-        concat_copy(create_query_frame(0, "abc"), create_frame(0, {0x19, 0x07, 0x00, 0x00, 0x00})),
+        concat(create_query_frame(0, "abc"), create_frame(0, {0x19, 0x07, 0x00, 0x00, 0x00})),
         expected_stages
     );
 }

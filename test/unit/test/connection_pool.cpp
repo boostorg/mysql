@@ -40,10 +40,9 @@ BOOST_AUTO_TEST_SUITE(test_pooled_connection)
 struct pooled_connection_fixture
 {
     asio::io_context ctx;
-    std::shared_ptr<detail::pool_impl> pool{std::make_shared<detail::pool_impl>(
-        pool_executor_params{ctx.get_executor(), ctx.get_executor()},
-        pool_params{}
-    )};
+    std::shared_ptr<detail::pool_impl> pool{
+        std::make_shared<detail::pool_impl>(ctx.get_executor(), pool_params{})
+    };
 
     std::unique_ptr<detail::connection_node> create_node()
     {
@@ -202,20 +201,6 @@ struct pool_fixture
     connection_pool pool{ctx, pool_params{}};
 };
 
-BOOST_AUTO_TEST_CASE(ctor_from_pool_executor_params)
-{
-    // Construct
-    asio::io_context ctx1, ctx2;
-    connection_pool pool(pool_executor_params{ctx1.get_executor(), ctx2.get_executor()}, pool_params{});
-
-    // Executors are correct
-    BOOST_TEST((pool.get_executor() == ctx1.get_executor()));
-    BOOST_TEST((detail::access::get_impl(pool)->connection_ex() == ctx2.get_executor()));
-
-    // The pool is valid
-    BOOST_TEST(pool.valid());
-}
-
 BOOST_AUTO_TEST_CASE(ctor_from_executor)
 {
     // Construct
@@ -322,7 +307,8 @@ BOOST_FIXTURE_TEST_CASE(move_assign_invalid_invalid, pool_fixture)
 // Regression check: deferred works even in C++11
 void deferred_spotcheck()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
 
     (void)pool.async_run(asio::deferred);
@@ -334,7 +320,8 @@ void deferred_spotcheck()
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 asio::awaitable<void> spotcheck_default_tokens()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
 
     co_await pool.async_run();
@@ -360,7 +347,8 @@ void check_run_op(asio::deferred_async_operation<void(T), Rest...>)
 
 void spotcheck_partial_tokens()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
     auto tok = asio::cancel_after(std::chrono::seconds(10));
 
