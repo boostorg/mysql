@@ -335,7 +335,7 @@ class basic_pool_impl
                     obj->maybe_create_connection();
 
                     // Wait to be notified, or until a cancellation happens
-                    BOOST_MYSQL_YIELD(resume_point, 2, obj->wait_for_connections(self);)
+                    BOOST_MYSQL_YIELD(resume_point, 2, obj->wait_for_connections(self))
 
                     // Remember that we have waited, so completions are dispatched
                     // correctly
