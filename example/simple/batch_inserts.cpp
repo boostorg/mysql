@@ -5,36 +5,43 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/describe/class.hpp>
+//<-
+#include <boost/asio/awaitable.hpp>
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+//->
 
-#ifdef BOOST_DESCRIBE_CXX14
+/**
+ * This example demonstrates how to insert several records in a single
+ * SQL statement using format_sql. It uses C++20 coroutines.
+ *
+ * The program reads a JSON file containing a list of employees
+ * and inserts it into the employee table. It uses Boost.JSON and
+ * Boost.Describe to parse the file.
+ */
 
 //[example_batch_inserts
 
-// Uses client-side SQL formatting to implement batch inserts
-// for a specific type.
-// The program reads a JSON file containing a list of employees
-// and inserts it into the employee table.
-//
-// This example requires C++14 to work because it uses Boost.Describe
-// to simplify JSON parsing. All Boost.MySQL features used are C++11 compatible.
-//
-// Note: client-side SQL formatting is an experimental feature.
-
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/with_params.hpp>
 
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/describe/members.hpp>
-#include <boost/describe/modifiers.hpp>
+#include <boost/asio/this_coro.hpp>
+#include <boost/describe/class.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/value_to.hpp>
 
 #include <fstream>
 #include <iostream>
+#include <span>
 #include <string>
+
+namespace asio = boost::asio;
+namespace mysql = boost::mysql;
 
 /**
  * We will use Boost.Describe to easily parse the JSON file
@@ -56,6 +63,7 @@ struct employee
 };
 
 // Adds reflection capabilities to employee. Required by the JSON parser.
+// Boost.Describe requires C++14
 BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, company_id, salary))
 
 // Reads a file into memory
@@ -65,6 +73,64 @@ static std::string read_file(const char* file_name)
     if (!ifs)
         throw std::runtime_error("Cannot open file: " + std::string(file_name));
     return std::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
+}
+
+asio::awaitable<void> coro_main(
+    std::string server_hostname,
+    std::string username,
+    std::string password,
+    std::span<const employee> employees
+)
+{
+    // Create a connection.
+    // Will use the same executor as the coroutine.
+    boost::mysql::any_connection conn(co_await asio::this_coro::executor);
+
+    // The hostname, username, password and database to use
+    boost::mysql::connect_params params{
+        .server_address = mysql::host_and_port(std::move(server_hostname)),
+        .username = std::move(username),
+        .password = std::move(password),
+        .database = "boost_mysql_examples"
+    };
+
+    // Connect to the server
+    co_await conn.async_connect(params);
+
+    // A function describing how to format a single employee object. Used with mysql::sequence.
+    auto format_employee_fn = [](const employee& emp, mysql::format_context_base& ctx) {
+        // format_context_base can be used to build query strings incrementally.
+        // Used internally by the sequence() formatter.
+        // format_sql_to expands a format string, replacing {} fields,
+        // and appends the result to the passed context.
+        // When formatted, strings are quoted and escaped as string literals.
+        // ints are formatted as number literals.
+        mysql::format_sql_to(
+            ctx,
+            "({}, {}, {}, {})",
+            emp.first_name,
+            emp.last_name,
+            emp.company_id,
+            emp.salary
+        );
+    };
+
+    // Compose and execute the batch INSERT. When passed to execute(), with_params
+    // replaces placeholders ({}) by actual parameter values before sending the query to the server.
+    // When inserting two employees, something like the following may be generated:
+    // INSERT INTO employee (first_name, last_name, company_id, salary)
+    //     VALUES ('John', 'Doe', 'HGS', 20000), ('Rick', 'Smith', 'LLC', 50000)
+    mysql::results result;
+    co_await conn.async_execute(
+        mysql::with_params(
+            "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
+            mysql::sequence(employees, format_employee_fn)
+        ),
+        result
+    );
+
+    // Notify the MySQL server we want to quit, then close the underlying connection.
+    co_await conn.async_close();
 }
 
 void main_impl(int argc, char** argv)
@@ -90,60 +156,25 @@ void main_impl(int argc, char** argv)
     }
 
     // Create an I/O context, required by all I/O objects
-    boost::asio::io_context ctx;
+    asio::io_context ctx;
 
-    // Create a connection. Note that client-side SQL formatting
-    // requires us to use the newer any_connection.
-    boost::mysql::any_connection conn(ctx);
-
-    // Connection configuration. By default, connections use the utf8mb4 character set
-    // (MySQL's name for regular UTF-8).
-    boost::mysql::connect_params params;
-    params.server_address.emplace_host_and_port(argv[3]);
-    params.username = argv[1];
-    params.password = argv[2];
-    params.database = "boost_mysql_examples";
-
-    // A results object to hold the result of executing our SQL query
-    boost::mysql::results result;
-
-    // Connect to the server
-    conn.connect(params);
-
-    // A function describing how to format a single employee object. Used with mysql::sequence.
-    auto format_employee_fn = [](const employee& emp, boost::mysql::format_context_base& ctx) {
-        // format_context_base can be used to build query strings incrementally.
-        // Used internally by the sequence() formatter.
-        // format_sql_to expands a format string, replacing {} fields,
-        // and appends the result to the passed context.
-        // When formatted, strings are quoted and escaped as string literals.
-        // ints are formatted as number literals.
-        boost::mysql::format_sql_to(
-            ctx,
-            "({}, {}, {}, {})",
-            emp.first_name,
-            emp.last_name,
-            emp.company_id,
-            emp.salary
-        );
-    };
-
-    // Compose and execute the batch INSERT. When passed to execute(), with_params
-    // replaces placeholders ({}) by actual parameter values before sending the query to the server.
-    // When inserting two employees, something like the following may be generated:
-    // INSERT INTO employee (first_name, last_name, company_id, salary)
-    //     VALUES ('John', 'Doe', 'HGS', 20000), ('Rick', 'Smith', 'LLC', 50000)
-    conn.execute(
-        boost::mysql::with_params(
-            "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
-            boost::mysql::sequence(values, format_employee_fn)
-        ),
-        result
+    // Launch our coroutine
+    asio::co_spawn(
+        ctx,
+        [&] { return coro_main(argv[3], argv[1], argv[2], values); },
+        // If any exception is thrown in the coroutine body, rethrow it.
+        [](std::exception_ptr ptr) {
+            if (ptr)
+            {
+                std::rethrow_exception(ptr);
+            }
+        }
     );
-    std::cout << "Done\n";
 
-    // Notify the MySQL server we want to quit, then close the underlying connection.
-    conn.close();
+    // Calling run will actually execute the coroutine until completion
+    ctx.run();
+
+    std::cout << "Done\n";
 }
 
 int main(int argc, char** argv)
@@ -152,7 +183,7 @@ int main(int argc, char** argv)
     {
         main_impl(argc, argv);
     }
-    catch (const boost::mysql::error_with_diagnostics& err)
+    catch (const mysql::error_with_diagnostics& err)
     {
         // Some errors include additional diagnostics, like server-provided error messages.
         // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
