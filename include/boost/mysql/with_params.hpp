@@ -9,7 +9,6 @@
 #define BOOST_MYSQL_WITH_PARAMS_HPP
 
 #include <boost/mysql/constant_string_view.hpp>
-#include <boost/mysql/make_tuple_element.hpp>
 
 #include <boost/mysql/detail/format_sql.hpp>
 

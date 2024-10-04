@@ -11,7 +11,6 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/make_tuple_element.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
