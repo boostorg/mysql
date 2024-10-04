@@ -28,8 +28,7 @@ namespace mysql {
  * between consecutive invocations of the formatter function, generating an effect
  * similar to `std::ranges::views::join`.
  *
- * Don't instantiate this class directly - use \ref sequence, instead.
- * The exact definition may vary between releases.
+ * Don't instantiate this struct directly - use \ref sequence, instead.
  *
  * \par Type requirements
  *
@@ -44,7 +43,7 @@ template <class Range, class FormatFn>
 #endif
 struct format_sequence
 {
-    /// The range to output.
+    /// The range to format.
     Range range;
 
     /// The format function to apply to each element in the range.
@@ -62,13 +61,13 @@ struct format_sequence
  * parameter in \ref format_sequence.
  *
  * By default, \ref sequence copies its input range, unless
- * using `std::ref`. C arrays are copied into `std::array` instances.
+ * using `std::ref`. C arrays are copied into `std::array` objects.
  * This type trait accounts these transformations.
  *
  * Formally, given the input range type `T` (which can be a reference with cv-qualifiers):
  *
- *  - If `T` is a C array or a reference to it (as per `std::is_array`),
- *    and it's composed of elements with type `U`, yields `std::array<std::remove_cv_t<U>, N>`.
+ *  - If `T` is a C array or a reference to one (as per `std::is_array`),
+ *    and the array elements' type is `U`, yields `std::array<std::remove_cv_t<U>, N>`.
  *  - If `T` is a `std::reference_wrapper<U>` object, or a reference to one,
  *    yields `U&`.
  *  - Otherwise, yields `std::remove_cvref_t<T>`.
@@ -97,9 +96,10 @@ using sequence_range_t =
  * in `range`, outputting `glue` between invocations.
  * This generates an effect similar to `std::ranges::views::join`.
  *
- * Creates an owning object by default, copying or moving `range` into it as required.
+ * By default, this function creates an owning object by decay-copying `range` into it.
  * C arrays are copied into `std::array` objects. This behavior can be disabled
- * by passing `std::reference_wrapper` objects. The \ref sequence_range_t
+ * by passing `std::reference_wrapper` objects, which are converted to references
+ * (as `std::make_tuple` does). The \ref sequence_range_t
  * type trait accounts for these transformations.
  *
  * Formally:
@@ -124,7 +124,7 @@ using sequence_range_t =
  *
  *   - `std::decay_t<FormatFn>` should be a formatter function compatible with
  *     the elements of the output range. See \ref format_sequence for the formal requirements.
- *   - If `Range` is a `std::reference_wrapper< U >` or a reference to one,
+ *   - If `Range` is a `std::reference_wrapper< U >`, or a reference to one,
  *     no further requirements are placed on `U`.
  *   - If `Range` is a lvalue reference to a C array, its elements should be copy-constructible
  *     (as per `std::to_array` requirements).
@@ -133,8 +133,8 @@ using sequence_range_t =
  *   - Performing a decay-copy of `FormatFn` should be well defined.
  *
  * \par Exception safety
- * Basic guarantee. Propagates any exception that constructing the output
- * range or format function may throw.
+ * Basic guarantee. Propagates any exception thrown when constructing the output
+ * range and format function.
  */
 template <class Range, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
