@@ -44,6 +44,8 @@ public:
     {
     }
 
+    void start() { enter_strand(); }
+
     void enter_strand()
     {
         asio::dispatch(asio::bind_executor(strand_, [this]() { start_get_connection(); }));
@@ -99,7 +101,7 @@ void run(const char* hostname)
 
     // Launch
     for (auto& t : tasks)
-        t.start_get_connection();
+        t.start();
 
     // Run
     ctx.join();
