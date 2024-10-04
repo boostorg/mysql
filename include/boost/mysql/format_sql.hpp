@@ -25,6 +25,7 @@
 
 #include <array>
 #include <cstddef>
+#include <functional>
 #include <initializer_list>
 #include <iterator>
 #include <string>
@@ -476,6 +477,48 @@ struct format_sequence
 #endif
 ;
 
+// TODO: is this right?
+// TODO: c++11
+// TODO: detail
+template <class T>
+struct sequence_range_impl
+{
+    using type = T;
+};
+
+template <class T>
+struct sequence_range_impl<std::reference_wrapper<T>>
+{
+    using type = T;
+};
+
+template <class T, std::size_t N>
+struct sequence_range_impl<T[N]>
+{
+    using type = std::array<T, N>;
+};
+
+template <class T>
+using sequence_range_t = typename sequence_range_impl<std::remove_cvref_t<T>>::type;
+
+template <class Range>
+decltype(auto) cast_range(Range&& range)
+{
+    return std::forward<Range>(range);
+}
+
+template <class T, std::size_t N>
+auto cast_range(T (&a)[N])
+{
+    return std::to_array(a);
+}
+
+template <class T, std::size_t N>
+auto cast_range(T (&&a)[N])
+{
+    return std::to_array(std::move(a));
+}
+
 /**
  * \brief Makes a range formattable by supplying a per-element formatter function.
  * \details
@@ -508,40 +551,16 @@ struct format_sequence
 template <class Range, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
     requires std::move_constructible<FormatFn> &&
-                 detail::format_fn_for_range<FormatFn, make_tuple_element_t<Range>>
+             detail::format_fn_for_range<FormatFn, sequence_range_t<Range>>
 #endif
-auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
-    -> format_sequence<make_tuple_element_t<Range>, FormatFn>
-{
-    return {std::forward<Range>(range), std::move(fn), glue};
-}
-
-/// \copydoc sequence
-template <class T, std::size_t N, class FormatFn>
-#if defined(BOOST_MYSQL_HAS_CONCEPTS)
-    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, std::array<T, N>>
-#endif
-format_sequence<std::array<T, N>, FormatFn> sequence(
-    T (&range)[N],
+format_sequence<sequence_range_t<Range>, FormatFn> sequence(
+    Range&& range,
     FormatFn fn,
     constant_string_view glue = ", "
 )
-{
-    return {std::to_array(range), std::move(fn), glue};
-}
 
-/// \copydoc sequence
-template <class T, std::size_t N, class FormatFn>
-#if defined(BOOST_MYSQL_HAS_CONCEPTS)
-    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, std::array<T, N>>
-#endif
-format_sequence<std::array<T, N>, FormatFn> sequence(
-    T (&&range)[N],
-    FormatFn fn,
-    constant_string_view glue = ", "
-)
 {
-    return {std::to_array(std::move(range)), std::move(fn), glue};
+    return {cast_range(std::forward<Range>(range)), std::move(fn), glue};
 }
 
 template <class Range, class FormatFn>
