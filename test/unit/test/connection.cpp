@@ -30,14 +30,16 @@ BOOST_AUTO_TEST_CASE(init_ctor)
 {
     asio::io_context ctx;
     tcp_connection c{ctx.get_executor()};
-    BOOST_CHECK_NO_THROW(c.stream().get_executor());
+    BOOST_TEST((c.get_executor() == ctx.get_executor()));
+    BOOST_TEST((c.stream().get_executor() == ctx.get_executor()));
 }
 
 BOOST_AUTO_TEST_CASE(init_ctor_with_buffer_params)
 {
     asio::io_context ctx;
     tcp_connection c{buffer_params(4096), ctx.get_executor()};
-    BOOST_CHECK_NO_THROW(c.stream().get_executor());
+    BOOST_TEST((c.get_executor() == ctx.get_executor()));
+    BOOST_TEST((c.stream().get_executor() == ctx.get_executor()));
 }
 
 BOOST_AUTO_TEST_CASE(init_ctor_with_buffer_params_rvalue)
@@ -54,7 +56,7 @@ BOOST_AUTO_TEST_CASE(move_ctor)
     asio::io_context ctx;
     tcp_connection c1{ctx.get_executor()};
     tcp_connection c2{std::move(c1)};
-    BOOST_CHECK_NO_THROW(c2.stream().get_executor());
+    BOOST_TEST((c2.get_executor() == ctx.get_executor()));
 }
 
 // move assign
@@ -65,7 +67,7 @@ BOOST_AUTO_TEST_CASE(move_assign_to_moved_from)
     tcp_connection other{std::move(moved_from)};
     tcp_connection conn{ctx.get_executor()};
     moved_from = std::move(conn);
-    BOOST_CHECK_NO_THROW(moved_from.stream().get_executor());
+    BOOST_TEST((moved_from.get_executor() == ctx.get_executor()));
 }
 
 BOOST_AUTO_TEST_CASE(move_assign_to_valid)
@@ -74,7 +76,7 @@ BOOST_AUTO_TEST_CASE(move_assign_to_valid)
     tcp_connection c1{ctx.get_executor()};
     tcp_connection c2{ctx.get_executor()};
     c1 = std::move(c2);
-    BOOST_CHECK_NO_THROW(c1.stream());
+    BOOST_TEST((c1.get_executor() == ctx.get_executor()));
 }
 
 BOOST_AUTO_TEST_CASE(set_meta_mode)
