@@ -159,7 +159,9 @@ By default, elements are separated by commas, but this is configurable:
 
 You can use `sequence` and [reflink with_params] together.
 
-
+By default, `sequence` copies the range you pass as parameter,
+making it safer for async code. 
+You can use `std::reference_wrapper` or `std::span` to avoid such copies.
 
 
 
