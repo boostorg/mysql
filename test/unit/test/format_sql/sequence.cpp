@@ -14,6 +14,7 @@
 
 #include <array>
 #include <forward_list>
+#include <functional>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -33,6 +34,46 @@ BOOST_AUTO_TEST_SUITE(test_format_sql_sequence)
 
 constexpr format_options opts{utf8mb4_charset, true};
 constexpr const char* single_fmt = "SELECT {};";
+
+//
+// sequence_range_t type trait
+//
+template <class Input, class Expected>
+constexpr bool check_sequence_range()
+{
+    return std::is_same<sequence_range_t<Input>, Expected>::value;
+}
+
+using intvec = std::vector<int>;
+
+// Regular values kept
+static_assert(check_sequence_range<intvec, intvec>(), "");
+static_assert(check_sequence_range<std::forward_list<int>, std::forward_list<int>>(), "");
+
+// References and cv-qualifiers stripped
+static_assert(check_sequence_range<intvec&, intvec>(), "");
+static_assert(check_sequence_range<intvec&&, intvec>(), "");
+static_assert(check_sequence_range<const intvec&, intvec>(), "");
+static_assert(check_sequence_range<const intvec&&, intvec>(), "");
+static_assert(check_sequence_range<const intvec, intvec>(), "");
+
+// Reference wrappers converted to references
+static_assert(check_sequence_range<std::reference_wrapper<intvec>, intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<const intvec>, const intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<intvec>&, intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<const intvec>&, const intvec&>(), "");
+static_assert(check_sequence_range<const std::reference_wrapper<intvec>&, intvec&>(), "");
+static_assert(check_sequence_range<const std::reference_wrapper<const intvec>&, const intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<intvec>&&, intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<const intvec>&&, const intvec&>(), "");
+static_assert(check_sequence_range<const std::reference_wrapper<intvec>, intvec&>(), "");
+static_assert(check_sequence_range<const std::reference_wrapper<const intvec>, const intvec&>(), "");
+
+// C arrays converted to std::array
+static_assert(check_sequence_range<int (&)[2], std::array<int, 2>>(), "");
+static_assert(check_sequence_range<int (&&)[2], std::array<int, 2>>(), "");
+static_assert(check_sequence_range<const int (&)[2], std::array<int, 2>>(), "");
+static_assert(check_sequence_range<const int (&&)[2], std::array<int, 2>>(), "");
 
 //
 // Different element types

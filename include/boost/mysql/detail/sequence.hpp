@@ -36,7 +36,7 @@ struct sequence_range_impl
 template <class T>
 struct sequence_range_impl<std::reference_wrapper<T>>
 {
-    using type = T;
+    using type = T&;
 };
 
 template <class T, std::size_t N>
