@@ -16,9 +16,11 @@
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/asio/bind_executor.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
+#include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/test/unit_test.hpp>
@@ -32,6 +34,7 @@
 #include "test_common/io_context_fixture.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
+#include "test_common/poll_until.hpp"
 #include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
@@ -417,18 +420,15 @@ BOOST_AUTO_TEST_CASE(stream_errors)
 }
 
 // Returning an error or next_action() from resume in the first call works correctly
-BOOST_AUTO_TEST_CASE(resume_error_immediate)
+BOOST_AUTO_TEST_CASE(resume_error_immediate_sync)
 {
     struct
     {
         const char* name;
-        signature_t fn;
         error_code ec;
     } test_cases[] = {
-        {"success_sync",  sync_fn,  error_code()        },
-        {"success_async", async_fn, error_code()        },
-        {"error_sync",    sync_fn,  asio::error::no_data},
-        {"error_async",   async_fn, asio::error::no_data},
+        {"success", error_code()        },
+        {"error",   asio::error::no_data},
     };
 
     for (const auto& tc : test_cases)
@@ -440,13 +440,51 @@ BOOST_AUTO_TEST_CASE(resume_error_immediate)
             mock_algo algo(next_action(tc.ec));
             test_engine eng{fix.ctx.get_executor()};
 
-            tc.fn(eng, any_resumable_ref(algo))
+            sync_fn(eng, any_resumable_ref(algo))
                 .validate_error(tc.ec, create_server_diag("<diagnostics unavailable>"));
             BOOST_TEST(eng.value.stream().calls.size() == 0u);
             algo.check_calls({
                 {error_code(), 0u}
             });
-            // Note: the testing infrastructure already checks that we post correctly in the async versions
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(resume_error_immediate_async)
+{
+    struct
+    {
+        const char* name;
+        error_code ec;
+    } test_cases[] = {
+        {"success", error_code()        },
+        {"error",   asio::error::no_data},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // We need to call the initiation function from a context thread
+            // to get immediate completions
+            io_context_fixture fix;
+            run_in_context(fix.ctx, [&]() {
+                // Setup
+                mock_algo algo(next_action(tc.ec));
+                test_engine eng{fix.ctx.get_executor()};
+
+                // Run the function
+                eng.async_run(any_resumable_ref(algo), as_netresult)
+                    .run()
+                    .validate_immediate(true)
+                    .validate_error(tc.ec, create_server_diag("<diagnostics unavailable>"));
+
+                // Check
+                BOOST_TEST(eng.value.stream().calls.size() == 0u);
+                algo.check_calls({
+                    {error_code(), 0u}
+                });
+            });
         }
     }
 }

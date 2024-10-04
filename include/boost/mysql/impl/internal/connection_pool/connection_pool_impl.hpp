@@ -73,6 +73,9 @@ class basic_pool_impl
         cancelled,
     };
 
+    // The passed pool executor, as is
+    asio::any_io_executor original_pool_ex_;
+
     // If thread_safe, a strand wrapping inner_pool_ex_, otherwise inner_pool_ex_
     asio::any_io_executor pool_ex_;
 
@@ -102,7 +105,8 @@ class basic_pool_impl
     // for no reason when there is no connectivity.
     bool can_create_connection() const
     {
-        return all_conns_.size() < params_.max_size && shared_st_.num_pending_connections == 0u;
+        return all_conns_.size() < params_.max_size && shared_st_.num_pending_connections == 0u &&
+               state_ == state_t::running;
     }
 
     void create_connection()
@@ -297,13 +301,7 @@ class basic_pool_impl
                 // connection
                 while (true)
                 {
-                    // If we're not running yet, or were cancelled, just return
-                    if (obj->state_ == state_t::initial)
-                    {
-                        result_ec = client_errc::pool_not_running;
-                        break;
-                    }
-                    else if (obj->state_ == state_t::cancelled)
+                    if (obj->state_ == state_t::cancelled)
                     {
                         // The pool was cancelled
                         result_ec = client_errc::pool_cancelled;
@@ -312,9 +310,17 @@ class basic_pool_impl
                     else if (get_connection_supports_cancel_type(self.cancelled()))
                     {
                         // The operation was cancelled. Try to provide diagnostics
-                        result_ec = client_errc::no_connection_available;
-                        if (diag)
-                            *diag = obj->shared_st_.last_connect_diag;
+                        if (obj->state_ == state_t::initial)
+                        {
+                            // The operation failed because the pool is not running
+                            result_ec = client_errc::pool_not_running;
+                        }
+                        else
+                        {
+                            result_ec = client_errc::no_connection_available;
+                            if (diag)
+                                *diag = obj->shared_st_.last_connect_diag;
+                        }
                         break;
                     }
 
@@ -329,7 +335,7 @@ class basic_pool_impl
                     obj->maybe_create_connection();
 
                     // Wait to be notified, or until a cancellation happens
-                    BOOST_MYSQL_YIELD(resume_point, 2, obj->wait_for_connections(self);)
+                    BOOST_MYSQL_YIELD(resume_point, 2, obj->wait_for_connections(self))
 
                     // Remember that we have waited, so completions are dispatched
                     // correctly
@@ -407,12 +413,10 @@ class basic_pool_impl
     void cancel_unsafe() { cancel_timer_.expires_at((std::chrono::steady_clock::time_point::min)()); }
 
 public:
-    basic_pool_impl(pool_executor_params&& ex_params, pool_params&& params)
-        : pool_ex_(
-              params.thread_safe ? asio::make_strand(std::move(ex_params.pool_executor))
-                                 : std::move(ex_params.pool_executor)
-          ),
-          conn_ex_(std::move(ex_params.connection_executor)),
+    basic_pool_impl(asio::any_io_executor ex, pool_params&& params)
+        : original_pool_ex_(std::move(ex)),
+          pool_ex_(params.thread_safe ? asio::make_strand(original_pool_ex_) : original_pool_ex_),
+          conn_ex_(params.connection_executor ? std::move(params.connection_executor) : original_pool_ex_),
           params_(make_internal_pool_params(std::move(params))),
           shared_st_(pool_ex_),
           wait_gp_(pool_ex_),
@@ -427,7 +431,7 @@ public:
     }
 
     using executor_type = asio::any_io_executor;
-    executor_type get_executor() { return params_.thread_safe ? strand().get_inner_executor() : pool_ex_; }
+    executor_type get_executor() { return original_pool_ex_; }
 
     void async_run(asio::any_completion_handler<void(error_code)> handler)
     {

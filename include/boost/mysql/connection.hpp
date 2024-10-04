@@ -247,6 +247,16 @@ public:
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <
         typename EndpointType,
@@ -322,6 +332,16 @@ public:
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -393,6 +413,16 @@ public:
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
@@ -495,6 +525,16 @@ public:
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
@@ -576,6 +616,16 @@ public:
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code, boost::mysql::statement)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -633,6 +683,16 @@ public:
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -693,6 +753,16 @@ public:
      * \par Handler signature
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::rows_view)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -828,6 +898,16 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, std::size_t)`.
      *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     *
      * \par Object lifetimes
      * The storage that `output` references must be kept alive until the operation completes.
      */
@@ -877,6 +957,16 @@ public:
      * \par Handler signature
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, std::size_t)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      *
      * \par Object lifetimes
      * The storage that `output` references must be kept alive until the operation completes.
@@ -943,6 +1033,16 @@ public:
      * \par Handler signature
      * The handler signature for this operation is
      * `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
@@ -999,6 +1099,16 @@ public:
      * \n
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -1071,6 +1181,16 @@ public:
      * \n
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -1128,6 +1248,16 @@ public:
      * \details
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
@@ -1186,6 +1316,16 @@ public:
      * \details
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>

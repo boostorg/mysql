@@ -28,6 +28,13 @@ void poll_until(
     source_location loc = BOOST_MYSQL_CURRENT_LOCATION
 );
 
+// run fn() in ctx, then poll until it completes
+void run_in_context(
+    asio::io_context& ctx,
+    const std::function<void()>& fn,
+    source_location loc = BOOST_MYSQL_CURRENT_LOCATION
+);
+
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost

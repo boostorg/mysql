@@ -19,6 +19,7 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
+#include <boost/asio/immediate.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/assert.hpp>
 
@@ -66,7 +67,7 @@ struct run_algo_op
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             1,
-                            asio::post(stream_.get_executor(), std::move(self))
+                            asio::async_immediate(stream_.get_executor(), std::move(self))
                         )
                     }
                     self.complete(stored_ec_);

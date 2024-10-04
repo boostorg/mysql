@@ -47,7 +47,6 @@
           <member><link linkend="mysql.ref.boost__mysql__pfr_by_name">pfr_by_name</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pfr_by_position">pfr_by_position</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pipeline_request">pipeline_request</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__pool_executor_params">pool_executor_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pool_params">pool_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__pooled_connection">pooled_connection</link></member>
           <member><link linkend="mysql.ref.boost__mysql__results">results</link></member>

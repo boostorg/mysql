@@ -19,15 +19,14 @@
 #include <boost/mysql/detail/connection_pool_fwd.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
-#include <boost/mysql/impl/internal/connection_pool/run_with_timeout.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
-#include <boost/asio/steady_timer.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/intrusive/list_hook.hpp>
 
@@ -103,6 +102,19 @@ class basic_connection_node : public intrusive::list_base_hook<>,
         shared_st_->last_connect_diag = create_connect_diagnostics(ec, connect_diag_);
     }
 
+    template <class Op, class Self>
+    void run_with_timeout(Op&& op, std::chrono::steady_clock::duration timeout, Self& self)
+    {
+        if (timeout.count() > 0)
+        {
+            std::forward<Op>(op)(asio::cancel_after(timer_, timeout, std::move(self)));
+        }
+        else
+        {
+            std::forward<Op>(op)(std::move(self));
+        }
+    }
+
     struct connection_task_op
     {
         this_type& node_;
@@ -126,17 +138,15 @@ class basic_connection_node : public intrusive::list_base_hook<>,
             // Invoke the sans-io algorithm
             last_act_ = node_.resume(ec, col_st);
 
-            // Apply the next action. run_with_timeout makes sure that all handlers
-            // are dispatched using the timer's executor (that is, the pool executor)
+            // Apply the next action
             switch (last_act_)
             {
             case next_connection_action::connect:
-                run_with_timeout(
+                node_.run_with_timeout(
                     node_.conn_
                         .async_connect(node_.params_->connect_config, node_.connect_diag_, asio::deferred),
-                    node_.timer_,
                     node_.params_->connect_timeout,
-                    std::move(self)
+                    self
                 );
                 break;
             case next_connection_action::sleep_connect_failed:
@@ -144,31 +154,28 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 node_.timer_.async_wait(std::move(self));
                 break;
             case next_connection_action::ping:
-                run_with_timeout(
+                node_.run_with_timeout(
                     node_.conn_.async_ping(asio::deferred),
-                    node_.timer_,
                     node_.params_->ping_timeout,
-                    std::move(self)
+                    self
                 );
                 break;
             case next_connection_action::reset:
-                run_with_timeout(
+                node_.run_with_timeout(
                     node_.conn_.async_run_pipeline(
                         *node_.reset_pipeline_req_,
                         node_.reset_pipeline_res_,
                         asio::deferred
                     ),
-                    node_.timer_,
                     node_.params_->ping_timeout,
-                    std::move(self)
+                    self
                 );
                 break;
             case next_connection_action::idle_wait:
-                run_with_timeout(
+                node_.run_with_timeout(
                     node_.collection_timer_.async_wait(asio::deferred),
-                    node_.timer_,
                     node_.params_->ping_interval,
-                    std::move(self)
+                    self
                 );
                 break;
             case next_connection_action::none: self.complete(error_code()); break;
