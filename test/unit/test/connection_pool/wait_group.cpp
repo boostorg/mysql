@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_SUITE(test_wait_group)
 struct fixture
 {
     asio::io_context ctx;
-    wait_group gp{ctx.get_executor()};
+    wait_group<std::chrono::steady_clock> gp{ctx.get_executor()};
     bool called{false};
     asio::any_io_executor work_guard;
 
@@ -117,38 +117,6 @@ BOOST_FIXTURE_TEST_CASE(add_wait_remove, fixture)
     call_task_finish();
     BOOST_TEST(!called);
     call_task_finish();
-    BOOST_TEST(called);
-}
-
-BOOST_FIXTURE_TEST_CASE(run_task, fixture)
-{
-    // Create two timers to simulate async operations
-    asio::steady_timer timer1(ctx);
-    asio::steady_timer timer2(ctx);
-    timer1.expires_at((std::chrono::steady_clock::time_point::max)());
-    timer2.expires_at((std::chrono::steady_clock::time_point::max)());
-
-    // Start the wait
-    launch_wait();
-    BOOST_TEST(!called);
-
-    // Launch the two async ops
-    gp.run_task(timer1.async_wait(asio::deferred));
-    ctx.poll();
-    BOOST_TEST(!called);
-
-    gp.run_task(timer2.async_wait(asio::deferred));
-    ctx.poll();
-    BOOST_TEST(!called);
-
-    // Finish one task
-    timer2.cancel();
-    ctx.poll();
-    BOOST_TEST(!called);
-
-    // Finish the other task
-    timer1.cancel();
-    ctx.poll();
     BOOST_TEST(called);
 }
 
