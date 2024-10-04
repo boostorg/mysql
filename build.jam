@@ -9,6 +9,7 @@ constant boost_dependencies :
     /boost/asio//boost_asio
     /boost/assert//boost_assert
     /boost/charconv//boost_charconv
+    /boost/compat//boost_compat
     /boost/config//boost_config
     /boost/core//boost_core
     /boost/describe//boost_describe

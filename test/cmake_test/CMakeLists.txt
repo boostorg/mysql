@@ -20,6 +20,7 @@ else()
         asio
         assert
         charconv
+        compat
         config
         core
         describe

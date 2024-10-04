@@ -11,6 +11,9 @@
 #include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 
+#include <boost/compat/to_array.hpp>
+#include <boost/compat/type_traits.hpp>
+
 #include <array>
 #include <cstddef>
 #include <functional>
@@ -42,23 +45,25 @@ struct sequence_range_impl<T[N]>
     using type = std::array<T, N>;
 };
 
-// TODO: c++11
+template <class T>
+using sequence_range_type = sequence_range_impl<compat::remove_cvref_t<T>>;
+
 template <class Range>
-decltype(auto) cast_range(Range&& range)
+Range&& cast_range(Range&& range)
 {
     return std::forward<Range>(range);
 }
 
 template <class T, std::size_t N>
-auto cast_range(T (&a)[N])
+std::array<compat::remove_cv_t<T>, N> cast_range(T (&a)[N])
 {
-    return std::to_array(a);
+    return compat::to_array(a);
 }
 
 template <class T, std::size_t N>
-auto cast_range(T (&&a)[N])
+std::array<compat::remove_cv_t<T>, N> cast_range(T (&&a)[N])
 {
-    return std::to_array(std::move(a));
+    return compat::to_array(std::move(a));
 }
 
 // TODO: should this be Range&&?

@@ -10,19 +10,12 @@
 
 #include <boost/mysql/detail/sequence.hpp>
 
-#include <type_traits>
-
 #ifdef BOOST_MYSQL_HAS_CONCEPTS
 #include <concepts>
 #endif
 
 namespace boost {
 namespace mysql {
-
-// TODO: c++11
-// TODO: document
-template <class T>
-using sequence_range_t = typename detail::sequence_range_impl<std::remove_cvref_t<T>>::type;
 
 /**
  * \brief (EXPERIMENTAL) The return type of \ref sequence.
@@ -44,6 +37,10 @@ struct format_sequence
 }
 #endif
 ;
+
+// TODO: document
+template <class T>
+using sequence_range_t = typename detail::sequence_range_type<T>::type;
 
 /**
  * \brief Makes a range formattable by supplying a per-element formatter function.
