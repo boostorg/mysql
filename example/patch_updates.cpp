@@ -180,6 +180,8 @@ void main_impl(int argc, char** argv)
     // Instead of running every statement separately, we activated params.multi_queries,
     // which allows semicolon-separated statements.
     // As in std::format, we can use explicit indices like {0} and {1} to reference arguments.
+    // By default, sequence copies its input range, but we don't need this here,
+    // so we disable the copy by calling ref()
     boost::mysql::results result;
     conn.execute(
         boost::mysql::with_params(
@@ -187,7 +189,7 @@ void main_impl(int argc, char** argv)
             "UPDATE employee SET {0} WHERE id = {1}; "
             "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
             "COMMIT",
-            boost::mysql::sequence(args.updates, update_format_fn),
+            boost::mysql::sequence(std::ref(args.updates), update_format_fn),
             args.employee_id
         ),
         result

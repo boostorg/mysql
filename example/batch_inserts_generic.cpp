@@ -161,12 +161,14 @@ void main_impl(int argc, char** argv)
 
     // Run the query. Placeholders ({}) will be expanded before the query is sent to the server.
     // We use sequence() to format C++ ranges as comma-separated sequences.
+    // By default, sequence copies its input range, but we don't need this here,
+    // so we disable the copy by calling ref()
     boost::mysql::results result;
     conn.execute(
         boost::mysql::with_params(
             "INSERT INTO employee ({::i}) VALUES {}",
             get_field_names<employee>(),
-            boost::mysql::sequence(values, insert_struct_format_fn())
+            boost::mysql::sequence(std::ref(values), insert_struct_format_fn())
         ),
         result
     );

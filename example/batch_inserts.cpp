@@ -134,10 +134,12 @@ void main_impl(int argc, char** argv)
     // When inserting two employees, something like the following may be generated:
     // INSERT INTO employee (first_name, last_name, company_id, salary)
     //     VALUES ('John', 'Doe', 'HGS', 20000), ('Rick', 'Smith', 'LLC', 50000)
+    // By default, sequence copies the input range, but we don't need this here,
+    // so we disable the copy by calling ref()
     conn.execute(
         boost::mysql::with_params(
             "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
-            boost::mysql::sequence(values, format_employee_fn)
+            boost::mysql::sequence(std::ref(values), format_employee_fn)
         ),
         result
     );

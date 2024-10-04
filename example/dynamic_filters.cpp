@@ -217,10 +217,12 @@ std::string compose_get_employees_query(
     // Add the query with the filters to ctx.
     // sequence() will invoke filter_format_fn for each element in filts,
     // using the string " AND " as glue, to separate filters
+    // By default, sequence copies its input range, but we don't need this here,
+    // so we disable the copy by calling ref()
     boost::mysql::format_sql_to(
         ctx,
         "SELECT id, first_name, last_name, company_id, salary FROM employee WHERE {}",
-        boost::mysql::sequence(filts, filter_format_fn, " AND ")
+        boost::mysql::sequence(std::ref(filts), filter_format_fn, " AND ")
     );
 
     // Add the order by
