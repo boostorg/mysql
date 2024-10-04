@@ -38,11 +38,43 @@ struct format_sequence
 #endif
 ;
 
-// TODO: document
+/**
+ * \brief The type of range produced by \ref sequence.
+ * \details
+ * This type trait can be used to obtain the range type produced
+ * by calling \ref sequence. The resulting range type is stored
+ * in a \ref format_sequence instance.
+ *
+ * By default, \ref sequence copies its input range, unless
+ * using `std::ref`. C arrays are copied into `std::array` instances.
+ * This type trait accounts these transformations.
+ *
+ * Formally, given the input range type `T` (which can be a reference with cv-qualifiers):
+ *
+ *  - If `T` is a C array or a reference to it (as per `std::is_array`),
+ *    and it's composed of elements with type `U`, yields `std::array<U, N>`.
+ *  - If `T` is a `std::reference_wrapper<U>` object, or a reference to one,
+ *    yields `U&`.
+ *  - Otherwise, yields `std::remove_cvref_t<T>`.
+ *
+ * Examples:
+ *
+ *  - `sequence_range_t<const std::vector<int>&>` is `std::vector<int>`.
+ *  - `sequence_range_t<std::reference_wrapper<std::vector<int>>>` is `std::vector<int>&`.
+ *  - `sequence_range_t<std::reference_wrapper<const std::vector<int>>>` is `const std::vector<int>&`.
+ *  - `sequence_range_t<int(&)[4]>` is `std::array<int, 4>`.
+ */
 template <class T>
-using sequence_range_t = typename detail::sequence_range_type<T>::type;
+using sequence_range_t =
+#ifdef BOOST_MYSQL_DOXYGEN
+    __see_below__
+#else
+    typename detail::sequence_range_type<T>::type;
+#endif
+    ;
 
 /**
+ * TODO: review
  * \brief Makes a range formattable by supplying a per-element formatter function.
  * \details
  * Objects returned by this function satisfy `Formattable`.
