@@ -9,6 +9,7 @@
 #include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/field_view.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/with_params.hpp>
 
@@ -18,6 +19,7 @@
 
 #include <forward_list>
 #include <functional>
+#include <string>
 #include <vector>
 
 #include "test_common/create_basic.hpp"
@@ -182,6 +184,27 @@ BOOST_FIXTURE_TEST_CASE(with_params_, any_connection_fixture)
     conn.async_reset_connection(as_netresult).validate_no_error();
     conn.async_execute(with_params("SELECT {}", 42), r, as_netresult)
         .validate_error(client_errc::unknown_character_set);
+}
+
+// Spotcheck: with_params() is owning, and can be safely used
+// together with sequence() in deferred ops without incurring in lifetime problems
+BOOST_FIXTURE_TEST_CASE(with_params_sequence_deferred, any_connection_fixture)
+{
+    // Setup
+    connect();
+    results r;
+    auto fn = [](int value, format_context_base& ctx) { ctx.append_value(value); };
+
+    // Create a deferred op
+    auto op = conn.async_execute(
+        with_params("SELECT {}, {}", sequence(std::vector<int>{3, 4, 7}, fn, " + "), std::string(10, 'a')),
+        r,
+        asio::deferred
+    );
+
+    // Run it
+    std::move(op)(as_netresult).validate_no_error();
+    BOOST_TEST(r.rows() == makerows(2, 14, "aaaaaaaaaa"), per_element());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
