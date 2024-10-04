@@ -11,6 +11,7 @@
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/sequence.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/deferred.hpp>

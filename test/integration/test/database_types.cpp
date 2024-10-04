@@ -25,6 +25,7 @@
 #include <boost/mysql/row.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/sequence.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/tcp.hpp>
 

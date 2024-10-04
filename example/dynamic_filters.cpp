@@ -20,6 +20,7 @@
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
+#include <boost/mysql/sequence.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/with_diagnostics.hpp>
 

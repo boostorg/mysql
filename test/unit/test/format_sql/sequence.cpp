@@ -7,7 +7,7 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/constant_string_view.hpp>
-#include <boost/mysql/format_sql.hpp>
+#include <boost/mysql/sequence.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -106,12 +106,25 @@ BOOST_AUTO_TEST_CASE(glue)
 //
 // Different range types
 //
-const auto fmt_as_str = [](int v, format_context_base& ctx) { format_sql_to(ctx, "{}", std::to_string(v)); };
+constexpr struct fmt_as_str_t
+{
+    void operator()(int v, format_context_base& ctx) const { format_sql_to(ctx, "{}", std::to_string(v)); };
+} fmt_as_str;
 
 BOOST_AUTO_TEST_CASE(range_c_array)
 {
     int arr[] = {1, 4, 2};
-    BOOST_TEST(format_sql(opts, single_fmt, sequence(arr, fmt_as_str)) == "SELECT '1', '4', '2';");
+    auto seq = sequence(arr, fmt_as_str);
+    static_assert(std::is_same<decltype(seq), format_sequence<std::array<int, 3>, fmt_as_str_t>>::value, "");
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
+}
+
+BOOST_AUTO_TEST_CASE(range_const_c_array)
+{
+    const int arr[] = {1, 4, 2};
+    auto seq = sequence(arr, fmt_as_str);
+    static_assert(std::is_same<decltype(seq), format_sequence<std::array<int, 3>, fmt_as_str_t>>::value, "");
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
 }
 
 BOOST_AUTO_TEST_CASE(range_forward_list)

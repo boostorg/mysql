@@ -14,6 +14,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/sequence.hpp>
 
 #include <boost/optional/optional.hpp>
 
