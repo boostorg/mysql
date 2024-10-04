@@ -481,7 +481,7 @@ To sum up:
     ]
     [
         [
-            [reflink format_sequence_view] (as returned by [reflink sequence])
+            [reflink format_sequence] (as returned by [reflink sequence])
         ]
         [
             Formats each element in a range by calling a user-supplied function,

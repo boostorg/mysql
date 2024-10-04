@@ -40,7 +40,7 @@
           <member><link linkend="mysql.ref.boost__mysql__formattable_ref">formattable_ref</link></member>
           <member><link linkend="mysql.ref.boost__mysql__formatter">formatter</link></member>
           <member><link linkend="mysql.ref.boost__mysql__format_options">format_options</link></member>
-          <member><link linkend="mysql.ref.boost__mysql__format_sequence_view">format_sequence_view</link></member>
+          <member><link linkend="mysql.ref.boost__mysql__format_sequence">format_sequence</link></member>
           <member><link linkend="mysql.ref.boost__mysql__handshake_params">handshake_params</link></member>
           <member><link linkend="mysql.ref.boost__mysql__host_and_port">host_and_port</link></member>
           <member><link linkend="mysql.ref.boost__mysql__metadata">metadata</link></member>

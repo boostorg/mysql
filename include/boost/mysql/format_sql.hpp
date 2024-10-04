@@ -466,7 +466,7 @@ using format_context = basic_format_context<std::string>;
  * The exact definition may vary between releases.
  */
 template <class Range, class FormatFn>
-struct format_sequence_view
+struct format_sequence
 #ifndef BOOST_MYSQL_DOXYGEN
 {
     Range range;
@@ -511,7 +511,7 @@ template <class Range, class FormatFn>
                  detail::format_fn_for_range<FormatFn, make_tuple_element_t<Range>>
 #endif
 auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
-    -> format_sequence_view<make_tuple_element_t<Range>, FormatFn>
+    -> format_sequence<make_tuple_element_t<Range>, FormatFn>
 {
     return {std::forward<Range>(range), std::move(fn), glue};
 }
@@ -521,7 +521,7 @@ template <class T, std::size_t N, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
     requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, std::array<T, N>>
 #endif
-format_sequence_view<std::array<T, N>, FormatFn> sequence(
+format_sequence<std::array<T, N>, FormatFn> sequence(
     T (&range)[N],
     FormatFn fn,
     constant_string_view glue = ", "
@@ -535,7 +535,7 @@ template <class T, std::size_t N, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
     requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, std::array<T, N>>
 #endif
-format_sequence_view<std::array<T, N>, FormatFn> sequence(
+format_sequence<std::array<T, N>, FormatFn> sequence(
     T (&&range)[N],
     FormatFn fn,
     constant_string_view glue = ", "
@@ -545,7 +545,7 @@ format_sequence_view<std::array<T, N>, FormatFn> sequence(
 }
 
 template <class Range, class FormatFn>
-struct formatter<format_sequence_view<Range, FormatFn>>
+struct formatter<format_sequence<Range, FormatFn>>
 {
     const char* parse(const char* begin, const char*) { return begin; }
 
@@ -563,12 +563,12 @@ struct formatter<format_sequence_view<Range, FormatFn>>
         }
     }
 
-    void format(format_sequence_view<Range, FormatFn>& value, format_context_base& ctx) const
+    void format(format_sequence<Range, FormatFn>& value, format_context_base& ctx) const
     {
         format_impl(value, ctx);
     }
 
-    void format(const format_sequence_view<Range, FormatFn>& value, format_context_base& ctx) const
+    void format(const format_sequence<Range, FormatFn>& value, format_context_base& ctx) const
     {
         format_impl(value, ctx);
     }

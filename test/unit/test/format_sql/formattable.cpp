@@ -175,8 +175,8 @@ BOOST_MYSQL_CHECK_FORMATTABLE(const filter_t&&, false);
 
 // sequence is formattable
 using format_fn_t = void (*)(int, format_context_base&);
-using format_view_t = format_sequence_view<std::vector<int>, format_fn_t>;
-BOOST_MYSQL_CHECK_FORMATTABLE(format_view_t, true)
+using format_seq_t = format_sequence<std::vector<int>, format_fn_t>;
+BOOST_MYSQL_CHECK_FORMATTABLE(format_seq_t, true)
 
 // other stuff not accepted
 BOOST_MYSQL_CHECK_FORMATTABLE(void*, false)
