@@ -161,6 +161,19 @@ BOOST_AUTO_TEST_CASE(num_elms)
     BOOST_TEST(format_sql(opts, single_fmt, sequence(std::vector<int>{1}, fmt_as_str)) == "SELECT '1';");
 }
 
+// Spotcheck: lvalues work
+BOOST_AUTO_TEST_CASE(lvalue)
+{
+    auto seq = sequence(std::vector<int>{1, 4, 2}, fmt_as_str);
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
+}
+
+BOOST_AUTO_TEST_CASE(const_lvalue)
+{
+    const auto seq = sequence(std::vector<int>{1, 4, 2}, fmt_as_str);
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
+}
+
 //
 // Error cases
 //
