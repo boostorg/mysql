@@ -225,7 +225,11 @@ class basic_pool_impl
                 obj_->shared_st_.idle_connections_cv.expires_at((ClockType::time_point::min)());
 
                 // Wait for all connection tasks to exit
-                BOOST_MYSQL_YIELD(resume_point_, 4, obj_->shared_st_.wait_gp.async_wait(std::move(self)))
+                BOOST_MYSQL_YIELD(
+                    resume_point_,
+                    4,
+                    obj_->shared_st_.conns_finished_cv.async_wait(std::move(self))
+                )
 
                 // Done
                 cancel_slot_.clear();

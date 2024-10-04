@@ -20,7 +20,6 @@
 
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
-#include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/basic_waitable_timer.hpp>
@@ -57,12 +56,24 @@ struct conn_shared_state
     // as the result of an async_get_connection op
     diagnostics last_connect_diag;
 
-    // A wait group to track when all connection tasks exit
-    wait_group<ClockType> wait_gp;
+    // The number of running connections, to track when they exit
+    std::size_t num_running_connections{0};
+
+    // Timer acting as a condition variable to wait for all connections to exit
+    asio::basic_waitable_timer<ClockType> conns_finished_cv;
 
     conn_shared_state(asio::any_io_executor ex)
-        : idle_connections_cv(ex, (ClockType::time_point::max)()), wait_gp(std::move(ex))
+        : idle_connections_cv(ex, (ClockType::time_point::max)()),
+          conns_finished_cv(std::move(ex), (ClockType::time_point::max)())
     {
+    }
+
+    void on_connection_start() { ++num_running_connections; }
+
+    void on_connection_finish()
+    {
+        if (--num_running_connections == 0u)
+            conns_finished_cv.expires_at((ClockType::time_point::min)());
     }
 };
 
@@ -130,7 +141,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
         void operator()(Self& self)
         {
             // Called when the op starts
-            node_.shared_st_->wait_gp.on_task_start();
+            node_.shared_st_->on_connection_start();
             (*this)(self, error_code());
         }
 
@@ -191,7 +202,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
                 );
                 break;
             case next_connection_action::none:
-                node_.shared_st_->wait_gp.on_task_finish();
+                node_.shared_st_->on_connection_finish();
                 self.complete(error_code());
                 break;
             default: BOOST_ASSERT(false);  // LCOV_EXCL_LINE
