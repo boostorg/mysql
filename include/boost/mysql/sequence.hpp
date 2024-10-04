@@ -21,29 +21,45 @@ namespace mysql {
  * \brief (EXPERIMENTAL) The return type of \ref sequence.
  * \details
  * Contains a range, a formatter function, and a glue string.
- * This type satisfies the `Formattable` concept. See \ref sequence for a detailed
- * description of what formatting this class does.
- * \n
+ * This type satisfies the `Formattable` concept.
+ *
+ * When formatted, \ref format_function is invoked for each element
+ * in \ref range. The string \ref glue is output raw (as per \ref format_context_base::append_raw)
+ * between consecutive invocations of the formatter function, generating an effect
+ * similar to `std::ranges::views::join`.
+ *
  * Don't instantiate this class directly - use \ref sequence, instead.
  * The exact definition may vary between releases.
+ *
+ * \par Type requirements
+ *
+ *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
+ *     pair that can be compared for (in)equality.
+ *   - The expression `static_cast<const FormatFn&>(fn)(* std::begin(range), ctx)`
+ *     should be well formed, with `ctx` begin a `format_context_base&`.
  */
 template <class Range, class FormatFn>
-struct format_sequence
-#ifndef BOOST_MYSQL_DOXYGEN
-{
-    Range range;
-    FormatFn fn;
-    constant_string_view glue;
-}
+#if defined(BOOST_MYSQL_HAS_CONCEPTS)
+    requires detail::format_fn_for_range<FormatFn, Range>
 #endif
-;
+struct format_sequence
+{
+    /// The range to output.
+    Range range;
+
+    /// The format function to apply to each element in the range.
+    FormatFn format_function;
+
+    /// The string to output between range elements.
+    constant_string_view glue;
+};
 
 /**
  * \brief The type of range produced by \ref sequence.
  * \details
  * This type trait can be used to obtain the range type produced
- * by calling \ref sequence. The resulting range type is stored
- * in a \ref format_sequence instance.
+ * by calling \ref sequence. This type is used as the `Range` template
+ * parameter in \ref format_sequence.
  *
  * By default, \ref sequence copies its input range, unless
  * using `std::ref`. C arrays are copied into `std::array` instances.
@@ -52,7 +68,7 @@ struct format_sequence
  * Formally, given the input range type `T` (which can be a reference with cv-qualifiers):
  *
  *  - If `T` is a C array or a reference to it (as per `std::is_array`),
- *    and it's composed of elements with type `U`, yields `std::array<U, N>`.
+ *    and it's composed of elements with type `U`, yields `std::array<std::remove_cv_t<U>, N>`.
  *  - If `T` is a `std::reference_wrapper<U>` object, or a reference to one,
  *    yields `U&`.
  *  - Otherwise, yields `std::remove_cvref_t<T>`.
@@ -74,48 +90,64 @@ using sequence_range_t =
     ;
 
 /**
- * TODO: review
- * \brief Makes a range formattable by supplying a per-element formatter function.
+ * \brief Creates an object that, when formatted, applies a per-element formatter function to a range.
  * \details
  * Objects returned by this function satisfy `Formattable`.
- * When formatted, the formatter function `fn` is invoked for each element
- * in the range. The glue string `glue` is output raw (as per \ref format_context_base::append_raw)
- * between consecutive invocations of the formatter function, generating an effect
- * similar to `std::ranges::views::join`.
+ * Formatting such objects invokes `fn` for each element
+ * in `range`, outputting `glue` between invocations.
+ * This generates an effect similar to `std::ranges::views::join`.
  *
- * Range is decay-copied into the resulting object. This behavior can be disabled
- * by passing `std::reference_wrapper` objects, which are translated into references
- * (as happens in `std::make_tuple`). C arrays are translated into `std::array` objects.
+ * Creates an owning object by default, copying or moving `range` into it as required.
+ * C arrays are copied into `std::array` objects. This behavior can be disabled
+ * by passing `std::reference_wrapper` objects. The \ref sequence_range_t
+ * type trait accounts for these transformations.
+ *
+ * Formally:
+ *
+ *   - If `Range` is a (possibly cv-qualified) C array reference (as per `std::is_array<Range>`),
+ *     and the array has `N` elements of type `U`, the output range type is
+ *     `std::array<std::remove_cv< U >, N>`, and the range is created as if `std::to_array` was called.
+ *   - If `Range` is a `std::reference_wrapper< U >` object, or a reference to one,
+ *     the output range type is `U&`. This effectively disables copying the input range.
+ *     The resulting object will be a view type, and the caller is responsible for lifetime management.
+ *   - Otherwise, the output range type is `std::remove_cvref_t<Range>`, and it will be
+ *     created by forwarding the passed `range`.
+ *
+ * `FormatFn` is always decay-copied into the resulting object.
+ *
+ * The glue string is always stored as a view, as it should usually point to a compile-time constant.
  *
  * \par Type requirements
- *   - FormatFn should be move constructible.
- *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
- *     pair that can be compared for (in)equality.
- *   - The expression `static_cast<const FormatFn&>(fn)(* std::begin(range), ctx)`
- *     should be well formed, with `ctx` begin a `format_context_base&`.
- *   - If `Range` is an instantiation of `std::reference_wrapper< U >`, no requirements are placed on `U`.
- *   - If `Range` is a lvalue C array, its elements should be copy-constructible.
- *   - If `Range` is a rvalue C array, its elements should be move-constructible.
- *   - Otherwise, if `Range` is an lvalue, `Range` should be copy-constructible.
- *   - Otherwise, if `Range` is an rvalue, `Range` should be copy-constructible.
+ *
+ * The resulting range and format function should be compatible, and any required
+ * copy/move operations should be well defined. Formally:
+ *
+ *   - `std::decay_t<FormatFn>` should be a formatter function compatible with
+ *     the elements of the output range. See \ref format_sequence for the formal requirements.
+ *   - If `Range` is a `std::reference_wrapper< U >` or a reference to one,
+ *     no further requirements are placed on `U`.
+ *   - If `Range` is a lvalue reference to a C array, its elements should be copy-constructible
+ *     (as per `std::to_array` requirements).
+ *   - If `Range` is a rvalue reference to a C array, its elements should be move-constructible
+ *     (as per `std::to_array` requirements).
+ *   - Performing a decay-copy of `FormatFn` should be well defined.
  *
  * \par Exception safety
- * Basic guarantee. Propagates any exception that constructing the resulting
- * range or `FormatFn` may throw.
+ * Basic guarantee. Propagates any exception that constructing the output
+ * range or format function may throw.
  */
 template <class Range, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
-    requires std::move_constructible<FormatFn> &&
-             detail::format_fn_for_range<FormatFn, sequence_range_t<Range>>
+    requires std::constructible_from<typename std::decay<FormatFn>::type, FormatFn&&>
 #endif
-format_sequence<sequence_range_t<Range>, FormatFn> sequence(
+format_sequence<sequence_range_t<Range>, typename std::decay<FormatFn>::type> sequence(
     Range&& range,
-    FormatFn fn,
+    FormatFn&& fn,
     constant_string_view glue = ", "
 )
 
 {
-    return {detail::cast_range(std::forward<Range>(range)), std::move(fn), glue};
+    return {detail::cast_range(std::forward<Range>(range)), std::forward<FormatFn>(fn), glue};
 }
 
 template <class Range, class FormatFn>
@@ -125,12 +157,12 @@ struct formatter<format_sequence<Range, FormatFn>>
 
     void format(format_sequence<Range, FormatFn>& value, format_context_base& ctx) const
     {
-        detail::do_format_sequence(value.range, value.fn, value.glue, ctx);
+        detail::do_format_sequence(value.range, value.format_function, value.glue, ctx);
     }
 
     void format(const format_sequence<Range, FormatFn>& value, format_context_base& ctx) const
     {
-        detail::do_format_sequence(value.range, value.fn, value.glue, ctx);
+        detail::do_format_sequence(value.range, value.format_function, value.glue, ctx);
     }
 };
 
