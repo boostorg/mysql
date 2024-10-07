@@ -86,7 +86,7 @@ class basic_connection_node : public intrusive::list_base_hook<>,
     using this_type = basic_connection_node<ConnectionType, ClockType>;
     using timer_type = asio::basic_waitable_timer<ClockType>;
 
-    // Not thread-safe, must be manipulated within the pool's executor
+    // Not thread-safe
     const internal_pool_params* params_;
     conn_shared_state<ConnectionType, ClockType>* shared_st_;
     ConnectionType conn_;
@@ -227,6 +227,7 @@ public:
     {
     }
 
+    // Not thread-safe
     void cancel()
     {
         sansio_connection_node<this_type>::cancel();
@@ -234,7 +235,7 @@ public:
         collection_timer_.cancel();
     }
 
-    // This initiation must be invoked within the pool's executor
+    // Not thread-safe
     template <class CompletionToken>
     auto async_run(CompletionToken&& token
     ) -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
@@ -242,19 +243,19 @@ public:
         return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token);
     }
 
-    ConnectionType& connection() noexcept { return conn_; }
-    const ConnectionType& connection() const noexcept { return conn_; }
-
-    // Not thread-safe, must be called within the pool's executor
+    // Not thread-safe
     void notify_collectable() { collection_timer_.cancel(); }
 
-    // Thread-safe. May be safely be called from any thread.
+    // Thread-safe
     void mark_as_collectable(bool should_reset) noexcept
     {
         collection_state_.store(
             should_reset ? collection_state::needs_collect_with_reset : collection_state::needs_collect
         );
     }
+
+    // Getter, used by pooled_connection
+    ConnectionType& connection() noexcept { return conn_; }
 
     // Exposed for testing
     collection_state get_collection_state() const noexcept { return collection_state_; }
