@@ -510,6 +510,18 @@ public:
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`
      *
+     * \par Executor
+     *
+     * The final handler is executed using `token`'s associated executor,
+     * or `this->get_executor()` if the token doesn't have an associated
+     * executor. The final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     *
+     * If the pool was constructed with thread-safety enabled, intermediate
+     * completion handlers are executed using an internal strand that wraps `this->get_executor()`.
+     * If thread-safety is not enabled, intermediate handlers are executed using `this->get_executor()`.
+     * In any case, the token's associated executor is only used for the final handler.
+     *
      * \par Per-operation cancellation
      * This operation supports per-operation cancellation. Cancelling `async_run`
      * is equivalent to calling \ref connection_pool::cancel.
@@ -582,6 +594,23 @@ public:
      * \par Handler signature
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
+     *
+     * \par Executor behavior
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     * Immediate completions can only happen when thread-safety is not enabled.
+     *
+     * The final handler is executed using `token`'s associated executor,
+     * or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the pool was constructed with thread-safety enabled, intermediate
+     * completion handlers are executed using an internal strand that wraps `this->get_executor()`.
+     * If thread-safety is not enabled, intermediate handlers are executed using
+     * `token`'s associated executor if it has one, or `this->get_executor()` otherwise.
      *
      * \par Per-operation cancellation
      * This operation supports per-operation cancellation.
