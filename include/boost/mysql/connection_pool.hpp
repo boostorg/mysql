@@ -519,7 +519,7 @@ public:
      *
      * If the pool was constructed with thread-safety enabled, intermediate
      * completion handlers are executed using an internal strand that wraps `this->get_executor()`.
-     * If thread-safety is not enabled, intermediate handlers are executed using `this->get_executor()`.
+     * Otherwise, intermediate handlers are executed using `this->get_executor()`.
      * In any case, the token's associated executor is only used for the final handler.
      *
      * \par Per-operation cancellation
@@ -595,7 +595,7 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
      *
-     * \par Executor behavior
+     * \par Executor
      *
      * If the final handler has an associated immediate executor, and the operation
      * completes immediately, the final handler is dispatched to it.
@@ -609,8 +609,8 @@ public:
      *
      * If the pool was constructed with thread-safety enabled, intermediate
      * completion handlers are executed using an internal strand that wraps `this->get_executor()`.
-     * If thread-safety is not enabled, intermediate handlers are executed using
-     * `token`'s associated executor if it has one, or `this->get_executor()` otherwise.
+     * Otherwise, intermediate handlers are executed using
+     * `token`'s associated executor if it has one, or `this->get_executor()` if it hasn't.
      *
      * \par Per-operation cancellation
      * This operation supports per-operation cancellation.
