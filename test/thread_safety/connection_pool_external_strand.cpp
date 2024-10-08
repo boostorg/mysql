@@ -69,12 +69,18 @@ public:
     {
         conn_->async_execute("SELECT 1", r_, diag_, [this](error_code ec) {
             check_ec(ec, diag_);
-            conn_ = boost::mysql::pooled_connection();
-            if (coord_.on_iteration_finish())
-            {
-                enter_strand();
-            }
+            asio::dispatch(asio::bind_executor(strand_, [this]() { return_connection(); }));
         });
+    }
+
+    void return_connection()
+    {
+        // Returning a connection must happen within the strand
+        conn_ = boost::mysql::pooled_connection();
+        if (coord_.on_iteration_finish())
+        {
+            start_get_connection();
+        }
     }
 };
 
