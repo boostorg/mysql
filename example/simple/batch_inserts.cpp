@@ -42,6 +42,7 @@
 
 namespace asio = boost::asio;
 namespace mysql = boost::mysql;
+namespace json = boost::json;
 
 /**
  * We will use Boost.Describe to easily parse the JSON file
@@ -146,7 +147,7 @@ void main_impl(int argc, char** argv)
 
     // Parse the JSON. json::parse parses the string into a DOM,
     // and json::value_to validates the JSON schema, parsing values into employee structures
-    auto values = boost::json::value_to<std::vector<employee>>(boost::json::parse(contents));
+    auto values = json::value_to<std::vector<employee>>(json::parse(contents));
 
     // We need one employee, at least
     if (values.empty())
