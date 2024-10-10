@@ -74,6 +74,10 @@ local requirements =
         <toolset>gcc,<thread-sanitizer>norecover:<cxxflags>-Wno-tsan
         # gcc-11 emits spurious warnings for valid vector::insert ops
         <toolset>gcc-11:<cxxflags>-Wno-stringop-overflow
+        # TODO: remove when PFR unused warnings are fixed
+        # https://github.com/boostorg/pfr/pull/187
+        <toolset>gcc:<cxxflags>-Wno-unused-parameter
+        <toolset>clang:<cxxflags>-Wno-unused-parameter
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
