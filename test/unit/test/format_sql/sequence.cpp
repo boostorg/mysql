@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE(range_const_c_array)
 }
 
 // MSVC 14.1 rvalue references to C arrays don't work
-#if !defined(BOOST_MSVC) || BOOST_MSVC >= 1911
+#if !BOOST_WORKAROUND(BOOST_MSVC, < 1920)
 BOOST_AUTO_TEST_CASE(range_move_only_c_array)
 {
     std::unique_ptr<int> arr[] = {std::unique_ptr<int>(new int(10)), std::unique_ptr<int>(new int(20))};
