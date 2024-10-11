@@ -83,6 +83,7 @@ add_simple_example(disable_tls                  ARGS ${REGULAR_ARGS})
 add_simple_example(tls_certificate_verification ARGS ${REGULAR_ARGS})
 add_simple_example(metadata                     ARGS ${REGULAR_ARGS})
 add_simple_example(prepared_statements          ARGS ${REGULAR_ARGS} "HGS")
+add_simple_example(timeouts                     ARGS ${REGULAR_ARGS} "HGS")
 
 
 
