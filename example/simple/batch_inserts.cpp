@@ -78,6 +78,7 @@ static std::string read_file(const char* file_name)
     return std::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>());
 }
 
+// The main coroutine
 asio::awaitable<void> coro_main(
     std::string server_hostname,
     std::string username,
