@@ -88,10 +88,10 @@ asio::awaitable<void> coro_main(
 {
     // Create a connection.
     // Will use the same executor as the coroutine.
-    boost::mysql::any_connection conn(co_await asio::this_coro::executor);
+    mysql::any_connection conn(co_await asio::this_coro::executor);
 
     // The hostname, username, password and database to use
-    boost::mysql::connect_params params{
+    mysql::connect_params params{
         .server_address = mysql::host_and_port(std::move(server_hostname)),
         .username = std::move(username),
         .password = std::move(password),

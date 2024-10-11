@@ -8,46 +8,94 @@
 #include <boost/asio/awaitable.hpp>
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
-//[example_disable_tls
+//[example_tls_certificate_verification
 
 /**
- * This example demonstrates how to disable TLS when connecting to MySQL.
+ * This example demonstrates how to set up TLS certificate verification
+ * and, more generally, how to pass custom TLS options to any_connection.
  *
  * It uses C++20 coroutines. If you need, you can backport
  * it to C++11 by using callbacks, asio::yield_context
  * or sync functions instead of coroutines.
  */
 
-#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/ssl_mode.hpp>
 
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/buffer.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/asio/ssl/context.hpp>
+#include <boost/asio/ssl/host_name_verification.hpp>
+#include <boost/asio/this_coro.hpp>
 
 #include <iostream>
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
+// The CA file that signed the server's certificate
+constexpr const char CA_PEM[] = R"%(-----BEGIN CERTIFICATE-----
+MIIDZzCCAk+gAwIBAgIUWznm2UoxXw3j7HCcp9PpiayTvFQwDQYJKoZIhvcNAQEL
+BQAwQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAMBgNVBAoM
+BW15c3FsMQ4wDAYDVQQDDAVteXNxbDAgFw0yMDA0MDQxNDMwMjNaGA8zMDE5MDgw
+NjE0MzAyM1owQjELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxDjAM
+BgNVBAoMBW15c3FsMQ4wDAYDVQQDDAVteXNxbDCCASIwDQYJKoZIhvcNAQEBBQAD
+ggEPADCCAQoCggEBAN0WYdvsDb+a0TxOGPejcwZT0zvTrf921mmDUlrLN1Z0hJ/S
+ydgQCSD7Q+6za4lTFZCXcvs52xvvS2gfC0yXyYLCT/jA4RQRxuF+/+w1gDWEbGk0
+KzEpsBuKrEIvEaVdoS78SxInnW/aegshdrRRocp4JQ6KHsZgkLTxSwPfYSUmMUo0
+cRO0Q/ak3VK8NP13A6ZFvZjrBxjS3cSw9HqilgADcyj1D4EokvfI1C9LrgwgLlZC
+XVkjjBqqoMXGGlnXOEK+pm8bU68HM/QvMBkb1Amo8pioNaaYgqJUCP0Ch0iu1nUU
+HtsWt6emXv0jANgIW0oga7xcT4MDGN/M+IRWLTECAwEAAaNTMFEwHQYDVR0OBBYE
+FNxhaGwf5ePPhzK7yOAKD3VF6wm2MB8GA1UdIwQYMBaAFNxhaGwf5ePPhzK7yOAK
+D3VF6wm2MA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBAAoeJCAX
+IDCFoAaZoQ1niI6Ac/cds8G8It0UCcFGSg+HrZ0YujJxWIruRCUG60Q2OAbEvn0+
+uRpTm+4tV1Wt92WFeuRyqkomozx0g4CyfsxGX/x8mLhKPFK/7K9iTXM4/t+xQC4f
+J+iRmPVsMKQ8YsHYiWVhlOMH9XJQiqERCB2kOKJCH6xkaF2k0GbM2sGgbS7Z6lrd
+fsFTOIVx0VxLVsZnWX3byE9ghnDR5jn18u30Cpb/R/ShxNUGIHqRa4DkM5la6uZX
+W1fpSW11JBSUv4WnOO0C2rlIu7UJWOROqZZ0OsybPRGGwagcyff2qVRuI2XFvAMk
+OzBrmpfHEhF6NDU=
+-----END CERTIFICATE-----
+)%";
+
 // The main coroutine
 asio::awaitable<void> coro_main(std::string server_hostname, std::string username, std::string password)
 {
-    // Create a connection.
-    // Will use the same executor as the coroutine.
-    mysql::any_connection conn(co_await asio::this_coro::executor);
+    // Create a SSL context, which contains TLS configuration options
+    asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
 
-    // The socket path, username, password and database to use.
-    // Passing ssl_mode::disable will disable the use of TLS.
+    // Enable certificate verification. If the server's certificate
+    // is not valid or not signed by a trusted CA, async_connect will error.
+    ssl_ctx.set_verify_mode(asio::ssl::verify_peer);
+
+    // Load a trusted CA, which was used to sign the server's certificate.
+    // This will allow the signature verification to succeed in our example.
+    // You will have to run your MySQL server with the test certificates
+    // located under $BOOST_MYSQL_ROOT/tools/ssl/
+    ssl_ctx.add_certificate_authority(asio::buffer(CA_PEM));
+
+    // We expect the server certificate's common name to be "mysql".
+    // If it's not, the certificate will be rejected and handshake or connect will fail.
+    ssl_ctx.set_verify_callback(asio::ssl::host_name_verification("mysql"));
+
+    // Create a connection.
+    // We pass the context as the second argument to the connection's constructor.
+    // Other TLS options can be also configured using this approach.
+    // We need to keep ssl_ctx alive as long as we use the connection.
+    mysql::any_connection conn(
+        co_await asio::this_coro::executor,
+        mysql::any_connection_params{.ssl_context = &ssl_ctx}
+    );
+
+    // The hostname, username, password and database to use
     mysql::connect_params params{
         .server_address = mysql::host_and_port(std::move(server_hostname)),
         .username = std::move(username),
         .password = std::move(password),
-        .database = "boost_mysql_examples",
-        .ssl = mysql::ssl_mode::disable,
+        .database = "boost_mysql_examples"
     };
 
     // Connect to the server
