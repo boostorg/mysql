@@ -71,16 +71,17 @@ add_example(tutorial       tutorial.cpp       ARGS ${REGULAR_ARGS})
 add_example(tutorial_async tutorial_async.cpp ARGS ${REGULAR_ARGS})
 
 # Simple
-add_simple_example(callbacks               ARGS ${REGULAR_ARGS})
-add_simple_example(coroutines_cpp11        ARGS ${REGULAR_ARGS} LIBS Boost::context)
-add_simple_example(batch_inserts           ARGS ${REGULAR_ARGS} LIBS Boost::json)
-add_simple_example(batch_inserts_generic   ARGS ${REGULAR_ARGS} LIBS Boost::json)
-add_simple_example(patch_updates           ARGS ${REGULAR_ARGS})
-add_simple_example(dynamic_filters         ARGS ${REGULAR_ARGS})
-add_simple_example(unix_socket             ARGS example_user example_password)
-add_simple_example(disable_tls             ARGS ${REGULAR_ARGS})
+add_simple_example(callbacks                    ARGS ${REGULAR_ARGS})
+add_simple_example(coroutines_cpp11             ARGS ${REGULAR_ARGS} LIBS Boost::context)
+add_simple_example(batch_inserts                ARGS ${REGULAR_ARGS} LIBS Boost::json)
+add_simple_example(batch_inserts_generic        ARGS ${REGULAR_ARGS} LIBS Boost::json)
+add_simple_example(patch_updates                ARGS ${REGULAR_ARGS})
+add_simple_example(dynamic_filters              ARGS ${REGULAR_ARGS})
+add_simple_example(unix_socket                  ARGS example_user example_password)
+add_simple_example(disable_tls                  ARGS ${REGULAR_ARGS})
 add_simple_example(tls_certificate_verification ARGS ${REGULAR_ARGS})
-add_simple_example(metadata                ARGS ${REGULAR_ARGS})
+add_simple_example(metadata                     ARGS ${REGULAR_ARGS})
+add_simple_example(prepared_statements          ARGS ${REGULAR_ARGS} "HGS")
 
 
 
