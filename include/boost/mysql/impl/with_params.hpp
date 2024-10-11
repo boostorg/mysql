@@ -21,8 +21,6 @@
 #include <boost/core/span.hpp>
 #include <boost/mp11/integer_sequence.hpp>
 
-#include <utility>
-
 // Execution request traits
 namespace boost {
 namespace mysql {
