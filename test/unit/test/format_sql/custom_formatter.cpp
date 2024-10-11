@@ -42,6 +42,17 @@ struct maybe_error
     bool do_error;
 };
 
+// Only non-const formattable
+struct only_nonconst_lvalues
+{
+    int id;
+};
+
+// Formatter has overloads for both const and non-const values
+struct const_and_nonconst
+{
+};
+
 }  // namespace test
 
 template <>
@@ -77,6 +88,24 @@ struct formatter<maybe_error>
         else
             format_sql_to(ctx, "{}", v.do_error);
     };
+};
+
+template <>
+struct formatter<only_nonconst_lvalues>
+{
+    const char* parse(const char* it, const char*) { return it; }
+    void format(only_nonconst_lvalues& val, format_context_base& ctx) const
+    {
+        format_sql_to(ctx, "only_nonconst_lvalues({})", val.id);
+    }
+};
+
+template <>
+struct formatter<const_and_nonconst>
+{
+    const char* parse(const char* it, const char*) { return it; }
+    void format(const_and_nonconst&, format_context_base& ctx) const { ctx.append_raw("nonconst"); }
+    void format(const const_and_nonconst&, format_context_base& ctx) const { ctx.append_raw("const"); }
 };
 
 }  // namespace mysql
@@ -138,6 +167,29 @@ BOOST_AUTO_TEST_CASE(parse_error)
         format_single_error("{:abc}", parse_consume<2>()) == client_errc::format_string_invalid_specifier
     );
     BOOST_TEST(format_single_error("{:abc}", parse_consume<3>()) == error_code());
+}
+
+// Formatters may accept values by const/non-const lvalue reference,
+// and constness in format_sql is correctly propagated to them.
+// This is used internally by sequence(), because some ranges are non-const.
+// Not part of the public API - only const formatters are exposed
+BOOST_AUTO_TEST_CASE(format_only_nonconst)
+{
+    // This would be the case of filter_view
+    only_nonconst_lvalues lval{42};
+    BOOST_TEST(format_sql(opts, "{}", lval) == "only_nonconst_lvalues(42)");
+    BOOST_TEST(format_sql(opts, "{}", only_nonconst_lvalues{80}) == "only_nonconst_lvalues(80)");
+}
+
+BOOST_AUTO_TEST_CASE(format_const_nonconst)
+{
+    // Can appear in generic code
+    const_and_nonconst lval{};
+    const const_and_nonconst clval{};
+    BOOST_TEST(format_sql(opts, "{}", lval) == "nonconst");
+    BOOST_TEST(format_sql(opts, "{}", clval) == "const");
+    BOOST_TEST(format_sql(opts, "{}", const_and_nonconst{}) == "nonconst");
+    BOOST_TEST(format_sql(opts, "{}", std::move(clval)) == "const");
 }
 
 // format can call add_error to report problems
