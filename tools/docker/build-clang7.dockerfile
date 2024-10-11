@@ -12,6 +12,7 @@ RUN \
     apt-get --no-install-recommends -y install \
         ca-certificates \
         clang-7 \
+        llvm-7 \
         libssl-dev \
         git \
         python3 \
