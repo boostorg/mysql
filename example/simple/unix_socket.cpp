@@ -41,7 +41,8 @@ asio::awaitable<void> coro_main(std::string unix_socket_path, std::string userna
     mysql::any_connection conn(co_await asio::this_coro::executor);
 
     // The socket path, username, password and database to use
-    // Instead of a hostname and port, we use a unix_path as server_address
+    // Instead of a hostname and port, we use a unix_path as server_address.
+    // UNIX socket connections never use TLS.
     mysql::connect_params params{
         .server_address = mysql::unix_path(std::move(unix_socket_path)),
         .username = std::move(username),
