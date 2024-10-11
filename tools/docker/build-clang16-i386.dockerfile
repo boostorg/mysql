@@ -14,6 +14,7 @@ RUN \
     apt-get --no-install-recommends -y install \
         ca-certificates \
         clang-16 \
+        llvm-16 \
         libclang-rt-16-dev:i386 \
         libc6-dev:i386 \
         libstdc++-13-dev:i386 \

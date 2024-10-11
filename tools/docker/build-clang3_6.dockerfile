@@ -11,6 +11,7 @@ RUN \
     apt-get update && \
     apt-get --no-install-recommends -y install \
         clang-3.6 \
+        llvm-3.6 \
         libssl-dev \
         git \
         ca-certificates \

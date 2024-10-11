@@ -12,6 +12,7 @@ RUN \
     apt-get --no-install-recommends -y install \
         ca-certificates \
         clang-18 \
+        llvm-18 \
         libclang-rt-18-dev \
         libc++-18-dev \
         libc++abi-18-dev \
