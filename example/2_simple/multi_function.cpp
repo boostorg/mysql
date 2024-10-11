@@ -8,12 +8,11 @@
 #include <boost/asio/awaitable.hpp>
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
-//[example_prepared_statements
+//[example_multi_function
 
 /**
- * This example demonstrates how to prepare, execute
- * and deallocate prepared statements. This program retrieves
- * all employees in a company, given its ID.
+ * This example demonstrates how to run multi-function operations
+ * to dump an entire table to stdout, reading rows in batches.
  *
  * It uses C++20 coroutines. If you need, you can backport
  * it to C++11 by using callbacks, asio::yield_context
@@ -22,9 +21,9 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
-#include <boost/mysql/results.hpp>
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/mysql/statement.hpp>
+#include <boost/mysql/rows_view.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -32,7 +31,6 @@
 #include <boost/asio/this_coro.hpp>
 
 #include <iostream>
-#include <string_view>
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
@@ -45,12 +43,7 @@ void print_employee(mysql::row_view employee)
 }
 
 // The main coroutine
-asio::awaitable<void> coro_main(
-    std::string server_hostname,
-    std::string username,
-    std::string password,
-    std::string_view company_id
-)
+asio::awaitable<void> coro_main(std::string server_hostname, std::string username, std::string password)
 {
     // Create a connection. It will use the same executor as our coroutine
     mysql::any_connection conn(co_await asio::this_coro::executor);
@@ -66,33 +59,23 @@ asio::awaitable<void> coro_main(
     // Connect to the server
     co_await conn.async_connect(params);
 
-    // Prepared statements can be used to execute queries with untrusted
-    // parameters securely. They are an option to mysql::with_params,
-    // but work server-side.
-    // They are more complex but can yield more efficiency when retrieving
-    // lots of numeric data, or when executing the same query several times with the same parameters.
-    // Ask the server to prepare a statement and retrieve its handle
-    mysql::statement stmt = co_await conn.async_prepare_statement(
-        "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?"
-    );
+    // Start our query as a multi-function operation.
+    // This will send the query for execution but won't read the rows.
+    // An execution_state keep tracks of the operation.
+    mysql::execution_state st;
+    co_await conn.async_start_execution("SELECT first_name, last_name, salary FROM employee", st);
 
-    // Execute the statement. bind() must be passed as many parameters (number of ?)
-    // as the statement has. bind() packages the statement handle with the parameters,
-    // and async_execute sends them to the server
-    mysql::results result;
-    co_await conn.async_execute(stmt.bind(company_id), result);
-    for (mysql::row_view employee : result.rows())
-        print_employee(employee);
-
-    // We can execute stmt as many times as we want, potentially with different
-    // parameters, without the need to re-prepare it.
-
-    // Once we're done with a statement, we can close it, to deallocate it from the server.
-    // Closing the connection will also deallocate active statements, so this is not
-    // strictly required here, but it's shown for completeness.
-    // This can be relevant if you're using long-lived sessions.
-    // Note that statement's destructor does NOT close the statement.
-    co_await conn.async_close_statement(stmt);
+    // st.should_read_rows() returns true while there are more rows to read.
+    // Use async_read_some_rows to read a batch of rows.
+    // This function tries to minimize copies. employees is a view
+    // object pointing into the connection's internal buffers,
+    // and is valid until you start the next async operation.
+    while (st.should_read_rows())
+    {
+        mysql::rows_view employees = co_await conn.async_read_some_rows(st);
+        for (auto employee : employees)
+            print_employee(employee);
+    }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
     co_await conn.async_close();
@@ -100,9 +83,9 @@ asio::awaitable<void> coro_main(
 
 void main_impl(int argc, char** argv)
 {
-    if (argc != 5)
+    if (argc != 4)
     {
-        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname> <company-id>\n";
+        std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname>\n";
         exit(1);
     }
 
@@ -112,7 +95,7 @@ void main_impl(int argc, char** argv)
     // Launch our coroutine
     asio::co_spawn(
         ctx,
-        [=] { return coro_main(argv[3], argv[1], argv[2], argv[4]); },
+        [=] { return coro_main(argv[3], argv[1], argv[2]); },
         // If any exception is thrown in the coroutine body, rethrow it.
         [](std::exception_ptr ptr) {
             if (ptr)
