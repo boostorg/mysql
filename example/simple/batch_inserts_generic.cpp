@@ -16,11 +16,14 @@
  * This example demonstrates how to insert several records in a single
  * SQL statement using format_sql. The implementation is generic,
  * and can be reused to batch-insert any type T with Boost.Describe metadata.
- * It uses C++20 coroutines.
  *
  * The program reads a JSON file containing a list of employees
  * and inserts it into the employee table. It uses Boost.JSON and
  * Boost.Describe to parse the file.
+ *
+ * This example uses C++20 coroutines. If you need, you can backport
+ * it to C++14 (required by Boost.Describe) by using callbacks, asio::yield_context
+ * or sync functions instead of coroutines.
  */
 
 #include <boost/mysql/any_connection.hpp>

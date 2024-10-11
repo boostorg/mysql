@@ -10,16 +10,20 @@
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 //->
 
+//[example_batch_inserts
+
 /**
  * This example demonstrates how to insert several records in a single
- * SQL statement using format_sql. It uses C++20 coroutines.
+ * SQL statement using format_sql.
  *
  * The program reads a JSON file containing a list of employees
  * and inserts it into the employee table. It uses Boost.JSON and
  * Boost.Describe to parse the file.
+ *
+ * This example uses C++20 coroutines. If you need, you can backport
+ * it to C++14 (required by Boost.Describe) by using callbacks, asio::yield_context
+ * or sync functions instead of coroutines.
  */
-
-//[example_batch_inserts
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
