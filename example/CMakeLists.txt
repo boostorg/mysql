@@ -50,7 +50,7 @@ function(add_example EXAMPLE_NAME EXAMPLE_PATH)
     target_link_libraries(${TARGET_NAME} PRIVATE ${ADD_EXAMPLE_LIBS})
     add_test(
         NAME ${TARGET_NAME}
-        COMMAND ${TARGET_NAME} ${ARGN}
+        COMMAND ${TARGET_NAME} ${ADD_EXAMPLE_ARGS}
     )
 endfunction()
 
@@ -64,7 +64,7 @@ endfunction()
 #     run_python_example(${EXAMPLE_NAME} run_stored_procedures.py)
 # endfunction()
 
-set(REGULAR_ARGS "example_user example_password ${SERVER_HOST}")
+set(REGULAR_ARGS example_user example_password ${SERVER_HOST})
 
 # Tutorials
 add_example(tutorial       tutorial.cpp       ARGS ${REGULAR_ARGS})
@@ -78,6 +78,8 @@ add_simple_example(batch_inserts_generic   ARGS ${REGULAR_ARGS} LIBS Boost::json
 add_simple_example(patch_updates           ARGS ${REGULAR_ARGS})
 add_simple_example(dynamic_filters         ARGS ${REGULAR_ARGS})
 add_simple_example(unix_socket             ARGS example_user example_password)
+add_simple_example(disable_tls             ARGS ${REGULAR_ARGS})
+add_simple_example(tls_certificate_verification ARGS ${REGULAR_ARGS})
 
 
 
