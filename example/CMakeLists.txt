@@ -80,6 +80,7 @@ add_simple_example(dynamic_filters         ARGS ${REGULAR_ARGS})
 add_simple_example(unix_socket             ARGS example_user example_password)
 add_simple_example(disable_tls             ARGS ${REGULAR_ARGS})
 add_simple_example(tls_certificate_verification ARGS ${REGULAR_ARGS})
+add_simple_example(metadata                ARGS ${REGULAR_ARGS})
 
 
 
