@@ -67,8 +67,9 @@ endfunction()
 set(REGULAR_ARGS example_user example_password ${SERVER_HOST})
 
 # Tutorials
-add_example(tutorial_sync   1_tutorial/1_sync.cpp   ARGS ${REGULAR_ARGS})
-add_example(tutorial_async  1_tutorial/2_async.cpp  ARGS ${REGULAR_ARGS})
+add_example(tutorial_sync        1_tutorial/1_sync.cpp         ARGS ${REGULAR_ARGS})
+add_example(tutorial_async       1_tutorial/2_async.cpp        ARGS ${REGULAR_ARGS})
+add_example(tutorial_with_params 1_tutorial/3_with_params.cpp  ARGS ${REGULAR_ARGS} 1)
 
 # Simple
 add_simple_example(callbacks                    ARGS ${REGULAR_ARGS})
