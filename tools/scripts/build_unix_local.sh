@@ -10,8 +10,8 @@ set -e
 
 repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
-BK=docs
-IMAGE=build-docs
+BK=b2
+IMAGE=build-clang11
 SHA=ee78aa84c0231742deb853556da1d56f5a2b8148
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
@@ -34,9 +34,9 @@ docker network connect my-net $CONTAINER || echo "Network already connected"
 db_args="--server-host=$DB"
 case $BK in
     b2) cmd="$db_args
-            --toolset=gcc
+            --toolset=clang
             --cxxstd=11
-            --variant=debug
+            --variant=release
             --stdlib=native
             --address-model=64
             --separate-compilation=1
