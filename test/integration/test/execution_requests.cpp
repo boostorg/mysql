@@ -194,7 +194,7 @@ BOOST_FIXTURE_TEST_CASE(with_params_sequence_deferred, any_connection_fixture)
     // Setup
     connect();
     results r;
-    auto fn = [](int value, format_context_base& ctx) { ctx.append_value(value); };
+    auto fn = [](int value, format_context_base& fmt_ctx) { fmt_ctx.append_value(value); };
 
     // Create a deferred op
     auto op = conn.async_execute(
