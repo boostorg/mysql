@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE(glue)
 constexpr struct fmt_as_str_t
 {
     void operator()(int v, format_context_base& ctx) const { format_sql_to(ctx, "{}", std::to_string(v)); };
-} fmt_as_str;
+} fmt_as_str{};
 
 BOOST_AUTO_TEST_CASE(range_c_array)
 {
