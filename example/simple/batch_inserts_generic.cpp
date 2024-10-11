@@ -5,10 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//<-
 #include <boost/asio/awaitable.hpp>
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
-//->
 
 //[example_batch_inserts_generic
 

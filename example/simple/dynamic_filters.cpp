@@ -5,13 +5,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/asio/awaitable.hpp>
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+
 //[example_dynamic_filters
 
-// Uses client-side SQL formatting to implement a dynamic filter.
-// If you're implementing a filter with many options that can be
-// conditionally enabled, this pattern may be useful for you.
-//
-// Client-side SQL formatting is an experimental feature.
+/**
+ * This example implements a dynamic filter using client-side SQL.
+ * If you're implementing a filter with many options that can be
+ * conditionally enabled, this pattern may be useful for you.
+ *
+ * This example uses C++20 coroutines. If you need, you can backport
+ * it to C++11 by using callbacks, asio::yield_context
+ * or sync functions instead of coroutines.
+ */
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
@@ -20,26 +27,24 @@
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
-#include <boost/mysql/string_view.hpp>
-#include <boost/mysql/with_diagnostics.hpp>
 
-#include <boost/asio/error.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/spawn.hpp>
-#include <boost/optional/optional.hpp>
 
 #include <cassert>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
-using boost::mysql::field_view;
-using boost::mysql::string_view;
-using boost::mysql::with_diagnostics;
+namespace mysql = boost::mysql;
+namespace asio = boost::asio;
 
 // Prints an employee row to stdout
-void print_employee(boost::mysql::row_view employee)
+void print_employee(mysql::row_view employee)
 {
     std::cout << "id: " << employee.at(0)                             // field 0: id
               << ", first_name: " << std::setw(16) << employee.at(1)  // field 1: first_name
@@ -59,7 +64,7 @@ enum class op_type
 };
 
 // Returns the SQL operator for the given op_type
-string_view op_type_to_sql(op_type value)
+std::string_view op_type_to_sql(op_type value)
 {
     switch (value)
     {
@@ -77,39 +82,39 @@ string_view op_type_to_sql(op_type value)
 // `salary` > 20000 condition
 struct filter
 {
-    string_view field_name;  // The database column name
-    op_type op;              // The operator to apply
-    field_view field_value;  // The value to check. field_view can hold any MySQL type
+    std::string_view field_name;    // The database column name
+    op_type op;                     // The operator to apply
+    mysql::field_view field_value;  // The value to check. field_view can hold any MySQL type
 };
 
 // Command line arguments
 struct cmdline_args
 {
     // MySQL username to use during authentication.
-    string_view username;
+    std::string_view username;
 
     // MySQL password to use during authentication.
-    string_view password;
+    std::string_view password;
 
     // Hostname where the MySQL server is listening.
-    string_view server_hostname;
+    std::string_view server_hostname;
 
     // The filters to apply
     std::vector<filter> filts;
 
     // If order_by.has_value(), order employees using the given field
-    boost::optional<string_view> order_by;
+    std::optional<std::string_view> order_by;
 };
 
 // Parses the command line
 static cmdline_args parse_cmdline_args(int argc, char** argv)
 {
     // Available options
-    const string_view company_id_prefix = "--company-id=";
-    const string_view first_name_prefix = "--first-name=";
-    const string_view last_name_prefix = "--last-name=";
-    const string_view min_salary_prefix = "--min-salary=";
-    const string_view order_by_prefix = "--order-by=";
+    constexpr std::string_view company_id_prefix = "--company-id=";
+    constexpr std::string_view first_name_prefix = "--first-name=";
+    constexpr std::string_view last_name_prefix = "--last-name=";
+    constexpr std::string_view min_salary_prefix = "--min-salary=";
+    constexpr std::string_view order_by_prefix = "--order-by=";
 
     // Helper function to print the usage message and exit
     auto print_usage_and_exit = [argv]() {
@@ -130,28 +135,28 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
     // Parse the filters
     for (int i = 4; i < argc; ++i)
     {
-        string_view arg = argv[i];
+        std::string_view arg = argv[i];
 
         // Attempt to match the argument against each prefix
         if (arg.starts_with(company_id_prefix))
         {
             auto value = arg.substr(company_id_prefix.size());
-            res.filts.push_back({"company_id", op_type::eq, field_view(value)});
+            res.filts.push_back({"company_id", op_type::eq, mysql::field_view(value)});
         }
         else if (arg.starts_with(first_name_prefix))
         {
             auto value = arg.substr(first_name_prefix.size());
-            res.filts.push_back({"first_name", op_type::eq, field_view(value)});
+            res.filts.push_back({"first_name", op_type::eq, mysql::field_view(value)});
         }
         else if (arg.starts_with(last_name_prefix))
         {
             auto value = arg.substr(last_name_prefix.size());
-            res.filts.push_back({"last_name", op_type::eq, field_view(value)});
+            res.filts.push_back({"last_name", op_type::eq, mysql::field_view(value)});
         }
         else if (arg.starts_with(min_salary_prefix))
         {
-            auto value = std::stod(arg.substr(min_salary_prefix.size()));
-            res.filts.push_back({"salary", op_type::gte, field_view(value)});
+            auto value = std::stod(std::string(arg.substr(min_salary_prefix.size())));
+            res.filts.push_back({"salary", op_type::gte, mysql::field_view(value)});
         }
         else if (arg.starts_with(order_by_prefix))
         {
@@ -191,20 +196,20 @@ static cmdline_args parse_cmdline_args(int argc, char** argv)
 // options like the current character set. Use any_connection::format_opts to obtain it.
 // If your use case allows you to express your query as a single format string, use with_params, instead.
 std::string compose_get_employees_query(
-    boost::mysql::format_options opts,
+    mysql::format_options opts,
     const std::vector<filter>& filts,
-    boost::optional<string_view> order_by
+    std::optional<std::string_view> order_by
 )
 {
     // A format context allows composing queries incrementally.
     // This is required because we need to add the ORDER BY clause conditionally
-    boost::mysql::format_context ctx(opts);
+    mysql::format_context ctx(opts);
 
     // Adds an individual filter to the context. Used by sequence()
-    auto filter_format_fn = [](filter item, boost::mysql::format_context_base& elm_ctx) {
+    auto filter_format_fn = [](filter item, mysql::format_context_base& elm_ctx) {
         // {:i} formats a string as a SQL identifier. {:r} outputs raw SQL.
         // filter{"key", op_type::eq, field_view(42)} would get formatted as "`key` = 42"
-        boost::mysql::format_sql_to(
+        mysql::format_sql_to(
             elm_ctx,
             "{:i} {:r} {}",
             item.field_name,
@@ -216,10 +221,10 @@ std::string compose_get_employees_query(
     // Add the query with the filters to ctx.
     // sequence() will invoke filter_format_fn for each element in filts,
     // using the string " AND " as glue, to separate filters
-    boost::mysql::format_sql_to(
+    mysql::format_sql_to(
         ctx,
         "SELECT id, first_name, last_name, company_id, salary FROM employee WHERE {}",
-        boost::mysql::sequence(filts, filter_format_fn, " AND ")
+        mysql::sequence(filts, filter_format_fn, " AND ")
     );
 
     // Add the order by
@@ -227,7 +232,7 @@ std::string compose_get_employees_query(
     {
         // identifier formats a string as a SQL identifier, instead of a string literal.
         // For instance, this may generate "ORDER BY `first_name`"
-        boost::mysql::format_sql_to(ctx, " ORDER BY {:i}", *order_by);
+        mysql::format_sql_to(ctx, " ORDER BY {:i}", *order_by);
     }
 
     // Get our generated query. get() returns a system::result<std::string>, which
@@ -237,64 +242,59 @@ std::string compose_get_employees_query(
     return std::move(ctx).get().value();
 }
 
+// The main coroutine
+asio::awaitable<void> coro_main(const cmdline_args& args)
+{
+    // Create a connection.
+    // Will use the same executor as the coroutine.
+    mysql::any_connection conn(co_await asio::this_coro::executor);
+
+    // The hostname, username, password and database to use
+    mysql::connect_params params{
+        .server_address = mysql::host_and_port(std::string(args.server_hostname)),
+        .username = std::string(args.username),
+        .password = std::string(args.password),
+        .database = "boost_mysql_examples"
+    };
+
+    // Connect to the server
+    co_await conn.async_connect(params);
+
+    // Compose the query. format_opts() returns a system::result<format_options>,
+    // containing the options required by format_context. format_opts() may return
+    // an error if the connection doesn't know which character set is using -
+    // use async_set_character_set if this happens.
+    std::string query = compose_get_employees_query(conn.format_opts().value(), args.filts, args.order_by);
+
+    // Execute the query as usual. Note that the query was generated
+    // client-side. Appropriately using format_sql_to makes this approach secure.
+    // with_params uses this same technique under the hood.
+    // Casting to string_view saves a copy in async_execute
+    mysql::results result;
+    co_await conn.async_execute(std::string_view(query), result);
+
+    // Print the employees
+    for (mysql::row_view employee : result.rows())
+    {
+        print_employee(employee);
+    }
+
+    // Notify the MySQL server we want to quit, then close the underlying connection.
+    co_await conn.async_close();
+}
+
 void main_impl(int argc, char** argv)
 {
     // Parse the command line
     cmdline_args args = parse_cmdline_args(argc, argv);
 
     // Create an I/O context, required by all I/O objects
-    boost::asio::io_context ctx;
+    asio::io_context ctx;
 
-    /**
-     * Spawn a stackful coroutine using boost::asio::spawn.
-     * The coroutine suspends every time we call an asynchronous function, and
-     * will resume when it completes.
-     * Note that client-side SQL formatting can be used with both sync and async functions.
-     */
-    boost::asio::spawn(
-        ctx.get_executor(),
-        [args](boost::asio::yield_context yield) {
-            // Create a connection. Note that client-side SQL formatting
-            // requires us to use the newer any_connection.
-            boost::mysql::any_connection conn(yield.get_executor());
-
-            // Connection configuration. By default, connections use the utf8mb4 character set
-            // (MySQL's name for regular UTF-8).
-            boost::mysql::connect_params params;
-            params.server_address.emplace_host_and_port(args.server_hostname);
-            params.username = args.username;
-            params.password = args.password;
-            params.database = "boost_mysql_examples";
-
-            // Connect to the server.with_diagnostics will turn any thrown exceptions
-            // into error_with_diagnostics, which contain more info than regular exceptions
-            conn.async_connect(params, with_diagnostics(yield));
-
-            // Compose the query. format_opts() returns a system::result<format_options>,
-            // containing the options required by format_context. format_opts() may return
-            // an error if the connection doesn't know which character set is using -
-            // use async_set_character_set if this happens.
-            std::string query = compose_get_employees_query(
-                conn.format_opts().value(),
-                args.filts,
-                args.order_by
-            );
-
-            // Execute the query as usual. Note that, unlike with prepared statements,
-            // formatting happened in the client, and not in the server.
-            // Casting to string_view saves a copy in async_execute
-            boost::mysql::results result;
-            conn.async_execute(string_view(query), result, with_diagnostics(yield));
-
-            // Print the employees
-            for (boost::mysql::row_view employee : result.rows())
-            {
-                print_employee(employee);
-            }
-
-            // Notify the MySQL server we want to quit, then close the underlying connection.
-            conn.async_close(with_diagnostics(yield));
-        },
+    // Launch our coroutine
+    asio::co_spawn(
+        ctx,
+        [&] { return coro_main(args); },
         // If any exception is thrown in the coroutine body, rethrow it.
         [](std::exception_ptr ptr) {
             if (ptr)
@@ -304,7 +304,7 @@ void main_impl(int argc, char** argv)
         }
     );
 
-    // Don't forget to call run()! Otherwise, your program will do nothing.
+    // Calling run will actually execute the coroutine until completion
     ctx.run();
 }
 
@@ -333,3 +333,15 @@ int main(int argc, char** argv)
 }
 
 //]
+
+#else
+
+#include <iostream>
+
+int main()
+{
+    std::cout << "Sorry, your compiler doesn't have the required capabilities to run this example"
+              << std::endl;
+}
+
+#endif
