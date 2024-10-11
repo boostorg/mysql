@@ -5,13 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/any_connection.hpp>
-#include <boost/mysql/results.hpp>
-#include <boost/mysql/with_params.hpp>
-
 #include <boost/asio/awaitable.hpp>
-
-#include <string_view>
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 //[example_timeouts
@@ -27,8 +21,11 @@
  * Timeouts can't be used with sync functions.
  */
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
@@ -38,6 +35,7 @@
 #include <chrono>
 #include <exception>
 #include <iostream>
+#include <string_view>
 
 namespace asio = boost::asio;
 namespace mysql = boost::mysql;
