@@ -55,7 +55,7 @@ function(add_example EXAMPLE_NAME EXAMPLE_PATH)
 endfunction()
 
 function(add_simple_example EXAMPLE_NAME)
-    add_example(${EXAMPLE_NAME} "simple/${EXAMPLE_NAME}.cpp" ${ARGN})
+    add_example(${EXAMPLE_NAME} "2_simple/${EXAMPLE_NAME}.cpp" ${ARGN})
 endfunction()
 
 # The order management examples must be run several times through a Python script
@@ -67,8 +67,8 @@ endfunction()
 set(REGULAR_ARGS example_user example_password ${SERVER_HOST})
 
 # Tutorials
-add_example(tutorial       tutorial.cpp       ARGS ${REGULAR_ARGS})
-add_example(tutorial_async tutorial_async.cpp ARGS ${REGULAR_ARGS})
+add_example(tutorial_sync   1_tutorial/1_sync.cpp   ARGS ${REGULAR_ARGS})
+add_example(tutorial_async  1_tutorial/2_async.cpp  ARGS ${REGULAR_ARGS})
 
 # Simple
 add_simple_example(callbacks                    ARGS ${REGULAR_ARGS})
