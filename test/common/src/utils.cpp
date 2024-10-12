@@ -22,6 +22,8 @@
 #include <boost/mysql/detail/access.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/bind_executor.hpp>
+#include <boost/asio/dispatch.hpp>
 #include <boost/asio/execution/blocking.hpp>
 #include <boost/asio/execution/relationship.hpp>
 #include <boost/asio/execution_context.hpp>
@@ -414,6 +416,20 @@ void boost::mysql::test::poll_until(
     }
 }
 
+void boost::mysql::test::run_in_context(
+    asio::io_context& ctx,
+    const std::function<void()>& fn,
+    source_location loc
+)
+{
+    bool finished = false;
+    asio::dispatch(asio::bind_executor(ctx.get_executor(), [fn, &finished]() {
+        fn();
+        finished = true;
+    }));
+    poll_until(ctx, &finished, loc);
+}
+
 //
 // io_context_fixture.hpp
 //
@@ -427,6 +443,13 @@ boost::mysql::test::io_context_fixture::~io_context_fixture()
 //
 // network_result.hpp
 //
+
+void boost::mysql::test::network_result_base::validate_immediate(bool expect_immediate, source_location loc)
+    const
+{
+    BOOST_TEST_CONTEXT("Called from " << loc) { BOOST_TEST(was_immediate == expect_immediate); }
+}
+
 void boost::mysql::test::network_result_base::validate_no_error(source_location loc) const
 {
     validate_error(error_code(), diagnostics(), loc);
@@ -503,6 +526,9 @@ void boost::mysql::test::test_detail::as_netres_handler_base::complete_base(
     network_result_base& netres
 ) const
 {
+    // Are we in an immediate completion?
+    bool is_immediate = is_initiation_function();
+
     // Check executor. The passed executor must be the top one in all cases.
     // Immediate completions must be dispatched through the immediate executor, too.
     // In all cases, we may encounter a bigger stack because of previous immediate completions.
@@ -512,9 +538,8 @@ void boost::mysql::test::test_detail::as_netres_handler_base::complete_base(
     };
 
     // Expected top of the executor stack
-    boost::span<const int> expected_stack_top = is_initiation_function()
-                                                    ? boost::span<const int>(stack_data_immediate)
-                                                    : boost::span<const int>(stack_data_regular);
+    boost::span<const int> expected_stack_top = is_immediate ? boost::span<const int>(stack_data_immediate)
+                                                             : boost::span<const int>(stack_data_regular);
 
     // Actual top of the executor stack
     auto actual_stack_top = executor_stack().last(
@@ -530,4 +555,7 @@ void boost::mysql::test::test_detail::as_netres_handler_base::complete_base(
         netres.diag = *diag_ptr;
     else
         netres.diag = create_server_diag("<diagnostics unavailable>");
+
+    // Record immediate-ness
+    netres.was_immediate = is_immediate;
 }

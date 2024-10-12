@@ -19,7 +19,6 @@
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
-#include <boost/mysql/impl/internal/connection_pool/wait_group.hpp>
 #include <boost/mysql/impl/internal/coroutine.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
@@ -31,7 +30,7 @@
 #include <boost/asio/cancellation_signal.hpp>
 #include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
-#include <boost/asio/deferred.hpp>
+#include <boost/asio/detached.hpp>
 #include <boost/asio/dispatch.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/immediate.hpp>
@@ -89,7 +88,6 @@ class basic_pool_impl
     state_t state_{state_t::initial};
     std::list<node_type> all_conns_;
     shared_state_type shared_st_;
-    wait_group wait_gp_;
     timer_type cancel_timer_;
     const pipeline_request reset_pipeline_req_{make_reset_pipeline()};
 
@@ -111,8 +109,9 @@ class basic_pool_impl
 
     void create_connection()
     {
+        // Connection tasks always run in the pool's executor
         all_conns_.emplace_back(params_, pool_ex_, conn_ex_, shared_st_, &reset_pipeline_req_);
-        wait_gp_.run_task(all_conns_.back().async_run(asio::deferred));
+        all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
     }
 
     void maybe_create_connection()
@@ -225,7 +224,11 @@ class basic_pool_impl
                 obj_->shared_st_.idle_connections_cv.expires_at((ClockType::time_point::min)());
 
                 // Wait for all connection tasks to exit
-                BOOST_MYSQL_YIELD(resume_point_, 4, obj_->wait_gp_.async_wait(std::move(self)))
+                BOOST_MYSQL_YIELD(
+                    resume_point_,
+                    4,
+                    obj_->shared_st_.conns_finished_cv.async_wait(std::move(self))
+                )
 
                 // Done
                 cancel_slot_.clear();
@@ -335,7 +338,7 @@ class basic_pool_impl
                     obj->maybe_create_connection();
 
                     // Wait to be notified, or until a cancellation happens
-                    BOOST_MYSQL_YIELD(resume_point, 2, obj->wait_for_connections(self);)
+                    BOOST_MYSQL_YIELD(resume_point, 2, obj->wait_for_connections(self))
 
                     // Remember that we have waited, so completions are dispatched
                     // correctly
@@ -419,7 +422,6 @@ public:
           conn_ex_(params.connection_executor ? std::move(params.connection_executor) : original_pool_ex_),
           params_(make_internal_pool_params(std::move(params))),
           shared_st_(pool_ex_),
-          wait_gp_(pool_ex_),
           cancel_timer_(pool_ex_, (std::chrono::steady_clock::time_point::max)())
     {
     }

@@ -12,6 +12,7 @@ RUN \
     apt-get --no-install-recommends -y install \
         ca-certificates \
         clang-17 \
+        llvm-17 \
         libclang-rt-17-dev \
         libc++-17-dev \
         libc++abi-17-dev \

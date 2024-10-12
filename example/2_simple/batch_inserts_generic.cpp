@@ -6,6 +6,8 @@
 //
 
 #include <boost/asio/awaitable.hpp>
+
+#include <functional>
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 //[example_batch_inserts_generic
@@ -28,6 +30,7 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/sequence.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>

@@ -27,6 +27,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/sequence.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>

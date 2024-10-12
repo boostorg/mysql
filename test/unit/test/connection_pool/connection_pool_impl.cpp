@@ -37,7 +37,9 @@
 #include <boost/asio/compose.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/dispatch.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/experimental/channel.hpp>
+#include <boost/asio/experimental/channel_error.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/asio/ssl/context.hpp>
@@ -118,6 +120,15 @@ class mock_connection
         asio::experimental::channel<void(error_code, fn_type)> to_test_chan_;
         asio::experimental::channel<void(error_code, diagnostics)> from_test_chan_;
 
+        // Transforms the channel-specific cancel code into asio::error::operation_aborted,
+        // which is returned by connections when operations get cancelled
+        static error_code transform_ec(error_code input)
+        {
+            return input == asio::experimental::channel_errc::channel_cancelled
+                       ? asio::error::operation_aborted
+                       : input;
+        }
+
         // Code shared between all mocked ops
         struct mocked_op
         {
@@ -138,7 +149,7 @@ class mock_connection
                 if (ec)
                 {
                     // We were cancelled
-                    self.complete(ec);
+                    self.complete(transform_ec(ec));
                 }
                 else
                 {
@@ -153,7 +164,7 @@ class mock_connection
                 // Done
                 if (diag)
                     *diag = std::move(recv_diag);
-                self.complete(ec);
+                self.complete(transform_ec(ec));
             }
         };
 

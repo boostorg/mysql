@@ -32,13 +32,25 @@ bool do_format_custom_formatter(
     format_context_base& ctx
 )
 {
-    formatter<T> fmt;
+    // T here may be the actual type U or const U
+    using U = typename std::remove_const<T>::type;
+
+    formatter<U> fmt;
+
+    // Parse the spec
     const char* it = fmt.parse(spec_begin, spec_end);
     if (it != spec_end)
     {
         return false;
     }
-    fmt.format(*static_cast<const T*>(obj), ctx);
+
+    // Retrieve the object
+    auto& value = *const_cast<T*>(static_cast<const T*>(obj));
+
+    // Format
+    fmt.format(value, ctx);
+
+    // Done
     return true;
 }
 
@@ -79,7 +91,7 @@ inline formattable_ref_impl make_formattable_ref_custom(
 // Make types with custom formatters formattable
 template <class T>
 formattable_ref_impl make_formattable_ref_custom(
-    const T& v,
+    T&& v,
     std::false_type  // is format ref
 )
 {
@@ -90,9 +102,13 @@ formattable_ref_impl make_formattable_ref_custom(
         "T is not formattable. Please use a formattable type or specialize formatter<T> to make it "
         "formattable"
     );
+
+    // Although everything is passed as const void*, do_format_custom_formatter
+    // can bypass const-ness for non-const values. This helps with non-const ranges (e.g. filter_view)
     return {
         formattable_ref_impl::type_t::fn_and_ptr,
-        formattable_ref_impl::fn_and_ptr{&v, &do_format_custom_formatter<T>}
+        formattable_ref_impl::
+            fn_and_ptr{&v, &do_format_custom_formatter<typename std::remove_reference<T>::type>}
     };
 }
 
@@ -113,11 +129,11 @@ formattable_ref_impl make_formattable_ref_range(
 
 template <class T>
 formattable_ref_impl make_formattable_ref_range(
-    const T& v,
+    T&& v,
     std::false_type  // formattable range
 )
 {
-    return make_formattable_ref_custom(v, is_formattable_ref<T>());
+    return make_formattable_ref_custom(std::forward<T>(v), is_formattable_ref<T>());
 }
 
 // Used for types having is_writable_field<T>

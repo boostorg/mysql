@@ -34,6 +34,7 @@ target_link_libraries(
     Boost::asio
     Boost::assert
     Boost::charconv
+    Boost::compat
     Boost::config
     Boost::core
     Boost::describe

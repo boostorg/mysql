@@ -26,6 +26,7 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/sequence.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>
@@ -181,6 +182,8 @@ asio::awaitable<void> coro_main(const cmdline_args& args)
     // Instead of running every statement separately, we activated params.multi_queries,
     // which allows semicolon-separated statements.
     // As in std::format, we can use explicit indices like {0} and {1} to reference arguments.
+    // By default, sequence copies its input range, but we don't need this here,
+    // so we disable the copy by calling ref()
     mysql::results result;
     co_await conn.async_execute(
         mysql::with_params(
@@ -188,7 +191,7 @@ asio::awaitable<void> coro_main(const cmdline_args& args)
             "UPDATE employee SET {0} WHERE id = {1}; "
             "SELECT first_name, last_name, salary, company_id FROM employee WHERE id = {1}; "
             "COMMIT",
-            mysql::sequence(args.updates, update_format_fn),
+            mysql::sequence(std::ref(args.updates), update_format_fn),
             args.employee_id
         ),
         result

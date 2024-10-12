@@ -12,6 +12,7 @@ RUN \
     apt-get --no-install-recommends -y install \
         ca-certificates \
         clang-14 \
+        llvm-14 \
         libc++-14-dev \
         libc++abi-14-dev \
         libssl-dev \
