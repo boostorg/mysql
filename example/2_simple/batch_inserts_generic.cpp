@@ -6,8 +6,6 @@
 //
 
 #include <boost/asio/awaitable.hpp>
-
-#include <functional>
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 //[example_batch_inserts_generic
