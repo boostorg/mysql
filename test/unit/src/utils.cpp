@@ -652,24 +652,24 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, pipeline_reques
     return os << " }";
 }
 
-// connection_status
-static const char* to_string(detail::connection_status v)
+// node_status
+static const char* to_string(detail::node_status v)
 {
     switch (v)
     {
-    case detail::connection_status::initial: return "connection_status::initial";
-    case detail::connection_status::connect_in_progress: return "connection_status::connect_in_progress";
-    case detail::connection_status::sleep_connect_failed_in_progress:
-        return "connection_status::sleep_connect_failed_in_progress";
-    case detail::connection_status::reset_in_progress: return "connection_status::reset_in_progress";
-    case detail::connection_status::ping_in_progress: return "connection_status::ping_in_progress";
-    case detail::connection_status::idle: return "connection_status::idle";
-    case detail::connection_status::in_use: return "connection_status::in_use";
-    default: return "<unknown connection_status>";
+    case detail::node_status::initial: return "node_status::initial";
+    case detail::node_status::connect_in_progress: return "node_status::connect_in_progress";
+    case detail::node_status::sleep_connect_failed_in_progress:
+        return "node_status::sleep_connect_failed_in_progress";
+    case detail::node_status::reset_in_progress: return "node_status::reset_in_progress";
+    case detail::node_status::ping_in_progress: return "node_status::ping_in_progress";
+    case detail::node_status::idle: return "node_status::idle";
+    case detail::node_status::in_use: return "node_status::in_use";
+    default: return "<unknown node_status>";
     }
 }
 
-std::ostream& boost::mysql::detail::operator<<(std::ostream& os, connection_status v)
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, node_status v)
 {
     return os << ::to_string(v);
 }

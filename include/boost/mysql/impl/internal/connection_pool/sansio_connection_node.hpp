@@ -19,7 +19,7 @@ namespace mysql {
 namespace detail {
 
 // The status the connection is in
-enum class connection_status
+enum class node_status
 {
     // Connection task hasn't initiated yet.
     // This status doesn't count as pending. This facilitates tracking pending connections.
@@ -48,7 +48,7 @@ enum class connection_status
 };
 
 // The next I/O action the connection should take. There's
-// no 1-1 mapping to connection_status
+// no 1-1 mapping to node_status
 enum class next_connection_action
 {
     // Do nothing, exit the loop
@@ -89,37 +89,37 @@ enum class collection_state
 template <class Derived>
 class sansio_connection_node
 {
-    connection_status status_;
+    node_status status_;
 
-    inline bool is_pending(connection_status status) noexcept
+    inline bool is_pending(node_status status) noexcept
     {
-        return status != connection_status::initial && status != connection_status::idle &&
-               status != connection_status::in_use && status != connection_status::terminated;
+        return status != node_status::initial && status != node_status::idle &&
+               status != node_status::in_use && status != node_status::terminated;
     }
 
-    inline static next_connection_action status_to_action(connection_status status) noexcept
+    inline static next_connection_action status_to_action(node_status status) noexcept
     {
         switch (status)
         {
-        case connection_status::connect_in_progress: return next_connection_action::connect;
-        case connection_status::sleep_connect_failed_in_progress:
+        case node_status::connect_in_progress: return next_connection_action::connect;
+        case node_status::sleep_connect_failed_in_progress:
             return next_connection_action::sleep_connect_failed;
-        case connection_status::ping_in_progress: return next_connection_action::ping;
-        case connection_status::reset_in_progress: return next_connection_action::reset;
-        case connection_status::idle:
-        case connection_status::in_use: return next_connection_action::idle_wait;
+        case node_status::ping_in_progress: return next_connection_action::ping;
+        case node_status::reset_in_progress: return next_connection_action::reset;
+        case node_status::idle:
+        case node_status::in_use: return next_connection_action::idle_wait;
         default: return next_connection_action::none;
         }
     }
 
-    next_connection_action set_status(connection_status new_status)
+    next_connection_action set_status(node_status new_status)
     {
         auto& derived = static_cast<Derived&>(*this);
 
         // Notify we're entering/leaving the idle status
-        if (new_status == connection_status::idle && status_ != connection_status::idle)
+        if (new_status == node_status::idle && status_ != node_status::idle)
             derived.entering_idle();
-        else if (new_status != connection_status::idle && status_ == connection_status::idle)
+        else if (new_status != node_status::idle && status_ == node_status::idle)
             derived.exiting_idle();
 
         // Notify we're entering/leaving a pending status
@@ -135,45 +135,45 @@ class sansio_connection_node
     }
 
 public:
-    sansio_connection_node(connection_status initial_status = connection_status::initial) noexcept
+    sansio_connection_node(node_status initial_status = node_status::initial) noexcept
         : status_(initial_status)
     {
     }
 
     void mark_as_in_use() noexcept
     {
-        BOOST_ASSERT(status_ == connection_status::idle);
-        set_status(connection_status::in_use);
+        BOOST_ASSERT(status_ == node_status::idle);
+        set_status(node_status::in_use);
     }
 
-    void cancel() { set_status(connection_status::terminated); }
+    void cancel() { set_status(node_status::terminated); }
 
     next_connection_action resume(error_code ec, collection_state col_st)
     {
         switch (status_)
         {
-        case connection_status::initial: return set_status(connection_status::connect_in_progress);
-        case connection_status::connect_in_progress:
-            return ec ? set_status(connection_status::sleep_connect_failed_in_progress)
-                      : set_status(connection_status::idle);
-        case connection_status::sleep_connect_failed_in_progress:
-            return set_status(connection_status::connect_in_progress);
-        case connection_status::idle:
+        case node_status::initial: return set_status(node_status::connect_in_progress);
+        case node_status::connect_in_progress:
+            return ec ? set_status(node_status::sleep_connect_failed_in_progress)
+                      : set_status(node_status::idle);
+        case node_status::sleep_connect_failed_in_progress:
+            return set_status(node_status::connect_in_progress);
+        case node_status::idle:
             // The wait finished with no interruptions, and the connection
             // is still idle. Time to ping.
-            return set_status(connection_status::ping_in_progress);
-        case connection_status::in_use:
+            return set_status(node_status::ping_in_progress);
+        case node_status::in_use:
             // If col_st != none, the user has notified us to collect the connection.
             // This happens after they return the connection to the pool.
             // Update status and continue
             if (col_st == collection_state::needs_collect)
             {
                 // No reset needed, we're idle
-                return set_status(connection_status::idle);
+                return set_status(node_status::idle);
             }
             else if (col_st == collection_state::needs_collect_with_reset)
             {
-                return set_status(connection_status::reset_in_progress);
+                return set_status(node_status::reset_in_progress);
             }
             else
             {
@@ -181,18 +181,17 @@ public:
                 // Idle wait again until they return the connection.
                 return next_connection_action::idle_wait;
             }
-        case connection_status::ping_in_progress:
-        case connection_status::reset_in_progress:
+        case node_status::ping_in_progress:
+        case node_status::reset_in_progress:
             // Reconnect if there was an error. Otherwise, we're idle
-            return ec ? set_status(connection_status::connect_in_progress)
-                      : set_status(connection_status::idle);
-        case connection_status::terminated:
+            return ec ? set_status(node_status::connect_in_progress) : set_status(node_status::idle);
+        case node_status::terminated:
         default: return next_connection_action::none;
         }
     }
 
     // Exposed for testing
-    connection_status status() const noexcept { return status_; }
+    node_status status() const noexcept { return status_; }
 };
 
 // Composes a diagnostics object containing info about the last connect error.

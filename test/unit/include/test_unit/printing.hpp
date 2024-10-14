@@ -48,9 +48,9 @@ struct pipeline_request_stage;
 bool operator==(const pipeline_request_stage& lhs, const pipeline_request_stage& rhs);
 std::ostream& operator<<(std::ostream& os, pipeline_request_stage v);
 
-// connection_status (pool)
-enum class connection_status;
-std::ostream& operator<<(std::ostream& os, connection_status v);
+// node_status (pool)
+enum class node_status;
+std::ostream& operator<<(std::ostream& os, node_status v);
 
 // collection_state (pool)
 enum class collection_state;
