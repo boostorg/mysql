@@ -49,7 +49,7 @@ namespace mysql {
  * \ref pool_params::thread_safe set to true.
  *
  * Functions that return the underlying connection to the pool
- * cause a state mutation on the pool object. Calling such functions
+ * cause a mutation on the pool state object. Calling such functions
  * on objects obtained from the same pool
  * is thread-safe only if the pool was constructed with \ref pool_params::thread_safe set to true.
  *
@@ -255,13 +255,39 @@ public:
  * and have the expected exceptions thrown on error.
  *
  * \par Thread-safety
- * By default, connection pools are **not** thread-safe, but can be made safe
- * by constructing them with \ref pool_params::thread_safe set to `true`.
+ * Pools are composed of an internal state object, plus a handle to such state.
+ * Each component has different thread-safety rules.
+ *
+ * Regarding **internal state**, connection pools are **not thread-safe by default**,
+ * but can be made safe by constructing them with
+ * \ref pool_params::thread_safe set to `true`.
+ * Internal state is also mutated by some functions outside `connection_pool`, like
+ * returning connections.
+ *
+ * The following actions imply a pool state mutation, and are protected by a strand
+ * when thread-safety is enabled:
+ *
+ * - Calling \ref connection_pool::async_run.
+ * - Calling \ref connection_pool::async_get_connection.
+ * - Cancelling \ref async_get_connection by emitting a cancellation signal.
+ * - \ref Returning a connection by destroying a \ref pooled_connection or
+ *   calling \ref pooled_connection::return_without_reset.
+ * - Cancelling the pool by calling \ref connection_pool::cancel,
+ *   emitting a cancellation signal for \ref async_run, or destroying the
+ *   `connection_pool` object.
+ *
+ * The **handle to the pool state** is **never thread-safe**, even for
+ * pools with thread-safety enabled. Functions like assignments
+ * modify the handle, and cause race conditions if called
+ * concurrently with other functions. Other objects,
+ * like \ref pooled_connection, have their own state handle,
+ * and thus interact only with the pool state.
+ *
+ * In summary:
  *
  * - Distinct objects: safe. \n
- * - Shared objects: unsafe, unless constructed with \ref pool_params::thread_safe
- *   set to `true`. Some functions (like assignment) are never thread-safe. Consult
- *   the documentation of each function to find out about thread-safety.
+ * - Shared objects: unsafe. Setting \ref pool_params::thread_safe
+ *   to `true` makes some functions safe.
  *
  * \par Object lifetimes
  * Connection pool objects create an internal state object that is referenced
@@ -416,9 +442,14 @@ public:
      * No-throw guarantee.
      *
      * \par Thread-safety
-     * **This function is never thread-safe**, even for pools created
+     * Mutates `other`'s internal state handle. Does not access the pool state.
+     * This function **can never be called concurrently with other functions
+     * that read the internal state handle**, even for pools created
      * with \ref pool_params::thread_safe set to true.
-     * Calling this function concurrently with any other function introduces data races.
+     *
+     * The internal pool state is not accessed, so this function can be called
+     * concurrently with functions that only access the pool's internal state,
+     * like returning connections.
      */
     connection_pool(connection_pool&& other) = default;
 
@@ -437,14 +468,38 @@ public:
      * No-throw guarantee.
      *
      * \par Thread-safety
-     * **This function is never thread-safe**, even for pools created
-     * with \ref pool_params::thread_safe set to true. Calling this function
-     * concurrently with any other function introduces data races.
+     * Mutates `*this` and `other`'s internal state handle. Does not access the pool state.
+     * This function **can never be called concurrently with other functions
+     * that read the internal state handle**, even for pools created
+     * with \ref pool_params::thread_safe set to true.
+     *
+     * The internal pool state is not accessed, so this function can be called
+     * concurrently with functions that only access the pool's internal state,
+     * like returning connections.
      */
     connection_pool& operator=(connection_pool&& other) = default;
 
-    /// Destructor.
-    ~connection_pool() = default;
+    /**
+     * \brief Destructor.
+     * \details
+     * Cancels all outstanding async operations on `*this`, as per \ref cancel.
+     *
+     * \par Thread-safety
+     * Mutates the internal state handle. Mutates the pool state.
+     * This function **can never be called concurrently with other functions
+     * that read the internal state handle**, even for pools created
+     * with \ref pool_params::thread_safe set to true.
+     *
+     * The internal pool state is modified as per \ref cancel.
+     * If thread-safety is enabled, it's safe to call the destructor concurrently
+     * with functions that only access the pool's internal state,
+     * like returning connections.
+     */
+    ~connection_pool()
+    {
+        if (valid())
+            cancel();
+    }
 
     /**
      * \brief Returns whether the object is in a moved-from state.
@@ -457,8 +512,11 @@ public:
      * No-throw guarantee.
      *
      * \par Thread-safety
-     * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions.
+     * Reads the internal state handle. Does not access the pool state.
+     * Can be called concurrently with any other function that reads the state handle,
+     * like \ref async_run or \ref async_get_connection.
+     * It can't be called concurrently with functions modifying the handle, like assignments,
+     * even if \ref pool_params::thread_safe is set to true.
      */
     bool valid() const noexcept { return impl_.get() != nullptr; }
 
@@ -476,8 +534,9 @@ public:
      * No-throw guarantee.
      *
      * \par Thread-safety
-     * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions.
+     * Reads the internal state handle. Reads the pool state.
+     * If the pool was built with thread-safety enabled, it can be called
+     * concurrently with other functions that don't modify the state handle.
      */
     BOOST_MYSQL_DECL
     executor_type get_executor() noexcept;
@@ -538,9 +597,9 @@ public:
      * maximum compatibility with Boost.Asio infrastructure.
      *
      * \par Thread-safety
-     * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions. For thread-safe pools, cancellation
-     * signals can be emitted safely from any thread.
+     * Reads the internal state handle. Mutates the pool state.
+     * If the pool was built with thread-safety enabled, it can be called
+     * concurrently with other functions that don't modify the state handle.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -631,9 +690,9 @@ public:
      *     on a pool that has been cancelled.
      *
      * \par Thread-safety
-     * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions. For thread-safe pools, cancellation
-     * signals can be safely emitted from any thread.
+     * Reads the internal state handle. Mutates the pool state.
+     * If the pool was built with thread-safety enabled, it can be called
+     * concurrently with other functions that don't modify the state handle.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
@@ -678,8 +737,9 @@ public:
      * Basic guarantee. Memory allocations and acquiring mutexes may throw.
      *
      * \par Thread-safety
-     * Safe for pools built with \ref pool_params::thread_safe. Can be called
-     * concurrently with other safe functions.
+     * Reads the internal state handle. Mutates the pool state.
+     * If the pool was built with thread-safety enabled, it can be called
+     * concurrently with other functions that don't modify the state handle.
      */
     BOOST_MYSQL_DECL
     void cancel();

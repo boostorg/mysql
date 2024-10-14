@@ -184,6 +184,7 @@ the created strand, avoiding data races at the cost of some performance.
 
 [note
   Thread-safety only protects the pool. Individual connections are [*not] thread-safe.
+  Assignments aren't thread-safe, either. See [reflink connection_pool] docs for more info.
 ]
 
 Thread-safety extends to per-operation cancellation, too.
