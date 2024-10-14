@@ -49,7 +49,7 @@ namespace mysql {
  * \ref pool_params::thread_safe set to true.
  *
  * Functions that return the underlying connection to the pool
- * cause a state mutation on the pool object. Calling such functions
+ * cause a mutation on the pool state object. Calling such functions
  * on objects obtained from the same pool
  * is thread-safe only if the pool was constructed with \ref pool_params::thread_safe set to true.
  *
