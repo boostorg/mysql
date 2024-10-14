@@ -443,8 +443,12 @@ public:
      */
     connection_pool& operator=(connection_pool&& other) = default;
 
-    /// Destructor.
-    ~connection_pool() = default;
+    /// Destructor. TODO: document
+    ~connection_pool()
+    {
+        if (valid())
+            cancel();
+    }
 
     /**
      * \brief Returns whether the object is in a moved-from state.
