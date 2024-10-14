@@ -270,7 +270,7 @@ public:
  * - Calling \ref connection_pool::async_run.
  * - Calling \ref connection_pool::async_get_connection.
  * - Cancelling \ref async_get_connection by emitting a cancellation signal.
- * - \ref Returning a connection by destroying a \ref pooled_connection or
+ * - Returning a connection by destroying a \ref pooled_connection or
  *   calling \ref pooled_connection::return_without_reset.
  * - Cancelling the pool by calling \ref connection_pool::cancel,
  *   emitting a cancellation signal for \ref async_run, or destroying the
