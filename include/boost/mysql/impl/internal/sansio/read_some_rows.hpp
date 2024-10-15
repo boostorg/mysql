@@ -14,6 +14,7 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
@@ -25,7 +26,7 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-class read_some_rows_algo
+class read_some_rows_impl_algo
 {
     diagnostics* diag_;
     execution_processor* proc_;
@@ -94,13 +95,14 @@ class read_some_rows_algo
     }
 
 public:
-    read_some_rows_algo(diagnostics& diag, read_some_rows_algo_params params) noexcept
+    read_some_rows_impl_algo(diagnostics& diag, read_some_rows_algo_params params) noexcept
         : diag_(&diag), proc_(params.proc), output_(params.output)
     {
     }
 
     void reset() { state_ = state_t{}; }
 
+    diagnostics& diag() { return *diag_; }
     const execution_processor& processor() const { return *proc_; }
     execution_processor& processor() { return *proc_; }
 
@@ -136,7 +138,53 @@ public:
         return next_action();
     }
 
-    std::size_t result(const connection_state_data&) const { return state_.rows_read; }
+    std::size_t rows_read() const { return state_.rows_read; }
+};
+
+class read_some_rows_algo
+{
+    int resume_point_{0};
+    read_some_rows_impl_algo impl_;
+
+public:
+    read_some_rows_algo(diagnostics& diag, read_some_rows_algo_params params) noexcept : impl_(diag, params)
+    {
+    }
+
+    const execution_processor& processor() const { return impl_.processor(); }
+
+    next_action resume(connection_state_data& st, error_code ec)
+    {
+        next_action act;
+
+        switch (resume_point_)
+        {
+        case 0:
+
+            impl_.diag().clear();
+
+            // If we are not reading rows, return
+            if (!impl_.processor().is_reading_rows())
+                return next_action();
+
+            // Check status
+            ec = st.check_status_multi_function();
+            if (ec)
+                return ec;
+
+            // Actually run the algo
+            while (!(act = impl_.resume(st, ec)).is_done())
+                BOOST_MYSQL_YIELD(resume_point_, 1, act)
+
+            // If this was the end of the multi-function operation, record it
+            if (impl_.processor().is_complete())
+                st.status = connection_status::ready;
+        }
+
+        return act;
+    }
+
+    std::size_t result(const connection_state_data&) const { return impl_.rows_read(); }
 };
 
 }  // namespace detail

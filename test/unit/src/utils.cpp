@@ -29,6 +29,8 @@
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
@@ -101,7 +103,7 @@ detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
     // Go through the requested steps
     for (std::size_t i = 0; i < num_steps_to_run; ++i)
     {
-        BOOST_TEST_CONTEXT("Step " << i)
+        BOOST_TEST_CONTEXT("Step " << i << ", error_code=" << (act.is_done() ? act.error() : error_code()))
         {
             const auto& step = steps_[i];
             BOOST_TEST_REQUIRE(act.type() == step.type);
@@ -717,15 +719,18 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, next_connection
 //
 boost::mysql::any_connection boost::mysql::test::create_test_any_connection(
     asio::io_context& ctx,
-    any_connection_params params
+    any_connection_params params,
+    detail::connection_status initial_status
 )
 {
-    return any_connection(detail::access::construct<any_connection>(
+    auto res = any_connection(detail::access::construct<any_connection>(
         std::unique_ptr<detail::engine>(
             new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
         ),
         params
     ));
+    detail::access::get_impl(res).get_state().data().status = initial_status;
+    return res;
 }
 
 test_stream& boost::mysql::test::get_stream(any_connection& conn)

@@ -115,6 +115,11 @@ public:
             // Setup
             read_response_st_.diag().clear();
 
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
+
             // Send the execution request
             BOOST_MYSQL_YIELD(resume_point_, 1, compose_request(st))
             if (ec)

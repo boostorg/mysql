@@ -138,6 +138,12 @@ enum class client_errc : int
      * size. Try increasing \ref any_connection_params::max_buffer_size.
      */
     max_buffer_size_exceeded,
+
+    // TODO: document
+    not_connected,
+    engaged_in_multi_function,
+    not_engaged_in_multi_function,
+    operation_in_progress,
 };
 
 BOOST_MYSQL_DECL

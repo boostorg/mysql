@@ -10,11 +10,13 @@
 
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/is_fatal_error.hpp>
 
 #include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
 #include <boost/core/span.hpp>
 
@@ -66,6 +68,12 @@ public:
         switch (resume_point_)
         {
         case 0:
+            // Check that we're not already running something
+            if (st_->op_in_progress)
+                return error_code(client_errc::operation_in_progress);
+
+            // Mark that we're running an operation
+            st_->op_in_progress = true;
 
             // Run until completion
             while (true)
@@ -76,6 +84,14 @@ public:
                 // Check next action
                 if (act.is_done())
                 {
+                    // If there was a fatal error, we're no longer connected
+                    if (is_fatal_error(act.error()))
+                        st_->status = connection_status::not_connected;
+
+                    // Record that we're no longer running an operation
+                    st_->op_in_progress = false;
+
+                    // Done
                     return act;
                 }
                 else if (act.type() == next_action_type::read)

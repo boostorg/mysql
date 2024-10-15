@@ -25,6 +25,7 @@
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
 #include <cstdint>
 
@@ -177,7 +178,7 @@ class handshake_algo
 
     void on_success(connection_state_data& st, const ok_view& ok)
     {
-        st.is_connected = true;
+        st.status = connection_status::ready;
         st.backslash_escapes = ok.backslash_escapes();
         st.current_charset = collation_id_to_charset(hparams_.connection_collation());
     }

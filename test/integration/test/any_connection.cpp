@@ -136,7 +136,7 @@ BOOST_FIXTURE_TEST_CASE(backslash_escapes, any_connection_fixture)
 }
 
 // Max buffer sizes
-BOOST_AUTO_TEST_CASE(max_buffer_size)
+BOOST_AUTO_TEST_CASE(max_buffer_size_success)
 {
     // Create the connection
     any_connection_params params;
@@ -152,12 +152,38 @@ BOOST_AUTO_TEST_CASE(max_buffer_size)
     auto q = format_sql(fix.conn.format_opts().value(), "SELECT {}", std::string(450, 'a'));
     fix.conn.async_execute(q, r, as_netresult).validate_no_error();
     BOOST_TEST(r.rows() == makerows(1, std::string(450, 'a')), per_element());
+}
+
+BOOST_AUTO_TEST_CASE(max_buffer_size_write_error)
+{
+    // Create the connection
+    any_connection_params params;
+    params.initial_buffer_size = 512u;
+    params.max_buffer_size = 512u;
+    any_connection_fixture fix(params);
+
+    // Connect
+    fix.conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Trying to write more than 512 bytes fails
-    q = format_sql(fix.conn.format_opts().value(), "SELECT LENGTH({})", std::string(512, 'a'));
+    results r;
+    auto q = format_sql(fix.conn.format_opts().value(), "SELECT LENGTH({})", std::string(512, 'a'));
     fix.conn.async_execute(q, r, as_netresult).validate_error(client_errc::max_buffer_size_exceeded);
+}
+
+BOOST_AUTO_TEST_CASE(max_buffer_size_read_error)
+{
+    // Create the connection
+    any_connection_params params;
+    params.initial_buffer_size = 512u;
+    params.max_buffer_size = 512u;
+    any_connection_fixture fix(params);
+
+    // Connect
+    fix.conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Trying to read more than 512 bytes fails
+    results r;
     fix.conn.async_execute("SELECT REPEAT('a', 512)", r, as_netresult)
         .validate_error(client_errc::max_buffer_size_exceeded);
 }

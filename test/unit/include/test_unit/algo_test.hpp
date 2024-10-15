@@ -14,6 +14,7 @@
 #include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
@@ -166,6 +167,7 @@ struct algo_fixture_base
     )
         : st(max_buffer_size, max_buffer_size), diag(std::move(initial_diag))
     {
+        st.status = detail::connection_status::ready;
         st.write_buffer.push_back(0xff);  // Check that we clear the write buffer at each step
     }
 

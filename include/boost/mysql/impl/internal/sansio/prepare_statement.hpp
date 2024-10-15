@@ -105,6 +105,11 @@ public:
             // Clear diagnostics
             read_response_st_.diag().clear();
 
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
+
             // Send request
             BOOST_MYSQL_YIELD(
                 resume_point_,

@@ -28,8 +28,8 @@ namespace detail {
 class read_execute_response_algo
 {
     int resume_point_{0};
-    read_resultset_head_algo read_head_st_;
-    read_some_rows_algo read_some_rows_st_;
+    read_resultset_head_impl_algo read_head_st_;
+    read_some_rows_impl_algo read_some_rows_st_;
 
 public:
     read_execute_response_algo(diagnostics& diag, execution_processor* proc) noexcept
@@ -76,7 +76,7 @@ public:
 class execute_algo
 {
     int resume_point_{0};
-    start_execution_algo start_execution_st_;
+    start_execution_impl_algo start_execution_st_;
     read_execute_response_algo read_response_st_;
 
     diagnostics& diag() { return read_response_st_.diag(); }
@@ -95,6 +95,13 @@ public:
         switch (resume_point_)
         {
         case 0:
+
+            diag().clear();
+
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
 
             // Send request and read the first response
             while (!(act = start_execution_st_.resume(st, ec)).is_done())

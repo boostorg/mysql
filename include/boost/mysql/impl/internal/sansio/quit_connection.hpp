@@ -17,6 +17,7 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
 namespace boost {
 namespace mysql {
@@ -46,7 +47,7 @@ public:
             BOOST_MYSQL_YIELD(resume_point_, 1, st.write(quit_command(), sequence_number_))
 
             // Mark the session as finished, regardless of the write result
-            st.is_connected = false;
+            st.status = connection_status::not_connected;
 
             // If write resulted in an error, return
             if (ec)

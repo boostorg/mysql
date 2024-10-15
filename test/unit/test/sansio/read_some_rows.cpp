@@ -41,7 +41,7 @@ struct fixture : algo_fixture_base
 
     mock_execution_processor proc;
     std::array<row1, 3> storage;
-    detail::read_some_rows_algo algo{
+    detail::read_some_rows_impl_algo algo{
         diag,
         {&proc, ref()}
     };
@@ -66,7 +66,7 @@ struct fixture : algo_fixture_base
             BOOST_TEST(proc.refs()[i].offset() == i);
     }
 
-    std::size_t result() const { return algo.result(st); }
+    std::size_t result() const { return algo.rows_read(); }
 };
 
 BOOST_AUTO_TEST_CASE(eof)

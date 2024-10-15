@@ -10,6 +10,8 @@
 
 #include <boost/mysql/any_connection.hpp>
 
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
+
 #include <boost/asio/io_context.hpp>
 
 #include "test_unit/test_stream.hpp"
@@ -18,7 +20,11 @@ namespace boost {
 namespace mysql {
 namespace test {
 
-any_connection create_test_any_connection(asio::io_context& ctx, any_connection_params params = {});
+any_connection create_test_any_connection(
+    asio::io_context& ctx,
+    any_connection_params params = {},
+    detail::connection_status initial_status = detail::connection_status::ready
+);
 test_stream& get_stream(any_connection& conn);
 
 }  // namespace test

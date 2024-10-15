@@ -15,6 +15,7 @@
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 #include <boost/mysql/impl/internal/sansio/quit_connection.hpp>
 
 namespace boost {
@@ -42,7 +43,9 @@ public:
             quit_.diag().clear();
 
             // If we're not connected, we're done
-            if (!st.is_connected)
+            // TODO: we should probably attempt to close the socket even if not_connected
+            // (may be due to a fatal error)
+            if (st.status == connection_status::not_connected)
                 return next_action();
 
             // Attempt quit
