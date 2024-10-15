@@ -288,6 +288,7 @@ BOOST_AUTO_TEST_CASE(algo_success_ok_packet)
     // Run the algo
     algo_test()
         .expect_read(create_ok_frame(1, ok_builder().affected_rows(42).info("abc").build()))
+        .will_change_status(detail::connection_status::ready)
         .check(fix);
 
     // Verify
@@ -297,7 +298,6 @@ BOOST_AUTO_TEST_CASE(algo_success_ok_packet)
     BOOST_TEST(fix.proc.affected_rows() == 42u);
     BOOST_TEST(fix.proc.info() == "abc");
     BOOST_TEST(fix.st.backslash_escapes);
-    // TODO: check status
 }
 
 BOOST_AUTO_TEST_CASE(algo_state_complete)

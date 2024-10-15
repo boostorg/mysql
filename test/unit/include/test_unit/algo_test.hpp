@@ -18,6 +18,7 @@
 
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
+#include <boost/optional/optional.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -66,6 +67,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     };
 
     std::vector<step_t> steps_;
+    boost::optional<detail::connection_status> status_change;
 
     static void handle_read(detail::connection_state_data& st, const step_t& op);
 
@@ -130,6 +132,13 @@ public:
     algo_test& expect_close(error_code result = {})
     {
         return add_step(detail::next_action_type::close, {}, result);
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_change_status(detail::connection_status st)
+    {
+        status_change = st;
+        return *this;
     }
 
     template <class AlgoFixture>

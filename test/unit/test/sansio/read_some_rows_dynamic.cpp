@@ -60,6 +60,7 @@ BOOST_AUTO_TEST_CASE(eof)
     // Run the algo
     algo_test()
         .expect_read(create_eof_frame(42, ok_builder().affected_rows(1).info("1st").build()))
+        .will_change_status(detail::connection_status::ready)
         .check(fix);
 
     BOOST_TEST(fix.result() == makerows(1));
@@ -98,6 +99,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
                          .add(create_text_row_message(43, "von"))
                          .add(create_eof_frame(44, ok_builder().affected_rows(1).info("1st").build()))
                          .build())
+        .will_change_status(detail::connection_status::ready)
         .check(fix);
 
     // Check

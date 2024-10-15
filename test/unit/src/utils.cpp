@@ -167,6 +167,10 @@ void boost::mysql::test::algo_test::check_impl(
 {
     BOOST_TEST_CONTEXT("Called from " << loc)
     {
+        // Record connection state data variables before running the algo
+        auto status_before = st.status;
+        // TODO: others
+
         // Run the op until completion
         auto act = run_algo_until_step(st, algo, steps_.size());
 
@@ -176,6 +180,10 @@ void boost::mysql::test::algo_test::check_impl(
         // Check results
         BOOST_TEST(act.error() == expected_ec);
         BOOST_TEST(actual_diag == expected_diag);
+
+        // Check state changes
+        auto expected_status = status_change ? *status_change : status_before;
+        BOOST_TEST(st.status == expected_status);
     }
 }
 
