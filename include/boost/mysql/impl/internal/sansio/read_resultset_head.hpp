@@ -92,10 +92,6 @@ public:
             // Clear diagnostics
             diag_->clear();
 
-            // If we're not reading head, return
-            if (!proc_->is_reading_head())
-                return next_action();
-
             // Read the response
             BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number()))
 
