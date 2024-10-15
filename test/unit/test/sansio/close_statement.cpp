@@ -99,6 +99,7 @@ BOOST_AUTO_TEST_CASE(error_response)
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 
+// Connection state checked correctly
 BOOST_AUTO_TEST_CASE(error_invalid_connection_state)
 {
     struct
