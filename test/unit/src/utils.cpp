@@ -582,6 +582,24 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, detail::results
     return os << ::to_string(v);
 }
 
+// connection_status
+static const char* to_string(detail::connection_status v)
+{
+    switch (v)
+    {
+    case detail::connection_status::ready: return "connection_status::ready";
+    case detail::connection_status::not_connected: return "connection_status::not_connected";
+    case detail::connection_status::engaged_in_multi_function:
+        return "connection_status::engaged_in_multi_function";
+    default: return "<unknown connection_status>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, detail::connection_status v)
+{
+    return os << ::to_string(v);
+}
+
 // results_iterator
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, const results_iterator& it)
 {

@@ -31,6 +31,10 @@ std::ostream& operator<<(std::ostream& os, db_flavor value);
 enum class resultset_encoding;
 std::ostream& operator<<(std::ostream& os, resultset_encoding t);
 
+// connection_status
+enum class connection_status;
+std::ostream& operator<<(std::ostream& os, connection_status t);
+
 // results_iterator
 class results_iterator;
 std::ostream& operator<<(std::ostream& os, const results_iterator& it);
