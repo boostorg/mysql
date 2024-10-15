@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(execute_error_network_error)
 }
 
 // Connection state checked correctly
-BOOST_AUTO_TEST_CASE(error_invalid_connection_state)
+BOOST_AUTO_TEST_CASE(execute_error_invalid_connection_state)
 {
     struct
     {

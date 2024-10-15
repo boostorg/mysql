@@ -139,7 +139,7 @@ BOOST_AUTO_TEST_CASE(ping_error_response)
 }
 
 // Connection state checked correctly
-BOOST_AUTO_TEST_CASE(error_invalid_connection_state)
+BOOST_AUTO_TEST_CASE(ping_error_invalid_connection_state)
 {
     struct
     {
