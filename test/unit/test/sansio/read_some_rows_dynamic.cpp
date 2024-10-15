@@ -12,6 +12,7 @@
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 #include <boost/mysql/impl/internal/sansio/read_some_rows_dynamic.hpp>
 
 #include <boost/test/unit_test.hpp>
@@ -19,7 +20,6 @@
 #include "test_common/buffer_concat.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_execution_processor.hpp"
-#include "test_unit/create_frame.hpp"
 #include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
@@ -38,6 +38,9 @@ struct fixture : algo_fixture_base
 
     fixture()
     {
+        // This algorithm requires us to be engaged in a multi-function op
+        st.status = detail::connection_status::engaged_in_multi_function;
+
         // Prepare the state, such that it's ready to read rows
         add_meta(exec_st, {meta_builder().type(column_type::varchar).build_coldef()});
         exec_st.sequence_number() = 42;

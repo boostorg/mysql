@@ -23,6 +23,8 @@
 #include <boost/mysql/detail/engine_impl.hpp>
 #include <boost/mysql/detail/engine_stream_adaptor.hpp>
 
+#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
+
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/test/unit_test.hpp>
@@ -181,7 +183,11 @@ BOOST_AUTO_TEST_CASE(net_error_read_some_rows)
         {
             // Setup
             io_context_fixture fix;
-            auto conn = create_test_any_connection(fix.ctx);
+            auto conn = create_test_any_connection(
+                fix.ctx,
+                {},
+                detail::connection_status::engaged_in_multi_function
+            );
             get_stream(conn).set_fail_count(fail_count(0, boost::asio::error::connection_reset));
             execution_state st;
             add_meta(get_iface(st), {column_type::bigint});
