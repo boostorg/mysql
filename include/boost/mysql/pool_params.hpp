@@ -139,10 +139,15 @@ struct pool_params
      * `ping_interval`, a health-check will be performed (using \ref any_connection::async_ping).
      * Pings will be sent with a periodicity of `ping_interval` until the connection
      * is handed to the user, or a ping fails.
-     * \n
+     *
      * Set this interval to zero to disable pings.
-     * \n
-     * This value must not be negative.
+     *
+     * This value must not be negative. It should be bigger than the server's
+     * idle timeout (as determined by the
+     * <a
+     * href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_wait_timeout">wait_timeout</a>
+     * session variable). Otherwise, the server might close connections
+     * without the pool detecting it.
      */
     std::chrono::steady_clock::duration ping_interval{std::chrono::hours(1)};
 

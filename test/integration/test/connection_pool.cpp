@@ -387,6 +387,25 @@ BOOST_DATA_TEST_CASE_F(fixture, cancel_get_connection, data::make({false, true})
     pool.async_get_connection(diag, as_netresult).validate_error(client_errc::pool_cancelled);
 }
 
+// Connection pool's destructor cancels the pool
+BOOST_FIXTURE_TEST_CASE(destructor_cancel, fixture)
+{
+    // Construct a pool and run it
+    std::unique_ptr<connection_pool> pool{new connection_pool(ctx, create_pool_params(1))};
+    auto run_result = pool->async_run(as_netresult);
+
+    // Try to get 2 connections. The 2nd one blocks
+    auto conn = pool->async_get_connection(diag, as_netresult).get();
+    auto getconn_result = pool->async_get_connection(diag, as_netresult);
+
+    // Destroy the pool
+    pool.reset();
+
+    // Run returns and the connection request is cancelled
+    std::move(run_result).validate_no_error_nodiag();
+    std::move(getconn_result).validate_error(client_errc::pool_cancelled);
+}
+
 // Having a valid pooled_connection alive extends the pool's lifetime
 BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::make({false, true}))
 {
