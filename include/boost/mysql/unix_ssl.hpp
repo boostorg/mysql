@@ -22,7 +22,7 @@ namespace mysql {
  * \brief (Legacy) A connection to MySQL over a UNIX domain socket over TLS.
  *
  * \par Legacy
- * New should not use this class. When using UNIX sockets, we recommend
+ * New code should not use this class. When using UNIX sockets, we recommend
  * using plaintext connections.
  */
 using unix_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>>;

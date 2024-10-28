@@ -110,9 +110,11 @@ struct any_connection_params
  * \details
  * Represents a connection to a MySQL server.
  * This is the main I/O object that this library implements. It's logically comprised
- * of session state and I/O objects (like sockets). It can establish connections
- * with servers using TCP, TCP over TLS and UNIX sockets. I/O objects are created
- * using the executor passed to the constructor.
+ * of session state and an internal stream (usually a socket). The stream is not directly
+ * accessible. It's constructed using the executor passed to the constructor.
+ *
+ * This class supports establishing connections
+ * with servers using TCP, TCP over TLS and UNIX sockets.
  *
  * The class is named `any_connection` because it's not templated on a `Stream`
  * type, as opposed to \ref connection. New code should prefer using `any_connection`
@@ -121,11 +123,10 @@ struct any_connection_params
  * Compared to \ref connection, this class:
  *
  * - Is type-erased. The type of the connection doesn't depend on the transport being used.
- *   Supported transports include plaintext TCP, SSL over TCP and UNIX domain sockets.
  * - Is easier to connect, as \ref connect and \ref async_connect handle hostname resolution.
  * - Can always be re-connected after being used or encountering an error.
  * - Always uses `asio::any_io_executor`.
- * - Has no performance penalty.
+ * - Has the same level of performance.
  *
  * This is a move-only type.
  *
@@ -378,7 +379,7 @@ public:
      * \li If the transport is TCP, and `params.ssl == ssl_mode::enable`, the connection will use TLS
      *     only if the server supports it.
      * \li If the transport is TCP, and `params.ssl == ssl_mode::require`, the connection will always use TLS.
-     *     If the server doesn't support it, this function will fail with \ref
+     *     If the server doesn't support it, the operation will fail with \ref
      *     client_errc::server_doesnt_support_ssl.
      * \n
      * If `params.connection_collation` is within a set of well-known collations, this function
