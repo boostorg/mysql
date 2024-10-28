@@ -19,16 +19,10 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) Parameters to be used with \ref any_connection connect functions.
+ * \brief Parameters to be used with \ref any_connection connect functions.
  * \details
  * To be passed to \ref any_connection::connect and \ref any_connection::async_connect.
- * Includes the server address and MySQL handshake parameters.
- * \n
- * Contrary to \ref handshake_params, this is an owning type.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
+ * Includes the server address and MySQL handshake parameters. This is an owning type.
  */
 struct connect_params
 {
