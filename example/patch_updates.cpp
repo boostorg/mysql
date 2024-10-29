@@ -12,8 +12,6 @@
 // The program updates an employee by ID, modifying fields
 // as provided by command-line arguments, and leaving all other
 // fields unmodified.
-//
-// Note: client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>

@@ -18,7 +18,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) The return type of \ref sequence.
+ * \brief The return type of \ref sequence.
  * \details
  * Contains a range, a formatter function, and a glue string.
  * This type satisfies the `Formattable` concept.
@@ -54,7 +54,7 @@ struct format_sequence
 };
 
 /**
- * \brief (EXPERIMENTAL) The type of range produced by \ref sequence.
+ * \brief The type of range produced by \ref sequence.
  * \details
  * This type trait can be used to obtain the range type produced
  * by calling \ref sequence. This type is used as the `Range` template
@@ -89,7 +89,7 @@ using sequence_range_t =
     ;
 
 /**
- * \brief (EXPERIMENTAL) Creates an object that, when formatted, applies a per-element function to a range.
+ * \brief Creates an object that, when formatted, applies a per-element function to a range.
  * \details
  * Objects returned by this function satisfy `Formattable`.
  * Formatting such objects invokes `fn` for each element

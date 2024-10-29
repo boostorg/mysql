@@ -49,8 +49,6 @@
 //   match URLs to API endpoints, and invoke the relevant note_repository functions.
 // All communication happens asynchronously. We use stackful coroutines to simplify
 //   development, using boost::asio::spawn and boost::asio::yield_context.
-//
-// Note: connection_pool is an experimental feature.
 
 using namespace notes;
 

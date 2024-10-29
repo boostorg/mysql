@@ -18,7 +18,12 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Buffer configuration parameters for a connection.
+ * \brief (Legacy) Buffer configuration parameters for a connection.
+ *
+ * \par Legacy
+ * This class is used with the legacy \ref connection class.
+ * New code should use \ref any_connection, instead.
+ * The equivalent to `buffer_params` is \ref any_connection_params::initial_buffer_size.
  */
 class buffer_params
 {

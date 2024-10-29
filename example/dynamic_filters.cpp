@@ -10,8 +10,6 @@
 // Uses client-side SQL formatting to implement a dynamic filter.
 // If you're implementing a filter with many options that can be
 // conditionally enabled, this pattern may be useful for you.
-//
-// Client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>

@@ -18,8 +18,6 @@
 // and inserts it into the employee table.
 //
 // This example requires C++14 to work.
-//
-// Note: client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>

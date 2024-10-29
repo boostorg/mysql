@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:sql_formatting_advanced (Experimental) Advanced client-side SQL query formatting]
+[section:sql_formatting_advanced Advanced client-side SQL query formatting]
 [nochunk]
 
 

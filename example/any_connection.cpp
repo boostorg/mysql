@@ -16,8 +16,6 @@
 // This example demonstrates how to connect to a server using any_connection.
 // It uses asynchronous functions and coroutines (with boost::asio::spawn).
 // Recall that using these coroutines requires linking against Boost.Context.
-//
-// any_connection is an experimental feature.
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>

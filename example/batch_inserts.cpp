@@ -18,8 +18,6 @@
 //
 // This example requires C++14 to work because it uses Boost.Describe
 // to simplify JSON parsing. All Boost.MySQL features used are C++11 compatible.
-//
-// Note: client-side SQL formatting is an experimental feature.
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
