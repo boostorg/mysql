@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[example_async_callbacks
+//[example_callbacks
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>

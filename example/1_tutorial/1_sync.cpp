@@ -5,7 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-//[tutorial_listing
+//[example_tutorial_sync
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
