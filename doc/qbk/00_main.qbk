@@ -56,8 +56,6 @@
 [def __Context__ [@boost:/libs/context/index.html Boost.Context]]
 [def __Self__ [@boost:/libs/mysql/index.html Boost.MySQL]]
 [def __boost_optional__ [@boost:/libs/optional/index.html `boost::optional`]]
-[def __see_error_handling__ See [link mysql.error_handling this section] for more info on error handling.]
-[def __assume_setup__ This example assumes you have gone through the [link mysql.examples.setup setup].]
 
 [/ MySQL stuff]
 [def __Mysql__ [@https://www.mysql.com/ MySQL]]
@@ -142,8 +140,8 @@ END
 
 [include 01_intro.qbk]
 [include 02_integrating.qbk]
-[include 03_tutorial.qbk]
-[include 04_overview.qbk]
+[include 03_1_tutorial_sync.qbk]
+[/ [include 04_overview.qbk]
 [include 05_dynamic_interface.qbk]
 [include 06_static_interface.qbk]
 [include 07_queries.qbk]
@@ -163,11 +161,11 @@ END
 [include 21_connection_pool.qbk]
 [include 22_sql_formatting.qbk]
 [include 23_sql_formatting_advanced.qbk]
-[include 24_pipeline.qbk]
-[include 24_examples.qbk]
+[include 24_pipeline.qbk] ]
+[include 25_examples.qbk]
 
 
-[section:ref Reference]
+[/ [section:ref Reference]
 [xinclude helpers/quickref.xml]
 [block'''<part label="Two: Reference">''']
 [include reference.qbk]
@@ -182,4 +180,4 @@ END
 [include helpers/Stream.qbk]
 [include helpers/WritableFieldTuple.qbk]
 [block'''</part>''']
-[endsect]
+[endsect] ]

@@ -10,6 +10,11 @@
 
 //[example_tutorial_async
 
+/**
+ * This example is analogous to the synchronous tutorial, but uses async functions
+ * with C++20 coroutines, instead.
+ */
+
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -27,12 +32,8 @@ namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
 /**
- * This example is analogous to the synchronous tutorial, but uses async functions
- * with C++20 coroutines, instead. It uses the 'boost_mysql_examples' database.
- * You can get this database by running db_setup.sql.
- *
- * This function implements the main coroutine.
- * It must have a return type of boost::asio::awaitable<T>.
+ * The main coroutine.
+ * It must have a return type of asio::awaitable<T>.
  * Our coroutine does not communicate any result back, so T=void.
  *
  * The coroutine will suspend every time we call one of the asynchronous functions, saving

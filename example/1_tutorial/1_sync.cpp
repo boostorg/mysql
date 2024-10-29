@@ -7,6 +7,13 @@
 
 //[example_tutorial_sync
 
+/**
+ * Creates a connection, establishes a session and
+ * runs a simple "Hello world!" query.
+ *
+ * This example uses synchronous functions and handles errors using exceptions.
+ */
+
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -16,14 +23,10 @@
 
 #include <iostream>
 
+//[tutorial_sync_namespaces
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
-
-/**
- * This example uses the 'boost_mysql_examples' database, which you
- * can get by running db_setup.sql.
- * This example uses synchronous functions and handles errors using exceptions.
- */
+//]
 
 void main_impl(int argc, char** argv)
 {
@@ -33,7 +36,7 @@ void main_impl(int argc, char** argv)
         exit(1);
     }
 
-    //[tutorial_connection
+    //[tutorial_sync_connection
     // The execution context, required to run I/O operations.
     asio::io_context ctx;
 
@@ -41,7 +44,7 @@ void main_impl(int argc, char** argv)
     mysql::any_connection conn(ctx);
     //]
 
-    //[tutorial_connect
+    //[tutorial_sync_connect
     // The hostname, username, password and database to use
     mysql::connect_params params;
     params.server_address.emplace_host_and_port(argv[3]);
@@ -53,19 +56,19 @@ void main_impl(int argc, char** argv)
     conn.connect(params);
     //]
 
-    //[tutorial_query
+    //[tutorial_sync_query
     // Issue the SQL query to the server
     const char* sql = "SELECT 'Hello world!'";
     mysql::results result;
     conn.execute(sql, result);
     //]
 
-    //[tutorial_results
+    //[tutorial_sync_results
     // Print the first field in the first row
     std::cout << result.rows().at(0).at(0) << std::endl;
     //]
 
-    //[tutorial_close
+    //[tutorial_sync_close
     // Close the connection
     conn.close();
     //]
