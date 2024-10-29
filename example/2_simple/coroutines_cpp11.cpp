@@ -12,7 +12,10 @@
  * This can be a good choice when targeting a standard lower than C++20.
  * This example uses the 'boost_mysql_examples' database, which you
  * can get by running db_setup.sql.
- * You need to link your program to Boost.Context to use asio::spawn
+ * You need to link your program to Boost.Context to use asio::spawn.
+ *
+ * This example uses the 'boost_mysql_examples' database, which you
+ * can get by running db_setup.sql.
  */
 
 #include <boost/mysql/any_connection.hpp>

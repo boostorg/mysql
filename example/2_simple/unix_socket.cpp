@@ -70,6 +70,8 @@ void main_impl(int argc, char** argv)
         exit(1);
     }
 
+    // If not provided, use the default UNIX socket path,
+    // compatible with most UNIX systems.
     const char* socket_path = argc >= 4 ? argv[3] : "/var/run/mysqld/mysqld.sock";
 
     // Create an I/O context, required by all I/O objects

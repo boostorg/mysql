@@ -7,6 +7,13 @@
 
 //[example_callbacks
 
+/**
+ * This example demonstrates how to use callbacks when using async functions.
+ * This can be a good choice when targeting a standard lower than C++20.
+ * This example uses the 'boost_mysql_examples' database, which you
+ * can get by running db_setup.sql.
+ */
+
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -20,13 +27,6 @@
 #include <functional>
 #include <iostream>
 #include <memory>
-
-/**
- * This example demonstrates how to use callbacks when using async functions.
- * This can be a good choice when targeting a standard lower than C++20.
- * This example uses the 'boost_mysql_examples' database, which you
- * can get by running db_setup.sql.
- */
 
 // When using callbacks, we usually employ error codes instead of exceptions.
 using boost::system::error_code;

@@ -12,9 +12,26 @@
 #ifdef BOOST_MYSQL_CXX14
 
 //[example_connection_pool_main_cpp
-//
-// File: main.cpp
-//
+
+/**
+ * This example demonstrates how to use a connection_pool.
+ * It implements a minimal REST API to manage notes.
+ * A note is a simple object containing a user-defined title and content.
+ * The REST API offers CRUD operations on such objects:
+ *    POST   /notes        Creates a new note.
+ *    GET    /notes        Retrieves all notes.
+ *    GET    /notes/<id>   Retrieves a single note.
+ *    PUT    /notes/<id>   Replaces a note, changing its title and content.
+ *    DELETE /notes/<id>   Deletes a note.
+ *
+ * Notes are stored in MySQL. The note_repository class encapsulates
+ *   access to MySQL, offering friendly functions to manipulate notes.
+ * server.cpp encapsulates all the boilerplate to launch an HTTP server,
+ *   match URLs to API endpoints, and invoke the relevant note_repository functions.
+ * All communication happens asynchronously. We use stackful coroutines to simplify
+ *   development, using boost::asio::spawn and boost::asio::yield_context.
+ * This example requires linking to Boost::context, Boost::json and Boost::url.
+ */
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connection_pool.hpp>
@@ -32,23 +49,6 @@
 #include <string>
 
 #include "server.hpp"
-
-// This example demonstrates how to use a connection_pool.
-// It implements a minimal REST API to manage notes.
-// A note is a simple object containing a user-defined title and content.
-// The REST API offers CRUD operations on such objects:
-//    POST   /notes        Creates a new note.
-//    GET    /notes        Retrieves all notes.
-//    GET    /notes/<id>   Retrieves a single note.
-//    PUT    /notes/<id>   Replaces a note, changing its title and content.
-//    DELETE /notes/<id>   Deletes a note.
-//
-// Notes are stored in MySQL. The note_repository class encapsulates
-//   access to MySQL, offering friendly functions to manipulate notes.
-// server.cpp encapsulates all the boilerplate to launch an HTTP server,
-//   match URLs to API endpoints, and invoke the relevant note_repository functions.
-// All communication happens asynchronously. We use stackful coroutines to simplify
-//   development, using boost::asio::spawn and boost::asio::yield_context.
 
 using namespace notes;
 

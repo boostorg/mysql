@@ -17,6 +17,13 @@
  * It uses C++20 coroutines. If you need, you can backport
  * it to C++11 by using callbacks, asio::yield_context
  * or sync functions instead of coroutines.
+ *
+ * This example uses the 'boost_mysql_examples' database, which you
+ * can get by running db_setup.sql.
+ * Additionally, your server must be configured with a trusted certificate
+ * with a common name of "mysql".
+ *
+ * TODO: this should probably be setting TLS SNI
  */
 
 #include <boost/mysql/any_connection.hpp>
@@ -75,10 +82,14 @@ asio::awaitable<void> coro_main(std::string server_hostname, std::string usernam
     // This will allow the signature verification to succeed in our example.
     // You will have to run your MySQL server with the test certificates
     // located under $BOOST_MYSQL_ROOT/tools/ssl/
+    // If you want to use your system's trusted CAs, use
+    // ssl::context::set_default_verify_paths() instead of this function.
     ssl_ctx.add_certificate_authority(asio::buffer(CA_PEM));
 
     // We expect the server certificate's common name to be "mysql".
     // If it's not, the certificate will be rejected and handshake or connect will fail.
+    // Replace "mysql" by the hostname you expect in your certificate's common name
+    // TODO: we could set this to server_hostname and disable the test in some systems
     ssl_ctx.set_verify_callback(asio::ssl::host_name_verification("mysql"));
 
     // Create a connection.

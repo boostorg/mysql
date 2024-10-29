@@ -17,6 +17,9 @@
  * This example uses C++20 coroutines. If you need, you can backport
  * it to C++11 by using callbacks, asio::yield_context
  * or sync functions instead of coroutines.
+ *
+ * This example uses the 'boost_mysql_examples' database, which you
+ * can get by running db_setup.sql.
  */
 
 #include <boost/mysql/any_connection.hpp>
