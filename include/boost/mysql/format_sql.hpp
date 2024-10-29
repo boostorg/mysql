@@ -31,7 +31,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
+ * \brief An extension point to customize SQL formatting.
  * \details
  * This type can be specialized for custom types to make them formattable.
  * This makes them satisfy the `Formattable` concept, and thus usable in
@@ -83,7 +83,7 @@ struct formatter
 ;
 
 /**
- * \brief (EXPERIMENTAL) A type-erased reference to a `Formattable` value.
+ * \brief A type-erased reference to a `Formattable` value.
  * \details
  * This type can hold references to any value that satisfies the `Formattable`
  * concept. The `formattable_ref` type itself satisfies `Formattable`,
@@ -133,7 +133,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) A named format argument, to be used in initializer lists.
+ * \brief A named format argument, to be used in initializer lists.
  * \details
  * Represents a name, value pair to be passed to a formatting function.
  * This type should only be used in initializer lists, as a function argument.
@@ -173,7 +173,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Base class for concrete format contexts.
+ * \brief Base class for concrete format contexts.
  * \details
  * Conceptually, a format context contains: \n
  *   \li The result string. Output operations append characters to this output string.
@@ -315,7 +315,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Format context for incremental SQL formatting.
+ * \brief Format context for incremental SQL formatting.
  * \details
  * The primary interface for incremental SQL formatting. Contrary to \ref format_context_base,
  * this type is aware of the output string's actual type. `basic_format_context` owns
@@ -442,14 +442,14 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Format context for incremental SQL formatting.
+ * \brief Format context for incremental SQL formatting.
  * \details
  * Convenience type alias for `basic_format_context`'s most common case.
  */
 using format_context = basic_format_context<std::string>;
 
 /**
- * \brief (EXPERIMENTAL) Composes a SQL query client-side appending it to a format context.
+ * \brief Composes a SQL query client-side appending it to a format context.
  * \details
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
  * by formatted arguments, extracted from `args`.
@@ -511,7 +511,7 @@ inline void format_sql_to(
 }
 
 /**
- * \brief (EXPERIMENTAL) Composes a SQL query client-side.
+ * \brief Composes a SQL query client-side.
  * \details
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
  * by formatted arguments, extracted from `args`. `opts` is using to parse the string and format string

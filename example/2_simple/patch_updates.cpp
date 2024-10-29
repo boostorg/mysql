@@ -22,6 +22,7 @@
  * it to C++14 (required by Boost.Describe) by using callbacks, asio::yield_context
  * or sync functions instead of coroutines.
  */
+
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/field_view.hpp>

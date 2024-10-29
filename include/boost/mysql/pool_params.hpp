@@ -24,13 +24,9 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) Configuration parameters for \ref connection_pool.
+ * \brief Configuration parameters for \ref connection_pool.
  * \details
  * This is an owning type.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
  */
 struct pool_params
 {
