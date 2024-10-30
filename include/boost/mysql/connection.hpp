@@ -241,7 +241,7 @@ public:
      * If the final handler has an associated immediate executor, and the operation
      * completes immediately, the final handler is dispatched to it.
      * Otherwise, the final handler is called as if it was submitted using `asio::post`,
-     * and is never be called inline from within this function.
+     * and is never to be called inline from within this function.
      */
     template <
         typename EndpointType,

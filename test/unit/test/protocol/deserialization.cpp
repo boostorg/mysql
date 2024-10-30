@@ -116,7 +116,8 @@ BOOST_AUTO_TEST_CASE(ok_view_success)
         BOOST_TEST_CONTEXT(tc.name)
         {
             ok_view actual{};
-            error_code err = deserialize_ok_packet(tc.serialized, actual);
+            db_flavor flavor{db_flavor::mysql};
+            error_code err = deserialize_ok_packet(tc.serialized, actual, flavor);
 
             // No error
             BOOST_TEST(err == error_code());
@@ -153,7 +154,8 @@ BOOST_AUTO_TEST_CASE(ok_view_error)
         BOOST_TEST_CONTEXT(tc.name)
         {
             ok_view value{};
-            error_code err = deserialize_ok_packet(tc.serialized, value);
+            db_flavor flavor{db_flavor::mysql};
+            error_code err = deserialize_ok_packet(tc.serialized, value, flavor);
             BOOST_TEST(err == tc.expected_err);
         }
     }
