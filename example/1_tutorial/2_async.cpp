@@ -42,20 +42,20 @@ namespace asio = boost::asio;
  * We use the same program structure as in the sync world, replacing
  * sync functions by their async equivalents and adding co_await in front of them.
  */
-asio::awaitable<void> coro_main(std::string server_hostname, std::string username, std::string password)
+//[tutorial_async_coro
+asio::awaitable<void> coro_main(
+    mysql::any_connection& conn,
+    std::string_view server_hostname,
+    std::string_view username,
+    std::string_view password
+)
 {
-    // Represents a connection to the MySQL server.
-    // The connection will use the same executor as the coroutine
-    mysql::any_connection conn(co_await asio::this_coro::executor);
-
     // The hostname, username, password and database to use.
     // TLS is used by default.
-    mysql::connect_params params{
-        .server_address = mysql::host_and_port{std::move(server_hostname)},
-        .username = std::move(username),
-        .password = std::move(password),
-        .database = "boost_mysql_examples"
-    };
+    mysql::connect_params params;
+    params.server_address.emplace_host_and_port(std::string(server_hostname));
+    params.username = username;
+    params.password = password;
 
     // Connect to the server
     co_await conn.async_connect(params);
@@ -71,6 +71,7 @@ asio::awaitable<void> coro_main(std::string server_hostname, std::string usernam
     // Close the connection
     co_await conn.async_close();
 }
+//]
 
 void main_impl(int argc, char** argv)
 {
@@ -80,16 +81,27 @@ void main_impl(int argc, char** argv)
         exit(1);
     }
 
+    //[tutorial_async_connection
     // The execution context, required to run I/O operations.
     asio::io_context ctx;
 
-    // The entry point. We pass in a function returning
-    // boost::asio::awaitable<void>, as required.
-    // Calling co_spawn enqueues the coroutine for execution.
+    // Represents a connection to the MySQL server.
+    mysql::any_connection conn(ctx);
+    //]
+
+    //[tutorial_async_co_spawn
+    // Enqueue the coroutine for execution.
+    // This does not wait for the coroutine to finish.
     asio::co_spawn(
+        // The execution context where the coroutine will run
         ctx,
-        [argv] { return coro_main(argv[3], argv[1], argv[2]); },
-        // If any exception is thrown in the coroutine body, rethrow it.
+
+        // The coroutine to run. This must be a function taking no arguments
+        // and returning an asio::awaitable<T>
+        [&conn, argv] { return coro_main(conn, argv[3], argv[1], argv[2]); },
+
+        // Callback to run when the coroutine completes.
+        // If any exception is thrown in the coroutine body, propagate it to terminate the program.
         [](std::exception_ptr ptr) {
             if (ptr)
             {
@@ -97,9 +109,12 @@ void main_impl(int argc, char** argv)
             }
         }
     );
+    //]
 
+    //[tutorial_async_run
     // Calling run will actually execute the coroutine until completion
     ctx.run();
+    //]
 }
 
 int main(int argc, char** argv)

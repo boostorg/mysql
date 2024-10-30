@@ -17,9 +17,9 @@ Here is a list of available examples:
 
 Self-contained programs demonstrating the basic concepts.
 
-* [link mysql.examples.tutorial_sync Tutorial 1: connections and sync functions]
-* [link mysql.examples.tutorial_async Tutorial 2: going async with C++20 coroutines]
-* [link mysql.examples.tutorial_with_params Tutorial 3: queries with parameters]
+* [link mysql.examples.tutorial_sync Tutorial 1 listing: hello world!]
+* [link mysql.examples.tutorial_async Tutorial 2 listing: going async with C++20 coroutines]
+* [link mysql.examples.tutorial_with_params Tutorial 3 listing: queries with parameters]
 
 [heading Simple programs]
 
@@ -73,7 +73,7 @@ and is not suitable for production.
 The root MySQL user for these containers is `root` and has an empty password.
 
 
-[section:tutorial_sync Tutorial 1: connections and sync functions]
+[section:tutorial_sync Tutorial 1 listing: hello world!]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
@@ -85,7 +85,7 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
-[section:tutorial_async Tutorial 2: going async with C++20 coroutines]
+[section:tutorial_async Tutorial 2 listing: going async with C++20 coroutines]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
@@ -97,7 +97,7 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
-[section:tutorial_with_params Tutorial 3: queries with parameters]
+[section:tutorial_with_params Tutorial 3 listing: queries with parameters]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 

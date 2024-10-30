@@ -115,9 +115,9 @@ The root MySQL user for these containers is `root` and has an empty password.
 
 # List all examples here
 TUTORIALS = [
-    Example('tutorial_sync', '1_tutorial/1_sync.cpp', 'Tutorial 1: connections and sync functions'),
-    Example('tutorial_async', '1_tutorial/2_async.cpp', 'Tutorial 2: going async with C++20 coroutines'),
-    Example('tutorial_with_params', '1_tutorial/3_with_params.cpp', 'Tutorial 3: queries with parameters'),
+    Example('tutorial_sync', '1_tutorial/1_sync.cpp', 'Tutorial 1 listing: hello world!'),
+    Example('tutorial_async', '1_tutorial/2_async.cpp', 'Tutorial 2 listing: going async with C++20 coroutines'),
+    Example('tutorial_with_params', '1_tutorial/3_with_params.cpp', 'Tutorial 3 listing: queries with parameters'),
 ]
 
 SIMPLE_EXAMPLES = [

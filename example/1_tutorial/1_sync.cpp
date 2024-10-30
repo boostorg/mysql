@@ -36,6 +36,10 @@ void main_impl(int argc, char** argv)
         exit(1);
     }
 
+    const char* hostname = argv[3];
+    const char* username = argv[1];
+    const char* password = argv[2];
+
     //[tutorial_sync_connection
     // The execution context, required to run I/O operations.
     asio::io_context ctx;
@@ -44,13 +48,13 @@ void main_impl(int argc, char** argv)
     mysql::any_connection conn(ctx);
     //]
 
+    //[tutorial_sync_main
     //[tutorial_sync_connect
-    // The hostname, username, password and database to use
+    // The hostname, username and password to use
     mysql::connect_params params;
-    params.server_address.emplace_host_and_port(argv[3]);
-    params.username = argv[1];
-    params.password = argv[2];
-    params.database = "boost_mysql_examples";
+    params.server_address.emplace_host_and_port(hostname);
+    params.username = username;
+    params.password = password;
 
     // Connect to the server
     conn.connect(params);
@@ -71,6 +75,7 @@ void main_impl(int argc, char** argv)
     //[tutorial_sync_close
     // Close the connection
     conn.close();
+    //]
     //]
 }
 
