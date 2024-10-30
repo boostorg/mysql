@@ -142,6 +142,7 @@ END
 [include 02_integrating.qbk]
 [include 03_1_tutorial_sync.qbk]
 [include 03_2_tutorial_async.qbk]
+[include 03_3_tutorial_with_params.qbk]
 [/ [include 04_overview.qbk]
 [include 05_dynamic_interface.qbk]
 [include 06_static_interface.qbk]

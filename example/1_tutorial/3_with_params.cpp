@@ -10,6 +10,15 @@
 
 //[example_tutorial_with_params
 
+/**
+ * This example shows how to issue queries with parameters containing
+ * untrusted input securely. Given an employee ID, it prints their first name.
+ * The example builds on the previous async tutorial.
+ *
+ * This example uses the 'boost_mysql_examples' database, which you
+ * can get by running db_setup.sql.
+ */
+
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
@@ -29,42 +38,46 @@
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
-/**
- * This example shows how to issue queries with parameters containing
- * untrusted input securely. Given an employee ID, it prints their first name.
- * The example builds on the previous async tutorial.
- */
+//[tutorial_with_params_coroutine
 asio::awaitable<void> coro_main(
-    std::string server_hostname,
-    std::string username,
-    std::string password,
+    std::string_view server_hostname,
+    std::string_view username,
+    std::string_view password,
     std::int64_t employee_id
 )
 {
+    //[tutorial_with_params_connection
     // Represents a connection to the MySQL server.
     // The connection will use the same executor as the coroutine
     mysql::any_connection conn(co_await asio::this_coro::executor);
+    //]
 
+    //[tutorial_with_params_connect_params
     // The hostname, username, password and database to use.
-    mysql::connect_params params{
-        .server_address = mysql::host_and_port{std::move(server_hostname)},
-        .username = std::move(username),
-        .password = std::move(password),
-        .database = "boost_mysql_examples"
-    };
+    mysql::connect_params params;
+    params.server_address.emplace_host_and_port(std::string(server_hostname));
+    params.username = username;
+    params.password = password;
+    params.database = "boost_mysql_examples";
+    //]
 
     // Connect to the server
     co_await conn.async_connect(params);
 
+    //[tutorial_with_params_execute
     // Execute the query with the given parameters. When executed, with_params
     // expands the given query string template and sends it to the server for execution.
     // {} are placeholders, as in std::format. Values are escaped as required to prevent
     // SQL injection.
     mysql::results result;
     co_await conn.async_execute(
-        mysql::with_params("SELECT first_name FROM employee WHERE id = {}", employee_id),
+        mysql::with_params(
+            "SELECT CONCAT(first_name, ' ', last_name) FROM employee WHERE id = {}",
+            employee_id
+        ),
         result
     );
+    //]
 
     // Did we find an employee with that ID?
     if (result.rows().empty())
@@ -80,6 +93,7 @@ asio::awaitable<void> coro_main(
     // Close the connection
     co_await conn.async_close();
 }
+//]
 
 void main_impl(int argc, char** argv)
 {
@@ -92,13 +106,17 @@ void main_impl(int argc, char** argv)
     // The execution context, required to run I/O operations.
     asio::io_context ctx;
 
-    // The entry point. We pass in a function returning
-    // boost::asio::awaitable<void>, as required.
-    // Calling co_spawn enqueues the coroutine for execution.
+    // Enqueue the coroutine for execution.
     asio::co_spawn(
+        // The execution context where the coroutine will run
         ctx,
+
+        // The coroutine to run. This must be a function taking no arguments
+        // and returning an asio::awaitable<T>
         [argv] { return coro_main(argv[3], argv[1], argv[2], std::stoi(argv[4])); },
-        // If any exception is thrown in the coroutine body, rethrow it.
+
+        // Callback to run when the coroutine completes.
+        // If any exception is thrown in the coroutine body, propagate it to terminate the program.
         [](std::exception_ptr ptr) {
             if (ptr)
             {

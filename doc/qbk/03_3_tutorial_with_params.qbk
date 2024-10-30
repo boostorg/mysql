@@ -1,0 +1,121 @@
+[/
+    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:tutorial_async Tutorial 3: queries with parameters]
+
+[import ../../example/1_tutorial/3_with_params.cpp]
+
+We've been running simple text queries, but real world often involves
+running queries containing user-supplied parameters.
+
+Consider an employee database. Each employee is identified by a unique
+numeric ID. Table may be defined as follows:
+
+CREATE TABLE ...
+
+We will write a program that retrieves an employee by ID from the database and prints their name.
+This implies running a query like:
+
+SELECT ... FROM employee WHERE id = <actual-id>
+
+Where <actual-id> must be replaced by the value the user supplies.
+We will read it from the command line args for simplicity, but
+you may read it from a file or an HTTP request.
+
+
+
+
+[heading Available tools]
+
+We don't control <actual-id>, so we must consider it untrusted.
+We must never use raw string concatenation to build our query.
+Otherwise, malicious values can cause SQL injection vulnerabilities,
+which are extremely severe.
+
+Two available options:
+
+* Compose the query dynamically in the client, using specialized tools
+  to avoid SQL injection. TODO: link to details
+* Perform parameter substitution server side using prepared statements.
+  TODO: link to details
+
+The first option is adequate for one-off or light queries like ours.
+Prepared statements are more adequate for queries returning a lot of
+numeric data or when running a query several times.
+In this tutorial, we will use client-side generation.
+
+
+
+
+[heading Using with_params]
+
+The same [refmem any_connection::async_execute] can expand and
+execute queries with parameters, too. We will replace the string
+literal by a [reflink with_params] expression:
+
+[tutorial_with_params_execute]
+
+When `async_execute` encounters a `with_params_t` object, it does
+the following:
+
+# It expands the given query string, with the passed parameters.
+  The syntax is akin to `std::format`.
+# It executes the resulting string, as if a string literal was passed.
+
+This is all we need. `with_params` supports formatting numbers, strings,
+dates, times and many other types. `with_params` and related functions
+form what we call "client-side SQL formatting" - TODO: link.
+
+
+
+[heading Creating the connection inside the coroutine]
+
+Since we're connecting and closing the connection in our coroutine, it
+makes sense to make it a local variable, instead of passing it as parameter.
+To create a connection, we need a reference to the `io_context` we want
+to use. We could pass it as parameter, but we don't need it - coroutines
+already know where they are executing. We can write the following:
+
+[tutorial_with_params_connection]
+
+The expression `co_await asio::this_coro::executor` retrieves the executor
+that our coroutine is using. An executor is a lightweight handle
+to an execution context, and can be used to create our connection.
+
+[note
+  `co_await asio::this_coro::executor` does not perform I/O.
+  It only retrieves the current coroutine's executor.
+]
+
+
+
+
+[heading Connecting with database]
+
+To run the above code, we need to select a database where the `employee`
+table exists. If you followed the setup instructions (TODO?), the table
+lives in the "boost_mysql_examples" database. We can use
+[refmem connect_params database] to select a database when connecting:
+
+[tutorial_with_params_connect_params]
+
+
+
+
+[heading Wrapping up]
+
+With all these changes, this is how our coroutine looks like:
+
+[tutorial_with_params_coroutine]
+
+Full program listing for this tutorial is [link mysql.examples.tutorial_with_params here].
+
+
+TODO: link to the next one.
+
+
+[endsect]
