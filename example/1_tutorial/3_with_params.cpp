@@ -23,6 +23,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/results.hpp>
+#include <boost/mysql/row_view.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>
@@ -47,7 +48,6 @@ asio::awaitable<void> coro_main(
 )
 {
     //[tutorial_with_params_connection
-    // Represents a connection to the MySQL server.
     // The connection will use the same executor as the coroutine
     mysql::any_connection conn(co_await asio::this_coro::executor);
     //]
@@ -71,14 +71,12 @@ asio::awaitable<void> coro_main(
     // SQL injection.
     mysql::results result;
     co_await conn.async_execute(
-        mysql::with_params(
-            "SELECT CONCAT(first_name, ' ', last_name) FROM employee WHERE id = {}",
-            employee_id
-        ),
+        mysql::with_params("SELECT first_name, last_name FROM employee WHERE id = {}", employee_id),
         result
     );
     //]
 
+    //[tutorial_with_params_results
     // Did we find an employee with that ID?
     if (result.rows().empty())
     {
@@ -86,9 +84,12 @@ asio::awaitable<void> coro_main(
     }
     else
     {
-        // Print the first field in the first row
-        std::cout << "Employee's name is: " << result.rows().at(0).at(0) << std::endl;
+        // Print the retrieved details. The first field is the first name,
+        // and the second, the last name.
+        mysql::row_view employee = result.rows().at(0);
+        std::cout << "Employee's name is: " << employee.at(0) << ' ' << employee.at(1) << std::endl;
     }
+    //]
 
     // Close the connection
     co_await conn.async_close();
