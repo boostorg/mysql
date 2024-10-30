@@ -71,6 +71,12 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_error_packet(
 // Applicable for commands like ping and reset connection.
 // If the response is an OK packet, sets backslash_escapes according to the
 // OK packet's server status flags
+BOOST_ATTRIBUTE_NODISCARD inline deserialize_errc get_info_value(
+    deserialization_context& ctx,
+    string_view& output,
+    db_flavor flavor
+);
+
 BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_ok_response(
     span<const std::uint8_t> message,
     db_flavor flavor,
@@ -267,6 +273,28 @@ BOOST_INLINE_CONSTEXPR std::uint8_t ok_packet_header = 0x00;
 //
 
 // OK packets
+boost::mysql::detail::deserialize_errc boost::mysql::detail::get_info_value(
+    deserialization_context& ctx,
+    string_view& output,
+    db_flavor flavor
+)
+{
+    boost::mysql::detail::deserialize_errc err;
+    if (flavor == db_flavor::clickhouse)
+    {
+        string_eof info;
+        err = info.deserialize(ctx);
+        output = info.value;
+
+    } else
+    {
+        string_lenenc info;
+        err = info.deserialize(ctx);
+        output = info.value;
+    }
+    return err;
+}
+
 boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
     span<const std::uint8_t> msg,
     ok_view& output,
@@ -280,10 +308,9 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
         int_lenenc last_insert_id;
         int2 status_flags;  // server_status_flags
         int2 warnings;
-        // CLIENT_SESSION_TRACK: not implemented
-        using info_type = boost::variant2::variant<string_lenenc, string_eof>;
-        info_type info;
     } pack{};
+
+    string_view info_value;
 
     deserialization_context ctx(msg);
     auto err = ctx.deserialize(pack.affected_rows, pack.last_insert_id, pack.status_flags, pack.warnings);
@@ -292,13 +319,8 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
 
     if (ctx.enough_size(1))  // message is optional, may be omitted
     {
-        if (flavor == db_flavor::clickhouse) {
-            pack.info = string_eof{};
-        } else{
-            pack.info = string_lenenc{};
-        }
-        err = boost::variant2::visit( [&]( auto& info ){ return info.deserialize(ctx); }, pack.info );
-        // err = pack.info.deserialize(ctx);
+        // CLIENT_SESSION_TRACK: not implemented
+        err = get_info_value(ctx, info_value, flavor);
         if (err != deserialize_errc::ok)
             return to_error_code(err);
     }
@@ -308,7 +330,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
         pack.last_insert_id.value,
         pack.status_flags.value,
         pack.warnings.value,
-        boost::variant2::visit( [&]( auto& info ){ return info.value; }, pack.info ),
+        info_value,
     };
 
     return ctx.check_extra_bytes();
