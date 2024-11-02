@@ -22,6 +22,7 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
+#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/co_spawn.hpp>
@@ -316,6 +317,28 @@ BOOST_FIXTURE_TEST_CASE(default_token_cancel_after, any_connection_fixture)
         );
     });
 }
+
+// Using as_tuple as partial token works
+BOOST_FIXTURE_TEST_CASE(default_token_as_tuple, any_connection_fixture)
+{
+    run_coro(ctx, [&]() -> asio::awaitable<void> {
+        // as_tuple works
+        auto [ec] = co_await conn.async_connect(connect_params_builder().build(), asio::as_tuple);
+        BOOST_TEST_REQUIRE(ec == error_code());
+
+        // Returning a value works
+        auto [ec2, stmt] = co_await conn.async_prepare_statement("SELECT ?", asio::as_tuple);
+        BOOST_TEST_REQUIRE(ec2 == error_code());
+        BOOST_TEST(stmt.valid());
+
+        // Error case
+        results result;
+        auto [ec3] = co_await conn.async_execute("SELECT * FROM bad_table", result, asio::as_tuple);
+        BOOST_TEST(ec3 == common_server_errc::er_no_such_table);
+    });
+}
+
+// TODO: redirect_error
 
 // Spotcheck: immediate completions dispatched to the immediate executor
 BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
