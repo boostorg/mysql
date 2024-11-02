@@ -8,22 +8,22 @@
 #include <boost/asio/awaitable.hpp>
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
-//[example_tutorial_with_params
+//[example_tutorial_static_interface
 
 /**
- * This example shows how to issue queries with parameters containing
- * untrusted input securely. Given an employee ID, it prints their full name.
- * The example builds on the previous async tutorial.
+ * This example shows how to use the static interface to parse
+ * the results of a query into a C++ struct.
+ * Like the previous tutorial, given an employee ID,
+ * it prints their full name.
  *
  * This example uses the 'boost_mysql_examples' database, which you
  * can get by running db_setup.sql.
  */
 
-#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
-#include <boost/mysql/results.hpp>
-#include <boost/mysql/row_view.hpp>
+#include <boost/mysql/pfr.hpp>
+#include <boost/mysql/static_results.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>
@@ -35,11 +35,28 @@
 #include <exception>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
-//[tutorial_with_params_coroutine
+//[tutorial_static_fn
+void print_employee(std::string_view first_name, std::string_view last_name)
+{
+    std::cout << "Employee's name is: " << first_name << ' ' << last_name << std::endl;
+}
+//]
+
+//[tutorial_static_struct
+// Should contain a member for each field of interest present in our query.
+// Declaration order doesn't need to match field order in the query.
+struct employee
+{
+    std::string first_name;
+    std::string last_name;
+};
+//]
+
 asio::awaitable<void> coro_main(
     std::string_view server_hostname,
     std::string_view username,
@@ -47,36 +64,37 @@ asio::awaitable<void> coro_main(
     std::int64_t employee_id
 )
 {
-    //[tutorial_with_params_connection
+    // Represents a connection to the MySQL server.
     // The connection will use the same executor as the coroutine
     mysql::any_connection conn(co_await asio::this_coro::executor);
-    //]
 
-    //[tutorial_with_params_connect_params
     // The hostname, username, password and database to use.
     mysql::connect_params params;
     params.server_address.emplace_host_and_port(std::string(server_hostname));
     params.username = username;
     params.password = password;
     params.database = "boost_mysql_examples";
-    //]
 
     // Connect to the server
     co_await conn.async_connect(params);
 
-    //[tutorial_with_params_execute
-    // Execute the query with the given parameters. When executed, with_params
-    // expands the given query string template and sends it to the server for execution.
-    // {} are placeholders, as in std::format. Values are escaped as required to prevent
-    // SQL injection.
-    mysql::results result;
+    //[tutorial_static_execute
+    // Using static_results will parse the result of our query
+    // into instances of the employee type. Fields will be matched
+    // by name, instead of by position.
+    // pfr_by_name tells the library to use Boost.Pfr for reflection,
+    // and to match fields by name.
+    mysql::static_results<mysql::pfr_by_name<employee>> result;
+
+    // Execute the query with the given parameters, performing the required
+    // escaping to prevent SQL injection.
     co_await conn.async_execute(
         mysql::with_params("SELECT first_name, last_name FROM employee WHERE id = {}", employee_id),
         result
     );
     //]
 
-    //[tutorial_with_params_results
+    //[tutorial_static_results
     // Did we find an employee with that ID?
     if (result.rows().empty())
     {
@@ -86,15 +104,14 @@ asio::awaitable<void> coro_main(
     {
         // Print the retrieved details. The first field is the first name,
         // and the second, the last name.
-        mysql::row_view employee = result.rows().at(0);
-        std::cout << "Employee's name is: " << employee.at(0) << ' ' << employee.at(1) << std::endl;
+        const employee& emp = result.rows()[0];
+        print_employee(emp.first_name, emp.last_name);
     }
     //]
 
     // Close the connection
     co_await conn.async_close();
 }
-//]
 
 void main_impl(int argc, char** argv)
 {
