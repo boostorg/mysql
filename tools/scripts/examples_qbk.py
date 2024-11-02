@@ -118,6 +118,7 @@ TUTORIALS = [
     Example('tutorial_sync', '1_tutorial/1_sync.cpp', 'Tutorial 1 listing: hello world!'),
     Example('tutorial_async', '1_tutorial/2_async.cpp', 'Tutorial 2 listing: going async with C++20 coroutines'),
     Example('tutorial_with_params', '1_tutorial/3_with_params.cpp', 'Tutorial 3 listing: queries with parameters'),
+    Example('tutorial_static_interface', '1_tutorial/4_static_interface.cpp', 'Tutorial 4 listing: the static interface'),
 ]
 
 SIMPLE_EXAMPLES = [

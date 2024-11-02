@@ -20,6 +20,7 @@ Self-contained programs demonstrating the basic concepts.
 * [link mysql.examples.tutorial_sync Tutorial 1 listing: hello world!]
 * [link mysql.examples.tutorial_async Tutorial 2 listing: going async with C++20 coroutines]
 * [link mysql.examples.tutorial_with_params Tutorial 3 listing: queries with parameters]
+* [link mysql.examples.tutorial_static_interface Tutorial 4 listing: the static interface]
 
 [heading Simple programs]
 
@@ -103,6 +104,18 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 [import ../../example/1_tutorial/3_with_params.cpp]
 [example_tutorial_with_params]
+
+[endsect]
+
+
+
+
+[section:tutorial_static_interface Tutorial 4 listing: the static interface]
+
+This example assumes you have gone through the [link mysql.examples.setup setup].
+
+[import ../../example/1_tutorial/4_static_interface.cpp]
+[example_tutorial_static_interface]
 
 [endsect]
 
