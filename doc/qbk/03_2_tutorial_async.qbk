@@ -7,9 +7,6 @@
 
 [section:tutorial_async Tutorial 2: going async with C++20 coroutines]
 
-[import ../../example/1_tutorial/1_sync.cpp]
-[import ../../example/1_tutorial/2_async.cpp]
-
 In the [link mysql.tutorial_sync previous tutorial] we used
 synchronous functions. They are simple, but have a number of limitations:
 

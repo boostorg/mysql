@@ -50,6 +50,7 @@ void print_employee(std::string_view first_name, std::string_view last_name)
 //[tutorial_static_struct
 // Should contain a member for each field of interest present in our query.
 // Declaration order doesn't need to match field order in the query.
+// Field names should match the ones in our query
 struct employee
 {
     std::string first_name;
@@ -102,8 +103,7 @@ asio::awaitable<void> coro_main(
     }
     else
     {
-        // Print the retrieved details. The first field is the first name,
-        // and the second, the last name.
+        // Print the retrieved details
         const employee& emp = result.rows()[0];
         print_employee(emp.first_name, emp.last_name);
     }

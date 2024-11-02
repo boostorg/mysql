@@ -7,8 +7,6 @@
 
 [section:tutorial_async Tutorial 3: queries with parameters]
 
-[import ../../example/1_tutorial/3_with_params.cpp]
-
 Until now, our SQL queries were hard-coded string literals.
 However, most real-world use cases involve 
 running queries containing user-supplied parameters.

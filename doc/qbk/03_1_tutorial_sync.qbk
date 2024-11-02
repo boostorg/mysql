@@ -7,8 +7,6 @@
 
 [section:tutorial_sync Tutorial 1: hello world!]
 
-[import ../../example/1_tutorial/1_sync.cpp]
-
 In this first tutorial, we will write a simple program
 to demonstrate the basic concepts. We will connect to the server
 and issue the query `SELECT "Hello World!"`.

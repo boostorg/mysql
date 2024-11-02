@@ -56,6 +56,8 @@
 [def __Context__ [@boost:/libs/context/index.html Boost.Context]]
 [def __Self__ [@boost:/libs/mysql/index.html Boost.MySQL]]
 [def __boost_optional__ [@boost:/libs/optional/index.html `boost::optional`]]
+[def __Describe__ [@boost:/libs/describe/index.html Boost.Describe]]
+[def __Pfr__ [@boost:/libs/pfr/index.html Boost.Pfr]]
 
 [/ MySQL stuff]
 [def __Mysql__ [@https://www.mysql.com/ MySQL]]
@@ -122,7 +124,12 @@ BEGIN
 END
 ```]
 
+[import ../../example/1_tutorial/1_sync.cpp]
+[import ../../example/1_tutorial/2_async.cpp]
+[import ../../example/1_tutorial/3_with_params.cpp]
+[import ../../example/1_tutorial/4_static_interface.cpp]
 [import ../../test/integration/include/test_integration/snippets/describe.hpp]
+[import ../../test/integration/test/snippets/tutorials.cpp]
 [import ../../test/integration/test/snippets/overview.cpp]
 [import ../../test/integration/test/snippets/dynamic.cpp]
 [import ../../test/integration/test/snippets/static.cpp]
@@ -143,6 +150,7 @@ END
 [include 03_1_tutorial_sync.qbk]
 [include 03_2_tutorial_async.qbk]
 [include 03_3_tutorial_with_params.qbk]
+[include 03_4_tutorial_static_interface.qbk]
 [/ [include 04_overview.qbk]
 [include 05_dynamic_interface.qbk]
 [include 06_static_interface.qbk]

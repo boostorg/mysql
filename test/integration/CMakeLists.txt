@@ -32,6 +32,7 @@ add_executable(
     test/database_types.cpp
 
     # Snippets
+    test/snippets/tutorials.cpp
     test/snippets/overview.cpp
     test/snippets/dynamic.cpp
     test/snippets/static.cpp
