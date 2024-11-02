@@ -24,20 +24,26 @@ namespace mysql {
  * Uses knowledge of Boost.MySQL internals to grab any \ref diagnostics
  * that the operation may produce to create a `std::exception_ptr` pointing to an \ref error_with_diagnostics
  * object. On success, the generated `std::exception_ptr` will be `nullptr`.
- * \n
+ *
  * Using `with_diagnostics` to wrap tokens that throw exceptions (like `deferred` + `co_await` or
  * `yield_context`) enhances the thrown exceptions with diagnostics information, matching the ones thrown by
  * sync functions. If you don't use this token, Asio will use `system_error` exceptions, containing less info.
- * \n
+ *
  * This token can only be used with operations involving Boost.MySQL, as it relies on its internals.
- * \n
+ *
  * Like `asio::as_tuple`, this class wraps another completion token. For instance,
  * `with_diagnostics(asio::deferred)` will generate a deferred operation with an adapted
  * signature, which will throw `error_with_diagnostics` when `co_await`'ed.
- * \n
- * This token can only be used for operations with `void(error_code, T...)` signature.
- * If this precondition is broken, a compile-time error will be issued. In particular,
- * `with_diagnostics(asio::as_tuple(X))` is an error.
+ *
+ * If this token is applied to a function with a handler signature that
+ * does not match `void(error_code, T...)`, the token acts as a pass-through:
+ * it does not modify the signature, and calls the underlying token's initiation directly.
+ * This has the following implications:
+ *
+ *   - `asio::as_tuple(with_diagnostics(X))` is equivalent to `asio::as_tuple(X)`.
+ *   - `asio::redirect_error(with_diagnostics(X))` is equivalent to `asio::redirect_error(X)`.
+ *   - Tokens like `asio::as_tuple` and `asio::redirect_error` can be used as partial tokens
+ *     when `with_diagnostics` is the default completion token, as is the case for \ref any_connection.
  */
 template <class CompletionToken>
 class with_diagnostics_t
