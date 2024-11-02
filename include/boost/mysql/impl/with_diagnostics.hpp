@@ -178,15 +178,15 @@ struct with_diagnostics_async_result<CompletionToken, false, Signatures...>
 
     template <typename Initiation, typename RawCompletionToken, typename... Args>
     static auto initiate(Initiation&& initiation, RawCompletionToken&& token, Args&&... args)
-        -> decltype(async_initiate<
+        -> decltype(asio::async_initiate<
                     maybe_const_token_t<RawCompletionToken>,
                     typename with_diag_signature<Signatures>::type...>(
-            std::declval<with_diag_init<typename std::decay<Initiation>::type>>(),
+            with_diag_init<typename std::decay<Initiation>::type>{std::forward<Initiation>(initiation)},
             access::get_impl(token),
             std::forward<Args>(args)...
         ))
     {
-        return async_initiate<
+        return asio::async_initiate<
             maybe_const_token_t<RawCompletionToken>,
             typename with_diag_signature<Signatures>::type...>(
             with_diag_init<typename std::decay<Initiation>::type>{std::forward<Initiation>(initiation)},
@@ -199,7 +199,7 @@ struct with_diagnostics_async_result<CompletionToken, false, Signatures...>
 // async_result when the signature wasn't modified (pass-through)
 template <typename CompletionToken, typename... Signatures>
 struct with_diagnostics_async_result<CompletionToken, true, Signatures...>
-    : asio::async_result<CompletionToken, typename with_diag_signature<Signatures>::type...>
+    : asio::async_result<CompletionToken, Signatures...>
 {
     template <class RawCompletionToken>
     using maybe_const_token_t = typename std::conditional<
@@ -209,17 +209,13 @@ struct with_diagnostics_async_result<CompletionToken, true, Signatures...>
 
     template <typename Initiation, typename RawCompletionToken, typename... Args>
     static auto initiate(Initiation&& initiation, RawCompletionToken&& token, Args&&... args)
-        -> decltype(async_initiate<
-                    maybe_const_token_t<RawCompletionToken>,
-                    typename with_diag_signature<Signatures>::type...>(
+        -> decltype(asio::async_initiate<maybe_const_token_t<RawCompletionToken>, Signatures...>(
             std::forward<Initiation>(initiation),
             access::get_impl(token),
             std::forward<Args>(args)...
         ))
     {
-        return async_initiate<
-            maybe_const_token_t<RawCompletionToken>,
-            typename with_diag_signature<Signatures>::type...>(
+        return asio::async_initiate<maybe_const_token_t<RawCompletionToken>, Signatures...>(
             std::forward<Initiation>(initiation),
             access::get_impl(token),
             std::forward<Args>(args)...
