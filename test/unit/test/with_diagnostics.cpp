@@ -305,4 +305,61 @@ static_assert(
     ""
 );
 
+// Applying with_diagnostics to an unkown signature is a pass-through
+struct no_ec_initiation
+{
+    template <class Handler, class T1, class T2, class T3>
+    void operator()(Handler&& handler, T1&& arg1, T2&& arg2, T3&& arg3)
+    {
+        // T1 should be a non-const lvalue
+        static_assert(std::is_same<T1, std::shared_ptr<int>&>::value, "");
+        BOOST_TEST(arg1 != nullptr);
+
+        // T2 should be a const lvalue
+        static_assert(std::is_same<T2, const std::shared_ptr<int>&>::value, "");
+        BOOST_TEST(arg2 != nullptr);
+
+        // T3 should be a rvalue
+        static_assert(std::is_same<T3, std::shared_ptr<int>>::value, "");
+        BOOST_TEST(arg3 != nullptr);
+        auto arg3_move = std::move(arg3);
+        boost::ignore_unused(arg3_move);
+
+        // Just call the handler
+        std::move(handler)(42);
+    }
+};
+
+template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(int)) CompletionToken>
+void async_no_ec(
+    std::shared_ptr<int>& arg1,
+    const std::shared_ptr<int>& arg2,
+    std::shared_ptr<int>&& arg3,
+    CompletionToken&& token
+)
+{
+    asio::async_initiate<CompletionToken, void(int)>(no_ec_initiation{}, token, arg1, arg2, std::move(arg3));
+}
+
+BOOST_AUTO_TEST_CASE(signature_no_ec)
+{
+    // Setup
+    auto arg1 = std::make_shared<int>(42);
+    auto arg2 = arg1;
+    auto arg3 = arg1;
+    bool called = false;
+    auto handler = [&](int val) {
+        BOOST_TEST(val == 42);
+        called = true;
+    };
+
+    // Call the operation
+    async_no_ec(arg1, arg2, std::move(arg3), with_diagnostics(handler));
+
+    // lvalues not moved, rvalue moved
+    BOOST_TEST(arg1 != nullptr);
+    BOOST_TEST(arg2 != nullptr);
+    BOOST_TEST(arg3 == nullptr);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
