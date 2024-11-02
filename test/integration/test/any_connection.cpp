@@ -28,6 +28,7 @@
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/local/basic_endpoint.hpp>
+#include <boost/asio/redirect_error.hpp>
 #include <boost/test/data/test_case.hpp>
 
 #include <chrono>
@@ -322,7 +323,7 @@ BOOST_FIXTURE_TEST_CASE(default_token_cancel_after, any_connection_fixture)
 BOOST_FIXTURE_TEST_CASE(default_token_as_tuple, any_connection_fixture)
 {
     run_coro(ctx, [&]() -> asio::awaitable<void> {
-        // as_tuple works
+        // connect
         auto [ec] = co_await conn.async_connect(connect_params_builder().build(), asio::as_tuple);
         BOOST_TEST_REQUIRE(ec == error_code());
 
@@ -338,7 +339,26 @@ BOOST_FIXTURE_TEST_CASE(default_token_as_tuple, any_connection_fixture)
     });
 }
 
-// TODO: redirect_error
+// Using redirect_error as partial token works
+BOOST_FIXTURE_TEST_CASE(default_token_redirect_error, any_connection_fixture)
+{
+    run_coro(ctx, [&]() -> asio::awaitable<void> {
+        // connect
+        error_code ec;
+        co_await conn.async_connect(connect_params_builder().build(), asio::redirect_error(ec));
+        BOOST_TEST_REQUIRE(ec == error_code());
+
+        // Returning a value works
+        auto stmt = co_await conn.async_prepare_statement("SELECT ?", asio::redirect_error(ec));
+        BOOST_TEST_REQUIRE(ec == error_code());
+        BOOST_TEST(stmt.valid());
+
+        // Error case
+        results result;
+        co_await conn.async_execute("SELECT * FROM bad_table", result, asio::redirect_error(ec));
+        BOOST_TEST(ec == common_server_errc::er_no_such_table);
+    });
+}
 
 // Spotcheck: immediate completions dispatched to the immediate executor
 BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
