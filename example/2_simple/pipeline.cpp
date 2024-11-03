@@ -57,8 +57,7 @@ asio::awaitable<std::vector<mysql::statement>> batch_prepare(
     for (auto stmt_sql : statements)
         req.add_prepare_statement(stmt_sql);
 
-    // Run the pipeline. Using as_tuple prevents async_run_pipeline from throwing.
-    // This allows us to include the diagnostics object diag in the thrown exception.
+    // Run the pipeline.
     // stage_response is a variant-like type that can hold the response of any stage type.
     std::vector<mysql::stage_response> pipe_res;
     co_await conn.async_run_pipeline(req, pipe_res);
