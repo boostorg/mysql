@@ -34,6 +34,7 @@ add_executable(
     # Snippets
     test/snippets/tutorials.cpp
     test/snippets/overview.cpp
+    test/snippets/connection_establishment.cpp
     test/snippets/dynamic.cpp
     test/snippets/static.cpp
     test/snippets/prepared_statements.cpp

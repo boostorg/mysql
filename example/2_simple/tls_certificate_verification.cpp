@@ -22,8 +22,6 @@
  * can get by running db_setup.sql.
  * Additionally, your server must be configured with a trusted certificate
  * with a common name of "mysql".
- *
- * TODO: this should probably be setting TLS SNI
  */
 
 #include <boost/mysql/any_connection.hpp>
@@ -69,8 +67,13 @@ OzBrmpfHEhF6NDU=
 )%";
 
 // The main coroutine
-asio::awaitable<void> coro_main(std::string server_hostname, std::string username, std::string password)
+asio::awaitable<void> coro_main(
+    std::string_view server_hostname,
+    std::string_view username,
+    std::string_view password
+)
 {
+    //[section_connection_establishment_tls_options
     // Create a SSL context, which contains TLS configuration options
     asio::ssl::context ssl_ctx(asio::ssl::context::tls_client);
 
@@ -86,31 +89,27 @@ asio::awaitable<void> coro_main(std::string server_hostname, std::string usernam
     // ssl::context::set_default_verify_paths() instead of this function.
     ssl_ctx.add_certificate_authority(asio::buffer(CA_PEM));
 
-    // We expect the server certificate's common name to be "mysql".
+    // We expect the server certificate's common name to be equal to the configured hostname.
     // If it's not, the certificate will be rejected and handshake or connect will fail.
-    // Replace "mysql" by the hostname you expect in your certificate's common name
-    // TODO: we could set this to server_hostname and disable the test in some systems
-    ssl_ctx.set_verify_callback(asio::ssl::host_name_verification("mysql"));
+    ssl_ctx.set_verify_callback(asio::ssl::host_name_verification(std::string(server_hostname)));
 
     // Create a connection.
     // We pass the context as the second argument to the connection's constructor.
     // Other TLS options can be also configured using this approach.
     // We need to keep ssl_ctx alive as long as we use the connection.
-    mysql::any_connection conn(
-        co_await asio::this_coro::executor,
-        mysql::any_connection_params{.ssl_context = &ssl_ctx}
-    );
+    mysql::any_connection conn(co_await asio::this_coro::executor, mysql::any_connection_params{&ssl_ctx});
 
     // The hostname, username, password and database to use
-    mysql::connect_params params{
-        .server_address = mysql::host_and_port(std::move(server_hostname)),
-        .username = std::move(username),
-        .password = std::move(password),
-        .database = "boost_mysql_examples"
-    };
+    mysql::connect_params params;
+    params.server_address.emplace_host_and_port(std::string(server_hostname));
+    params.username = username;
+    params.password = password;
+    params.database = "boost_mysql_examples";
 
-    // Connect to the server
+    // Connect to the server. If certificate verification fails,
+    // async_connect will fail.
     co_await conn.async_connect(params);
+    //]
 
     // The connection can now be used normally
     mysql::results result;

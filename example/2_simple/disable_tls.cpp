@@ -32,26 +32,32 @@
 #include <boost/asio/io_context.hpp>
 
 #include <iostream>
+#include <string_view>
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
 // The main coroutine
-asio::awaitable<void> coro_main(std::string server_hostname, std::string username, std::string password)
+asio::awaitable<void> coro_main(
+    std::string_view server_hostname,
+    std::string_view username,
+    std::string_view password
+)
 {
     // Create a connection.
     // Will use the same executor as the coroutine.
     mysql::any_connection conn(co_await asio::this_coro::executor);
 
-    // The socket path, username, password and database to use.
+    //[section_connection_establishment_disable_tls
+    // The server host, username, password and database to use.
     // Passing ssl_mode::disable will disable the use of TLS.
-    mysql::connect_params params{
-        .server_address = mysql::host_and_port(std::move(server_hostname)),
-        .username = std::move(username),
-        .password = std::move(password),
-        .database = "boost_mysql_examples",
-        .ssl = mysql::ssl_mode::disable,
-    };
+    mysql::connect_params params;
+    params.server_address.emplace_host_and_port(std::string(server_hostname));
+    params.username = std::move(username);
+    params.password = std::move(password);
+    params.database = "boost_mysql_examples";
+    params.ssl = mysql::ssl_mode::disable;
+    //]
 
     // Connect to the server
     co_await conn.async_connect(params);

@@ -29,29 +29,36 @@
 #include <boost/asio/io_context.hpp>
 
 #include <iostream>
+#include <string_view>
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
 // The main coroutine
-asio::awaitable<void> coro_main(std::string unix_socket_path, std::string username, std::string password)
+asio::awaitable<void> coro_main(
+    std::string_view unix_socket_path,
+    std::string_view username,
+    std::string_view password
+)
 {
+    //[section_connection_establishment_unix_socket
     // Create a connection.
     // Will use the same executor as the coroutine.
     mysql::any_connection conn(co_await asio::this_coro::executor);
 
-    // The socket path, username, password and database to use
-    // Instead of a hostname and port, we use a unix_path as server_address.
+    // The socket path, username, password and database to use.
+    // server_address is a variant-like type. Using emplace_unix_path,
+    // we can specify a UNIX socket path, instead of a hostname and a port.
     // UNIX socket connections never use TLS.
-    mysql::connect_params params{
-        .server_address = mysql::unix_path(std::move(unix_socket_path)),
-        .username = std::move(username),
-        .password = std::move(password),
-        .database = "boost_mysql_examples"
-    };
+    mysql::connect_params params;
+    params.server_address.emplace_unix_path(std::string(unix_socket_path));
+    params.username = username;
+    params.password = password;
+    params.database = "boost_mysql_examples";
 
     // Connect to the server
     co_await conn.async_connect(params);
+    //]
 
     // The connection can now be used normally
     mysql::results result;
