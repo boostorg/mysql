@@ -71,7 +71,8 @@ The return type actually marks the function as being a coroutine.
 `void` here means that the coroutine doesn't return anything.
 
 If any of the above I/O operations fail, an exception is thrown.
-There are ways to prevent this (TODO: link to it)
+You can prevent this by [link mysql.overview.errors using `asio::redirect_error`].
+
 
 
 
@@ -97,8 +98,8 @@ thread until all the scheduled coroutines and I/O operations complete:
 
 [heading Next steps]
 
-TODO: link to the next one.
-
 Full program listing for this tutorial is [link mysql.examples.tutorial_async here].
+
+You can now proceed to [link mysql.tutorial.with_params the next tutorial].
 
 [endsect]

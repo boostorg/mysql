@@ -286,8 +286,6 @@ If you need reliable, long-lived connections, consider
 instead of rolling out your own strategy. `connection_pool`
 takes care of re-connecting and re-using connections for you. 
 
-TODO: should we talk about is_fatal_error? Move to error_handling?
-
 [endsect]
 
 

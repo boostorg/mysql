@@ -9,16 +9,6 @@
 [nochunk]
 
 
-[/ Merge connection and connection establishment
-Running simple queries and retrieving rows
-Running queries with parameters
-Parsing into custom types with the static interface (include comparison)
-Prepared statements
-Sync, async and the universal model
-Connection pools: rewrite to be more goal-oriented: how to use UNIX, disable TLS, set up custom TLS options
-Multi-function operations ]
-
-
 This section briefly explains the library main classes and functions, and how to use them.
 
 Boost.MySQL exposes sync and async functions implementing functionality involving I/O.
@@ -152,7 +142,9 @@ and the library will parse the retrieved values for you into the types you provi
 
 You can use almost every feature in this library (including text queries and prepared statements) with both interfaces.
 
-For example, given the following table (TODO: duplicated):
+For example, given the following table :
+
+[/ (TODO: this code is duplicated.) ]
 
 [!teletype]
 ```

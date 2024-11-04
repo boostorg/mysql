@@ -143,8 +143,7 @@ With all these changes, this is how our coroutine looks like:
 
 Full program listing for this tutorial is [link mysql.examples.tutorial_with_params here].
 
-
-TODO: link to the next one.
+You can now proceed to [link mysql.tutorial.static_interface the next tutorial].
 
 
 [endsect]

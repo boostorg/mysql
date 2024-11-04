@@ -92,8 +92,7 @@ C++20 makes it possible to use Boost.Pfr as described here,
 which is the easiest option. Boost.MySQL also supports __Describe__
 and `std::tuple`'s, which can be used in C++14.
 The mechanics are quite similar to what's been explained here.
-See (TODO: link to discussion or example)
-for sample code.
+
 
 
 [heading Wrapping up]
@@ -102,7 +101,8 @@ for sample code.
 
 Full program listing for this tutorial is [link mysql.examples.tutorial_static_interface here].
 
-
-TODO: explain that this is over and point to other resources.
+This concludes our tutorial series. You can now look at the [link mysql.overview overview section]
+to learn more about the library features, or to the [link mysql.examples example section]
+if you prefer to learn by doing.
 
 [endsect]
