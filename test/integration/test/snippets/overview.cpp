@@ -31,9 +31,9 @@
 #include <string>
 
 #include "test_common/ci_server.hpp"
+#include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/run_coro.hpp"
 #include "test_integration/snippets/credentials.hpp"
-#include "test_integration/snippets/snippets_fixture.hpp"
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
@@ -234,10 +234,13 @@ asio::awaitable<void> overview_coro(mysql::any_connection& conn)
         // the operation ends. It's similar to a no-op callback.
         pool.async_run(asio::detached);
         //]
+
+        // If we don't use the pool, we may leave unfinished work in the context
+        co_await pool.async_get_connection();
     }
 }
 
-BOOST_FIXTURE_TEST_CASE(section_overview, snippets_fixture)
+BOOST_FIXTURE_TEST_CASE(section_overview, any_connection_fixture)
 {
     run_coro(ctx, [&]() { return overview_coro(conn); });
 }
