@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:queries Text queries]
+[section:text_queries Text queries and client-side SQL formatting]
 
 To run a text query, use any of the following functions, passing a string-like
 object (convertible to [reflink string_view]) containing valid SQL as the first parameter:
