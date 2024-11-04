@@ -89,9 +89,10 @@ asio::awaitable<void> coro_main(
     // ssl::context::set_default_verify_paths() instead of this function.
     ssl_ctx.add_certificate_authority(asio::buffer(CA_PEM));
 
-    // We expect the server certificate's common name to be equal to the configured hostname.
+    // We expect the server certificate's common name to be "mysql".
     // If it's not, the certificate will be rejected and handshake or connect will fail.
-    ssl_ctx.set_verify_callback(asio::ssl::host_name_verification(std::string(server_hostname)));
+    // Replace "mysql" by the common name you expect.
+    ssl_ctx.set_verify_callback(asio::ssl::host_name_verification("mysql"));
 
     // Create a connection.
     // We pass the context as the second argument to the connection's constructor.
