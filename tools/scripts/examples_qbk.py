@@ -212,7 +212,7 @@ def main():
 
     # Write to output file
     _replace_imports(import_contents)
-    _write_file(['doc', 'qbk', '25_examples.qbk'], example_contents)
+    _write_file(['doc', 'qbk', '21_examples.qbk'], example_contents)
     
 
 if __name__ == '__main__':

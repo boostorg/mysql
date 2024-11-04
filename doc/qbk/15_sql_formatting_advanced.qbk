@@ -9,7 +9,7 @@
 [nochunk]
 
 
-[section Formatting queries without executing them]
+[section:expand Formatting queries without executing them]
 
 `with_params` is handy, but may fall short in some cases involving queries with
 complex logic. For these cases, you can use [reflink format_sql] and

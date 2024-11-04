@@ -174,7 +174,7 @@ during pool construction, as members of [reflink pool_params]:
 
 
 
-[section UNIX sockets]
+[section:unix UNIX sockets]
 
 [refmem connect_params server_address] is an [reflink any_address],
 a variant-like type that can hold a (hostname, port) pair or a UNIX socket path.
