@@ -84,6 +84,7 @@ std::string compose_select_query(
 
 }  // namespace
 
+inline namespace sql_formatting {
 //[sql_formatting_formatter_specialization
 // We want to add formatting support for employee
 struct employee
@@ -92,6 +93,9 @@ struct employee
     std::string last_name;
     std::string company_id;
 };
+//<-
+}  // namespace sql_formatting
+//->
 
 namespace boost {
 namespace mysql {
