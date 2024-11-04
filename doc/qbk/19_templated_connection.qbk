@@ -14,8 +14,7 @@ You may encounter code using [reflink connection] or its aliases,
 main way to create client connections until Boost 1.87, when
 [reflink any_connection] became stable.
 
-Current status: `connection` and aliases are still maintained
-(not deprecated), but we don't recommend using them in new code.
+`connection` is not deprecated, but we don't recommend using it in new code.
 [reflink any_connection] is simpler to use and provides the same
 level of efficiency.
 
@@ -23,10 +22,11 @@ level of efficiency.
 
 [heading Streams and type aliases]
 
-[reflink connection] is templated on the [reflink Stream] class.
-That is, the transport can be configured. 
+[reflink connection] is templated on the [reflink Stream] class,
+which implements the transport layer to read and write bytes
+from the wire.
 
-This library provides helper type aliases for the most common cases:
+The library provides helper type aliases for the most common cases:
 
 [table
     [
@@ -70,17 +70,15 @@ The same three transports above can be used with `any_connection`.
 For a [reflink tcp_ssl_connection], we need to pass an execution context and
 a __ssl_context__:
 
-[overview_connection] TODO: adapt
+[templated_connection_creation]
 
-In contrast, when using [reflink any_connection], passing a
-__ssl_context__ is not mandatory.
-One will be created for you if you didn't pass one and the connection
-uses TLS.
 
 
 
 
 [heading Connection establishment and termination]
+
+When using TCP, 
 
 * connection does not know about name resolution. You need
   to perform this yourself.
