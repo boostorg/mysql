@@ -6,6 +6,8 @@
 //
 
 #include <boost/asio/awaitable.hpp>
+
+#include <functional>
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 //[example_batch_inserts
@@ -43,7 +45,6 @@
 
 #include <fstream>
 #include <iostream>
-#include <span>
 #include <string>
 
 namespace asio = boost::asio;
@@ -87,7 +88,7 @@ asio::awaitable<void> coro_main(
     std::string_view server_hostname,
     std::string_view username,
     std::string_view password,
-    std::span<const employee> employees
+    const std::vector<employee>& employees
 )
 {
     // Create a connection.
@@ -131,7 +132,7 @@ asio::awaitable<void> coro_main(
     co_await conn.async_execute(
         mysql::with_params(
             "INSERT INTO employee (first_name, last_name, company_id, salary) VALUES {}",
-            mysql::sequence(employees, format_employee_fn)
+            mysql::sequence(std::ref(employees), format_employee_fn)
         ),
         result
     );

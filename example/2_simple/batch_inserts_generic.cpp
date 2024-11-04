@@ -49,7 +49,6 @@
 #include <cstddef>
 #include <fstream>
 #include <iostream>
-#include <span>
 #include <string>
 #include <string_view>
 
@@ -135,7 +134,7 @@ asio::awaitable<void> coro_main(
     std::string_view server_hostname,
     std::string_view username,
     std::string_view password,
-    std::span<const employee> employees
+    const std::vector<employee>& employees
 )
 {
     // Create a connection.
@@ -159,7 +158,7 @@ asio::awaitable<void> coro_main(
         mysql::with_params(
             "INSERT INTO employee ({::i}) VALUES {}",
             get_field_names<employee>(),
-            mysql::sequence(employees, insert_struct_format_fn())
+            mysql::sequence(std::ref(employees), insert_struct_format_fn())
         ),
         result
     );
