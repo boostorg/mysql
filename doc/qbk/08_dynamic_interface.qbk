@@ -196,8 +196,8 @@ Every MySQL type is mapped to a single C++ type. The following table shows these
 ]
 
 No character set conversion is applied on strings. They are provided
-as the server sends them. If you've issued a `"SET NAMES <charset-name>"` statement,
-strings will be encoded according to `<charset-name>`. For details, see [link mysql.charsets this section].
+as the server sends them. If you've run [refmemunq any_connection async_set_character_set],
+strings will be encoded according to the passed character set. For details, see [link mysql.charsets this section].
 
 [heading The field class]
 
