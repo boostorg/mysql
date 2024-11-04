@@ -136,4 +136,6 @@ Note that statements like `DELIMITER` [*do not work] using this feature. This is
 
 You can also use the static interface with multi-queries. It works the same as with stored procedures.
 
+TODO: expand this.
+
 [endsect]
