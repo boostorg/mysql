@@ -49,6 +49,7 @@
 #include <cstddef>
 #include <fstream>
 #include <iostream>
+#include <span>
 #include <string>
 #include <string_view>
 
