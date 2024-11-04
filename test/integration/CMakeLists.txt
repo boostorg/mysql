@@ -43,7 +43,6 @@ add_executable(
     test/snippets/metadata.cpp
     test/snippets/charsets.cpp
     test/snippets/time_types.cpp
-    test/snippets/any_connection.cpp
     test/snippets/connection_pool.cpp
     test/snippets/sql_formatting.cpp
     test/snippets/sql_formatting_custom.cpp

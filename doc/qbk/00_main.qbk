@@ -192,7 +192,6 @@ END
 [include 12_async.qbk]
 [include 15_error_handling.qbk]
 [include 16_connparams.qbk]
-[include 17_reconnecting.qbk]
 [include 18_charsets.qbk]
 [include 19_time_types.qbk]
 [include 21_connection_pool.qbk]
