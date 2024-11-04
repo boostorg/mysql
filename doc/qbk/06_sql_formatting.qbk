@@ -5,21 +5,33 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:sql_formatting Client-side SQL query formatting]
+[section:sql_formatting Text queries and client-side SQL formatting]
 [nochunk]
 
-Client-side SQL formatting allows running SQL queries with user-supplied parameters securely.
+['Text queries] are those that use MySQL text protocol for execution.
+Plain strings and [reflink with_params] use this protocol.
+This contrasts with [link mysql.prepared_statements prepared statements],
+which are first prepared and then executed separately, and use a binary protocol.
+
+[warning
+    [*Never compose SQL queries using raw string concatenation].
+    This is insecure and can lead to [*SQL injection vulnerabilities].
+    Use the client-side SQL formatting facilities explained in this section
+    to avoid vulnerabilities.
+]
+
+Using text queries you can run
+[link mysql.multi_resultset.multi_queries multiple semicolon-separated queries],
+which can improve efficiency.
+
+
+[section Using with_params for simple queries]
+
+[reflink with_params] is the easiest way to use client-side SQL formatting.
 It can be used as a simpler and more flexible alternative to prepared statements.
 While prepared statements expand queries server-side, SQL formatting does it client-side.
 Please read the [link mysql.sql_formatting.comparison comparison with prepared statements]
 and the [link mysql.sql_formatting.security security considerations] sections for more info.
-
-
-
-
-
-
-[heading Simple queries]
 
 [reflink with_params] takes a SQL query
 string with placeholders and a set of parameters. When passed to
@@ -61,12 +73,14 @@ Like `std::format`, you can use arguments with explicit indices:
 See [link mysql.sql_formatting_advanced.format_string_syntax this section]
 for a reference on the format string syntax.
 
+[endsect]
 
 
 
 
 
-[heading:errors Common errors and how to fix them]
+
+[section:errors Common errors and how to fix them]
 
 Not all values can be formatted. If the library finds that formatting a certain
 value can cause an ambiguity that could lead to a security problem, an error
@@ -96,96 +110,12 @@ For example:
 
 [sql_formatting_invalid_encoding]
 
-
-
-
-[heading Formatting queries without executing them]
-
-`with_params` is handy, but may fall short in some cases involving queries with
-complex logic. For these cases, you can use [reflink format_sql] and
-[reflink format_sql_to] to expand a query without executing it.
-These APIs don't involve communication with the server.
-
-[reflink format_sql] is the simplest, and is akin to `std::format`:
-
-[sql_formatting_format_sql]
-
-`format_sql` requires a [reflink format_options] instance describing
-connection configuration, like the character set currently in use.
-[refmem any_connection format_opts] provides an easy way to retrieve these.
-[link mysql.sql_formatting_advanced.format_options This section] contains more info about `format_opts`.
-
-Some use cases, usually involving conditionals, may not be
-expressible in terms of a single format string. In such cases, you can
-use [reflink format_context] and [reflink format_sql_to] to
-build query strings incrementally:
-
-[sql_formatting_incremental_fn]
-[sql_formatting_incremental_use]
-
-[reflink sequence] uses this feature to make formatting ranges easier.
-
-Any type that works with `with_params` also does with `format_sql`
-and `format_sql_to`. These types are said to satisfy the [reflink Formattable] concept.
-[link mysql.sql_formatting.reference This table] summarizes such types.
+[endsect]
 
 
 
 
-
-
-
-
-
-
-
-
-
-[heading:ranges Formatting ranges with sequence]
-
-The [reflink sequence] function can be used when the default range formatting isn't sufficient.
-If the elements in your range are not formattable, you can pass a user-defined function to `sequence`
-describing how to format each element:
-
-[sql_formatting_sequence_1]
-
-By default, elements are separated by commas, but this is configurable:
-
-[sql_formatting_sequence_2]
-
-You can use `sequence` and [reflink with_params] together.
-
-By default, `sequence` copies the range you pass as parameter,
-making it safer for async code. 
-You can use `std::reference_wrapper` or `std::span` to avoid such copies.
-
-
-
-
-
-
-
-[heading Format specifiers]
-
-Some types, like strings, can be formatted in multiple ways. As with
-`std::format`, you can select how to format them using format specifiers.
-
-As we've seen, strings are formatted as single-quoted values by default.
-If you use the `{:i}` specifier, you can obtain dynamic SQL identifiers, instead:
-
-[sql_formatting_specifiers]
-
-Specifiers are compatible with explicit indices and named arguments, too.
-This is equivalent to the previous snippet:
-
-[sql_formatting_specifiers_explicit_indices]
-
-
-
-
-
-
-[heading:comparison Prepared statements vs. client-side SQL formatting]
+[section:comparison Prepared statements vs. client-side SQL formatting]
 
 Although both serve a similar purpose, they are fundamentally different. Prepared statements
 are parsed and expanded by the server. Client-side SQL expands the query in the client
@@ -250,8 +180,6 @@ Both client-side SQL formatting and prepared statements have pros and cons effic
 
 
 
-
-
 [heading:security Security considerations]
 
 Both client-side SQL formatting and prepared statements [*protect against SQL injection].
@@ -287,227 +215,6 @@ To sum up:
       Use [refmem any_connection format_opts], instead.
 
 
-
-
-
-
-
-
-
-
-
-
-[heading:reference Types with built-in support for SQL formatting]
-
-[table
-    [
-        [C++ type]
-        [Formatted as...]
-        [Example]
-    ]
-    [
-        [`signed char`, `short`, `int`, `long`, `long long`]
-        [
-            Integral literal[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_signed]
-        ]
-    ]
-    [
-        [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
-        [
-            Integral literal[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_unsigned]
-        ]
-    ]
-    [
-        [`bool`]
-        [
-            Integral literal `1` if `true`, `0` if `false`[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_bool]
-        ]
-    ]
-    [
-        [
-            String types (convertible to [reflink string_view]), including:[br][br]
-            `std::string`[br][br]
-            [reflink string_view][br][br]
-            `std::string_view`[br][br]
-            `const char*`[br][br]
-        ]
-        [
-            Without format specifiers: single-quoted escaped string literal. Note that `LIKE` special characters (`%` and `_`) are not escaped.[br][br]
-            [*`i`] format specifier: backtick-quoted, escaped SQL identifier.[br][br]
-            [*`r`] format specifier: raw, unescaped SQL. [*Warning]: use this specifier with caution.
-        ]
-        [
-            [sql_formatting_reference_string]
-        ]
-    ]
-    [
-        [
-            Blob types (convertible to `span<const unsigned char>`), including:[br][br]
-            [reflink blob] (`std::vector<unsigned char>`)[br][br]
-            [reflink blob_view] (`span<const unsigned char>`)[br][br]
-            `std::array<unsigned char, N>`
-        ]
-        [
-            Hex string literal[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_blob]
-        ]
-    ]
-    [
-        [`float`, except NaN and inf]
-        [
-            Floating-point literal, after casting to `double.`[br]
-            MySQL does not support NaNs and infinities. Attempting to format
-            these cause a `client_errc::unformattable_value` error.[br]
-            No format specifiers allowed.
-        ]
-        [
-            [sql_formatting_reference_float]
-        ]
-    ]
-    [
-        [`double`, except NaN and inf]
-        [
-            Floating-point literal.[br]
-            MySQL does not support NaNs and infinities. Attempting to format
-            these cause a `client_errc::unformattable_value` error.[br]
-            No format specifiers allowed.
-        ]
-        [
-            [sql_formatting_reference_double]
-        ]
-    ]
-    [
-        [[reflink date]]
-        [
-            Single quoted, `DATE`-compatible string literal[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_date]
-        ]
-    ]
-    [
-        [[reflink datetime]]
-        [
-            Single quoted `DATETIME`-compatible string literal[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_datetime]
-        ]
-    ]
-    [
-        [[reflink time] and `std::chrono::duration` types convertible to [reflink time]]
-        [
-            Single quoted `TIME`-compatible string literal[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_time]
-        ]
-    ]
-    [
-        [`std::nullptr_t`]
-        [
-            `NULL`[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_nullptr]
-        ]
-    ]
-    [
-        [
-            `boost::optional<T>` and `std::optional<T>`, `T` being one of the fundamental types above.[br]
-            Not applicable to custom types or ranges.[br]
-            No format specifiers allowed
-        ]
-        [
-            Formats the underlying value if there is any.[br]
-            `NULL` otherwise.[br]
-        ]
-        [
-            [sql_formatting_reference_optional]
-        ]
-    ]
-    [
-        [[reflink field] and [reflink field_view]]
-        [
-            Formats the underlying value.[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_field]
-        ]
-    ]
-    [
-        [
-            Range of formattable elements. Informally, such ranges support
-            `std::begin()` and `std::end()`, and its iterator `operator*`
-            must yield one of the following:
-
-                * A [reflink2 WritableFieldTuple WritableField] (i.e. one of the fundamental types above).
-                * A type with a custom formatter.
-
-            Ranges of ranges are not supported.
-            Note that `vector<unsigned char>` and similar types are formatted as blobs, not as sequences.
-            
-            See [reflink2 Formattable the Formattable concept reference] for a formal definition.
-        ]
-        [
-            Formats each element in the range, separating elements with commas.[br]
-            Specifiers can be applied to individual elements by prefixing them with a colon (`:`)
-        ]
-        [
-            [sql_formatting_reference_ranges]
-        ]
-    ]
-    [
-        [
-            [reflink format_sequence] (as returned by [reflink sequence])
-        ]
-        [
-            Formats each element in a range by calling a user-supplied function,
-            separating elements by a glue string (a comma by default).[br]
-            No format specifiers allowed
-        ]
-        [
-            [sql_formatting_reference_sequence]
-        ]
-    ]
-    [
-        [Custom type that specializes [reflink formatter]]
-        [
-            Calls `formatter::parse` and `formatter::format`[br]
-            May accept user-defined format specifiers.
-        ]
-        []
-    ]
-    [
-        [[reflink formattable_ref]]
-        [
-            Formats the underlying value. Can represent any of the types above.[br]
-            Accepts the same format specifiers as the underlying type.
-        ]
-        [
-            [sql_formatting_reference_formattable_ref]
-        ]
-    ]
-]
+[endsect]
 
 [endsect]
