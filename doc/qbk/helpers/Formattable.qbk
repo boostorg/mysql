@@ -25,6 +25,7 @@ Formally, let `T` be any type, and `U` the result of stripping cv-qualifiers and
         formatted as a blob, not as a sequence).
 * `U` is [reflink formattable_ref].
 
-For a reference table on built-in formattable types, see [link mysql.sql_formatting.reference this section].
+For a reference table on built-in formattable types, see
+[link mysql.sql_formatting_advanced.reference this section].
 
 [endsect]

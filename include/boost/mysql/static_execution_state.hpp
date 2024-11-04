@@ -160,6 +160,9 @@ public:
 
     /**
      * \brief Returns the number of rows affected by the SQL statement associated to this resultset.
+     * Note that this is NOT the number of matched rows. If a row
+     * is matched but not affected, it won't be accounted for here.
+     *
      * \par Exception safety
      * No-throw guarantee.
      *

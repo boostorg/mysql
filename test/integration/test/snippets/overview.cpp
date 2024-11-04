@@ -5,144 +5,142 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/handshake_params.hpp>
+#include <boost/asio/awaitable.hpp>
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+
+#include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/pfr.hpp>
+#include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_results.hpp>
-#include <boost/mysql/tcp_ssl.hpp>
-#include <boost/mysql/throw_on_error.hpp>
+#include <boost/mysql/with_params.hpp>
 
-#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/detached.hpp>
+#include <boost/asio/experimental/cancellation_condition.hpp>
+#include <boost/asio/experimental/parallel_group.hpp>
 #include <boost/asio/io_context.hpp>
-#include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/spawn.hpp>
-#include <boost/asio/ssl/context.hpp>
-#include <boost/asio/use_awaitable.hpp>
-#include <boost/config.hpp>
+#include <boost/asio/redirect_error.hpp>
+#include <boost/asio/this_coro.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <cstdint>
 #include <string>
 
 #include "test_common/ci_server.hpp"
+#include "test_integration/any_connection_fixture.hpp"
 #include "test_integration/run_coro.hpp"
 #include "test_integration/snippets/credentials.hpp"
-#include "test_integration/snippets/describe.hpp"
-#include "test_integration/snippets/get_any_connection.hpp"
-#include "test_integration/snippets/get_connection.hpp"
 
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-#include <boost/asio/experimental/awaitable_operators.hpp>
-#endif
-
-using namespace boost::mysql;
+namespace mysql = boost::mysql;
+namespace asio = boost::asio;
 using namespace boost::mysql::test;
 
 // Defined outside the namespace to prevent unused warnings
-#if defined(BOOST_ASIO_HAS_CO_AWAIT) && !defined(BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT)
-boost::asio::awaitable<void> dont_run()
+#if !defined(BOOST_ASIO_USE_TS_EXECUTOR_AS_DEFAULT)
+asio::awaitable<void> dont_run(mysql::any_connection& conn)
 {
-    using namespace boost::asio::experimental::awaitable_operators;
-
-    // Setup
-    auto& conn = get_connection();
-
     //[overview_async_dont
     // Coroutine body
     // DO NOT DO THIS!!!!
-    results result1, result2;
-    co_await (
-        conn.async_execute("SELECT 1", result1, boost::asio::use_awaitable) &&
-        conn.async_execute("SELECT 2", result2, boost::asio::use_awaitable)
-    );
+    mysql::results result1, result2;
+    co_await asio::experimental::make_parallel_group(
+        conn.async_execute("SELECT 1", result1, asio::deferred),
+        conn.async_execute("SELECT 2", result2, asio::deferred)
+    )
+        .async_wait(asio::experimental::wait_for_all(), asio::deferred);
     //]
 }
 #endif
 
+inline namespace overview {
+//[overview_static_struct
+// This must be placed at namespace scope.
+// Should contain a member for each field of interest present in our query.
+// Declaration order doesn't need to match field order in the query.
+// Field names should match the ones in our query
+struct employee
+{
+    std::int64_t id;
+    std::string first_name;
+    std::string last_name;
+};
+//]
+}  // namespace overview
+
 namespace {
 
-const char* get_value_from_user() { return ""; }
-
-BOOST_AUTO_TEST_CASE(section_overview)
+asio::awaitable<void> overview_coro(mysql::any_connection& conn)
 {
-    //[overview_connection
-    // The execution context, required to run I/O operations.
-    boost::asio::io_context ctx;
-
-    // The SSL context, required to establish TLS connections.
-    // The default SSL options are good enough for us at this point.
-    boost::asio::ssl::context ssl_ctx(boost::asio::ssl::context::tls_client);
-
-    // Represents a connection to the MySQL server.
-    boost::mysql::tcp_ssl_connection conn(ctx.get_executor(), ssl_ctx);
-    //]
-
-    //[overview_connect
-    // Obtain the hostname to connect to - replace get_hostname by your code
     std::string server_hostname = get_hostname();
+    int employee_id = 1;
+    const char* new_name = "John";
 
-    // Resolve the hostname to get a collection of endpoints
-    boost::asio::ip::tcp::resolver resolver(ctx.get_executor());
-    auto endpoints = resolver.resolve(server_hostname, boost::mysql::default_port_string);
-
-    // The username and password to use
-    boost::mysql::handshake_params params(
-        mysql_username,         // username, as a string
-        mysql_password,         // password, as a string - don't hardcode this into your code!
-        "boost_mysql_examples"  // database to use
-    );
-
-    // Connect to the server using the first endpoint returned by the resolver
-    conn.connect(*endpoints.begin(), params);
-    //]
+    auto& ctx = static_cast<asio::io_context&>((co_await asio::this_coro::executor).context());
 
     {
-        //[overview_query_use_case
-        results result;
-        conn.execute("START TRANSACTION", result);
+        //[overview_connect
+        // The hostname, username, password and database to use.
+        mysql::connect_params params;
+        params.server_address.emplace_host_and_port(server_hostname);  // hostname
+        params.username = mysql_username;
+        params.password = mysql_password;
+        params.database = "boost_mysql_examples";
+
+        // Connect to the server
+        co_await conn.async_connect(params);
         //]
     }
     {
-        //[overview_statement_use_case
-        statement stmt = conn.prepare_statement(
-            "SELECT first_name FROM employee WHERE company_id = ? AND salary > ?"
+        //[overview_text_query
+        // Executes 'SELECT 1' and reads the resulting rows into memory
+        mysql::results result;
+        co_await conn.async_execute("SELECT 1", result);
+        //]
+    }
+
+    {
+        //[overview_with_params
+        // If employee_id is 42, executes 'SELECT first_name FROM employee WHERE id = 42'
+        mysql::results result;
+        co_await conn.async_execute(
+            mysql::with_params("SELECT first_name FROM employee WHERE id = {}", employee_id),
+            result
+        );
+        //]
+    }
+
+    {
+        //[overview_statement
+        // First prepare the statement. Parsing happens server-side.
+        mysql::statement stmt = co_await conn.async_prepare_statement(
+            "SELECT first_name FROM employee WHERE company_id = ?"
         );
 
-        results result;
-        conn.execute(stmt.bind("HGS", 30000), result);
+        // Now execute it. Parameter substitution happens server-side.
+        mysql::results result;
+        co_await conn.async_execute(stmt.bind(employee_id), result);
         //]
-    }
-    {
-        //[overview_ifaces_table
-        const char* table_definition = R"%(
-            CREATE TEMPORARY TABLE posts (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR (256) NOT NULL,
-                body TEXT NOT NULL
-            )
-        )%";
-        //]
-
-        results result;
-        conn.execute(table_definition, result);
     }
     {
         //[overview_ifaces_dynamic
-        // Passing a results object to connection::execute selects the dynamic interface
-        results result;
-        conn.execute("SELECT id, title, body FROM posts", result);
+        // Passing a results to async_execute selects the dynamic interface
+        mysql::results result;
+        co_await conn.async_execute("SELECT id, first_name, last_name FROM employee", result);
 
-        // Every row is a collection of fields, which are variant-like objects
+        // Every employee is a collection of fields, which are variant-like objects
         // that represent data. We use as_string() to cast them to the appropriate type
-        for (row_view post : result.rows())
+        for (mysql::row_view emp : result.rows())
         {
-            std::cout << "Title: " << post.at(1).as_string() << "Body: " << post.at(2).as_string()
+            std::cout << "First name: " << emp.at(1).as_string() << ", last name: " << emp.at(2).as_string()
                       << std::endl;
         }
         //]
     }
-#ifdef BOOST_MYSQL_CXX14
+#if BOOST_PFR_CORE_NAME_ENABLED
     {
         // The struct definition is included above this
         //[overview_ifaces_static
@@ -150,62 +148,36 @@ BOOST_AUTO_TEST_CASE(section_overview)
         // This must be placed inside your function or method:
         //
 
-        // Passing a static_results to execute() selects the static interface
-        static_results<post> result;
-        conn.execute("SELECT id, title, body FROM posts", result);
+        // Passing a static_results to async_execute selects the static interface
+        mysql::static_results<mysql::pfr_by_name<employee>> result;
+        co_await conn.async_execute("SELECT id, first_name, last_name FROM employee", result);
 
         // Query results are parsed directly into your own type
-        for (const post& p : result.rows())
+        for (const employee& emp : result.rows())
         {
-            std::cout << "Title: " << p.title << "Body: " << p.body << std::endl;
+            std::cout << "First name: " << emp.first_name << ", last name: " << emp.last_name << std::endl;
         }
         //]
     }
 #endif
-
     {
-        //[overview_statements_setup
-        results result;
-        conn.execute(
-            R"%(
-                CREATE TEMPORARY TABLE products (
-                    id VARCHAR(50) PRIMARY KEY,
-                    description VARCHAR(256)
-                )
-            )%",
+        //[overview_update
+        mysql::results result;
+        co_await conn.async_execute(
+            mysql::with_params("UPDATE employee SET first_name = {} WHERE id = {}", new_name, employee_id),
             result
         );
-        conn.execute("INSERT INTO products VALUES ('PTT', 'Potatoes'), ('CAR', 'Carrots')", result);
         //]
     }
     {
-        //[overview_statements_prepare
-        statement stmt = conn.prepare_statement("SELECT description FROM products WHERE id = ?");
-        //]
-
-        //[overview_statements_execute
-        // Obtain the product_id from the user. product_id is untrusted input
-        const char* product_id = get_value_from_user();
-
-        // Execute the statement
-        results result;
-        conn.execute(stmt.bind(product_id), result);
-
-        // Use result as required
-        //]
-
-        conn.execute("DROP TABLE products", result);
-    }
-    {
-        //[overview_errors_sync_errc
-        error_code ec;
-        diagnostics diag;
-        results result;
+        //[overview_no_exceptions
+        mysql::error_code ec;
+        mysql::diagnostics diag;
+        mysql::results result;
 
         // The provided SQL is invalid. The server will return an error.
-        // ec will be set to a non-zero value
-        conn.execute("this is not SQL!", result, ec, diag);
-
+        // ec will be set to a non-zero value, and diag will be populated
+        co_await conn.async_execute("this is not SQL!", result, diag, asio::redirect_error(ec));
         if (ec)
         {
             // The error code will likely report a syntax error
@@ -217,126 +189,65 @@ BOOST_AUTO_TEST_CASE(section_overview)
             std::cout << "Server diagnostics: " << diag.server_message() << std::endl;
         }
         //]
-    }
-    {
-        //[overview_errors_sync_exc
-        try
-        {
-            // The provided SQL is invalid. This function will throw an exception.
-            results result;
-            conn.execute("this is not SQL!", result);
-        }
-        catch (const error_with_diagnostics& err)
-        {
-            // error_with_diagnostics contains an error_code and a diagnostics object.
-            // It inherits from boost::system::system_error.
-            std::cout << "Operation failed with error code: " << err.code() << '\n'
-                      << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
-        }
-        //]
-    }
-    {
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-        run_coro(ctx, [&conn]() -> boost::asio::awaitable<void> {
-            //[overview_async_coroutinescpp20
-            // Using this CompletionToken, you get C++20 coroutines that communicate
-            // errors with error_codes. This way, you can access the diagnostics object.
-            constexpr auto token = boost::asio::as_tuple(boost::asio::use_awaitable);
-
-            // Run our query as a coroutine
-            diagnostics diag;
-            results result;
-            auto [ec] = co_await conn.async_execute("SELECT 'Hello world!'", result, diag, token);
-
-            // This will throw an error_with_diagnostics in case of failure
-            boost::mysql::throw_on_error(ec, diag);
-            //]
-        });
-#endif
-    }
-    {
-        results r;
-        conn.execute("DROP TABLE IF EXISTS posts", r);
+        BOOST_TEST(ec != mysql::error_code());
     }
     {
         //[overview_multifn
-        // Create the table and some sample data
-        // In a real system, body may be megabytes long.
-        results result;
-        conn.execute(
-            R"%(
-                CREATE TEMPORARY TABLE posts (
-                    id INT PRIMARY KEY AUTO_INCREMENT,
-                    title VARCHAR (256),
-                    body TEXT
-                )
-            )%",
-            result
-        );
-        conn.execute(
-            R"%(
-                INSERT INTO posts (title, body) VALUES
-                    ('Post 1', 'A very long post body'),
-                    ('Post 2', 'An even longer post body')
-            )%",
-            result
-        );
-
         // execution_state stores state about our operation, and must be passed to all functions
-        execution_state st;
+        mysql::execution_state st;
 
         // Writes the query request and reads the server response, but not the rows
-        conn.start_execution("SELECT title, body FROM posts", st);
+        co_await conn.async_start_execution("SELECT first_name, last_name FROM employee", st);
 
         // Reads all the returned rows, in batches.
-        // st.complete() returns true once there are no more rows to read
-        while (!st.complete())
+        // st.should_read_rows() returns false once there are no more rows to read
+        while (st.should_read_rows())
         {
             // row_batch will be valid until conn performs the next network operation
-            rows_view row_batch = conn.read_some_rows(st);
+            mysql::rows_view row_batch = co_await conn.async_read_some_rows(st);
 
-            for (row_view post : row_batch)
+            for (mysql::row_view emp : row_batch)
             {
-                // Process post as required
-                std::cout << "Title:" << post.at(0) << std::endl;
+                // Process the employee as required
+                std::cout << "Name:" << emp.at(0) << " " << emp.at(1) << std::endl;
             }
         }
         //]
+    }
+    {
+        //[overview_pool_create
+        // pool_params contains configuration for the pool.
+        // You must specify enough information to establish a connection,
+        // including the server address and credentials.
+        // You can configure a lot of other things, like pool limits
+        mysql::pool_params params;
+        params.server_address.emplace_host_and_port(server_hostname);
+        params.username = mysql_username;
+        params.password = mysql_password;
+        params.database = "boost_mysql_examples";
 
-        conn.execute("DROP TABLE posts", result);
+        // Construct a pool of connections. The execution context will be used internally
+        // to create the connections and other I/O objects
+        mysql::connection_pool pool(ctx, std::move(params));
+
+        // You need to call async_run on the pool before doing anything useful with it.
+        // async_run creates connections and keeps them healthy. It must be called
+        // only once per pool.
+        // The detached completion token means that we don't want to be notified when
+        // the operation ends. It's similar to a no-op callback.
+        pool.async_run(asio::detached);
+        //]
+
+        // If we don't use the pool, we may leave unfinished work in the context
+        co_await pool.async_get_connection();
     }
 }
 
-// The async section is small enough to just be here
-BOOST_AUTO_TEST_CASE(section_async)
+BOOST_FIXTURE_TEST_CASE(section_overview, any_connection_fixture)
 {
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-    auto& conn = get_any_connection();
-    auto& ctx = static_cast<boost::asio::io_context&>(conn.get_executor().context());
-    results result;
-
-    run_coro(ctx, [&]() -> boost::asio::awaitable<void> {
-        //[async_with_diagnostics_cpp20
-        // C++20. Will throw error_with_diagnostics on error
-        co_await conn.async_execute("SELECT 1", result, with_diagnostics(boost::asio::deferred));
-
-        // If you're using any_connection, with_diagnostics(asio::deferred) is the default token,
-        // so you can just write:
-        co_await conn.async_execute("SELECT 1", result);
-        //]
-    });
-#endif
-}
-
-BOOST_ATTRIBUTE_UNUSED
-void section_async_cpp11(boost::asio::yield_context yield)
-{
-    auto& conn = get_connection();
-    results result;
-    //[async_with_diagnostics_cpp11
-    // C++11. Will throw error_with_diagnostics on error
-    conn.async_execute("SELECT 1", result, with_diagnostics(yield));
-    //]
+    run_coro(ctx, [&]() { return overview_coro(conn); });
 }
 
 }  // namespace
+
+#endif

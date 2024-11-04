@@ -9,7 +9,6 @@ cpp-pch pch
     :
         pch.hpp
         /boost/mysql/test//boost_mysql_test
-        /boost/mysql/test//boost_context_lib
     ;
 
 
@@ -17,7 +16,6 @@ run
         pch
         /boost/mysql/test//common_test_sources
         /boost/mysql/test//boost_mysql_test
-        /boost/mysql/test//boost_context_lib
         /boost/mysql/test//launch_with_valgrind
  
         # Utilities
@@ -44,7 +42,9 @@ run
         test/database_types.cpp
 
         # Snippets
+        test/snippets/tutorials.cpp
         test/snippets/overview.cpp
+        test/snippets/connection_establishment.cpp
         test/snippets/dynamic.cpp
         test/snippets/static.cpp
         test/snippets/prepared_statements.cpp
@@ -53,7 +53,6 @@ run
         test/snippets/metadata.cpp
         test/snippets/charsets.cpp
         test/snippets/time_types.cpp
-        test/snippets/any_connection.cpp
         test/snippets/connection_pool.cpp
         test/snippets/sql_formatting.cpp
         test/snippets/sql_formatting_custom.cpp

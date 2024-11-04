@@ -1,0 +1,229 @@
+[/
+    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:templated_connection The legacy connection class]
+[nochunk]
+
+You may encounter code using [reflink connection] or its aliases,
+[reflink tcp_connection], [reflink tcp_ssl_connection],
+[reflink unix_connection]. This was the
+main way to create client connections until Boost 1.87, when
+[reflink any_connection] became stable.
+
+`connection` is not deprecated, but we don't recommend using it in new code.
+[reflink any_connection] is simpler to use and provides the same
+level of efficiency.
+
+
+
+[heading Streams and type aliases]
+
+[reflink connection] is templated on the [reflink Stream] class,
+which implements the transport layer to read and write bytes
+from the wire.
+
+The library provides helper type aliases for the most common cases:
+
+[table
+    [
+        [Transport]
+        [Stream type]
+        [Type alias]
+    ]
+    [
+        [SSL over TCP]
+        [`boost::asio::ssl::stream<boost::asio::ip::tcp::socket>`]
+        [
+            [reflink tcp_ssl_connection]
+        ]
+    ]
+    [
+        [Plaintext TCP]
+        [`boost::asio::ip::tcp::socket`]
+        [
+            [reflink tcp_connection]
+        ]
+    ]
+    [
+        [UNIX sockets]
+        [`boost::asio::local::stream_protocol::socket`]
+        [
+            [reflink unix_connection]
+
+            Only available if `BOOST_ASIO_HAS_LOCAL_SOCKETS` is defined.
+        ]
+    ]
+]
+
+In contrast, [reflink any_connection] is not templated.
+The same three transports above can be used with `any_connection`.
+
+
+
+[heading Constructing a connection]
+
+`connection`'s constructor takes the same arguments as the underlying `Stream` constructor.
+For a [reflink tcp_ssl_connection], we need to pass an execution context and
+a __ssl_context__:
+
+[templated_connection_creation]
+
+
+
+
+
+[heading Connection establishment and termination]
+
+When using TCP, 
+
+* connection does not know about name resolution. You need
+  to perform this yourself.
+* Parameters are passed as two arguments to connect (see example)
+* handshake_params is used instead of connect_params.
+  handshake_params is non-owning and doesn't include the server address.
+* connection exposes handshake and quit. Using these, you can perform
+  transport-level connection establishment yourself, and then call
+  handshake. Same for quit. These are no longer exposed in any_connection,
+  since not exposing them allows for stronger guarantees.
+* Once a connection closes or suffers a cancellation, tcp_ssl_connection can't
+  be re-connected. It needs to be destroyed and created again.
+  any_connection::connect can always be called to re-connect a connection,
+  no matter what happened.
+* Explain SocketStream and Stream
+
+TODO: check that evth down here is above too
+[reflink any_connection] is a type-erased alternative to [reflink connection].
+It's easier to use and features more functionality than plain `connection`.
+
+When compared to [reflink connection], `any_connection`:
+
+* Is type-erased. The type of the connection doesn't depend on the transport being used.
+  Supported transports include plaintext TCP, TLS on top of TCP and UNIX domain sockets.
+* Is easier to connect. For example, when using TCP, connection establishment methods will
+  handle hostname resolution for you. This must be handled manually with `connection`.
+* Can always be reconnected after closing it or after encountering an error.
+  `connection` can't make this guarantee, especially when using TLS.
+* Doesn't allow to customize the internal `Stream` type. Doing this
+  allows supporting the point above.
+* Has `with_diagnostics(asio::deferred)` as default completion token,
+  which allows using `co_await` and getting exceptions with extra information.
+* Has equivalent performance.
+* Other than session establishment, it has the same API as `connection`.
+
+`any_connection` is expected to replace `connection` in the long run.
+
+
+[heading Using a connection]
+
+Other than that, connection and any_connection are used almost equivalently.
+They support the same APIs, like execute, prepare_statement, close_statement
+and reset_connection.
+
+Some newer APIs only present in any_connection, like set_character_set or pipeline.
+any_connection's default completion token is with_diagnostics(asio::deferred),
+allowing easier interoperability with coroutines.
+
+
+
+[heading Migrating to any_connection]
+
+If you're using tcp_connection, tcp_ssl_connection or unix_connection,
+we strongly recommend migrating to any_connection. You need to update
+your `connect`, to use `connect_params` (which probably simplifies your code).
+
+TODO: place this somewhere
+[heading SSL-enabled streams]
+
+To use SSL/TLS, you must use a [reflink connection] with a 
+[reflink Stream] that supports SSL. A SSL-enabled stream must inherit from
+[asioreflink ssl__stream_base ssl::stream_base]. This includes both
+[asioreflink ssl__stream ssl::stream] and `boost::beast::ssl_stream`.
+
+To make life easier, this library provides the type alias [reflink tcp_ssl_connection].
+
+Note that there is no need to use TLS when using UNIX sockets. As the traffic doesn't
+leave the machine, MySQL considers them secure, and will allow using authentication
+plugins like `caching_sha2_password` even if TLS is not used.
+
+
+[heading:non_sockets Streams that are not sockets]
+
+When the `Stream` template argument for your `connection` fulfills
+the __SocketStream__ type requirements, you can use the member functions
+[refmem connection connect] and [refmem connection close] to establish and finish
+connections with the MySQL server. If you are using any of the convenience type
+aliases (TCP or UNIX, either over TLS or not), then this is your case.
+
+If your stream type is not based on a socket, you can't use those convenience member
+functions. This would be the case if you are using Windows named pipes
+(i.e. [asioreflink windows__stream_handle windows::stream_handle]).
+Instead, to establish a connection, you should follow these two steps,
+roughly equivalent to what [refmem connection connect] does for sockets:
+
+* Connect the underlying stream. You can access it using
+  [refmem connection stream]. Use whatever connection establishment
+  mechanism the stream implements. If you are using TLS, you should *not*
+  perform the TLS handshake yourself, as the library will do it as part of the
+  MySQL handshake.
+* Perform the MySQL handshake by calling [refmem connection handshake]
+  or [refmem connection async_handshake]. If the handshake operation
+  fails, close the stream.
+  
+To clean up a connection, follow these two steps,
+roughly equivalent to [refmem connection close]:
+
+* Inform the MySQL server that you are quitting the connection
+  by calling [refmem connection quit] or [refmem connection async_quit].
+  This will also shutdown TLS, if it's being used. 
+* Close the underlying stream.
+
+
+[heading Reconnecting]
+
+TODO: review this
+
+
+After you close a connection or an error has occurred, and if its underlying [reflink Stream]
+supports it, you can re-open an existing connection. This is the case for
+[reflink tcp_connection] and [reflink unix_connection].
+
+[warning
+  Unfortunately, [asioreflink ssl__stream ssl::stream] does not support reconnection.
+  If you are using [reflink tcp_ssl_connection] and you close
+  the connection or encounter an error, you will have to destroy and re-create the connection object.
+]
+
+If you are using [reflink tcp_connection] or [reflink unix_connection], or any other stream supporting
+reconnection:
+
+* After calling [refmem connection close], you can re-open the connection later by calling
+  [refmem connection connect] normally, even if the close operation failed.
+* If your [refmem connection connect] operation failed, you can try opening it again
+  by simply calling [refmem connection connect] again.
+* If you connected your connection successfully but encountered a network problem in any subsequent operation,
+  and you would like to re-establish connection, you should first call [refmem connection close] first, and
+  then try opening the connection again by calling [refmem connection connect].
+
+If your `Stream` type doesn't fulfill the __SocketStream__ type requirements,
+then you can't use [refmem connection connect] or [refmem connection close], and you are thus
+responsible for establishing the physical connection
+and closing the underlying stream, if necessary. Some guidelines:
+
+* After calling [refmem connection quit], you should close the underlying stream, if required. 
+  You should then re-establish the physical connection on the stream, and call [refmem connection handshake] afterwards.
+* If your [refmem connection handshake] operation failed, you are responsible for closing the underlying stream if required.
+  You should then establish the physical connection again, and then call [refmem connection handshake].
+* If you connected your connection successfully but encountered a network problem in any subsequent operation,
+  and you would like to re-establish connection, you should call [refmem connection quit] first, then close and re-open
+  the physical connection, and finally call [refmem connection handshake].
+
+Note that __Self__ does not perform any built-in retry strategy, as different use cases have different requirements.
+You can implement it as you best like with these tools. If you implemented your own and you would like to contribute it,
+please create a PR in the GitHub repository.
+
+
+[endsect]
