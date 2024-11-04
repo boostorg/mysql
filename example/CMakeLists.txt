@@ -106,4 +106,5 @@ add_example(
         Boost::url
         Boost::beast
     PYTHON_RUNNER run_connection_pool.py
+    ARGS ${SERVER_HOST}
 )
