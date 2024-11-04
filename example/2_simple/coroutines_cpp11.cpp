@@ -76,7 +76,7 @@ void coro_main(
     mysql::results result;
     conn.async_execute(
         mysql::with_params(
-            "SELECT first_name, last_name, salary FROM employee WHERE company_id = ?",
+            "SELECT first_name, last_name, salary FROM employee WHERE company_id = {}",
             company_id
         ),
         result,
