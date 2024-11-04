@@ -40,6 +40,7 @@ Self-contained programs demonstrating more advanced concepts and techniques.
 * [link mysql.examples.batch_inserts_generic Generic batch inserts with Boost.Describe]
 * [link mysql.examples.dynamic_filters Queries with dynamic filters]
 * [link mysql.examples.patch_updates Dynamic UPDATE queries with PATCH-like semantics]
+* [link mysql.examples.source_script Sourcing a .sql file using multi-queries]
 * [link mysql.examples.pipeline (Experimental) Pipelines]
 
 [heading Advanced examples]
@@ -272,22 +273,22 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
-[section:pipeline (Experimental) Pipelines]
+[section:source_script Sourcing a .sql file using multi-queries]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[example_pipeline]
+[example_source_script]
 
 [endsect]
 
 
 
 
-[section:source_script Sourcing a .sql file using multi-queries]
+[section:pipeline (Experimental) Pipelines]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[example_source_script]
+[example_pipeline]
 
 [endsect]
 

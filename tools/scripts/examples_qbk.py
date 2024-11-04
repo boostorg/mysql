@@ -121,11 +121,11 @@ SIMPLE_EXAMPLES = [
     Example('batch_inserts_generic', '2_simple/batch_inserts_generic.cpp', 'Generic batch inserts with Boost.Describe'),
     Example('dynamic_filters', '2_simple/dynamic_filters.cpp', 'Queries with dynamic filters'),
     Example('patch_updates', '2_simple/patch_updates.cpp', 'Dynamic UPDATE queries with PATCH-like semantics'),
+    Example('source_script', '2_simple/source_script.cpp', 'Sourcing a .sql file using multi-queries'),
     Example('pipeline', '2_simple/pipeline.cpp', '(Experimental) Pipelines'),
 ]
 
 ADVANCED_EXAMPLES = [
-    Example('source_script', '3_advanced/source_script.cpp', 'Sourcing a .sql file using multi-queries'),
     MultiExample('connection_pool', [
         '3_advanced/connection_pool/main.cpp',
         '3_advanced/connection_pool/types.hpp',
@@ -138,10 +138,6 @@ ADVANCED_EXAMPLES = [
         '3_advanced/connection_pool/log_error.hpp',
     ], 'A REST API server that uses connection pooling')
 ]
-
-# [link mysql.examples.source_script Using multi-queries to source a .sql file]
-# [link mysql.examples.connection_pool A REST API server that uses connection pooling]
-# [@https://github.com/anarthal/servertech-chat The BoostServerTech chat project uses Boost.MySQL and Boost.Redis to implement a chat server] ]
 
 ALL_EXAMPLES = TUTORIALS + SIMPLE_EXAMPLES + ADVANCED_EXAMPLES
 
