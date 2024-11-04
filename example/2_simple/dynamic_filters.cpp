@@ -256,12 +256,11 @@ asio::awaitable<void> coro_main(const cmdline_args& args)
     mysql::any_connection conn(co_await asio::this_coro::executor);
 
     // The hostname, username, password and database to use
-    mysql::connect_params params{
-        .server_address = mysql::host_and_port(std::string(args.server_hostname)),
-        .username = std::string(args.username),
-        .password = std::string(args.password),
-        .database = "boost_mysql_examples"
-    };
+    mysql::connect_params params;
+    params.server_address.emplace_host_and_port(std::string(args.server_hostname));
+    params.username = args.username;
+    params.password = args.password;
+    params.database = "boost_mysql_examples";
 
     // Connect to the server
     co_await conn.async_connect(params);

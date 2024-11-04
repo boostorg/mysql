@@ -84,9 +84,9 @@ static std::string read_file(const char* file_name)
 
 // The main coroutine
 asio::awaitable<void> coro_main(
-    std::string server_hostname,
-    std::string username,
-    std::string password,
+    std::string_view server_hostname,
+    std::string_view username,
+    std::string_view password,
     std::span<const employee> employees
 )
 {
@@ -95,12 +95,11 @@ asio::awaitable<void> coro_main(
     mysql::any_connection conn(co_await asio::this_coro::executor);
 
     // The hostname, username, password and database to use
-    mysql::connect_params params{
-        .server_address = mysql::host_and_port(std::move(server_hostname)),
-        .username = std::move(username),
-        .password = std::move(password),
-        .database = "boost_mysql_examples"
-    };
+    mysql::connect_params params;
+    params.server_address.emplace_host_and_port(std::string(server_hostname));
+    params.username = username;
+    params.password = password;
+    params.database = "boost_mysql_examples";
 
     // Connect to the server
     co_await conn.async_connect(params);
