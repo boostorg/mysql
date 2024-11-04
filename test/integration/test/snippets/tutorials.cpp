@@ -27,7 +27,7 @@ BOOST_FIXTURE_TEST_CASE(section_tutorials, snippets_fixture)
 {
     {
         mysql::results result;
-        conn.execute("SELECT first_name, last_name FROM employee WHERE id = 0", result);
+        conn.execute("SELECT first_name, last_name FROM employee WHERE id = 1", result);
 
         //[tutorial_static_casts
         mysql::row_view employee = result.rows().at(0);

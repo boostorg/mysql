@@ -147,7 +147,7 @@ asio::awaitable<void> overview_coro(mysql::any_connection& conn)
 
         // Passing a static_results to async_execute selects the static interface
         mysql::static_results<mysql::pfr_by_name<employee>> result;
-        co_await conn.async_execute("SELECT id, title, body FROM posts", result);
+        co_await conn.async_execute("SELECT id, first_name, last_name FROM employee", result);
 
         // Query results are parsed directly into your own type
         for (const employee& emp : result.rows())
