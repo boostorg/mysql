@@ -270,20 +270,23 @@ cleanly when possible.
 
 
 
-[section Reconnection]
+[section Reconnection and long-lived connections]
 
-[reflink any_connection] can always be reconnected. [refmem any_connection connect]
-and [refmem any_connection async_connect] will wipe any previous connection state.
-This works even if an error or a timeout occurred, as opposed to `connection`.
+[reflink any_connection] doesn't perform any re-connection on its own.
+If a fatal error (like a network error) is encountered during an operation,
+you need to re-establish the connection explicitly.
 
-For instance, the following can be used to implement retries for connection establishment:
+By design, [refmem any_connection async_connect] can [*always be used]
+to re-establish connections. It works even after the connection encountered
+a network error or a cancellation. To achieve this, `async_connect`
+will wipe any previous connection state before proceeding.
 
-[any_connection_reconnect]
+If you need reliable, long-lived connections, consider
+[link mysql.connection_pool using a connection pool]
+instead of rolling out your own strategy. `connection_pool`
+takes care of re-connecting and re-using connections for you. 
 
-Likewise, if you encounter a fatal error (like a network error), just call `connect` or `async_connect`.
-
-If you need reliable, long-lived connections, consider [link mysql.connection_pool using a connection pool]
-instead of rolling out your own strategy.
+TODO: should we talk about is_fatal_error? Move to error_handling?
 
 [endsect]
 
