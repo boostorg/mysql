@@ -5,14 +5,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/character_set.hpp>
+
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cassert>
 #include <cstddef>
-
-using namespace boost::mysql;
-using namespace boost::mysql::test;
 
 namespace {
 
