@@ -221,6 +221,34 @@ in [link mysql.multi_function.read_some_rows this section].
 
 
 
+
+[section Enabling multi-queries]
+
+You can run several several semicolon-separated queries at once using
+[refmem any_connection async_execute]. This is a protocol feature that
+is disabled by default. You can enable it by setting
+[refmem connect_params multi_queries] to true before connecting:
+
+[section_connection_establishment_multi_queries]
+
+Semicolon-separated queries are useful in a number of cases, like when using transactions:
+
+[section_connection_establishment_multi_queries_execute]
+
+This protocol feature is disabled by default as a security hardening
+measure. If your application contains a SQL injection vulnerability,
+this feature can make exploiting it easier. Applications that don't
+need this feature should leave it off as a best practice.
+
+[note
+  Using multi-queries correctly is secure. Just make sure to use
+  the adequate client-side SQL formatting tools to generate queries securely.
+]
+
+[endsect]
+
+
+
 [heading Connection encoding and collation]
 
 When establishing a connection, you specify a numeric collation ID

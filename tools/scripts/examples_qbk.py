@@ -109,7 +109,7 @@ TUTORIALS = [
 SIMPLE_EXAMPLES = [
     Example('prepared_statements', '2_simple/prepared_statements.cpp', 'Prepared statements'),
     Example('timeouts', '2_simple/timeouts.cpp', 'Setting timeouts to operations'),
-    Example('transactions', '2_simple/transactions.cpp', 'Using transactions'),
+    Example('multi_queries_transactions', '2_simple/multi_queries_transactions.cpp', 'Using multi-queries and transactions'),
     Example('disable_tls', '2_simple/disable_tls.cpp', 'Disabling TLS for a connection'),
     Example('tls_certificate_verification', '2_simple/tls_certificate_verification.cpp', 'Setting TLS options: enabling TLS certificate verification'),
     Example('metadata', '2_simple/metadata.cpp', 'Metadata'),

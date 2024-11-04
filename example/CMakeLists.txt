@@ -87,7 +87,7 @@ add_simple_example(prepared_statements          ARGS ${REGULAR_ARGS} "HGS")
 add_simple_example(timeouts                     ARGS ${REGULAR_ARGS} "HGS")
 add_simple_example(pipeline                     ARGS ${REGULAR_ARGS} "HGS")
 add_simple_example(multi_function               ARGS ${REGULAR_ARGS})
-add_simple_example(transactions                 ARGS ${REGULAR_ARGS} 1 1)
+add_simple_example(multi_queries_transactions   ARGS ${REGULAR_ARGS} 1 "John")
 
 
 

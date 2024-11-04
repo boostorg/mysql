@@ -28,7 +28,7 @@ Self-contained programs demonstrating more advanced concepts and techniques.
 
 * [link mysql.examples.prepared_statements Prepared statements]
 * [link mysql.examples.timeouts Setting timeouts to operations]
-* [link mysql.examples.transactions Using transactions]
+* [link mysql.examples.multi_queries_transactions Using multi-queries and transactions]
 * [link mysql.examples.disable_tls Disabling TLS for a connection]
 * [link mysql.examples.tls_certificate_verification Setting TLS options: enabling TLS certificate verification]
 * [link mysql.examples.metadata Metadata]
@@ -140,11 +140,11 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
-[section:transactions Using transactions]
+[section:multi_queries_transactions Using multi-queries and transactions]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[example_transactions]
+[example_multi_queries_transactions]
 
 [endsect]
 

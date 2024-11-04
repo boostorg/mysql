@@ -132,7 +132,7 @@ END
 [import ../../example/1_tutorial/4_static_interface.cpp]
 [import ../../example/2_simple/prepared_statements.cpp]
 [import ../../example/2_simple/timeouts.cpp]
-[import ../../example/2_simple/transactions.cpp]
+[import ../../example/2_simple/multi_queries_transactions.cpp]
 [import ../../example/2_simple/disable_tls.cpp]
 [import ../../example/2_simple/tls_certificate_verification.cpp]
 [import ../../example/2_simple/metadata.cpp]
