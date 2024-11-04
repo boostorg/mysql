@@ -80,7 +80,7 @@ void coro_main(
             company_id
         ),
         result,
-        yield
+        mysql::with_diagnostics(yield)
     );
 
     // Print the employees
