@@ -47,14 +47,14 @@ with this library. Here are some of the most common:
   You can combine deferred with [link mysql.async.with_diagnostics with_diagnostics] to get
   better error reporting.   
 
-  See [*[link mysql.examples.async_coroutinescpp20 this example]] for details.
+  See [*[link mysql.tutorial_async the async tutorial]] for details.
 
 * [*Stackful coroutines], which you can use to get coroutine-like functionality
   in C++11. Access this functionality using [asioreflink spawn spawn] and [asioreflink yield_context yield_context],
   possibly in conjunction with [link mysql.async.with_diagnostics with_diagnostics].
   You need to link against __Context__ to use these coroutines.
 
-  See [*[link mysql.examples.async_coroutines this example]] for details.
+  See [*[link mysql.examples.coroutines_cpp11 this example]] for details.
 
 * [*Callbacks]. You can pass in a callable (function pointer or
   function object) with the same signature as the handler
@@ -62,7 +62,7 @@ with this library. Here are some of the most common:
   will be called when the operation completes. The initiating
   function will return `void`.
   
-  [link mysql.examples.async_callbacks This example]
+  [link mysql.examples.callbacks This example]
   demonstrates how to use async functions with callbacks.
 
 * [*Futures]. In this case, you pass in the constant
@@ -78,9 +78,6 @@ with this library. Here are some of the most common:
   Note that the exception is thrown by Asio itself, and will always
   be of type `boost::system::system_error`, even if diagnostics were
   available.
-
-  [link mysql.examples.async_futures This example]
-  demonstrates using futures.
 
 * Any other type that satisfies the __CompletionToken__ type requirements.
   We have listed the most common ones here, but you can craft your own

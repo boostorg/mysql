@@ -37,7 +37,7 @@ build query strings incrementally:
 
 Any type that works with `with_params` also does with `format_sql`
 and `format_sql_to`. These types are said to satisfy the [reflink Formattable] concept.
-[link mysql.sql_formatting.reference This table] summarizes such types.
+[link mysql.sql_formatting_advanced.reference This table] summarizes such types.
 
 [endsect]
 

@@ -31,7 +31,7 @@ which can improve efficiency.
 It can be used as a simpler and more flexible alternative to prepared statements.
 While prepared statements expand queries server-side, SQL formatting does it client-side.
 Please read the [link mysql.sql_formatting.comparison comparison with prepared statements]
-and the [link mysql.sql_formatting.security security considerations] sections for more info.
+and the [link mysql.sql_formatting.comparison.security security considerations] sections for more info.
 
 [reflink with_params] takes a SQL query
 string with placeholders and a set of parameters. When passed to
@@ -57,8 +57,8 @@ Collections and ranges are supported, as long as its elements can be formatted:
 
 [sql_formatting_ranges]
 
-See [link mysql.sql_formatting.ranges this section] for more on formatting ranges,
-and [link mysql.sql_formatting.reference this table] for a reference of types
+See [link mysql.sql_formatting_advanced.ranges this section] for more on formatting ranges,
+and [link mysql.sql_formatting_advanced.reference this table] for a reference of types
 that have built-in support for SQL formatting.
 
 [note
@@ -126,12 +126,14 @@ to format MySQL types into a string without creating vulnerabilities, but otherw
 your queries as opaque strings. Client-side SQL yields [*greater flexibility] (you can dynamically
 compose any query), while statements have more limitations. This also means that
 [*you need to pay more attention to compose valid queries], specially when dealing with complex conditionals.
-Logic errors may lead to exploits. Please read the [link mysql.sql_formatting.security security considerations section]
+Logic errors may lead to exploits. Please read the
+[link mysql.sql_formatting.comparison.security security considerations section]
 for more info.
 
 Client-side SQL entails [*less round-trips to the server] than statements, and is usually more efficient
 for lightweight queries. However, it uses the less compact text protocol, which may be slower for
-queries retrieving a lot of data. See the [link mysql.sql_formatting.efficiency efficiency considerations section] for more info.
+queries retrieving a lot of data. See the
+[link mysql.sql_formatting.comparison.efficiency efficiency considerations section] for more info.
 
 In general, [*use client-side SQL] formatting for the following cases:
 

@@ -100,6 +100,6 @@ thread until all the scheduled coroutines and I/O operations complete:
 
 Full program listing for this tutorial is [link mysql.examples.tutorial_async here].
 
-You can now proceed to [link mysql.tutorial.with_params the next tutorial].
+You can now proceed to [link mysql.tutorial_with_params the next tutorial].
 
 [endsect]

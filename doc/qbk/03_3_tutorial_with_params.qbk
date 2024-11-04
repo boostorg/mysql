@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:tutorial_async Tutorial 3: queries with parameters]
+[section:tutorial_with_params Tutorial 3: queries with parameters]
 
 Until now, our SQL queries were hard-coded string literals.
 However, most real-world use cases involve 
@@ -143,7 +143,7 @@ With all these changes, this is how our coroutine looks like:
 
 Full program listing for this tutorial is [link mysql.examples.tutorial_with_params here].
 
-You can now proceed to [link mysql.tutorial.static_interface the next tutorial].
+You can now proceed to [link mysql.tutorial_static_interface the next tutorial].
 
 
 [endsect]

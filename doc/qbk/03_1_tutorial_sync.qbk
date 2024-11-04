@@ -114,6 +114,6 @@ we are closing the connection, and thus may fail.
 
 Full program listing for this tutorial is [link mysql.examples.tutorial_sync here].
 
-You can now proceed to [link mysql.tutorial.async the next tutorial].
+You can now proceed to [link mysql.tutorial_async the next tutorial].
 
 [endsect]

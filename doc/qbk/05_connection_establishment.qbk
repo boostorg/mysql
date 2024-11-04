@@ -145,7 +145,7 @@ You can safely share a single __ssl_context__ among several connections.
 If no `ssl::context` is passed, one will be internally created by the
 connection when required. The default context doesn't perform certificate validation.
 
-The full source code for the above example is [link mysql.examples.tls_certificate_validation here].
+The full source code for the above example is [link mysql.examples.tls_certificate_verification here].
 
 
 
@@ -202,7 +202,7 @@ When reading data, every row is sent as an individual message.
 
 The buffer never resizes past [refmem any_connection_params max_buffer_size].
 If an operation requires a bigger buffer, it will fail with the
-[refmem client_errc max_buffer_size_exceeded] error code. The default size
+`client_errc::max_buffer_size_exceeded` error code. The default size
 is 64MB.
 
 If you need to read or write individual rows bigger than the default limit,

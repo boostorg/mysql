@@ -146,7 +146,7 @@
           <member><link linkend="mysql.dynamic_interface.dynamic_field_mappings">Dynamic interface type mappings</link></member>
           <member><link linkend="mysql.static_interface.readable_field_reference">ReadableField types</link></member>
           <member><link linkend="mysql.prepared_statements.writable_field_reference">WritableField types</link></member>
-          <member><link linkend="mysql.sql_formatting.reference">Formattable types</link></member>
+          <member><link linkend="mysql.sql_formatting_advanced.reference">Formattable types</link></member>
           <member><link linkend="mysql.pipeline.reference">Pipeline stage reference</link> (experimental)</member>
           <member><link linkend="mysql.charsets.string_encoding">String encoding</link></member>
         </simplelist>
