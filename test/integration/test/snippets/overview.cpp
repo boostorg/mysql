@@ -56,8 +56,6 @@ asio::awaitable<void> dont_run(mysql::any_connection& conn)
 }
 #endif
 
-namespace {
-
 //[overview_static_struct
 // This must be placed at namespace scope.
 // Should contain a member for each field of interest present in our query.
@@ -70,6 +68,8 @@ struct employee
     std::string last_name;
 };
 //]
+
+namespace {
 
 asio::awaitable<void> overview_coro(mysql::any_connection& conn)
 {
