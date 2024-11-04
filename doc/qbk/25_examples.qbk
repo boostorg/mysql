@@ -78,7 +78,6 @@ The root MySQL user for these containers is `root` and has an empty password.
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/1_tutorial/1_sync.cpp]
 [example_tutorial_sync]
 
 [endsect]
@@ -90,7 +89,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/1_tutorial/2_async.cpp]
 [example_tutorial_async]
 
 [endsect]
@@ -102,7 +100,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/1_tutorial/3_with_params.cpp]
 [example_tutorial_with_params]
 
 [endsect]
@@ -114,7 +111,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/1_tutorial/4_static_interface.cpp]
 [example_tutorial_static_interface]
 
 [endsect]
@@ -126,7 +122,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/prepared_statements.cpp]
 [example_prepared_statements]
 
 [endsect]
@@ -138,7 +133,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/timeouts.cpp]
 [example_timeouts]
 
 [endsect]
@@ -150,7 +144,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/transactions.cpp]
 [example_transactions]
 
 [endsect]
@@ -162,7 +155,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/disable_tls.cpp]
 [example_disable_tls]
 
 [endsect]
@@ -174,7 +166,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/tls_certificate_verification.cpp]
 [example_tls_certificate_verification]
 
 [endsect]
@@ -186,7 +177,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/metadata.cpp]
 [example_metadata]
 
 [endsect]
@@ -198,7 +188,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/multi_function.cpp]
 [example_multi_function]
 
 [endsect]
@@ -210,7 +199,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/callbacks.cpp]
 [example_callbacks]
 
 [endsect]
@@ -222,7 +210,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/coroutines_cpp11.cpp]
 [example_coroutines_cpp11]
 
 [endsect]
@@ -234,7 +221,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/unix_socket.cpp]
 [example_unix_socket]
 
 [endsect]
@@ -246,7 +232,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/batch_inserts.cpp]
 [example_batch_inserts]
 
 [endsect]
@@ -258,7 +243,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/batch_inserts_generic.cpp]
 [example_batch_inserts_generic]
 
 [endsect]
@@ -270,7 +254,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/dynamic_filters.cpp]
 [example_dynamic_filters]
 
 [endsect]
@@ -282,7 +265,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/patch_updates.cpp]
 [example_patch_updates]
 
 [endsect]
@@ -294,7 +276,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/2_simple/pipeline.cpp]
 [example_pipeline]
 
 [endsect]
@@ -306,7 +287,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/3_advanced/source_script.cpp]
 [example_source_script]
 
 [endsect]
@@ -318,31 +298,22 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[import ../../example/3_advanced/connection_pool/main.cpp]
 [example_connection_pool_main_cpp]
 
-[import ../../example/3_advanced/connection_pool/types.hpp]
 [example_connection_pool_types_hpp]
 
-[import ../../example/3_advanced/connection_pool/repository.hpp]
 [example_connection_pool_repository_hpp]
 
-[import ../../example/3_advanced/connection_pool/repository.cpp]
 [example_connection_pool_repository_cpp]
 
-[import ../../example/3_advanced/connection_pool/handle_request.hpp]
 [example_connection_pool_handle_request_hpp]
 
-[import ../../example/3_advanced/connection_pool/handle_request.cpp]
 [example_connection_pool_handle_request_cpp]
 
-[import ../../example/3_advanced/connection_pool/server.hpp]
 [example_connection_pool_server_hpp]
 
-[import ../../example/3_advanced/connection_pool/server.cpp]
 [example_connection_pool_server_cpp]
 
-[import ../../example/3_advanced/connection_pool/log_error.hpp]
 [example_connection_pool_log_error_hpp]
 
 [endsect]
