@@ -5,8 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/pfr.hpp>
+
 #include <boost/asio/awaitable.hpp>
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
+#if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
 
 //[example_tutorial_static_interface
 
