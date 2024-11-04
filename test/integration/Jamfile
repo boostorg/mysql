@@ -9,7 +9,6 @@ cpp-pch pch
     :
         pch.hpp
         /boost/mysql/test//boost_mysql_test
-        /boost/mysql/test//boost_context_lib
     ;
 
 
@@ -17,7 +16,6 @@ run
         pch
         /boost/mysql/test//common_test_sources
         /boost/mysql/test//boost_mysql_test
-        /boost/mysql/test//boost_context_lib
         /boost/mysql/test//launch_with_valgrind
  
         # Utilities
