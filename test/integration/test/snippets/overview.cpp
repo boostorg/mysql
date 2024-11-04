@@ -81,18 +81,19 @@ asio::awaitable<void> overview_coro(mysql::any_connection& conn)
 
     auto& ctx = static_cast<asio::io_context&>((co_await asio::this_coro::executor).context());
 
-    //[overview_connect
-    // The hostname, username, password and database to use.
-    mysql::connect_params params;
-    params.server_address.emplace_host_and_port(server_hostname);  // hostname
-    params.username = mysql_username;
-    params.password = mysql_password;
-    params.database = "boost_mysql_examples";
+    {
+        //[overview_connect
+        // The hostname, username, password and database to use.
+        mysql::connect_params params;
+        params.server_address.emplace_host_and_port(server_hostname);  // hostname
+        params.username = mysql_username;
+        params.password = mysql_password;
+        params.database = "boost_mysql_examples";
 
-    // Connect to the server
-    co_await conn.async_connect(params);
-    //]
-
+        // Connect to the server
+        co_await conn.async_connect(params);
+        //]
+    }
     {
         //[overview_text_query
         // Executes 'SELECT 1' and reads the resulting rows into memory
