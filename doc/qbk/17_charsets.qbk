@@ -31,8 +31,8 @@ string fields and column names in metadata. The connection's collation is used f
 Every session you establish can have its own different
 character set and collation. You can specify this in two ways:
 
-* When calling [refmem connection connect] or [refmem connection handshake], using
-  [refmem handshake_params connection_collation]. You specify a numeric ID that identifies
+* When calling [refmem any_connection async_connect], using
+  [refmem connect_params connection_collation]. You specify a numeric ID that identifies
   the collation to use, and your connection will use the character set associated to this collation.
   You can find collation IDs in the [include_file boost/mysql/mysql_collations.hpp] and 
   [include_file boost/mysql/mariadb_collations.hpp] headers.
@@ -41,12 +41,13 @@ character set and collation. You can specify this in two ways:
   (e.g. `utf8mb4_0900_ai_ci` for an old MySQL 5.7 server), the handshake operation
   will succeed but the connection [*will silently fall back to the server's default character set],
   (usually `latin1`, which is not Unicode).
-* At any time, issuing a __SET_NAMES__ SQL statement. For example, `"SET NAMES utf8mb4"` will set the current
-  connection's character set to `utf8mb4` and the connection's collation to utf8mb4's default collation.
-  If the character set is unknown, the `SET NAMES` statement will fail.
-  You can use [refmem connection execute] to issue the statement:
+* At any time, using [refmem any_connection async_set_character_set].
 
-[charsets_set_names]
+[warning
+    [*Do not use SET NAMES statements directly], as it will break
+    [link mysql.charsets.tracking character set tracking], required
+    for client-side SQL formatting.
+]
 
 [heading character_set_results and character_set_client]
 
@@ -125,38 +126,7 @@ The table below summarizes the encoding used by each piece of functionality in t
     ]
 ]
 
-[heading During connection establishment]
-
-TODO: review this
-
-When establishing a connection, you specify a numeric collation ID
-parameter ([refmem connect_params connection_collation]), which will
-determine the connection's character set and collation. This determines
-the encoding of the strings sent to and received from the server.
-If left unspecified, `utf8mb4_general_ci` will be used, which is portable
-accross MySQL 5.x, MySQL 8.x and MariaDB.
-
-Collation IDs are defined in [include_file boost/mysql/mysql_collations.hpp] and 
-[include_file boost/mysql/mariadb_collations.hpp]. Some collations are portable
-between servers, while others are MySQL or MariaDB-specific, and some IDs overlap.
-You may also define your own collations server-side. This is why collations
-are specified as an integer, rather than an enumeration.
-
-Please refer to [link mysql.charsets this section] for more info
-about character sets.
-
-[warning
-    If you specify a collation ID that is unknown to the server (an old server
-    that doesn't recognize the newest collations), the handshake operation
-    will succeed but the connection will sillently fall back to the server's default character set
-    and collation. If you want to be sure, use a `"SET NAMES"` statement.
-]
-
-
-
-
-
-[heading:tracking (Experimental) Character set tracking]
+[heading:tracking Character set tracking]
 
 [reflink any_connection] attempts to track the connection's current character set.
 You can access this information using
@@ -197,7 +167,7 @@ This is how tracking works:
 ]
 
 
-[heading:custom (Experimental) Adding support for a character set]
+[heading:custom Adding support for a character set]
 
 Built-in support is provided for `utf8mb4` ([reflink utf8mb4_charset])
 and `ascii` ([reflink ascii_charset]). We strongly encourage you to always use `utf8mb4`.

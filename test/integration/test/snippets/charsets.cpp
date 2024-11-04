@@ -11,8 +11,6 @@
 #include <cassert>
 #include <cstddef>
 
-#include "test_integration/snippets/get_connection.hpp"
-
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 
@@ -68,15 +66,6 @@ std::size_t utf8mb4_next_char(boost::span<const unsigned char> input)
 
 BOOST_AUTO_TEST_CASE(section_charsets)
 {
-    auto& conn = get_connection();
-
-    {
-        //[charsets_set_names
-        results result;
-        conn.execute("SET NAMES utf8mb4", result);
-        // Further operations can assume utf8mb4 as conn's charset
-        //]
-    }
     {
         // Verify that utf8mb4_next_char can be used in a character_set
         boost::mysql::character_set charset{"utf8mb4", utf8mb4_next_char};

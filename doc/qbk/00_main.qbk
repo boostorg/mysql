@@ -66,7 +66,6 @@
 [def __allow_invalid_dates__ [mysqllink sql-mode.html#sqlmode_allow_invalid_dates `ALLOW_INVALID_DATES`]]
 [def __strict_sql__ [mysqllink sql-mode.html#sql-mode-strict strict SQL mode]]
 [def __time_zone__ [mysqllink server-system-variables.html#sysvar_time_zone `time_zone`]]
-[def __SET_NAMES__ [mysqllink set-names.html `SET NAMES`]]
 [def __TINYINT__ [mysqllink integer-types.html `TINYINT`]]
 [def __SMALLINT__ [mysqllink integer-types.html `SMALLINT`]]
 [def __MEDIUMINT__ [mysqllink integer-types.html `MEDIUMINT`]]
