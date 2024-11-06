@@ -7,14 +7,14 @@
 
 [section:tutorial_updates_transactions Tutorial 5: UPDATEs, transactions and semicolon-separated queries]
 
-All the previous tutorials have used `SELECT` statements only, but
+All the previous tutorials have only used `SELECT` statements, but
 Boost.MySQL is not limited to them. Using [refmemunq any_connection async_execute]
 you can run any SQL statement supported by MySQL.
 
 In this tutorial, we will write a program that changes the first name of an
 employee, given their ID, and prints the updated employee details.
-We will use `UPDATE` and transaction management statements.
-`INSERT` and `DELETE` statements have very similar mechanics.
+We will use an `UPDATE` and transaction management statements.
+`INSERT` and `DELETE` statements have similar mechanics.
 
 
 
@@ -40,7 +40,7 @@ We may be tempted to use [refmem results affected_rows] at first, but
 this doesn't convey the information we're looking for:
 a row may be matched but not affected. For example, if you try to
 set `first_name` to the same value it already has,
-MySQL will count it as a matched, but not affected, row.
+MySQL will count the row as a matched, but not affected.
 
 
 MySQL does not support the `UPDATE ... RETURNING` syntax, so we will
@@ -53,11 +53,11 @@ However, the code above contains a race condition. Imagine the following situati
 
 * The `UPDATE` is issued. No employee is matched.
 * Before our program sends the `SELECT` query, a different program inserts
-  an employee with the ID we were trying to update.
+  an employee with the ID that we're trying to update.
 * Our program runs the `SELECT` statement and retrieves the newly inserted row.
 
 To our program, it looks like we succeeded performing the update, when
-we really didn't. Depending on the nature of your program, this may
+we really didn't. Depending on the nature of our program, this may
 or may not have serious consequences, but it's something we should avoid.
 
 
@@ -82,13 +82,13 @@ will get the updated row, if any:
 
 [heading Using multi-queries]
 
-While the code we've written is correct, we can still improve its efficiency.
+While the code we've written is correct, it's not very performant.
 We're incurring in 4 round-trips to the server, when our queries don't depend
 on the result of previous ones. The round-trips occur within a transaction
-block, which causes certain rows in the database to lock, increasing contention.
+block, which causes certain database rows to be locked, increasing contention.
 We can improve the situation by running our four statements in a single batch.
 
-Multi-queries is a protocol feature that lets you execute several queries
+Multi-queries are a protocol feature that lets you execute several queries
 at once. Individual queries must be separated by semicolons.
 
 Multi-queries are disabled by default. To enable them, set
@@ -97,7 +97,6 @@ Multi-queries are disabled by default. To enable them, set
 [tutorial_updates_transactions_connect]
 
 Multi-queries can be composed an executed using the same
-[reflink with_params] and [refmemunq any_connection async_execute]
 functions we've been using:
 
 [tutorial_updates_transactions_multi_queries]
@@ -117,13 +116,12 @@ for the requested resultset:
 [tutorial_updates_transactions_dynamic_results]
 
 
-[heading Using explicit indices in with_params]
+[heading Using manual indices in with_params]
 
-We are repeating `employee_id` in the parameter list passed to `with_params`,
-violating the DRY principle.
-
+Repeating `employee_id` in the parameter list passed to `with_params`
+violates the DRY principle.
 As with `std::format`, we can refer to a format argument more than once
-by using manual indices, thus removing the repetition:
+by using manual indices:
 
 [tutorial_updates_transactions_manual_indices]
 
@@ -131,7 +129,7 @@ by using manual indices, thus removing the repetition:
 
 [heading Using the static interface with multi-resultset]
 
-We can rewrite our code to use the static interface so it's safer.
+Finally, we can rewrite our code to use the static interface so it's safer.
 In multi-resultset scenarios, we can pass as many row types
 to [reflink static_results] as resultsets we expect.
 We can use the empty tuple (`std::tuple<>`) as a row type

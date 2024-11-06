@@ -37,8 +37,8 @@ asio::awaitable<void> tutorial_updates_transactions(mysql::any_connection& conn)
 
     {
         //[tutorial_updates_transactions_update
-        // Run an UPDATE. We can use with_params to compose it, as with the SELECTs
-        // If new_first_name contains 'John' and employee_id contains 42, will run:
+        // Run an UPDATE. We can use with_params to compose it, too
+        // If new_first_name contains 'John' and employee_id contains 42, this will run:
         //    UPDATE employee SET first_name = 'John' WHERE id = 42
         // result contains an empty resultset: it has no rows
         mysql::results result;

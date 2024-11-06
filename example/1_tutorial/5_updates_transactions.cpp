@@ -98,18 +98,19 @@ asio::awaitable<void> coro_main(
     //      transaction will be rolled back when the connection is closed.
     //[tutorial_updates_transactions_static
     // MySQL returns one resultset for each query, so we pass 4 params to static_results
-    // <-
+    //<-
     // clang-format off
-    // ->
+    //->
     mysql::static_results<
         std::tuple<>,                  // START TRANSACTION doesn't generate rows
         std::tuple<>,                  // The UPDATE doesn't generate rows
         mysql::pfr_by_name<employee>,  // The SELECT generates employees
         std::tuple<>                   // The COMMIT doesn't generate rows
     > result;
-    // <-
+    //<-
     // clang-format on
-    // ->
+    //->
+
     co_await conn.async_execute(
         mysql::with_params(
             "START TRANSACTION;"
@@ -126,7 +127,6 @@ asio::awaitable<void> coro_main(
     // The SELECT is the 3rd resultset. Retrieve the generated rows.
     // employees is a span<const employee>
     auto employees = result.rows<2>();
-
     if (employees.empty())
     {
         std::cout << "No employee with ID = " << employee_id << std::endl;

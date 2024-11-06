@@ -178,6 +178,7 @@ END
 [include 03_2_tutorial_async.qbk]
 [include 03_3_tutorial_with_params.qbk]
 [include 03_4_tutorial_static_interface.qbk]
+[include 03_5_tutorial_updates_transactions.qbk]
 [include 04_overview.qbk]
 [include 05_connection_establishment.qbk]
 [include 06_sql_formatting.qbk]
