@@ -11,13 +11,11 @@
 //[example_multi_queries_transactions
 
 /**
- * This example demonstrates how to use multi-queries
- * to run several semicolon-separated queries in
- * a single async_execute call. It also demonstrates
- * how to use SQL transactions.
+ * This example demonstrates how to use UPDATE statements,
+ * transactions and semicolon-separated queries.
  *
- * The program updates the first name of an employee,
- * and prints the employee's full details.
+ * The program updates the first name of an employee given their ID
+ * and prints their full details.
  *
  * It uses C++20 coroutines. If you need, you can backport
  * it to C++11 by using callbacks, asio::yield_context

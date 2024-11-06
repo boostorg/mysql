@@ -104,12 +104,12 @@ TUTORIALS = [
     Example('tutorial_async', '1_tutorial/2_async.cpp', 'Tutorial 2 listing: going async with C++20 coroutines'),
     Example('tutorial_with_params', '1_tutorial/3_with_params.cpp', 'Tutorial 3 listing: queries with parameters'),
     Example('tutorial_static_interface', '1_tutorial/4_static_interface.cpp', 'Tutorial 4 listing: the static interface'),
+    Example('tutorial_updates_transactions', '1_tutorial/5_updates_transactions.cpp', 'Tutorial 5 listing: UPDATEs, transactions and multi-queries'),
 ]
 
 SIMPLE_EXAMPLES = [
     Example('prepared_statements', '2_simple/prepared_statements.cpp', 'Prepared statements'),
     Example('timeouts', '2_simple/timeouts.cpp', 'Setting timeouts to operations'),
-    Example('multi_queries_transactions', '2_simple/multi_queries_transactions.cpp', 'Using multi-queries and transactions'),
     Example('disable_tls', '2_simple/disable_tls.cpp', 'Disabling TLS for a connection'),
     Example('tls_certificate_verification', '2_simple/tls_certificate_verification.cpp', 'Setting TLS options: enabling TLS certificate verification'),
     Example('metadata', '2_simple/metadata.cpp', 'Metadata'),
