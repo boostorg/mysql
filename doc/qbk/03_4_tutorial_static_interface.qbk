@@ -101,8 +101,6 @@ The mechanics are quite similar to what's been explained here.
 
 Full program listing for this tutorial is [link mysql.examples.tutorial_static_interface here].
 
-This concludes our tutorial series. You can now look at the [link mysql.overview overview section]
-to learn more about the library features, or to the [link mysql.examples example section]
-if you prefer to learn by doing.
+You can now proceed to [link mysql.tutorial_updates_transactions the next tutorial].
 
 [endsect]

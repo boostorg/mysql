@@ -7,218 +7,143 @@
 
 [section:tutorial_updates_transactions Tutorial 5: UPDATEs, transactions and semicolon-separated queries]
 
+All the previous tutorials have used `SELECT` statements only, but
+Boost.MySQL is not limited to them. Using [refmemunq any_connection async_execute]
+you can run any SQL statement supported by MySQL.
 
-* We've run SELECTs until now
-* But we're not limited to this: we can run UPDATEs, INSERTs, DELETEs, transaction-related
-  statements, and any other SQL command you may run using the command line.
-* Let's learn UPDATEs first. We will write a program that, given an employee ID and a new first name,
-  it updates the first name and prints the updated details.
+In this tutorial, we will write a program that changes the first name of an
+employee, given their ID, and prints the updated employee details.
+We will use `UPDATE` and transaction management statements.
+`INSERT` and `DELETE` statements have very similar mechanics.
+
 
 
 [heading A simple UPDATE]
 
-We can run an update with the same syntax as a SELECT:
+We can use the same tools and functions as in previous tutorials:
 
-```
-// If new_first_name contains 'John' and employee_id contains 42,
-// will run: UPDATE employee SET first_name = 'John' WHERE id = 42
-// result contains an empty resultset: it has no rows
-mysql::results result;
-co_await conn.async_execute(
-  mysql::with_params("UPDATE employee SET first_name = {} WHERE id = {}", new_first_name, employee_id),
-  result
-);
-```
+[tutorial_updates_transactions_update]
+
+By default, auto-commit is enabled, meaning that when `async_execute`
+returns, the `UPDATE` is visible to other client connections.
+
+
 
 
 [heading Checking that the UPDATE took effect]
 
-Given our table structure, this query may match zero or one employee, and will
-succeed in either case. We probably want to give positive feedback to the user
-if the UPDATE took place, and emit an error if the ID didn't match any employee.
+The above query will succeed even if there was no employee with the given ID.
+We would like to retrieve the updated employee details on success, and emit
+a useful error message if no employee was matched.
 
-Although `result` contains no rows, it does contain some additional info
-provided by MySQL. [refmem results affected_rows] may seem an option first.
-But this doesn't account matched rows, only affected ones. Trying to update
-the first_name to the same value it had before doesn't count as an affected row,
-but should likely not be an error for us.
-
-Ideally, we could use UPDATE ... RETURNING to retrieve whether the employee
-exists, and their full details. But MySQL doesn't support this.
-So let's try to simulate this by running a SELECT just after the UPDATE:
-
-```
-// We can safely re-use a results object
-co_await conn.async_execute(
-  mysql::with_params("SELECT first_name, last_name FROM employee WHERE id = {}", employee_id),
-  result
-);
-
-if (result.rows().empty())
-{
-  // ...
-}
-
-```
+We may be tempted to use [refmem results affected_rows] at first, but
+this doesn't convey the information we're looking for:
+a row may be matched but not affected. For example, if you try to
+set `first_name` to the same value it already has,
+MySQL will count it as a matched, but not affected, row.
 
 
-[heading Avoiding race conditions with a transaction]
+MySQL does not support the `UPDATE ... RETURNING` syntax, so we will
+have to retrieve the employee manually after updating it.
+We can add the following after our `UPDATE`:
 
-Doing the above is a race condition. Imagine the following situation:
+[tutorial_updates_transactions_select]
 
-* The UPDATE is issued. No employee is matched.
-* Before our program can issue the next query, a different program inserts
+However, the code above contains a race condition. Imagine the following situation:
+
+* The `UPDATE` is issued. No employee is matched.
+* Before our program sends the `SELECT` query, a different program inserts
   an employee with the ID we were trying to update.
-* The SELECT runs after the INSERT, and retrieves the inserted row.
+* Our program runs the `SELECT` statement and retrieves the newly inserted row.
 
 To our program, it looks like we succeeded performing the update, when
 we really didn't. Depending on the nature of your program, this may
-have or not consequences, but it's something we should avoid.
+or may not have serious consequences, but it's something we should avoid.
 
-We can fix this using SQL transactions. In MySQL, a transaction
-block is started with `START TRANSACTION`. A transaction is
-committed with `COMMIT`, and rolled back with `ROLLBACK` or
-by closing the connection that initiated it.
 
-We will surround the UPDATE and SELECT statements by
-a START TRANSACTION and a COMMIT. The ACID properties
-of transactions will ensure that the race condition above
-doesn't happen.
+[heading Avoiding the race condition with a transaction block]
 
-With this, we have the following:
+We can fix the race condition using transactions.
+In MySQL, a transaction block is opened with `START TRANSACTION`.
+Subsequent statements will belong to the transaction block,
+until the transaction either commits or is rolled back.
+A `COMMIT` statement commits the transaction.
+A rollback happens if the connection that initiated the transaction
+closes or an explicit `ROLLBACK` statement is used.
 
-```
-mysql::results result, result2;
+We will enclose our `UPDATE` and `SELECT` statements in
+a transaction block. This will ensure that the `SELECT`
+will get the updated row, if any:
 
-// Start a transaction block. Subsequent statements will belong
-// to the transaction block, until a COMMIT or ROLLBACK is encountered,
-// or the connection is closed.
-// START TRANSACTION returns no rows.
-co_await conn.async_execute("START TRANSACTION", result);
+[tutorial_updates_transactions_txn]
 
-// Run the UPDATE as we did before
-co_await conn.async_execute(mysql::with_params("...", new_first_name, employee_id), result);
 
-// Run the SELECT. If a row is returned here, it is the one
-// that we modified.
-co_await conn.async_execute(mysql::with_params("SELECT... ", employee_id), result);
-
-// Commit the transaction. This makes the updated row visible
-// to other transactions and releases any locked rows.
-// Don't throw the retrieved rows away
-co_await conn.async_execute("COMMIT", result2);
-
-// Process the retrieved rows
-if (result.rows().empty())
-{
-  // ...
-}
-```
 
 
 [heading Using multi-queries]
 
-Problem: this is 4 round-trips to the server. And it's time in a transaction block,
-which causes certain rows in the database to lock. The queries don't really depend on
-each other, so we could run them in a batch, improving efficiency. This is what
-multi-queries are for.
+While the code we've written is correct, we can still improve its efficiency.
+We're incurring in 4 round-trips to the server, when our queries don't depend
+on the result of previous ones. The round-trips occur within a transaction
+block, which causes certain rows in the database to lock, increasing contention.
+We can improve the situation by running our four statements in a single batch.
 
 Multi-queries is a protocol feature that lets you execute several queries
-at once, using a single `async_execute` call. Queries are separated by semicolons.
+at once. Individual queries must be separated by semicolons.
 
-Multi-queries are disabled by default. To enable them, set [refmem connect_params multi_queries] to true:
+Multi-queries are disabled by default. To enable them, set
+[refmem connect_params multi_queries] to `true` before connecting:
 
-TODO: snippet
+[tutorial_updates_transactions_connect]
 
-Multi-queries can be composed and executed like regular queries:
+Multi-queries can be composed an executed using the same
+[reflink with_params] and [refmemunq any_connection async_execute]
+functions we've been using:
 
-```
-mysql::results result;
-co_await conn.async_execute(
-    mysql::with_params(
-        "START TRANSACTION;"
-        "UPDATE employee SET first_name = {} WHERE id = {};"
-        "SELECT first_name, last_name FROM employee WHERE id = {};"
-        "COMMIT",
-        new_first_name,
-        employee_id,
-        employee_id
-    ),
-    result
-);
-```
+[tutorial_updates_transactions_multi_queries]
 
-MySQL returns us 4 resultsets here: one as a response for each query.
-This is an instance of what we call ['multi-resultset] in Boost.MySQL (can happen with stored procedures, too).
-Actually, [reflink results] can store more than one resultset. Accessing `rows()` and other functions,
-you access the 1st resultset, because that's the most common thing.
+Accessing the results is slightly different. MySQL returns 4 resultsets,
+one for each query. In Boost.MySQL, this operation is said to be
+[link mysql.multi_resultset multi-resultset].
+[reflink results] can actually store more than one resultset.
+[refmem results rows] actually accesses the rows in the first resultset,
+because it's the most common use case.
 
-In our case, we want to access data in the 3rd resultset. We use [refmem results at]
-to access a [reflink resultset_view] with info about the 3rd resultset.
-[refmem resultset_view rows] gives us the rows returned by the 3rd resultset.
+We want to get the rows retrieved by the `SELECT` statement,
+which corresponds to the third resultset.
+[refmem results at] returns a [reflink resultset_view] containing data
+for the requested resultset:
 
-```
-TODO: copy from example
-```
-
-In case of error, the following queries are not executed, and thus the txn is not committed.
+[tutorial_updates_transactions_dynamic_results]
 
 
 [heading Using explicit indices in with_params]
 
-Note that we are repeating `employee_id` in the param list. This violates the DRY principle.
-If you're familiar with `std::format`, you know that you can refer to a format arg more than once.
-Our code thus becomes:
+We are repeating `employee_id` in the parameter list passed to `with_params`,
+violating the DRY principle.
 
-```
-// {0} refers to the first passed format arg, {1} to the second
-mysql::results result;
-co_await conn.async_execute(
-    mysql::with_params(
-        "START TRANSACTION;"
-        "UPDATE employee SET first_name = {0} WHERE id = {1};"
-        "SELECT first_name, last_name FROM employee WHERE id = {1};"
-        "COMMIT",
-        new_first_name,
-        employee_id
-    ),
-    result
-);
-```
+As with `std::format`, we can refer to a format argument more than once
+by using manual indices, thus removing the repetition:
+
+[tutorial_updates_transactions_manual_indices]
+
 
 
 [heading Using the static interface with multi-resultset]
 
-Can we use the static interface to make this piece of code safer?
-When we have an operation that returns multiple resultsets, we
-can use [reflink static_results] as variadic template, passing
-a template parameter per expected resultset.
-START TRANSACTION, COMMIT and the UPDATE don't return any rows.
-We can use the empty tuple, `std::tuple<>`, to model them:
+We can rewrite our code to use the static interface so it's safer.
+In multi-resultset scenarios, we can pass as many row types
+to [reflink static_results] as resultsets we expect.
+We can use the empty tuple (`std::tuple<>`) as a row type
+for operations that don't return rows, like the `UPDATE`.
+Our code becomes:
 
-
-```
-using empty = std::tuple<>;
-mysql::static_results<empty, empty, employee, empty> result;
-co_await conn.async_execute(
-    mysql::with_params(
-        "START TRANSACTION;"
-        "UPDATE employee SET first_name = {0} WHERE id = {1};"
-        "SELECT first_name, last_name FROM employee WHERE id = {1};"
-        "COMMIT",
-        new_first_name,
-        employee_id
-    ),
-    result
-);
-```
+[tutorial_updates_transactions_static]
 
 
 [heading Wrapping up]
 
-[link mysql.static_interface This section] contains more information about the static interface.
-
-Full program listing for this tutorial is [link mysql.examples.tutorial_static_interface here].
+Full program listing for this tutorial is [link mysql.examples.tutorial_updates_transactions here].
 
 This concludes our tutorial series. You can now look at the [link mysql.overview overview section]
 to learn more about the library features, or to the [link mysql.examples example section]

@@ -70,6 +70,7 @@ asio::awaitable<void> coro_main(
     mysql::any_connection conn(co_await asio::this_coro::executor);
 
     //[section_connection_establishment_multi_queries
+    //[tutorial_updates_transactions_connect
     // The server host, username, password and database to use.
     // Setting multi_queries to true makes it possible to run several
     // semicolon-separated queries with async_execute.
@@ -83,6 +84,7 @@ asio::awaitable<void> coro_main(
     // Connect to the server
     co_await conn.async_connect(params);
     //]
+    //]
 
     // Perform the update and retrieve the results:
     //   1. Begin a transaction block. Further updates won't be visible to
@@ -94,6 +96,7 @@ asio::awaitable<void> coro_main(
     //   4. Commit the transaction and make everything visible to other transactions.
     //      If any of the previous steps fail, the commit won't be run, and the
     //      transaction will be rolled back when the connection is closed.
+    //[tutorial_updates_transactions_static
     // MySQL returns one resultset for each query, so we pass 4 params to static_results
     // <-
     // clang-format off
@@ -110,11 +113,11 @@ asio::awaitable<void> coro_main(
     co_await conn.async_execute(
         mysql::with_params(
             "START TRANSACTION;"
-            "UPDATE employee SET first_name = {1} WHERE id = {0};"
-            "SELECT first_name, last_name FROM employee WHERE id = {0};"
+            "UPDATE employee SET first_name = {0} WHERE id = {1};"
+            "SELECT first_name, last_name FROM employee WHERE id = {1};"
             "COMMIT",
-            employee_id,
-            new_first_name
+            new_first_name,
+            employee_id
         ),
         result
     );
@@ -133,6 +136,7 @@ asio::awaitable<void> coro_main(
         const employee& emp = employees[0];
         std::cout << "Updated: employee is now " << emp.first_name << " " << emp.last_name << std::endl;
     }
+    //]
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
     co_await conn.async_close();
