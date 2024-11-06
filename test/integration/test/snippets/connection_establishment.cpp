@@ -7,15 +7,10 @@
 
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connect_params.hpp>
-#include <boost/mysql/results.hpp>
 
-#include <boost/asio/awaitable.hpp>
-#include <boost/asio/this_coro.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include "test_common/io_context_fixture.hpp"
-#include "test_integration/run_coro.hpp"
-#include "test_integration/snippets/snippets_fixture.hpp"
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
@@ -40,19 +35,6 @@ BOOST_FIXTURE_TEST_CASE(section_connection_establishment, io_context_fixture)
         // Connect and use the connection normally
         //]
     }
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-    {
-        run_coro(ctx, []() -> asio::awaitable<void> {
-            mysql::any_connection conn(co_await asio::this_coro::executor);
-            co_await conn.async_connect(snippets_connect_params());
-
-            //[section_connection_establishment_multi_queries_execute
-            mysql::results result;
-            co_await conn.async_execute("START TRANSACTION; SELECT 1; COMMIT", result);
-            //]
-        });
-    }
-#endif
 }
 
 }  // namespace
