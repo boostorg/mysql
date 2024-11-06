@@ -55,10 +55,11 @@ rule run_python_example (
 local regular_args = example_user example_password $(hostname) ;
 
 # Tutorials
-run_regular_example tutorial_sync             : 1_tutorial/1_sync.cpp             : $(regular_args) ;
-run_regular_example tutorial_async            : 1_tutorial/2_async.cpp            : $(regular_args) ;
-run_regular_example tutorial_with_params      : 1_tutorial/3_with_params.cpp      : $(regular_args) 1 ;
-run_regular_example tutorial_static_interface : 1_tutorial/4_static_interface.cpp : $(regular_args) 1 ;
+run_regular_example tutorial_sync                 : 1_tutorial/1_sync.cpp                 : $(regular_args) ;
+run_regular_example tutorial_async                : 1_tutorial/2_async.cpp                : $(regular_args) ;
+run_regular_example tutorial_with_params          : 1_tutorial/3_with_params.cpp          : $(regular_args) 1 ;
+run_regular_example tutorial_static_interface     : 1_tutorial/4_static_interface.cpp     : $(regular_args) 1 ;
+run_regular_example tutorial_updates_transactions : 1_tutorial/5_updates_transactions.cpp : $(regular_args) 1 "John" ;
 
 # Simple examples
 run_regular_example callbacks : 2_simple/callbacks.cpp : $(regular_args) ;
@@ -74,7 +75,6 @@ run_regular_example prepared_statements : 2_simple/prepared_statements.cpp :   $
 run_regular_example timeouts : 2_simple/timeouts.cpp :   $(regular_args) "HGS" ;
 run_regular_example pipeline : 2_simple/pipeline.cpp :   $(regular_args) "HGS" ;
 run_regular_example multi_function : 2_simple/multi_function.cpp :   $(regular_args) ;
-run_regular_example multi_queries_transactions : 2_simple/multi_queries_transactions.cpp :   $(regular_args) 1 "John" ;
 run_regular_example source_script : 2_simple/source_script.cpp :  $(regular_args) $(this_dir)/private/test_script.sql ;
 
 # UNIX. Don't run under Windows systems

@@ -18,6 +18,9 @@
  * Like the previous tutorial, given an employee ID,
  * it prints their full name.
  *
+ * It uses Boost.Pfr for reflection, which requires C++20.
+ * You can backport it to C++14 if you need by using Boost.Describe.
+ *
  * This example uses the 'boost_mysql_examples' database, which you
  * can get by running db_setup.sql.
  */

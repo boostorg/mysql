@@ -5,10 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/asio/awaitable.hpp>
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
+#include <boost/mysql/pfr.hpp>
 
-//[example_multi_queries_transactions
+#include <boost/asio/awaitable.hpp>
+#if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
+
+//[example_tutorial_updates_transactions
 
 /**
  * This example demonstrates how to use UPDATE statements,
@@ -17,19 +19,19 @@
  * The program updates the first name of an employee given their ID
  * and prints their full details.
  *
- * It uses C++20 coroutines. If you need, you can backport
- * it to C++11 by using callbacks, asio::yield_context
- * or sync functions instead of coroutines.
+ * It uses Boost.Pfr for reflection, which requires C++20.
+ * You can backport it to C++14 if you need by using Boost.Describe.
  *
  * This example uses the 'boost_mysql_examples' database, which you
  * can get by running db_setup.sql.
  */
-
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/pfr.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/row_view.hpp>
+#include <boost/mysql/static_results.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>
@@ -40,9 +42,19 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <tuple>
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
+
+// As in the previous tutorial, this struct models
+// the data returned by our SELECT query. It should contain a member
+// for each field of interest, with a matching name.
+struct employee
+{
+    std::string first_name;
+    std::string last_name;
+};
 
 // The main coroutine
 asio::awaitable<void> coro_main(
@@ -77,13 +89,24 @@ asio::awaitable<void> coro_main(
     //      other transactions until this one commits.
     //   2. Perform the update.
     //   3. Retrieve the employee we just updated. Since we're in a transaction,
-    //      the employee record will be locked at this point. This ensures that
-    //      we retrieve the employee we updated, and not an employee created
-    //      by another transaction. That is, this prevents dirty reads.
+    //      this will be the employee we just updated (if any),
+    //      without the possibility of other transactions interfering.
     //   4. Commit the transaction and make everything visible to other transactions.
     //      If any of the previous steps fail, the commit won't be run, and the
     //      transaction will be rolled back when the connection is closed.
-    mysql::results result;
+    // MySQL returns one resultset for each query, so we pass 4 params to static_results
+    // <-
+    // clang-format off
+    // ->
+    mysql::static_results<
+        std::tuple<>,                  // START TRANSACTION doesn't generate rows
+        std::tuple<>,                  // The UPDATE doesn't generate rows
+        mysql::pfr_by_name<employee>,  // The SELECT generates employees
+        std::tuple<>                   // The COMMIT doesn't generate rows
+    > result;
+    // <-
+    // clang-format on
+    // ->
     co_await conn.async_execute(
         mysql::with_params(
             "START TRANSACTION;"
@@ -97,19 +120,18 @@ asio::awaitable<void> coro_main(
     );
 
     // We've run 4 SQL queries, so MySQL has returned us 4 resultsets.
-    // The SELECT is the 3rd resultset. Retrieve it
-    mysql::resultset_view select_result = result.at(2);
+    // The SELECT is the 3rd resultset. Retrieve the generated rows.
+    // employees is a span<const employee>
+    auto employees = result.rows<2>();
 
-    // resultset_view has a similar interface to results.
-    // Retrieve the generated rows
-    if (select_result.rows().empty())
+    if (employees.empty())
     {
         std::cout << "No employee with ID = " << employee_id << std::endl;
     }
     else
     {
-        mysql::row_view employee = select_result.rows().at(0);
-        std::cout << "Updated: employee is now " << employee.at(0) << " " << employee.at(1) << std::endl;
+        const employee& emp = employees[0];
+        std::cout << "Updated: employee is now " << emp.first_name << " " << emp.last_name << std::endl;
     }
 
     // Notify the MySQL server we want to quit, then close the underlying connection.
