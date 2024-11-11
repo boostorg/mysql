@@ -23,8 +23,7 @@ level of efficiency.
 [heading Streams and type aliases]
 
 [reflink connection] is templated on the [reflink Stream] class,
-which implements the transport layer to read and write bytes
-from the wire.
+which implements the transport layer to read and write wire bytes.
 
 The library provides helper type aliases for the most common cases:
 
@@ -64,27 +63,151 @@ The same three transports above can be used with `any_connection`.
 
 
 
+
+
 [heading Constructing a connection]
 
 `connection`'s constructor takes the same arguments as the underlying `Stream` constructor.
 For a [reflink tcp_ssl_connection], we need to pass an execution context and
 a __ssl_context__:
 
-[templated_connection_creation]
+```
+// The execution context, required for all I/O operations
+asio::io_context ctx;
+
+// The SSL context, required for connections that use TLS.
+asio::ssl::context ssl_ctx (asio::ssl::context::tlsv12_client);
+
+// Construct the connection. The arguments are forwarded
+// to the stream type (asio::ssl::stream<asio::ip::tcp::socket>).
+mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
+```
 
 
 
 
 
-[heading Connection establishment and termination]
+[heading Connection establishment]
 
-When using TCP, 
+Use [refmem connection connect] or [refmem connection async_connect] to perform connection
+establishment. This function takes two parameters:
 
-* connection does not know about name resolution. You need
-  to perform this yourself.
-* Parameters are passed as two arguments to connect (see example)
-* handshake_params is used instead of connect_params.
-  handshake_params is non-owning and doesn't include the server address.
+* An endpoint to connect to. The endpoint type depends on the stream type.
+  For TCP connections, it's an [asioreflink ip__tcp/endpoint asio::ip::tcp::endpoint],
+  which holds an IP address and a port. For UNIX sockets, it'd be an
+  [asioreflink local__stream_protocol/endpoint asio::local::stream_protocol::endpoint],
+  holding a UNIX path.
+* A [reflink handshake_params] instance, containing all the parameters required
+  to perform the MySQL handshake.
+
+If you're using TCP, you must perform hostname resolution yourself.
+For example:
+
+```
+// Resolve the hostname to get a collection of endpoints.
+// default_port_string is MySQL's default port, 3306
+// Hostname resolution may yield more than one host
+asio::ip::tcp::resolver resolver(ctx);
+auto endpoints = resolver.resolve(server_hostname, mysql::default_port_string);
+
+// Parameters specifying how to perform the MySQL handshake operation.
+// Similar to connect_params, but doesn't contain the server address and is non-owning
+mysql::handshake_params params(
+    mysql_username,
+    mysql_password,
+    "boost_mysql_examples"  // database to use
+);
+
+// Connect to the server using the first endpoint returned by the resolver
+conn.connect(*endpoints.begin(), params);
+```
+
+As opposed to `connect_params`, [reflink handshake_params] does not own
+the strings it contains (like username and password). It's your responsibility
+to keep them alive until the connect operation finishes.
+
+
+
+
+[heading Using a connection]
+
+Once connected, [reflink connection] and [reflink any_connection] can
+be used almost equivalently:
+
+```
+// Issue a query, as you would with any_connection
+mysql::results result;
+conn.execute("SELECT 1", result);
+```
+
+Some differences:
+
+* Some newer APIs, like [refmemunq any_connection async_set_character_set]
+  and [refmemunq any_connection async_run_pipeline], are not present
+  in [reflink connection].
+* By default, `connection`'s completion token is `asio::deferred`
+  instead of `mysql::with_diagnostics(asio::deferred)`. When using
+  coroutines with exceptions, you will get less informative errors.
+
+
+
+
+
+[heading Terminating a connection]
+
+As with `any_connection`, use [refmem connection close] or [refmemunq connection async_close]:
+
+```
+conn.close();
+```
+
+
+
+
+[heading TLS-enabled streams]
+
+To use TLS, you must use a [reflink connection] with a 
+[reflink Stream] that supports TLS. A TLS-enabled stream must inherit from
+[asioreflink ssl__stream_base ssl::stream_base], like
+[asioreflink ssl__stream ssl::stream] (as happens with [reflink tcp_ssl_connection]).
+
+When using a stream type that does not support TLS, like in [reflink tcp_connection]
+or [reflink unix_connection], [refmem handshake_params ssl] is ignored.
+
+
+
+
+
+[heading UNIX sockets]
+
+
+To use UNIX sockets, use [reflink unix_connection]:
+
+```
+// The execution context, required for all I/O operations
+asio::io_context ctx;
+
+// A UNIX connection requires only an execution context
+mysql::unix_connection conn (ctx);
+
+// The socket path where the server is listening
+asio::local::stream_protocol::endpoint ep(socket_path);
+
+// MySQL handshake parameters, as in the TCP case.
+mysql::handshake_params params(
+    mysql_username,
+    mysql_password,
+    "boost_mysql_examples"  // database to use
+);
+
+// Connect to the server
+conn.connect(ep, params);
+```
+
+
+
+
+
 * connection exposes handshake and quit. Using these, you can perform
   transport-level connection establishment yourself, and then call
   handshake. Same for quit. These are no longer exposed in any_connection,
@@ -95,37 +218,10 @@ When using TCP,
   no matter what happened.
 * Explain SocketStream and Stream
 
-TODO: check that evth down here is above too
-[reflink any_connection] is a type-erased alternative to [reflink connection].
-It's easier to use and features more functionality than plain `connection`.
-
-When compared to [reflink connection], `any_connection`:
-
-* Is type-erased. The type of the connection doesn't depend on the transport being used.
-  Supported transports include plaintext TCP, TLS on top of TCP and UNIX domain sockets.
-* Is easier to connect. For example, when using TCP, connection establishment methods will
-  handle hostname resolution for you. This must be handled manually with `connection`.
-* Can always be reconnected after closing it or after encountering an error.
-  `connection` can't make this guarantee, especially when using TLS.
-* Doesn't allow to customize the internal `Stream` type. Doing this
-  allows supporting the point above.
-* Has `with_diagnostics(asio::deferred)` as default completion token,
-  which allows using `co_await` and getting exceptions with extra information.
-* Has equivalent performance.
-* Other than session establishment, it has the same API as `connection`.
-
-`any_connection` is expected to replace `connection` in the long run.
 
 
-[heading Using a connection]
 
-Other than that, connection and any_connection are used almost equivalently.
-They support the same APIs, like execute, prepare_statement, close_statement
-and reset_connection.
 
-Some newer APIs only present in any_connection, like set_character_set or pipeline.
-any_connection's default completion token is with_diagnostics(asio::deferred),
-allowing easier interoperability with coroutines.
 
 
 
@@ -148,6 +244,27 @@ To make life easier, this library provides the type alias [reflink tcp_ssl_conne
 Note that there is no need to use TLS when using UNIX sockets. As the traffic doesn't
 leave the machine, MySQL considers them secure, and will allow using authentication
 plugins like `caching_sha2_password` even if TLS is not used.
+
+TODO: check that evth down here is above too
+[reflink any_connection] is a type-erased alternative to [reflink connection].
+It's easier to use and features more functionality than plain `connection`.
+
+When compared to [reflink connection], `any_connection`:
+
+* Is type-erased. The type of the connection doesn't depend on the transport being used.
+  Supported transports include plaintext TCP, TLS on top of TCP and UNIX domain sockets.
+* Is easier to connect. For example, when using TCP, connection establishment methods will
+  handle hostname resolution for you. This must be handled manually with `connection`.
+* Can always be reconnected after closing it or after encountering an error.
+  `connection` can't make this guarantee, especially when using TLS.
+* Doesn't allow to customize the internal `Stream` type. Doing this
+  allows supporting the point above.
+* Has `with_diagnostics(asio::deferred)` as default completion token,
+  which allows using `co_await` and getting exceptions with extra information.
+* Has equivalent performance.
+* Other than session establishment, it has the same API as `connection`.
+
+`any_connection` is expected to replace `connection` in the long run.
 
 
 [heading:non_sockets Streams that are not sockets]
@@ -224,6 +341,113 @@ and closing the underlying stream, if necessary. Some guidelines:
 Note that __Self__ does not perform any built-in retry strategy, as different use cases have different requirements.
 You can implement it as you best like with these tools. If you implemented your own and you would like to contribute it,
 please create a PR in the GitHub repository.
+
+
+
+TODO: set a heading for this.
+
+[table
+    [
+        [Feature]
+        [any_connection]
+        [connection]
+    ]
+    [
+        [Hostname resolution]
+        [Performed by [refmem any_connection async_connect]]
+        [Needs to be performed manually]
+    ]
+    [
+        [Credentials]
+        [
+            [refmem connect_params username], [refmem connect_params password]
+        ]
+        [
+            [refmem handshake_params username], [refmem handshake_params password]
+        ]
+    ]
+    [
+        [Database to use]
+        [[refmem connect_params database]]
+        [[refmem handshake_params database]]
+    ]
+    [
+        [Setting TLS options]
+        [
+            [refmem any_connection_params ssl_ctx]
+        ]
+        [
+            Pass a __ssl_context__ to [reflink tcp_ssl_connection]'s constructor.
+        ]
+    ]
+    [
+        [TLS negotiation]
+        [[refmem connect_params ssl]. Ignored for if using UNIX sockets.]
+        [[refmem handshake_params ssl]. Ignored if `Stream` is not TLS-enabled.]
+    ]
+    [
+        [UNIX sockets]
+        [Use a UNIX socket path in [refmem connect_params server_address]]
+        [Use [reflink unix_connection] and pass a UNIX endpoint to [refmem connection connect]]
+    ]
+    [
+        [Changing the initial size of the internal network buffer]
+        [[refmem any_connection_params initial_buffer_size]]
+        [Pass a [reflink buffer_params] instance to connection's constructor]
+    ]
+    [
+        [Changing the network buffer size limit]
+        [[refmem any_connection_params max_buffer_size]]
+        [Not available: no limit on the network buffer size]
+    ]
+    [
+        [Enabling multi-queries]
+        [[refmem connect_params multi_queries]]
+        [[refmem handshake_params multi_queries]]
+    ]
+    [
+        [Changing the connection's character set]
+        [[refmem any_connection async_set_character_set]]
+        [Unavailable]
+    ]
+    [
+        [Running pipelines]
+        [[refmem any_connection async_run_pipeline]]
+        [Unavailable]
+    ]
+    [
+        [Access the underlying stream]
+        [Unavailable]
+        [[refmem connection stream]]
+    ]
+    [
+        [Raw handshake and quit]
+        [Unavailable]
+        [[refmem connection handshake], [refmem connection quit]]
+    ]
+    [
+        [Connection pooling]
+        [[refmem connection_pool]]
+        [Unavailable]
+    ]
+    [
+        [Reconnection]
+        [[refmem any_connection async_connect] can always be used]
+        [Unavailable for [reflink tcp_ssl_connection] or after a cancellation]
+    ]
+    [
+        [Including diagnostics in coroutine exceptions]
+        [Enabled by default]
+        [
+            ```
+            co_await conn.async_execute("SELECT 1", result, mysql::with_diagnostics);
+            ```
+        ]
+    ]
+]
+
+
+
 
 
 [endsect]
