@@ -253,7 +253,7 @@ you may use:
     [
         [Setting TLS options]
         [
-            [refmem any_connection_params ssl_ctx]
+            [refmem any_connection_params ssl_context]
         ]
         [
             Pass a __ssl_context__ to [reflink tcp_ssl_connection]'s constructor.
