@@ -194,14 +194,13 @@ END
 [include 16_metadata.qbk]
 [include 17_charsets.qbk]
 [include 18_time_types.qbk]
-[/ TODO: re-enable this
-[include 19_templated_connection.qbk] ]
+[include 19_templated_connection.qbk]
 [include 20_pipeline.qbk]
 [include 21_examples.qbk]
 
 
 
-[section:ref Reference]
+[/ [section:ref Reference]
 [xinclude helpers/quickref.xml]
 [block'''<part label="Two: Reference">''']
 [include reference.qbk]
@@ -216,4 +215,4 @@ END
 [include helpers/Stream.qbk]
 [include helpers/WritableFieldTuple.qbk]
 [block'''</part>''']
-[endsect]
+[endsect] ]

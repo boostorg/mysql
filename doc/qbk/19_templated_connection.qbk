@@ -123,8 +123,12 @@ conn.connect(*endpoints.begin(), params);
 ```
 
 As opposed to `connect_params`, [reflink handshake_params] does not own
-the strings it contains (like username and password). It's your responsibility
-to keep them alive until the connect operation finishes.
+the strings it contains (like the username and the password). It's your responsibility
+to keep them alive until the connect operation completes.
+
+All functionality in [reflink handshake_params] has an equivalent in
+[reflink connect_params]. See the [link mysql.templated_connection.reference reference table]
+for more info.
 
 
 
@@ -147,7 +151,8 @@ Some differences:
   in [reflink connection].
 * By default, `connection`'s completion token is `asio::deferred`
   instead of `mysql::with_diagnostics(asio::deferred)`. When using
-  coroutines with exceptions, you will get less informative errors.
+  coroutines with exceptions, you need to pass `mysql::with_diagnostics`
+  explicitly if you want exceptions with extra info.
 
 
 
@@ -164,16 +169,17 @@ conn.close();
 
 
 
-[heading TLS-enabled streams]
+[heading TLS support]
 
 To use TLS, you must use a [reflink connection] with a 
-[reflink Stream] that supports TLS. A TLS-enabled stream must inherit from
-[asioreflink ssl__stream_base ssl::stream_base], like
-[asioreflink ssl__stream ssl::stream] (as happens with [reflink tcp_ssl_connection]).
+[reflink Stream] that supports TLS.
+A ['TLS-enabled stream] must inherit from
+[asioreflink ssl__stream_base ssl::stream_base].
+The most common is
+[asioreflink ssl__stream ssl::stream] (used by [reflink tcp_ssl_connection]).
 
-When using a stream type that does not support TLS, like in [reflink tcp_connection]
+When using a stream type that does not support TLS, like [reflink tcp_connection]
 or [reflink unix_connection], [refmem handshake_params ssl] is ignored.
-
 
 
 
@@ -226,7 +232,9 @@ mysql::tcp_ssl_connection conn (ctx, ssl_ctx);
 asio::ip::tcp::resolver resolver(ctx);
 auto endpoints = resolver.resolve(server_hostname, mysql::default_port_string);
 
-// Connect the underlying stream manually
+// Connect the underlying stream manually.
+// asio::connect tries every endpoint in the passed sequence
+// until one succeeds. any_connection uses this internally.
 asio::connect(conn.stream(), endpoints);
 
 // Perform MySQL session establishment.
@@ -251,9 +259,7 @@ These functions can be useful in the following cases:
 
 * When you want to perform stream connection establishment yourself.
   For example, when you want to use the range `asio::connect`
-  overloads, which will try every endpoint returned by a resolver
-  in order until a connection attempt succeeds (this is performed
-  by [reflink any_connection] automatically).
+  overloads, as in the example above.
 * When using an exotic `Stream` type. `connect` and `close`
   can only be used if the `Stream` type satisfies [reflink SocketStream] - 
   that is, when its lowest layer type is a socket. This holds for
@@ -270,16 +276,14 @@ Concretely, when using TLS-capable streams, a `connection` can't be re-used afte
 it's closed or encounters a fatal error. This is because [asioreflink ssl__stream ssl::stream]
 can't be re-used. This limitation is not present in [reflink any_connection].
 
-If you are using [reflink tcp_connection] or [reflink unix_connection], or any other stream supporting
-reconnection:
+If you are using [reflink tcp_connection] or [reflink unix_connection],
+or any other stream supporting reconnection, and you want to re-use a connection:
 
-* After calling [refmem connection close], you can re-open the connection later by calling
-  [refmem connection connect] normally, even if the close operation failed.
+* Call [refmem connection close], or manually close the underlying stream,
+  even if you encountered a fatal error.
+* Call [refmem connection connect] normally, even if the close operation failed.
 * If your [refmem connection connect] operation failed, you can try opening it again
   by simply calling [refmem connection connect] again.
-* If you connected your connection successfully but encountered a network problem in any subsequent operation,
-  and you would like to re-establish connection, you should first call [refmem connection close] first, and
-  then try opening the connection again by calling [refmem connection connect].
 
 
 If your `Stream` type doesn't fulfill the [reflink SocketStream] concept,
@@ -302,7 +306,7 @@ The following table summarizes all the differences between the
 two connection types, and provides migration paths for each feature
 you may use:
 
-[table
+[table:reference
     [
         [Feature]
         [any_connection]
@@ -342,14 +346,24 @@ you may use:
         [[refmem handshake_params ssl]. Ignored if `Stream` is not TLS-enabled. Defaults to `mysql::ssl_mode::require`.]
     ]
     [
+        [Connection collation]
+        [[refmem connect_params connection_collation]]
+        [[refmem handshake_params connection_collation]]
+    ]
+    [
+        [Enabling multi-queries]
+        [[refmem connect_params multi_queries]]
+        [[refmem handshake_params multi_queries]]
+    ]
+    [
         [UNIX sockets]
         [Use a UNIX socket path in [refmem connect_params server_address]]
         [Use [reflink unix_connection] and pass a UNIX endpoint to [refmem connection connect]]
     ]
     [
         [Windows named pipes]
-        [Use [asioreflink windows__stream_handle windows::stream_handle] as stream type]
         [Not available yet]
+        [Use [asioreflink windows__stream_handle windows::stream_handle] as stream type]
     ]
     [
         [Changing the initial size of the internal network buffer]
@@ -362,9 +376,22 @@ you may use:
         [Not available: no limit on the network buffer size]
     ]
     [
-        [Enabling multi-queries]
-        [[refmem connect_params multi_queries]]
-        [[refmem handshake_params multi_queries]]
+        [Access the underlying stream]
+        [Unavailable]
+        [[refmem connection stream]]
+    ]
+    [
+        [Raw handshake and quit]
+        [Unavailable]
+        [[refmem connection handshake], [refmem connection quit]]
+    ]
+    [
+        [Reconnection]
+        [[refmem any_connection async_connect] can always be used]
+        [
+            Requires closing the current connection first.
+            Unavailable for [reflink tcp_ssl_connection].
+        ]
     ]
     [
         [Changing the connection's character set]
@@ -377,34 +404,6 @@ you may use:
         [Unavailable]
     ]
     [
-        [Access the underlying stream]
-        [Unavailable]
-        [[refmem connection stream]]
-    ]
-    [
-        [Raw handshake and quit]
-        [Unavailable]
-        [[refmem connection handshake], [refmem connection quit]]
-    ]
-    [
-        [Connection pooling]
-        [[refmem connection_pool]]
-        [Unavailable]
-    ]
-    [
-        [Reconnection]
-        [[refmem any_connection async_connect] can always be used]
-        [
-            Requires closing the current connection first.
-            Unavailable for [reflink tcp_ssl_connection].
-        ]
-    ]
-    [
-        [Hostname resolution]
-        [Handled by [refmemunq any_connection async_connect]]
-        [Use a `asio::ip::tcp::resolver`]
-    ]
-    [
         [Including diagnostics in coroutine exceptions]
         [Enabled by default]
         [
@@ -412,6 +411,11 @@ you may use:
             co_await conn.async_execute("SELECT 1", result, mysql::with_diagnostics);
             ```
         ]
+    ]
+    [
+        [Connection pooling]
+        [[reflink connection_pool]]
+        [Unavailable]
     ]
 ]
 
