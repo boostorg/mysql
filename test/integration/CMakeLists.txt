@@ -47,6 +47,7 @@ add_executable(
     test/snippets/sql_formatting.cpp
     test/snippets/sql_formatting_custom.cpp
     test/snippets/pipeline.cpp
+    test/snippets/templated_connection.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests

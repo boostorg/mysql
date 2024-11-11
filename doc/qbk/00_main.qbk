@@ -160,6 +160,7 @@ END
 [import ../../test/integration/test/snippets/sql_formatting_custom.cpp]
 [import ../../test/integration/test/snippets/multi_function.cpp]
 [import ../../test/integration/test/snippets/tutorials.cpp]
+[import ../../test/integration/test/snippets/templated_connection.cpp]
 [import ../../test/integration/test/snippets/metadata.cpp]
 [import ../../test/integration/test/snippets/connection_pool.cpp]
 [import ../../test/integration/test/snippets/time_types.cpp]
