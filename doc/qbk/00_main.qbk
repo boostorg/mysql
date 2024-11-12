@@ -130,6 +130,7 @@ END
 [import ../../example/1_tutorial/3_with_params.cpp]
 [import ../../example/1_tutorial/4_static_interface.cpp]
 [import ../../example/1_tutorial/5_updates_transactions.cpp]
+[import ../../example/2_simple/inserts.cpp]
 [import ../../example/2_simple/prepared_statements.cpp]
 [import ../../example/2_simple/timeouts.cpp]
 [import ../../example/2_simple/disable_tls.cpp]

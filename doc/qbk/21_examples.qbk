@@ -27,6 +27,7 @@ Self-contained programs demonstrating the basic concepts.
 
 Self-contained programs demonstrating more advanced concepts and techniques.
 
+* [link mysql.examples.inserts INSERTs, last_insert_id() and NULL values]
 * [link mysql.examples.prepared_statements Prepared statements]
 * [link mysql.examples.timeouts Setting timeouts to operations]
 * [link mysql.examples.disable_tls Disabling TLS for a connection]
@@ -124,6 +125,17 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
 [example_tutorial_updates_transactions]
+
+[endsect]
+
+
+
+
+[section:inserts INSERTs, last_insert_id() and NULL values]
+
+This example assumes you have gone through the [link mysql.examples.setup setup].
+
+[example_inserts]
 
 [endsect]
 

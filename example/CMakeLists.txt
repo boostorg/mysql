@@ -72,6 +72,7 @@ add_tutorial(tutorial_static_interface     4_static_interface.cpp      ARGS ${RE
 add_tutorial(tutorial_updates_transactions 5_updates_transactions.cpp  ARGS ${REGULAR_ARGS} 1 "John" LIBS Boost::pfr)
 
 # Simple
+add_simple_example(inserts                      ARGS ${REGULAR_ARGS} "John" "Doe" "HGS")
 add_simple_example(callbacks                    ARGS ${REGULAR_ARGS})
 add_simple_example(coroutines_cpp11             ARGS ${REGULAR_ARGS} LIBS Boost::context)
 add_simple_example(batch_inserts                ARGS ${SERVER_HOST}  PYTHON_RUNNER run_batch_inserts.py LIBS Boost::json)
