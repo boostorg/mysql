@@ -63,6 +63,7 @@ run_regular_example tutorial_updates_transactions : 1_tutorial/5_updates_transac
 
 # Simple examples
 run_regular_example inserts : 2_simple/inserts.cpp : $(regular_args) "John" "Doe" "HGS" 50000 ;
+run_regular_example deletes : 2_simple/deletes.cpp : $(regular_args) 20 ;
 run_regular_example callbacks : 2_simple/callbacks.cpp : $(regular_args) ;
 run_regular_example coroutines_cpp11 : 2_simple/coroutines_cpp11.cpp /boost/mysql/test//boost_context_lib : $(regular_args) ;
 run_python_example batch_inserts : run_batch_inserts.py : 2_simple/batch_inserts.cpp /boost/mysql/test//boost_json_lib ;

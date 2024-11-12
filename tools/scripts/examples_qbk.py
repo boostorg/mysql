@@ -109,6 +109,7 @@ TUTORIALS = [
 
 SIMPLE_EXAMPLES = [
     Example('inserts', '2_simple/inserts.cpp', 'INSERTs, last_insert_id() and NULL values'),
+    Example('deletes', '2_simple/deletes.cpp', 'DELETEs and affected_rows()'),
     Example('prepared_statements', '2_simple/prepared_statements.cpp', 'Prepared statements'),
     Example('timeouts', '2_simple/timeouts.cpp', 'Setting timeouts to operations'),
     Example('disable_tls', '2_simple/disable_tls.cpp', 'Disabling TLS for a connection'),
