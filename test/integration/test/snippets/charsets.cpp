@@ -13,6 +13,8 @@
 #include <cassert>
 #include <cstddef>
 
+namespace mysql = boost::mysql;
+
 namespace {
 
 //[charsets_next_char
@@ -67,7 +69,7 @@ BOOST_AUTO_TEST_CASE(section_charsets)
 {
     {
         // Verify that utf8mb4_next_char can be used in a character_set
-        boost::mysql::character_set charset{"utf8mb4", utf8mb4_next_char};
+        mysql::character_set charset{"utf8mb4", utf8mb4_next_char};
 
         // It works for valid input
         unsigned char buff_valid[] = {0xc3, 0xb1, 0x50};
