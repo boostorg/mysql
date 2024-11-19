@@ -1,3 +1,4 @@
+
 //
 // Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
@@ -10,22 +11,11 @@
 #include <boost/asio/awaitable.hpp>
 #if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
 
-//[example_tutorial_connection_pool
+//[example_tutorial_error_handling
 
 /**
- * This example demonstrates how to use connection_pool
- * to implement a server for a simple custom TCP-based protocol.
- * It also demonstrates how to set timeouts with asio::cancel_after.
- *
- * The protocol can be used to retrieve the full name of an
- * employee, given their ID. It works as follows:
- *   - The client connects.
- *   - The client sends the employee ID, as a big-endian 64-bit signed int.
- *   - The server responds with a string containing the employee full name.
- *   - The connection is closed.
- *
- * This tutorial doesn't include proper error handling.
- * We will build it in the next one.
+ * This tutorial adds error handling to the program in the previous tutorial.
+ * It shows how to avoid exceptions and use diagnostics objects.
  *
  * It uses Boost.Pfr for reflection, which requires C++20.
  * You can backport it to C++14 if you need by using Boost.Describe.
@@ -38,12 +28,13 @@
  */
 
 #include <boost/mysql/connection_pool.hpp>
-#include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/pfr.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/with_params.hpp>
 
+#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/cancel_after.hpp>
@@ -53,7 +44,6 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <boost/asio/socket_base.hpp>
 #include <boost/asio/this_coro.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/endian/conversion.hpp>
@@ -68,6 +58,31 @@
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
+// Log an error to std::cerr
+void log_error(const char* header, boost::system::error_code ec, const mysql::diagnostics& diag = {})
+{
+    // Inserting the error code only prints the number and category. Add the message, too.
+    std::cerr << header << ": " << ec << " " << ec.message();
+
+    // client_message() contains client-side generated messages that don't
+    // contain user-input. This is usually embedded in exceptions.
+    // When working with error codes, we need to log it explicitly
+    if (!diag.client_message().empty())
+    {
+        std::cerr << ": " << diag.client_message();
+    }
+
+    // server_message() contains server-side messages, and thus may
+    // contain user-supplied input. Printing it is safe.
+    if (!diag.server_message().empty())
+    {
+        std::cerr << ": " << diag.server_message();
+    }
+
+    // Done
+    std::cerr << '\n';
+}
+
 // Should contain a member for each field of interest present in our query
 struct employee
 {
@@ -75,29 +90,38 @@ struct employee
     std::string last_name;
 };
 
-//[tutorial_connection_pool_db
 // Encapsulates the database access logic.
 // Given an employee_id, retrieves the employee details to be sent to the client.
 asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, std::int64_t employee_id)
 {
-    //[tutorial_connection_pool_get_connection
+    mysql::diagnostics diag;
+
     // Get a connection from the pool.
     // This will wait until a healthy connection is ready to be used.
     // pooled_connection grants us exclusive access to the connection until
     // the object is destroyed
-    mysql::pooled_connection conn = co_await pool.async_get_connection();
-    //]
+    auto [ec1, conn] = co_await pool.async_get_connection(diag, asio::as_tuple);
+    if (ec1)
+    {
+        log_error("Error in async_get_connection", ec1, diag);
+        co_return "ERROR";
+    }
 
-    //[tutorial_connection_pool_use
     // Use the connection normally to query the database.
     // operator-> returns a reference to an any_connection,
     // so we can apply all what we learnt in previous tutorials
     mysql::static_results<mysql::pfr_by_name<employee>> result;
-    co_await conn->async_execute(
+    auto [ec2] = co_await conn->async_execute(
         mysql::with_params("SELECT first_name, last_name FROM employee WHERE id = {}", employee_id),
-        result
+        result,
+        diag,
+        asio::as_tuple
     );
-    //]
+    if (ec2)
+    {
+        log_error("Error running query", ec1, diag);
+        co_return "ERROR";
+    }
 
     // Compose the message to be sent back to the client
     if (result.rows().empty())
@@ -113,15 +137,18 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     // When the pooled_connection is destroyed, the connection is returned
     // to the pool, so it can be re-used.
 }
-//]
 
-//[tutorial_connection_pool_session
 asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp::socket client_socket)
 {
     // Read the request from the client.
     // async_read ensures that the 8-byte buffer is filled, handling partial reads.
     unsigned char message[8]{};
-    co_await asio::async_read(client_socket, asio::buffer(message));
+    auto [ec1, bytes_read] = co_await asio::async_read(client_socket, asio::buffer(message), asio::as_tuple);
+    if (ec1)
+    {
+        log_error("Error reading from the socket", ec1);
+        co_return;
+    }
 
     // Parse the 64-bit big-endian int into a native int64_t
     std::int64_t employee_id = boost::endian::load_big_s64(message);
@@ -131,15 +158,22 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
 
     // Write the response back to the client.
     // async_write ensures that the entire message is written, handling partial writes
-    co_await asio::async_write(client_socket, asio::buffer(response));
+    auto [ec2, bytes_written] = co_await asio::async_write(
+        client_socket,
+        asio::buffer(response),
+        asio::as_tuple
+    );
+    if (ec2)
+    {
+        log_error("Error writing to the socket", ec2);
+        co_return;
+    }
 
     // The socket's destructor will close the client connection
 }
-//]
 
 asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port)
 {
-    //[tutorial_connection_pool_acceptor_setup
     // An object that accepts incoming TCP connections.
     asio::ip::tcp::acceptor acc(co_await asio::this_coro::executor);
 
@@ -159,14 +193,17 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
     // Start listening for connections
     acc.listen();
     std::cout << "Server listening at " << acc.local_endpoint() << std::endl;
-    //]
 
-    //[tutorial_connection_pool_coro_timeout
     // Start the accept loop
     while (true)
     {
         // Accept a new connection
-        auto sock = co_await acc.async_accept();
+        auto [ec, sock] = co_await acc.async_accept(asio::as_tuple);
+        if (ec)
+        {
+            log_error("Error accepting connection", ec);
+            co_return;
+        }
 
         // Launch a coroutine that runs our session logic.
         // We don't co_await this coroutine so we can listen
@@ -194,7 +231,6 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             )
         );
     }
-    //]
 }
 
 void main_impl(int argc, char** argv)
@@ -209,7 +245,6 @@ void main_impl(int argc, char** argv)
     const char* password = argv[2];
     const char* server_hostname = argv[3];
 
-    //[tutorial_connection_pool_create
     // Create an I/O context, required by all I/O objects
     asio::io_context ctx;
 
@@ -226,18 +261,14 @@ void main_impl(int argc, char** argv)
     // Construct the pool.
     // ctx will be used to create the connections and other I/O objects
     mysql::connection_pool pool(ctx, std::move(params));
-    //]
 
-    //[tutorial_connection_pool_run
     // You need to call async_run on the pool before doing anything useful with it.
     // async_run creates connections and keeps them healthy. It must be called
     // only once per pool.
     // The detached completion token means that we don't want to be notified when
     // the operation ends. It's similar to a no-op callback.
     pool.async_run(asio::detached);
-    //]
 
-    //[tutorial_connection_pool_signals
     // signal_set is an I/O object that allows waiting for signals
     asio::signal_set signals(ctx, SIGINT, SIGTERM);
 
@@ -246,7 +277,6 @@ void main_impl(int argc, char** argv)
         // Stop the execution context. This will cause io_context::run to return
         ctx.stop();
     });
-    //]
 
     // Launch our listener
     asio::co_spawn(
@@ -270,16 +300,6 @@ int main(int argc, char** argv)
     try
     {
         main_impl(argc, argv);
-    }
-    catch (const boost::mysql::error_with_diagnostics& err)
-    {
-        // Some errors include additional diagnostics, like server-provided error messages.
-        // Security note: diagnostics::server_message may contain user-supplied values (e.g. the
-        // field value that caused the error) and is encoded using to the connection's character set
-        // (UTF-8 by default). Treat is as untrusted input.
-        std::cerr << "Error: " << err.what() << ", error code: " << err.code() << '\n'
-                  << "Server diagnostics: " << err.get_diagnostics().server_message() << std::endl;
-        return 1;
     }
     catch (const std::exception& err)
     {

@@ -61,26 +61,46 @@ def _launch_server(exe: str, host: str):
         raise RuntimeError('Server did not exit cleanly. retcode={}'.format(server.returncode))
 
 
-def _query_employee(port: int, employee_id: int) -> str:
-    # Open a connection
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect(('127.0.0.1', port))
-
-    # Send the request
-    sock.send(struct.pack('>Q', employee_id))
+class _Runner:
+    def __init__(self, port: int) -> None:
+        self._port = port
     
-    # Receive the response. It should always fit in a single TCP segment
-    # for the values we have in CI
-    res = sock.recv(4096).decode()
-    assert len(res) > 0
-    return res
+    def _connect(self) -> socket.socket:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(('127.0.0.1', self._port))
+        return sock
 
 
-def _run_requests(port: int):
-    value = _query_employee(port, 1) 
-    assert value != 'NOT_FOUND'
-    value = _query_employee(port, 0xffffffff)
-    assert value == 'NOT_FOUND', f'Value is: {value}'
+    def _query_employee(self, employee_id: int) -> str:
+        # Open a connection
+        sock = self._connect()
+
+        # Send the request
+        sock.send(struct.pack('>Q', employee_id))
+        
+        # Receive the response. It should always fit in a single TCP segment
+        # for the values we have in CI
+        res = sock.recv(4096).decode()
+        assert len(res) > 0
+        return res
+
+
+    def _generate_error(self) -> None:
+        # Open a connection
+        sock = self._connect()
+
+        # Send an incomplete message
+        sock.send(b'abc')
+        sock.close()
+    
+
+    def run(self, test_errors: bool) -> None:
+        # Generate an error first. The server should not terminate
+        if test_errors:
+            self._generate_error()
+        assert self._query_employee(1) != 'NOT_FOUND'
+        value = self._query_employee(0xffffffff)
+        assert value == 'NOT_FOUND', f'Value is: {value}'
 
 
 def main():
@@ -88,12 +108,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('executable')
     parser.add_argument('host')
+    parser.add_argument('--test-errors', action='store_true')
     args = parser.parse_args()
 
     # Launch the server
     with _launch_server(args.executable, args.host) as listening_port:
     # Run the tests
-        _run_requests(listening_port)
+        _Runner(listening_port).run(args.test_errors)
 
 
 if __name__ == '__main__':
