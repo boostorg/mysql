@@ -70,6 +70,8 @@ add_tutorial(tutorial_async                2_async.cpp                 ARGS ${RE
 add_tutorial(tutorial_with_params          3_with_params.cpp           ARGS ${REGULAR_ARGS} 1)
 add_tutorial(tutorial_static_interface     4_static_interface.cpp      ARGS ${REGULAR_ARGS} 1        LIBS Boost::pfr)
 add_tutorial(tutorial_updates_transactions 5_updates_transactions.cpp  ARGS ${REGULAR_ARGS} 1 "John" LIBS Boost::pfr)
+add_tutorial(tutorial_connection_pool      6_connection_pool.cpp       ARGS ${SERVER_HOST}           LIBS Boost::pfr
+    PYTHON_RUNNER run_tutorial_connection_pool.py)
 
 # Simple
 add_simple_example(inserts                      ARGS ${REGULAR_ARGS} "John" "Doe" "HGS")
