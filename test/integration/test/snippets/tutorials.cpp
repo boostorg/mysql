@@ -5,16 +5,26 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/cancel_after.hpp>
+#include <boost/asio/co_spawn.hpp>
+#include <boost/asio/detached.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/this_coro.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/ci_server.hpp"
 #include "test_integration/run_coro.hpp"
+#include "test_integration/snippets/credentials.hpp"
 #include "test_integration/snippets/snippets_fixture.hpp"
 
 namespace mysql = boost::mysql;
@@ -166,6 +176,42 @@ asio::awaitable<void> tutorial_updates_transactions(mysql::any_connection& conn)
         //]
     }
 }
+
+asio::awaitable<void> handle_session(mysql::connection_pool&, asio::ip::tcp::socket) {}
+
+// For simplicity, we don't run this (we just check that it builds)
+[[maybe_unused]]
+asio::awaitable<void> tutorial_connection_pool_unused(
+    mysql::connection_pool& pool,
+    asio::ip::tcp::acceptor acc
+)
+{
+    //[tutorial_connection_pool_acceptor_loop
+    // Start the accept loop
+    while (true)
+    {
+        // Accept a new connection
+        auto sock = co_await acc.async_accept();
+
+        // Launch a coroutine that runs our session logic.
+        // We don't co_await this coroutine so we can listen
+        // to new connections while the session is running
+        asio::co_spawn(
+            // Use the same executor as the current coroutine
+            co_await asio::this_coro::executor,
+
+            // Session logic. Take ownership of the socket
+            [&pool, sock = std::move(sock)]() mutable { return handle_session(pool, std::move(sock)); },
+
+            // Propagate exceptions thrown in handle_session
+            [](std::exception_ptr ex) {
+                if (ex)
+                    std::rethrow_exception(ex);
+            }
+        );
+    }
+    //]
+}
 #endif
 
 BOOST_FIXTURE_TEST_CASE(section_tutorials, snippets_fixture)
@@ -184,6 +230,26 @@ BOOST_FIXTURE_TEST_CASE(section_tutorials, snippets_fixture)
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
     // Tutorial about UPDATEs and transactions
     run_coro(ctx, [&]() { return tutorial_updates_transactions(conn); });
+#endif
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+    run_coro(ctx, [&]() -> asio::awaitable<void> {
+        mysql::connection_pool pool(
+            ctx,
+            mysql::pool_params{
+                mysql::host_and_port(get_hostname()),
+                mysql_username,
+                mysql_password,
+            }
+        );
+        pool.async_run(asio::detached);
+
+        // TODO: duplicated in connection_pool.cpp
+        //[tutorial_connection_pool_get_connection_timeout
+        // Get a connection from the pool, but don't wait more than 30 seconds
+        auto conn = co_await pool.async_get_connection(asio::cancel_after(std::chrono::seconds(30)));
+        //]
+    });
 #endif
 }
 

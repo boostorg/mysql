@@ -105,6 +105,7 @@ TUTORIALS = [
     Example('tutorial_with_params', '1_tutorial/3_with_params.cpp', 'Tutorial 3 listing: queries with parameters'),
     Example('tutorial_static_interface', '1_tutorial/4_static_interface.cpp', 'Tutorial 4 listing: the static interface'),
     Example('tutorial_updates_transactions', '1_tutorial/5_updates_transactions.cpp', 'Tutorial 5 listing: UPDATEs, transactions and multi-queries'),
+    Example('tutorial_connection_pool', '1_tutorial/6_connection_pool.cpp', 'Tutorial 6 listing: connection pools and timeouts'),
 ]
 
 SIMPLE_EXAMPLES = [
