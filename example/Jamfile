@@ -60,6 +60,7 @@ run_regular_example tutorial_async                : 1_tutorial/2_async.cpp      
 run_regular_example tutorial_with_params          : 1_tutorial/3_with_params.cpp          : $(regular_args) 1 ;
 run_regular_example tutorial_static_interface     : 1_tutorial/4_static_interface.cpp     : $(regular_args) 1 ;
 run_regular_example tutorial_updates_transactions : 1_tutorial/5_updates_transactions.cpp : $(regular_args) 1 "John" ;
+run_python_example  tutorial_connection_pool      : run_tutorial_connection_pool.py : 1_tutorial/6_connection_pool.cpp ;
 
 # Simple examples
 run_regular_example inserts : 2_simple/inserts.cpp : $(regular_args) "John" "Doe" "HGS" 50000 ;
