@@ -92,7 +92,7 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     //[tutorial_connection_pool_use
     // Use the connection normally to query the database.
     // operator-> returns a reference to an any_connection,
-    // so we can apply all we learnt in previous tutorials
+    // so we can apply all what we learnt in previous tutorials
     mysql::static_results<mysql::pfr_by_name<employee>> result;
     co_await conn->async_execute(
         mysql::with_params("SELECT first_name, last_name FROM employee WHERE id = {}", employee_id),
@@ -139,7 +139,6 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
 }
 //]
 
-//[tutorial_connection_pool_listener
 asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port)
 {
     //[tutorial_connection_pool_acceptor_setup
@@ -164,6 +163,7 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
     std::cout << "Server listening at " << acc.local_endpoint() << std::endl;
     //]
 
+    //[tutorial_connection_pool_coro_timeout
     // Start the accept loop
     while (true)
     {
@@ -180,7 +180,6 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             // Session logic. Take ownership of the socket
             [&pool, sock = std::move(sock)]() mutable { return handle_session(pool, std::move(sock)); },
 
-            //[tutorial_connection_pool_coro_timeout
             // Completion token for the coroutine.
             // If the coroutine hasn't finished after 60 seconds, Asio will cancel
             // any I/O operation the coroutine is waiting for.
@@ -195,11 +194,10 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
                         std::rethrow_exception(ex);
                 }
             )
-            //]
         );
     }
+    //]
 }
-//]
 
 void main_impl(int argc, char** argv)
 {
@@ -208,6 +206,10 @@ void main_impl(int argc, char** argv)
         std::cerr << "Usage: " << argv[0] << " <username> <password> <server-hostname> <listener-port>\n";
         exit(1);
     }
+
+    const char* username = argv[1];
+    const char* password = argv[2];
+    const char* server_hostname = argv[3];
 
     //[tutorial_connection_pool_create
     // Create an I/O context, required by all I/O objects
@@ -218,9 +220,9 @@ void main_impl(int argc, char** argv)
     // including the server address and credentials.
     // You can configure a lot of other things, like pool limits
     mysql::pool_params params;
-    params.server_address.emplace_host_and_port(argv[3]);
-    params.username = argv[1];
-    params.password = argv[2];
+    params.server_address.emplace_host_and_port(server_hostname);
+    params.username = username;
+    params.password = password;
     params.database = "boost_mysql_examples";
 
     // Construct the pool.

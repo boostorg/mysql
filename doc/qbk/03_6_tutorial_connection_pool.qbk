@@ -33,8 +33,9 @@ The protocol is TCP based, and can be described as follows:
 * The connection is closed after that.
 
 This protocol is intentionally overly simplistic, and
-shouldn't be used in production. See our (TODO: link) HTTP examples
-for typical production use cases.
+shouldn't be used in production. See our
+[link mysql.examples.connection_pool HTTP examples]
+for more advanced use cases.
 
 
 
@@ -50,9 +51,7 @@ config struct:
 
 A single connection pool is usually created per application.
 
-[refmem connection_pool async_run] should be called once per pool.
-It's an async operation that takes care of establishing the
-connections and keeping them healthy:
+[refmem connection_pool async_run] should be called once per pool:
 
 [tutorial_connection_pool_run]
 
@@ -79,7 +78,7 @@ with some pool-specific additions. We can use it like a regular connection:
 
 When a [reflink pooled_connection] is destroyed, the connection is returned
 to the pool. The underlying connection will be cleaned up using a lightweight
-session reset function, and then recycled.
+session reset mechanism and recycled.
 Subsequent [refmemunq connection_pool async_get_connection]
 calls may retrieve the same connection. This improves efficiency,
 since session establishment is costly.
@@ -104,7 +103,7 @@ invoking the database access logic in the process:
 [heading Listening for connections]
 
 We now need logic to accept incoming TCP connections.
-We will use an `asio::ip::tcp::acceptor` I/O object
+We will use an `asio::ip::tcp::acceptor` object
 in our main coroutine to accomplish it:
 
 [tutorial_connection_pool_acceptor_setup]
@@ -133,14 +132,9 @@ async operation in Boost.MySQL. For example:
 [tutorial_connection_pool_get_connection_timeout]
 
 While this works, it's usually better to set the timeout
-at the session level:
+at the session level. Let's modify our acceptor loop:
 
 [tutorial_connection_pool_coro_timeout]
-
-With these changes, this is what our listener
-coroutine looks like:
-
-[tutorial_connection_pool_listener]
 
 
 
