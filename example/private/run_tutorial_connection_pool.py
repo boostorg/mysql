@@ -6,25 +6,15 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-import requests
-import random
 import argparse
 from subprocess import PIPE, Popen
 from contextlib import contextmanager
 import re
 import os
+import socket
+import struct
 
 _is_win = os.name == 'nt'
-
-
-def _check_response(res: requests.Response):
-    if res.status_code >= 400:
-        print(res.text)
-    res.raise_for_status()
-
-
-def _random_string() -> str:
-    return bytes(random.getrandbits(8) for _ in range(8)).hex()
 
 
 # Returns the port the server is listening at
@@ -46,7 +36,7 @@ def _launch_server(exe: str, host: str):
             # Wait until the server is ready
             ready_line = server.stdout.readline().decode()
             print(ready_line, end='', flush=True)
-            if ready_line.startswith('Sorry'): # C++14 unsupported, skip the test
+            if ready_line.startswith('Sorry'): # C++ standard unsupported, skip the test
                 exit(0)
             yield _parse_server_start_line(ready_line)
         finally:
@@ -71,59 +61,26 @@ def _launch_server(exe: str, host: str):
         raise RuntimeError('Server did not exit cleanly. retcode={}'.format(server.returncode))
 
 
-def _call_endpoints(port: int):
-    base_url = 'http://127.0.0.1:{}'.format(port)
+def _query_employee(port: int, employee_id: int) -> str:
+    # Open a connection
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect(('127.0.0.1', port))
 
-    # Create a note
-    note_unique = _random_string()
-    title = 'My note {}'.format(note_unique)
-    content = 'This is a note about {}'.format(note_unique)
-    res = requests.post(
-        '{}/notes'.format(base_url),
-        json={'title': title, 'content': content}
-    )
-    _check_response(res)
-    note = res.json()
-    note_id = int(note['note']['id'])
-    assert note['note']['title'] == title
-    assert note['note']['content'] == content
+    # Send the request
+    sock.send(struct.pack('>Q', employee_id))
+    
+    # Receive the response. It should always fit in a single TCP segment
+    # for the values we have in CI
+    res = sock.recv(4096).decode()
+    assert len(res) > 0
+    return res
 
-    # Retrieve all notes
-    res = requests.get('{}/notes'.format(base_url))
-    _check_response(res)
-    all_notes = res.json()
-    assert len([n for n in all_notes['notes'] if n['id'] == note_id]) == 1
 
-    # Edit the note
-    note_unique = _random_string()
-    title = 'Edited {}'.format(note_unique)
-    content = 'This is a note an edit on {}'.format(note_unique)
-    res = requests.put(
-        '{}/notes/{}'.format(base_url, note_id),
-        json={'title': title, 'content': content}
-    )
-    _check_response(res)
-    note = res.json()
-    assert int(note['note']['id']) == note_id
-    assert note['note']['title'] == title
-    assert note['note']['content'] == content
-
-    # Retrieve the note
-    res = requests.get('{}/notes/{}'.format(base_url, note_id))
-    _check_response(res)
-    note = res.json()
-    assert int(note['note']['id']) == note_id
-    assert note['note']['title'] == title
-    assert note['note']['content'] == content
-
-    # Delete the note
-    res = requests.delete('{}/notes/{}'.format(base_url, note_id))
-    _check_response(res)
-    assert res.json()['deleted'] == True
-
-    # The note is not there
-    res = requests.get('{}/notes/{}'.format(base_url, note_id))
-    assert res.status_code == 404
+def _run_requests(port: int):
+    value = _query_employee(port, 1) 
+    assert value != 'NOT_FOUND'
+    value = _query_employee(port, 0xffffffff)
+    assert value == 'NOT_FOUND', f'Value is: {value}'
 
 
 def main():
@@ -136,7 +93,7 @@ def main():
     # Launch the server
     with _launch_server(args.executable, args.host) as listening_port:
     # Run the tests
-        _call_endpoints(listening_port)
+        _run_requests(listening_port)
 
 
 if __name__ == '__main__':
