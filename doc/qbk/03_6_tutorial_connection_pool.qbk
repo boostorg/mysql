@@ -123,16 +123,34 @@ for a client connection to become available before completing.
 If the server is unavailable or credentials are invalid,
 `async_get_connection` may wait indefinitely. This is a problem
 for both development and production.
+[asioreflink cancel_after cancel_after] can help us, but we
+should first understand what a
+[@boost:/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers completion token]
+is.
 
-All async functions in Boost.MySQL support Asio's per-operation
-cancellation mechanism. Hence, we can use the
-[asioreflink cancel_after cancel_after] completion token with any
-async operation in Boost.MySQL. For example:
+A completion token is an object that determines what to do
+when an asynchronous operation completes, and can be passed
+as the last argument to async functions. If nothing is passed,
+the default completion token applies, which returns an object
+that can be co_await'ed. This is what we have been doing until now.
+
+A callback is also a completion token. When a callback is passed to
+an initiation function, it will be invoked when the operation completes.
+We've also used this before, with `co_spawn`.
+
+Completion tokens are usually generic: once you learn how to use one,
+it can be applied to all Asio-compliant async operations.
+
+[asioreflink cancel_after cancel_after] wraps a completion token
+to produce a new token that issues a cancellation if the
+operation it's passed to doesn't complete in a certain amount
+of time. We can apply it to operations in Boost.MySQL like this:
 
 [tutorial_connection_pool_get_connection_timeout]
 
 While this works, it's usually better to set the timeout
-at the session level. Let's modify our acceptor loop:
+at the session level. `asio::co_spawn` is an async operation, too,
+so we can use completion tokens with it. Let's modify our acceptor loop:
 
 [tutorial_connection_pool_coro_timeout]
 

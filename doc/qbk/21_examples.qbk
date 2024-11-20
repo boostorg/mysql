@@ -23,6 +23,7 @@ Self-contained programs demonstrating the basic concepts.
 * [link mysql.examples.tutorial_static_interface Tutorial 4 listing: the static interface]
 * [link mysql.examples.tutorial_updates_transactions Tutorial 5 listing: UPDATEs, transactions and multi-queries]
 * [link mysql.examples.tutorial_connection_pool Tutorial 6 listing: connection pools and timeouts]
+* [link mysql.examples.tutorial_error_handling Tutorial 7 listing: error handling and avoiding exceptions]
 
 [heading Simple programs]
 
@@ -31,7 +32,6 @@ Self-contained programs demonstrating more advanced concepts and techniques.
 * [link mysql.examples.inserts INSERTs, last_insert_id() and NULL values]
 * [link mysql.examples.deletes DELETEs and affected_rows()]
 * [link mysql.examples.prepared_statements Prepared statements]
-* [link mysql.examples.timeouts Setting timeouts to operations]
 * [link mysql.examples.disable_tls Disabling TLS for a connection]
 * [link mysql.examples.tls_certificate_verification Setting TLS options: enabling TLS certificate verification]
 * [link mysql.examples.metadata Metadata]
@@ -144,6 +144,17 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
+[section:tutorial_error_handling Tutorial 7 listing: error handling and avoiding exceptions]
+
+This example assumes you have gone through the [link mysql.examples.setup setup].
+
+[example_tutorial_error_handling]
+
+[endsect]
+
+
+
+
 [section:inserts INSERTs, last_insert_id() and NULL values]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
@@ -171,17 +182,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
 [example_prepared_statements]
-
-[endsect]
-
-
-
-
-[section:timeouts Setting timeouts to operations]
-
-This example assumes you have gone through the [link mysql.examples.setup setup].
-
-[example_timeouts]
 
 [endsect]
 

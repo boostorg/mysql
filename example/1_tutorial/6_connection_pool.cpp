@@ -170,7 +170,9 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
 
         // Launch a coroutine that runs our session logic.
         // We don't co_await this coroutine so we can listen
-        // to new connections while the session is running
+        // to new connections while the session is running.
+        // co_spawn is actually an async operation, so we
+        // can pass completion tokens to it.
         asio::co_spawn(
             // Use the same executor as the current coroutine
             co_await asio::this_coro::executor,
@@ -183,8 +185,9 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             // any I/O operation the coroutine is waiting for.
             // The coroutine will see a failure in the I/O operation it's waiting
             // for and throw, as it would for a network error.
-            // The supplied callback will be executed when the coroutine
-            // completes, even if it's cancelled.
+            // We pass an explicit completion token to cancel_after
+            // (a callback, in this case). The callback
+            // will be invoked when the coroutine completes, even if it's cancelled.
             asio::cancel_after(
                 std::chrono::seconds(60),
                 [](std::exception_ptr ex) {

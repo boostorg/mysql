@@ -31,7 +31,7 @@
 [template reflink[id][reflink2 [id] [id]]]
 [template refmem[class mem][reflink2 [class].[mem] [class]::[mem]]]
 [template refmemunq[class mem][reflink2 [class].[mem] [mem]]]
-[template asioreflink[id term][@boost:/doc/html/boost_asio/reference/[id].html [^boost::asio::[term]]]]
+[template asioreflink[id term][@boost:/doc/html/boost_asio/reference/[id].html [^asio::[term]]]]
 [template mysqllink[id text][@https://dev.mysql.com/doc/refman/8.0/en/[id] [text]]]
 
 [def __CompletionToken__ [@boost:/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers ['CompletionToken]]]
@@ -131,10 +131,10 @@ END
 [import ../../example/1_tutorial/4_static_interface.cpp]
 [import ../../example/1_tutorial/5_updates_transactions.cpp]
 [import ../../example/1_tutorial/6_connection_pool.cpp]
+[import ../../example/1_tutorial/7_error_handling.cpp]
 [import ../../example/2_simple/inserts.cpp]
 [import ../../example/2_simple/deletes.cpp]
 [import ../../example/2_simple/prepared_statements.cpp]
-[import ../../example/2_simple/timeouts.cpp]
 [import ../../example/2_simple/disable_tls.cpp]
 [import ../../example/2_simple/tls_certificate_verification.cpp]
 [import ../../example/2_simple/metadata.cpp]
@@ -184,6 +184,7 @@ END
 [include 03_4_tutorial_static_interface.qbk]
 [include 03_5_tutorial_updates_transactions.qbk]
 [include 03_6_tutorial_connection_pool.qbk]
+[include 03_7_tutorial_error_handling.qbk]
 [include 04_overview.qbk]
 [include 05_connection_establishment.qbk]
 [include 06_sql_formatting.qbk]
@@ -205,7 +206,7 @@ END
 
 
 
-[section:ref Reference]
+[/ [section:ref Reference]
 [xinclude helpers/quickref.xml]
 [block'''<part label="Two: Reference">''']
 [include reference.qbk]
@@ -220,4 +221,4 @@ END
 [include helpers/Stream.qbk]
 [include helpers/WritableFieldTuple.qbk]
 [block'''</part>''']
-[endsect]
+[endsect] ]
