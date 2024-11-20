@@ -240,7 +240,7 @@ asio::awaitable<void> tutorial_connection_pool_unused(
 void log_error(const char*, boost::system::error_code) {}
 
 // Version without diagnostics
-// [tutorial_error_handling_db_nodiag
+//[tutorial_error_handling_db_nodiag
 asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, std::int64_t employee_id)
 {
     // Get a connection from the pool.
@@ -248,6 +248,8 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     auto [ec, conn] = co_await pool.async_get_connection(asio::as_tuple);
     if (ec)
     {
+        // A connection couldn't be obtained.
+        // This may be because the session timed out.
         log_error("Error in async_get_connection", ec);
         co_return "ERROR";
     }

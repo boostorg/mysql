@@ -46,12 +46,12 @@ Why are we not seeing the error code?
 
 When an awaitable in Asio is co_await'ed, the first handler argument is inspected.
 If it's an `error_code` that indicates a failure, an exception is thrown.
-The `error_code` is removed and not returned from the co_await expression,
-thus seeing only `mysql::pooled_connection`.
+The `error_code` is removed from the argument list,
+leaving a `mysql::pooled_connection` only.
 
 [asioreflink as_tuple as_tuple] is a completion token 
 that modifies the handler signature, packing all arguments into a `std::tuple`.
-It's used similarly to the `asio::cancel_after` token we have learnt in the previous tutorial:
+It's used similarly to the `asio::cancel_after` token that we used in the previous tutorial:
 
 [tutorial_error_handling_get_connection_as_tuple]
 
@@ -67,9 +67,7 @@ In practice, it's usually better to use structured bindings:
 
 [heading Using asio::as_tuple for database code]
 
-An error when talking to the database implies only sending a special value to the client.
-This means that the function encapsulating database logic can maintain its original signature.
-Applying [asioreflink as_tuple as_tuple] yields:
+If we apply [asioreflink as_tuple as_tuple] to our database logic, we have:
 
 [tutorial_error_handling_db_nodiag]
 
@@ -89,7 +87,7 @@ When using error codes, we need to handle diagnostics manually.
 All functions in Boost.MySQL are overloaded to accept a [reflink diagnostics]
 output parameter. It will be populated with extra information in case of error.
 
-Let's update our code to use it:
+Let's update our code to use diagnostics:
 
 [tutorial_error_handling_db]
 

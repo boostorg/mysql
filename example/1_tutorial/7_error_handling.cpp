@@ -96,6 +96,7 @@ struct employee
 //[tutorial_error_handling_db
 asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, std::int64_t employee_id)
 {
+    // Will be populated with error information in case of error
     mysql::diagnostics diag;
 
     // Get a connection from the pool.
@@ -103,6 +104,7 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     // pooled_connection grants us exclusive access to the connection until
     // the object is destroyed
     //[tutorial_error_handling_structured_bindings
+    // ec is an error_code, conn is the mysql::pooled_connection
     auto [ec, conn] = co_await pool.async_get_connection(diag, asio::as_tuple);
     //]
     if (ec)
