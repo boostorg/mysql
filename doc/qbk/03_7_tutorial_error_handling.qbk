@@ -7,8 +7,131 @@
 
 [section:tutorial_error_handling Tutorial 7: Error handling]
 
-TODO:
+The [link mysql.tutorial_connection_pool previous tutorial]
+did not include any error handling. When an error is encountered
+while talking to the DB or the client, an exception is thrown and
+the program terminates. This is undesirable in server programs like the one we're writing.
 
+To add error handling, we can just add try/catch blocks to prevent exception propagation.
+However, many code bases discourage the use of exceptions for non-exceptional circumstances,
+like I/O errors. In this tutorial, we will learn how to manage I/O errors without exceptions
+by using [asioreflink as_tuple as_tuple] and error codes.
+
+
+
+[heading Error handling strategy]
+
+There are two kind of I/O errors that our program can encounter:
+
+* Reading and writing to the client may fail. This can happen if
+  the client program is faulty or a network error happens.
+  In this case, we should log the problem and close the connection.
+* Talking to the database may fail. This can happen if [refmemunq connection_pool async_get_connection]
+  is cancelled because of a timeout. In this case, we will return a special string (`"ERROR"`)
+  to the client, signalling that we can't fulfill the request, and log the problem.
+
+
+
+[heading asio::as_tuple]
+
+[asioreflink as_tuple as_tuple] can be used to prevent exceptions.
+To understand why, let's recall this snippet from the previous tutorial:
+
+[tutorial_error_handling_get_connection_exc]
+
+If we have a look at the documentation for [refmemunq connection_pool async_get_connection],
+the "Handler signature" paragraph states that the handler signature for this operation is
+`void(boost::system::error_code, mysql::pooled_connection)`.
+Why are we not seeing the error code?
+
+When an awaitable in Asio is co_await'ed, the first handler argument is inspected.
+If it's an `error_code` that indicates a failure, an exception is thrown.
+The `error_code` is removed and not returned from the co_await expression,
+thus seeing only `mysql::pooled_connection`.
+
+[asioreflink as_tuple as_tuple] is a completion token 
+that modifies the handler signature, packing all arguments into a `std::tuple`.
+It's used similarly to the `asio::cancel_after` token we have learnt in the previous tutorial:
+
+[tutorial_error_handling_get_connection_as_tuple]
+
+This inhibits the automatic error code checks, preventing exceptions on I/O failure.
+
+In practice, it's usually better to use structured bindings:
+
+[tutorial_error_handling_structured_bindings]
+
+
+
+
+
+[heading Using asio::as_tuple for database code]
+
+An error when talking to the database implies only sending a special value to the client.
+This means that the function encapsulating database logic can maintain its original signature.
+Applying [asioreflink as_tuple as_tuple] yields:
+
+[tutorial_error_handling_db_nodiag]
+
+
+
+
+[heading Diagnostics objects]
+
+While what we wrote works, it can be improved. When a database operation fails, the server
+may supply an error string with information about what went wrong. Boost.MySQL may also
+generate such strings in certain cases. We get this automatically
+when using exceptions. The library throws [reflink error_with_diagnostics] objects
+(even when using coroutines), which inherit from `boost::system::system_error`
+and have a [refmemunq error_with_diagnostics get_diagnostics] member.
+
+When using error codes, we need to handle diagnostics manually.
+All functions in Boost.MySQL are overloaded to accept a [reflink diagnostics]
+output parameter. It will be populated with extra information in case of error.
+
+Let's update our code to use it:
+
+[tutorial_error_handling_db]
+
+The error logging function looks like this:
+
+[tutorial_error_handling_log_error]
+
+[refmem diagnostics client_message] and [refmem diagnostics server_message] differ
+in their origin. Client messages never contain user-supplied input, and can always
+be used safely. Server messages may contain user input, and should be treated with
+more caution (logging them is fine).
+
+
+
+
+
+[heading Using asio::as_tuple with client reads and writes]
+
+Finally, let's apply [asioreflink as_tuple as_tuple] to client communication:
+
+[tutorial_error_handling_session]
+
+
+
+
+
+[heading Wrapping up]
+
+Full program listing for this tutorial is [link mysql.examples.tutorial_error_handling here].
+
+TODO: place this section somewhere
+asio::as_tuple can be applied to any completion style, including C++11 coroutines.
+The syntax is slightly different, but the mechanics are the same:
+
+CODE
+
+Actually, plain asio::as_tuple is usually equivalent to asio::as_tuple(asio::deferred)
+(although this depends on the particular async operation). This yields an object that
+can be co_await'ed and that applies the tuple transformation.
+
+Note that callbacks don't apply any error_code to exception transformation
+mechanism, so you won't get any exceptions by default.
 
 This concludes our tutorial series. You can now look at the [link mysql.overview overview section]
 to learn more about the library features, or to the [link mysql.examples example section]

@@ -57,6 +57,7 @@
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 
+//[tutorial_error_handling_log_error
 // Log an error to std::cerr
 void log_error(const char* header, boost::system::error_code ec, const mysql::diagnostics& diag = {})
 {
@@ -81,6 +82,7 @@ void log_error(const char* header, boost::system::error_code ec, const mysql::di
     // Done
     std::cerr << '\n';
 }
+//]
 
 // Should contain a member for each field of interest present in our query
 struct employee
@@ -91,6 +93,7 @@ struct employee
 
 // Encapsulates the database access logic.
 // Given an employee_id, retrieves the employee details to be sent to the client.
+//[tutorial_error_handling_db
 asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, std::int64_t employee_id)
 {
     mysql::diagnostics diag;
@@ -99,10 +102,12 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     // This will wait until a healthy connection is ready to be used.
     // pooled_connection grants us exclusive access to the connection until
     // the object is destroyed
-    auto [ec1, conn] = co_await pool.async_get_connection(diag, asio::as_tuple);
-    if (ec1)
+    //[tutorial_error_handling_structured_bindings
+    auto [ec, conn] = co_await pool.async_get_connection(diag, asio::as_tuple);
+    //]
+    if (ec)
     {
-        log_error("Error in async_get_connection", ec1, diag);
+        log_error("Error in async_get_connection", ec, diag);
         co_return "ERROR";
     }
 
@@ -118,7 +123,7 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     );
     if (ec2)
     {
-        log_error("Error running query", ec1, diag);
+        log_error("Error running query", ec, diag);
         co_return "ERROR";
     }
 
@@ -136,7 +141,9 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     // When the pooled_connection is destroyed, the connection is returned
     // to the pool, so it can be re-used.
 }
+//]
 
+//[tutorial_error_handling_session
 asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp::socket client_socket)
 {
     // Read the request from the client.
@@ -170,6 +177,7 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
 
     // The socket's destructor will close the client connection
 }
+//]
 
 asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port)
 {

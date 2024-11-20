@@ -8,19 +8,25 @@
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/pfr.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/resultset_view.hpp>
 #include <boost/mysql/row_view.hpp>
+#include <boost/mysql/static_results.hpp>
 #include <boost/mysql/with_params.hpp>
 
+#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/this_coro.hpp>
+#include <boost/system/error_code.hpp>
 #include <boost/test/unit_test.hpp>
+
+#include <tuple>
 
 #include "test_common/ci_server.hpp"
 #include "test_integration/run_coro.hpp"
@@ -31,7 +37,25 @@ namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 using namespace mysql::test;
 
+inline namespace tutorials {
+struct employee
+{
+    std::string first_name;
+    std::string last_name;
+};
+}  // namespace tutorials
+
 namespace {
+
+mysql::pool_params create_pool_params()
+{
+    mysql::pool_params res;
+    res.server_address.emplace_host_and_port(get_hostname());
+    res.username = mysql_username;
+    res.password = mysql_password;
+    res.database = "boost_mysql_examples";
+    return res;
+}
 
 // Taken here because it's only used in the discussion
 void print_employee(mysql::string_view first_name, mysql::string_view last_name)
@@ -177,7 +201,7 @@ asio::awaitable<void> tutorial_updates_transactions(mysql::any_connection& conn)
     }
 }
 
-asio::awaitable<void> handle_session(mysql::connection_pool&, asio::ip::tcp::socket) {}
+asio::awaitable<void> handle_session(mysql::connection_pool&, asio::ip::tcp::socket) { co_return; }
 
 // For simplicity, we don't run this (we just check that it builds)
 [[maybe_unused]]
@@ -212,6 +236,70 @@ asio::awaitable<void> tutorial_connection_pool_unused(
     }
     //]
 }
+
+void log_error(const char*, boost::system::error_code) {}
+
+// Version without diagnostics
+// [tutorial_error_handling_db_nodiag
+asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, std::int64_t employee_id)
+{
+    // Get a connection from the pool.
+    // This will wait until a healthy connection is ready to be used.
+    auto [ec, conn] = co_await pool.async_get_connection(asio::as_tuple);
+    if (ec)
+    {
+        log_error("Error in async_get_connection", ec);
+        co_return "ERROR";
+    }
+
+    // Use the connection normally to query the database.
+    mysql::static_results<mysql::pfr_by_name<employee>> result;
+    auto [ec2] = co_await conn->async_execute(
+        mysql::with_params("SELECT first_name, last_name FROM employee WHERE id = {}", employee_id),
+        result,
+        asio::as_tuple
+    );
+    if (ec2)
+    {
+        log_error("Error running query", ec);
+        co_return "ERROR";
+    }
+
+    // Handle the result as we did in the previous tutorial
+    //<-
+    co_return "";
+    //->
+}
+//]
+
+asio::awaitable<void> tutorial_error_handling()
+{
+    // Setup
+    mysql::connection_pool pool(co_await asio::this_coro::executor, create_pool_params());
+    pool.async_run(asio::detached);
+
+    {
+        //[tutorial_error_handling_get_connection_exc
+        // Get a connection from the pool.
+        // If an error is encountered (e.g. the session is cancelled by asio::cancel_after),
+        // an exception is thrown.
+        mysql::pooled_connection conn = co_await pool.async_get_connection();
+        //]
+    }
+
+    {
+        //[tutorial_error_handling_get_connection_as_tuple
+        // Get a connection from the pool.
+        // If an error is encountered, the returned error_code will be non-empty.
+        // as_tuple wraps the default completion token, producing an object
+        // that can be awaited, and packing arguments into a tuple
+        std::tuple<boost::system::error_code, mysql::pooled_connection>
+            res = co_await pool.async_get_connection(asio::as_tuple);
+        //]
+    }
+
+    co_await get_employee_details(pool, 1);
+}
 #endif
 
 BOOST_FIXTURE_TEST_CASE(section_tutorials, snippets_fixture)
@@ -234,22 +322,23 @@ BOOST_FIXTURE_TEST_CASE(section_tutorials, snippets_fixture)
 
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
     run_coro(ctx, [&]() -> asio::awaitable<void> {
-        mysql::connection_pool pool(
-            ctx,
-            mysql::pool_params{
-                mysql::host_and_port(get_hostname()),
-                mysql_username,
-                mysql_password,
-            }
-        );
+        mysql::connection_pool pool(ctx, create_pool_params());
         pool.async_run(asio::detached);
 
         // TODO: duplicated in connection_pool.cpp
         //[tutorial_connection_pool_get_connection_timeout
-        // Get a connection from the pool, but don't wait more than 30 seconds
-        auto conn = co_await pool.async_get_connection(asio::cancel_after(std::chrono::seconds(30)));
+        // Get a connection from the pool, but don't wait more than 30 seconds.
+        // asio::cancel_after wraps the default completion token to produce an object
+        // that may be awaited, while also applying a timeout.
+        mysql::pooled_connection conn = co_await pool.async_get_connection(
+            asio::cancel_after(std::chrono::seconds(30))
+        );
         //]
     });
+#endif
+
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
+    run_coro(ctx, &tutorial_error_handling);
 #endif
 }
 
