@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:tutorial_connection_pool Tutorial 6: Connection pools and timeouts]
+[section:tutorial_connection_pool Tutorial 6: Connection pools]
 
 All our programs until now have used one-shot connections.
 They also didn't feature any fault tolerance:
@@ -83,6 +83,19 @@ Subsequent [refmemunq connection_pool async_get_connection]
 calls may retrieve the same connection. This improves efficiency,
 since session establishment is costly.
 
+[refmemunq connection_pool async_get_connection] waits
+for a client connection to become available before completing.
+If the server is unavailable or credentials are invalid,
+it may wait indefinitely. This is a problem for both development and production.
+We can solve this by using [asioreflink cancel_after cancel_after],
+which allows setting timeouts to async operations:
+
+[tutorial_connection_pool_get_connection_timeout]
+
+Don't worry if you don't fully understand how this works.
+We will go into more detail on [asioreflink cancel_after cancel_after],
+cancellations and completion tokens in the next tutorial.
+
 Putting all pieces together, our coroutine becomes:
 
 [tutorial_connection_pool_db]
@@ -104,65 +117,24 @@ invoking the database access logic in the process:
 
 We now need logic to accept incoming TCP connections.
 We will use an `asio::ip::tcp::acceptor` object
-in our main coroutine to accomplish it:
+to accomplish it, listening for connections in a loop
+until the server is stopped:
 
-[tutorial_connection_pool_acceptor_setup]
-
-Our program will accept connections in a loop:
-
-[tutorial_connection_pool_acceptor_loop]
-
-
-
-
-
-[heading Setting a timeout for client sessions]
-
-We mentioned that [refmemunq connection_pool async_get_connection] waits
-for a client connection to become available before completing.
-If the server is unavailable or credentials are invalid,
-`async_get_connection` may wait indefinitely. This is a problem
-for both development and production.
-[asioreflink cancel_after cancel_after] can help us, but we
-should first understand what a
-[@boost:/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers completion token]
-is.
-
-A completion token is an object that determines what to do
-when an asynchronous operation completes, and can be passed
-as the last argument to async functions. If nothing is passed,
-the default completion token applies, which returns an object
-that can be co_await'ed. This is what we have been doing until now.
-
-A callback is also a completion token. When a callback is passed to
-an initiation function, it will be invoked when the operation completes.
-We've also used this before, with `co_spawn`.
-
-Completion tokens are usually generic: once you learn how to use one,
-it can be applied to all Asio-compliant async operations.
-
-[asioreflink cancel_after cancel_after] wraps a completion token
-to produce a new token that issues a cancellation if the
-operation it's passed to doesn't complete in a certain amount
-of time. We can apply it to operations in Boost.MySQL like this:
-
-[tutorial_connection_pool_get_connection_timeout]
-
-While this works, it's usually better to set the timeout
-at the session level. `asio::co_spawn` is an async operation, too,
-so we can use completion tokens with it. Let's modify our acceptor loop:
-
-[tutorial_connection_pool_coro_timeout]
+[tutorial_connection_pool_listener]
 
 
 
 
 [heading Waiting for signals]
 
-We need a way to stop our program. We will use an `asio::signal_set` object
+Finally, we need a way to stop our program. We will use an `asio::signal_set` object
 to catch signals, and call `io_context::stop` when Ctrl-C is pressed:
 
 [tutorial_connection_pool_signals]
+
+Putting all these pieces together, our main program becomes:
+
+[tutorial_connection_pool_main]
 
 
 

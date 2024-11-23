@@ -201,42 +201,6 @@ asio::awaitable<void> tutorial_updates_transactions(mysql::any_connection& conn)
     }
 }
 
-asio::awaitable<void> handle_session(mysql::connection_pool&, asio::ip::tcp::socket) { co_return; }
-
-// For simplicity, we don't run this (we just check that it builds)
-[[maybe_unused]]
-asio::awaitable<void> tutorial_connection_pool_unused(
-    mysql::connection_pool& pool,
-    asio::ip::tcp::acceptor acc
-)
-{
-    //[tutorial_connection_pool_acceptor_loop
-    // Start the accept loop
-    while (true)
-    {
-        // Accept a new connection
-        auto sock = co_await acc.async_accept();
-
-        // Launch a coroutine that runs our session logic.
-        // We don't co_await this coroutine so we can listen
-        // to new connections while the session is running
-        asio::co_spawn(
-            // Use the same executor as the current coroutine
-            co_await asio::this_coro::executor,
-
-            // Session logic. Take ownership of the socket
-            [&pool, sock = std::move(sock)]() mutable { return handle_session(pool, std::move(sock)); },
-
-            // Propagate exceptions thrown in handle_session
-            [](std::exception_ptr ex) {
-                if (ex)
-                    std::rethrow_exception(ex);
-            }
-        );
-    }
-    //]
-}
-
 void log_error(const char*, boost::system::error_code) {}
 
 // Version without diagnostics
@@ -327,14 +291,12 @@ BOOST_FIXTURE_TEST_CASE(section_tutorials, snippets_fixture)
         mysql::connection_pool pool(ctx, create_pool_params());
         pool.async_run(asio::detached);
 
-        // TODO: duplicated in connection_pool.cpp
-        //[tutorial_connection_pool_get_connection_timeout
-        // Get a connection from the pool, but don't wait more than 30 seconds.
-        // asio::cancel_after wraps the default completion token to produce an object
-        // that may be awaited, while also applying a timeout.
-        mysql::pooled_connection conn = co_await pool.async_get_connection(
-            asio::cancel_after(std::chrono::seconds(30))
-        );
+        //[tutorial_connection_pool_get_connection
+        // Get a connection from the pool.
+        // This will wait until a healthy connection is ready to be used.
+        // pooled_connection grants us exclusive access to the connection until
+        // the object is destroyed
+        mysql::pooled_connection conn = co_await pool.async_get_connection();
         //]
     });
 #endif

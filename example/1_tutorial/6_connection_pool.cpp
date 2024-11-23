@@ -80,12 +80,15 @@ struct employee
 // Given an employee_id, retrieves the employee details to be sent to the client.
 asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, std::int64_t employee_id)
 {
-    //[tutorial_connection_pool_get_connection
+    //[tutorial_connection_pool_get_connection_timeout
     // Get a connection from the pool.
     // This will wait until a healthy connection is ready to be used.
     // pooled_connection grants us exclusive access to the connection until
-    // the object is destroyed
-    mysql::pooled_connection conn = co_await pool.async_get_connection();
+    // the object is destroyed.
+    // Fail the operation if no connection becomes available in the next 20 seconds.
+    mysql::pooled_connection conn = co_await pool.async_get_connection(
+        asio::cancel_after(std::chrono::seconds(20))
+    );
     //]
 
     //[tutorial_connection_pool_use
@@ -137,9 +140,9 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
 }
 //]
 
+//[tutorial_connection_pool_listener
 asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port)
 {
-    //[tutorial_connection_pool_acceptor_setup
     // An object that accepts incoming TCP connections.
     asio::ip::tcp::acceptor acc(co_await asio::this_coro::executor);
 
@@ -159,9 +162,7 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
     // Start listening for connections
     acc.listen();
     std::cout << "Server listening at " << acc.local_endpoint() << std::endl;
-    //]
 
-    //[tutorial_connection_pool_coro_timeout
     // Start the accept loop
     while (true)
     {
@@ -171,8 +172,6 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
         // Launch a coroutine that runs our session logic.
         // We don't co_await this coroutine so we can listen
         // to new connections while the session is running.
-        // co_spawn is actually an async operation, so we
-        // can pass completion tokens to it.
         asio::co_spawn(
             // Use the same executor as the current coroutine
             co_await asio::this_coro::executor,
@@ -180,25 +179,15 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             // Session logic. Take ownership of the socket
             [&pool, sock = std::move(sock)]() mutable { return handle_session(pool, std::move(sock)); },
 
-            // Completion token for the coroutine.
-            // If the coroutine hasn't finished after 60 seconds, Asio will cancel
-            // any I/O operation the coroutine is waiting for.
-            // The coroutine will see a failure in the I/O operation it's waiting
-            // for and throw, as it would for a network error.
-            // We pass an explicit completion token to cancel_after
-            // (a callback, in this case). The callback
-            // will be invoked when the coroutine completes, even if it's cancelled.
-            asio::cancel_after(
-                std::chrono::seconds(60),
-                [](std::exception_ptr ex) {
-                    if (ex)
-                        std::rethrow_exception(ex);
-                }
-            )
+            // Propagate exceptions thrown in handle_session
+            [](std::exception_ptr ex) {
+                if (ex)
+                    std::rethrow_exception(ex);
+            }
         );
     }
-    //]
 }
+//]
 
 void main_impl(int argc, char** argv)
 {
@@ -212,6 +201,7 @@ void main_impl(int argc, char** argv)
     const char* password = argv[2];
     const char* server_hostname = argv[3];
 
+    //[tutorial_connection_pool_main
     //[tutorial_connection_pool_create
     // Create an I/O context, required by all I/O objects
     asio::io_context ctx;
@@ -266,6 +256,7 @@ void main_impl(int argc, char** argv)
 
     // Calling run will actually execute the coroutine until completion
     ctx.run();
+    //]
 }
 
 int main(int argc, char** argv)
