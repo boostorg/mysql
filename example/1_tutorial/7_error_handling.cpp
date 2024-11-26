@@ -101,19 +101,18 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
 
     // Get a connection from the pool.
     // This will wait until a healthy connection is ready to be used.
-    //[tutorial_error_handling_structured_bindings
     // ec is an error_code, conn is the mysql::pooled_connection
     auto [ec, conn] = co_await pool.async_get_connection(diag, asio::as_tuple);
     //]
     if (ec)
     {
+        // A connection couldn't be obtained.
+        // This may be because a timeout happened.
         log_error("Error in async_get_connection", ec, diag);
         co_return "ERROR";
     }
 
     // Use the connection normally to query the database.
-    // operator-> returns a reference to an any_connection,
-    // so we can apply all what we learnt in previous tutorials
     mysql::static_results<mysql::pfr_by_name<employee>> result;
     auto [ec2] = co_await conn->async_execute(
         mysql::with_params("SELECT first_name, last_name FROM employee WHERE id = {}", employee_id),
@@ -148,6 +147,7 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
 {
     using namespace std::chrono_literals;
 
+    //[tutorial_error_handling_read_timeout
     // Read the request from the client.
     // async_read ensures that the 8-byte buffer is filled, handling partial reads.
     // Error the read if it hasn't completed after 30 seconds.
@@ -159,13 +159,16 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
     );
     if (ec1)
     {
+        // An error or a timeout happened.
         log_error("Error reading from the socket", ec1);
         co_return;
     }
+    //]
 
     // Parse the 64-bit big-endian int into a native int64_t
     std::int64_t employee_id = boost::endian::load_big_s64(message);
 
+    //[tutorial_error_handling_db_timeout
     // Invoke the database handling logic.
     // Apply an overall timeout of 20 seconds to the entire coroutine.
     // Using asio::co_spawn allows us to pass a completion token, like asio::cancel_after.
@@ -181,6 +184,7 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
         // inside get_employee_details. If an unexpected exception happens, propagate it.
         asio::cancel_after(20s)
     );
+    //]
 
     // Write the response back to the client.
     // async_write ensures that the entire message is written, handling partial writes.

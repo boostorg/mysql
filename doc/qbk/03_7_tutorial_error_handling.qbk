@@ -97,41 +97,52 @@ are compliant with Asio's universal async model. Writing these is hard, but they
 
 [heading Adapter completion tokens]
 
+Some tokens don't fully specify what to do when the operation completes,
+but rather modify some aspect of how the operation executes.
+They wrap (or adapt) other completion tokens. The underlying token
+determines what to actually do when the operation completes.
 
-* There are also adapter completion tokens. They modify something about
-  how the operation executes, and can be used with different completion
-  tokens. They don't actually specify what to do on completion - it is the
-  completion token being adapted the one that dictates this.
+[asioreflink cancel_after cancel_after] is an adapter token.
+It modifies how an operation executes by setting a timeout,
+but it doesn't specify what to do on completion.
 
-* We have seen one of these tokens: asio::cancel_after, which
-  sets a timeout to the operation. By default, asio::cancel_after
-  and similar tokens wrap the default completion token for an operation.
-
-This means that this:
-
-```
-auto conn = co_await pool.async_get_connection(asio::cancel_after(std::chrono::seconds(20)));
-```
-
-Is equivalent to this:
+Adapter tokens can be passed an optional completion token
+as the last argument. If the token is omitted, the default
+one will be used. Continuing with our example:
 
 ```
-auto conn = co_await pool.async_get_connection(
-  asio::cancel_after(std::chrono::seconds(20), mysql::with_diagnostics(asio::deferred))
+// Enable the use of the "s" suffix for std::chrono::seconds
+using namespace std::chrono_literals;
+
+// The following two lines are equivalent.
+// If no token is passed to cancel_after, the default one will be used,
+// which transforms the operation into an awaitable.
+// asio::cancel_after(20s) is usually termed "partial completion token"
+auto conn1 = co_await pool.async_get_connection(asio::cancel_after(20s));
+auto conn2 = co_await pool.async_get_connection(
+    asio::cancel_after(20s, mysql::with_diagnostics(asio::deferred))
 );
 ```
 
-Actually, [reflink with_diagnostics] is also a completion token adapter
-that enhances thrown exceptions. Other than that, `mysql::with_diagnostics(asio::deferred)`
-is equivalent to `asio::deferred`.
 
+[heading Handler signature and exceptions]
 
+Each async operation has an associated handler signature.
+We can find these signatures in the documentation for each operation.
+The handler signature is the prototype that a callback function
+passed as completion token would need to have to be compatible with the operation.
 
+The handler signature for [refmemunq connection_pool async_get_connection]
+is `void(boost::system::error_code, mysql::pooled_connection)`.
 
+However, when we invoke `co_await` on the awaitable returned by `async_get_connection`,
+we don't get any `error_code`. This is because `co_await` inspects
+the handler signature at compile-time, looking for an `error_code` as first parameter.
+If it finds it, `co_await` will remove it from the argument list, returning
+only the `pooled_connection`. At runtime, the error code is checked.
+If the code indicates a failure, an exception is thrown.
 
-
-
-
+This mechanism is important to understand how `as_tuple` works.
 
 
 
@@ -139,36 +150,29 @@ is equivalent to `asio::deferred`.
 [heading asio::as_tuple]
 
 [asioreflink as_tuple as_tuple] is another adapter completion token
-that can be used to prevent exceptions.
-To understand why, let's recall this snippet from the previous tutorial:
-
-[tutorial_error_handling_get_connection_exc]
-
-If we have a look at the documentation for [refmemunq connection_pool async_get_connection],
-the "Handler signature" paragraph states that the handler signature for this operation is
-`void(boost::system::error_code, mysql::pooled_connection)`.
-Why are we not seeing the error code?
-
-When an awaitable in Asio is co_await'ed, the first handler argument is inspected.
-If it's an `error_code` that indicates a failure, an exception is thrown.
-The `error_code` is removed from the argument list,
-leaving a `mysql::pooled_connection` only.
-
-[asioreflink as_tuple as_tuple]
-modifies the handler signature, packing all arguments into a `std::tuple`.
-All the properties of adapter completion tokens that we have learnt
-in the previous session also apply. This is how it's used:
+that can be used to prevent exceptions. It modifies the operation's
+handler signature, packing all arguments into a `std::tuple`.
+This inhibits the automatic error code checks explained in the previous section, 
+thus preventing exceptions on I/O failure. Continuing with our example:
 
 [tutorial_error_handling_get_connection_as_tuple]
-
-This inhibits the automatic error code checks, preventing exceptions on I/O failure.
 
 In practice, it's usually better to use structured bindings:
 
 ```
 // ec is an error_code, conn is the mysql::pooled_connection
-// Apply a timeout and don't throw on error
 auto [ec, conn] = co_await pool.async_get_connection(asio::as_tuple);
+```
+
+All the properties of adapter completion tokens apply:
+
+```
+// The following two lines are equivalent.
+// Both of them produce an awaitable that returns a tuple when awaited.
+auto [ec1, conn1] = co_await pool.async_get_connection(asio::as_tuple);
+auto [ec2, conn2] = co_await pool.async_get_connection(
+  asio::as_tuple(mysql::with_diagnostics(asio::deferred))
+);
 ```
 
 Adapter tokens can be combined. To apply a timeout to the operation
@@ -178,7 +182,7 @@ while avoiding exceptions, you can use:
 // ec is an error_code, conn is the mysql::pooled_connection
 // Apply a timeout and don't throw on error
 auto [ec, conn] = co_await pool.async_get_connection(
-  asio::cancel_after(std::chrono::seconds(20), asio::as_tuple)
+  asio::cancel_after(20s, asio::as_tuple)
 );
 ```
 
@@ -188,12 +192,12 @@ auto [ec, conn] = co_await pool.async_get_connection(
 
 [heading Using asio::as_tuple for database code]
 
-If we apply [asioreflink as_tuple as_tuple] to our database logic, we have:
+Let's apply [asioreflink as_tuple as_tuple] to our database logic.
+We will remove timeouts for now - we will add them back later.
 
-TODO: add the timeout here
 [tutorial_error_handling_db_nodiag]
 
-Note that we're no longer using `asio::cancel_after` for the timeout.
+
 
 
 
@@ -203,8 +207,9 @@ Note that we're no longer using `asio::cancel_after` for the timeout.
 While what we wrote works, it can be improved. When a database operation fails, the server
 may supply an error string with information about what went wrong. Boost.MySQL may also
 generate such strings in certain cases. We get this automatically
-when using exceptions. The library throws [reflink error_with_diagnostics] objects
-(even when using coroutines), which inherit from `boost::system::system_error`
+when using exceptions. Thanks to [reflink with_diagnostics] and default completion tokens,
+the library throws [reflink error_with_diagnostics] objects,
+which inherit from `boost::system::system_error`
 and have a [refmemunq error_with_diagnostics get_diagnostics] member.
 
 When using error codes, we need to handle diagnostics manually.
@@ -215,7 +220,7 @@ Let's update our code to use diagnostics:
 
 [tutorial_error_handling_db]
 
-The error logging function looks like this:
+We also need to write the function to log errors:
 
 [tutorial_error_handling_log_error]
 
@@ -230,47 +235,76 @@ more caution (logging them is fine).
 
 [heading Using asio::as_tuple with client reads and writes]
 
-Finally, let's apply [asioreflink as_tuple as_tuple] to client communication:
+Since `asio::read` and `asio::write` are compliant async operations,
+we can use [asioreflink as_tuple as_tuple] with them, too:
+
+
+```
+asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp::socket client_socket)
+{
+    // Read the request from the client.
+    unsigned char message[8]{};
+    auto [ec1, bytes_read] = co_await asio::async_read(
+        client_socket,
+        asio::buffer(message),
+        asio::as_tuple
+    );
+    if (ec1)
+    {
+        log_error("Error reading from the socket", ec1);
+        co_return;
+    }
+
+    // Process the request as before (omitted)
+
+    // Write the response back to the client.
+    auto [ec2, bytes_written] = co_await asio::async_write(
+        client_socket,
+        asio::buffer(response),
+        asio::as_tuple
+    );
+    if (ec2)
+    {
+        log_error("Error writing to the socket", ec2);
+        co_return;
+    }
+}
+```
+
+
+
+
+
+[heading Timeouts]
+
+Our code has three logical steps:
+
+* Read a request from the client.
+* Access the database.
+* Write the response to the client.
+
+Each of these steps may take long to complete. We will set a separate timeout
+to each one.
+
+Client reads and writes are the easiest ones to handle -
+we just need to combine `as_tuple` and `cancel_after`:
+
+[tutorial_error_handling_read_timeout]
+
+The database logic is more involved. Ideally, we would like
+to set a timeout to the overall database access operation, rather
+than to individual steps. However, a `co_await` expression
+isn't an async operation, and can't be passed a completion token.
+We can fix this by replacing plain `co_await` by `asio::co_spawn`,
+which accepts a completion token:
+
+[tutorial_error_handling_db_timeout]
+
+With these modifications, the session handler becomes:
 
 [tutorial_error_handling_session]
 
-
-
-
-
-
-[heading Setting a timeout for client sessions]
-
-`async_get_connection` is not the only function that may take long to complete.
-A network error or an unresponsive client may keep client connections
-open for longer than required, consuming server resources.
-It may be a good idea to set a timeout to not just a single operation,
-but to the overall client session. Fortunately, asio::co_spawn is
-also an async operation, so all what we have learn about completion tokens apply.
-Let's modify our acceptor loop:
-
-TODO: code
-
-TODO: is this not already in code?
-If the spawned coroutine doesn't finish in time, Asio will cancel the I/O
-operation the coroutine is waiting for in this moment. This will make the I/O
-operation fail, as if a network error had been encountered. The coroutine
-will continue to execute until it returns or throws.
-
-Doing this reliably requires an extra piece of code. If our client session is
-waiting for a database operation when it cancels (i.e. it's running `get_employee_details`),
-an error result will be returned, and we will try to write it to the client.
-This is not what we want: writing may block again, effectively surpassing the timeout we set.
-Additionally, coroutines have memory regarding cancellation: if you call co_await
-on an async operation after the coroutine has been cancelled, an exception is thrown.
-To prevent this exception, we just need to check the cancellation state after
-`get_employee_details` returns:
-
-CODE
-
-With these additions, the session handler becomes:
-
-CODE
+With these modifications, our server is ready!
 
 
 

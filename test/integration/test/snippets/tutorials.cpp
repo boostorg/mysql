@@ -209,11 +209,12 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
 {
     // Get a connection from the pool.
     // This will wait until a healthy connection is ready to be used.
+    // ec is an error code, conn is a pooled_connection
     auto [ec, conn] = co_await pool.async_get_connection(asio::as_tuple);
     if (ec)
     {
         // A connection couldn't be obtained.
-        // This may be because the session timed out.
+        // This may be because a timeout happened.
         log_error("Error in async_get_connection", ec);
         co_return "ERROR";
     }
@@ -255,10 +256,11 @@ asio::awaitable<void> tutorial_error_handling()
 
     {
         //[tutorial_error_handling_get_connection_as_tuple
-        // Get a connection from the pool.
-        // If an error is encountered, the returned error_code will be non-empty.
-        // as_tuple wraps the default completion token, producing an object
-        // that can be awaited, and packing arguments into a tuple
+        // Passing asio::as_tuple transforms the operation's handler signature:
+        //    Original:    void(error_code, mysql::pooled_connection)
+        //    Transformed: void(std::tuple<error_code, mysql::pooled_connection>)
+        // The transformed signature no longer has an error_code as first parameter,
+        // so no automatic error code to exception transformation happens.
         std::tuple<boost::system::error_code, mysql::pooled_connection>
             res = co_await pool.async_get_connection(asio::as_tuple);
         //]

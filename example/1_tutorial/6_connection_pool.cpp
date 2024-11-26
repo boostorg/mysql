@@ -53,7 +53,6 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <boost/asio/socket_base.hpp>
 #include <boost/asio/this_coro.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/endian/conversion.hpp>
