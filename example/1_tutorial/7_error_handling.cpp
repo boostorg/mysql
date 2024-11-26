@@ -37,6 +37,7 @@
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/cancel_after.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/io_context.hpp>
@@ -48,7 +49,6 @@
 #include <boost/endian/conversion.hpp>
 #include <boost/system/error_code.hpp>
 
-#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <iostream>
@@ -80,7 +80,7 @@ void log_error(const char* header, boost::system::error_code ec, const mysql::di
     }
 
     // Done
-    std::cerr << '\n';
+    std::cerr << std::endl;
 }
 //]
 
@@ -101,8 +101,6 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
 
     // Get a connection from the pool.
     // This will wait until a healthy connection is ready to be used.
-    // pooled_connection grants us exclusive access to the connection until
-    // the object is destroyed
     //[tutorial_error_handling_structured_bindings
     // ec is an error_code, conn is the mysql::pooled_connection
     auto [ec, conn] = co_await pool.async_get_connection(diag, asio::as_tuple);
@@ -125,7 +123,7 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     );
     if (ec2)
     {
-        log_error("Error running query", ec, diag);
+        log_error("Error running query", ec2, diag);
         co_return "ERROR";
     }
 
@@ -148,10 +146,17 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
 //[tutorial_error_handling_session
 asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp::socket client_socket)
 {
+    using namespace std::chrono_literals;
+
     // Read the request from the client.
     // async_read ensures that the 8-byte buffer is filled, handling partial reads.
+    // Error the read if it hasn't completed after 30 seconds.
     unsigned char message[8]{};
-    auto [ec1, bytes_read] = co_await asio::async_read(client_socket, asio::buffer(message), asio::as_tuple);
+    auto [ec1, bytes_read] = co_await asio::async_read(
+        client_socket,
+        asio::buffer(message),
+        asio::cancel_after(30s, asio::as_tuple)
+    );
     if (ec1)
     {
         log_error("Error reading from the socket", ec1);
@@ -161,15 +166,29 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
     // Parse the 64-bit big-endian int into a native int64_t
     std::int64_t employee_id = boost::endian::load_big_s64(message);
 
-    // Invoke the database handling logic
-    std::string response = co_await get_employee_details(pool, employee_id);
+    // Invoke the database handling logic.
+    // Apply an overall timeout of 20 seconds to the entire coroutine.
+    // Using asio::co_spawn allows us to pass a completion token, like asio::cancel_after.
+    std::string response = co_await asio::co_spawn(
+        // Run the child coroutine using the same executor as this coroutine
+        co_await asio::this_coro::executor,
+
+        // The coroutine should run our database logic
+        [&pool, employee_id] { return get_employee_details(pool, employee_id); },
+
+        // Apply a timeout, and return an object that can be co_awaited.
+        // We don't use as_tuple here because we're already handling I/O errors
+        // inside get_employee_details. If an unexpected exception happens, propagate it.
+        asio::cancel_after(20s)
+    );
 
     // Write the response back to the client.
-    // async_write ensures that the entire message is written, handling partial writes
+    // async_write ensures that the entire message is written, handling partial writes.
+    // Set a timeout to the write operation, too.
     auto [ec2, bytes_written] = co_await asio::async_write(
         client_socket,
         asio::buffer(response),
-        asio::as_tuple
+        asio::cancel_after(30s, asio::as_tuple)
     );
     if (ec2)
     {
@@ -224,20 +243,23 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             // Session logic. Take ownership of the socket
             [&pool, sock = std::move(sock)]() mutable { return handle_session(pool, std::move(sock)); },
 
-            // Completion token for the coroutine.
-            // If the coroutine hasn't finished after 60 seconds, Asio will cancel
-            // any I/O operation the coroutine is waiting for.
-            // The coroutine will see a failure in the I/O operation it's waiting
-            // for and throw, as it would for a network error.
-            // The supplied callback will be executed when the coroutine
-            // completes, even if it's cancelled.
-            asio::cancel_after(
-                std::chrono::seconds(60),
-                [](std::exception_ptr ex) {
-                    if (ex)
-                        std::rethrow_exception(ex);
+            // Will be called when the coroutine finishes
+            [](std::exception_ptr ptr) {
+                if (ptr)
+                {
+                    // For extra safety, log the exception but don't propagate it.
+                    // If we failed to anticipate an error condition that ends up raising an exception,
+                    // terminate only the affected session, instead of crashing the server.
+                    try
+                    {
+                        std::rethrow_exception(ptr);
+                    }
+                    catch (const std::exception& exc)
+                    {
+                        std::cerr << "Uncaught error in a session: " << exc.what() << std::endl;
+                    }
                 }
-            )
+            }
         );
     }
 }
