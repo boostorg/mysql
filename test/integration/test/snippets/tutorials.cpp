@@ -337,6 +337,8 @@ asio::awaitable<void> tutorial_error_handling()
 
         // Start the operation. on_available_connection will be called when the operation
         // completes. on_available_connection is the completion token.
+        // When a callback is passed, async_get_connection returns void,
+        // so we can't use co_await with it.
         pool.async_get_connection(on_available_connection);
         //]
     }
@@ -358,6 +360,7 @@ asio::awaitable<void> tutorial_error_handling()
         using namespace std::chrono_literals;
 
         // The following two lines are equivalent.
+        // Both get a connection, waiting no more than 20s before cancelling the operation.
         // If no token is passed to cancel_after, the default one will be used,
         // which transforms the operation into an awaitable.
         // asio::cancel_after(20s) is usually termed "partial completion token"
@@ -387,7 +390,8 @@ asio::awaitable<void> tutorial_error_handling()
 
     {
         //[tutorial_error_handling_as_tuple_structured_bindings
-        // ec is an error_code, conn is the mysql::pooled_connection
+        // ec is an error_code, conn is the mysql::pooled_connection.
+        // If the operation fails, ec will be non-empty.
         auto [ec, conn] = co_await pool.async_get_connection(asio::as_tuple);
         //]
 
@@ -398,7 +402,7 @@ asio::awaitable<void> tutorial_error_handling()
     {
         //[tutorial_error_handling_as_tuple_default_tokens
         // The following two lines are equivalent.
-        // Both of them produce an awaitable that returns a tuple when awaited.
+        // Both of them produce an awaitable that produces a tuple when awaited.
         auto [ec1, conn1] = co_await pool.async_get_connection(asio::as_tuple);
         auto [ec2, conn2] = co_await pool.async_get_connection(
             asio::as_tuple(mysql::with_diagnostics(asio::deferred))

@@ -103,7 +103,6 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     // This will wait until a healthy connection is ready to be used.
     // ec is an error_code, conn is the mysql::pooled_connection
     auto [ec, conn] = co_await pool.async_get_connection(diag, asio::as_tuple);
-    //]
     if (ec)
     {
         // A connection couldn't be obtained.
@@ -145,6 +144,7 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
 //[tutorial_error_handling_session
 asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp::socket client_socket)
 {
+    // Enable the use of the "s" suffix for std::chrono::seconds
     using namespace std::chrono_literals;
 
     //[tutorial_error_handling_read_timeout
@@ -172,6 +172,8 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp
     // Invoke the database handling logic.
     // Apply an overall timeout of 20 seconds to the entire coroutine.
     // Using asio::co_spawn allows us to pass a completion token, like asio::cancel_after.
+    // As other async operations, co_spawn's default completion token allows
+    // us to use co_await on its return value.
     std::string response = co_await asio::co_spawn(
         // Run the child coroutine using the same executor as this coroutine
         co_await asio::this_coro::executor,

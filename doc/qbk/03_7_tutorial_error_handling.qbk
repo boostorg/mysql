@@ -41,9 +41,9 @@ The concepts in this section are not specific to Boost.MySQL, but apply
 to Asio and all Asio-compatible libraries. Since Asio docs can be terse,
 we explain them here to facilitate the reader.
 
-All asynchronous operations accept an optional parameter specifying what
-to do when the operation completes. If present, this parameter is always the last one.
-This last parameter is the
+All asynchronous operations accept an optional, last parameter specifying what
+to do when the operation completes.
+This last parameter is the operation's
 [@boost:/doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.completion_tokens_and_handlers completion token].
 
 Callbacks are valid completion tokens. Taking [refmemunq connection_pool async_get_connection]
@@ -51,16 +51,16 @@ as example, the following is valid:
 
 [tutorial_error_handling_callbacks]
 
-We have already been using this when creating coroutines with `asio::co_spawn`.
-This function is also an async operation, and the callback we pass as final parameter,
-a completion token.
+We have already been using this when creating coroutines.
+`asio::co_spawn` is also an async operation, and the callback we pass
+as its last parameter is the completion token.
 
 You might consider using callbacks if your compiler doesn't support coroutines,
 or just by personal preference. [link mysql.examples.callbacks This example]
 demonstrates how to use them.
 
 If you don't specify a completion token, the operation's [*default completion token]
-will be used. This is usually `asio::deferred` or `mysql::with_diagnostics(asio::deferred)`.
+will be used. This is usually `asio::deferred` or `mysql::with_diagnostics(asio::deferred)`
 [footnote [reflink with_diagnostics] is an adapter completion token that enhances
 thrown exceptions with a diagnostic string supplied by the server.
 `mysql::with_diagnostics(asio::deferred)` is otherwise equivalent to `asio::deferred`.].
@@ -86,7 +86,7 @@ are compliant with Asio's universal async model. Writing these is hard, but they
 Some tokens don't fully specify what to do when the operation completes,
 but rather modify some aspect of how the operation executes.
 They wrap (or adapt) other completion tokens. The underlying token
-determines what to actually do when the operation completes.
+determines what to do when the operation completes.
 
 [asioreflink cancel_after cancel_after] is an adapter token.
 It modifies how an operation executes by setting a timeout,
@@ -204,7 +204,7 @@ we can use [asioreflink as_tuple as_tuple] with them, too:
 
 [heading Timeouts]
 
-Our code has three logical steps:
+Our session handler has three logical steps:
 
 * Read a request from the client.
 * Access the database.
