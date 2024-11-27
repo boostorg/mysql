@@ -86,7 +86,7 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
     // the object is destroyed.
     // Fail the operation if no connection becomes available in the next 20 seconds.
     mysql::pooled_connection conn = co_await pool.async_get_connection(
-        asio::cancel_after(std::chrono::seconds(20))
+        asio::cancel_after(std::chrono::seconds(1))
     );
     //]
 
@@ -168,6 +168,14 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
         // Accept a new connection
         auto sock = co_await acc.async_accept();
 
+        // Function implementing our session logic.
+        // Take ownership of the socket.
+        // Having this as a named variable workarounds a gcc bug
+        // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=107288)
+        auto session_logic = [&pool, s = std::move(sock)]() mutable {
+            return handle_session(pool, std::move(s));
+        };
+
         // Launch a coroutine that runs our session logic.
         // We don't co_await this coroutine so we can listen
         // to new connections while the session is running.
@@ -175,8 +183,8 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             // Use the same executor as the current coroutine
             co_await asio::this_coro::executor,
 
-            // Session logic. Take ownership of the socket
-            [&] { return handle_session(pool, std::move(sock)); },
+            // Session logic
+            std::move(session_logic),
 
             // Propagate exceptions thrown in handle_session
             [](std::exception_ptr ex) {

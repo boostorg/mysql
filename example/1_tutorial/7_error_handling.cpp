@@ -239,6 +239,14 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             co_return;
         }
 
+        // Function implementing our session logic.
+        // Take ownership of the socket.
+        // Having this as a named variable workarounds a gcc bug
+        // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=107288)
+        auto session_logic = [&pool, s = std::move(sock)]() mutable {
+            return handle_session(pool, std::move(s));
+        };
+
         // Launch a coroutine that runs our session logic.
         // We don't co_await this coroutine so we can listen
         // to new connections while the session is running
@@ -246,8 +254,8 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             // Use the same executor as the current coroutine
             co_await asio::this_coro::executor,
 
-            // Session logic. Take ownership of the socket
-            [&] { return handle_session(pool, std::move(sock)); },
+            // Session logic
+            std::move(session_logic),
 
             // Will be called when the coroutine finishes
             [](std::exception_ptr ptr) {
