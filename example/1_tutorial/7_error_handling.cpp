@@ -247,7 +247,7 @@ asio::awaitable<void> listener(mysql::connection_pool& pool, unsigned short port
             co_await asio::this_coro::executor,
 
             // Session logic. Take ownership of the socket
-            [&pool, sock = std::move(sock)]() mutable { return handle_session(pool, std::move(sock)); },
+            [&] { return handle_session(pool, std::move(sock)); },
 
             // Will be called when the coroutine finishes
             [](std::exception_ptr ptr) {
