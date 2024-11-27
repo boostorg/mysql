@@ -13,6 +13,7 @@
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/pfr.hpp>
 #include <boost/mysql/pool_params.hpp>
 #include <boost/mysql/results.hpp>
@@ -26,10 +27,13 @@
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/read.hpp>
 #include <boost/asio/this_coro.hpp>
+#include <boost/core/ignore_unused.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <string>
 #include <tuple>
 
 #include "test_common/ci_server.hpp"
@@ -281,6 +285,39 @@ asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, 
 }
 //]
 
+[[maybe_unused]]
+//[tutorial_error_handling_session_as_tuple
+asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp::socket client_socket)
+{
+    // Read the request from the client.
+    unsigned char message[8]{};
+    auto [ec1, bytes_read] = co_await asio::async_read(client_socket, asio::buffer(message), asio::as_tuple);
+    if (ec1)
+    {
+        log_error("Error reading from the socket", ec1);
+        co_return;
+    }
+
+    // Process the request as before (omitted)
+    //<-
+    boost::ignore_unused(pool);
+    std::string response;
+    //->
+
+    // Write the response back to the client.
+    auto [ec2, bytes_written] = co_await asio::async_write(
+        client_socket,
+        asio::buffer(response),
+        asio::as_tuple
+    );
+    if (ec2)
+    {
+        log_error("Error writing to the socket", ec2);
+        co_return;
+    }
+}
+//]
+
 asio::awaitable<void> tutorial_error_handling()
 {
     // Setup
@@ -288,16 +325,54 @@ asio::awaitable<void> tutorial_error_handling()
     pool.async_run(asio::detached);
 
     {
-        //[tutorial_error_handling_get_connection_exc
-        // Get a connection from the pool.
-        // If an error is encountered (e.g. the session is cancelled by asio::cancel_after),
-        // an exception is thrown.
-        mysql::pooled_connection conn = co_await pool.async_get_connection();
+        //[tutorial_error_handling_callbacks
+        // Function to call when async_get_connection completes
+        auto on_available_connection = [](boost::system::error_code ec, mysql::pooled_connection conn) {
+            // Do something useful with the connection
+            //<-
+            BOOST_TEST(ec == mysql::error_code());
+            BOOST_TEST(conn.valid());
+            //->
+        };
+
+        // Start the operation. on_available_connection will be called when the operation
+        // completes. on_available_connection is the completion token.
+        pool.async_get_connection(on_available_connection);
         //]
     }
 
     {
-        //[tutorial_error_handling_get_connection_as_tuple
+        //[tutorial_error_handling_default_tokens
+        // These two lines are equivalent.
+        // Both of them can be read as "I want to use C++20 coroutines as my completion style"
+        auto conn1 = co_await pool.async_get_connection();
+        auto conn2 = co_await pool.async_get_connection(mysql::with_diagnostics(asio::deferred));
+        //]
+
+        BOOST_TEST(conn1.valid());
+        BOOST_TEST(conn2.valid());
+    }
+    {
+        //[tutorial_error_handling_adapter_tokens
+        // Enable the use of the "s" suffix for std::chrono::seconds
+        using namespace std::chrono_literals;
+
+        // The following two lines are equivalent.
+        // If no token is passed to cancel_after, the default one will be used,
+        // which transforms the operation into an awaitable.
+        // asio::cancel_after(20s) is usually termed "partial completion token"
+        auto conn1 = co_await pool.async_get_connection(asio::cancel_after(20s));
+        auto conn2 = co_await pool.async_get_connection(
+            asio::cancel_after(20s, mysql::with_diagnostics(asio::deferred))
+        );
+        //]
+
+        BOOST_TEST(conn1.valid());
+        BOOST_TEST(conn2.valid());
+    }
+
+    {
+        //[tutorial_error_handling_as_tuple
         // Passing asio::as_tuple transforms the operation's handler signature:
         //    Original:    void(error_code, mysql::pooled_connection)
         //    Transformed: void(std::tuple<error_code, mysql::pooled_connection>)
@@ -306,12 +381,54 @@ asio::awaitable<void> tutorial_error_handling()
         std::tuple<boost::system::error_code, mysql::pooled_connection>
             res = co_await pool.async_get_connection(asio::as_tuple);
         //]
+
+        BOOST_TEST(std::get<0>(res) == mysql::error_code());
     }
 
+    {
+        //[tutorial_error_handling_as_tuple_structured_bindings
+        // ec is an error_code, conn is the mysql::pooled_connection
+        auto [ec, conn] = co_await pool.async_get_connection(asio::as_tuple);
+        //]
+
+        BOOST_TEST(ec == mysql::error_code());
+        BOOST_TEST(conn.valid());
+    }
+
+    {
+        //[tutorial_error_handling_as_tuple_default_tokens
+        // The following two lines are equivalent.
+        // Both of them produce an awaitable that returns a tuple when awaited.
+        auto [ec1, conn1] = co_await pool.async_get_connection(asio::as_tuple);
+        auto [ec2, conn2] = co_await pool.async_get_connection(
+            asio::as_tuple(mysql::with_diagnostics(asio::deferred))
+        );
+        //]
+
+        BOOST_TEST(ec1 == mysql::error_code());
+        BOOST_TEST(ec2 == mysql::error_code());
+        BOOST_TEST(conn1.valid());
+        BOOST_TEST(conn2.valid());
+    }
+
+    {
+        using namespace std::chrono_literals;
+
+        //[tutorial_error_handling_as_tuple_cancel_after
+        // ec is an error_code, conn is the mysql::pooled_connection
+        // Apply a timeout and don't throw on error
+        auto [ec, conn] = co_await pool.async_get_connection(asio::cancel_after(20s, asio::as_tuple));
+        //]
+
+        BOOST_TEST(ec == mysql::error_code());
+        BOOST_TEST(conn.valid());
+    }
+
+    // Call the functions requiring a pool
     co_await get_employee_details(pool, 1);
 }
 
-BOOST_FIXTURE_TEST_CASE(section_tutorials_cxx20, snippets_fixture)
+BOOST_FIXTURE_TEST_CASE(section_tutorials_cxx20, io_context_fixture)
 {
     run_coro(ctx, &tutorial_error_handling);
 }

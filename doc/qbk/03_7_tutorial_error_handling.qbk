@@ -49,16 +49,7 @@ This last parameter is the
 Callbacks are valid completion tokens. Taking [refmemunq connection_pool async_get_connection]
 as example, the following is valid:
 
-```
-// Function to call when async_get_connection completes
-auto on_available_connection = [](boost::system::error_code ec, mysql::pooled_connection conn) {
-  // Do something useful with the connection 
-};
-
-// Start the operation. on_available_connection will be called when the operation
-// completes. on_available_connection is the completion token.
-pool.async_get_connection(on_available_connection);
-```
+[tutorial_error_handling_callbacks]
 
 We have already been using this when creating coroutines with `asio::co_spawn`.
 This function is also an async operation, and the callback we pass as final parameter,
@@ -79,12 +70,7 @@ so we can use them in C++20 coroutines.
 The default completion token for [refmemunq connection_pool async_get_connection] is
 `mysql::with_diagnostics(asio::deferred)`. This means that the following two are equivalent:
 
-```
-// These two lines are equivalent.
-// Both of them can be read as "I want to use C++20 coroutines as my completion style"
-auto conn1 = co_await pool.async_get_connection();
-auto conn2 = co_await pool.async_get_connection(mysql::with_diagnostics(asio::deferred));
-```
+[tutorial_error_handling_default_tokens]
 
 Completion tokens are generic: once you learn how to use one, you can use it
 with any Asio-compliant async operation. This includes all functions in Boost.Asio,
@@ -110,19 +96,7 @@ Adapter tokens can be passed an optional completion token
 as the last argument. If the token is omitted, the default
 one will be used. Continuing with our example:
 
-```
-// Enable the use of the "s" suffix for std::chrono::seconds
-using namespace std::chrono_literals;
-
-// The following two lines are equivalent.
-// If no token is passed to cancel_after, the default one will be used,
-// which transforms the operation into an awaitable.
-// asio::cancel_after(20s) is usually termed "partial completion token"
-auto conn1 = co_await pool.async_get_connection(asio::cancel_after(20s));
-auto conn2 = co_await pool.async_get_connection(
-    asio::cancel_after(20s, mysql::with_diagnostics(asio::deferred))
-);
-```
+[tutorial_error_handling_adapter_tokens]
 
 
 [heading Handler signature and exceptions]
@@ -155,36 +129,20 @@ handler signature, packing all arguments into a `std::tuple`.
 This inhibits the automatic error code checks explained in the previous section, 
 thus preventing exceptions on I/O failure. Continuing with our example:
 
-[tutorial_error_handling_get_connection_as_tuple]
+[tutorial_error_handling_as_tuple]
 
 In practice, it's usually better to use structured bindings:
 
-```
-// ec is an error_code, conn is the mysql::pooled_connection
-auto [ec, conn] = co_await pool.async_get_connection(asio::as_tuple);
-```
+[tutorial_error_handling_as_tuple_structured_bindings]
 
 All the properties of adapter completion tokens apply:
 
-```
-// The following two lines are equivalent.
-// Both of them produce an awaitable that returns a tuple when awaited.
-auto [ec1, conn1] = co_await pool.async_get_connection(asio::as_tuple);
-auto [ec2, conn2] = co_await pool.async_get_connection(
-  asio::as_tuple(mysql::with_diagnostics(asio::deferred))
-);
-```
+[tutorial_error_handling_as_tuple_default_tokens]
 
 Adapter tokens can be combined. To apply a timeout to the operation
 while avoiding exceptions, you can use:
 
-```
-// ec is an error_code, conn is the mysql::pooled_connection
-// Apply a timeout and don't throw on error
-auto [ec, conn] = co_await pool.async_get_connection(
-  asio::cancel_after(20s, asio::as_tuple)
-);
-```
+[tutorial_error_handling_as_tuple_cancel_after]
 
 
 
@@ -238,38 +196,7 @@ more caution (logging them is fine).
 Since `asio::read` and `asio::write` are compliant async operations,
 we can use [asioreflink as_tuple as_tuple] with them, too:
 
-
-```
-asio::awaitable<void> handle_session(mysql::connection_pool& pool, asio::ip::tcp::socket client_socket)
-{
-    // Read the request from the client.
-    unsigned char message[8]{};
-    auto [ec1, bytes_read] = co_await asio::async_read(
-        client_socket,
-        asio::buffer(message),
-        asio::as_tuple
-    );
-    if (ec1)
-    {
-        log_error("Error reading from the socket", ec1);
-        co_return;
-    }
-
-    // Process the request as before (omitted)
-
-    // Write the response back to the client.
-    auto [ec2, bytes_written] = co_await asio::async_write(
-        client_socket,
-        asio::buffer(response),
-        asio::as_tuple
-    );
-    if (ec2)
-    {
-        log_error("Error writing to the socket", ec2);
-        co_return;
-    }
-}
-```
+[tutorial_error_handling_session_as_tuple]
 
 
 
