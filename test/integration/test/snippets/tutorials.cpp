@@ -5,6 +5,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/pfr.hpp>
+
+#include <boost/asio/awaitable.hpp>
+#if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
+
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
@@ -17,7 +22,6 @@
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/as_tuple.hpp>
-#include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/detached.hpp>
@@ -37,6 +41,7 @@ namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 using namespace mysql::test;
 
+// Common
 inline namespace tutorials {
 struct employee
 {
@@ -47,23 +52,24 @@ struct employee
 
 namespace {
 
-mysql::pool_params create_pool_params()
+//
+// Tutorial 4: static interface
+//
+BOOST_FIXTURE_TEST_CASE(section_tutorial_static_interface, snippets_fixture)
 {
-    mysql::pool_params res;
-    res.server_address.emplace_host_and_port(get_hostname());
-    res.username = mysql_username;
-    res.password = mysql_password;
-    res.database = "boost_mysql_examples";
-    return res;
+    mysql::results result;
+    conn.execute("SELECT first_name, last_name FROM employee WHERE id = 1", result);
+    auto print_employee = [](mysql::string_view, mysql::string_view) {};
+
+    //[tutorial_static_casts
+    mysql::row_view employee = result.rows().at(0);
+    print_employee(employee.at(0).as_string(), employee.at(1).as_string());
+    //]
 }
 
-// Taken here because it's only used in the discussion
-void print_employee(mysql::string_view first_name, mysql::string_view last_name)
-{
-    std::cout << "Employee's name is: " << first_name << ' ' << last_name << std::endl;
-}
-
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
+//
+// Tutorial 5: updates and txns
+//
 asio::awaitable<void> tutorial_updates_transactions(mysql::any_connection& conn)
 {
     const char* new_first_name = "John";
@@ -201,9 +207,45 @@ asio::awaitable<void> tutorial_updates_transactions(mysql::any_connection& conn)
     }
 }
 
+BOOST_FIXTURE_TEST_CASE(section_tutorial_updates_transactions, snippets_fixture)
+{
+    run_coro(ctx, [&]() { return tutorial_updates_transactions(conn); });
+}
+
+//
+// Tutorial 6: connection pool
+//
+mysql::pool_params create_pool_params()
+{
+    mysql::pool_params res;
+    res.server_address.emplace_host_and_port(get_hostname());
+    res.username = mysql_username;
+    res.password = mysql_password;
+    res.database = "boost_mysql_examples";
+    return res;
+}
+
+BOOST_FIXTURE_TEST_CASE(section_tutorial_connection_pool, snippets_fixture)
+{
+    run_coro(ctx, [&]() -> asio::awaitable<void> {
+        mysql::connection_pool pool(ctx, create_pool_params());
+        pool.async_run(asio::detached);
+
+        //[tutorial_connection_pool_get_connection
+        // Get a connection from the pool.
+        // This will wait until a healthy connection is ready to be used.
+        // pooled_connection grants us exclusive access to the connection until
+        // the object is destroyed
+        mysql::pooled_connection conn = co_await pool.async_get_connection();
+        //]
+    });
+}
+
+//
+// Tutorial 7: error handling
+//
 void log_error(const char*, boost::system::error_code) {}
 
-// Version without diagnostics
 //[tutorial_error_handling_db_nodiag
 asio::awaitable<std::string> get_employee_details(mysql::connection_pool& pool, std::int64_t employee_id)
 {
@@ -268,44 +310,12 @@ asio::awaitable<void> tutorial_error_handling()
 
     co_await get_employee_details(pool, 1);
 }
-#endif
 
-BOOST_FIXTURE_TEST_CASE(section_tutorials, snippets_fixture)
+BOOST_FIXTURE_TEST_CASE(section_tutorials_cxx20, snippets_fixture)
 {
-    // Tutorial about the static interface
-    {
-        mysql::results result;
-        conn.execute("SELECT first_name, last_name FROM employee WHERE id = 1", result);
-
-        //[tutorial_static_casts
-        mysql::row_view employee = result.rows().at(0);
-        print_employee(employee.at(0).as_string(), employee.at(1).as_string());
-        //]
-    }
-
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-    // Tutorial about UPDATEs and transactions
-    run_coro(ctx, [&]() { return tutorial_updates_transactions(conn); });
-#endif
-
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
-    run_coro(ctx, [&]() -> asio::awaitable<void> {
-        mysql::connection_pool pool(ctx, create_pool_params());
-        pool.async_run(asio::detached);
-
-        //[tutorial_connection_pool_get_connection
-        // Get a connection from the pool.
-        // This will wait until a healthy connection is ready to be used.
-        // pooled_connection grants us exclusive access to the connection until
-        // the object is destroyed
-        mysql::pooled_connection conn = co_await pool.async_get_connection();
-        //]
-    });
-#endif
-
-#ifdef BOOST_ASIO_HAS_CO_AWAIT
     run_coro(ctx, &tutorial_error_handling);
-#endif
 }
 
 }  // namespace
+
+#endif
