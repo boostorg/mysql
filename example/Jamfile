@@ -27,10 +27,10 @@ rule run_example (
 )
 {
     # If we're using a Python runner, don't use Valgrind
-    local valgrind_target = ;
+    local valgrind_target = /boost/mysql/test//launch_with_valgrind ;
     local launcher = ;
     if python_runner {
-        valgrind_target = /boost/mysql/test//launch_with_valgrind ;
+        valgrind_target = ;
         launcher = <testing.launcher>"python $(this_dir)/private/$(python_runner)" ;
     }
 
