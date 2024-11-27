@@ -100,13 +100,13 @@ The root MySQL user for these containers is `root` and has an empty password.
 
 # List all examples here
 TUTORIALS = [
-    Example('tutorial_sync', '1_tutorial/1_sync.cpp', 'Tutorial 1 listing: hello world!'),
-    Example('tutorial_async', '1_tutorial/2_async.cpp', 'Tutorial 2 listing: going async with C++20 coroutines'),
-    Example('tutorial_with_params', '1_tutorial/3_with_params.cpp', 'Tutorial 3 listing: queries with parameters'),
-    Example('tutorial_static_interface', '1_tutorial/4_static_interface.cpp', 'Tutorial 4 listing: the static interface'),
+    Example('tutorial_sync',                 '1_tutorial/1_sync.cpp',                 'Tutorial 1 listing: hello world!'),
+    Example('tutorial_async',                '1_tutorial/2_async.cpp',                'Tutorial 2 listing: going async with C++20 coroutines'),
+    Example('tutorial_with_params',          '1_tutorial/3_with_params.cpp',          'Tutorial 3 listing: queries with parameters'),
+    Example('tutorial_static_interface',     '1_tutorial/4_static_interface.cpp',     'Tutorial 4 listing: the static interface'),
     Example('tutorial_updates_transactions', '1_tutorial/5_updates_transactions.cpp', 'Tutorial 5 listing: UPDATEs, transactions and multi-queries'),
-    Example('tutorial_connection_pool', '1_tutorial/6_connection_pool.cpp', 'Tutorial 6 listing: connection pools and timeouts'),
-    Example('tutorial_error_handling', '1_tutorial/7_error_handling.cpp', 'Tutorial 7 listing: error handling and avoiding exceptions'),
+    Example('tutorial_connection_pool',      '1_tutorial/6_connection_pool.cpp',      'Tutorial 6 listing: connection pools'),
+    Example('tutorial_error_handling',       '1_tutorial/7_error_handling.cpp',       'Tutorial 7 listing: error handling'),
 ]
 
 SIMPLE_EXAMPLES = [

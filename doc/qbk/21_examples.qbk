@@ -22,8 +22,8 @@ Self-contained programs demonstrating the basic concepts.
 * [link mysql.examples.tutorial_with_params Tutorial 3 listing: queries with parameters]
 * [link mysql.examples.tutorial_static_interface Tutorial 4 listing: the static interface]
 * [link mysql.examples.tutorial_updates_transactions Tutorial 5 listing: UPDATEs, transactions and multi-queries]
-* [link mysql.examples.tutorial_connection_pool Tutorial 6 listing: connection pools and timeouts]
-* [link mysql.examples.tutorial_error_handling Tutorial 7 listing: error handling and avoiding exceptions]
+* [link mysql.examples.tutorial_connection_pool Tutorial 6 listing: connection pools]
+* [link mysql.examples.tutorial_error_handling Tutorial 7 listing: error handling]
 
 [heading Simple programs]
 
@@ -133,7 +133,7 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
-[section:tutorial_connection_pool Tutorial 6 listing: connection pools and timeouts]
+[section:tutorial_connection_pool Tutorial 6 listing: connection pools]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
@@ -144,7 +144,7 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
-[section:tutorial_error_handling Tutorial 7 listing: error handling and avoiding exceptions]
+[section:tutorial_error_handling Tutorial 7 listing: error handling]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
