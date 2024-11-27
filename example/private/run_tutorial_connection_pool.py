@@ -100,7 +100,7 @@ class _Runner:
             self._generate_error()
         assert self._query_employee(1) != 'NOT_FOUND'
         value = self._query_employee(0xffffffff)
-        assert value == 'NOT_FOUND', f'Value is: {value}'
+        assert value == 'NOT_FOUND', 'Value is: {}'.format(value)
 
 
 def main():
