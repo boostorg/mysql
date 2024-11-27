@@ -199,6 +199,7 @@ void main_impl(int argc, char** argv)
     const char* username = argv[1];
     const char* password = argv[2];
     const char* server_hostname = argv[3];
+    auto listener_port = static_cast<unsigned short>(std::stoi(argv[4]));
 
     //[tutorial_connection_pool_main
     //[tutorial_connection_pool_create
@@ -243,7 +244,7 @@ void main_impl(int argc, char** argv)
     // Launch our listener
     asio::co_spawn(
         ctx,
-        [&pool, argv] { return listener(pool, std::stoi(argv[4])); },
+        [&pool, listener_port] { return listener(pool, listener_port); },
         // If any exception is thrown in the coroutine body, rethrow it.
         [](std::exception_ptr ptr) {
             if (ptr)
