@@ -206,7 +206,7 @@ END
 
 
 
-[/ [section:ref Reference]
+[section:ref Reference]
 [xinclude helpers/quickref.xml]
 [block'''<part label="Two: Reference">''']
 [include reference.qbk]
@@ -221,4 +221,4 @@ END
 [include helpers/Stream.qbk]
 [include helpers/WritableFieldTuple.qbk]
 [block'''</part>''']
-[endsect] ]
+[endsect]
