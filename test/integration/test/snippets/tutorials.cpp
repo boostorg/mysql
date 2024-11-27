@@ -28,11 +28,13 @@
 #include <boost/asio/detached.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/this_coro.hpp>
 #include <boost/core/ignore_unused.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <chrono>
 #include <string>
 #include <tuple>
 
@@ -322,7 +324,8 @@ asio::awaitable<void> tutorial_error_handling()
 {
     // Setup
     mysql::connection_pool pool(co_await asio::this_coro::executor, create_pool_params());
-    pool.async_run(asio::detached);
+    asio::steady_timer cv(co_await asio::this_coro::executor, (std::chrono::steady_clock::time_point::max)());
+    pool.async_run([&](mysql::error_code) { cv.cancel(); });
 
     {
         //[tutorial_error_handling_callbacks
@@ -430,6 +433,10 @@ asio::awaitable<void> tutorial_error_handling()
 
     // Call the functions requiring a pool
     co_await get_employee_details(pool, 1);
+
+    // Cancel the pool and wait run to return, so no work is left in the io_context
+    pool.cancel();
+    boost::ignore_unused(co_await cv.async_wait(asio::as_tuple));
 }
 
 BOOST_FIXTURE_TEST_CASE(section_tutorial_error_handling, io_context_fixture)
