@@ -432,7 +432,7 @@ asio::awaitable<void> tutorial_error_handling()
     co_await get_employee_details(pool, 1);
 }
 
-BOOST_FIXTURE_TEST_CASE(section_tutorials_cxx20, io_context_fixture)
+BOOST_FIXTURE_TEST_CASE(section_tutorial_error_handling, io_context_fixture)
 {
     run_coro(ctx, &tutorial_error_handling);
 }
