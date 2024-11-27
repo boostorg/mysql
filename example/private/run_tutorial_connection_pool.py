@@ -7,7 +7,7 @@
 #
 
 import argparse
-from subprocess import PIPE, Popen
+from subprocess import PIPE, STDOUT, Popen
 from contextlib import contextmanager
 import re
 import os
@@ -29,7 +29,7 @@ def _parse_server_start_line(line: str) -> int:
 def _launch_server(exe: str, host: str):
     # Launch server and let it choose a free port for us.
     # This prevents port clashes during b2 parallel test runs
-    server = Popen([exe, 'example_user', 'example_password', host, '0'], stdout=PIPE)
+    server = Popen([exe, 'example_user', 'example_password', host, '0'], stdout=PIPE, stderr=STDOUT)
     assert server.stdout is not None
     with server:
         try:
