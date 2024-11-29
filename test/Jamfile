@@ -142,6 +142,7 @@ alias boost_context_lib
     : usage-requirements
         # gcc-14+ seem to enable CET by default, which causes warnings with Boost.Context.
         # Disable CET until https://github.com/boostorg/context/issues/263 gets fixed
+        <toolset>gcc-13:<cxxflags>-fcf-protection=none
         <toolset>gcc-14:<cxxflags>-fcf-protection=none
     ;
 
