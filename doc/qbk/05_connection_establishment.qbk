@@ -231,12 +231,9 @@ is disabled by default. You can enable it by setting
 
 [section_connection_establishment_multi_queries]
 
-Semicolon-separated queries are useful in a number of cases, like when using transactions:
-
-[section_connection_establishment_multi_queries_execute]
-
-See the [link mysql.examples.multi_queries_transactions full example here].
-
+As explained [link mysql.tutorial_updates_transactions in the tutorial],
+multi-separated queries are useful in a number of cases,
+like when using transactions.
 [link mysql.multi_resultset.multi_queries This section] contains more
 info on how to use multi-queries.
 

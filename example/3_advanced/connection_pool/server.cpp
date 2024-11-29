@@ -163,7 +163,7 @@ error_code notes::launch_server(
 {
     error_code ec;
 
-    // An object that allows us to acept incoming TCP connections.
+    // An object that allows us to accept incoming TCP connections.
     // Since we're in a multi-threaded environment, we create a strand for the acceptor,
     // so all accept handlers are run serialized
     auto acceptor = std::make_shared<asio::ip::tcp::acceptor>(asio::make_strand(ex));

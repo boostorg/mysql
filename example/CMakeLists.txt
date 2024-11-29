@@ -65,12 +65,19 @@ endfunction()
 set(REGULAR_ARGS example_user example_password ${SERVER_HOST})
 
 # Tutorials
-add_tutorial(tutorial_sync             1_sync.cpp             ARGS ${REGULAR_ARGS})
-add_tutorial(tutorial_async            2_async.cpp            ARGS ${REGULAR_ARGS})
-add_tutorial(tutorial_with_params      3_with_params.cpp      ARGS ${REGULAR_ARGS} 1)
-add_tutorial(tutorial_static_interface 4_static_interface.cpp ARGS ${REGULAR_ARGS} 1 LIBS Boost::pfr)
+add_tutorial(tutorial_sync                 1_sync.cpp                  ARGS ${REGULAR_ARGS})
+add_tutorial(tutorial_async                2_async.cpp                 ARGS ${REGULAR_ARGS})
+add_tutorial(tutorial_with_params          3_with_params.cpp           ARGS ${REGULAR_ARGS} 1)
+add_tutorial(tutorial_static_interface     4_static_interface.cpp      ARGS ${REGULAR_ARGS} 1        LIBS Boost::pfr)
+add_tutorial(tutorial_updates_transactions 5_updates_transactions.cpp  ARGS ${REGULAR_ARGS} 1 "John" LIBS Boost::pfr)
+add_tutorial(tutorial_connection_pool      6_connection_pool.cpp       ARGS ${SERVER_HOST}           LIBS Boost::pfr
+    PYTHON_RUNNER run_tutorial_connection_pool.py)
+add_tutorial(tutorial_error_handling       7_error_handling.cpp        ARGS ${SERVER_HOST} --test-errors  LIBS Boost::pfr
+    PYTHON_RUNNER run_tutorial_connection_pool.py)
 
 # Simple
+add_simple_example(inserts                      ARGS ${REGULAR_ARGS} "John" "Doe" "HGS")
+add_simple_example(deletes                      ARGS ${REGULAR_ARGS} 20)
 add_simple_example(callbacks                    ARGS ${REGULAR_ARGS})
 add_simple_example(coroutines_cpp11             ARGS ${REGULAR_ARGS} LIBS Boost::context)
 add_simple_example(batch_inserts                ARGS ${SERVER_HOST}  PYTHON_RUNNER run_batch_inserts.py LIBS Boost::json)
@@ -81,10 +88,8 @@ add_simple_example(disable_tls                  ARGS ${REGULAR_ARGS})
 add_simple_example(tls_certificate_verification ARGS ${REGULAR_ARGS})
 add_simple_example(metadata                     ARGS ${REGULAR_ARGS})
 add_simple_example(prepared_statements          ARGS ${REGULAR_ARGS} "HGS")
-add_simple_example(timeouts                     ARGS ${REGULAR_ARGS} "HGS")
 add_simple_example(pipeline                     ARGS ${REGULAR_ARGS} "HGS")
 add_simple_example(multi_function               ARGS ${REGULAR_ARGS})
-add_simple_example(multi_queries_transactions   ARGS ${REGULAR_ARGS} 1 "John")
 add_simple_example(source_script                ARGS ${REGULAR_ARGS} ${CMAKE_CURRENT_SOURCE_DIR}/private/test_script.sql)
 
 # UNIX sockets. Don't run the example on Windows machines

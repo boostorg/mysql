@@ -108,8 +108,8 @@ is left in an unspecified state, after which you should close or destroy the con
 In particular, it is [*not] safe to retry the cancelled operation.
 
 Supporting cancellation allows you to implement timeouts without explicit
-support from the library. [link mysql.examples.timeouts This example]
-demonstrates how to implement this pattern.
+support from the library. [link mysql.tutorial_error_handling This tutorial]
+covers the subject in depth.
 
 Note that cancellation happens at the Boost.Asio level, and not at the
 MySQL operation level. This means that, when cancelling an operation, the

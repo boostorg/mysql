@@ -57,6 +57,7 @@ run
         test/snippets/sql_formatting.cpp
         test/snippets/sql_formatting_custom.cpp
         test/snippets/pipeline.cpp
+        test/snippets/templated_connection.cpp
 
     : requirements
         <include>include
