@@ -89,10 +89,14 @@ with this library. Here are some of the most common:
 [reflink with_diagnostics] is a completion token adapter that you can use
 with async operations when using exceptions. `with_diagnostics` makes
 your operations throw [reflink error_with_diagnostics], like sync functions do.
-For example:
 
-[async_with_diagnostics_cpp20]
-[async_with_diagnostics_cpp11]
+`with_diagnostics(asio::deferred)` is the default completion token for most
+operations in this library. If you're using C++20 coroutines as suggested in the
+tutorials, you're already using it.
+
+When using other completion styles that involve exceptions, like
+`asio::yield_context`, you may need to use `with_diagnostics` explicitly.
+[link mysql.examples.coroutines_cpp11 This example] shows how to do it.
 
 `with_diagnostics` only makes sense when using exceptions. When using error codes,
 you can keep using `asio::as_tuple` and `asio::redirect_error` normally.
