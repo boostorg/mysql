@@ -85,7 +85,7 @@ BreakConstructorInitializersBeforeComma: false
 BreakConstructorInitializers: BeforeColon
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: true
-CommentPragmas: '(^ IWYU pragma:)|(^\\copydoc )|(^ ?\\n)'
+CommentPragmas: '(^ IWYU pragma:)|(^\\copydoc )|(^ ?\\n)|(^<a href=)'
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 4
