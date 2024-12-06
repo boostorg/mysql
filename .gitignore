@@ -14,3 +14,6 @@ compile_commands.json
 .cache/
 __build*__/
 __pycache__/
+node_modules/
+/doc/build/
+/doc/reference-output/
