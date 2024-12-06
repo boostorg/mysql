@@ -24,6 +24,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 
 #include "repository.hpp"
@@ -298,17 +299,27 @@ asio::awaitable<std::optional<order_with_items>> db_repository::remove_order_ite
     };
 }
 
-asio::awaitable<std::optional<order_with_items>> db_repository::checkout_order(std::int64_t id)
+// Helper function to implement checkout_order and complete_order
+static asio::awaitable<std::optional<order_with_items>> change_order_status(
+    mysql::connection_pool& pool,
+    std::int64_t order_id,
+    std::string_view original_status,  // The status that the order should have
+    std::string_view target_status     // The status to transition the order to
+)
 {
     // Get a connection from the pool
-    auto conn = co_await pool_.async_get_connection();
+    auto conn = co_await pool.async_get_connection();
 
+    // Retrieve the order and lock it.
+    // FOR UPDATE places an exclusive lock on the order,
+    // preventing other concurrent transactions (including the ones
+    // related to adding/removing items) from changing the order
     mysql::static_results<std::tuple<>, std::tuple<std::string>> result1;
     co_await conn->async_execute(
         mysql::with_params(
             "START TRANSACTION;"
             "SELECT status FROM orders WHERE id = {} FOR UPDATE;",
-            id
+            order_id
         ),
         result1
     );
@@ -320,32 +331,41 @@ asio::awaitable<std::optional<order_with_items>> db_repository::checkout_order(s
     }
 
     // Check that the order is in the expected status
-    if (std::get<0>(result1.rows<1>().front()) != status_draft)
+    if (std::get<0>(result1.rows<1>().front()) != original_status)
     {
         co_return std::nullopt;
     }
 
-    //
+    // Update the order and retrieve the order details
     mysql::static_results<std::tuple<>, order_item, std::tuple<>> result2;
     co_await conn->async_execute(
         mysql::with_params(
-            "UPDATE orders SET status = 'pending_payment' WHERE id = {0};"
+            "UPDATE orders SET status = {1} WHERE id = {0};"
             "SELECT id, product_id, quantity FROM order_items WHERE order_id = {0};"
             "COMMIT",
-            id
+            order_id,
+            target_status
         ),
         result2
     );
 
     // Compose the return value
     co_return order_with_items{
-        id,
-        std::string(status_pending_payment),
+        order_id,
+        std::string(target_status),
         {result2.rows<1>().begin(), result2.rows<1>().end()}
     };
 }
 
-asio::awaitable<std::optional<order_with_items>> db_repository::complete_order(std::int64_t id) {}
+asio::awaitable<std::optional<order_with_items>> db_repository::checkout_order(std::int64_t id)
+{
+    return change_order_status(pool_, id, status_draft, status_pending_payment);
+}
+
+asio::awaitable<std::optional<order_with_items>> db_repository::complete_order(std::int64_t id)
+{
+    return change_order_status(pool_, id, status_pending_payment, status_complete);
+}
 
 //]
 
