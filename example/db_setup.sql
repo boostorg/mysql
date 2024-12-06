@@ -88,7 +88,9 @@ GRANT ALL PRIVILEGES ON boost_mysql_examples.* TO 'example_user'@'%';
 FLUSH PRIVILEGES;
 
 
--- Tables for the orders examples
+--
+-- Orders examples
+--
 CREATE TABLE products (
     id INT PRIMARY KEY AUTO_INCREMENT,
     short_name VARCHAR(100) NOT NULL,
