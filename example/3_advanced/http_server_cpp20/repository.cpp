@@ -242,6 +242,9 @@ asio::awaitable<std::optional<order_with_items>> db_repository::add_order_item(
         result2
     );
 
+    // If everything went well, we didn't mutate session state
+    conn.return_without_reset();
+
     // Compose the return value
     co_return order_with_items{
         ord.id,
@@ -274,6 +277,9 @@ asio::awaitable<std::optional<order_with_items>> db_repository::remove_order_ite
         ),
         result
     );
+
+    // We didn't mutate session state
+    conn.return_without_reset();
 
     // Check that the order exists
     if (result.rows<2>().empty())
@@ -348,6 +354,9 @@ static asio::awaitable<std::optional<order_with_items>> change_order_status(
         ),
         result2
     );
+
+    // If everything went well, we didn't mutate session state
+    conn.return_without_reset();
 
     // Compose the return value
     co_return order_with_items{
