@@ -174,13 +174,17 @@ struct authentication_plugin
 
 BOOST_INLINE_CONSTEXPR authentication_plugin all_authentication_plugins[] = {
     {
-     make_string_view("mysql_native_password"),
-     &mnp_compute_response,
-     },
+      make_string_view("mysql_native_password"),
+      &mnp_compute_response,
+    },
     {
-     make_string_view("caching_sha2_password"),
-     &csha2p_compute_response,
-     },
+      make_string_view("caching_sha2_password"),
+      &csha2p_compute_response,
+    },
+    {
+      make_string_view("double_sha1_password"),
+      &mnp_compute_response,
+    },
 };
 
 inline const authentication_plugin* find_plugin(string_view name)

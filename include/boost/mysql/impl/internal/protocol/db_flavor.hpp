@@ -15,7 +15,8 @@ namespace detail {
 enum class db_flavor
 {
     mysql,
-    mariadb
+    mariadb,
+    clickhouse
 };
 
 }  // namespace detail

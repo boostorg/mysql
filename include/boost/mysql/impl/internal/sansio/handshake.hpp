@@ -185,7 +185,7 @@ class handshake_algo
     error_code process_ok(connection_state_data& st)
     {
         ok_view res{};
-        auto ec = deserialize_ok_packet(st.reader.message(), res);
+        auto ec = deserialize_ok_packet(st.reader.message(), res, st.flavor);
         if (ec)
             return ec;
         on_success(st, res);
