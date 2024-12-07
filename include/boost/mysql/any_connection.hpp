@@ -98,8 +98,8 @@ struct any_connection_params
      *     allocate memory beyond this limit if the total number of rows is high.
      * \n
      * If you need to send or receive larger packets, you may need to adjust
-     * your server's <a
-     * href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_max_allowed_packet">`max_allowed_packet`</a>
+     * your server's
+     * <a href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_max_allowed_packet">`max_allowed_packet`</a>
      * system variable, too.
      */
     std::size_t max_buffer_size{0x4000000};
@@ -138,7 +138,7 @@ struct any_connection_params
  * \par Thread safety
  * Distinct objects: safe. \n
  * Shared objects: unsafe. \n
- * This class is <b>not thread-safe</b>: for a single object, if you
+ * This class is **not thread-safe**: for a single object, if you
  * call its member functions concurrently from separate threads, you will get a race condition.
  */
 class any_connection
@@ -252,8 +252,8 @@ public:
      * \brief Returns whether backslashes are being treated as escape sequences.
      * \details
      * By default, the server treats backslashes in string values as escape characters.
-     * This behavior can be disabled by activating the <a
-     *   href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">`NO_BACKSLASH_ESCAPES`</a>
+     * This behavior can be disabled by activating the
+     * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">`NO_BACKSLASH_ESCAPES`</a>
      * SQL mode.
      * \n
      * Every time an operation involving server communication completes, the server reports whether
@@ -546,7 +546,7 @@ public:
      * \ref execution_state::meta populated.
      * Metadata will be populated according to `this->meta_mode()`.
      * \n
-     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
+     * If the operation generated any rows or more than one resultset, these **must** be read (by using
      * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
      * Otherwise, the results are undefined.
      * \n

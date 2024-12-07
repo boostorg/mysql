@@ -170,7 +170,7 @@ public:
 
     /**
      * \brief Returns the ID of the collation that fields belonging to this column use.
-     * \details This is <b>not</b> the collation used when defining the column
+     * \details This is **not** the collation used when defining the column
      * in a `CREATE TABLE` statement, but the collation that fields that belong to
      * this column and are sent to the client have. It usually matches the connection's collation.
      *

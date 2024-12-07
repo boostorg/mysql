@@ -58,8 +58,7 @@ enum class quoting_context : char
  * By default, MySQL treats backslash characters as escapes in string values
  * (for instance, the string `"\n"` is treated as a newline). This behavior is
  * enabled by default, but can be disabled by enabling the
- * <a
- *    href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">`NO_BACKSLASH_ESCAPES`</a>
+ * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">`NO_BACKSLASH_ESCAPES`</a>
  * SQL mode. When enabled, backslashes no longer have a special meaning, which changes
  * the escaping rules. `opts.backslash_escapes` should be set to `true` if backslashes represent
  * escapes (i.e. `NO_BACKSLASH_ESCAPES` is not enabled), and `false` otherwise.

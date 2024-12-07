@@ -26,7 +26,8 @@ namespace mysql {
  *   - `make_tuple_element_t<const int&>` yields `int` \n
  *   - `make_tuple_element_t<std::reference_wrapper<int>>` yields `int&` \n
  * \n
- * Consult the <a href="https://en.cppreference.com/w/cpp/utility/tuple/make_tuple">`std::make_tuple`</a> docs
+ * Consult the
+ * <a href="https://en.cppreference.com/w/cpp/utility/tuple/make_tuple">`std::make_tuple`</a> docs
  * for more info.
  */
 template <class T>
@@ -45,14 +46,15 @@ using make_tuple_element_t = typename std::tuple_element<0, decltype(std::make_t
  * to expand the provided query with the supplied parameters. The resulting query is then sent to
  * the server for execution. Formally, given a `conn` variable of \ref any_connection type,
  * the query is generated as if the following was called:
- * ```
+ *
+ * \code
  *   format_sql(
  *       this->query,
  *       conn.format_opts().value(),
  *       std::get<i>(this->args)... // for i in [0, sizeof...(Formattable))
  *   );
- * ```
- * \n
+ * \endcode
+ *
  * Objects of this type are usually created using \ref with_params, which
  * creates `args` by calling `std::make_tuple`.
  *

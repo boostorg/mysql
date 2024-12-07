@@ -1,0 +1,8 @@
+name: mysql
+title: Boost.MySQL
+version: ~
+nav:
+  - modules/ROOT/nav.adoc
+ext:
+  cpp-reference:
+    config: doc/mrdocs.yml

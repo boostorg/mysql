@@ -58,7 +58,7 @@ class static_execution_state;
  * \par Thread safety
  * Distinct objects: safe. \n
  * Shared objects: unsafe. \n
- * This class is <b>not thread-safe</b>: for a single object, if you
+ * This class is **not thread-safe**: for a single object, if you
  * call its member functions concurrently from separate threads, you will get a race condition.
  *
  * \par Legacy
