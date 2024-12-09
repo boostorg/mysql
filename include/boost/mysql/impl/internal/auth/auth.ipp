@@ -18,10 +18,11 @@
 #include <boost/mysql/impl/internal/auth/auth.hpp>
 
 #include <boost/config.hpp>
+#include <boost/hash2/sha1.hpp>
+#include <boost/hash2/sha2.hpp>
 
 #include <algorithm>
 #include <cstring>
-#include <openssl/sha.h>
 
 namespace boost {
 namespace mysql {
@@ -39,21 +40,26 @@ BOOST_INLINE_CONSTEXPR std::size_t mnp_response_length = 20;
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
 inline void mnp_compute_auth_string(string_view password, const void* challenge, void* output)
 {
-    // SHA1 (password)
-    using sha1_buffer = unsigned char[SHA_DIGEST_LENGTH];
-    sha1_buffer password_sha1;
-    SHA1(reinterpret_cast<const unsigned char*>(password.data()), password.size(), password_sha1);
+    // Algorithm: SHA1(password) XOR SHA1(challenge | SHA1(SHA1(password)))
+    // SHA1(password)
+    hash2::sha1_160 hasher1;
+    hasher1.update(password.data(), password.size());
+    auto password_sha1 = hasher1.result();
 
-    // Add server challenge (salt)
-    unsigned char salted_buffer[mnp_challenge_length + SHA_DIGEST_LENGTH];
-    memcpy(salted_buffer, challenge, mnp_challenge_length);
-    SHA1(password_sha1, sizeof(password_sha1), salted_buffer + 20);
-    sha1_buffer salted_sha1;
-    SHA1(salted_buffer, sizeof(salted_buffer), salted_sha1);
+    // SHA1(SHA1(password))
+    hash2::sha1_160 hasher2;
+    hasher2.update(password_sha1.data(), password_sha1.size());
+    auto result2 = hasher2.result();
+
+    // SHA1(challenge | SHA1(SHA1(password)))
+    hash2::sha1_160 hasher3;
+    hasher3.update(challenge, mnp_challenge_length);
+    hasher3.update(result2.data(), result2.size());
+    auto salted_sha1 = hasher3.result();
 
     // XOR
-    static_assert(mnp_response_length == SHA_DIGEST_LENGTH, "Buffer size mismatch");
-    for (std::size_t i = 0; i < SHA_DIGEST_LENGTH; ++i)
+    static_assert(mnp_response_length == hash2::sha1_160::result_type().size(), "Buffer size mismatch");
+    for (std::size_t i = 0; i < salted_sha1.size(); ++i)
     {
         static_cast<std::uint8_t*>(output)[i] = password_sha1[i] ^ salted_sha1[i];
     }
@@ -96,27 +102,29 @@ BOOST_INLINE_CONSTEXPR std::size_t csha2p_response_length = 32;
 // output must point to response_length bytes of data
 inline void csha2p_compute_auth_string(string_view password, const void* challenge, void* output)
 {
-    static_assert(csha2p_response_length == SHA256_DIGEST_LENGTH, "Buffer size mismatch");
+    static_assert(csha2p_response_length == hash2::sha2_256::result_type().size(), "Buffer size mismatch");
 
-    // SHA(SHA(password_sha) concat challenge) XOR password_sha
-    // hash1 = SHA(pass)
-    using sha_buffer = std::uint8_t[csha2p_response_length];
-    sha_buffer password_sha;
-    SHA256(reinterpret_cast<const unsigned char*>(password.data()), password.size(), password_sha);
+    // Algorithm: SHA2(SHA2(SHA2(password)) | challenge) XOR SHA2(password)
+    // SHA2(password)
+    hash2::sha2_256 hasher1;
+    hasher1.update(password.data(), password.size());
+    auto password_hash = hasher1.result();
 
-    // SHA(password_sha) concat challenge = buffer
-    std::uint8_t buffer[csha2p_response_length + csha2p_challenge_length];
-    SHA256(password_sha, csha2p_response_length, buffer);
-    std::memcpy(buffer + csha2p_response_length, challenge, csha2p_challenge_length);
+    // SHA2(SHA2(password))
+    hash2::sha2_256 hasher2;
+    hasher2.update(password_hash.data(), password_hash.size());
+    auto password_double_hash = hasher2.result();
 
-    // SHA(SHA(password_sha) concat challenge) = SHA(buffer) = salted_password
-    sha_buffer salted_password;
-    SHA256(buffer, sizeof(buffer), salted_password);
+    // SHA2(SHA2(SHA2(password)) | challenge)
+    hash2::sha2_256 hasher3;
+    hasher3.update(password_double_hash.data(), password_double_hash.size());
+    hasher3.update(challenge, csha2p_challenge_length);
+    auto salted_password = hasher3.result();
 
-    // salted_password XOR password_sha
+    // XOR
     for (unsigned i = 0; i < csha2p_response_length; ++i)
     {
-        static_cast<std::uint8_t*>(output)[i] = salted_password[i] ^ password_sha[i];
+        static_cast<std::uint8_t*>(output)[i] = salted_password[i] ^ password_hash[i];
     }
 }
 

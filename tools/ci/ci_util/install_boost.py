@@ -70,6 +70,9 @@ def install_boost(
     run(["git", "config", "submodule.fetchJobs", "8"])
     run(["git", "submodule", "update", "-q", "--init"] + submodules)
 
+    # Manually install the proposed Boost.Hash2
+    run(["git", "clone", "-b", "master", "https://github.com/pdimov/hash2.git", "libs/hash2"])
+
     if docs_install:
         run(['python', 'tools/boostdep/depinst/depinst.py', '../tools/quickbook'])
     else:
