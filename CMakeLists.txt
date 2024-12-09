@@ -45,6 +45,7 @@ target_link_libraries(
     Boost::system
     Boost::throw_exception
     Boost::variant2
+    Boost::hash2
     Threads::Threads
     OpenSSL::Crypto
     OpenSSL::SSL
