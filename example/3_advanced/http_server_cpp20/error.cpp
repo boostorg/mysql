@@ -22,8 +22,7 @@ const char* error_to_string(orders::errc value)
     switch (value)
     {
     case orders::errc::not_found: return "not_found";
-    case orders::errc::order_not_editable: return "order_not_editable";
-    case orders::errc::order_not_pending_payment: return "order_not_pending_payment";
+    case orders::errc::order_invalid_status: return "order_invalid_status";
     case orders::errc::product_not_found: return "product_not_found";
     default: return "<unknown orders::errc>";
     }

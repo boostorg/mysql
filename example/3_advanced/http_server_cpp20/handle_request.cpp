@@ -173,9 +173,8 @@ http::response<http::string_body> response_from_db_error(boost::system::error_co
         {
         case orders::errc::not_found: return not_found("The referenced entity does not exist");
         case orders::errc::product_not_found: return bad_request("The referenced product does not exist");
-        case orders::errc::order_not_editable: return bad_request("The referenced order can't be edited");
-        case orders::errc::order_not_pending_payment:
-            return bad_request("The referenced order should be pending payment, but is not");
+        case orders::errc::order_invalid_status:
+            return bad_request("The referenced order doesn't have the status required by the operation");
         default: return internal_server_error();
         }
     }

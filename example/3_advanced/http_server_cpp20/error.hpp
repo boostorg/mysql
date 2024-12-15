@@ -28,10 +28,9 @@ namespace orders {
 // Error code enum for errors originated within our application
 enum class errc
 {
-    not_found,                  // couldn't retrieve or modify a certain resource because it doesn't exist
-    order_not_editable,         // an operation requires an order to be editable, but it's not
-    order_not_pending_payment,  // an operation requires an order to be pending payment, but it's not
-    product_not_found,          // a product referenced by a request doesn't exist
+    not_found,             // couldn't retrieve or modify a certain resource because it doesn't exist
+    order_invalid_status,  // an operation found an order in a status != the one expected (e.g. not editable)
+    product_not_found,     // a product referenced by a request doesn't exist
 };
 
 // The error category for errc
