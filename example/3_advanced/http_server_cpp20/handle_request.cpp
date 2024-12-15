@@ -22,11 +22,14 @@
 #include <boost/beast/http/message_fwd.hpp>
 #include <boost/beast/http/string_body_fwd.hpp>
 #include <boost/beast/http/verb.hpp>
+#include <boost/json/error.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/serialize.hpp>
 #include <boost/json/value_from.hpp>
 #include <boost/json/value_to.hpp>
 #include <boost/optional/optional.hpp>
+#include <boost/system/detail/error_code.hpp>
+#include <boost/system/result.hpp>
 #include <boost/url/parse.hpp>
 #include <boost/url/url_view.hpp>
 #include <boost/variant2/variant.hpp>
@@ -45,6 +48,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "error.hpp"
 #include "handle_request.hpp"
 #include "log_error.hpp"
 #include "repository.hpp"
@@ -57,6 +61,7 @@
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
 namespace mysql = boost::mysql;
+using boost::system::result;
 
 namespace {
 
@@ -125,6 +130,11 @@ public:
         return error_response(http::status::not_found, std::move(body));
     }
 
+    http::response<http::string_body> internal_server_error() const
+    {
+        return error_response(http::status::internal_server_error, {});
+    }
+
     // Creates a response with a serialized JSON body.
     // T should be a type with Boost.Describe metadata containing the
     // body data to be serialized
@@ -136,38 +146,31 @@ public:
         // Set the content-type header
         res.set("Content-Type", "application/json");
 
-        // Set the keep-alive option
-        res.keep_alive(request_.keep_alive());
-
         // Serialize the body data into a string and use it as the response body.
         // We use Boost.JSON's automatic serialization feature, which uses Boost.Describe
         // reflection data to generate a serialization function for us.
         res.body() = boost::json::serialize(boost::json::value_from(body));
 
-        // Adjust the content-length header
-        res.prepare_payload();
-
         // Done
         return res;
-    }
-
-    // Returns true if the request's Content-Type is set to JSON
-    bool has_json_content_type() const
-    {
-        auto it = request_.find("Content-Type");
-        return it != request_.end() && it->value() == "application/json";
     }
 
     // Attempts to parse the request body as a JSON into an object of type T.
     // T should be a type with Boost.Describe metadata.
     // We use boost::system::result, which may contain a result or an error.
     template <class T>
-    boost::system::result<T> parse_json_request() const
+    result<T> parse_json_request() const
     {
-        boost::system::error_code ec;
+        // Check that the request has the appropriate content type
+        auto it = request_.find("Content-Type");
+        if (it == request_.end() || it->value() != "application/json")
+        {
+            return orders::errc::content_type_not_json;
+        }
 
         // Attempt to parse the request into a json::value.
         // This will fail if the provided body isn't valid JSON.
+        boost::system::error_code ec;
         auto val = boost::json::parse(request_.body(), ec);
         if (ec)
             return ec;
@@ -177,154 +180,37 @@ public:
         return boost::json::try_value_to<T>(val);
     }
 
-    // asio::awaitable<http::response<http::string_body>> handle_request_impl()
-    // {
-    //     // Parse the request target. We use Boost.Url to do this.
-    //     auto url = boost::urls::parse_origin_form(request_.target());
-    //     if (url.has_error())
-    //         co_return error_response(http::status::bad_request, "Invalid request target");
+    http::response<http::string_body> response_from_db_error(boost::system::error_code ec) const
+    {
+        if (ec.category() == orders::get_orders_category())
+        {
+            switch (static_cast<orders::errc>(ec.value()))
+            {
+            case orders::errc::not_found: return not_found("The referenced entity does not exist");
+            case orders::errc::product_not_found: return bad_request("The referenced product does not exist");
+            case orders::errc::order_not_editable: return bad_request("The referenced order can't be edited");
+            case orders::errc::order_not_pending_payment:
+                return bad_request("The referenced order should be pending payment, but is not");
+            default: return internal_server_error();
+            }
+        }
+        else
+        {
+            return internal_server_error();
+        }
+    }
 
-    //     // We will be iterating over the target's segments to determine
-    //     // which endpoint we are being requested
-    //     auto url_params = url->params();
-    //     auto segs = url->segments();
-    //     auto segit = segs.begin();
-    //     auto seg = *segit++;
-
-    //     // Endpoints starting with /products
-    //     if (seg == "products" && segit == segs.end())
-    //     {
-    //         if (request_.method() == http::verb::get)
-    //         {
-    //             // Invoke the database logic
-    //             // vector<product> (string search)
-    //         }
-    //         else
-    //         {
-    //             co_return method_not_allowed();
-    //         }
-    //     }
-    //     // Endpoints starting with /orders
-    //     else if (seg == "orders")
-    //     {
-    //         if (segit == segs.end())
-    //         {
-    //             if (request_.method() ==)
-    //         }
-    //     }
-
-    //     // All endpoints start with /notes
-    //     if (seg != "notes")
-    //         co_return endpoint_not_found();
-
-    //     if (segit == segs.end())
-    //     {
-    //         if (request_.method() == http::verb::get)
-    //         {
-    //             // GET /notes: retrieves all the notes.
-    //             // The request doesn't have a body.
-    //             // The response has a JSON body with multi_notes_response format
-    //             auto res = repo_.get_notes(yield);
-    //             return json_response(multi_notes_response{std::move(res)});
-    //         }
-    //         else if (request_.method() == http::verb::post)
-    //         {
-    //             // POST /notes: creates a note.
-    //             // The request has a JSON body with note_request_body format.
-    //             // The response has a JSON body with single_note_response format.
-
-    //             // Parse the request body
-    //             if (!has_json_content_type())
-    //                 return invalid_content_type();
-    //             auto args = parse_json_request<note_request_body>();
-    //             if (args.has_error())
-    //                 return invalid_body();
-
-    //             // Actually create the note
-    //             auto res = repo_.create_note(args->title, args->content, yield);
-
-    //             // Return the newly crated note as response
-    //             return json_response(single_note_response{std::move(res)});
-    //         }
-    //         else
-    //         {
-    //             return method_not_allowed();
-    //         }
-    //     }
-    //     else
-    //     {
-    //         // The URL has the form /notes/<note-id>. Parse the note ID.
-    //         auto note_id = parse_id(*segit++);
-    //         if (!note_id.has_value())
-    //         {
-    //             return error_response(
-    //                 http::status::bad_request,
-    //                 "Invalid note_id specified in request target"
-    //             );
-    //         }
-
-    //         // /notes/<note-id>/<something-else> is not a valid endpoint
-    //         if (segit != segs.end())
-    //             return endpoint_not_found();
-
-    //         if (request_.method() == http::verb::get)
-    //         {
-    //             // GET /notes/<note-id>: retrieves a single note.
-    //             // The request doesn't have a body.
-    //             // The response has a JSON body with single_note_response format
-
-    //             // Get the note
-    //             auto res = repo_.get_note(*note_id, yield);
-
-    //             // If we didn't find it, return a 404 error
-    //             if (!res.has_value())
-    //                 return note_not_found();
-
-    //             // Return it as response
-    //             return json_response(single_note_response{std::move(*res)});
-    //         }
-    //         else if (request_.method() == http::verb::put)
-    //         {
-    //             // PUT /notes/<note-id>: replaces a note.
-    //             // The request has a JSON body with note_request_body format.
-    //             // The response has a JSON body with single_note_response format.
-
-    //             // Parse the JSON body
-    //             if (!has_json_content_type())
-    //                 return invalid_content_type();
-    //             auto args = parse_json_request<note_request_body>();
-    //             if (args.has_error())
-    //                 return invalid_body();
-
-    //             // Perform the update
-    //             auto res = repo_.replace_note(*note_id, args->title, args->content, yield);
-
-    //             // Check that it took effect. Otherwise, it's because the note wasn't there
-    //             if (!res.has_value())
-    //                 return note_not_found();
-
-    //             // Return the updated note as response
-    //             return json_response(single_note_response{std::move(*res)});
-    //         }
-    //         else if (request_.method() == http::verb::delete_)
-    //         {
-    //             // DELETE /notes/<note-id>: deletes a note.
-    //             // The request doesn't have a body.
-    //             // The response has a JSON body with delete_note_response format.
-
-    //             // Attempt to delete the note
-    //             bool deleted = repo_.delete_note(*note_id, yield);
-
-    //             // Return whether the delete was successful in the response.
-    //             // We don't fail DELETEs for notes that don't exist.
-    //             return json_response(delete_note_response{deleted});
-    //         }
-    //         else
-    //         {
-    //             return method_not_allowed();
-    //         }
-    //     }
-    // }
+    http::response<http::string_body> response_from_json_error(boost::system::error_code ec) const
+    {
+        if (ec == orders::errc::content_type_not_json)
+        {
+            return bad_request("Invalid Content-Type: expected 'application/json'");
+        }
+        else
+        {
+            return bad_request("Invalid JSON");
+        }
+    }
 
     // Constructor
     request_handler(const http::request<http::string_body>& req, mysql::connection_pool& pool) noexcept
@@ -369,14 +255,14 @@ asio::awaitable<http::response<http::string_body>> handle_get_orders(request_han
         // Parse the query parameter
         auto order_id = parse_id((*params_it).value);
         if (!order_id.has_value())
-            co_return handler.bad_request("id should be a valid integer");
+            co_return handler.bad_request("URL parameter 'id' should be a valid integer");
 
         // Invoke the database logic
-        std::optional<orders::order_with_items> order = co_await handler.repo_.get_order_by_id(*order_id);
+        result<orders::order_with_items> order = co_await handler.repo_.get_order_by_id(*order_id);
+        if (order.has_error())
+            co_return handler.response_from_db_error(order.error());
 
         // Return the response
-        if (!order.has_value())
-            co_return handler.not_found("Order not found");
         co_return handler.json_response(*order);
     }
 }
@@ -390,9 +276,79 @@ asio::awaitable<http::response<http::string_body>> handle_create_order(request_h
     co_return handler.json_response(order);
 }
 
-asio::awaitable<http::response<http::string_body>> handle_add_item(request_handler& handler)
+asio::awaitable<http::response<http::string_body>> handle_add_order_item(request_handler& handler)
 {
-    // TODO
+    // Parse the request body
+    auto req = handler.parse_json_request<orders::add_order_item_request>();
+    if (req.has_error())
+        co_return handler.response_from_json_error(req.error());
+
+    // Invoke the database logic
+    result<orders::order_with_items> res = co_await handler.repo_
+                                               .add_order_item(req->order_id, req->product_id, req->quantity);
+    if (res.has_error())
+        co_return handler.response_from_db_error(res.error());
+
+    // Return the response
+    co_return handler.json_response(*res);
+}
+
+// TODO: reduce duplication
+asio::awaitable<http::response<http::string_body>> handle_remove_order_item(request_handler& handler)
+{
+    // Parse the query parameter
+    auto params_it = handler.target.params().find("id");
+    if (params_it == handler.target.params().end())
+        co_return handler.bad_request("Mandatory URL parameter 'id' not found");
+    auto id = parse_id((*params_it).value);
+    if (!id.has_value())
+        co_return handler.bad_request("URL parameter 'id' should be a valid integer");
+
+    // Invoke the database logic
+    result<orders::order_with_items> res = co_await handler.repo_.remove_order_item(*id);
+    if (res.has_error())
+        co_return handler.response_from_db_error(res.error());
+
+    // Return the response
+    co_return handler.json_response(*res);
+}
+
+asio::awaitable<http::response<http::string_body>> handle_checkout_order(request_handler& handler)
+{
+    // Parse the query parameter
+    auto params_it = handler.target.params().find("id");
+    if (params_it == handler.target.params().end())
+        co_return handler.bad_request("Mandatory URL parameter 'id' not found");
+    auto id = parse_id((*params_it).value);
+    if (!id.has_value())
+        co_return handler.bad_request("URL parameter 'id' should be a valid integer");
+
+    // Invoke the database logic
+    result<orders::order_with_items> res = co_await handler.repo_.checkout_order(*id);
+    if (res.has_error())
+        co_return handler.response_from_db_error(res.error());
+
+    // Return the response
+    co_return handler.json_response(*res);
+}
+
+asio::awaitable<http::response<http::string_body>> handle_complete_order(request_handler& handler)
+{
+    // Parse the query parameter
+    auto params_it = handler.target.params().find("id");
+    if (params_it == handler.target.params().end())
+        co_return handler.bad_request("Mandatory URL parameter 'id' not found");
+    auto id = parse_id((*params_it).value);
+    if (!id.has_value())
+        co_return handler.bad_request("URL parameter 'id' should be a valid integer");
+
+    // Invoke the database logic
+    result<orders::order_with_items> res = co_await handler.repo_.complete_order(*id);
+    if (res.has_error())
+        co_return handler.response_from_db_error(res.error());
+
+    // Return the response
+    co_return handler.json_response(*res);
 }
 
 struct http_endpoint

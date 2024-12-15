@@ -20,7 +20,7 @@
  *    GET    /orders                    Returns all orders
  *    GET    /orders?id={}              Returns a single order
  *    POST   /orders                    Creates a new order.
- *    POST   /orders/items?order-id={}  Adds a new order item to an existing order.
+ *    POST   /orders/items              Adds a new order item to an existing order.
  *    DELETE /orders/items?id={}        Deletes an order item
  *    POST   /orders/checkout?id={}     Checks out an order
  *    POST   /orders/complete?id={}     Completes an order

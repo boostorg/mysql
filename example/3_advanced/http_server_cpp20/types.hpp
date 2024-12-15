@@ -75,6 +75,13 @@ BOOST_DESCRIBE_STRUCT(order_with_items, (), (id, status, items))
 //
 // REST API requests.
 //
+struct add_order_item_request
+{
+    std::int64_t order_id;
+    std::int64_t product_id;
+    std::int64_t quantity;
+};
+BOOST_DESCRIBE_STRUCT(add_order_item_request, (), (order_id, product_id, quantity))
 
 //
 // REST API responses.
