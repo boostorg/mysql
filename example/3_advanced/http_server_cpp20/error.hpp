@@ -19,6 +19,8 @@
 
 #include <boost/system/error_category.hpp>
 
+#include <mutex>
+#include <string_view>
 #include <type_traits>
 
 namespace orders {
@@ -40,6 +42,15 @@ inline boost::system::error_code make_error_code(errc v)
 {
     return boost::system::error_code(static_cast<int>(v), get_orders_category());
 }
+
+// In multi-threaded programs, using std::cerr without any locking
+// can result in interleaved output.
+// Locks a mutex guarding std::cerr to prevent this.
+// All uses of std::cerr should respect this.
+std::unique_lock<std::mutex> lock_cerr();
+
+// A helper function for the common case where we want to log an error code
+void log_error(std::string_view header, boost::system::error_code ec);
 
 }  // namespace orders
 

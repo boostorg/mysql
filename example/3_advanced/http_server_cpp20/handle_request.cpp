@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/static_results.hpp>
 
 //[example_connection_pool_handle_request_cpp
@@ -38,6 +39,7 @@
 #include <charconv>
 #include <cstdint>
 #include <exception>
+#include <iostream>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -47,7 +49,6 @@
 
 #include "error.hpp"
 #include "handle_request.hpp"
-#include "log_error.hpp"
 #include "repository.hpp"
 #include "types.hpp"
 
@@ -61,6 +62,33 @@ namespace mysql = boost::mysql;
 using boost::system::result;
 
 namespace {
+
+void log_mysql_error(boost::system::error_code ec, const mysql::diagnostics& diag)
+{
+    // Lock std::cerr, to avoid race conditions
+    auto guard = orders::lock_cerr();
+
+    // Inserting the error code only prints the number and category. Add the message, too.
+    std::cerr << "MySQL error: " << ec << " " << ec.message();
+
+    // client_message() contains client-side generated messages that don't
+    // contain user-input. This is usually embedded in exceptions.
+    // When working with error codes, we need to log it explicitly
+    if (!diag.client_message().empty())
+    {
+        std::cerr << ": " << diag.client_message();
+    }
+
+    // server_message() contains server-side messages, and thus may
+    // contain user-supplied input. Printing it is safe.
+    if (!diag.server_message().empty())
+    {
+        std::cerr << ": " << diag.server_message();
+    }
+
+    // Done
+    std::cerr << std::endl;
+}
 
 // Attempts to parse a numeric ID from a string
 std::optional<std::int64_t> parse_id(std::string_view from)
@@ -252,7 +280,6 @@ asio::awaitable<http::response<http::string_body>> handle_add_order_item(const r
     co_return json_response(*res);
 }
 
-// TODO: reduce duplication
 asio::awaitable<http::response<http::string_body>> handle_remove_order_item(const request_data& input)
 {
     // Parse the query parameter
@@ -364,21 +391,20 @@ asio::awaitable<http::response<http::string_body>> orders::handle_request(
     {
         // A Boost.MySQL error. This will happen if you don't have connectivity
         // to your database, your schema is incorrect or your credentials are invalid.
-        // Log the error, including diagnostics, and return a generic 500
-        // TODO
-        log_error(
-            "Uncaught exception: ",
-            err.what(),
-            "\nServer diagnostics: ",
-            err.get_diagnostics().server_message()
-        );
+        // Log the error, including diagnostics
+        log_mysql_error(err.code(), err.get_diagnostics());
+
+        // Never disclose error info to a potential attacker
         co_return internal_server_error();
     }
     catch (const std::exception& err)
     {
         // Another kind of error. This indicates a programming error or a severe
         // server condition (e.g. out of memory). Same procedure as above.
-        log_error("Uncaught exception: ", err.what());
+        {
+            auto guard = orders::lock_cerr();
+            std::cerr << "Uncaught exception: " << err.what() << std::endl;
+        }
         co_return internal_server_error();
     }
 }

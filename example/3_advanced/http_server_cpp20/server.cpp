@@ -18,6 +18,8 @@
 
 #include <string_view>
 #include <vector>
+
+#include "error.hpp"
 #if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
 
 //[example_connection_pool_server_cpp
@@ -52,8 +54,6 @@
 
 #include "handle_request.hpp"
 #include "server.hpp"
-// #include "types.hpp"
-#include "log_error.hpp"
 
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
