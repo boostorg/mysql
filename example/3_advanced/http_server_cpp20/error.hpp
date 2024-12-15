@@ -26,7 +26,6 @@ namespace orders {
 // Error code enum for errors originated within our application
 enum class errc
 {
-    content_type_not_json,      // A request expects application/json Content-Type, but didn't find it
     not_found,                  // couldn't retrieve or modify a certain resource because it doesn't exist
     order_not_editable,         // an operation requires an order to be editable, but it's not
     order_not_pending_payment,  // an operation requires an order to be pending payment, but it's not

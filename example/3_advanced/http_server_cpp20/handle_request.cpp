@@ -119,23 +119,16 @@ http::response<http::string_body> json_response(const T& body)
     return res;
 }
 
-// Attempts to parse the request body as a JSON into an object of type T.
+// Attempts to parse a string as a JSON into an object of type T.
 // T should be a type with Boost.Describe metadata.
 // We use boost::system::result, which may contain a result or an error.
 template <class T>
-result<T> parse_json_request(const http::request<http::string_body>& request)
+result<T> parse_json(std::string_view json_string)
 {
-    // Check that the request has the appropriate content type
-    auto it = request.find("Content-Type");
-    if (it == request.end() || it->value() != "application/json")
-    {
-        return orders::errc::content_type_not_json;
-    }
-
     // Attempt to parse the request into a json::value.
     // This will fail if the provided body isn't valid JSON.
     boost::system::error_code ec;
-    auto val = boost::json::parse(request.body(), ec);
+    auto val = boost::json::parse(json_string, ec);
     if (ec)
         return ec;
 
@@ -161,18 +154,6 @@ http::response<http::string_body> response_from_db_error(boost::system::error_co
     else
     {
         return internal_server_error();
-    }
-}
-
-http::response<http::string_body> response_from_json_error(boost::system::error_code ec)
-{
-    if (ec == orders::errc::content_type_not_json)
-    {
-        return bad_request("Invalid Content-Type: expected 'application/json'");
-    }
-    else
-    {
-        return bad_request("Invalid JSON");
     }
 }
 
@@ -250,10 +231,15 @@ asio::awaitable<http::response<http::string_body>> handle_create_order(request_h
 
 asio::awaitable<http::response<http::string_body>> handle_add_order_item(request_handler& handler)
 {
+    // Check that the request has the appropriate content type
+    auto it = handler.request.find("Content-Type");
+    if (it == handler.request.end() || it->value() != "application/json")
+        co_return bad_request("Invalid Content-Type: expected 'application/json'");
+
     // Parse the request body
-    auto req = parse_json_request<orders::add_order_item_request>(handler.request);
+    auto req = parse_json<orders::add_order_item_request>(handler.request.body());
     if (req.has_error())
-        co_return response_from_json_error(req.error());
+        co_return bad_request("Invalid JSON body");
 
     // Invoke the database logic
     result<orders::order_with_items> res = co_await handler.repo
