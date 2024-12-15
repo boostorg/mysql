@@ -12,53 +12,27 @@
 //
 // File: repository.cpp
 //
+// See (TODO: link this) for the table definitions
 
 #include <boost/mysql/connection_pool.hpp>
-#include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_results.hpp>
-#include <boost/mysql/string_view.hpp>
-#include <boost/mysql/with_diagnostics.hpp>
 #include <boost/mysql/with_params.hpp>
 
 #include <boost/asio/awaitable.hpp>
+#include <boost/system/result.hpp>
 
-#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <vector>
 
+#include "error.hpp"
 #include "repository.hpp"
 #include "types.hpp"
 
 namespace mysql = boost::mysql;
 namespace asio = boost::asio;
 using namespace orders;
-
-/** Database tables:
-
-CREATE TABLE products (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    short_name VARCHAR(100) NOT NULL,
-    descr TEXT,
-    price INT NOT NULL,
-    FULLTEXT(short_name, descr)
-);
-
-CREATE TABLE orders(
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    `status` ENUM('draft', 'pending_payment', 'complete') NOT NULL DEFAULT 'draft'
-);
-
-CREATE TABLE order_items(
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    order_id INT NOT NULL,
-    product_id INT NOT NULL,
-    quantity INT NOT NULL,
-    FOREIGN KEY (order_id) REFERENCES orders(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-);
-
-*/
 
 asio::awaitable<std::vector<product>> db_repository::get_products(std::string_view search)
 {
@@ -110,7 +84,7 @@ asio::awaitable<std::vector<order>> db_repository::get_orders()
     co_return std::vector<order>{res.rows().begin(), res.rows().end()};
 }
 
-asio::awaitable<std::optional<order_with_items>> db_repository::get_order_by_id(std::int64_t id)
+asio::awaitable<boost::system::result<order_with_items>> db_repository::get_order_by_id(std::int64_t id)
 {
     // Get a connection from the pool
     auto conn = co_await pool_.async_get_connection();
@@ -140,7 +114,7 @@ asio::awaitable<std::optional<order_with_items>> db_repository::get_order_by_id(
 
     // Did we find the order we're looking for?
     if (orders.empty())
-        co_return std::nullopt;
+        co_return orders::errc::not_found;
     const order& ord = orders[0];
 
     // If we did, compose the result
@@ -179,8 +153,7 @@ asio::awaitable<order_with_items> db_repository::create_order()
     co_return result.rows<2>().front();
 }
 
-// TODO: we should probably use system::result to communicate what happened
-asio::awaitable<std::optional<order_with_items>> db_repository::add_order_item(
+asio::awaitable<boost::system::result<order_with_items>> db_repository::add_order_item(
     std::int64_t order_id,
     std::int64_t product_id,
     std::int64_t quantity
@@ -211,7 +184,7 @@ asio::awaitable<std::optional<order_with_items>> db_repository::add_order_item(
     {
         // Not found. We did mutate session state by opening a transaction,
         // so we can't use return_without_reset
-        co_return std::nullopt;
+        co_return orders::errc::not_found;
     }
     const order& ord = result1.rows<1>().front();
 
@@ -219,13 +192,13 @@ asio::awaitable<std::optional<order_with_items>> db_repository::add_order_item(
     // Using SELECT ... FOR SHARE prevents race conditions with this check.
     if (ord.status != status_draft)
     {
-        co_return std::nullopt;
+        co_return orders::errc::order_invalid_status;
     }
 
     // Check that the product exists
     if (result1.rows<2>().empty())
     {
-        co_return std::nullopt;
+        co_return orders::errc::product_not_found;
     }
 
     // Insert the new item and retrieve all the items associated to this order
@@ -253,13 +226,15 @@ asio::awaitable<std::optional<order_with_items>> db_repository::add_order_item(
     };
 }
 
-asio::awaitable<std::optional<order_with_items>> db_repository::remove_order_item(std::int64_t item_id)
+asio::awaitable<boost::system::result<order_with_items>> db_repository::remove_order_item(std::int64_t item_id
+)
 {
     // Get a connection from the pool
     auto conn = co_await pool_.async_get_connection();
 
     // Delete the item and retrieve the updated order.
     // The DELETE checks that the order exists and is editable.
+    // TODO: this is wrong
     mysql::static_results<std::tuple<>, std::tuple<>, order, order_item, std::tuple<>> result;
     co_await conn->async_execute(
         mysql::with_params(
@@ -306,7 +281,7 @@ asio::awaitable<std::optional<order_with_items>> db_repository::remove_order_ite
 }
 
 // Helper function to implement checkout_order and complete_order
-static asio::awaitable<std::optional<order_with_items>> change_order_status(
+static asio::awaitable<boost::system::result<order_with_items>> change_order_status(
     mysql::connection_pool& pool,
     std::int64_t order_id,
     std::string_view original_status,  // The status that the order should have
@@ -333,13 +308,13 @@ static asio::awaitable<std::optional<order_with_items>> change_order_status(
     // Check that the order exists
     if (result1.rows<1>().empty())
     {
-        co_return std::nullopt;
+        co_return orders::errc::not_found;
     }
 
     // Check that the order is in the expected status
     if (std::get<0>(result1.rows<1>().front()) != original_status)
     {
-        co_return std::nullopt;
+        co_return orders::errc::order_invalid_status;
     }
 
     // Update the order and retrieve the order details
@@ -366,12 +341,12 @@ static asio::awaitable<std::optional<order_with_items>> change_order_status(
     };
 }
 
-asio::awaitable<std::optional<order_with_items>> db_repository::checkout_order(std::int64_t id)
+asio::awaitable<boost::system::result<order_with_items>> db_repository::checkout_order(std::int64_t id)
 {
     return change_order_status(pool_, id, status_draft, status_pending_payment);
 }
 
-asio::awaitable<std::optional<order_with_items>> db_repository::complete_order(std::int64_t id)
+asio::awaitable<boost::system::result<order_with_items>> db_repository::complete_order(std::int64_t id)
 {
     return change_order_status(pool_, id, status_pending_payment, status_complete);
 }
