@@ -232,51 +232,57 @@ asio::awaitable<boost::system::result<order_with_items>> db_repository::remove_o
     // Get a connection from the pool
     auto conn = co_await pool_.async_get_connection();
 
-    // Delete the item and retrieve the updated order.
-    // The DELETE checks that the order exists and is editable.
-    // TODO: this is wrong
-    mysql::static_results<std::tuple<>, std::tuple<>, order, order_item, std::tuple<>> result;
+    // Retrieve the order.
+    // SELECT ... FOR SHARE places a shared lock on the order and the item,
+    // so they're not modified by other transactions while we use them.
+    mysql::static_results<std::tuple<>, order> result1;
     co_await conn->async_execute(
         mysql::with_params(
             "START TRANSACTION;"
-            "DELETE it FROM order_items it"
-            "  JOIN orders ord ON (it.order_id = ord.id)"
-            "  WHERE it.id = {0} AND ord.status = 'draft';"
             "SELECT ord.id AS id, status FROM orders ord"
-            "  JOIN order_items it ON (it.order_id = ord.id)"
-            "  WHERE it.id = {0};"
-            "SELECT id, product_id, quantity FROM order_items"
-            "  WHERE order_id = (SELECT order_id FROM order_items WHERE id = {0});"
-            "COMMIT",
+            "  JOIN order_items it ON (ord.id = it.order_id)"
+            "  WHERE it.id = {} FOR SHARE",
             item_id
         ),
-        result
+        result1
     );
 
-    // We didn't mutate session state
-    conn.return_without_reset();
-
-    // Check that the order exists
-    if (result.rows<2>().empty())
+    // Check that the item exists
+    if (result1.rows<1>().empty())
     {
         // Not found. We did mutate session state by opening a transaction,
         // so we can't use return_without_reset
-        co_return std::nullopt;
+        co_return orders::errc::not_found;
     }
-    const order& ord = result.rows<2>().front();
+    const order& ord = result1.rows<1>().front();
 
-    // Check that the item was deleted
-    if (result.affected_rows<1>() == 0u)
+    // Check that the order is editable
+    if (ord.status != orders::status_draft)
     {
-        // Nothing was deleted
-        co_return std::nullopt;
+        co_return orders::errc::order_invalid_status;
     }
+
+    // Perform the deletion and retrieve the items
+    mysql::static_results<std::tuple<>, order_item, std::tuple<>> result2;
+    co_await conn->async_execute(
+        mysql::with_params(
+            "DELETE FROM order_items WHERE id = {};"
+            "SELECT id, product_id, quantity FROM order_items WHERE order_id = {};"
+            "COMMIT",
+            item_id,
+            ord.id
+        ),
+        result2
+    );
+
+    // If everything went well, we didn't mutate session state
+    conn.return_without_reset();
 
     // Compose the return value
     co_return order_with_items{
         ord.id,
         ord.status,
-        {result.rows<3>().begin(), result.rows<3>().end()}
+        {result2.rows<1>().begin(), result2.rows<1>().end()}
     };
 }
 
