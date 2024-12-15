@@ -9,6 +9,9 @@
 
 #include <boost/system/detail/error_category.hpp>
 
+#include <iostream>
+#include <mutex>
+
 #include "error.hpp"
 
 namespace {
@@ -40,10 +43,28 @@ public:
     }
 };
 
-static const orders_category cat;
+// The error category
+static const orders_category g_category;
+
+// The std::mutex that guards std::cerr
+static std::mutex g_cerr_mutex;
 
 }  // namespace
 
-const boost::system::error_category& orders::get_orders_category() { return cat; }
+//
+// External interface
+//
+const boost::system::error_category& orders::get_orders_category() { return g_category; }
+
+std::unique_lock<std::mutex> orders::lock_cerr() { return std::unique_lock{g_cerr_mutex}; }
+
+void orders::log_error(std::string_view header, boost::system::error_code ec)
+{
+    // Lock the mutex
+    auto guard = lock_cerr();
+
+    // Logging the error code prints the number and category. Add the message, too
+    std::cerr << header << ": " << ec << " " << ec.message() << std::endl;
+}
 
 //]
