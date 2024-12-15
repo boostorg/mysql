@@ -157,10 +157,9 @@ http::response<http::string_body> response_from_db_error(boost::system::error_co
     }
 }
 
-// Encapsulates the logic required to match a HTTP request
-// to an API endpoint, call the relevant note_repository function,
-// and return an HTTP response.
-struct request_handler
+// Contains data associated to an HTTP request.
+// To be passed to individual handler functions
+struct request_data
 {
     // The incoming request
     const http::request<http::string_body>& request;
@@ -168,36 +167,38 @@ struct request_handler
     // The URL the request is targeting
     boost::urls::url_view target;
 
-    // The repository to access MySQL
-    orders::db_repository repo;
+    // Connection pool
+    mysql::connection_pool& pool;
+
+    orders::db_repository repo() const { return orders::db_repository(pool); }
 };
 
 // GET /products: search for available products
-asio::awaitable<http::response<http::string_body>> handle_get_products(request_handler& handler)
+asio::awaitable<http::response<http::string_body>> handle_get_products(const request_data& input)
 {
     // Parse the query parameter
-    auto params_it = handler.target.params().find("search");
-    if (params_it == handler.target.params().end())
+    auto params_it = input.target.params().find("search");
+    if (params_it == input.target.params().end())
         co_return bad_request("Missing mandatory query parameter: 'search'");
     auto search = (*params_it).value;
 
     // Invoke the database logic
-    std::vector<orders::product> products = co_await handler.repo.get_products(search);
+    std::vector<orders::product> products = co_await input.repo().get_products(search);
 
     // Return the response
     co_return json_response(products);
 }
 
-asio::awaitable<http::response<http::string_body>> handle_get_orders(request_handler& handler)
+asio::awaitable<http::response<http::string_body>> handle_get_orders(const request_data& input)
 {
     // Parse the query parameter
-    auto params_it = handler.target.params().find("id");
+    auto params_it = input.target.params().find("id");
 
-    if (params_it == handler.target.params().end())
+    if (params_it == input.target.params().end())
     {
         // If the query parameter is not present, return all orders
         // Invoke the database logic
-        std::vector<orders::order> orders = co_await handler.repo.get_orders();
+        std::vector<orders::order> orders = co_await input.repo().get_orders();
 
         // Return the response
         co_return json_response(orders);
@@ -211,7 +212,7 @@ asio::awaitable<http::response<http::string_body>> handle_get_orders(request_han
             co_return bad_request("URL parameter 'id' should be a valid integer");
 
         // Invoke the database logic
-        result<orders::order_with_items> order = co_await handler.repo.get_order_by_id(*order_id);
+        result<orders::order_with_items> order = co_await input.repo().get_order_by_id(*order_id);
         if (order.has_error())
             co_return response_from_db_error(order.error());
 
@@ -220,29 +221,29 @@ asio::awaitable<http::response<http::string_body>> handle_get_orders(request_han
     }
 }
 
-asio::awaitable<http::response<http::string_body>> handle_create_order(request_handler& handler)
+asio::awaitable<http::response<http::string_body>> handle_create_order(const request_data& input)
 {
     // Invoke the database logic
-    orders::order_with_items order = co_await handler.repo.create_order();
+    orders::order_with_items order = co_await input.repo().create_order();
 
     // Return the response
     co_return json_response(order);
 }
 
-asio::awaitable<http::response<http::string_body>> handle_add_order_item(request_handler& handler)
+asio::awaitable<http::response<http::string_body>> handle_add_order_item(const request_data& input)
 {
     // Check that the request has the appropriate content type
-    auto it = handler.request.find("Content-Type");
-    if (it == handler.request.end() || it->value() != "application/json")
+    auto it = input.request.find("Content-Type");
+    if (it == input.request.end() || it->value() != "application/json")
         co_return bad_request("Invalid Content-Type: expected 'application/json'");
 
     // Parse the request body
-    auto req = parse_json<orders::add_order_item_request>(handler.request.body());
+    auto req = parse_json<orders::add_order_item_request>(input.request.body());
     if (req.has_error())
         co_return bad_request("Invalid JSON body");
 
     // Invoke the database logic
-    result<orders::order_with_items> res = co_await handler.repo
+    result<orders::order_with_items> res = co_await input.repo()
                                                .add_order_item(req->order_id, req->product_id, req->quantity);
     if (res.has_error())
         co_return response_from_db_error(res.error());
@@ -252,18 +253,18 @@ asio::awaitable<http::response<http::string_body>> handle_add_order_item(request
 }
 
 // TODO: reduce duplication
-asio::awaitable<http::response<http::string_body>> handle_remove_order_item(request_handler& handler)
+asio::awaitable<http::response<http::string_body>> handle_remove_order_item(const request_data& input)
 {
     // Parse the query parameter
-    auto params_it = handler.target.params().find("id");
-    if (params_it == handler.target.params().end())
+    auto params_it = input.target.params().find("id");
+    if (params_it == input.target.params().end())
         co_return bad_request("Mandatory URL parameter 'id' not found");
     auto id = parse_id((*params_it).value);
     if (!id.has_value())
         co_return bad_request("URL parameter 'id' should be a valid integer");
 
     // Invoke the database logic
-    result<orders::order_with_items> res = co_await handler.repo.remove_order_item(*id);
+    result<orders::order_with_items> res = co_await input.repo().remove_order_item(*id);
     if (res.has_error())
         co_return response_from_db_error(res.error());
 
@@ -271,18 +272,18 @@ asio::awaitable<http::response<http::string_body>> handle_remove_order_item(requ
     co_return json_response(*res);
 }
 
-asio::awaitable<http::response<http::string_body>> handle_checkout_order(request_handler& handler)
+asio::awaitable<http::response<http::string_body>> handle_checkout_order(const request_data& input)
 {
     // Parse the query parameter
-    auto params_it = handler.target.params().find("id");
-    if (params_it == handler.target.params().end())
+    auto params_it = input.target.params().find("id");
+    if (params_it == input.target.params().end())
         co_return bad_request("Mandatory URL parameter 'id' not found");
     auto id = parse_id((*params_it).value);
     if (!id.has_value())
         co_return bad_request("URL parameter 'id' should be a valid integer");
 
     // Invoke the database logic
-    result<orders::order_with_items> res = co_await handler.repo.checkout_order(*id);
+    result<orders::order_with_items> res = co_await input.repo().checkout_order(*id);
     if (res.has_error())
         co_return response_from_db_error(res.error());
 
@@ -290,18 +291,18 @@ asio::awaitable<http::response<http::string_body>> handle_checkout_order(request
     co_return json_response(*res);
 }
 
-asio::awaitable<http::response<http::string_body>> handle_complete_order(request_handler& handler)
+asio::awaitable<http::response<http::string_body>> handle_complete_order(const request_data& input)
 {
     // Parse the query parameter
-    auto params_it = handler.target.params().find("id");
-    if (params_it == handler.target.params().end())
+    auto params_it = input.target.params().find("id");
+    if (params_it == input.target.params().end())
         co_return bad_request("Mandatory URL parameter 'id' not found");
     auto id = parse_id((*params_it).value);
     if (!id.has_value())
         co_return bad_request("URL parameter 'id' should be a valid integer");
 
     // Invoke the database logic
-    result<orders::order_with_items> res = co_await handler.repo.complete_order(*id);
+    result<orders::order_with_items> res = co_await input.repo().complete_order(*id);
     if (res.has_error())
         co_return response_from_db_error(res.error());
 
@@ -312,10 +313,10 @@ asio::awaitable<http::response<http::string_body>> handle_complete_order(request
 struct http_endpoint
 {
     http::verb method;
-    asio::awaitable<http::response<http::string_body>> (*handler)(request_handler&);
+    asio::awaitable<http::response<http::string_body>> (*handler)(const request_data&);
 };
 
-const std::unordered_multimap<std::string_view, http_endpoint> endpoint_map{
+const std::unordered_multimap<std::string_view, http_endpoint> endpoints{
     {"/products",        {http::verb::get, &handle_get_products}         },
     {"/orders",          {http::verb::get, &handle_get_orders}           },
     {"/orders",          {http::verb::post, &handle_create_order}        },
@@ -339,19 +340,19 @@ asio::awaitable<http::response<http::string_body>> orders::handle_request(
         co_return bad_request("Invalid request target");
 
     // Try to find an endpoint
-    auto [it1, it2] = endpoint_map.equal_range(target->path());
-    if (it1 == endpoint_map.end())
+    auto [it1, it2] = endpoints.equal_range(target->path());
+    if (it1 == endpoints.end())
         co_return not_found("The request endpoint does not exist");
 
     // Match the verb
     auto it3 = std::find_if(it1, it2, [&request](const std::pair<std::string_view, http_endpoint>& ep) {
         return ep.second.method == request.method();
     });
-    if (it3 == endpoint_map.end())
+    if (it3 == endpoints.end())
         co_return error_response(http::status::method_not_allowed, "Unsupported HTTP method");
 
     // Compose the data struct (TODO)
-    request_handler h{request, *target, pool};
+    request_data h{request, *target, pool};
 
     // Invoke the handler
     try
