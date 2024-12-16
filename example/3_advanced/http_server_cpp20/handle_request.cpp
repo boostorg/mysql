@@ -385,7 +385,7 @@ asio::awaitable<http::response<http::string_body>> orders::handle_request(
     auto it3 = std::find_if(it1, it2, [&request](const std::pair<std::string_view, http_endpoint>& ep) {
         return ep.second.method == request.method();
     });
-    if (it3 == endpoints.end())
+    if (it3 == it2)
         co_return error_response(http::status::method_not_allowed, "Unsupported HTTP method");
 
     // Compose the data struct (TODO)
