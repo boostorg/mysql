@@ -87,7 +87,9 @@ class TestOrders(unittest.TestCase):
     def _request_as_json(self, method: str, url: str, **kwargs):
         return self._json_response(self._request(method, url, **kwargs))
 
-
+    #
+    # Success cases 
+    #
     def test_search_products(self) -> None:
         # Issue the request
         products = self._request_as_json('get', '/products', params={'search': 'odin'})
@@ -99,10 +101,6 @@ class TestOrders(unittest.TestCase):
         self.assertEqual(odin['short_name'], 'A Feast for Odin')
         self.assertEqual(odin['price'], 6400)
         self.assertIsInstance(odin['descr'], str)
-    
-
-    def test_search_products_missing_param(self) -> None:
-        self._check_error(self._request('get', '/products'), 400)
     
 
     def test_order_lifecycle(self) -> None:
@@ -189,6 +187,19 @@ class TestOrders(unittest.TestCase):
         # Retrieve the order by id
         order2 = self._request_as_json('get', '/orders', params={'id': order['id']})
         self.assertEqual(order2, order)
+    
+
+    #
+    # Endpoints with malformed requests
+    #
+
+    def test_search_products_missing_param(self) -> None:
+        self._check_error(self._request('get', '/products'), 400)
+    
+
+    def test_get_order_invalid_id(self) -> None:
+        self._check_error(self._request('get', '/orders', params={'id': 'abc'}), 400)
+
 
 
 
