@@ -203,6 +203,10 @@ class TestOrders(unittest.TestCase):
 
     def test_get_order_invalid_id(self) -> None:
         self._request_error('get', '/orders', params={'id': 'abc'}, expected_status=400)
+    
+
+    def test_get_order_not_found(self) -> None:
+        self._request_error('get', '/orders', params={'id': 0xffffff}, expected_status=404)
 
 
     def test_add_order_item_invalid_content_type(self) -> None:
@@ -212,6 +216,18 @@ class TestOrders(unittest.TestCase):
         # Check the error
         self._request_error('post', '/orders/items', headers={'Content-Type':'text/html'}, json={
             'order_id': order_id,
+            'product_id': 1,
+            'quantity': 1
+        }, expected_status=400)
+
+
+    def test_add_order_item_invalid_json(self) -> None:
+        self._request_error('post', '/orders/items', headers={'Content-Type':'application/json'},
+                            data='bad', expected_status=400)
+
+
+    def test_add_order_item_invalid_json_keys(self) -> None:
+        self._request_error('post', '/orders/items', json={
             'product_id': 1,
             'quantity': 1
         }, expected_status=400)
