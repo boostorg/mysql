@@ -28,7 +28,7 @@ const char* error_to_string(orders::errc value)
     }
 }
 
-// Custom category for orders::errc
+// The category to be returned by get_orders_category
 class orders_category final : public boost::system::error_category
 {
 public:
