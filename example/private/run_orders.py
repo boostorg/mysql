@@ -15,6 +15,7 @@ import os
 import unittest
 import copy
 
+
 _is_win = os.name == 'nt'
 
 
@@ -325,7 +326,7 @@ class TestOrders(unittest.TestCase):
 
 
     #
-    # Cmplete order errors
+    # Complete order errors
     #
     def test_complete_order_missing_id(self) -> None:
         self._request_error('post', '/orders/complete', expected_status=400)
@@ -345,89 +346,20 @@ class TestOrders(unittest.TestCase):
 
         # Check the error
         self._request_error('post', '/orders/complete', params={'id': order_id}, expected_status=422)
-
     
 
-
-
-
-
-
+    #
+    # Generic errors
+    #
+    
+    def test_endpoint_not_found(self) -> None:
+        self._request_error('get', '/orders/other', expected_status=404)
+        self._request_error('get', '/orders_other', expected_status=404)
     
 
-    # Method not allowed
-    # Endpoint not found
-    # Invalid content-type
-
-
-# def _call_endpoints(port: int):
-#     base_url = 'http://127.0.0.1:{}'.format(port)
-
-#     # Search products
-#     # List orders (empty)
-#     # Create an order
-#     # Retrieve the order
-#     # Add some line items
-#     # Retrieve the order
-#     # Remove a line item
-#     # Checkout the order
-#     # Complete the order
-
-#     # Get an order that doesn't exist
-#     # Add a line item to an order that doesn't exist
-#     # Add a line item for an order that doesn't exist
-
-#     # Create a note
-#     note_unique = _random_string()
-#     title = 'My note {}'.format(note_unique)
-#     content = 'This is a note about {}'.format(note_unique)
-#     res = requests.post(
-#         '{}/notes'.format(base_url),
-#         json={'title': title, 'content': content}
-#     )
-#     _check_response(res)
-#     note = res.json()
-#     note_id = int(note['note']['id'])
-#     assert note['note']['title'] == title
-#     assert note['note']['content'] == content
-
-#     # Retrieve all notes
-#     res = requests.get('{}/notes'.format(base_url))
-#     _check_response(res)
-#     all_notes = res.json()
-#     assert len([n for n in all_notes['notes'] if n['id'] == note_id]) == 1
-
-#     # Edit the note
-#     note_unique = _random_string()
-#     title = 'Edited {}'.format(note_unique)
-#     content = 'This is a note an edit on {}'.format(note_unique)
-#     res = requests.put(
-#         '{}/notes/{}'.format(base_url, note_id),
-#         json={'title': title, 'content': content}
-#     )
-#     _check_response(res)
-#     note = res.json()
-#     assert int(note['note']['id']) == note_id
-#     assert note['note']['title'] == title
-#     assert note['note']['content'] == content
-
-#     # Retrieve the note
-#     res = requests.get('{}/notes/{}'.format(base_url, note_id))
-#     _check_response(res)
-#     note = res.json()
-#     assert int(note['note']['id']) == note_id
-#     assert note['note']['title'] == title
-#     assert note['note']['content'] == content
-
-#     # Delete the note
-#     res = requests.delete('{}/notes/{}'.format(base_url, note_id))
-#     _check_response(res)
-#     assert res.json()['deleted'] == True
-
-#     # The note is not there
-#     res = requests.get('{}/notes/{}'.format(base_url, note_id))
-#     assert res.status_code == 404
-
+    def test_method_not_allowed(self) -> None:
+        self._request_error('delete', '/orders', expected_status=405)
+        
 
 def main():
     # Parse command line arguments
