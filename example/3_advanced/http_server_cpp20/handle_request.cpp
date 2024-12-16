@@ -5,17 +5,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/connection_pool.hpp>
-#include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/static_results.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/pfr/config.hpp>
+#if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
 
 //[example_connection_pool_handle_request_cpp
 //
 // File: handle_request.cpp
 //
 
+#include <boost/mysql/connection_pool.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/static_results.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
@@ -409,3 +412,5 @@ asio::awaitable<http::response<http::string_body>> orders::handle_request(
 }
 
 //]
+
+#endif

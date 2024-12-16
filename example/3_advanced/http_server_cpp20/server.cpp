@@ -5,21 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/pfr.hpp>
-
-#include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
-#include <boost/asio/cancel_after.hpp>
-#include <boost/asio/co_spawn.hpp>
-#include <boost/asio/redirect_error.hpp>
-#include <boost/asio/steady_timer.hpp>
-#include <boost/asio/this_coro.hpp>
-#include <boost/beast/http/verb.hpp>
-
-#include <string_view>
-#include <vector>
-
-#include "error.hpp"
+#include <boost/pfr/config.hpp>
 #if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
 
 //[example_connection_pool_server_cpp
@@ -33,16 +20,24 @@
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/as_tuple.hpp>
+#include <boost/asio/awaitable.hpp>
+#include <boost/asio/cancel_after.hpp>
+#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/redirect_error.hpp>
 #include <boost/asio/spawn.hpp>
+#include <boost/asio/steady_timer.hpp>
 #include <boost/asio/strand.hpp>
+#include <boost/asio/this_coro.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/error.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/parser.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/string_body.hpp>
+#include <boost/beast/http/verb.hpp>
 #include <boost/beast/http/write.hpp>
 
 #include <cstddef>
@@ -51,7 +46,10 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <vector>
 
+#include "error.hpp"
 #include "handle_request.hpp"
 #include "server.hpp"
 

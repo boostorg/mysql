@@ -6,7 +6,8 @@
 //
 
 #include <boost/asio/awaitable.hpp>
-#if defined(BOOST_ASIO_HAS_CO_AWAIT)
+#include <boost/pfr/config.hpp>
+#if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
 
 //[example_http_server_cpp20_main_cpp
 
