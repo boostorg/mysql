@@ -140,6 +140,39 @@ class TestOrders(unittest.TestCase):
         self.assertEqual(order, expected_order)
     
 
+    def test_remove_items(self) -> None:
+        # Create an order
+        order1 = self._request_as_json('post', '/orders')
+        order_id: int = order1['id']
+
+        # Create two items
+        self._request_as_json('post', '/orders/items', json={
+            'order_id': order_id,
+            'product_id': 2,
+            'quantity': 20
+        })
+        order2 = self._request_as_json('post', '/orders/items', json={
+            'order_id': order_id,
+            'product_id': 1,
+            'quantity': 1
+        })
+        order2_items = order2['items']
+
+        # Sanity check
+        self.assertEqual(order2['id'], order_id)
+        self.assertEqual(order2['status'], 'draft')
+        self.assertEqual(len(order2_items), 2)
+        product_ids = list(set(item['product_id'] for item in order2_items))
+        self.assertEqual(product_ids, [1, 2]) # IDs 1 and 2 in any order
+
+        # Delete one of the items
+        order3 = self._request_as_json('delete', '/orders/items', params={'id': order2_items[0]['id']})
+        self.assertEqual(order3['id'], order_id)
+        self.assertEqual(order3['status'], 'draft')
+        self.assertEqual(order3['items'], [order2_items[1]])
+
+
+
 
     
 
