@@ -125,6 +125,11 @@ http::response<http::string_body> not_found(std::string body = "The requested re
     return error_response(http::status::not_found, std::move(body));
 }
 
+http::response<http::string_body> unprocessable_entity(std::string body)
+{
+    return error_response(http::status::unprocessable_entity, std::move(body));
+}
+
 http::response<http::string_body> internal_server_error()
 {
     return error_response(http::status::internal_server_error, {});
@@ -175,9 +180,12 @@ http::response<http::string_body> response_from_db_error(boost::system::error_co
         switch (static_cast<orders::errc>(ec.value()))
         {
         case orders::errc::not_found: return not_found("The referenced entity does not exist");
-        case orders::errc::product_not_found: return bad_request("The referenced product does not exist");
+        case orders::errc::product_not_found:
+            return unprocessable_entity("The referenced product does not exist");
         case orders::errc::order_invalid_status:
-            return bad_request("The referenced order doesn't have the status required by the operation");
+            return unprocessable_entity(
+                "The referenced order doesn't have the status required by the operation"
+            );
         default: return internal_server_error();
         }
     }

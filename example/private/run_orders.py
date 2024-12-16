@@ -251,7 +251,7 @@ class TestOrders(unittest.TestCase):
             'order_id': order_id,
             'product_id': 0xffffffff,
             'quantity': 1
-        }, expected_status=400)
+        }, expected_status=422)
     
 
 
