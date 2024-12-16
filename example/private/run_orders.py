@@ -254,6 +254,19 @@ class TestOrders(unittest.TestCase):
         }, expected_status=422)
     
 
+    def test_add_order_item_order_not_editable(self) -> None:
+        # Create an order and check it out
+        order_id = self._request_as_json('post', '/orders')['id']
+        self._request_as_json('post', '/orders/checkout', params={'id': order_id})
+
+        # Check the error
+        self._request_error('post', '/orders/items', json={
+            'order_id': order_id,
+            'product_id': 1,
+            'quantity': 1
+        }, expected_status=422)
+    
+
 
 
 
