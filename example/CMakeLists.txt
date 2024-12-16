@@ -127,6 +127,6 @@ add_example(
         Boost::url
         Boost::beast
         Boost::pfr
-    PYTHON_RUNNER run_connection_pool.py # TODO
+    PYTHON_RUNNER run_orders.py
     ARGS ${SERVER_HOST}
 )
