@@ -13,7 +13,7 @@
 //
 // File: repository.cpp
 //
-// See (TODO: link this) for the table definitions
+// See the db_setup.sql file in this folder for the table definitions
 
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/static_results.hpp>

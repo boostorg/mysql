@@ -100,7 +100,7 @@ int main_impl(int argc, char* argv[])
             .password = mysql_password,
 
             // Database to use when connecting
-            .database = "boost_mysql_examples",
+            .database = "boost_mysql_orders",
 
             // Using thread_safe will make the pool thread-safe by internally
             // creating and using a strand.
