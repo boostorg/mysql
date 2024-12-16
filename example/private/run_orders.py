@@ -194,13 +194,15 @@ class TestOrders(unittest.TestCase):
     
 
     #
-    # Endpoint errors
+    # Search products errors
     #
-
     def test_search_products_missing_param(self) -> None:
         self._request_error('get', '/products', expected_status=400)
     
 
+    #
+    # Get order errors
+    #
     def test_get_order_invalid_id(self) -> None:
         self._request_error('get', '/orders', params={'id': 'abc'}, expected_status=400)
     
@@ -209,6 +211,9 @@ class TestOrders(unittest.TestCase):
         self._request_error('get', '/orders', params={'id': 0xffffff}, expected_status=404)
 
 
+    #
+    # Add order item errors
+    #
     def test_add_order_item_invalid_content_type(self) -> None:
         # Create an order
         order_id = self._request_as_json('post', '/orders')['id']
@@ -265,7 +270,39 @@ class TestOrders(unittest.TestCase):
             'product_id': 1,
             'quantity': 1
         }, expected_status=422)
+
+    #
+    # Remove order item errors
+    #
+    def test_remove_order_item_missing_id(self) -> None:
+        self._request_error('delete', '/orders/items', expected_status=400)
+
+
+    def test_remove_order_item_invalid_id(self) -> None:
+        self._request_error('delete', '/orders/items', params={'id': 'abc'}, expected_status=400)
+
+
+    def test_remove_order_item_not_found(self) -> None:
+        self._request_error('delete', '/orders/items', params={'id': 0xffffffff}, expected_status=404)
+
+
+    def test_remove_order_item_order_not_editable(self) -> None:
+        # Create an order with an item and check it out
+        order_id = self._request_as_json('post', '/orders')['id']
+        item_id = self._request_as_json('post', '/orders/items', json={
+            'order_id': order_id,
+            'product_id': 2,
+            'quantity': 20
+        })['items'][0]['id']
+        self._request_as_json('post', '/orders/checkout', params={'id': order_id})
+
+        # Check the error
+        self._request_error('delete', '/orders/items', params={'id': item_id}, expected_status=422)
     
+
+
+    
+
 
 
 
