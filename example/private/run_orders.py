@@ -17,12 +17,6 @@ import unittest
 _is_win = os.name == 'nt'
 
 
-def _check_response(res: requests.Response):
-    if res.status_code >= 400:
-        print(res.text)
-    res.raise_for_status()
-
-
 # Returns the port the server is listening at
 def _parse_server_start_line(line: str) -> int:
     m = re.match(r'Server listening at 0\.0\.0\.0:([0-9]+)', line)
@@ -73,19 +67,41 @@ class TestOrders(unittest.TestCase):
         super().__init__(method_name)
         self._base_url = 'http://127.0.0.1:{}'.format(port)
     
+    @staticmethod
+    def _json_response(res: requests.Response) -> dict:
+        if res.status_code >= 400:
+            print(res.text)
+        res.raise_for_status()
+        return res.json()
+
+
+    def _check_error(self, res: requests.Response, expected_status: int) -> None:
+        self.assertEqual(res.status_code, expected_status)
+    
+
+    def _request(self, method: str, url: str, **kwargs) -> requests.Response:
+        return requests.request(method=method, url=self._base_url + url, **kwargs)
+
+
+    def _request_as_json(self, method: str, url: str, **kwargs) -> dict:
+        return self._json_response(self._request(method, url, **kwargs))
+
 
     def test_search_products(self) -> None:
-        res = requests.get(
-            '{}/products?search=odin'.format(self._base_url)
-        )
-        _check_response(res)
-        products = res.json()
-        self.assertNotEqual(len(products), 0)
+        # Issue the request
+        products = self._request_as_json('get', '/products', params={'search': 'odin'})
+
+        # Check
+        self.assertNotEqual(len(products), 0) # At least one product
         odin = products[0]
-        self.assertIsInstance(odin['id'], int)
+        self.assertIsInstance(odin['id'], int) # We don't know the exact ID
         self.assertEqual(odin['short_name'], 'A Feast for Odin')
         self.assertEqual(odin['price'], 6400)
         self.assertIsInstance(odin['descr'], str)
+    
+
+    def test_search_products_missing_param(self) -> None:
+        self._check_error(self._request('get', '/products'), 400)
 
 
 # def _call_endpoints(port: int):
