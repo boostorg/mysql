@@ -14,6 +14,7 @@ import re
 import os
 import unittest
 import copy
+import sys
 
 
 _is_win = os.name == 'nt'
@@ -64,10 +65,11 @@ def _launch_server(exe: str, host: str):
 
 
 class TestOrders(unittest.TestCase):
+    _port = -1
 
-    def __init__(self, method_name: str, port: int) -> None:
-        super().__init__(method_name)
-        self._base_url = 'http://127.0.0.1:{}'.format(port)
+    @property
+    def _base_url(self) -> str:
+        return 'http://127.0.0.1:{}'.format(self._port)
     
     @staticmethod
     def _json_response(res: requests.Response):
@@ -370,13 +372,8 @@ def main():
 
     # Launch the server
     with _launch_server(args.executable, args.host) as listening_port:
-        tests = [
-            TestOrders(method, listening_port)
-            for method in unittest.defaultTestLoader.getTestCaseNames(TestOrders)
-        ]
-        suite = unittest.TestSuite()
-        suite.addTests(tests)
-        unittest.TextTestRunner().run(suite)
+        TestOrders._port = listening_port
+        unittest.main(argv=[sys.argv[0]])
 
 
 if __name__ == '__main__':
