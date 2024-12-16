@@ -300,6 +300,51 @@ class TestOrders(unittest.TestCase):
         self._request_error('delete', '/orders/items', params={'id': item_id}, expected_status=422)
     
 
+    #
+    # Checkout order errors
+    #
+    def test_checkout_order_missing_id(self) -> None:
+        self._request_error('post', '/orders/checkout', expected_status=400)
+
+
+    def test_checkout_order_invalid_id(self) -> None:
+        self._request_error('post', '/orders/checkout', params={'id': 'abc'}, expected_status=400)
+
+
+    def test_checkout_order_not_found(self) -> None:
+        self._request_error('post', '/orders/checkout', params={'id': 0xffffffff}, expected_status=404)
+    
+
+    def test_checkout_order_not_editable(self) -> None:
+        # Create an order and check it out
+        order_id = self._request_as_json('post', '/orders')['id']
+        self._request_as_json('post', '/orders/checkout', params={'id': order_id})
+
+        # Check the error
+        self._request_error('post', '/orders/checkout', params={'id': order_id}, expected_status=422)
+
+
+    #
+    # Cmplete order errors
+    #
+    def test_complete_order_missing_id(self) -> None:
+        self._request_error('post', '/orders/complete', expected_status=400)
+
+
+    def test_complete_order_invalid_id(self) -> None:
+        self._request_error('post', '/orders/complete', params={'id': 'abc'}, expected_status=400)
+
+
+    def test_complete_order_not_found(self) -> None:
+        self._request_error('post', '/orders/complete', params={'id': 0xffffffff}, expected_status=404)
+    
+
+    def test_complete_order_not_editable(self) -> None:
+        # Create an order
+        order_id = self._request_as_json('post', '/orders')['id']
+
+        # Check the error
+        self._request_error('post', '/orders/complete', params={'id': order_id}, expected_status=422)
 
     
 
