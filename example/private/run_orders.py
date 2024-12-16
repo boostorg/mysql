@@ -69,7 +69,7 @@ class TestOrders(unittest.TestCase):
         self._base_url = 'http://127.0.0.1:{}'.format(port)
     
     @staticmethod
-    def _json_response(res: requests.Response) -> dict:
+    def _json_response(res: requests.Response):
         if res.status_code >= 400:
             print(res.text)
         res.raise_for_status()
@@ -84,7 +84,7 @@ class TestOrders(unittest.TestCase):
         return requests.request(method=method, url=self._base_url + url, **kwargs)
 
 
-    def _request_as_json(self, method: str, url: str, **kwargs) -> dict:
+    def _request_as_json(self, method: str, url: str, **kwargs):
         return self._json_response(self._request(method, url, **kwargs))
 
 
@@ -170,6 +170,13 @@ class TestOrders(unittest.TestCase):
         self.assertEqual(order3['id'], order_id)
         self.assertEqual(order3['status'], 'draft')
         self.assertEqual(order3['items'], [order2_items[1]])
+    
+
+    def test_get_orders(self) -> None:
+        orders = self._request_as_json('get', '/orders')
+        self.assertIsInstance(orders, list)
+    
+    
 
 
 
