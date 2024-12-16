@@ -102,6 +102,9 @@ int main_impl(int argc, char* argv[])
             // Database to use when connecting
             .database = "boost_mysql_orders",
 
+            // We're using multi-queries
+            .multi_queries = true,
+
             // Using thread_safe will make the pool thread-safe by internally
             // creating and using a strand.
             // This allows us to share the pool between sessions, which may run
