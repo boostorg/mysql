@@ -176,7 +176,19 @@ class TestOrders(unittest.TestCase):
         orders = self._request_as_json('get', '/orders')
         self.assertIsInstance(orders, list)
     
-    
+
+    def test_get_single_order(self) -> None:
+        # Create an order and add an item
+        order = self._request_as_json('post', '/orders')
+        order = self._request_as_json('post', '/orders/items', json={
+            'order_id': order['id'],
+            'product_id': 2,
+            'quantity': 20
+        })
+
+        # Retrieve the order by id
+        order2 = self._request_as_json('get', '/orders', params={'id': order['id']})
+        self.assertEqual(order2, order)
 
 
 
