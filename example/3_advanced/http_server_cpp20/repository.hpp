@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP20_REPOSITORY_HPP
 #define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP20_REPOSITORY_HPP
 
-//[example_connection_pool_repository_hpp
+//[example_http_server_cpp20_repository_hpp
 //
 // File: repository.hpp
 //

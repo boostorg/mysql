@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP20_HANDLE_REQUEST_HPP
 #define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP20_HANDLE_REQUEST_HPP
 
-//[example_connection_pool_handle_request_hpp
+//[example_http_server_cpp20_handle_request_hpp
 //
 // File: handle_request.hpp
 //

@@ -8,7 +8,7 @@
 #ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP20_TYPES_HPP
 #define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP20_TYPES_HPP
 
-//[example_http_cpp20_types_hpp
+//[example_http_server_cpp20_types_hpp
 //
 // File: types.hpp
 //

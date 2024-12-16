@@ -9,7 +9,7 @@
 #include <boost/pfr/config.hpp>
 #if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
 
-//[example_connection_pool_handle_request_cpp
+//[example_http_server_cpp20_handle_request_cpp
 //
 // File: handle_request.cpp
 //
