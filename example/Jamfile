@@ -120,3 +120,16 @@ run_example connection_pool :
         <address-sanitizer>norecover:<build>no
         <address-sanitizer>enable:<build>no
     ;
+
+run_example http_server_cpp20 :
+        3_advanced/http_server_cpp20/main.cpp
+        3_advanced/http_server_cpp20/repository.cpp
+        3_advanced/http_server_cpp20/handle_request.cpp
+        3_advanced/http_server_cpp20/server.cpp
+        3_advanced/http_server_cpp20/error.cpp
+        /boost/mysql/test//boost_json_lib
+        /boost/url//boost_url
+        /boost/mysql/test//boost_beast_lib
+    : $(hostname)
+    : run_orders.py
+    ;
