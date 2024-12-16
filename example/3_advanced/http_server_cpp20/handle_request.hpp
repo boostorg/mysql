@@ -16,8 +16,6 @@
 #include <boost/mysql/connection_pool.hpp>
 
 #include <boost/asio/awaitable.hpp>
-#include <boost/asio/error.hpp>
-#include <boost/asio/spawn.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
 
