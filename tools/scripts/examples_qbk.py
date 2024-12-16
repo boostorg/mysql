@@ -129,6 +129,19 @@ SIMPLE_EXAMPLES = [
 ]
 
 ADVANCED_EXAMPLES = [
+    MultiExample('http_server_cpp20', [
+        '3_advanced/http_server_cpp20/main.cpp',
+        '3_advanced/http_server_cpp20/types.hpp',
+        '3_advanced/http_server_cpp20/error.hpp',
+        '3_advanced/http_server_cpp20/error.cpp',
+        '3_advanced/http_server_cpp20/repository.hpp',
+        '3_advanced/http_server_cpp20/repository.cpp',
+        '3_advanced/http_server_cpp20/handle_request.hpp',
+        '3_advanced/http_server_cpp20/handle_request.cpp',
+        '3_advanced/http_server_cpp20/server.hpp',
+        '3_advanced/http_server_cpp20/server.cpp',
+    ], 'A REST API server that uses C++20 coroutines'),
+
     MultiExample('connection_pool', [
         '3_advanced/connection_pool/main.cpp',
         '3_advanced/connection_pool/types.hpp',
@@ -139,7 +152,7 @@ ADVANCED_EXAMPLES = [
         '3_advanced/connection_pool/server.hpp',
         '3_advanced/connection_pool/server.cpp',
         '3_advanced/connection_pool/log_error.hpp',
-    ], 'A REST API server that uses connection pooling')
+    ], 'A REST API server that uses asio::yield_context'),
 ]
 
 ALL_EXAMPLES = TUTORIALS + SIMPLE_EXAMPLES + ADVANCED_EXAMPLES
