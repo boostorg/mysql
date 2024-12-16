@@ -86,6 +86,10 @@ class TestOrders(unittest.TestCase):
 
     def _request_as_json(self, method: str, url: str, **kwargs):
         return self._json_response(self._request(method, url, **kwargs))
+    
+
+    def _request_error(self, method: str, url: str, expected_status: int, **kwargs):
+        return self._check_error(self._request(method, url, **kwargs), expected_status)
 
     #
     # Success cases 
@@ -194,13 +198,23 @@ class TestOrders(unittest.TestCase):
     #
 
     def test_search_products_missing_param(self) -> None:
-        self._check_error(self._request('get', '/products'), 400)
+        self._request_error('get', '/products', expected_status=400)
     
 
     def test_get_order_invalid_id(self) -> None:
-        self._check_error(self._request('get', '/orders', params={'id': 'abc'}), 400)
+        self._request_error('get', '/orders', params={'id': 'abc'}, expected_status=400)
 
 
+    def test_add_order_item_invalid_content_type(self) -> None:
+        # Create an order
+        order_id = self._request_as_json('post', '/orders')['id']
+        
+        # Check the error
+        self._request_error('post', '/orders/items', headers={'Content-Type':'text/html'}, json={
+            'order_id': order_id,
+            'product_id': 1,
+            'quantity': 1
+        }, expected_status=400)
 
 
 
