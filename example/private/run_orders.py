@@ -194,7 +194,7 @@ class TestOrders(unittest.TestCase):
     
 
     #
-    # Endpoints with malformed requests
+    # Endpoint errors
     #
 
     def test_search_products_missing_param(self) -> None:
@@ -228,9 +228,33 @@ class TestOrders(unittest.TestCase):
 
     def test_add_order_item_invalid_json_keys(self) -> None:
         self._request_error('post', '/orders/items', json={
+            'order_id': '1',
             'product_id': 1,
             'quantity': 1
         }, expected_status=400)
+    
+
+    def test_add_order_item_order_not_found(self) -> None:
+        self._request_error('post', '/orders/items', json={
+            'order_id': 0xffffffff,
+            'product_id': 1,
+            'quantity': 1
+        }, expected_status=404)
+    
+
+    def test_add_order_item_product_not_found(self) -> None:
+        # Create an order
+        order_id = self._request_as_json('post', '/orders')['id']
+
+        # Check the error
+        self._request_error('post', '/orders/items', json={
+            'order_id': order_id,
+            'product_id': 0xffffffff,
+            'quantity': 1
+        }, expected_status=400)
+    
+
+
 
 
 
