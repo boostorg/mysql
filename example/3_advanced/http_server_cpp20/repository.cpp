@@ -151,7 +151,12 @@ asio::awaitable<order_with_items> db_repository::create_order()
     conn.return_without_reset();
 
     // This must always yield one row. Return it.
-    co_return result.rows<2>().front();
+    const order& ord = result.rows<2>().front();
+    co_return order_with_items{
+        ord.id,
+        ord.status,
+        {}  // A newly created order never has items
+    };
 }
 
 asio::awaitable<boost::system::result<order_with_items>> db_repository::add_order_item(
