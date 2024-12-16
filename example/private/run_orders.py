@@ -13,6 +13,7 @@ from contextlib import contextmanager
 import re
 import os
 import unittest
+import copy
 
 _is_win = os.name == 'nt'
 
@@ -102,6 +103,49 @@ class TestOrders(unittest.TestCase):
 
     def test_search_products_missing_param(self) -> None:
         self._check_error(self._request('get', '/products'), 400)
+    
+
+    def test_order_lifecycle(self) -> None:
+        # Create an order
+        order = self._request_as_json('post', '/orders')
+        order_id: int = order['id']
+        self.assertIsInstance(order_id, int)
+        self.assertEqual(order['status'], 'draft')
+        self.assertEqual(order['items'], [])
+
+        # Add an item
+        order = self._request_as_json('post', '/orders/items', json={
+            'order_id': order_id,
+            'product_id': 2,
+            'quantity': 20
+        })
+        items = order['items']
+        self.assertEqual(order['id'], order_id)
+        self.assertEqual(order['status'], 'draft')
+        self.assertEqual(len(order['items']), 1)
+        self.assertIsInstance(items[0]['id'], int)
+        self.assertEqual(items[0]['product_id'], 2)
+        self.assertEqual(items[0]['quantity'], 20)
+
+        # Checkout
+        expected_order = copy.deepcopy(order)
+        expected_order['status'] = 'pending_payment'
+        order = self._request_as_json('post', '/orders/checkout', params={'id': order_id})
+        self.assertEqual(order, expected_order)
+
+        # Complete
+        expected_order = copy.deepcopy(order)
+        expected_order['status'] = 'complete'
+        order = self._request_as_json('post', '/orders/complete', params={'id': order_id})
+        self.assertEqual(order, expected_order)
+    
+
+
+    
+
+    # Method not allowed
+    # Endpoint not found
+    # Invalid content-type
 
 
 # def _call_endpoints(port: int):
