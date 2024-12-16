@@ -13,7 +13,7 @@
 // File: error.hpp
 //
 // Contains an errc enumeration and the required pieces to
-// use it with Boost.System error codes.
+// use it with boost::system::error_code.
 // We use this indirectly in the DB repository class,
 // when using the error codes in boost::system::result.
 
@@ -33,12 +33,14 @@ enum class errc
     product_not_found,     // a product referenced by a request doesn't exist
 };
 
-// The error category for errc
+// To use errc with boost::system::error_code, we need
+// to define an error category (see the cpp file).
 const boost::system::error_category& get_orders_category();
 
-// Allows constructing error_code from errc
+// Called when constructing an error_code from an errc value.
 inline boost::system::error_code make_error_code(errc v)
 {
+    // Roughly, an error_code is an int and a category defining what the int means.
     return boost::system::error_code(static_cast<int>(v), get_orders_category());
 }
 
@@ -53,17 +55,11 @@ void log_error(std::string_view header, boost::system::error_code ec);
 
 }  // namespace orders
 
-// Allows constructing error_code from errc
-namespace boost {
-namespace system {
-
+// This specialization is required to construct error_code's from errc values
 template <>
-struct is_error_code_enum<orders::errc> : std::true_type
+struct boost::system::is_error_code_enum<orders::errc> : std::true_type
 {
 };
-
-}  // namespace system
-}  // namespace boost
 
 //]
 
