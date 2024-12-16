@@ -16,6 +16,7 @@
 #include <boost/describe/class.hpp>
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -38,7 +39,7 @@ struct product
     std::string short_name;
 
     // The product's description
-    std::string descr;
+    std::optional<std::string> descr;
 
     // The product's price, in dollar cents
     std::int64_t price;
