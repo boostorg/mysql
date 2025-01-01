@@ -46,18 +46,14 @@ def _launch_server(exe: str, host: str):
             # Sending a Ctrl-C terminates all process attached to the console (including ourselves
             # and any parent test runner). Running the process in a separate terminal doesn't allow
             # access to stdout, which is problematic, too.
-            if _is_win:
-                # kill is an alias for TerminateProcess with the given exit code
-                os.kill(server.pid, 9999)
-            else:
-                # Send SIGTERM
-                server.terminate()
+            # terminate() sends SIGTERM in Unix, and uses TerminateProcess in Windows
+            server.terminate()
 
             # Print any output the process generated
             print('Server stdout: \n', server.stdout.read().decode(), flush=True)
-    
-    # Verify that it exited gracefully
-    if (_is_win and server.returncode != 9999) or (not _is_win and server.returncode):
+
+    # The return code is only relevant in Unix, as in Windows we used TerminateProcess
+    if not _is_win and server.returncode != 0:
         raise RuntimeError('Server did not exit cleanly. retcode={}'.format(server.returncode))
 
 
