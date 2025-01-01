@@ -8,7 +8,6 @@
 
 from subprocess import run
 import argparse
-from typing import List
 from os import path
 
 # Helper to run the batch inserts example
