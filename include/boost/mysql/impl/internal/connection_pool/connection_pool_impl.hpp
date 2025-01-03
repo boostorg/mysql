@@ -106,22 +106,22 @@ class basic_pool_impl
         all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
     }
 
-    // Create and run n connections
-    void create_connections(std::size_t n)
+    // Create and run connections as required by the current config and state
+    void create_connections()
     {
+        // Calculate how many we should create
+        std::size_t n = num_connections_to_create(
+            params_.initial_size,
+            params_.max_size,
+            all_conns_.size(),
+            shared_st_.num_pending_connections,
+            shared_st_.num_pending_requests
+        );
+
+        // Create them
         BOOST_ASSERT((all_conns_.size() + n) <= params_.max_size);
         for (std::size_t i = 0; i < n; ++i)
             create_connection();
-    }
-
-    // Create and run the initial connections
-    void create_initial_connections()
-    {
-        create_connections(num_connections_to_create_initial(
-            params_.initial_size,
-            params_.max_size,
-            shared_st_.num_pending_requests
-        ));
     }
 
     // An async_get_connection request is about to wait for an available connection
@@ -131,12 +131,7 @@ class basic_pool_impl
         ++shared_st_.num_pending_requests;
 
         // Create new connections, if required
-        create_connections(num_connections_to_create_running(
-            params_.max_size,
-            all_conns_.size(),
-            shared_st_.num_pending_connections,
-            shared_st_.num_pending_requests
-        ));
+        create_connections();
     }
 
     // An async_get_connection request finished waiting
@@ -232,7 +227,7 @@ class basic_pool_impl
                 obj_->state_ = state_t::running;
 
                 // Create the initial connections
-                obj_->create_initial_connections();
+                obj_->create_connections();
 
                 // Wait for the cancel notification to arrive.
                 BOOST_MYSQL_YIELD(resume_point_, 2, obj_->cancel_timer_.async_wait(std::move(self)))

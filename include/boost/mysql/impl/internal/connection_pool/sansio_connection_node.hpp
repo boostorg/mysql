@@ -245,7 +245,8 @@ inline diagnostics create_connect_diagnostics(error_code connect_ec, const diagn
 
 // Given config params and the current state, computes the number
 // of connections that the pool should create at any given point in time
-inline std::size_t num_connections_to_create_running(
+inline std::size_t num_connections_to_create(
+    std::size_t initial_size,         // config
     std::size_t max_size,             // config
     std::size_t current_connections,  // the number of connections in the pool, in any state
     std::size_t pending_connections,  // the number of connections in the pool in pending state
@@ -254,29 +255,21 @@ inline std::size_t num_connections_to_create_running(
 {
     // We aim to have one pending connection per pending request.
     // When these connections successfully connect, they will fulfill the pending requests.
-    std::size_t ideal = pending_requests > pending_connections
-                            ? static_cast<std::size_t>(pending_requests - pending_connections)
-                            : 0u;
+    std::size_t required_by_requests = pending_requests > pending_connections
+                                           ? static_cast<std::size_t>(pending_requests - pending_connections)
+                                           : 0u;
+
+    // We should always have at least min_connections.
+    // This might not be the case if the pool is just starting.
+    std::size_t required_by_min = current_connections < initial_size
+                                      ? static_cast<std::size_t>(initial_size - current_connections)
+                                      : 0u;
 
     // We can't excess max_connections. This is the room for new connections that we have
     BOOST_ASSERT(current_connections <= max_size);
     std::size_t room = static_cast<std::size_t>(max_size - current_connections);
-    return (std::min)(ideal, room);
-}
 
-// Given config params and the current state, computes the number
-// of connections that the pool should create when it starts
-inline std::size_t num_connections_to_create_initial(
-    std::size_t initial_size,     // config
-    std::size_t max_size,         // config
-    std::size_t pending_requests  // the current number of async_get_connection requests that are waiting
-)
-{
-    // When the pool starts, it always has zero connections.
-    // We should create at least min_connections.
-    // If we have pending requests, create at least as many as pending requests we have.
-    // Never exceed the maximum.
-    return (std::min)(max_size, (std::max)(initial_size, pending_requests));
+    return (std::min)((std::max)(required_by_requests, required_by_min), room);
 }
 
 }  // namespace detail
