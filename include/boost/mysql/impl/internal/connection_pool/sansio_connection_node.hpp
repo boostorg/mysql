@@ -253,6 +253,10 @@ inline std::size_t num_connections_to_create(
     std::size_t pending_requests      // the current number of async_get_connection requests that are waiting
 )
 {
+    BOOST_ASSERT(initial_size <= max_size);
+    BOOST_ASSERT(current_connections <= max_size);
+    BOOST_ASSERT(pending_connections <= current_connections);
+
     // We aim to have one pending connection per pending request.
     // When these connections successfully connect, they will fulfill the pending requests.
     std::size_t required_by_requests = pending_requests > pending_connections
@@ -266,7 +270,6 @@ inline std::size_t num_connections_to_create(
                                       : 0u;
 
     // We can't excess max_connections. This is the room for new connections that we have
-    BOOST_ASSERT(current_connections <= max_size);
     std::size_t room = static_cast<std::size_t>(max_size - current_connections);
 
     return (std::min)((std::max)(required_by_requests, required_by_min), room);
