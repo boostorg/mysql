@@ -254,8 +254,8 @@ public:
     }
 
     template <class CompletionToken>
-    auto async_ping(CompletionToken&& token
-    ) -> decltype(impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
+    auto async_ping(CompletionToken&& token)
+        -> decltype(impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
     {
         return impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token));
     }
@@ -1170,12 +1170,12 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 {
     // Setup
     pool_params params;
-    params.initial_size = 2;
+    params.initial_size = 1;
     params.max_size = 2;
     fixture fix(std::move(params));
 
-    // 2 connection nodes are created from the beginning
-    fix.wait_for_num_nodes(2);
+    // 1 connection node is initially created
+    fix.wait_for_num_nodes(1);
 
     // Issue some parallel requests
     auto task1 = fix.create_task();
@@ -1183,6 +1183,9 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     auto task3 = fix.create_task();
     auto task4 = fix.create_task(nullptr);
     auto task5 = fix.create_task();
+
+    // This should create the other node
+    fix.wait_for_num_nodes(2);
 
     // Two connections can be created. These fulfill two requests
     auto node1 = &fix.pool().nodes().front();
