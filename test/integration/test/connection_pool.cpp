@@ -472,7 +472,7 @@ BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::m
 }
 
 // Having a packaged async_get_connection op extends lifetime
-BOOST_FIXTURE_TEST_CASE(async_get_connection_initation_extends_pool_lifetime, fixture)
+BOOST_FIXTURE_TEST_CASE(async_get_connection_initiation_extends_pool_lifetime, fixture)
 {
     std::unique_ptr<connection_pool> pool(new connection_pool(ctx, create_pool_params()));
 
