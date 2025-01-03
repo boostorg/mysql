@@ -300,7 +300,7 @@ std::int64_t get_connection_id(any_connection& conn)
 {
     results r;
     conn.async_execute("SELECT CONNECTION_ID()", r, as_netresult).validate_no_error();
-    return r.rows().at(0).at(0).as_int64();
+    return r.rows().at(0).at(0).as_uint64();
 }
 
 BOOST_FIXTURE_TEST_CASE(connections_created_if_requests_gt_pending, fixture)
