@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -28,6 +29,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <memory>
 #include <stdexcept>
@@ -285,6 +287,43 @@ BOOST_FIXTURE_TEST_CASE(connections_created_if_required, fixture)
     BOOST_TEST(r.rows() == makerows(1, "1"), per_element());
     conn2->async_execute("SELECT @myvar", r, as_netresult).validate_no_error();
     BOOST_TEST(r.rows() == makerows(1, "2"), per_element());
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
+}
+
+// Regression check: https://github.com/boostorg/mysql/issues/395
+// If there are more outstanding connection requests than pending connections,
+// connections are created
+std::int64_t get_connection_id(any_connection& conn)
+{
+    results r;
+    conn.async_execute("SELECT CONNECTION_ID()", r, as_netresult).validate_no_error();
+    return r.rows().at(0).at(0).as_int64();
+}
+
+BOOST_FIXTURE_TEST_CASE(connections_created_if_requests_gt_pending, fixture)
+{
+    connection_pool pool(ctx, create_pool_params());
+    auto run_result = pool.async_run(as_netresult);
+
+    // Request several connections in parallel
+    auto conn1_result = pool.async_get_connection(diag, as_netresult);
+    auto conn2_result = pool.async_get_connection(diag, as_netresult);
+    auto conn3_result = pool.async_get_connection(diag, as_netresult);
+
+    // Resolve the requests
+    auto conn1 = std::move(conn1_result).get();
+    auto conn2 = std::move(conn1_result).get();
+    auto conn3 = std::move(conn1_result).get();
+
+    // They should be different connections
+    auto conn1_id = get_connection_id(conn1.get());
+    auto conn2_id = get_connection_id(conn1.get());
+    auto conn3_id = get_connection_id(conn1.get());
+    BOOST_TEST(conn1_id != conn2_id);
+    BOOST_TEST(conn1_id != conn3_id);
 
     // Cleanup the pool
     pool.cancel();
