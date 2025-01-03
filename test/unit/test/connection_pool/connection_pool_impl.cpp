@@ -456,12 +456,10 @@ private:
     bool run_finished_{false};
 
 public:
-    fixture(pool_params&& params) : pool_(create_mock_pool(ctx, std::move(params)))
+    fixture(pool_params&& params, bool call_run = true) : pool_(create_mock_pool(ctx, std::move(params)))
     {
-        pool_->async_run([this](error_code ec) {
-            run_finished_ = true;
-            BOOST_TEST(ec == error_code());
-        });
+        if (call_run)
+            run();
     }
 
     ~fixture()
@@ -469,6 +467,14 @@ public:
         // Finish the pool
         pool_->cancel();
         poll_until(ctx, &run_finished_);
+    }
+
+    void run()
+    {
+        pool_->async_run([this](error_code ec) {
+            run_finished_ = true;
+            BOOST_TEST(ec == error_code());
+        });
     }
 
     mock_pool& pool() { return *pool_; }
@@ -944,6 +950,33 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
             BOOST_TEST(fix.num_pending_requests() == 0u);
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(get_connection_wait_before_run)
+{
+    // Getting connections before async_run gets called waits
+    // Setup
+    fixture fix(pool_params{}, false);  // don't call run
+
+    // Two requests are issued (> initial_size). They don't create new nodes and wait
+    auto task1 = fix.create_task();
+    auto task2 = fix.create_task();
+    fix.ctx.poll();
+    BOOST_TEST(fix.pool().nodes().size() == 0u);
+    BOOST_TEST(fix.num_pending_requests() == 2u);
+
+    // Run the pool. Two nodes are created
+    fix.run();
+    fix.wait_for_num_nodes(2);
+    auto& node1 = fix.pool().nodes().front();
+    auto& node2 = fix.pool().nodes().back();
+    BOOST_TEST(fix.num_pending_requests() == 2u);
+
+    // The two connections become ready, and the tasks complete
+    fix.step(node1, fn_type::connect);
+    fix.step(node2, fn_type::connect);
+    task1.wait(node1, false);
+    task2.wait(node2, false);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
