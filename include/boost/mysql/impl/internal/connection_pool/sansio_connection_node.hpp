@@ -246,7 +246,7 @@ inline diagnostics create_connect_diagnostics(error_code connect_ec, const diagn
 // Given config params and the current state, computes the number
 // of connections that the pool should create at any given point in time
 inline std::size_t num_connections_to_create_running(
-    std::size_t max_connections,      // config
+    std::size_t max_size,             // config
     std::size_t current_connections,  // the number of connections in the pool, in any state
     std::size_t pending_connections,  // the number of connections in the pool in pending state
     std::size_t pending_requests      // the current number of async_get_connection requests that are waiting
@@ -259,16 +259,16 @@ inline std::size_t num_connections_to_create_running(
                             : 0u;
 
     // We can't excess max_connections. This is the room for new connections that we have
-    BOOST_ASSERT(current_connections <= max_connections);
-    std::size_t room = static_cast<std::size_t>(max_connections - current_connections);
+    BOOST_ASSERT(current_connections <= max_size);
+    std::size_t room = static_cast<std::size_t>(max_size - current_connections);
     return (std::min)(ideal, room);
 }
 
 // Given config params and the current state, computes the number
 // of connections that the pool should create when it starts
 inline std::size_t num_connections_to_create_initial(
-    std::size_t min_connections,  // config
-    std::size_t max_connections,  // config
+    std::size_t initial_size,     // config
+    std::size_t max_size,         // config
     std::size_t pending_requests  // the current number of async_get_connection requests that are waiting
 )
 {
@@ -276,7 +276,7 @@ inline std::size_t num_connections_to_create_initial(
     // We should create at least min_connections.
     // If we have pending requests, create at least as many as pending requests we have.
     // Never exceed the maximum.
-    return (std::min)(max_connections, (std::max)(min_connections, pending_requests));
+    return (std::min)(max_size, (std::max)(initial_size, pending_requests));
 }
 
 }  // namespace detail

@@ -49,8 +49,12 @@ struct conn_shared_state
     asio::basic_waitable_timer<ClockType> idle_connections_cv;
 
     // The number of pending connections (currently getting ready).
-    // Controls that we don't create connections while some are still connecting
+    // Required to compute how many connections we should create at any given point in time.
     std::size_t num_pending_connections{0};
+
+    // The number of async_get_connection ops that are waiting for a connection to become available.
+    // Required to compute how many connections we should create at any given point in time.
+    std::size_t num_pending_requests{0};
 
     // Info about the last connection attempt. Already processed, suitable to be used
     // as the result of an async_get_connection op
@@ -237,8 +241,8 @@ public:
 
     // Not thread-safe
     template <class CompletionToken>
-    auto async_run(CompletionToken&& token
-    ) -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
+    auto async_run(CompletionToken&& token)
+        -> decltype(asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token))
     {
         return asio::async_compose<CompletionToken, void(error_code)>(connection_task_op{*this}, token);
     }
