@@ -1166,6 +1166,20 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     BOOST_TEST(fix.pool().nodes().size() == 2u);
 }
 
+BOOST_AUTO_TEST_CASE(get_connection_connections_not_created_if_enough_pending)
+{
+    // Setup
+    pool_params params;
+    params.initial_size = 1;
+    fixture fix(std::move(params));
+    fix.wait_for_num_nodes(1);
+
+    // Create a task. We have already one pending connection, so no node is created
+    auto task = fix.create_task();
+    fix.ctx.poll();
+    BOOST_TEST(fix.pool().nodes().size() == 1u);
+}
+
 BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 {
     // Setup
