@@ -130,8 +130,11 @@ class basic_pool_impl
         // Record that we're pending
         ++shared_st_.num_pending_requests;
 
-        // Create new connections, if required
-        create_connections();
+        // Create new connections, if required.
+        // Don't create any connections if we're not yet running,
+        // since this would leave connections running after run exits
+        if (state_ == state_t::running)
+            create_connections();
     }
 
     // An async_get_connection request finished waiting
