@@ -315,13 +315,13 @@ BOOST_FIXTURE_TEST_CASE(connections_created_if_requests_gt_pending, fixture)
 
     // Resolve the requests
     auto conn1 = std::move(conn1_result).get();
-    auto conn2 = std::move(conn1_result).get();
-    auto conn3 = std::move(conn1_result).get();
+    auto conn2 = std::move(conn2_result).get();
+    auto conn3 = std::move(conn3_result).get();
 
     // They should be different connections
     auto conn1_id = get_connection_id(conn1.get());
-    auto conn2_id = get_connection_id(conn1.get());
-    auto conn3_id = get_connection_id(conn1.get());
+    auto conn2_id = get_connection_id(conn2.get());
+    auto conn3_id = get_connection_id(conn3.get());
     BOOST_TEST(conn1_id != conn2_id);
     BOOST_TEST(conn1_id != conn3_id);
 
