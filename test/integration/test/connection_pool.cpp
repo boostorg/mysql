@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -28,6 +29,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <memory>
 #include <stdexcept>
@@ -291,6 +293,43 @@ BOOST_FIXTURE_TEST_CASE(connections_created_if_required, fixture)
     std::move(run_result).validate_no_error_nodiag();
 }
 
+std::int64_t get_connection_id(any_connection& conn)
+{
+    results r;
+    conn.async_execute("SELECT CONNECTION_ID()", r, as_netresult).validate_no_error();
+    return r.rows().at(0).at(0).as_uint64();
+}
+
+// Regression check: https://github.com/boostorg/mysql/issues/395
+// If there are more outstanding connection requests than pending connections,
+// connections are created
+BOOST_FIXTURE_TEST_CASE(connections_created_if_requests_gt_pending, fixture)
+{
+    connection_pool pool(ctx, create_pool_params());
+    auto run_result = pool.async_run(as_netresult);
+
+    // Request several connections in parallel
+    auto conn1_result = pool.async_get_connection(diag, as_netresult);
+    auto conn2_result = pool.async_get_connection(diag, as_netresult);
+    auto conn3_result = pool.async_get_connection(diag, as_netresult);
+
+    // Resolve the requests
+    auto conn1 = std::move(conn1_result).get();
+    auto conn2 = std::move(conn2_result).get();
+    auto conn3 = std::move(conn3_result).get();
+
+    // They should be different connections
+    auto conn1_id = get_connection_id(conn1.get());
+    auto conn2_id = get_connection_id(conn2.get());
+    auto conn3_id = get_connection_id(conn3.get());
+    BOOST_TEST(conn1_id != conn2_id);
+    BOOST_TEST(conn1_id != conn3_id);
+
+    // Cleanup the pool
+    pool.cancel();
+    std::move(run_result).validate_no_error_nodiag();
+}
+
 BOOST_FIXTURE_TEST_CASE(connection_upper_limit, fixture)
 {
     connection_pool pool(ctx, create_pool_params(1));
@@ -314,19 +353,23 @@ BOOST_FIXTURE_TEST_CASE(connection_upper_limit, fixture)
 // If a connection is requested before calling run, we wait
 BOOST_DATA_TEST_CASE_F(fixture, get_connection_before_run, data::make({false, true}))
 {
-    auto params = create_pool_params(1);
+    auto params = create_pool_params(151);
     params.thread_safe = sample;
     connection_pool pool(ctx, std::move(params));
 
-    // Get a connection before calling run
-    auto getconn_result = pool.async_get_connection(diag, as_netresult);
+    // Get some connections before calling run
+    auto getconn1_result = pool.async_get_connection(diag, as_netresult);
+    auto getconn2_result = pool.async_get_connection(diag, as_netresult);
 
     // Call run
     auto run_result = pool.async_run(as_netresult);
 
     // Success
-    auto conn = std::move(getconn_result).get();
-    conn->async_ping(as_netresult).validate_no_error();
+    auto conn1 = std::move(getconn1_result).get();
+    auto conn2 = std::move(getconn2_result).get();
+
+    // They're different connections
+    BOOST_TEST(get_connection_id(conn1.get()) != get_connection_id(conn2.get()));
 
     // Cleanup the pool
     pool.cancel();
@@ -433,7 +476,7 @@ BOOST_DATA_TEST_CASE_F(fixture, pooled_connection_extends_pool_lifetime, data::m
 }
 
 // Having a packaged async_get_connection op extends lifetime
-BOOST_FIXTURE_TEST_CASE(async_get_connection_initation_extends_pool_lifetime, fixture)
+BOOST_FIXTURE_TEST_CASE(async_get_connection_initiation_extends_pool_lifetime, fixture)
 {
     std::unique_ptr<connection_pool> pool(new connection_pool(ctx, create_pool_params()));
 

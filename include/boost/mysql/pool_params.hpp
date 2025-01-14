@@ -138,7 +138,7 @@ struct pool_params
      *
      * Set this interval to zero to disable pings.
      *
-     * This value must not be negative. It should be bigger than the server's
+     * This value must not be negative. It should be smaller than the server's
      * idle timeout (as determined by the
      * <a href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_wait_timeout">wait_timeout</a>
      * session variable). Otherwise, the server might close connections
