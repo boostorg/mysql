@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://mrdocs.com/docs/mrdocs/develop/_attachments/mrdocs.schema.json
 
-source-root: ..
+source-root: ../include
 compilation-database: ./CMakeLists.txt
 multipage: true
 include-symbols:
