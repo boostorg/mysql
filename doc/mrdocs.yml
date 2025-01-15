@@ -13,3 +13,4 @@ exclude-symbols:
   - 'boost::mysql::mariadb_collations'
 verbose: true
 use-system-libc: true
+base-url: https://github.com/boostorg/mysql/blob/master/include/
