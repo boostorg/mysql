@@ -51,7 +51,7 @@ struct host_and_port
  * \brief Contains a UNIX-socket domain path.
  * \details
  * This type is defined in all systems, regardless of their UNIX socket support.
- * \n
+ *
  * This is an owning type with value semantics.
  */
 struct unix_path
@@ -69,14 +69,13 @@ struct unix_path
  * A variant-like type that can represent the network address of a MySQL server,
  * regardless of the transport type being used. It can contain either a host
  * and port (to connect using TCP) or a UNIX path (to connect using UNIX domain sockets).
- * \n
+ *
  * This class may be extended in the future to accomodate Windows named pipes.
- * \n
+ *
  * This type has value semantics: it is owning and regular.
  */
 class any_address
 {
-#ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
         address_type type;
@@ -89,7 +88,6 @@ class any_address
     {
     }
     friend struct detail::access;
-#endif
 
 public:
     /**
@@ -231,12 +229,12 @@ public:
      * Destroys the current contained object and constructs a new
      * host and port from the passed components. This function can
      * change the underlying type of object held by `*this`.
-     * \n
+     *
      * The constructed object has `this->type() == address_type::host_and_port`,
      * `this->hostname() == hostname` and `this->port() == port`.
-     * \n
+     *
      * An empty hostname is equivalent to `localhost`.
-     * \n
+     *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
      * \par Object lifetimes
@@ -255,10 +253,10 @@ public:
      * Destroys the current contained object and constructs a new
      * UNIX socket path from the passed value. This function can
      * change the underlying type of object held by `*this`.
-     * \n
+     *
      * The constructed object has `this->type() == address_type::unix_path` and
      * `this->unix_socket_path() == path`.
-     * \n
+     *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
      * \par Object lifetimes
