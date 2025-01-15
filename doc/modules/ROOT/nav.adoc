@@ -1,4 +1,4 @@
 * xref:index.adoc[Introduction]
 * xref:overview.adoc[]
-* xref:reference:boost/mysql.adoc[Reference]
+* xref:reference:index.adoc[Reference]
 

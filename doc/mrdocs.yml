@@ -1,21 +1,15 @@
-# $schema: https://mrdocs.com/docs/mrdocs/develop/_attachments/mrdocs.schema.json
 # yaml-language-server: $schema=https://mrdocs.com/docs/mrdocs/develop/_attachments/mrdocs.schema.json
 
 source-root: ..
 compilation-database: ./CMakeLists.txt
-cmake: '-DCMAKE_CXX_STANDARD=23 -DBOOST_INCLUDE_LIBRARIES=mysql'
 multipage: true
-
-filters:
-  symbols:
-    exclude:
-      - 'boost::system::*'
-      - 'boost::asio::*'
-      - 'boost::mysql::detail'
-      - 'boost::mysql::mysql_collations'
-    include:
-      - 'boost::mysql'
-referenced-declarations: never
-inaccessible-members: never
-inaccessible-bases: never
+include-symbols:
+  - 'boost::mysql::**'
+exclude-symbols:
+  - 'boost::mysql::detail'
+  - 'boost::mysql::mysql_server_errc'
+  - 'boost::mysql::mariadb_server_errc'
+  - 'boost::mysql::mysql_collations'
+  - 'boost::mysql::mariadb_collations'
 verbose: true
+use-system-libc: true
