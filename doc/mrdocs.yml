@@ -6,6 +6,8 @@ multipage: true
 include-symbols:
   - 'boost::mysql::**'
 exclude-symbols:
+  - boost::mysql::format_context_base::format_context_base
+  - boost::mysql::format_context_base::assign
   - 'boost::mysql::detail'
   - 'boost::mysql::mysql_server_errc'
   - 'boost::mysql::mariadb_server_errc'
