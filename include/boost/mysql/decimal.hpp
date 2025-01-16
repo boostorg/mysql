@@ -10,10 +10,6 @@
 
 #include <boost/mysql/detail/config.hpp>
 
-#include "boost/decimal/decimal128.hpp"
-#include "boost/decimal/fwd.hpp"
-#include "boost/mp11/utility.hpp"
-
 #ifdef BOOST_MYSQL_CXX14
 
 #include <boost/mysql/error_code.hpp>
@@ -34,7 +30,7 @@ namespace detail {
 // but there's a one-to-one mapping to precision.
 // This same algorithm is employed by the server.
 // Returns -1 in case of error
-inline int get_decimal_precision(const metadata& meta)
+inline int decimal_required_precision(const metadata& meta)
 {
     constexpr unsigned max_precision = 65u;                 // Max value allowed by the server
     unsigned radix_chars = meta.decimals() > 0u ? 1u : 0u;  // Number of characters used for the decimal point
@@ -47,7 +43,7 @@ inline int get_decimal_precision(const metadata& meta)
 inline bool meta_check_decimal_impl(meta_check_context& ctx, int cpp_precision, const char* cpp_type_name)
 {
     // Check the number of decimals
-    int required_precision = get_decimal_precision(ctx.current_meta());
+    int required_precision = decimal_required_precision(ctx.current_meta());
     if (required_precision == -1)
     {
         ctx.add_error() << "Invalid precision received from the server for decimal column: '"
