@@ -10,6 +10,10 @@
 
 #include <boost/mysql/detail/config.hpp>
 
+#include "boost/decimal/decimal128.hpp"
+#include "boost/decimal/fwd.hpp"
+#include "boost/mp11/utility.hpp"
+
 #ifdef BOOST_MYSQL_CXX14
 
 #include <boost/mysql/error_code.hpp>
@@ -63,59 +67,56 @@ inline bool meta_check_decimal_impl(meta_check_context& ctx, int cpp_precision, 
     return ctx.current_meta().type() == column_type::decimal;
 }
 
-// parse implementation for decimal types
+// type names for decimals
+constexpr const char* decimal_type_name(decimal::decimal32) { return "decimal32"; }
+constexpr const char* decimal_type_name(decimal::decimal64) { return "decimal64"; }
+constexpr const char* decimal_type_name(decimal::decimal128) { return "decimal128"; }
+constexpr const char* decimal_type_name(decimal::decimal32_fast) { return "decimal32_fast"; }
+constexpr const char* decimal_type_name(decimal::decimal64_fast) { return "decimal64_fast"; }
+constexpr const char* decimal_type_name(decimal::decimal128_fast) { return "decimal128_fast"; }
+
+// precisions for decimals
+constexpr int decimal_precision(decimal::decimal32) { return 7; }
+constexpr int decimal_precision(decimal::decimal64) { return 16; }
+constexpr int decimal_precision(decimal::decimal128) { return 34; }
+constexpr int decimal_precision(decimal::decimal32_fast) { return 7; }
+constexpr int decimal_precision(decimal::decimal64_fast) { return 16; }
+constexpr int decimal_precision(decimal::decimal128_fast) { return 34; }
+
 template <class Decimal>
-error_code parse_decimal_impl(field_view input, Decimal& output)
-{
-    // Check type
-    if (!input.is_string())
-        return client_errc::static_row_parsing_error;
-    auto str = input.get_string();
-
-    // Invoke decimal's charconv. MySQL always uses the fixed format.
-    auto res = decimal::from_chars(str.begin(), str.end(), output, decimal::chars_format::fixed);
-    if (res.ec != std::errc{} || res.ptr != str.end())
-        return client_errc::static_row_parsing_error;
-
-    // Done
-    return error_code();
-}
-
-template <>
-struct readable_field_traits<decimal::decimal32, void>
+struct decimal_readable_field_traits
 {
     static constexpr bool is_supported = true;
-    static BOOST_INLINE_CONSTEXPR const char* type_name = "decimal32";
-    static bool meta_check(meta_check_context& ctx) { return meta_check_decimal_impl(ctx, 7, type_name); }
-    static error_code parse(field_view input, decimal::decimal32& output)
+    static BOOST_INLINE_CONSTEXPR const char* type_name = decimal_type_name(Decimal());
+    static bool meta_check(meta_check_context& ctx)
     {
-        return parse_decimal_impl(input, output);
+        return meta_check_decimal_impl(ctx, decimal_precision(Decimal()), type_name);
+    }
+    static error_code parse(field_view input, Decimal& output)
+    {
+        // Check type
+        if (!input.is_string())
+            return client_errc::static_row_parsing_error;
+        auto str = input.get_string();
+
+        // Invoke decimal's charconv. MySQL always uses the fixed format.
+        auto res = decimal::from_chars(str.begin(), str.end(), output, decimal::chars_format::fixed);
+        if (res.ec != std::errc{} || res.ptr != str.end())
+            return client_errc::static_row_parsing_error;
+
+        // Done
+        return error_code();
     }
 };
 
-template <>
-struct readable_field_traits<decimal::decimal64, void>
-{
-    static constexpr bool is_supported = true;
-    static BOOST_INLINE_CONSTEXPR const char* type_name = "decimal64";
-    static bool meta_check(meta_check_context& ctx) { return meta_check_decimal_impl(ctx, 16, type_name); }
-    static error_code parse(field_view input, decimal::decimal64& output)
-    {
-        return parse_decimal_impl(input, output);
-    }
-};
-
-template <>
-struct readable_field_traits<decimal::decimal128, void>
-{
-    static constexpr bool is_supported = true;
-    static BOOST_INLINE_CONSTEXPR const char* type_name = "decimal128";
-    static bool meta_check(meta_check_context& ctx) { return meta_check_decimal_impl(ctx, 34, type_name); }
-    static error_code parse(field_view input, decimal::decimal128& output)
-    {
-        return parse_decimal_impl(input, output);
-    }
-};
+// clang-format off
+template <> struct readable_field_traits<decimal::decimal32, void> : decimal_readable_field_traits<decimal::decimal32> {};
+template <> struct readable_field_traits<decimal::decimal32_fast, void> : decimal_readable_field_traits<decimal::decimal32_fast> {};
+template <> struct readable_field_traits<decimal::decimal64, void> : decimal_readable_field_traits<decimal::decimal64> {};
+template <> struct readable_field_traits<decimal::decimal64_fast, void> : decimal_readable_field_traits<decimal::decimal64_fast> {};
+template <> struct readable_field_traits<decimal::decimal128, void> : decimal_readable_field_traits<decimal::decimal128> {};
+template <> struct readable_field_traits<decimal::decimal128_fast, void> : decimal_readable_field_traits<decimal::decimal128_fast> {};
+// clang-format on
 
 }  // namespace detail
 }  // namespace mysql
