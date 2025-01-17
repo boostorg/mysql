@@ -8,6 +8,7 @@
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/decimal.hpp>
 #include <boost/mysql/field.hpp>
 #include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/row.hpp>
@@ -16,6 +17,7 @@
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/sequence.hpp>
 
+#include <boost/decimal.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <string>
@@ -37,6 +39,7 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+namespace decimal = boost::decimal;
 using mysql_time = boost::mysql::time;
 using std::vector;
 
@@ -178,6 +181,14 @@ BOOST_MYSQL_CHECK_FORMATTABLE(const filter_t&&, false);
 using format_fn_t = void (*)(int, format_context_base&);
 using format_seq_t = format_sequence<std::vector<int>, format_fn_t>;
 BOOST_MYSQL_CHECK_FORMATTABLE(format_seq_t, true)
+
+// decimals are formattable
+BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal32, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal32_fast, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal64, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal64_fast, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal128, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal128_fast, true);
 
 // other stuff not accepted
 BOOST_MYSQL_CHECK_FORMATTABLE(void*, false)
