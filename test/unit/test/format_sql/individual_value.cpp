@@ -503,6 +503,7 @@ BOOST_AUTO_TEST_CASE(std_optional)
 }
 #endif
 
+#ifdef BOOST_MYSQL_CXX14
 BOOST_AUTO_TEST_CASE(decimal32)
 {
     using namespace boost::decimal;
@@ -518,6 +519,7 @@ BOOST_AUTO_TEST_CASE(decimal32)
     // BOOST_TEST(format_sql(opts, single_fmt, 9.999999e15_df) == "SELECT 999999900000000;");
     // BOOST_TEST(format_sql(opts, single_fmt, 1e-15_df) == "SELECT 0.000000000000001;");
 }
+#endif
 
 //
 // Errors when formatting individual fields
