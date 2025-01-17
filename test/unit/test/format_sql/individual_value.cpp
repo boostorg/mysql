@@ -10,6 +10,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/date.hpp>
 #include <boost/mysql/datetime.hpp>
+#include <boost/mysql/decimal.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/format_sql.hpp>
@@ -501,6 +502,22 @@ BOOST_AUTO_TEST_CASE(std_optional)
     BOOST_TEST(format_sql(opts, single_fmt, co_clval) == "SELECT 'abdef';");
 }
 #endif
+
+BOOST_AUTO_TEST_CASE(decimal32)
+{
+    using namespace boost::decimal;
+    BOOST_TEST(format_sql(opts, single_fmt, 200_df) == "SELECT 200.0000;");
+    BOOST_TEST(format_sql(opts, single_fmt, 1.56789_df) == "SELECT 1.567890;");
+    BOOST_TEST(format_sql(opts, single_fmt, 1.142099e5_df) == "SELECT 114209.9;");
+    BOOST_TEST(format_sql(opts, single_fmt, -1.56789_df) == "SELECT -1.567890;");
+    BOOST_TEST(format_sql(opts, single_fmt, 9999999_df) == "SELECT 9999999;");
+    BOOST_TEST(format_sql(opts, single_fmt, -9999999_df) == "SELECT -9999999;");
+    // BOOST_TEST(format_sql(opts, single_fmt, 0.000001_df) == "SELECT 0.000001;"); // crashes
+
+    // Outside the range of DECIMAL(7), but can be used with more precise decimals
+    // BOOST_TEST(format_sql(opts, single_fmt, 9.999999e15_df) == "SELECT 999999900000000;");
+    // BOOST_TEST(format_sql(opts, single_fmt, 1e-15_df) == "SELECT 0.000000000000001;");
+}
 
 //
 // Errors when formatting individual fields
