@@ -30,6 +30,7 @@ add_executable(
     test/connection_pool.cpp
     test/db_specific.cpp
     test/database_types.cpp
+    test/decimal.cpp
 
     # Snippets
     test/snippets/tutorials.cpp
