@@ -12,12 +12,17 @@
 
 #ifdef BOOST_MYSQL_CXX14
 
+#include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/format_sql.hpp>
 #include <boost/mysql/metadata.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 
 #include <boost/decimal.hpp>
+#include <boost/decimal/charconv.hpp>
 
 #include <system_error>
 
@@ -114,7 +119,42 @@ template <> struct readable_field_traits<decimal::decimal128, void> : decimal_re
 template <> struct readable_field_traits<decimal::decimal128_fast, void> : decimal_readable_field_traits<decimal::decimal128_fast> {};
 // clang-format on
 
+// format_sql support
+template <class Decimal>
+struct decimal_formatter
+{
+    const char* parse(const char* begin, const char*) { return begin; }
+    void format(Decimal value, format_context_base& ctx) const
+    {
+        // MySQL's DECIMAL uses fixed precision and a max precision of 65.
+        // With sign and radix, that's 67 characters max.
+        // Boost.Decimal can represent values that might yield longer representations
+        // (as it uses floating point representations). Buffer overflows cause a value_too_large error
+        char buffer[67]{};
+        auto result = decimal::to_chars(buffer, buffer + sizeof(buffer), value, decimal::chars_format::fixed);
+        if (result.ec != std::errc())
+        {
+            ctx.add_error(
+                result.ec == std::errc::value_too_large ? error_code(client_errc::unformattable_value)
+                                                        : error_code(std::make_error_code(result.ec))
+            );
+            return;
+        }
+        ctx.append_raw(runtime(string_view(buffer, result.ptr - buffer)));
+    }
+};
+
 }  // namespace detail
+
+// clang-format off
+template <> struct formatter<decimal::decimal32> : detail::decimal_formatter<decimal::decimal32> {};
+template <> struct formatter<decimal::decimal32_fast> : detail::decimal_formatter<decimal::decimal32_fast> {};
+template <> struct formatter<decimal::decimal64> : detail::decimal_formatter<decimal::decimal64> {};
+template <> struct formatter<decimal::decimal64_fast> : detail::decimal_formatter<decimal::decimal64_fast> {};
+template <> struct formatter<decimal::decimal128> : detail::decimal_formatter<decimal::decimal128> {};
+template <> struct formatter<decimal::decimal128_fast> : detail::decimal_formatter<decimal::decimal128_fast> {};
+// clang-format on
+
 }  // namespace mysql
 }  // namespace boost
 

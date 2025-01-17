@@ -9,8 +9,9 @@
 #define BOOST_MYSQL_DECIMAL_HPP
 
 // Provides the required specializations to be able to use Boost.Decimal types
-// with the static interface.
-// No declaration in the public boost::mysql namespace is pulled in.
+// with the static interface and with format_sql.
+// This header doesn't contain anything visible because none of the included
+// declarations should be used directly.
 #include <boost/mysql/detail/typing/decimal.hpp>
 
 #endif
