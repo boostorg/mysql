@@ -58,7 +58,7 @@ def install_boost(
     _copy_lib_to_boost(source_dir)
 
     # Clone Boost.Decimal (TODO: this is just for the review)
-    run(['git', 'clone', '-b', 'develop', '--depth', '1', 'git@github.com:cppalliance/decimal.git', 'libs/decimal'])
+    run(['git', 'clone', '-b', 'develop', '--depth', '1', 'https://github.com/cppalliance/decimal.git', 'libs/decimal'])
 
     # Install Boost dependencies
     submodules = [
