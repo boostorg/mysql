@@ -17,7 +17,6 @@
 #include <boost/mysql/rows_view.hpp>
 #include <boost/mysql/sequence.hpp>
 
-#include <boost/decimal.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <string>
@@ -183,12 +182,14 @@ using format_seq_t = format_sequence<std::vector<int>, format_fn_t>;
 BOOST_MYSQL_CHECK_FORMATTABLE(format_seq_t, true)
 
 // decimals are formattable
+#ifdef BOOST_MYSQL_CXX14
 BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal32, true);
 BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal32_fast, true);
 BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal64, true);
 BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal64_fast, true);
 BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal128, true);
 BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal128_fast, true);
+#endif
 
 // other stuff not accepted
 BOOST_MYSQL_CHECK_FORMATTABLE(void*, false)
