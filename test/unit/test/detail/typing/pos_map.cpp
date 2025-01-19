@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(reset_nonempty)
     BOOST_TEST(map[0] == pos_absent);
     BOOST_TEST(map[1] == pos_absent);
     BOOST_TEST(map[2] == pos_absent);
-    BOOST_TEST(map[3] == 45u);  // didn't modify any extra storage
+    BOOST_TEST(storage[3] == 45u);  // didn't modify any extra storage
 }
 
 BOOST_AUTO_TEST_CASE(add_field_empty)
