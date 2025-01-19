@@ -22,7 +22,6 @@
 #include <boost/mysql/detail/typing/readable_field_traits.hpp>
 
 #include <boost/decimal.hpp>
-#include <boost/decimal/charconv.hpp>
 
 #include <system_error>
 
