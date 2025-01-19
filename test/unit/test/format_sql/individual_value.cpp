@@ -504,7 +504,7 @@ BOOST_AUTO_TEST_CASE(std_optional)
 #endif
 
 #ifdef BOOST_MYSQL_CXX14
-BOOST_AUTO_TEST_CASE(decimal32)
+BOOST_AUTO_TEST_CASE(decimal32_)
 {
     using namespace boost::decimal;
     BOOST_TEST(format_sql(opts, single_fmt, 200_df) == "SELECT 200.0000;");
@@ -518,6 +518,56 @@ BOOST_AUTO_TEST_CASE(decimal32)
     // Outside the range of DECIMAL(7), but can be used with more precise decimals
     // BOOST_TEST(format_sql(opts, single_fmt, 9.999999e15_df) == "SELECT 999999900000000;");
     // BOOST_TEST(format_sql(opts, single_fmt, 1e-15_df) == "SELECT 0.000000000000001;");
+}
+
+BOOST_AUTO_TEST_CASE(decimal64_)
+{
+    using namespace boost::decimal;
+    BOOST_TEST(format_sql(opts, single_fmt, 200_dd) == "SELECT 200.0000000000000;");
+    BOOST_TEST(format_sql(opts, single_fmt, 1.56789_dd) == "SELECT 1.567890000000000;");
+    BOOST_TEST(format_sql(opts, single_fmt, 1.142099e5_dd) == "SELECT 114209.9000000000;");
+    BOOST_TEST(format_sql(opts, single_fmt, -1.56789_dd) == "SELECT -1.567890000000000;");
+    BOOST_TEST(format_sql(opts, single_fmt, 9999999999999999_dd) == "SELECT 9999999999999999;");
+    BOOST_TEST(format_sql(opts, single_fmt, -9999999999999999_dd) == "SELECT -9999999999999999;");
+    BOOST_TEST(format_sql(opts, single_fmt, 99999.99999999999_dd) == "SELECT 99999.99999999999;");
+    BOOST_TEST(format_sql(opts, single_fmt, -99999.99999999999_dd) == "SELECT -99999.99999999999;");
+}
+
+BOOST_AUTO_TEST_CASE(decimal128_)
+{
+    using namespace boost::decimal;
+    BOOST_TEST(format_sql(opts, single_fmt, 200_dl) == "SELECT 200.0000000000000000000000000000000;");
+    BOOST_TEST(format_sql(opts, single_fmt, 1.56789_dl) == "SELECT 1.567890000000000000000000000000000;");
+    BOOST_TEST(format_sql(opts, single_fmt, 1.142099e5_dl) == "SELECT 114209.9000000000000000000000000000;");
+    BOOST_TEST(format_sql(opts, single_fmt, -1.56789_dl) == "SELECT -1.567890000000000000000000000000000;");
+    BOOST_TEST(
+        format_sql(opts, single_fmt, "9999999999999999999999999999999999"_dl) ==
+        "SELECT 9999999999999999999999999999999999;"
+    );
+    BOOST_TEST(
+        format_sql(opts, single_fmt, -"9999999999999999999999999999999999"_dl) ==
+        "SELECT -9999999999999999999999999999999999;"
+    );
+    BOOST_TEST(
+        format_sql(opts, single_fmt, 9.999999999999999999999999999999999_dl) ==
+        "SELECT 9.999999999999999999999999999999999;"
+    );
+    BOOST_TEST(
+        format_sql(opts, single_fmt, -9.999999999999999999999999999999999_dl) ==
+        "SELECT -9.999999999999999999999999999999999;"
+    );
+}
+
+BOOST_AUTO_TEST_CASE(decimal_fast)
+{
+    // Spotcheck: fast decimals are also formattable
+    using namespace boost::decimal;
+    BOOST_TEST(format_sql(opts, single_fmt, 1.56789_dff) == "SELECT 1.567890;");
+    BOOST_TEST(format_sql(opts, single_fmt, 1.5678912345678_ddf) == "SELECT 1.567891234567800;");
+    BOOST_TEST(
+        format_sql(opts, single_fmt, 1.567891234567887237237943928290828_dlf) ==
+        "SELECT 1.567891234567887237237943928290828;"
+    );
 }
 #endif
 
@@ -702,6 +752,25 @@ BOOST_AUTO_TEST_CASE(boost_optional_error) { optional_error_test<boost::optional
 
 #ifdef __cpp_lib_optional
 BOOST_AUTO_TEST_CASE(std_optional_error) { optional_error_test<std::optional>(); }
+#endif
+
+#ifdef BOOST_MYSQL_CXX14
+BOOST_AUTO_TEST_CASE(decimal_error)
+{
+    using namespace boost::decimal;
+
+    // NaN and Inf
+    using lims32 = std::numeric_limits<decimal32>;
+    BOOST_TEST(format_single_error("{}", lims32::infinity()) == client_errc::unformattable_value);
+    BOOST_TEST(format_single_error("{}", -lims32::infinity()) == client_errc::unformattable_value);
+    BOOST_TEST(format_single_error("{}", lims32::quiet_NaN()) == client_errc::unformattable_value);
+
+    // Too long values
+    BOOST_TEST(format_single_error("{}", 9.99e90_df) == client_errc::unformattable_value);
+    BOOST_TEST(format_single_error("{}", 1e-94_df) == client_errc::unformattable_value);
+    // Subnormal values don't seem to work
+}
+
 #endif
 
 BOOST_AUTO_TEST_SUITE_END()
