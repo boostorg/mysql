@@ -136,8 +136,7 @@ alias common_test_sources
 
 # Boost.Context causes failures with warnings-as-errors
 # under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
-alias boost_context_lib : /boost/context//boost_context/<warnings-as-errors>off
-    : usage-requirements <warnings-as-errors>off ; # TODO: remove when Boost.Context fixes warnings
+alias boost_context_lib : /boost/context//boost_context/<warnings-as-errors>off ;
 
 # Beast and JSON depend on Container, which causes trouble with <warnings-as-errors>on
 alias boost_beast_lib : /boost/beast//boost_beast/<warnings-as-errors>off ;

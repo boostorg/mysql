@@ -71,7 +71,7 @@ run_example deletes : 2_simple/deletes.cpp
 run_example callbacks : 2_simple/callbacks.cpp
     : $(regular_args) ;
 run_example coroutines_cpp11 : 2_simple/coroutines_cpp11.cpp /boost/mysql/test//boost_context_lib
-    : $(regular_args) ;
+    : $(regular_args) : : <warnings-as-errors>off ; # TODO: remove when Boost.Context removes warnings
 run_example batch_inserts : 2_simple/batch_inserts.cpp /boost/mysql/test//boost_json_lib
     : $(hostname) : run_batch_inserts.py ;
 run_example batch_inserts_generic : 2_simple/batch_inserts_generic.cpp /boost/mysql/test//boost_json_lib
@@ -119,4 +119,5 @@ run_example connection_pool :
         # Uses heavily Boost.Context coroutines, which aren't fully supported by asan
         <address-sanitizer>norecover:<build>no
         <address-sanitizer>enable:<build>no
+        <warnings-as-errors>off # TODO: remove when Boost.Context removes warnings
     ;
