@@ -126,6 +126,13 @@ struct decimal_formatter
     const char* parse(const char* begin, const char*) { return begin; }
     void format(Decimal value, format_context_base& ctx) const
     {
+        // MySQL's DECIMAL doesn't support NaN or Inf
+        if (decimal::isnan(value) || decimal::isinf(value))
+        {
+            ctx.add_error(client_errc::unformattable_value);
+            return;
+        }
+
         // MySQL's DECIMAL uses fixed precision and a max precision of 65.
         // With sign and radix, that's 67 characters max.
         // Boost.Decimal can represent values that might yield longer representations
