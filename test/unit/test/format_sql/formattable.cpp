@@ -38,7 +38,6 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
-namespace decimal = boost::decimal;
 using mysql_time = boost::mysql::time;
 using std::vector;
 
@@ -183,12 +182,12 @@ BOOST_MYSQL_CHECK_FORMATTABLE(format_seq_t, true)
 
 // decimals are formattable
 #ifdef BOOST_MYSQL_CXX14
-BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal32, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal32_fast, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal64, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal64_fast, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal128, true);
-BOOST_MYSQL_CHECK_FORMATTABLE(decimal::decimal128_fast, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal32, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal32_fast, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal64, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal64_fast, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal128, true);
+BOOST_MYSQL_CHECK_FORMATTABLE(boost::decimal::decimal128_fast, true);
 #endif
 
 // other stuff not accepted
