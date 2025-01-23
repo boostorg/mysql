@@ -36,7 +36,7 @@ struct shared_state
 };
 
 // Launches a HTTP server that will listen on 0.0.0.0:port.
-// If the server fails to launch (e.g. because the port is aleady in use),
+// If the server fails to launch (e.g. because the port is already in use),
 // returns a non-zero error code. ex should identify the io_context or thread_pool
 // where the server should run. The server is run until the underlying execution
 // context is stopped.

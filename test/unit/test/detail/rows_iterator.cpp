@@ -364,7 +364,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(iterator_minus_iterator, RowType, rows_types)
     BOOST_TEST(It(it2) - It(it2) == 0);
     BOOST_TEST(It(itend) - It(itend) == 0);
 
-    // Self substract
+    // Self subtract
     BOOST_TEST(it1 - it1 == 0);
     BOOST_TEST(it2 - it2 == 0);
     BOOST_TEST(itend - itend == 0);

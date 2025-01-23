@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
     transfer(act.read_args().buffer, span<const std::uint8_t>(bytes.data(), 4));
     act = algo.resume(error_code(), 4);
 
-    // The read request wasn't completely satisified, so more bytes are asked for
+    // The read request wasn't completely satisfied, so more bytes are asked for
     BOOST_TEST(act.type() == next_action_type::read);
 
     // Read part of the body
