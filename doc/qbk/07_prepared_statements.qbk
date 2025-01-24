@@ -107,7 +107,7 @@ operation that may block or fail.
 The following table contains a reference of the types that can be used when binding a statement.
 If a type can be used this way, we say to satisfy the `WritableField` concept.
 The table shows how a parameter `v` in a expression `conn.execute(stmt.bind(v), result)`
-is interpreted by MySQL, depeding on `v`'s type.
+is interpreted by MySQL, depending on `v`'s type.
 
 
 [table:writable_field_reference

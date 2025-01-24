@@ -25,7 +25,7 @@ This is a major upgrade, since a lot of changes have been made since the review 
 * Binary types (`BLOB`, `BINARY`, `VARBINARY`, `GEOMETRY`) are now represented as a special type `blob_view`/`blob`.
     * **Action**: if you handle these types in your application, use `is_blob`, `get_blob` and `as_blob` functions in `field_view`.
 * The `collation` enum has been removed in favor of plain integers.
-    * **Action**: if you were using collations explicity, replace the enumerator by the collation ID. You can find them in `<boost/mysql/mysql_collations.hpp>` and `<boost/mysql/mariadb_collations.hpp>`.
+    * **Action**: if you were using collations explicitly, replace the enumerator by the collation ID. You can find them in `<boost/mysql/mysql_collations.hpp>` and `<boost/mysql/mariadb_collations.hpp>`.
 * `connection_params` has been reverted to `handshake_params`.
     * **Action**: replace occurrences of `connection_params` by `handshake_params`.
 * `row` is no longer streamable. The stream operation on `row` wasn't a universal agreement.

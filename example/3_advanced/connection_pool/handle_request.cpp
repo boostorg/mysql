@@ -40,7 +40,7 @@
 
 // This file contains all the boilerplate code to dispatch HTTP
 // requests to API endpoints. Functions here end up calling
-// note_repository fuctions.
+// note_repository functions.
 
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
@@ -232,7 +232,7 @@ class request_handler
                 // Actually create the note
                 auto res = repo_.create_note(args->title, args->content, yield);
 
-                // Return the newly crated note as response
+                // Return the newly created note as response
                 return json_response(single_note_response{std::move(res)});
             }
             else

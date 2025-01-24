@@ -150,7 +150,7 @@ In short:
 * When a connection is created, it goes into the `pending_connect` state.
 * Connection establishment is attempted. If it succeeds, the connection becomes `idle`.
   Otherwise, it stays `pending_connect`, and another attempt will be performed
-  after [refmem pool_params retry_interval] has ellapsed.
+  after [refmem pool_params retry_interval] has elapsed.
 * `idle` connections can be retrieved by [refmem connection_pool async_get_connection],
   and they become `in_use`.
 * If a connection is returned by [refmem pooled_connection return_without_reset],
@@ -226,7 +226,7 @@ goes as follows:
   (a lightweight query).
 * `num_parallel` = 100 async agents are run in parallel. This means that, at any given
   point in time, no more than 100 parallel connections to MySQL are made.
-* The test measures the time ellapsed between launching the first async agent
+* The test measures the time elapsed between launching the first async agent
   and receiving the response for the last query (`ellapsed_time`).
 * The test is repeated 10 times for each different configuration, and results are averaged.
   This time is used to measure the throughput, in "connections/s" (as given by `N/ellapsed_time`).
