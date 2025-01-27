@@ -307,7 +307,7 @@ public:
     }
 
     /**
-     * \brief Returns format options suitable to format SQL according to the current connection configuation.
+     * \brief Returns format options suitable to format SQL according to the current connection configuration.
      * \details
      * If the current character set is known (as given by \ref current_character_set), returns
      * a value suitable to be passed to SQL formatting functions. Otherwise, returns an error.
@@ -332,7 +332,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \returns The matadata mode that will be used for queries and statement executions.
+     * \returns The metadata mode that will be used for queries and statement executions.
      */
     metadata_mode meta_mode() const noexcept { return impl_.meta_mode(); }
 

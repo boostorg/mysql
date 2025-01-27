@@ -21,7 +21,7 @@ using namespace boost::mysql::test;
 namespace collations = boost::mysql::mysql_collations;
 namespace column_flags = boost::mysql::detail::column_flags;
 
-// TODO: these tests should be more targetted towards metadata's object responsibilities
+// TODO: these tests should be more targeted towards metadata's object responsibilities
 // and less integration-y
 
 BOOST_AUTO_TEST_SUITE(test_metadata)

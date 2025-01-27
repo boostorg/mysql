@@ -88,7 +88,7 @@ public:
     // Returns buffer space suitable to read bytes to
     span<std::uint8_t> buffer() { return buffer_.free_area(); }
 
-    // Removes old messages stored in the buffer, and resizes it, if required, to accomodate
+    // Removes old messages stored in the buffer, and resizes it, if required, to accommodate
     // the message currently being parsed.
     BOOST_ATTRIBUTE_NODISCARD
     error_code prepare_buffer()

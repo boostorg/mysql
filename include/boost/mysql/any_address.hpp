@@ -70,7 +70,7 @@ struct unix_path
  * regardless of the transport type being used. It can contain either a host
  * and port (to connect using TCP) or a UNIX path (to connect using UNIX domain sockets).
  *
- * This class may be extended in the future to accomodate Windows named pipes.
+ * This class may be extended in the future to accommodate Windows named pipes.
  *
  * This type has value semantics: it is owning and regular.
  */
