@@ -147,7 +147,7 @@ public:
      * \details
      * The format of this information is documented by MySQL
      * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
-     * \n
+     *
      * The returned string always uses ASCII encoding, regardless of the connection's character set.
      *
      * \par Preconditions
@@ -198,9 +198,7 @@ private:
     {
     }
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 };
 
 }  // namespace mysql

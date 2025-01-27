@@ -21,7 +21,7 @@ namespace mysql {
  * \brief Server-defined error codes, shared between MySQL and MariaDB.
  * \details The numeric value and semantics match the ones described in the MySQL documentation.
  * For more info, consult the error reference for
- * <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html">MySQL 8.0</a>, 
+ * <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html">MySQL 8.0</a>,
  * <a href="https://dev.mysql.com/doc/mysql-errors/5.7/en/server-error-reference.html">MySQL 5.7</a>,
  * <a href="https://mariadb.com/kb/en/mariadb-error-codes/">MariaDB</a>.
  */
@@ -5111,7 +5111,6 @@ inline error_code make_error_code(common_server_errc error)
 
 }  // namespace mysql
 
-#ifndef BOOST_MYSQL_DOXYGEN
 namespace system {
 
 template <>
@@ -5121,7 +5120,6 @@ struct is_error_code_enum<::boost::mysql::common_server_errc>
 };
 
 }  // namespace system
-#endif
 
 }  // namespace boost
 

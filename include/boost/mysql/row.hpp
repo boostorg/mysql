@@ -38,15 +38,11 @@ class row
     detail::row_impl impl_;
 
 public:
-#ifdef BOOST_MYSQL_DOXYGEN
     /**
-     * \brief A random access iterator to an element.
+     * \brief A random access iterator to an element (TODO: hide this).
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = __see_below__;
-#else
     using iterator = const field_view*;
-#endif
 
     /// \copydoc iterator
     using const_iterator = iterator;

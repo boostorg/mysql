@@ -56,8 +56,10 @@ class static_execution_state;
  * executor used by this object is always the same as the underlying stream.
  *
  * \par Thread safety
- * Distinct objects: safe. \n
- * Shared objects: unsafe. \n
+ * Distinct objects: safe.
+ *
+ * Shared objects: unsafe.
+ *
  * This class is **not thread-safe**: for a single object, if you
  * call its member functions concurrently from separate threads, you will get a race condition.
  *
@@ -123,10 +125,8 @@ public:
      */
     connection& operator=(connection&& rhs) = default;
 
-#ifndef BOOST_MYSQL_DOXYGEN
     connection(const connection&) = delete;
     connection& operator=(const connection&) = delete;
-#endif
 
     /// The executor type associated to this object.
     using executor_type = typename Stream::executor_type;
@@ -160,7 +160,7 @@ public:
      * \details
      * This function can be used to determine whether you are using a SSL
      * connection or not when using SSL negotiation.
-     * \n
+     *
      * This function always returns `false` if the underlying
      * stream does not support SSL. This function always returns `false`
      * for connections that haven't been
@@ -185,13 +185,13 @@ public:
      * \details
      * This function is only available if `Stream` satisfies the
      * `SocketStream` concept.
-     * \n
+     *
      * Connects the underlying stream and performs the handshake
      * with the server. The underlying stream is closed in case of error. Prefer
      * this function to \ref connection::handshake.
-     * \n
+     *
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
-     * \n
+     *
      * `endpoint` should be convertible to `Stream::lowest_layer_type::endpoint_type`.
      */
     template <typename EndpointType>
@@ -292,7 +292,7 @@ public:
      * Does not connect the underlying stream.
      * If the `Stream` template parameter fulfills the `SocketConnection`
      * requirements, use \ref connection::connect instead of this function.
-     * \n
+     *
      * If using a SSL-capable stream, the SSL handshake will be performed by this function.
      */
     void handshake(const handshake_params& params, error_code& ec, diagnostics& diag)
@@ -609,26 +609,26 @@ public:
      * Reads a batch of rows of unspecified size into the storage given by `output`.
      * At most `output.size()` rows will be read. If the operation represented by `st`
      * has still rows to read, and `output.size() > 0`, at least one row will be read.
-     * \n
+     *
      * Returns the number of read rows.
-     * \n
+     *
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
-     * \n
+     *
      * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
-     * \n
+     *
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
-     * \n
+     *
      * The type `SpanElementType` must be the underlying row type for one of the types in the
      * `StaticRow` parameter pack (i.e., one of the types in `underlying_row_t<StaticRow>...`).
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanElementType`
      * must exactly be `underlying_row_t<T2>`. If this is not the case, a runtime error will be issued.
-     * \n
+     *
      * This function can report schema mismatches.
      */
     template <class SpanElementType, class... StaticRow>
@@ -648,26 +648,26 @@ public:
      * Reads a batch of rows of unspecified size into the storage given by `output`.
      * At most `output.size()` rows will be read. If the operation represented by `st`
      * has still rows to read, and `output.size() > 0`, at least one row will be read.
-     * \n
+     *
      * Returns the number of read rows.
-     * \n
+     *
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
-     * \n
+     *
      * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
-     * \n
+     *
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
-     * \n
+     *
      * The type `SpanElementType` must be the underlying row type for one of the types in the
      * `StaticRow` parameter pack (i.e., one of the types in `underlying_row_t<StaticRow>...`).
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanElementType`
      * must exactly be `underlying_row_t<T2>`. If this is not the case, a runtime error will be issued.
-     * \n
+     *
      * This function can report schema mismatches.
      */
     template <class SpanElementType, class... StaticRow>
@@ -686,26 +686,26 @@ public:
      * Reads a batch of rows of unspecified size into the storage given by `output`.
      * At most `output.size()` rows will be read. If the operation represented by `st`
      * has still rows to read, and `output.size() > 0`, at least one row will be read.
-     * \n
+     *
      * Returns the number of read rows.
-     * \n
+     *
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
-     * \n
+     *
      * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
-     * \n
+     *
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
-     * \n
+     *
      * The type `SpanElementType` must be the underlying row type for one of the types in the
      * `StaticRow` parameter pack (i.e., one of the types in `underlying_row_t<StaticRow>...`).
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanElementType`
      * must exactly be `underlying_row_t<T2>`. If this is not the case, a runtime error will be issued.
-     * \n
+     *
      * This function can report schema mismatches.
      *
      * \par Handler signature
@@ -746,26 +746,26 @@ public:
      * Reads a batch of rows of unspecified size into the storage given by `output`.
      * At most `output.size()` rows will be read. If the operation represented by `st`
      * has still rows to read, and `output.size() > 0`, at least one row will be read.
-     * \n
+     *
      * Returns the number of read rows.
-     * \n
+     *
      * If there are no more rows, or `st.should_read_rows() == false`, this function is a no-op and returns
      * zero.
-     * \n
+     *
      * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
      * the greater the batch size (up to a maximum). You can set the initial buffer size in `connection`'s
      * constructor, using \ref buffer_params::initial_read_size. The buffer may be
      * grown bigger by other read operations, if required.
-     * \n
+     *
      * Rows read by this function are owning objects, and don't hold any reference to
      * the connection's internal buffers (contrary what happens with the dynamic interface's counterpart).
-     * \n
+     *
      * The type `SpanElementType` must be the underlying row type for one of the types in the
      * `StaticRow` parameter pack (i.e., one of the types in `underlying_row_t<StaticRow>...`).
      * The type must match the resultset that is currently being processed by `st`. For instance,
      * given `static_execution_state<T1, T2>`, when reading rows for the second resultset, `SpanElementType`
      * must exactly be `underlying_row_t<T2>`. If this is not the case, a runtime error will be issued.
-     * \n
+     *
      * This function can report schema mismatches.
      *
      * \par Handler signature
@@ -887,20 +887,20 @@ public:
      * \brief Resets server-side session state, like variables and prepared statements.
      * \details
      * Resets all server-side state for the current session:
-     * \n
+     *
      *   \li Rolls back any active transactions and resets autocommit mode.
      *   \li Releases all table locks.
      *   \li Drops all temporary tables.
      *   \li Resets all session system variables to their default values (including the ones set by `SET
      *       NAMES`) and clears all user-defined variables.
      *   \li Closes all prepared statements.
-     * \n
+     *
      * A full reference on the affected session state can be found
      * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-reset-connection.html">here</a>.
-     * \n
+     *
      * This function will not reset the current physical connection and won't cause re-authentication.
      * It is faster than closing and re-opening a connection.
-     * \n
+     *
      * The connection must be connected and authenticated before calling this function.
      * This function involves communication with the server, and thus may fail.
      *
@@ -909,7 +909,7 @@ public:
      * and not to the one specified during connection establishment. Some servers have `latin1` as their
      * default character set, which is not usually what you want. Use a `SET NAMES` statement after using
      * this function to be sure.
-     * \n
+     *
      * You can find the character set that your server will use after reset by running:
      * \code
      * "SELECT @@global.character_set_client, @@global.character_set_results;"
@@ -932,7 +932,7 @@ public:
     /**
      * \copydoc reset_connection
      * \details
-     * \n
+     *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
      *
@@ -970,10 +970,10 @@ public:
      * \brief Closes the connection to the server.
      * \details
      * This function is only available if `Stream` satisfies the `SocketStream` concept.
-     * \n
+     *
      * Sends a quit request, performs the TLS shutdown (if required)
      * and closes the underlying stream. Prefer this function to \ref connection::quit.
-     * \n
+     *
      */
     void close(error_code& err, diagnostics& diag)
     {
@@ -1046,7 +1046,7 @@ public:
      * \details Sends a quit request to the MySQL server. If the connection is using SSL,
      * this function will also perform the SSL shutdown. You should
      * close the underlying physical connection after calling this function.
-     * \n
+     *
      * If the `Stream` template parameter fulfills the `SocketConnection`
      * requirements, use \ref connection::close instead of this function,
      * as it also takes care of closing the underlying stream.

@@ -62,10 +62,8 @@ namespace mysql {
  */
 class pooled_connection
 {
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
     friend class detail::basic_pool_impl<any_connection, std::chrono::steady_clock, pooled_connection>;
-#endif
 
     struct impl_t
     {
@@ -131,10 +129,8 @@ public:
         return *this;
     }
 
-#ifndef BOOST_MYSQL_DOXYGEN
     pooled_connection(const pooled_connection&) = delete;
     pooled_connection& operator=(const pooled_connection&) = delete;
-#endif
 
     /**
      * \brief Destructor.
@@ -189,16 +185,16 @@ public:
      * \details
      * Returns a connection to the pool and marks it as idle. This will
      * skip the \ref any_connection::async_reset_connection call to wipe session state.
-     * \n
+     *
      * This can provide a performance gain, but must be used with care. Failing to wipe
      * session state can lead to resource leaks (prepared statements not being released),
      * incorrect results and vulnerabilities (different logical operations interacting due
      * to leftover state).
-     * \n
+     *
      * Please read the documentation on \ref any_connection::async_reset_connection before
      * calling this function. If in doubt, don't use it, and leave the destructor return
      * the connection to the pool for you.
-     * \n
+     *
      * When this function returns, `*this` will own nothing (`this->valid() == false`).
      *
      * \par Preconditions
@@ -280,7 +276,7 @@ public:
  *
  * In summary:
  *
- * - Distinct objects: safe. \n
+ * - Distinct objects: safe.
  * - Shared objects: unsafe. Setting \ref pool_params::thread_safe
  *   to `true` makes some functions safe.
  *
@@ -294,9 +290,7 @@ class connection_pool
 {
     std::shared_ptr<detail::pool_impl> impl_;
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 
     struct initiate_run : detail::initiation_base
     {
@@ -413,10 +407,8 @@ public:
     {
     }
 
-#ifndef BOOST_MYSQL_DOXYGEN
     connection_pool(const connection_pool&) = delete;
     connection_pool& operator=(const connection_pool&) = delete;
-#endif
 
     /**
      * \brief Move-constructor.
@@ -635,7 +627,7 @@ public:
      * to connect, this feature can help figuring out where the problem is.
      *
      * \par Preconditions
-     * `this->valid() == true` \n
+     * `this->valid() == true`
      *
      * \par Object lifetimes
      * While the operation is outstanding, the pool's internal data will be kept alive.

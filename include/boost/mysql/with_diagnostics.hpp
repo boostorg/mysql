@@ -50,9 +50,7 @@ class with_diagnostics_t
 {
     CompletionToken impl_;
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 
 public:
     /**

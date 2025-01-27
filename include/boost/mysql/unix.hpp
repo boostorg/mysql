@@ -15,7 +15,7 @@
 namespace boost {
 namespace mysql {
 
-#if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(BOOST_MYSQL_DOXYGEN)
+#ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
 
 /**
  * \brief (Legacy) A connection to MySQL over a UNIX domain socket.

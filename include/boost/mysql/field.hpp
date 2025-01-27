@@ -35,7 +35,7 @@ namespace mysql {
  * has value semantics (as opposed to \ref field_view). Instances of this class are not created
  * by the library. They should be created by the user, when the reference semantics of
  * \ref field_view are not appropriate.
- * \n
+ *
  * Like a variant, at any point, a `field` always contains a value of
  * certain type. You can query the type using \ref kind and the `is_xxx` functions
  * like \ref is_int64. Use `as_xxx` and `get_xxx` for checked and unchecked value
@@ -532,7 +532,7 @@ public:
      * \par Object lifetimes
      * Invalidates references to `*this` obtained by as_xxx and get_xxx functions, but not
      * the ones obtained by \ref field::operator field_view().
-     *\n
+     *
      * `*this` is guaranteed to be valid even after `v` becomes invalid.
      */
     field& operator=(const field_view& v)

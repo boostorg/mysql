@@ -103,7 +103,7 @@ public:
      * \brief Returns the name of the virtual table the column belongs to.
      * \details If the table was aliased, this will be the name of the alias
      * (e.g. in `"SELECT * FROM employees emp"`, `table()` will be `"emp"`).
-     *\n
+     *
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
      *
@@ -120,7 +120,7 @@ public:
      * \brief Returns the name of the physical table the column belongs to.
      * \details E.g. in `"SELECT * FROM employees emp"`,
      * `original_table()` will be `"employees"`.
-     * \n
+     *
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
      *
@@ -138,7 +138,7 @@ public:
      * \details If the column was aliased, this will be the name of the alias
      * (e.g. in `"SELECT id AS employee_id FROM employees"`,
      * `column_name()` will be `"employee_id"`).
-     *\n
+     *
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
      *
@@ -155,7 +155,7 @@ public:
      * \brief Returns the original (physical) name of the column.
      * \details E.g. in `"SELECT id AS employee_id FROM employees"`,
      * `original_column_name()` will be `"id"`.
-     * \n
+     *
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
      *
@@ -293,9 +293,7 @@ private:
 
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 };
 
 }  // namespace mysql

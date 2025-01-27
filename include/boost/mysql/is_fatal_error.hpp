@@ -22,7 +22,7 @@ namespace mysql {
  * the connection may be usable for further operations (if the error was non-fatal)
  * or not (if the error was fatal). This function determines whether an error
  * code returned by a connection operation is fatal or not.
- * \n
+ *
  * To recover from a fatal error code, close and re-establish the connection.
  *
  * \par Exception safety

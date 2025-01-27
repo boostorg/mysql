@@ -35,8 +35,9 @@ namespace mysql {
  * All the passed types must fulfill the `StaticRow` concept.
  *
  * \par Thread safety
- * Distinct objects: safe. \n
- * Shared objects: unsafe. \n
+ * Distinct objects: safe.
+ *
+ * Shared objects: unsafe.
  */
 template <class... StaticRow>
 class static_results
@@ -107,7 +108,7 @@ public:
     bool has_value() const noexcept { return impl_.get_interface().is_complete(); }
 
     /**
-     * \brief Returns the rows retrieved by the SQL query.
+     * \brief Returns the rows retrieved by the SQL query (TODO: see this).
      * \details
      *
      * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
@@ -131,12 +132,13 @@ public:
      * Constant.
      */
     template <std::size_t I = 0>
-#ifdef BOOST_MYSQL_DOXYGEN
-    boost::span<const StaticRow... [I]>
-#else
+    // #ifdef BOOST_MYSQL_DOXYGEN
+    //     boost::span<const StaticRow... [I]>
+    // #else
     detail::rows_span_t<I, StaticRow...>
-#endif
-    rows() const noexcept {
+    // #endif
+    rows() const noexcept
+    {
         static_assert(I < sizeof...(StaticRow), "Index I out of range");
         BOOST_ASSERT(has_value());
         return impl_.template get_rows<I>();
@@ -256,7 +258,7 @@ public:
      * \details
      * The format of this information is documented by MySQL
      * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
-     * \n
+     *
      * The returned string always uses ASCII encoding, regardless of the connection's character set.
      *
      * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
@@ -287,9 +289,7 @@ public:
 
 private:
     detail::static_results_impl<StaticRow...> impl_;
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 };
 
 }  // namespace mysql

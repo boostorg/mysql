@@ -82,11 +82,11 @@ struct pool_params
      * \details
      * When a connection is requested, but all connections are in use, new connections
      * will be created and connected up to this size.
-     * \n
+     *
      * Defaults to the maximum number of concurrent connections that MySQL
      * servers allow by default. If you increase this value, increase the server's
      * max number of connections, too (by setting the `max_connections` global variable).
-     * \n
+     *
      * This value must be `> 0` and `>= initial_size`.
      */
     std::size_t max_size{151};
@@ -97,7 +97,7 @@ struct pool_params
      * If a non-empty value is provided, all connections created by the pool
      * will use the passed context when using TLS. This allows setting TLS options
      * to pool-created connections.
-     * \n
+     *
      * If an empty value is passed (the default) and the connections require TLS,
      * an internal SSL context with suitable options will be created by the pool.
      */
@@ -110,9 +110,9 @@ struct pool_params
      * (using \ref any_connection::async_connect).
      * If the operation takes longer than this timeout,
      * the operation will be interrupted, considered as failed and retried later.
-     * \n
+     *
      * Set this timeout to zero to disable it.
-     * \n
+     *
      * This value must not be negative.
      */
     std::chrono::steady_clock::duration connect_timeout{std::chrono::seconds(20)};
@@ -123,7 +123,7 @@ struct pool_params
      * When session establishment fails, the operation will be retried until
      * success. This value determines the interval between consecutive connection
      * attempts.
-     * \n
+     *
      * This value must be greater than zero.
      */
     std::chrono::steady_clock::duration retry_interval{std::chrono::seconds(30)};
@@ -152,9 +152,9 @@ struct pool_params
      * If pings (as per \ref any_connection::async_ping) or session resets
      * (as per \ref any_connection::async_reset_connection) take longer than this
      * timeout, they will be cancelled, and the operation will be considered failed.
-     * \n
+     *
      * Set this timeout to zero to disable it.
-     * \n
+     *
      * This value must not be negative.
      */
     std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};

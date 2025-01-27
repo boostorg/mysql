@@ -35,7 +35,7 @@ namespace mysql {
  * This is a variant-like class, similar to \ref field, but semi-owning and read-only. Values
  * of this type are usually created by the library, not directly by the user. It's cheap to
  * construct and copy, and it's the main library interface when reading values from MySQL.
- * \n
+ *
  * Like a variant, at any point, a `field_view` always points to a value of
  * certain type. You can query the type using \ref field_view::kind and the `is_xxx` functions
  * like \ref field_view::is_int64. Use `as_xxx` and `get_xxx` for checked and unchecked value
@@ -44,7 +44,7 @@ namespace mysql {
  *
  * \par Object lifetimes
  * Depending on how it was constructed, `field_view` can have value or reference semantics:
- * \n
+ *
  * \li If it was created by the library, the `field_view` will have an associated \ref row,
  *     \ref rows or \ref results object holding memory to which the `field_view` points. It will be valid as
  *     long as the memory allocated by that object is valid.
@@ -55,7 +55,7 @@ namespace mysql {
  *     `field_view` has value semnatics and will always be valid.
  * \li If it was created from a string or blob type, the `field_view` acts as a `string_view` or `blob_view`,
  *     and will be valid as long as the original string/blob is.
- * \n
+ *
  * Calling any member function on a `field_view` that has been invalidated results in undefined
  * behavior.
  */
@@ -606,12 +606,10 @@ private:
     }
     BOOST_CXX14_CONSTEXPR inline void check_kind(internal_kind expected) const;
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend class field;
     friend struct detail::access;
     BOOST_MYSQL_DECL
     friend std::ostream& operator<<(std::ostream& os, const field_view& v);
-#endif
 };
 
 /**
