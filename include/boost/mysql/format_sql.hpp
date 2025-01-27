@@ -118,7 +118,7 @@ public:
      * types may be stored as values.
      */
     template <
-        BOOST_MYSQL_CONCEPT(formattable) Formattable,
+        BOOST_MYSQL_FORMATTABLE Formattable,
         class = typename std::enable_if<
             detail::is_formattable_type<Formattable>() &&
             !detail::is_formattable_ref<Formattable>::value>::type>
@@ -468,7 +468,7 @@ using format_context = basic_format_context<std::string>;
  * \li \ref client_errc::format_arg_not_found if an argument referenced by `format_str` isn't present
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
-template <BOOST_MYSQL_OUTPUT_STRING... Formattable>
+template <BOOST_MYSQL_FORMATTABLE... Formattable>
 void format_sql_to(format_context_base& ctx, constant_string_view format_str, Formattable&&... args)
 {
     std::initializer_list<format_arg> args_il{
@@ -525,7 +525,7 @@ inline void format_sql_to(
  * \li \ref client_errc::format_arg_not_found if an argument referenced by `format_str` isn't present
  *     in `args` (there aren't enough arguments or a named argument is not found).
  */
-template <BOOST_MYSQL_CONCEPT(formattable)... Formattable>
+template <BOOST_MYSQL_FORMATTABLE... Formattable>
 std::string format_sql(format_options opts, constant_string_view format_str, Formattable&&... args);
 
 /**
