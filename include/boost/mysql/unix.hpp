@@ -25,7 +25,7 @@ namespace mysql {
  * \ref connection and its helper typedefs, as it's simpler to use
  * and provides the same level of performance.
  */
-using unix_connection = connection<boost::asio::local::stream_protocol::socket>;
+using unix_connection = connection<asio::local::stream_protocol::socket>;
 
 #endif
 

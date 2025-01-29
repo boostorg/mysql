@@ -25,7 +25,7 @@ namespace mysql {
  * New code should not use this class. When using UNIX sockets, we recommend
  * using plaintext connections.
  */
-using unix_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::local::stream_protocol::socket>>;
+using unix_ssl_connection = connection<asio::ssl::stream<asio::local::stream_protocol::socket>>;
 
 #endif
 

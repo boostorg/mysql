@@ -169,7 +169,7 @@ public:
      * You can configure extra parameters, like the SSL context and buffer sizes, by passing
      * an \ref any_connection_params object to this constructor.
      */
-    any_connection(boost::asio::any_io_executor ex, any_connection_params params = {})
+    any_connection(asio::any_io_executor ex, any_connection_params params = {})
         : any_connection(create_engine(std::move(ex), params.ssl_context), params)
     {
     }
