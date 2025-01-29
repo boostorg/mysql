@@ -54,7 +54,7 @@ struct format_sequence
 };
 
 /**
- * \brief The type of range produced by \ref sequence (TODO: hide this).
+ * \brief The type of range produced by \ref sequence.
  * \details
  * This type trait can be used to obtain the range type produced
  * by calling \ref sequence. This type is used as the `Range` template
@@ -78,10 +78,9 @@ struct format_sequence
  *  - `sequence_range_t<std::reference_wrapper<std::vector<int>>>` is `std::vector<int>&`.
  *  - `sequence_range_t<std::reference_wrapper<const std::vector<int>>>` is `const std::vector<int>&`.
  *  - `sequence_range_t<int(&)[4]>` is `std::array<int, 4>`.
- * (TODO: hide this)
  */
 template <class T>
-using sequence_range_t = typename detail::sequence_range_type<T>::type;
+using sequence_range_t = impl_defined::sequence_range_t<T>;
 
 /**
  * \brief Creates an object that, when formatted, applies a per-element function to a range.
