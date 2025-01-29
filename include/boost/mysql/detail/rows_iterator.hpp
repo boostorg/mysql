@@ -106,6 +106,11 @@ public:
 inline rows_iterator operator+(std::ptrdiff_t n, rows_iterator it) noexcept { return it + n; }
 
 }  // namespace detail
+
+namespace impl_defined {
+using rows_iterator = detail::rows_iterator;
+}
+
 }  // namespace mysql
 }  // namespace boost
 

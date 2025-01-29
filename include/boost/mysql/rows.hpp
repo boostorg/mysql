@@ -42,17 +42,17 @@ class rows
 {
 public:
     /**
-     * \brief A random access iterator to an element (TODO: hide this).
+     * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = detail::rows_iterator;
+    using iterator = impl_defined::rows_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;
 
     /**
      * \brief A type that can hold elements in this collection with value semantics.
-     * \details Note that element accesors (like \ref rows_view::operator[]) return \ref reference
+     * \details Note that element accessors (like \ref rows_view::operator[]) return \ref reference
      * objects instead of `value_type` objects. You can use this type if you need an owning class.
      */
     using value_type = row;

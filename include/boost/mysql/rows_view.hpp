@@ -52,10 +52,10 @@ class rows_view
 {
 public:
     /**
-     * \brief A random access iterator to an element (TODO: hide this).
+     * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = detail::rows_iterator;
+    using iterator = impl_defined::rows_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;
