@@ -66,18 +66,18 @@ struct format_sequence
  *
  * Formally, given the input range type `T` (which can be a reference with cv-qualifiers):
  *
- *  - If `T` is a C array or a reference to one (as per `std::is_array`),
- *    and the array elements' type is `U`, yields `std::array<std::remove_cv_t<U>, N>`.
- *  - If `T` is a `std::reference_wrapper<U>` object, or a reference to one,
- *    yields `U&`.
- *  - Otherwise, yields `std::remove_cvref_t<T>`.
+ *  \li If `T` is a C array or a reference to one (as per `std::is_array`),
+ *      and the array elements' type is `U`, yields `std::array<std::remove_cv_t<U>, N>`.
+ *  \li If `T` is a `std::reference_wrapper<U>` object, or a reference to one,
+ *      yields `U&`.
+ *  \li Otherwise, yields `std::remove_cvref_t<T>`.
  *
  * Examples:
  *
- *  - `sequence_range_t<const std::vector<int>&>` is `std::vector<int>`.
- *  - `sequence_range_t<std::reference_wrapper<std::vector<int>>>` is `std::vector<int>&`.
- *  - `sequence_range_t<std::reference_wrapper<const std::vector<int>>>` is `const std::vector<int>&`.
- *  - `sequence_range_t<int(&)[4]>` is `std::array<int, 4>`.
+ *  \li `sequence_range_t<const std::vector<int>&>` is `std::vector<int>`.
+ *  \li `sequence_range_t<std::reference_wrapper<std::vector<int>>>` is `std::vector<int>&`.
+ *  \li `sequence_range_t<std::reference_wrapper<const std::vector<int>>>` is `const std::vector<int>&`.
+ *  \li `sequence_range_t<int(&)[4]>` is `std::array<int, 4>`.
  */
 template <class T>
 using sequence_range_t = impl_defined::sequence_range_t<T>;
