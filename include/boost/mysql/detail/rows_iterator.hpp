@@ -108,7 +108,7 @@ inline rows_iterator operator+(std::ptrdiff_t n, rows_iterator it) noexcept { re
 }  // namespace detail
 
 namespace impl_defined {
-using rows_iterator = detail::rows_iterator;
+using rows_iterator = detail::rows_iterator;  // Required by the doc toolchain
 }
 
 }  // namespace mysql

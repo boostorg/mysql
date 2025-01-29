@@ -93,6 +93,11 @@ public:
 inline results_iterator operator+(std::ptrdiff_t n, results_iterator it) noexcept { return it + n; }
 
 }  // namespace detail
+
+namespace impl_defined {
+using results_iterator = detail::results_iterator;  // Required by the doc toolchain
+}
+
 }  // namespace mysql
 }  // namespace boost
 

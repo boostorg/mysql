@@ -20,7 +20,7 @@
 namespace boost {
 namespace mysql {
 namespace impl_defined {
-using row_iterator = const field_view*;
+using row_iterator = const field_view*;  // Required by the doc toolchain
 }
 
 /**

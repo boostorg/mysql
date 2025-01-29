@@ -42,10 +42,10 @@ class results
 {
 public:
     /**
-     * \brief A random access iterator to an element (TODO: hide this).
+     * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = detail::results_iterator;
+    using iterator = impl_defined::results_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;
