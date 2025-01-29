@@ -245,7 +245,7 @@ public:
      */
     template <
         typename EndpointType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
@@ -264,7 +264,7 @@ public:
     /// \copydoc async_connect
     template <
         typename EndpointType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code))
     async_connect(
@@ -328,7 +328,7 @@ public:
      * Otherwise, the final handler is called as if it was submitted using `asio::post`,
      * and is never be called inline from within this function.
      */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_handshake(
         const handshake_params& params,
@@ -339,7 +339,7 @@ public:
     }
 
     /// \copydoc async_handshake
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_handshake(
         const handshake_params& params,
@@ -372,7 +372,7 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_RESULTS_TYPE ResultsType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_execute(
         ExecutionRequest&& req,
@@ -392,7 +392,7 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_RESULTS_TYPE ResultsType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_execute(
         ExecutionRequest&& req,
@@ -434,7 +434,7 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_start_execution(
         ExecutionRequest&& req,
@@ -458,7 +458,7 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_start_execution(
         ExecutionRequest&& req,
@@ -496,7 +496,7 @@ public:
     }
 
     /// \copydoc any_connection::async_prepare_statement
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, statement))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_prepare_statement(
         string_view stmt,
@@ -507,7 +507,7 @@ public:
     }
 
     /// \copydoc async_prepare_statement
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, statement))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_prepare_statement(
         string_view stmt,
@@ -538,7 +538,7 @@ public:
     }
 
     /// \copydoc any_connection::async_close_statement
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_close_statement(
         const statement& stmt,
@@ -549,7 +549,7 @@ public:
     }
 
     /// \copydoc async_close_statement
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_close_statement(
         const statement& stmt,
@@ -578,7 +578,7 @@ public:
     }
 
     /// \copydoc any_connection::async_read_some_rows(execution_state&,CompletionToken&&)
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, rows_view))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_read_some_rows(
         execution_state& st,
@@ -589,7 +589,7 @@ public:
     }
 
     /// \copydoc async_read_some_rows(execution_state&,CompletionToken&&)
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, rows_view))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_read_some_rows(
         execution_state& st,
@@ -728,7 +728,7 @@ public:
     template <
         class SpanElementType,
         class... StaticRow,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some_rows(
@@ -788,7 +788,7 @@ public:
     template <
         class SpanElementType,
         class... StaticRow,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     BOOST_ASIO_INITFN_AUTO_RESULT_TYPE(CompletionToken, void(error_code, std::size_t))
     async_read_some_rows(
@@ -826,7 +826,7 @@ public:
     /// \copydoc any_connection::async_read_resultset_head
     template <
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_read_resultset_head(
         ExecutionStateType& st,
@@ -839,7 +839,7 @@ public:
     /// \copydoc async_read_resultset_head
     template <
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_read_resultset_head(
         ExecutionStateType& st,
@@ -864,7 +864,7 @@ public:
     }
 
     /// \copydoc any_connection::async_ping
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_ping(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
         BOOST_MYSQL_RETURN_TYPE(detail::async_ping_t<CompletionToken&&>)
@@ -873,7 +873,7 @@ public:
     }
 
     /// \copydoc async_ping
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_ping(
         diagnostics& diag,
@@ -946,7 +946,7 @@ public:
      * Otherwise, the final handler is called as if it was submitted using `asio::post`,
      * and is never be called inline from within this function.
      */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_reset_connection(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
         BOOST_MYSQL_RETURN_TYPE(detail::async_reset_connection_t<CompletionToken&&>)
@@ -955,7 +955,7 @@ public:
     }
 
     /// \copydoc async_reset_connection
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_reset_connection(
         diagnostics& diag,
@@ -1013,7 +1013,7 @@ public:
      * Otherwise, the final handler is called as if it was submitted using `asio::post`,
      * and is never be called inline from within this function.
      */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_close(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
         BOOST_MYSQL_RETURN_TYPE(detail::async_close_connection_t<CompletionToken&&>)
@@ -1026,7 +1026,7 @@ public:
     }
 
     /// \copydoc async_close
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_close(
         diagnostics& diag,
@@ -1081,7 +1081,7 @@ public:
      * Otherwise, the final handler is called as if it was submitted using `asio::post`,
      * and is never be called inline from within this function.
      */
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_quit(CompletionToken&& token BOOST_ASIO_DEFAULT_COMPLETION_TOKEN(executor_type))
         BOOST_MYSQL_RETURN_TYPE(detail::async_quit_connection_t<CompletionToken&&>)
@@ -1090,7 +1090,7 @@ public:
     }
 
     /// \copydoc async_quit
-    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+    template <BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
                   CompletionToken BOOST_ASIO_DEFAULT_COMPLETION_TOKEN_TYPE(executor_type)>
     auto async_quit(
         diagnostics& diag,

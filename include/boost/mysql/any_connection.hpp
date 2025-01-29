@@ -503,7 +503,7 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_RESULTS_TYPE ResultsType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_execute(ExecutionRequest&& req, ResultsType& result, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_execute_t<ExecutionRequest&&, ResultsType, CompletionToken&&>)
@@ -520,7 +520,7 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_RESULTS_TYPE ResultsType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_execute(
         ExecutionRequest&& req,
@@ -612,7 +612,7 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_start_execution(ExecutionRequest&& req, ExecutionStateType& st, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_start_execution_t<
@@ -632,7 +632,7 @@ public:
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_start_execution(
         ExecutionRequest&& req,
@@ -697,7 +697,7 @@ public:
      * and is never be called inline from within this function.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, statement))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_prepare_statement(string_view stmt, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_prepare_statement_t<CompletionToken&&>)
@@ -707,7 +707,7 @@ public:
 
     /// \copydoc async_prepare_statement
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, statement))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_prepare_statement(string_view stmt, diagnostics& diag, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_prepare_statement_t<CompletionToken&&>)
@@ -761,7 +761,7 @@ public:
      * and is never be called inline from within this function.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_close_statement(const statement& stmt, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_close_statement_t<CompletionToken&&>)
@@ -771,7 +771,7 @@ public:
 
     /// \copydoc async_close_statement
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_close_statement(const statement& stmt, diagnostics& diag, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_close_statement_t<CompletionToken&&>)
@@ -828,7 +828,7 @@ public:
      * and is never be called inline from within this function.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, rows_view))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_read_some_rows(execution_state& st, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_read_some_rows_dynamic_t<CompletionToken&&>)
@@ -838,7 +838,7 @@ public:
 
     /// \copydoc async_read_some_rows(execution_state&,CompletionToken&&)
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, rows_view))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_read_some_rows(execution_state& st, diagnostics& diag, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_read_some_rows_dynamic_t<CompletionToken&&>)
@@ -971,7 +971,7 @@ public:
     template <
         class SpanElementType,
         class... StaticRow,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_read_some_rows(
         static_execution_state<StaticRow...>& st,
@@ -1029,7 +1029,7 @@ public:
     template <
         class SpanElementType,
         class... StaticRow,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, std::size_t))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code, std::size_t))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_read_some_rows(
         static_execution_state<StaticRow...>& st,
@@ -1100,7 +1100,7 @@ public:
      */
     template <
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_read_resultset_head(ExecutionStateType& st, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_read_resultset_head_t<CompletionToken&&>)
@@ -1111,7 +1111,7 @@ public:
     /// \copydoc async_read_resultset_head
     template <
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_read_resultset_head(ExecutionStateType& st, diagnostics& diag, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_read_resultset_head_t<CompletionToken&&>)
@@ -1173,7 +1173,7 @@ public:
      * and is never be called inline from within this function.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_set_character_set(const character_set& charset, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_set_character_set_t<CompletionToken&&>)
@@ -1183,7 +1183,7 @@ public:
 
     /// \copydoc async_set_character_set
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_set_character_set(
         const character_set& charset,
@@ -1238,7 +1238,7 @@ public:
      * and is never be called inline from within this function.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_ping(CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_ping_t<CompletionToken&&>)
@@ -1248,7 +1248,7 @@ public:
 
     /// \copydoc async_ping
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_ping(diagnostics& diag, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_ping_t<CompletionToken&&>)
@@ -1323,7 +1323,7 @@ public:
      * and is never be called inline from within this function.
      */
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_reset_connection(CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_reset_connection_t<CompletionToken&&>)
@@ -1333,7 +1333,7 @@ public:
 
     /// \copydoc async_reset_connection
     template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
+        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_reset_connection(diagnostics& diag, CompletionToken&& token = {})
         BOOST_MYSQL_RETURN_TYPE(detail::async_reset_connection_t<CompletionToken&&>)
