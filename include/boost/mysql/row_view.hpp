@@ -21,6 +21,9 @@
 
 namespace boost {
 namespace mysql {
+namespace implementation_defined {
+using row_view_iterator = const field_view*;
+}
 
 /**
  * \brief A non-owning read-only reference to a sequence of fields.
@@ -54,10 +57,10 @@ public:
     row_view() = default;
 
     /**
-     * \brief A random access iterator to an element (TODO: hide this).
+     * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = const field_view*;
+    using iterator = implementation_defined::row_view_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;

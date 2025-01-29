@@ -19,6 +19,9 @@
 
 namespace boost {
 namespace mysql {
+namespace impl_defined {
+using row_iterator = const field_view*;
+}
 
 /**
  * \brief An owning, read-only sequence of fields.
@@ -39,10 +42,10 @@ class row
 
 public:
     /**
-     * \brief A random access iterator to an element (TODO: hide this).
+     * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = const field_view*;
+    using iterator = impl_defined::row_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;
