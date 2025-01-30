@@ -123,11 +123,11 @@ struct any_connection_params
  *
  * Compared to \ref connection, this class:
  *
- * - Is type-erased. The type of the connection doesn't depend on the transport being used.
- * - Is easier to connect, as \ref connect and \ref async_connect handle hostname resolution.
- * - Can always be re-connected after being used or encountering an error.
- * - Always uses `asio::any_io_executor`.
- * - Has the same level of performance.
+ * \li Is type-erased. The type of the connection doesn't depend on the transport being used.
+ * \li Is easier to connect, as \ref connect and \ref async_connect handle hostname resolution.
+ * \li Can always be re-connected after being used or encountering an error.
+ * \li Always uses `asio::any_io_executor`.
+ * \li Has the same level of performance.
  *
  * This is a move-only type.
  *
@@ -141,7 +141,7 @@ struct any_connection_params
  *
  * Shared objects: unsafe.
  *
- * This class is **not thread-safe**: for a single object, if you
+ * This class is *not thread-safe*: for a single object, if you
  * call its member functions concurrently from separate threads, you will get a race condition.
  */
 class any_connection
@@ -254,7 +254,7 @@ public:
      * \details
      * By default, the server treats backslashes in string values as escape characters.
      * This behavior can be disabled by activating the
-     * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">`NO_BACKSLASH_ESCAPES`</a>
+     * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">NO_BACKSLASH_ESCAPES</a>
      * SQL mode.
      *
      * Every time an operation involving server communication completes, the server reports whether
@@ -548,7 +548,7 @@ public:
      * \ref execution_state::meta populated.
      * Metadata will be populated according to `this->meta_mode()`.
      *
-     * If the operation generated any rows or more than one resultset, these **must** be read (by using
+     * If the operation generated any rows or more than one resultset, these *must* be read (by using
      * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
      * Otherwise, the results are undefined.
      *
@@ -1279,7 +1279,7 @@ public:
      * This function involves communication with the server, and thus may fail.
      *
      * \par Warning on character sets
-     * This function will restore the connection's character set and collation **to the server's default**,
+     * This function will restore the connection's character set and collation *to the server's default*,
      * and not to the one specified during connection establishment. Some servers have `latin1` as their
      * default character set, which is not usually what you want. Since there is no way to know this
      * character set, \ref current_character_set will return `nullptr` after the operation succeeds.
