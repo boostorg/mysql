@@ -93,14 +93,14 @@ struct any_connection_params
      *
      * This effectively means:
      *
-     *   - Each request sent to the server must be smaller than this value.
-     *   - Each individual row received from the server must be smaller than this value.
-     *     Note that when using `execute` or `async_execute`, results objects may
-     *     allocate memory beyond this limit if the total number of rows is high.
+     *   \li Each request sent to the server must be smaller than this value.
+     *   \li Each individual row received from the server must be smaller than this value.
+     *       Note that when using `execute` or `async_execute`, results objects may
+     *       allocate memory beyond this limit if the total number of rows is high.
      *
      * If you need to send or receive larger packets, you may need to adjust
      * your server's
-     * <a href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_max_allowed_packet">`max_allowed_packet`</a>
+     * <a href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_max_allowed_packet">max_allowed_packet</a>
      * system variable, too.
      */
     std::size_t max_buffer_size{0x4000000};
