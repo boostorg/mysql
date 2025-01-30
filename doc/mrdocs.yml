@@ -18,6 +18,7 @@ exclude-symbols:
   - "boost::mysql::mariadb_server_errc"
   - "boost::mysql::mysql_collations"
   - "boost::mysql::mariadb_collations"
+  - "boost::mysql::formatter<*>"
 implementation-defined:
   - "boost::mysql::impl_defined::**" # Matching symbols need to not be excluded. Including all detail is slow and causes trouble
 verbose: true
