@@ -13,7 +13,7 @@
 // clang-format off
 
 // Concepts
-#if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
+#if defined(__cpp_concepts) && defined(__cpp_lib_concepts) && !defined(BOOST_MYSQL_DOXYGEN)
     #define BOOST_MYSQL_HAS_CONCEPTS
 #endif
 
