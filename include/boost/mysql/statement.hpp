@@ -94,7 +94,7 @@ public:
     }
 
     /**
-     * \brief Binds parameters to a statement TODO: see this.
+     * \brief Binds parameters to a statement.
      * \details
      * Creates an object that packages `*this` and the statement actual parameters `params`.
      * This object can be passed to \ref connection::execute, \ref connection::start_execution
@@ -111,7 +111,6 @@ public:
      *
      * \par Exception safety
      * Strong guarantee. Only throws if constructing any of the internal tuple elements throws.
-     * (TODO: review this, as it was listed as "see below")
      */
     template <class... T>
     auto bind(T&&... params) const -> typename std::enable_if<
@@ -139,9 +138,13 @@ public:
      * Strong guarantee. Only throws if the decay-copy of the tuple throws.
      */
     template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
         typename EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type
+#endif
+        >
     bound_statement_tuple<typename std::decay<WritableFieldTuple>::type> bind(WritableFieldTuple&& params
     ) const;
 
@@ -162,9 +165,13 @@ public:
      * Strong guarantee. Only throws if copy-constructing iterators throws.
      */
     template <
-        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
-        typename EnableIf = typename std::enable_if<
-            detail::is_field_view_forward_iterator<FieldViewFwdIterator>::value>::type>
+        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
+        typename EnableIf =
+            typename std::enable_if<detail::is_field_view_forward_iterator<FieldViewFwdIterator>::value>::type
+#endif
+        >
     bound_statement_iterator_range<FieldViewFwdIterator> bind(
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last
