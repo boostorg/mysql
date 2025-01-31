@@ -108,7 +108,7 @@ public:
     bool has_value() const noexcept { return impl_.get_interface().is_complete(); }
 
     /**
-     * \brief Returns the rows retrieved by the SQL query (TODO: see this).
+     * \brief Returns the rows retrieved by the SQL query.
      * \details
      *
      * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
@@ -132,12 +132,7 @@ public:
      * Constant.
      */
     template <std::size_t I = 0>
-    // #ifdef BOOST_MYSQL_DOXYGEN
-    //     boost::span<const StaticRow... [I]>
-    // #else
-    detail::rows_span_t<I, StaticRow...>
-    // #endif
-    rows() const noexcept
+    span<const std::tuple_element_t<I, std::tuple<underlying_row_t<StaticRow>...>>> rows() const noexcept
     {
         static_assert(I < sizeof...(StaticRow), "Index I out of range");
         BOOST_ASSERT(has_value());
