@@ -75,7 +75,7 @@ public:
     /**
      * \brief Constructs a `field_view` holding NULL.
      * \details
-     * Caution: `field_view(NULL)` will **not** match this overload. It will try to construct
+     * Caution: `field_view(NULL)` will *not* match this overload. It will try to construct
      * a `string_view` from a NULL C string, causing undefined behavior.
      *
      * \par Exception safety
