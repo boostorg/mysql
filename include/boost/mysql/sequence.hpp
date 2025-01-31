@@ -32,10 +32,10 @@ namespace mysql {
  *
  * \par Type requirements
  *
- *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
- *     pair that can be compared for (in)equality.
- *   - The expression `static_cast<const FormatFn&>(fn)(* std::begin(range), ctx)`
- *     should be well formed, with `ctx` begin a `format_context_base&`.
+ *   \li Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
+ *       pair that can be compared for (in)equality.
+ *   \li The expression `static_cast<const FormatFn&>(fn)( *std::begin(range), ctx )`
+ *       should be well formed, with `ctx` begin a `format_context_base&`.
  */
 template <class Range, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
