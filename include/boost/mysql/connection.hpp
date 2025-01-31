@@ -905,14 +905,14 @@ public:
      * This function involves communication with the server, and thus may fail.
      *
      * \par Warning on character sets
-     * This function will restore the connection's character set and collation **to the server's default**,
+     * This function will restore the connection's character set and collation *to the server's default*,
      * and not to the one specified during connection establishment. Some servers have `latin1` as their
      * default character set, which is not usually what you want. Use a `SET NAMES` statement after using
      * this function to be sure.
      *
      * You can find the character set that your server will use after reset by running:
      * \code
-     * "SELECT @@global.character_set_client, @@global.character_set_results;"
+     * SELECT @@global.character_set_client, @@global.character_set_results;
      * \endcode
      */
     void reset_connection(error_code& err, diagnostics& diag)
