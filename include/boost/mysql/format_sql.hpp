@@ -362,9 +362,6 @@ public:
         output_.clear();
     }
 
-    basic_format_context(const basic_format_context&) = delete;
-    basic_format_context& operator=(const basic_format_context&) = delete;
-
     /**
      * \brief Move constructor.
      * \details
@@ -380,6 +377,8 @@ public:
         : format_context_base(ref(), rhs), output_(std::move(rhs.output_))
     {
     }
+
+    basic_format_context(const basic_format_context&) = delete;
 
     /**
      * \brief Move assignment.
@@ -398,6 +397,8 @@ public:
         assign(rhs);
         return *this;
     }
+
+    basic_format_context& operator=(const basic_format_context&) = delete;
 
     /**
      * \brief Retrieves the result of the formatting operation.
