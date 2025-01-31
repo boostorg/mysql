@@ -49,8 +49,8 @@ namespace mysql {
  *     \ref rows or \ref results object holding memory to which the `field_view` points. It will be valid as
  *     long as the memory allocated by that object is valid.
  * \li If it was created from a \ref field (by calling `operator field_view`), the
- *     `field_view` acts as a reference to that `field` object, and will be valid as long as the
- *     `field` is.
+ *     `field_view` acts as a reference to that `field` object, and will be valid
+ *      as long as the `field` is.
  * \li If it was created from a scalar (null, integral, floating point, date, datetime or time), the
  *     `field_view` has value semnatics and will always be valid.
  * \li If it was created from a string or blob type, the `field_view` acts as a `string_view` or `blob_view`,
