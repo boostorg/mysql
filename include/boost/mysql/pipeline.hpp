@@ -284,7 +284,7 @@ public:
      * Strong guarantee. Memory allocations may throw.
      *
      * \par Object lifetimes
-     * query is copied into the request and need not be kept alive after this function returns.
+     * `query` is copied into the request and need not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
     pipeline_request& add_execute(string_view query);
@@ -357,7 +357,7 @@ public:
      * Strong guarantee. Memory allocations may throw.
      *
      * \par Object lifetimes
-     * stmt_sql is copied into the request and need not be kept alive after this function returns.
+     * `stmt_sql` is copied into the request and need not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
     pipeline_request& add_prepare_statement(string_view stmt_sql);
