@@ -100,7 +100,7 @@ public:
     /**
      * \brief Constructs a `field` holding NULL.
      * \details
-     * Caution: `field(NULL)` will __NOT__ match this overload. It will try to construct
+     * Caution: `field(NULL)` will *NOT* match this overload. It will try to construct
      * a `string_view` from a NULL C string, causing undefined behavior.
      *
      * \par Exception safety
