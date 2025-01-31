@@ -1112,7 +1112,7 @@ public:
     struct rebind_executor
     {
         /// The connection type when rebound to the specified executor.
-        using other = connection<typename detail::rebind_executor<Stream, Executor1>::type>;
+        using other = connection<impl_defined::rebind_executor<Stream, Executor1>>;
     };
 };
 
