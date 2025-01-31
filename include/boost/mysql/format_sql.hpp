@@ -38,37 +38,37 @@ namespace mysql {
  * \ref format_sql and similar functions.
  *
  * A `formatter` specialization for a type `T` should have the following form:
- * ```
+ * \code
  * template <>
  * struct formatter<T>
  * {
  *     const char* parse(const char* begin, const char* end); // parse format specs
  *     void format(const T& value, format_context_base& ctx) const; // perform the actual formatting
  * };
- * ```
+ * \endcode
  *
  * When a value with a custom formatter is formatted (using \ref format_sql or a similar
  * function), the library performs the following actions:
  *
- *   - An instance of `formatter<T>` is default-constructed, where `T` is the type of the
- *     value being formatted after removing const and references.
- *   - The `parse` function is invoked on the constructed instance,
- *     with `[begin, end)` pointing to the format specifier
- *     that the current replacement field has. If `parse` finds specifiers it understands, it should
- *     remember them, usually setting some flag in the `formatter` instance.
- *     `parse` must return an iterator to the first
- *     unparsed character in the range (or the `end` iterator, if everything was parsed).
- *     Some examples of what would get passed to `parse`:
- *       - In `"SELECT {}"`, the range would be empty.
- *       - In `"SELECT {:abc}"`, the range would be `"abc"`.
- *       - In `"SELECT {0:i}"`, the range would be `"i"`.
- *   - If `parse` didn't manage to parse all the passed specifiers (i.e. if it returned an iterator
- *     different to the passed's end), a \ref client_errc::format_string_invalid_specifier
- *     is emitted and the format operation finishes.
- *   - Otherwise, `format` is invoked on the formatter instance, passing the value to be formatted
- *     and the \ref format_context_base where format operation is running.
- *     This function should perform the actual formatting, usually calling
- *     \ref format_sql_to on the passed context.
+ *   \li An instance of `formatter<T>` is default-constructed, where `T` is the type of the
+ *       value being formatted after removing const and references.
+ *   \li The `parse` function is invoked on the constructed instance,
+ *       with `[begin, end)` pointing to the format specifier
+ *       that the current replacement field has. If `parse` finds specifiers it understands, it should
+ *       remember them, usually setting some flag in the `formatter`
+ *       instance. `parse` must return an iterator to the first
+ *       unparsed character in the range (or the `end` iterator, if everything was parsed).
+ *       Some examples of what would get passed to `parse`:
+ *         \li In `"SELECT {}"`, the range would be empty.
+ *         \li In `"SELECT {:abc}"`, the range would be `"abc"`.
+ *         \li In `"SELECT {0:i}"`, the range would be `"i"`.
+ *   \li If `parse` didn't manage to parse all the passed specifiers (i.e. if it returned an iterator
+ *       different to the passed's end), a \ref client_errc::format_string_invalid_specifier
+ *       is emitted and the format operation finishes.
+ *   \li Otherwise, `format` is invoked on the formatter instance, passing the value to be formatted
+ *       and the \ref format_context_base where format operation is running.
+ *       This function should perform the actual formatting,
+ *       usually calling \ref format_sql_to on the passed context.
  *
  *
  * Don't specialize `formatter` for built-in types, like `int`, `std::string` or
