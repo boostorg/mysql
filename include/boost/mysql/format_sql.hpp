@@ -118,10 +118,14 @@ public:
      * types may be stored as values.
      */
     template <
-        BOOST_MYSQL_FORMATTABLE Formattable,
+        BOOST_MYSQL_FORMATTABLE Formattable
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
         class = typename std::enable_if<
             detail::is_formattable_type<Formattable>() &&
-            !detail::is_formattable_ref<Formattable>::value>::type>
+            !detail::is_formattable_ref<Formattable>::value>::type
+#endif
+        >
     formattable_ref(Formattable&& value) noexcept
         : impl_(detail::make_formattable_ref(std::forward<Formattable>(value)))
     {
