@@ -44,8 +44,10 @@
 #define BOOST_MYSQL_RETURN_TYPE(...)
 #endif
 
-// Chrono calendar types and functions
-#if __cpp_lib_chrono >= 201907L
+// Chrono calendar types and functions.
+// When generating docs, the standard library may not have support for everything
+// in C++20 chrono, but enough for render docs.
+#if (__cpp_lib_chrono >= 201907L) || (defined(BOOST_MYSQL_DOXYGEN) && __cplusplus >= 201907L)
 #define BOOST_MYSQL_HAS_LOCAL_TIME
 #endif
 
