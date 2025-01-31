@@ -20,21 +20,9 @@
 namespace boost {
 namespace mysql {
 
-/**
- * \brief A statement with bound parameters, represented as a `std::tuple`.
- * \details
- * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
- * \ref connection::start_execution or their async counterparts.
- */
 template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
 class bound_statement_tuple;
 
-/**
- * \brief A statement with bound parameters, represented as an iterator range.
- * \details
- * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
- * \ref connection::start_execution or their async counterparts.
- */
 template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
 class bound_statement_iterator_range;
 
@@ -193,6 +181,59 @@ private:
     }
 
     friend struct detail::access;
+};
+
+/**
+ * \brief A statement with bound parameters, represented as a `std::tuple`.
+ * \details
+ * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
+ * \ref connection::start_execution or their async counterparts.
+ */
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
+class bound_statement_tuple
+{
+    friend class statement;
+    friend struct detail::access;
+
+    struct impl
+    {
+        statement stmt;
+        WritableFieldTuple params;
+    } impl_;
+
+    template <typename TupleType>
+    bound_statement_tuple(const statement& stmt, TupleType&& t) : impl_{stmt, std::forward<TupleType>(t)}
+    {
+    }
+};
+
+/**
+ * \brief A statement with bound parameters, represented as an iterator range.
+ * \details
+ * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
+ * \ref connection::start_execution or their async counterparts.
+ */
+template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+class bound_statement_iterator_range
+{
+    friend class statement;
+    friend struct detail::access;
+
+    struct impl
+    {
+        statement stmt;
+        FieldViewFwdIterator first;
+        FieldViewFwdIterator last;
+    } impl_;
+
+    bound_statement_iterator_range(
+        const statement& stmt,
+        FieldViewFwdIterator first,
+        FieldViewFwdIterator last
+    )
+        : impl_{stmt, first, last}
+    {
+    }
 };
 
 }  // namespace mysql
