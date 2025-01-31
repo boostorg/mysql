@@ -44,7 +44,7 @@ namespace mysql {
  * automatically. It's safe to destroy the `connection_pool` object before `*this`.
  *
  * \par Thread safety
- * This object and the \ref any_connection object it may point to are **not thread safe**,
+ * This object and the \ref any_connection object it may point to are *not thread safe*,
  * even if the connection pool used to obtain them was constructed with
  * \ref pool_params::thread_safe set to true.
  *
@@ -56,9 +56,9 @@ namespace mysql {
  * In other words, individual connections can't be shared between threads. Pools can
  * be shared only if they're constructed with \ref pool_params::thread_safe set to true.
  *
- * - Distinct objects: safe if the \ref connection_pool that was used to obtain the objects
- *   was created with \ref pool_params::thread_safe set to true. Otherwise, unsafe.
- * - Shared objects: always unsafe.
+ * \li Distinct objects: safe if the \ref connection_pool that was used to obtain the objects
+ *     was created with \ref pool_params::thread_safe set to true. Otherwise, unsafe.
+ * \li Shared objects: always unsafe.
  */
 class pooled_connection
 {
@@ -79,7 +79,7 @@ class pooled_connection
 
 public:
     /**
-     * \brief Constructs an invalid pooled connection.
+     * \brief Default constructor.
      * \details
      * The resulting object is invalid (`this->valid() == false`).
      *
@@ -100,6 +100,8 @@ public:
      * No-throw guarantee.
      */
     pooled_connection(pooled_connection&& other) noexcept : impl_(std::move(other.impl_)) {}
+
+    pooled_connection(const pooled_connection&) = delete;
 
     /**
      * \brief Move assignment.
@@ -129,7 +131,6 @@ public:
         return *this;
     }
 
-    pooled_connection(const pooled_connection&) = delete;
     pooled_connection& operator=(const pooled_connection&) = delete;
 
     /**
@@ -249,7 +250,7 @@ public:
  * Pools are composed of an internal state object, plus a handle to such state.
  * Each component has different thread-safety rules.
  *
- * Regarding **internal state**, connection pools are **not thread-safe by default**,
+ * Regarding *internal state*, connection pools are *not thread-safe by default*,
  * but can be made safe by constructing them with
  * \ref pool_params::thread_safe set to `true`.
  * Internal state is also mutated by some functions outside `connection_pool`, like
@@ -258,16 +259,16 @@ public:
  * The following actions imply a pool state mutation, and are protected by a strand
  * when thread-safety is enabled:
  *
- * - Calling \ref connection_pool::async_run.
- * - Calling \ref connection_pool::async_get_connection.
- * - Cancelling \ref async_get_connection by emitting a cancellation signal.
- * - Returning a connection by destroying a \ref pooled_connection or
- *   calling \ref pooled_connection::return_without_reset.
- * - Cancelling the pool by calling \ref connection_pool::cancel,
- *   emitting a cancellation signal for \ref async_run, or destroying the
- *   `connection_pool` object.
+ * \li Calling \ref connection_pool::async_run.
+ * \li Calling \ref connection_pool::async_get_connection.
+ * \li Cancelling \ref async_get_connection by emitting a cancellation signal.
+ * \li Returning a connection by destroying a \ref pooled_connection or
+ *     calling \ref pooled_connection::return_without_reset.
+ * \li Cancelling the pool by calling \ref connection_pool::cancel,
+ *     emitting a cancellation signal for \ref async_run, or destroying the
+ *     `connection_pool` object.
  *
- * The **handle to the pool state** is **never thread-safe**, even for
+ * The *handle to the pool state* is *never thread-safe*, even for
  * pools with thread-safety enabled. Functions like assignments
  * modify the handle, and cause race conditions if called
  * concurrently with other functions. Other objects,
@@ -276,9 +277,9 @@ public:
  *
  * In summary:
  *
- * - Distinct objects: safe.
- * - Shared objects: unsafe. Setting \ref pool_params::thread_safe
- *   to `true` makes some functions safe.
+ *  \li Distinct objects: safe.
+ *  \li Shared objects: unsafe. Setting \ref pool_params::thread_safe
+ *      to `true` makes some functions safe.
  *
  * \par Object lifetimes
  * Connection pool objects create an internal state object that is referenced
@@ -363,12 +364,12 @@ public:
      * The passed executor becomes the pool executor, available through \ref get_executor.
      * `ex` is used as follows:
      *
-     *   - If `params.thread_safe == true`, `ex` is used to build a strand. The strand is used
-     *     to build internal I/O objects, like timers.
-     *   - If `params.thread_safe == false`, `ex` is used directly to build internal I/O objects.
-     *   - If `params.connection_executor` is empty, `ex` is used to build individual connections,
-     *     regardless of the chosen thread-safety mode. Otherwise, `params.connection_executor`
-     *     is used.
+     *   \li If `params.thread_safe == true`, `ex` is used to build a strand. The strand is used
+     *       to build internal I/O objects, like timers.
+     *   \li If `params.thread_safe == false`, `ex` is used directly to build internal I/O objects.
+     *   \li If `params.connection_executor` is empty, `ex` is used to build individual connections,
+     *       regardless of the chosen thread-safety mode. Otherwise, `params.connection_executor`
+     *       is used.
      *
      * \par Exception safety
      * Strong guarantee. Exceptions may be thrown by memory allocations.
@@ -394,21 +395,14 @@ public:
      *         pool_params.
      */
     template <
-        class ExecutionContext
-#ifndef BOOST_MYSQL_DOXYGEN
-        ,
+        class ExecutionContext,
         class = typename std::enable_if<std::is_convertible<
             decltype(std::declval<ExecutionContext&>().get_executor()),
-            asio::any_io_executor>::value>::type
-#endif
-        >
+            asio::any_io_executor>::value>::type>
     connection_pool(ExecutionContext& ctx, pool_params params)
         : connection_pool(ctx.get_executor(), std::move(params), 0)
     {
     }
-
-    connection_pool(const connection_pool&) = delete;
-    connection_pool& operator=(const connection_pool&) = delete;
 
     /**
      * \brief Move-constructor.
@@ -426,15 +420,17 @@ public:
      *
      * \par Thread-safety
      * Mutates `other`'s internal state handle. Does not access the pool state.
-     * This function **can never be called concurrently with other functions
-     * that read the internal state handle**, even for pools created
-     * with \ref pool_params::thread_safe set to true.
+     * This function
+     * *can never be called concurrently with other functions that read the internal state handle*,
+     * even for pools created with \ref pool_params::thread_safe set to true.
      *
      * The internal pool state is not accessed, so this function can be called
      * concurrently with functions that only access the pool's internal state,
      * like returning connections.
      */
     connection_pool(connection_pool&& other) = default;
+
+    connection_pool(const connection_pool&) = delete;
 
     /**
      * \brief Move assignment.
@@ -452,15 +448,17 @@ public:
      *
      * \par Thread-safety
      * Mutates `*this` and `other`'s internal state handle. Does not access the pool state.
-     * This function **can never be called concurrently with other functions
-     * that read the internal state handle**, even for pools created
-     * with \ref pool_params::thread_safe set to true.
+     * This function
+     * *can never be called concurrently with other functions that read the internal state handle*,
+     * even for pools created with \ref pool_params::thread_safe set to true.
      *
      * The internal pool state is not accessed, so this function can be called
      * concurrently with functions that only access the pool's internal state,
      * like returning connections.
      */
     connection_pool& operator=(connection_pool&& other) = default;
+
+    connection_pool& operator=(const connection_pool&) = delete;
 
     /**
      * \brief Destructor.
@@ -469,9 +467,9 @@ public:
      *
      * \par Thread-safety
      * Mutates the internal state handle. Mutates the pool state.
-     * This function **can never be called concurrently with other functions
-     * that read the internal state handle**, even for pools created
-     * with \ref pool_params::thread_safe set to true.
+     * This function
+     * *can never be called concurrently with other functions that read the internal state handle*,
+     * even for pools created with \ref pool_params::thread_safe set to true.
      *
      * The internal pool state is modified as per \ref cancel.
      * If thread-safety is enabled, it's safe to call the destructor concurrently
@@ -569,8 +567,8 @@ public:
      * is equivalent to calling \ref connection_pool::cancel.
      * The following `asio::cancellation_type_t` values are supported:
      *
-     *   - `asio::cancellation_type_t::terminal`
-     *   - `asio::cancellation_type_t::partial`
+     *   \li `asio::cancellation_type_t::terminal`
+     *   \li `asio::cancellation_type_t::partial`
      *
      * Note that `asio::cancellation_type_t::total` is not supported because invoking
      * `async_run` always has observable side effects.
@@ -659,18 +657,18 @@ public:
      * Cancelling `async_get_connection` has no observable side effects.
      * The following `asio::cancellation_type_t` values are supported:
      *
-     *   - `asio::cancellation_type_t::terminal`
-     *   - `asio::cancellation_type_t::partial`
-     *   - `asio::cancellation_type_t::total`
+     *   \li `asio::cancellation_type_t::terminal`
+     *   \li `asio::cancellation_type_t::partial`
+     *   \li `asio::cancellation_type_t::total`
      *
      * \par Errors
-     *   - \ref client_errc::no_connection_available, if the `async_get_connection`
-     *     operation is cancelled before a connection becomes available.
-     *   - \ref client_errc::pool_not_running, if the `async_get_connection`
-     *     operation is cancelled before async_run is called.
-     *   - \ref client_errc::pool_cancelled, if the pool is cancelled before
-     *     the operation completes, or `async_get_connection` is called
-     *     on a pool that has been cancelled.
+     *   \li \ref client_errc::no_connection_available, if the `async_get_connection`
+     *       operation is cancelled before a connection becomes available.
+     *   \li \ref client_errc::pool_not_running, if the `async_get_connection`
+     *       operation is cancelled before async_run is called.
+     *   \li \ref client_errc::pool_cancelled, if the pool is cancelled before
+     *       the operation completes, or `async_get_connection` is called
+     *       on a pool that has been cancelled.
      *
      * \par Thread-safety
      * Reads the internal state handle. Mutates the pool state.
