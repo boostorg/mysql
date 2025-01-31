@@ -98,14 +98,14 @@ using sequence_range_t = impl_defined::sequence_range_t<T>;
  *
  * Formally:
  *
- *   - If `Range` is a (possibly cv-qualified) C array reference (as per `std::is_array<Range>`),
- *     and the array has `N` elements of type `U`, the output range type is
- *     `std::array<std::remove_cv< U >, N>`, and the range is created as if `std::to_array` was called.
- *   - If `Range` is a `std::reference_wrapper< U >` object, or a reference to one,
- *     the output range type is `U&`. This effectively disables copying the input range.
- *     The resulting object will be a view type, and the caller is responsible for lifetime management.
- *   - Otherwise, the output range type is `std::remove_cvref_t<Range>`, and it will be
- *     created by forwarding the passed `range`.
+ *   \li If `Range` is a (possibly cv-qualified) C array reference (as per `std::is_array<Range>`),
+ *       and the array has `N` elements of type `U`, the output range type
+ *       is `std::array<std::remove_cv< U >, N>`, and the range is created as if `std::to_array` was called.
+ *   \li If `Range` is a `std::reference_wrapper< U >` object, or a reference to one,
+ *       the output range type is `U&`. This effectively disables copying the input range.
+ *       The resulting object will be a view type, and the caller is responsible for lifetime management.
+ *   \li Otherwise, the output range type is `std::remove_cvref_t<Range>`, and it will be
+ *       created by forwarding the passed `range`.
  *
  * `FormatFn` is always decay-copied into the resulting object.
  *
@@ -116,15 +116,15 @@ using sequence_range_t = impl_defined::sequence_range_t<T>;
  * The resulting range and format function should be compatible, and any required
  * copy/move operations should be well defined. Formally:
  *
- *   - `std::decay_t<FormatFn>` should be a formatter function compatible with
- *     the elements of the output range. See \ref format_sequence for the formal requirements.
- *   - If `Range` is a `std::reference_wrapper< U >`, or a reference to one,
- *     no further requirements are placed on `U`.
- *   - If `Range` is a lvalue reference to a C array, its elements should be copy-constructible
- *     (as per `std::to_array` requirements).
- *   - If `Range` is a rvalue reference to a C array, its elements should be move-constructible
- *     (as per `std::to_array` requirements).
- *   - Performing a decay-copy of `FormatFn` should be well defined.
+ *   \li `std::decay_t<FormatFn>` should be a formatter function compatible with
+ *       the elements of the output range. See \ref format_sequence for the formal requirements.
+ *   \li If `Range` is a `std::reference_wrapper< U >`, or a reference to one,
+ *       no further requirements are placed on `U`.
+ *   \li If `Range` is a lvalue reference to a C array, its elements should be copy-constructible
+ *       (as per `std::to_array` requirements).
+ *   \li If `Range` is a rvalue reference to a C array, its elements should be move-constructible
+ *       (as per `std::to_array` requirements).
+ *   \li Performing a decay-copy of `FormatFn` should be well defined.
  *
  * \par Exception safety
  * Basic guarantee. Propagates any exception thrown when constructing the output
