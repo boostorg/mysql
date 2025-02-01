@@ -38,7 +38,7 @@ using boost::mysql::client_errc;
 using boost::mysql::error_code;
 using u8vec = std::vector<std::uint8_t>;
 
-BOOST_AUTO_TEST_SUITE(test_algo_runner)
+BOOST_AUTO_TEST_SUITE(test_top_level_algo)
 
 void transfer(span<std::uint8_t> buff, span<const std::uint8_t> bytes)
 {
