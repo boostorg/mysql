@@ -101,7 +101,7 @@ detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
     // Go through the requested steps
     for (std::size_t i = 0; i < num_steps_to_run; ++i)
     {
-        BOOST_TEST_CONTEXT("Step " << i)
+        BOOST_TEST_CONTEXT("Step " << i << ", error_code=" << (act.is_done() ? act.error() : error_code()))
         {
             const auto& step = steps_[i];
             BOOST_TEST_REQUIRE(act.type() == step.type);
@@ -165,6 +165,15 @@ void boost::mysql::test::algo_test::check_impl(
 {
     BOOST_TEST_CONTEXT("Called from " << loc)
     {
+        // Compute the expected state. If the test didn't explicitly state that
+        // a state variable was changing, expect it not to change.
+        bool expected_is_connected = state_changes_.is_connected.value_or(st.is_connected);
+        auto expected_flavor = state_changes_.flavor.value_or(st.flavor);
+        auto expected_capabilities = state_changes_.current_capabilities.value_or(st.current_capabilities);
+        auto expected_ssl = state_changes_.ssl.value_or(st.ssl);
+        bool expected_backslash_escapes = state_changes_.backslash_escapes.value_or(st.backslash_escapes);
+        character_set expected_charset = state_changes_.current_charset.value_or(st.current_charset);
+
         // Run the op until completion
         auto act = run_algo_until_step(st, algo, steps_.size());
 
@@ -174,6 +183,14 @@ void boost::mysql::test::algo_test::check_impl(
         // Check results
         BOOST_TEST(act.error() == expected_ec);
         BOOST_TEST(actual_diag == expected_diag);
+
+        // Check state changes
+        BOOST_TEST(st.is_connected == expected_is_connected);
+        BOOST_TEST(st.flavor == expected_flavor);
+        BOOST_TEST(st.current_capabilities == expected_capabilities);
+        BOOST_TEST(st.ssl == expected_ssl);
+        BOOST_TEST(st.backslash_escapes == expected_backslash_escapes);
+        BOOST_TEST(st.current_charset == expected_charset);
     }
 }
 
@@ -439,7 +456,7 @@ struct boost::mysql::test::test_stream::read_op
     asio::mutable_buffer buff_;
     bool has_posted_{};
 
-    read_op(test_stream& stream, asio::mutable_buffer buff) noexcept : stream_(stream), buff_(buff){};
+    read_op(test_stream& stream, asio::mutable_buffer buff) noexcept : stream_(stream), buff_(buff) {};
 
     template <class Self>
     void operator()(Self& self)
@@ -466,7 +483,7 @@ struct boost::mysql::test::test_stream::write_op
     asio::const_buffer buff_;
     bool has_posted_{};
 
-    write_op(test_stream& stream, asio::const_buffer buff) noexcept : stream_(stream), buff_(buff){};
+    write_op(test_stream& stream, asio::const_buffer buff) noexcept : stream_(stream), buff_(buff) {};
 
     template <class Self>
     void operator()(Self& self)
