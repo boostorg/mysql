@@ -40,6 +40,10 @@ enum class ssl_state
 
 struct connection_state_data
 {
+    // Are we currently executing an operation?
+    // Prevent the user from running concurrent operations
+    bool op_in_progress{false};
+
     // Is the connection actually connected? Set by handshake
     bool is_connected{false};
 

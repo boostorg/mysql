@@ -164,6 +164,7 @@ public:
         BOOST_TEST(st_.ssl == expected_ssl);
         BOOST_TEST(st_.backslash_escapes == expected_backslash_escapes);
         BOOST_TEST(st_.current_charset == expected_charset);
+        BOOST_TEST(!st_.op_in_progress);  // No algorithm should modify this
     }
 };
 

@@ -66,6 +66,12 @@ public:
         switch (resume_point_)
         {
         case 0:
+            // Check that we're not already running something
+            if (st_->op_in_progress)
+                return error_code(client_errc::operation_in_progress);
+
+            // Mark that we're running an operation
+            st_->op_in_progress = true;
 
             // Run until completion
             while (true)
@@ -76,6 +82,10 @@ public:
                 // Check next action
                 if (act.is_done())
                 {
+                    // Record that we're no longer running an operation
+                    st_->op_in_progress = false;
+
+                    // Done
                     return act;
                 }
                 else if (act.type() == next_action_type::read)
