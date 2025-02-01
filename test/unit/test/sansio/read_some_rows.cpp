@@ -99,7 +99,6 @@ BOOST_AUTO_TEST_CASE(eof_no_backslash_escapes)
 
     BOOST_TEST(fix.result() == 0u);  // num read rows
     BOOST_TEST(fix.proc.is_reading_head());
-    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(batch_with_rows)

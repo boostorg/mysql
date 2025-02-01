@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
     // Setup
     read_response_fixture fix;
 
-    // Run the algo
+    // Run the algo. The current charset was not updated
     algo_test()
         .expect_read(err_builder()
                          .seqnum(29)
@@ -127,9 +127,6 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
                          .message("Unknown charset")
                          .build_frame())
         .check(fix, common_server_errc::er_unknown_character_set, create_server_diag("Unknown charset"));
-
-    // The current character set was not updated
-    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 //
@@ -180,11 +177,8 @@ BOOST_AUTO_TEST_CASE(set_charset_error_composing_request)
     set_charset_fixture fix({"lat\xc3\xadn", utf8mb4_charset.next_char});
     fix.st.current_charset = ascii_charset;
 
-    // Run the algo
+    // Run the algo. The current charset was not updated
     algo_test().check(fix, client_errc::invalid_encoding);
-
-    // The current character set was not updated
-    BOOST_TEST(fix.st.current_charset == ascii_charset);
 }
 
 BOOST_AUTO_TEST_CASE(set_charset_error_network)

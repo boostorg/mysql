@@ -634,15 +634,11 @@ BOOST_AUTO_TEST_CASE(no_response_fatal_error)
     fixture_base fix(stages);
     fix.st.backslash_escapes = false;
 
-    // Run the test
+    // Run the test. This checks that the state was not modified
     algo_test()
         .expect_write(mock_request)
         .expect_read(asio::error::network_reset)
         .check(fix, asio::error::network_reset);
-
-    // Nothing was modified
-    BOOST_TEST(fix.st.backslash_escapes == false);
-    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 BOOST_AUTO_TEST_CASE(reusing_responses)
