@@ -47,11 +47,10 @@ BOOST_AUTO_TEST_CASE(read_response_success)
     fix.st.current_charset = utf8mb4_charset;
 
     // Run the algo
-    algo_test().expect_read(create_ok_frame(11, ok_builder().build())).check(fix);
-
-    // The OK packet was processed correctly. The charset was reset
-    BOOST_TEST(fix.st.backslash_escapes);
-    BOOST_TEST(fix.st.current_charset == character_set());
+    algo_test()
+        .expect_read(create_ok_frame(11, ok_builder().build()))
+        .will_set_current_charset(character_set{})  // the charset was reset
+        .check(fix);
 }
 
 BOOST_AUTO_TEST_CASE(read_response_success_no_backslash_escapes)
@@ -60,12 +59,11 @@ BOOST_AUTO_TEST_CASE(read_response_success_no_backslash_escapes)
     read_response_fixture fix;
 
     // Run the algo
-    algo_test().expect_read(create_ok_frame(11, ok_builder().no_backslash_escapes(true).build())).check(fix);
-
-    // The OK packet was processed correctly.
-    // It's OK to run this algo without a known charset
-    BOOST_TEST(!fix.st.backslash_escapes);
-    BOOST_TEST(fix.st.current_charset == character_set());
+    algo_test()
+        .expect_read(create_ok_frame(11, ok_builder().no_backslash_escapes(true).build()))
+        .will_set_backslash_escapes(false)          // OK packet processed
+        .will_set_current_charset(character_set{})  // charset was reset
+        .check(fix);
 }
 
 BOOST_AUTO_TEST_CASE(read_response_error_network)
@@ -113,11 +111,8 @@ BOOST_AUTO_TEST_CASE(success)
     algo_test()
         .expect_write(create_frame(0, {0x1f}))
         .expect_read(create_ok_frame(1, ok_builder().build()))
+        .will_set_current_charset(character_set{})  // charset was reset
         .check(fix);
-
-    // The OK packet was processed correctly. The charset was reset
-    BOOST_TEST(fix.st.backslash_escapes);
-    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 BOOST_AUTO_TEST_CASE(reset_conn_error_network)

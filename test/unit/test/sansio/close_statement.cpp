@@ -67,6 +67,7 @@ BOOST_AUTO_TEST_CASE(success_no_backslash_escapes)
         .expect_write(expected_request())  // requests
         .expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build())
         )  // response to the ping request
+        .will_set_backslash_escapes(false)
         .check(fix);
 
     // The OK packet was correctly processed

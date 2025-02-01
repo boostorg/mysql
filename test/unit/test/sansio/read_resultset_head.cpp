@@ -92,11 +92,13 @@ BOOST_AUTO_TEST_CASE(success_ok_packet_no_backslash_escapes)
     fixture fix;
 
     // Run the algo
-    algo_test().expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build())).check(fix);
+    algo_test()
+        .expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build()))
+        .will_set_backslash_escapes(false)
+        .check(fix);
 
     // Verify
     fix.proc.num_calls().on_head_ok_packet(1).validate();
-    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 // Check that we don't attempt to read the rows even if they're available
