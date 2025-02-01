@@ -29,6 +29,7 @@
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/asio/buffer.hpp>
 #include <boost/asio/compose.hpp>
@@ -580,6 +581,21 @@ static const char* to_string(detail::db_flavor v)
 }
 
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, db_flavor v) { return os << ::to_string(v); }
+
+// ssl_state
+static const char* to_string(detail::ssl_state v)
+{
+    switch (v)
+    {
+    case detail::ssl_state::unsupported: return "ssl_state::unsupported";
+    case detail::ssl_state::inactive: return "ssl_state::inactive";
+    case detail::ssl_state::active: return "ssl_state::active";
+    case detail::ssl_state::torn_down: return "ssl_state::torn_down";
+    default: return "<unknown ssl_state>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, ssl_state v) { return os << ::to_string(v); }
 
 // resultset_encoding
 static const char* to_string(detail::resultset_encoding v)
