@@ -119,6 +119,54 @@ detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
     return act;
 }
 
+boost::mysql::test::algo_test& boost::mysql::test::algo_test::add_step(
+    detail::next_action_type act_type,
+    std::vector<std::uint8_t> bytes,
+    error_code ec
+)
+{
+    steps_.push_back(step_t{act_type, std::move(bytes), ec});
+    return *this;
+}
+
+// Utility to implement state tracking
+class boost::mysql::test::algo_test::state_checker
+{
+    // The tracked state
+    detail::connection_state_data& st_;
+
+    // The values we expect to get after running the algorithm.
+    // If a change is not in expected_state_changes_t, the value shouldn't change
+    bool expected_is_connected;
+    detail::db_flavor expected_flavor;
+    detail::capabilities expected_capabilities;
+    detail::ssl_state expected_ssl;
+    bool expected_backslash_escapes;
+    character_set expected_charset;
+
+public:
+    state_checker(detail::connection_state_data& st, const expected_state_changes_t& changes) noexcept
+        : st_(st),
+          expected_is_connected(changes.is_connected.value_or(st.is_connected)),
+          expected_flavor(changes.flavor.value_or(st.flavor)),
+          expected_capabilities(changes.current_capabilities.value_or(st.current_capabilities)),
+          expected_ssl(changes.ssl.value_or(st.ssl)),
+          expected_backslash_escapes(changes.backslash_escapes.value_or(st.backslash_escapes)),
+          expected_charset(changes.current_charset.value_or(st.current_charset))
+    {
+    }
+
+    void check() const
+    {
+        BOOST_TEST(st_.is_connected == expected_is_connected);
+        BOOST_TEST(st_.flavor == expected_flavor);
+        BOOST_TEST(st_.current_capabilities == expected_capabilities);
+        BOOST_TEST(st_.ssl == expected_ssl);
+        BOOST_TEST(st_.backslash_escapes == expected_backslash_escapes);
+        BOOST_TEST(st_.current_charset == expected_charset);
+    }
+};
+
 void boost::mysql::test::algo_test::check_network_errors_impl(
     detail::connection_state_data& st,
     any_algo_ref algo,
@@ -131,6 +179,9 @@ void boost::mysql::test::algo_test::check_network_errors_impl(
     {
         BOOST_ASSERT(step_number < num_steps());
 
+        // Record the current state, to check that what we changed was on purpose
+        state_checker checker(st, state_changes_);
+
         // Run all the steps that shouldn't cause an error
         auto act = run_algo_until_step(st, algo, step_number);
         BOOST_TEST_REQUIRE(act.type() == steps_[step_number].type);
@@ -142,17 +193,10 @@ void boost::mysql::test::algo_test::check_network_errors_impl(
         BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
         BOOST_TEST(act.error() == error_code(asio::error::bad_descriptor));
         BOOST_TEST(actual_diag == diagnostics());
-    }
-}
 
-boost::mysql::test::algo_test& boost::mysql::test::algo_test::add_step(
-    detail::next_action_type act_type,
-    std::vector<std::uint8_t> bytes,
-    error_code ec
-)
-{
-    steps_.push_back(step_t{act_type, std::move(bytes), ec});
-    return *this;
+        // Check state changes
+        checker.check();
+    }
 }
 
 void boost::mysql::test::algo_test::check_impl(
@@ -166,14 +210,8 @@ void boost::mysql::test::algo_test::check_impl(
 {
     BOOST_TEST_CONTEXT("Called from " << loc)
     {
-        // Compute the expected state. If the test didn't explicitly state that
-        // a state variable was changing, expect it not to change.
-        bool expected_is_connected = state_changes_.is_connected.value_or(st.is_connected);
-        auto expected_flavor = state_changes_.flavor.value_or(st.flavor);
-        auto expected_capabilities = state_changes_.current_capabilities.value_or(st.current_capabilities);
-        auto expected_ssl = state_changes_.ssl.value_or(st.ssl);
-        bool expected_backslash_escapes = state_changes_.backslash_escapes.value_or(st.backslash_escapes);
-        character_set expected_charset = state_changes_.current_charset.value_or(st.current_charset);
+        // Record the current state, to check that what we changed was on purpose
+        state_checker checker(st, state_changes_);
 
         // Run the op until completion
         auto act = run_algo_until_step(st, algo, steps_.size());
@@ -186,12 +224,7 @@ void boost::mysql::test::algo_test::check_impl(
         BOOST_TEST(actual_diag == expected_diag);
 
         // Check state changes
-        BOOST_TEST(st.is_connected == expected_is_connected);
-        BOOST_TEST(st.flavor == expected_flavor);
-        BOOST_TEST(st.current_capabilities == expected_capabilities);
-        BOOST_TEST(st.ssl == expected_ssl);
-        BOOST_TEST(st.backslash_escapes == expected_backslash_escapes);
-        BOOST_TEST(st.current_charset == expected_charset);
+        checker.check();
     }
 }
 

@@ -71,7 +71,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     std::vector<step_t> steps_;
 
     // Monitor connection_state_data for relevant changes
-    struct
+    struct expected_state_changes_t
     {
         boost::optional<bool> is_connected;
         boost::optional<detail::db_flavor> flavor;
@@ -80,6 +80,8 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         boost::optional<bool> backslash_escapes;
         boost::optional<character_set> current_charset;
     } state_changes_;
+
+    class state_checker;
 
     static void handle_read(detail::connection_state_data& st, const step_t& op);
 
