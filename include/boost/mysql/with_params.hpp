@@ -62,7 +62,7 @@ using make_tuple_element_t = typename std::tuple_element<0, decltype(std::make_t
  * \par Object lifetimes
  * The format string `query` is stored as a view, as a compile-time string should be used in most cases.
  * When using \ref with_params, `args` will usually contain copies of the passed parameters
- * (as per <a href="https://en.cppreference.com/w/cpp/utility/tuple/make_tuple">`std::make_tuple`</a>),
+ * (as per <a href="https://en.cppreference.com/w/cpp/utility/tuple/make_tuple">std::make_tuple</a>),
  * which is safe even when using async functions with deferred completion tokens.
  * You may disable such copies using `std::ref`, as you would when using `std::make_tuple`.
  *
@@ -91,7 +91,7 @@ struct with_params_t
  * \brief Creates a query with parameters (client-side SQL formatting) that can be executed.
  * \details
  * Creates a \ref with_params_t object by packing the supplied arguments into a tuple,
- * calling <a href="https://en.cppreference.com/w/cpp/utility/tuple/make_tuple">`std::make_tuple`</a>.
+ * calling <a href="https://en.cppreference.com/w/cpp/utility/tuple/make_tuple">std::make_tuple</a>.
  * As per `std::make_tuple`, parameters will be decay-copied into the resulting object.
  * This behavior can be disabled by passing `std::reference_wrapper` objects, which are
  * transformed into references.
