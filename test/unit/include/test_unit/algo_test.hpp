@@ -8,15 +8,19 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_ALGO_TEST_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_ALGO_TEST_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
+#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
+#include <boost/optional/optional.hpp>
 
 #include <cstddef>
 #include <cstdint>
@@ -65,6 +69,19 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     };
 
     std::vector<step_t> steps_;
+
+    // Monitor connection_state_data for relevant changes
+    struct expected_state_changes_t
+    {
+        boost::optional<bool> is_connected;
+        boost::optional<detail::db_flavor> flavor;
+        boost::optional<detail::capabilities> current_capabilities;
+        boost::optional<detail::ssl_state> ssl;
+        boost::optional<bool> backslash_escapes;
+        boost::optional<character_set> current_charset;
+    } state_changes_;
+
+    class state_checker;
 
     static void handle_read(detail::connection_state_data& st, const step_t& op);
 
@@ -129,6 +146,20 @@ public:
     algo_test& expect_close(error_code result = {})
     {
         return add_step(detail::next_action_type::close, {}, result);
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_current_charset(character_set expected)
+    {
+        state_changes_.current_charset = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_backslash_escapes(bool expected)
+    {
+        state_changes_.backslash_escapes = expected;
+        return *this;
     }
 
     template <class AlgoFixture>

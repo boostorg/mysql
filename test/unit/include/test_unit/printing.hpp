@@ -27,6 +27,10 @@ std::ostream& operator<<(std::ostream& os, const capabilities& caps);
 enum class db_flavor;
 std::ostream& operator<<(std::ostream& os, db_flavor value);
 
+// ssl_state
+enum class ssl_state;
+std::ostream& operator<<(std::ostream& os, ssl_state value);
+
 // resultset_encoding
 enum class resultset_encoding;
 std::ostream& operator<<(std::ostream& os, resultset_encoding t);

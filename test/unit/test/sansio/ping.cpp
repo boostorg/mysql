@@ -46,9 +46,6 @@ BOOST_AUTO_TEST_CASE(read_response_success)
     algo_test()
         .expect_read(create_ok_frame(57, ok_builder().build()))  // OK response
         .check(fix);
-
-    // The OK packet was processed correctly
-    BOOST_TEST(fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(read_response_success_no_backslash_escapes)
@@ -59,10 +56,8 @@ BOOST_AUTO_TEST_CASE(read_response_success_no_backslash_escapes)
     // Run the test
     algo_test()
         .expect_read(create_ok_frame(57, ok_builder().no_backslash_escapes(true).build()))  // OK response
+        .will_set_backslash_escapes(false)
         .check(fix);
-
-    // The OK packet was processed correctly
-    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(read_response_error_network)
@@ -107,9 +102,6 @@ BOOST_AUTO_TEST_CASE(ping_success)
         .expect_write({0x01, 0x00, 0x00, 0x00, 0x0e})           // ping request
         .expect_read(create_ok_frame(1, ok_builder().build()))  // OK response
         .check(fix);
-
-    // The OK packet was processed correctly
-    BOOST_TEST(fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(ping_error_network)
