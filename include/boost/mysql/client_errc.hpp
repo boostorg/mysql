@@ -82,59 +82,59 @@ enum class client_errc : int
     static_row_parsing_error,
 
     /**
-     * \brief (EXPERIMENTAL) Getting a connection from a connection_pool was cancelled before
+     * \brief Getting a connection from a connection_pool was cancelled before
      * the pool was run. Ensure that you're calling connection_pool::async_run.
      */
     pool_not_running,
 
     /**
-     * \brief (EXPERIMENTAL) Getting a connection from a connection_pool failed because the
+     * \brief Getting a connection from a connection_pool failed because the
      * pool was cancelled.
      */
     pool_cancelled,
 
     /**
-     * \brief (EXPERIMENTAL) Getting a connection from a connection_pool was cancelled before
+     * \brief Getting a connection from a connection_pool was cancelled before
      * a connection was available.
      */
     no_connection_available,
 
-    /// (EXPERIMENTAL) An invalid byte sequence was found while trying to decode a string.
+    /// An invalid byte sequence was found while trying to decode a string.
     invalid_encoding,
 
-    /// (EXPERIMENTAL) A formatting operation could not format one of its arguments.
+    /// A formatting operation could not format one of its arguments.
     unformattable_value,
 
-    /// (EXPERIMENTAL) A format string containing invalid syntax was provided to a SQL formatting function.
+    /// A format string containing invalid syntax was provided to a SQL formatting function.
     format_string_invalid_syntax,
 
     /**
-     * \brief (EXPERIMENTAL) A format string with an invalid byte sequence was provided to a SQL formatting
+     * \brief A format string with an invalid byte sequence was provided to a SQL formatting
      * function.
      */
     format_string_invalid_encoding,
 
-    /// (EXPERIMENTAL) A format string mixes manual (e.g. {0}) and automatic (e.g. {}) indexing.
+    /// A format string mixes manual (e.g. {0}) and automatic (e.g. {}) indexing.
     format_string_manual_auto_mix,
 
-    /// (EXPERIMENTAL) The supplied format specifier (e.g. {:i}) is not supported by the type being formatted.
+    /// The supplied format specifier (e.g. {:i}) is not supported by the type being formatted.
     format_string_invalid_specifier,
 
     /**
-     * \brief (EXPERIMENTAL) A format argument referenced by a format string was not found. Check the number
+     * \brief A format argument referenced by a format string was not found. Check the number
      * of format arguments passed and their names.
      */
     format_arg_not_found,
 
     /**
-     * \brief (EXPERIMENTAL) The character set used by the connection is not known by the client. Use
+     * \brief The character set used by the connection is not known by the client. Use
      * \ref any_connection::set_character_set or \ref any_connection::async_set_character_set
      * before invoking operations that require a known charset.
      */
     unknown_character_set,
 
     /**
-     * \brief (EXPERIMENTAL) An operation attempted to read or write a packet larger than the maximum buffer
+     * \brief An operation attempted to read or write a packet larger than the maximum buffer
      * size. Try increasing \ref any_connection_params::max_buffer_size.
      */
     max_buffer_size_exceeded,

@@ -22,7 +22,7 @@ namespace mysql {
 struct format_options;
 
 /**
- * \brief (EXPERIMENTAL) Identifies the context which a string is being escaped for.
+ * \brief Identifies the context which a string is being escaped for.
  */
 enum class quoting_context : char
 {
@@ -37,7 +37,7 @@ enum class quoting_context : char
 };
 
 /**
- * \brief (EXPERIMENTAL) Escapes a string, making it safe for query composition.
+ * \brief Escapes a string, making it safe for query composition.
  * \details
  * Given a string `input`, computes a string with special characters
  * escaped, and places it in `output`. This function is a low-level building

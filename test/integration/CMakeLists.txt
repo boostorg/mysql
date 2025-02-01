@@ -32,7 +32,9 @@ add_executable(
     test/database_types.cpp
 
     # Snippets
+    test/snippets/tutorials.cpp
     test/snippets/overview.cpp
+    test/snippets/connection_establishment.cpp
     test/snippets/dynamic.cpp
     test/snippets/static.cpp
     test/snippets/prepared_statements.cpp
@@ -41,11 +43,11 @@ add_executable(
     test/snippets/metadata.cpp
     test/snippets/charsets.cpp
     test/snippets/time_types.cpp
-    test/snippets/any_connection.cpp
     test/snippets/connection_pool.cpp
     test/snippets/sql_formatting.cpp
     test/snippets/sql_formatting_custom.cpp
     test/snippets/pipeline.cpp
+    test/snippets/templated_connection.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests
@@ -56,7 +58,6 @@ target_link_libraries(
     boost_mysql_integrationtests
     PRIVATE
     boost_mysql_testing
-    Boost::context
 )
 boost_mysql_common_target_settings(boost_mysql_integrationtests)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)

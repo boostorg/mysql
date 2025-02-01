@@ -9,15 +9,11 @@
 import requests
 import random
 import argparse
-from subprocess import PIPE, Popen
-from contextlib import contextmanager
-import re
-import signal
-import os
-import time
 import sys
+from os import path
 
-_is_win = os.name == 'nt'
+sys.path.append(path.abspath(path.dirname(path.realpath(__file__))))
+from launch_server import launch_server
 
 
 def _check_response(res: requests.Response):
@@ -28,50 +24,6 @@ def _check_response(res: requests.Response):
 
 def _random_string() -> str:
     return bytes(random.getrandbits(8) for _ in range(8)).hex()
-
-
-# Returns the port the server is listening at
-def _parse_server_start_line(line: str) -> int:
-    m = re.match(r'Server listening at 0\.0\.0\.0:([0-9]+)', line)
-    if m is None:
-        raise RuntimeError('Unexpected server start line')
-    return int(m.group(1))
-
-
-@contextmanager
-def _launch_server(exe: str, host: str):
-    # Launch server and let it choose a free port for us.
-    # This prevents port clashes during b2 parallel test runs
-    server = Popen([exe, 'example_user', 'example_password', host, '0'], stdout=PIPE)
-    assert server.stdout is not None
-    with server:
-        try:
-            # Wait until the server is ready
-            ready_line = server.stdout.readline().decode()
-            print(ready_line, end='', flush=True)
-            if ready_line.startswith('Sorry'): # C++14 unsupported, skip the test
-                exit(0)
-            yield _parse_server_start_line(ready_line)
-        finally:
-            print('Terminating server...', flush=True)
-
-            # In Windows, there is no sane way to cleanly terminate the process.
-            # Sending a Ctrl-C terminates all process attached to the console (including ourselves
-            # and any parent test runner). Running the process in a separate terminal doesn't allow
-            # access to stdout, which is problematic, too.
-            if _is_win:
-                # kill is an alias for TerminateProcess with the given exit code
-                os.kill(server.pid, 9999)
-            else:
-                # Send SIGTERM
-                server.terminate()
-
-            # Print any output the process generated
-            print('Server stdout: \n', server.stdout.read().decode(), flush=True)
-    
-    # Verify that it exited gracefully
-    if (_is_win and server.returncode != 9999) or (not _is_win and server.returncode):
-        raise RuntimeError('Server did not exit cleanly. retcode={}'.format(server.returncode))
 
 
 def _call_endpoints(port: int):
@@ -134,11 +86,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('executable')
     parser.add_argument('host')
-    parser.add_argument('--nofork', default=None)
     args = parser.parse_args()
 
     # Launch the server
-    with _launch_server(args.executable, args.host) as listening_port:
+    with launch_server(args.executable, args.host) as listening_port:
     # Run the tests
         _call_endpoints(listening_port)
 

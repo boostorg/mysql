@@ -20,11 +20,11 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) A string view that should be known at compile-time.
+ * \brief A string view that should be known at compile-time.
  * \details
  * This type is used when a string function argument must always be known at compile-time
  * except in rare cases. See \ref format_sql format strings for an example.
- * \n
+ *
  * \par Object lifetimes
  * This type holds internally a \ref string_view, and follows the same lifetime rules as `string_view`.
  * We recommend to only use this type as a function argument, to provide compile-time checks.
@@ -83,7 +83,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Creates a \ref constant_string_view from a runtime value.
+ * \brief Creates a \ref constant_string_view from a runtime value.
  * \details
  * You can use this function to bypass the `consteval` check performed by \ref constant_string_view
  * constructor.

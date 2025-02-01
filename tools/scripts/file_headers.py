@@ -12,6 +12,12 @@ from os import path
 from typing import List, Tuple
 import glob
 from abc import abstractmethod, ABCMeta
+import sys
+
+THIS_FOLDER = path.abspath(path.dirname(path.realpath(__file__)))
+sys.path.append(path.join(THIS_FOLDER))
+
+import examples_qbk
 
 # Script to get file headers (copyright notices
 # and include guards) okay and up to date
@@ -284,6 +290,7 @@ def verify_test_consistency():
 def main():
     process_all_files()
     verify_test_consistency()
+    examples_qbk.main()
             
             
 if __name__ == '__main__':

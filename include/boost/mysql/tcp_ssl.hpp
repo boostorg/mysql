@@ -16,7 +16,14 @@
 namespace boost {
 namespace mysql {
 
-/// A connection to MySQL over a TCP socket using TLS.
+/**
+ * \brief (Legacy) A connection to MySQL over a TCP socket using TLS.
+ *
+ * \par Legacy
+ * New code should use \ref any_connection instead of
+ * \ref connection and its helper typedefs, as it's simpler to use
+ * and provides the same level of performance.
+ */
 using tcp_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
 
 }  // namespace mysql

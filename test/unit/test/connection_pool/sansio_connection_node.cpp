@@ -30,6 +30,7 @@ namespace asio = boost::asio;
 using detail::collection_state;
 using detail::next_connection_action;
 using detail::node_status;
+using detail::num_connections_to_create;
 using detail::sansio_connection_node;
 
 BOOST_AUTO_TEST_SUITE(test_sansio_connection_node)
@@ -384,6 +385,60 @@ BOOST_AUTO_TEST_CASE(create_connect_diagnostics_)
             BOOST_TEST(actual == tc.expected);
         }
     }
+}
+
+// Initial cases (when the pool starts running)
+BOOST_AUTO_TEST_CASE(num_connections_to_create_initial)
+{
+    // Order: initial, max, current, pending connections, pending requests
+
+    // default
+    BOOST_TEST(num_connections_to_create(1, 151, 0, 0, 0) == 1u);
+
+    // increased initial_size
+    BOOST_TEST(num_connections_to_create(5, 151, 0, 0, 0) == 5u);
+
+    // initial_size == max_size
+    BOOST_TEST(num_connections_to_create(151, 151, 0, 0, 0) == 151u);
+
+    // with pending requests
+    BOOST_TEST(num_connections_to_create(1, 151, 0, 0, 5) == 5u);
+
+    // with pending requests < initial size
+    BOOST_TEST(num_connections_to_create(6, 151, 0, 0, 5) == 6u);
+
+    // with pending requests > max size
+    BOOST_TEST(num_connections_to_create(5, 151, 0, 0, 200) == 151u);
+}
+
+// Pool resize cases (when the pool is already running, and more connections are required)
+BOOST_AUTO_TEST_CASE(num_connections_to_create_resize)
+{
+    // Order: initial, max, current, pending connections, pending requests
+
+    // all connections are in use
+    BOOST_TEST(num_connections_to_create(1, 151, 1, 0, 1) == 1u);
+    BOOST_TEST(num_connections_to_create(1, 151, 5, 0, 1) == 1u);
+
+    // all connections are in use and there are already requests waiting for pending connections
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 1, 2) == 1u);
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 2, 3) == 1u);
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 2, 5) == 3u);
+
+    // creating connections would exceed the limit
+    BOOST_TEST(num_connections_to_create(1, 151, 149, 0, 3) == 2u);
+    BOOST_TEST(num_connections_to_create(1, 151, 150, 1, 3) == 1u);
+    BOOST_TEST(num_connections_to_create(1, 151, 151, 2, 3) == 0u);
+
+    // there are enough pending connections (e.g. we're struggling to connect)
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 10, 3) == 0u);
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 10, 9) == 0u);
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 10, 10) == 0u);
+
+    // edge case: we don't have the required initial connections created yet
+    BOOST_TEST(num_connections_to_create(10, 151, 3, 0, 2) == 7u);
+    BOOST_TEST(num_connections_to_create(10, 151, 3, 2, 4) == 7u);
+    BOOST_TEST(num_connections_to_create(10, 151, 3, 2, 20) == 18u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -66,7 +66,7 @@ void append_int(T integer, format_context_base& ctx)
 
     auto res = charconv::to_chars(buff, buff + buffsize, integer);
 
-    // Can only fail becuase of buffer being too small
+    // Can only fail because of buffer being too small
     BOOST_ASSERT(res.ec == std::errc());
 
     // Copy

@@ -15,8 +15,6 @@ import ac ;
 import indirect ;
 import config : requires ;
 
-project : requirements <library>/boost/mysql//boost_mysql ;
-
 # Support header-only builds
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
 
@@ -67,6 +65,7 @@ local requirements =
         <toolset>msvc:<define>_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
+        <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS # Required by Asio
         # gcc-13+ doesn't understand view types and issues array bound warnings that don't make sense.
         # -Wno-implicit-fallthrough is required by Asio SSL components
         <toolset>gcc:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds -Wno-implicit-fallthrough"
@@ -90,7 +89,7 @@ local requirements =
 
 alias boost_mysql
     :
-        /boost/charconv//boost_charconv
+        $(boost_dependencies)/<warnings-as-errors>off
         /openssl//ssl/<link>shared
         /openssl//crypto/<link>shared
     : requirements
@@ -137,14 +136,7 @@ alias common_test_sources
 
 # Boost.Context causes failures with warnings-as-errors
 # under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
-alias boost_context_lib
-    :
-        /boost/context//boost_context/<warnings-as-errors>off
-    : usage-requirements
-        # gcc-14+ seem to enable CET by default, which causes warnings with Boost.Context.
-        # Disable CET until https://github.com/boostorg/context/issues/263 gets fixed
-        <toolset>gcc-14:<cxxflags>-fcf-protection=none
-    ;
+alias boost_context_lib : /boost/context//boost_context/<warnings-as-errors>off ;
 
 # Beast and JSON depend on Container, which causes trouble with <warnings-as-errors>on
 alias boost_beast_lib : /boost/beast//boost_beast/<warnings-as-errors>off ;

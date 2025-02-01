@@ -254,8 +254,8 @@ public:
     }
 
     template <class CompletionToken>
-    auto async_ping(CompletionToken&& token
-    ) -> decltype(impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
+    auto async_ping(CompletionToken&& token)
+        -> decltype(impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token)))
     {
         return impl_.op_impl(fn_type::ping, nullptr, std::forward<CompletionToken>(token));
     }
@@ -456,12 +456,10 @@ private:
     bool run_finished_{false};
 
 public:
-    fixture(pool_params&& params) : pool_(create_mock_pool(ctx, std::move(params)))
+    fixture(pool_params&& params, bool call_run = true) : pool_(create_mock_pool(ctx, std::move(params)))
     {
-        pool_->async_run([this](error_code ec) {
-            run_finished_ = true;
-            BOOST_TEST(ec == error_code());
-        });
+        if (call_run)
+            run();
     }
 
     ~fixture()
@@ -469,6 +467,14 @@ public:
         // Finish the pool
         pool_->cancel();
         poll_until(ctx, &run_finished_);
+    }
+
+    void run()
+    {
+        pool_->async_run([this](error_code ec) {
+            run_finished_ = true;
+            BOOST_TEST(ec == error_code());
+        });
     }
 
     mock_pool& pool() { return *pool_; }
@@ -517,6 +523,8 @@ public:
     {
         node.connection().step(next_act, as_netresult, ec, diag).validate_no_error_nodiag(loc);
     }
+
+    std::size_t num_pending_requests() const { return pool_->shared_state().num_pending_requests; }
 };
 
 // connection lifecycle
@@ -881,12 +889,15 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
             // Wait for a connection to be ready
             fix.step(node, fn_type::connect);
             fix.wait_for_status(node, node_status::idle);
+            BOOST_TEST(fix.num_pending_requests() == 0u);
 
             // A request for a connection is issued. The request completes immediately.
-            // In thread-safe mode, we still need to exit the strand, so we won't see an inline completion
+            // In thread-safe mode, we still need to exit the strand, so we won't see an inline
+            // completion
             fix.create_task(nullptr, tc.bind_slot).wait(node, !tc.thread_safe);
             BOOST_TEST(node.status() == node_status::in_use);
             BOOST_TEST(fix.pool().nodes().size() == 1u);
+            BOOST_TEST(fix.num_pending_requests() == 0u);
         }
     }
 }
@@ -926,6 +937,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
             auto task = fix.create_task(nullptr, tc.bind_slot);
             fix.ctx.poll();
             BOOST_TEST(fix.pool().nodes().size() == 1u);
+            BOOST_TEST(fix.num_pending_requests() == 1u);
 
             // Retry interval ellapses and connection retries and succeeds
             mock_clock::advance_time_by(std::chrono::seconds(2));
@@ -935,8 +947,36 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
             task.wait(node, false);
             BOOST_TEST(node.status() == node_status::in_use);
             BOOST_TEST(fix.pool().nodes().size() == 1u);
+            BOOST_TEST(fix.num_pending_requests() == 0u);
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(get_connection_wait_before_run)
+{
+    // Getting connections before async_run gets called waits
+    // Setup
+    fixture fix(pool_params{}, false);  // don't call run
+
+    // Two requests are issued (> initial_size). They don't create new nodes and wait
+    auto task1 = fix.create_task();
+    auto task2 = fix.create_task();
+    fix.ctx.poll();
+    BOOST_TEST(fix.pool().nodes().size() == 0u);
+    BOOST_TEST(fix.num_pending_requests() == 2u);
+
+    // Run the pool. Two nodes are created
+    fix.run();
+    fix.wait_for_num_nodes(2);
+    auto& node1 = fix.pool().nodes().front();
+    auto& node2 = fix.pool().nodes().back();
+    BOOST_TEST(fix.num_pending_requests() == 2u);
+
+    // The two connections become ready, and the tasks complete
+    fix.step(node1, fn_type::connect);
+    fix.step(node2, fn_type::connect);
+    task1.wait(node1, false);
+    task2.wait(node2, false);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
@@ -971,6 +1011,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
             auto task = fix.create_task(&diag);
             fix.ctx.poll();
             BOOST_TEST(fix.pool().nodes().size() == 1u);
+            BOOST_TEST(fix.num_pending_requests() == 1u);
 
             // The connection fails to connect
             fix.step(
@@ -990,6 +1031,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled)
                 )
             );
             BOOST_TEST(fix.pool().nodes().size() == 1u);
+            BOOST_TEST(fix.num_pending_requests() == 0u);
         }
     }
 }
@@ -1027,6 +1069,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
     auto task = fix.create_task(&diag);
     fix.ctx.poll();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 1u);
 
     // The connection attempt times out
     mock_clock::advance_time_by(std::chrono::seconds(6));
@@ -1037,6 +1080,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
     task.wait(client_errc::no_connection_available, false);
     BOOST_TEST(diag == create_client_diag("Last connection attempt timed out"));
     BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_DATA_TEST_CASE_F(
@@ -1056,11 +1100,13 @@ BOOST_DATA_TEST_CASE_F(
     // and waits
     get_connection_task task(*pool, &diag);
     ctx.poll();
+    BOOST_TEST(pool->shared_state().num_pending_requests == 1u);
 
     // The request gets cancelled. We get the expected error
     task.cancel();
     task.wait(client_errc::pool_not_running, false);
     BOOST_TEST(diag == diagnostics());
+    BOOST_TEST(pool->shared_state().num_pending_requests == 0u);
 
     pool->cancel();
 }
@@ -1108,6 +1154,7 @@ BOOST_DATA_TEST_CASE(get_connection_wait_pool_cancelled, data::make({false, true
     auto task = fix.create_task(&diag);
     fix.ctx.poll();
     BOOST_TEST(fix.pool().nodes().size() == 1u);
+    BOOST_TEST(fix.num_pending_requests() == 1u);
 
     // The connection fails to connect
     fix.step(
@@ -1124,6 +1171,7 @@ BOOST_DATA_TEST_CASE(get_connection_wait_pool_cancelled, data::make({false, true
     // No diagnostics are provided here, as they're usually misleading
     task.wait(client_errc::pool_cancelled, false);
     BOOST_TEST(diag == diagnostics());
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
@@ -1141,41 +1189,46 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     fix.step(node1, fn_type::connect);
     fix.wait_for_status(node1, node_status::idle);
     fix.create_task().wait(node1, true);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 
     // Another request is issued. The connection we have is in use, so another one is created.
     // Since this is not immediate, the task will need to wait
     auto task2 = fix.create_task();
     fix.ctx.poll();
     auto node2 = &*std::next(fix.pool().nodes().begin());
+    BOOST_TEST(fix.num_pending_requests() == 1u);
 
     // Connection connects successfully and is handed to us
     fix.step(*node2, fn_type::connect);
     task2.wait(*node2, false);
     BOOST_TEST(node2->status() == node_status::in_use);
     BOOST_TEST(fix.pool().nodes().size() == 2u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 
     // Another request is issued. All connections are in use but max size is already
     // reached, so no new connection is created
     auto task3 = fix.create_task();
     fix.ctx.poll();
     BOOST_TEST(fix.pool().nodes().size() == 2u);
+    BOOST_TEST(fix.num_pending_requests() == 1u);
 
     // When one of the connections is returned, the request is fulfilled
     fix.pool().return_connection(*node2, false);
     task3.wait(*node2, false);
     BOOST_TEST(fix.pool().nodes().size() == 2u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 {
     // Setup
     pool_params params;
-    params.initial_size = 2;
+    params.initial_size = 1;
     params.max_size = 2;
     fixture fix(std::move(params));
 
-    // 2 connection nodes are created from the beginning
-    fix.wait_for_num_nodes(2);
+    // 1 connection node is initially created
+    fix.wait_for_num_nodes(1);
 
     // Issue some parallel requests
     auto task1 = fix.create_task();
@@ -1184,6 +1237,10 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     auto task4 = fix.create_task(nullptr);
     auto task5 = fix.create_task();
 
+    // This should create the other node
+    fix.wait_for_num_nodes(2);
+    BOOST_TEST(fix.num_pending_requests() == 5u);
+
     // Two connections can be created. These fulfill two requests
     auto node1 = &fix.pool().nodes().front();
     auto node2 = &*std::next(fix.pool().nodes().begin());
@@ -1191,15 +1248,18 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
     fix.step(*node2, fn_type::connect);
     task1.wait(*node1, false);
     task2.wait(*node2, false);
+    BOOST_TEST(fix.num_pending_requests() == 3u);
 
     // task4 gets cancelled
     task4.cancel();
     task4.wait(client_errc::no_connection_available, false);
+    BOOST_TEST(fix.num_pending_requests() == 2u);
 
     // A connection is returned. The first task to enter is served
     fix.pool().return_connection(*node1, true);
     fix.step(*node1, fn_type::pipeline);
     task3.wait(*node1, false);
+    BOOST_TEST(fix.num_pending_requests() == 1u);
 
     // The next connection to be returned is for task5
     fix.pool().return_connection(*node2, false);
@@ -1207,6 +1267,7 @@ BOOST_AUTO_TEST_CASE(get_connection_multiple_requests)
 
     // Done
     BOOST_TEST(fix.pool().nodes().size() == 2u);
+    BOOST_TEST(fix.num_pending_requests() == 0u);
 }
 
 BOOST_AUTO_TEST_CASE(get_connection_supports_cancel_type)

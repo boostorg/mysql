@@ -192,6 +192,9 @@ public:
     /**
      * \brief Returns the number of rows affected by the executed SQL statement.
      * \details
+     * Note that this is NOT the number of matched rows. If a row
+     * is matched but not affected, it won't be accounted for here.
+     *
      * For operations returning more than one resultset, returns the
      * first resultset's affected rows.
      *

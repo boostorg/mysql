@@ -19,6 +19,7 @@
 
 #include <boost/mysql/impl/internal/connection_pool/connection_node.hpp>
 #include <boost/mysql/impl/internal/connection_pool/internal_pool_params.hpp>
+#include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 #include <boost/mysql/impl/internal/coroutine.hpp>
 
 #include <boost/asio/any_completion_handler.hpp>
@@ -97,16 +98,7 @@ class basic_pool_impl
         return static_cast<std::enable_shared_from_this<this_type>*>(this)->shared_from_this();
     }
 
-    // Do we have room for a new connection?
-    // Don't create new connections if we have other connections pending
-    // (i.e. being connected, reset... ) - otherwise pool size increases
-    // for no reason when there is no connectivity.
-    bool can_create_connection() const
-    {
-        return all_conns_.size() < params_.max_size && shared_st_.num_pending_connections == 0u &&
-               state_ == state_t::running;
-    }
-
+    // Create and run one connection
     void create_connection()
     {
         // Connection tasks always run in the pool's executor
@@ -114,10 +106,43 @@ class basic_pool_impl
         all_conns_.back().async_run(asio::bind_executor(pool_ex_, asio::detached));
     }
 
-    void maybe_create_connection()
+    // Create and run connections as required by the current config and state
+    void create_connections()
     {
-        if (can_create_connection())
+        // Calculate how many we should create
+        std::size_t n = num_connections_to_create(
+            params_.initial_size,
+            params_.max_size,
+            all_conns_.size(),
+            shared_st_.num_pending_connections,
+            shared_st_.num_pending_requests
+        );
+
+        // Create them
+        BOOST_ASSERT((all_conns_.size() + n) <= params_.max_size);
+        for (std::size_t i = 0; i < n; ++i)
             create_connection();
+    }
+
+    // An async_get_connection request is about to wait for an available connection
+    void enter_request_pending()
+    {
+        // Record that we're pending
+        ++shared_st_.num_pending_requests;
+
+        // Create new connections, if required.
+        // Don't create any connections if we're not yet running,
+        // since this would leave connections running after run exits
+        if (state_ == state_t::running)
+            create_connections();
+    }
+
+    // An async_get_connection request finished waiting
+    void exit_request_pending()
+    {
+        // Record that we're no longer pending
+        BOOST_ASSERT(shared_st_.num_pending_requests > 0u);
+        --shared_st_.num_pending_requests;
     }
 
     node_type* try_get_connection()
@@ -205,8 +230,7 @@ class basic_pool_impl
                 obj_->state_ = state_t::running;
 
                 // Create the initial connections
-                for (std::size_t i = 0; i < obj_->params_.initial_size; ++i)
-                    obj_->create_connection();
+                obj_->create_connections();
 
                 // Wait for the cancel notification to arrive.
                 BOOST_MYSQL_YIELD(resume_point_, 2, obj_->cancel_timer_.async_wait(std::move(self)))
@@ -334,11 +358,14 @@ class basic_pool_impl
                         break;
                     }
 
-                    // No luck. If there is room for more connections, create one.
-                    obj->maybe_create_connection();
+                    // No luck. Record that we're waiting for a connection.
+                    obj->enter_request_pending();
 
                     // Wait to be notified, or until a cancellation happens
                     BOOST_MYSQL_YIELD(resume_point, 2, obj->wait_for_connections(self))
+
+                    // Record that we're no longer pending
+                    obj->exit_request_pending();
 
                     // Remember that we have waited, so completions are dispatched
                     // correctly

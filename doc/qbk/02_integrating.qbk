@@ -46,7 +46,7 @@ target_link_libraries(main PRIVATE Boost::charconv Threads::Threads OpenSSL::Cry
     an older version, use the `Boost::headers` target, instead.
 ]
 
-If you're happy with header-only mode, have a look at [link mysql.tutorial the tutorial]
+If you're happy with header-only mode, have a look at [link mysql.tutorial_sync the first tutorial]
 or [link mysql.examples any of the examples] to learn how to use the library.
 
 [endsect]

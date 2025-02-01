@@ -31,7 +31,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) A proxy to a connection owned by a pool that returns it to the pool when destroyed.
+ * \brief A proxy to a connection owned by a pool that returns it to the pool when destroyed.
  * \details
  * A `pooled_connection` behaves like to a `std::unique_ptr`: it has exclusive ownership of an
  * \ref any_connection created by the pool. When destroyed, it returns the connection to the pool.
@@ -59,11 +59,6 @@ namespace mysql {
  * - Distinct objects: safe if the \ref connection_pool that was used to obtain the objects
  *   was created with \ref pool_params::thread_safe set to true. Otherwise, unsafe.
  * - Shared objects: always unsafe.
- *
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
  */
 class pooled_connection
 {
@@ -226,7 +221,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) A pool of connections of variable size.
+ * \brief A pool of connections of variable size.
  * \details
  * A connection pool creates and manages \ref any_connection objects.
  * Using a pool allows to reuse sessions, avoiding part of the overhead associated
@@ -270,7 +265,7 @@ public:
  * - Calling \ref connection_pool::async_run.
  * - Calling \ref connection_pool::async_get_connection.
  * - Cancelling \ref async_get_connection by emitting a cancellation signal.
- * - \ref Returning a connection by destroying a \ref pooled_connection or
+ * - Returning a connection by destroying a \ref pooled_connection or
  *   calling \ref pooled_connection::return_without_reset.
  * - Cancelling the pool by calling \ref connection_pool::cancel,
  *   emitting a cancellation signal for \ref async_run, or destroying the
@@ -294,10 +289,6 @@ public:
  * by other objects and operations (like \ref pooled_connection). This object
  * will be kept alive using shared ownership semantics even after the `connection_pool`
  * object is destroyed. This results in intuitive lifetime rules.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
  */
 class connection_pool
 {

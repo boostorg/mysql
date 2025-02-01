@@ -19,7 +19,7 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) Represents a MySQL character set.
+ * \brief Represents a MySQL character set.
  * \details
  * By default, you should always use \ref utf8mb4_charset, unless there is
  * a strong reason not to. This struct allows you to extend this library
@@ -53,14 +53,14 @@ struct character_set
     std::size_t (*next_char)(span<const unsigned char>);
 };
 
-/// (EXPERIMENTAL) The utf8mb4 character set (the one you should use by default).
+/// The utf8mb4 character set (the one you should use by default).
 BOOST_INLINE_CONSTEXPR character_set utf8mb4_charset
 #ifndef BOOST_MYSQL_DOXYGEN
     {"utf8mb4", detail::next_char_utf8mb4}
 #endif
 ;
 
-/// (EXPERIMENTAL) The ascii character set.
+/// The ascii character set.
 BOOST_INLINE_CONSTEXPR character_set ascii_charset
 #ifndef BOOST_MYSQL_DOXYGEN
     {"ascii", detail::next_char_ascii};
@@ -68,7 +68,7 @@ BOOST_INLINE_CONSTEXPR character_set ascii_charset
 ;
 
 /**
- * \brief (EXPERIMENTAL) Settings required to format SQL queries client-side.
+ * \brief Settings required to format SQL queries client-side.
  * \details
  * The recommended way to obtain a value of this type is using \ref any_connection::format_opts.
  */

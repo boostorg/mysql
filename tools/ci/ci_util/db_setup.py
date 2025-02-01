@@ -92,7 +92,6 @@ def db_setup(
 
     # Source files
     _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))
-    _run_sql_file(source_dir.joinpath('example', 'order_management', 'db_setup.sql'))
     _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
     if not disabled_features['sha256']:
         _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))
