@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
@@ -423,6 +424,30 @@ BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, io_context_fixture)
 
     // The error is non-fatal: we can issue more queries
     c2.async_execute("SELECT 1", r2, as_netresult).validate_no_error();
+}
+
+BOOST_FIXTURE_TEST_CASE(op_in_progress_connect, any_connection_fixture)
+{
+    // Launch a connect op
+    auto connect_result = conn.async_connect(connect_params_builder().build(), as_netresult);
+
+    // While in progress, launch another one, with different params (regression check).
+    // This fails with the expected error
+    conn.async_connect(
+            connect_params_builder()
+                .server_address(host_and_port{"bad", 1000})
+                .credentials("bad_username", "bad_password")
+                .build(),
+            as_netresult
+    )
+        .validate_error(client_errc::operation_in_progress);
+
+    // The initial operation succeeds
+    std::move(connect_result).validate_no_error();
+
+    // The connection is usable
+    results r;
+    conn.async_execute("SELECT 1", r, as_netresult).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
