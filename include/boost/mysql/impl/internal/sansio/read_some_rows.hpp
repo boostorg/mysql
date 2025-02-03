@@ -27,7 +27,6 @@ namespace detail {
 
 class read_some_rows_algo
 {
-    diagnostics* diag_;
     execution_processor* proc_;
     output_ref output_;
 
@@ -94,8 +93,8 @@ class read_some_rows_algo
     }
 
 public:
-    read_some_rows_algo(diagnostics& diag, read_some_rows_algo_params params) noexcept
-        : diag_(&diag), proc_(params.proc), output_(params.output)
+    read_some_rows_algo(read_some_rows_algo_params params) noexcept
+        : proc_(params.proc), output_(params.output)
     {
     }
 
@@ -104,7 +103,7 @@ public:
     const execution_processor& processor() const { return *proc_; }
     execution_processor& processor() { return *proc_; }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
             return ec;
@@ -112,9 +111,6 @@ public:
         switch (state_.resume_point)
         {
         case 0:
-
-            // Clear diagnostics
-            diag_->clear();
 
             // Clear any previous use of shared fields.
             // Required for the dynamic version to work.
@@ -129,7 +125,7 @@ public:
             BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number(), true))
 
             // Process messages
-            std::tie(ec, state_.rows_read) = process_some_rows(st, *proc_, output_, *diag_);
+            std::tie(ec, state_.rows_read) = process_some_rows(st, *proc_, output_, diag);
             return ec;
         }
 

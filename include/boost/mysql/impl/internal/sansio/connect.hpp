@@ -29,12 +29,9 @@ class connect_algo
     error_code stored_ec_;
 
 public:
-    connect_algo(diagnostics& diag, connect_algo_params params) noexcept
-        : handshake_(diag, {params.hparams, params.secure_channel})
-    {
-    }
+    connect_algo(connect_algo_params params) noexcept : handshake_({params.hparams, params.secure_channel}) {}
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         next_action act;
 
@@ -42,16 +39,13 @@ public:
         {
         case 0:
 
-            // Clear diagnostics
-            handshake_.diag().clear();
-
             // Physical connect
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::connect())
             if (ec)
                 return ec;
 
             // Handshake
-            while (!(act = handshake_.resume(st, ec)).is_done())
+            while (!(act = handshake_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
             // If handshake failed, close the stream ignoring the result

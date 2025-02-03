@@ -8,6 +8,8 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_PING_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_PING_HPP
 
+#include <boost/mysql/diagnostics.hpp>
+
 #include <boost/mysql/detail/algo_params.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
@@ -21,15 +23,12 @@ namespace detail {
 class read_ping_response_algo
 {
     int resume_point_{0};
-    diagnostics* diag_;
     std::uint8_t seqnum_{0};
 
 public:
-    read_ping_response_algo(diagnostics& diag, std::uint8_t seqnum) noexcept : diag_(&diag), seqnum_(seqnum)
-    {
-    }
+    read_ping_response_algo(std::uint8_t seqnum) noexcept : seqnum_(seqnum) {}
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         switch (resume_point_)
         {
@@ -41,7 +40,7 @@ public:
                 return ec;
 
             // Process the OK packet and done
-            ec = st.deserialize_ok(*diag_);
+            ec = st.deserialize_ok(diag);
         }
 
         return ec;
