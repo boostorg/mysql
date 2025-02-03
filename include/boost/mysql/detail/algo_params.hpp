@@ -36,6 +36,8 @@ struct pipeline_request_stage;
 
 struct connect_algo_params
 {
+    const void* server_address;  // Points to an any_address or an endpoint for the corresponding stream. For
+                                 // the templated connection, only valid until the first yield!
     handshake_params hparams;
     bool secure_channel;  // Are we using UNIX sockets or any other secure channel?
 

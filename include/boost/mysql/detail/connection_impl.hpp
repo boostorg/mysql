@@ -221,14 +221,15 @@ class connection_impl
     };
 
     // Connect
-    static connect_algo_params make_params_connect(const handshake_params& params)
+    static connect_algo_params make_params_connect(const void* server_address, const handshake_params& params)
     {
-        return connect_algo_params{params, false};
+        return connect_algo_params{server_address, params, false};
     }
 
     static connect_algo_params make_params_connect_v2(const connect_params& params)
     {
         return connect_algo_params{
+            &params.server_address,
             make_hparams(params),
             params.server_address.type() == address_type::unix_path
         };
@@ -249,8 +250,13 @@ class connection_impl
             handshake_params params
         )
         {
-            eng->set_endpoint(&endpoint);
-            async_run_impl(*eng, *st, make_params_connect(params), *diag, std::forward<Handler>(handler));
+            async_run_impl(
+                *eng,
+                *st,
+                make_params_connect(&endpoint, params),
+                *diag,
+                std::forward<Handler>(handler)
+            );
         }
     };
 
@@ -267,7 +273,6 @@ class connection_impl
             const connect_params* params
         )
         {
-            eng->set_endpoint(&params->server_address);
             async_run_impl(*eng, *st, make_params_connect_v2(*params), *diag, std::forward<Handler>(handler));
         }
     };
@@ -385,13 +390,11 @@ public:
         diagnostics& diag
     )
     {
-        engine_->set_endpoint(&endpoint);
-        run(make_params_connect(params), err, diag);
+        run(make_params_connect(&endpoint, params), err, diag);
     }
 
     void connect_v2(const connect_params& params, error_code& err, diagnostics& diag)
     {
-        engine_->set_endpoint(&params.server_address);
         run(make_params_connect_v2(params), err, diag);
     }
 

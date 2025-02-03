@@ -25,11 +25,15 @@ namespace detail {
 class connect_algo
 {
     int resume_point_{0};
+    const void* server_address_;
     handshake_algo handshake_;
     error_code stored_ec_;
 
 public:
-    connect_algo(connect_algo_params params) noexcept : handshake_({params.hparams, params.secure_channel}) {}
+    connect_algo(connect_algo_params params) noexcept
+        : server_address_(params.server_address), handshake_({params.hparams, params.secure_channel})
+    {
+    }
 
     next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
@@ -40,7 +44,7 @@ public:
         case 0:
 
             // Physical connect
-            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::connect())
+            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::connect(server_address_))
             if (ec)
                 return ec;
 
