@@ -16,6 +16,7 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/engine_impl.hpp>
@@ -360,6 +361,8 @@ BOOST_FIXTURE_TEST_CASE(default_token_redirect_error, any_connection_fixture)
     });
 }
 
+#endif
+
 // Spotcheck: immediate completions dispatched to the immediate executor
 BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
 {
@@ -379,6 +382,32 @@ BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
     });
 }
 
-#endif
+// Spotcheck: attempting to run an async op in an engaged connection fails without UB
+BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, any_connection_fixture)
+{
+    // Setup
+    results r1, r2;
+    connect();
+
+    // Get the connection ID. We'll need it to cancel the long-running query we'll issue
+    conn.async_execute("SELECT CONNECTION_ID()", r1, as_netresult).validate_no_error();
+    auto conn_id = r1.rows().at(0).at(0).as_uint64();
+
+    // Launch a query. We choose SLEEP to avoid race conditions
+    auto execute_res = conn.async_execute("DO SLEEP(5)", r1, as_netresult);
+
+    // Other operations fail because the connection is engaged
+    conn.async_execute("SELECT 1", r2, as_netresult).validate_error(client_errc::operation_in_progress);
+    conn.async_prepare_statement("SELECT 1", as_netresult).validate_error(client_errc::operation_in_progress);
+    conn.async_reset_connection(as_netresult).validate_error(client_errc::operation_in_progress);
+    conn.async_connect(connect_params{}, as_netresult).validate_error(client_errc::operation_in_progress);
+    conn.async_close(as_netresult).validate_error(client_errc::operation_in_progress);
+
+    // Cleanup
+    conn.async_execute(with_params("KILL {}", conn_id), r2, as_netresult).validate_no_error();
+
+    // The error is non-fatal: we can continue issuing queries
+    conn.async_execute("SELECT 1", r2, as_netresult).validate_no_error();
+}
 
 BOOST_AUTO_TEST_SUITE_END()
