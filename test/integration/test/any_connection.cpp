@@ -429,9 +429,10 @@ BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, io_context_fixture)
 BOOST_FIXTURE_TEST_CASE(op_in_progress_connect, any_connection_fixture)
 {
     // Launch a connect op
-    auto connect_result = conn.async_connect(connect_params_builder().build(), as_netresult);
+    const auto params = connect_params_builder().build();
+    auto connect_result = conn.async_connect(params, as_netresult);
 
-    // While in progress, launch another one, with different params (regression check).
+    // While in progress, launch another one, with different params.
     // This fails with the expected error
     conn.async_connect(
             connect_params_builder()
