@@ -31,6 +31,12 @@ class connect_params_builder
 public:
     connect_params_builder() { addr_.emplace_host_and_port(get_hostname()); }
 
+    connect_params_builder& server_address(any_address addr)
+    {
+        addr_ = std::move(addr);
+        return *this;
+    }
+
     connect_params_builder& set_unix()
     {
         addr_.emplace_unix_path(default_unix_path);
