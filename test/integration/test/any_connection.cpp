@@ -383,31 +383,46 @@ BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
 }
 
 // Spotcheck: attempting to run an async op in an engaged connection fails without UB
-BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, any_connection_fixture)
+BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, io_context_fixture)
 {
     // Setup
+    any_connection c1(ctx), c2(ctx);
     results r1, r2;
-    connect();
+    c1.async_connect(connect_params_builder().multi_queries(true).build(), as_netresult).validate_no_error();
+    c2.async_connect(connect_params_builder().multi_queries(true).build(), as_netresult).validate_no_error();
 
-    // Get the connection ID. We'll need it to cancel the long-running query we'll issue
-    conn.async_execute("SELECT CONNECTION_ID()", r1, as_netresult).validate_no_error();
-    auto conn_id = r1.rows().at(0).at(0).as_uint64();
+    // Create a record in a table and lock it, so we can have a long-running query
+    c1.async_execute(
+          "INSERT INTO locks_table VALUES();"
+          "START TRANSACTION;"
+          "SELECT * FROM locks_table WHERE id = LAST_INSERT_ID() FOR UPDATE",
+          r1,
+          as_netresult
+    )
+        .validate_no_error();
+    auto id = r1.at(0).last_insert_id();
 
-    // Launch a query. We choose SLEEP to avoid race conditions
-    auto execute_res = conn.async_execute("DO SLEEP(5)", r1, as_netresult);
+    // Launch a long-running query. It won't finish until we explicitly unlock the record
+    auto execute_res = c2.async_execute(
+        with_params("SELECT * FROM locks_table WHERE id = {}", id),
+        r1,
+        as_netresult
+    );
 
     // Other operations fail because the connection is engaged
-    conn.async_execute("SELECT 1", r2, as_netresult).validate_error(client_errc::operation_in_progress);
-    conn.async_prepare_statement("SELECT 1", as_netresult).validate_error(client_errc::operation_in_progress);
-    conn.async_reset_connection(as_netresult).validate_error(client_errc::operation_in_progress);
-    conn.async_connect(connect_params{}, as_netresult).validate_error(client_errc::operation_in_progress);
-    conn.async_close(as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_execute("SELECT 1", r2, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_prepare_statement("SELECT 1", as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_reset_connection(as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_connect(connect_params{}, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_close(as_netresult).validate_error(client_errc::operation_in_progress);
 
-    // Cleanup
-    conn.async_execute(with_params("KILL {}", conn_id), r2, as_netresult).validate_no_error();
+    // Unlock the record, so the query finishes
+    c1.async_execute(with_params("DELETE FROM locks_table WHERE id = {}; COMMIT", id), r2, as_netresult)
+        .validate_no_error();
+    std::move(execute_res).validate_no_error();
 
-    // The error is non-fatal: we can continue issuing queries
-    conn.async_execute("SELECT 1", r2, as_netresult).validate_no_error();
+    // The error is non-fatal: we can issue more queries
+    c2.async_execute("SELECT 1", r2, as_netresult).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
