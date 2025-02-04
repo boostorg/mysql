@@ -34,9 +34,11 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/assert.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/system/result.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -350,6 +352,9 @@ public:
      * \param v The new metadata mode.
      */
     void set_meta_mode(metadata_mode v) noexcept { impl_.set_meta_mode(v); }
+
+    // TODO: document
+    boost::optional<std::uint32_t> connection_id() const noexcept { return impl_.connection_id(); }
 
     /**
      * \brief Establishes a connection to a MySQL server.
