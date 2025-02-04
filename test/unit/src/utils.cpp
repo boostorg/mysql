@@ -140,6 +140,7 @@ class boost::mysql::test::algo_test::state_checker
     bool expected_is_connected;
     detail::db_flavor expected_flavor;
     detail::capabilities expected_capabilities;
+    std::uint32_t expected_connection_id;
     detail::ssl_state expected_ssl;
     bool expected_backslash_escapes;
     character_set expected_charset;
@@ -150,6 +151,7 @@ public:
           expected_is_connected(changes.is_connected.value_or(st.is_connected)),
           expected_flavor(changes.flavor.value_or(st.flavor)),
           expected_capabilities(changes.current_capabilities.value_or(st.current_capabilities)),
+          expected_connection_id(changes.connection_id.value_or(st.connection_id)),
           expected_ssl(changes.ssl.value_or(st.ssl)),
           expected_backslash_escapes(changes.backslash_escapes.value_or(st.backslash_escapes)),
           expected_charset(changes.current_charset.value_or(st.current_charset))
@@ -161,6 +163,7 @@ public:
         BOOST_TEST(st_.is_connected == expected_is_connected);
         BOOST_TEST(st_.flavor == expected_flavor);
         BOOST_TEST(st_.current_capabilities == expected_capabilities);
+        BOOST_TEST(st_.connection_id == expected_connection_id);
         BOOST_TEST(st_.ssl == expected_ssl);
         BOOST_TEST(st_.backslash_escapes == expected_backslash_escapes);
         BOOST_TEST(st_.current_charset == expected_charset);
