@@ -27,10 +27,4 @@ ALTER USER 'csha2p_empty_password_user'@'%' IDENTIFIED BY '';
 GRANT ALL PRIVILEGES ON boost_mysql_integtests.* TO 'csha2p_empty_password_user'@'%';
 
 
--- caching_sha2_password behaves differently on sha256 cache hit and miss.
--- These tests require exclusive access to the cache, and lock this table
--- to avoid race conditions (e.g. between concurrent b2 runs)
-DROP TABLE IF EXISTS sha256_mutex;
-CREATE TABLE sha256_mutex (dummy INT);
-
 FLUSH PRIVILEGES;
