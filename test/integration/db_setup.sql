@@ -68,10 +68,6 @@ INSERT INTO multifield_table VALUES
     (1, "aaa", 11, 1.1, 0.1),
     (2, "bbb", 22, NULL, 0.2);
 
-CREATE TABLE locks_table(
-    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT
-);
-
 -- Tables to test we retrieve correctly values of every possible type
 -- Every type gets a separate table. Each field within the table is a possible variant of this same type
 -- Every row is a test case, identified by the id column.

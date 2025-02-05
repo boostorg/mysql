@@ -393,42 +393,31 @@ BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, io_context_fixture)
 {
     // Setup
     any_connection c1(ctx), c2(ctx);
-    results r1, r2;
-    c1.async_connect(connect_params_builder().multi_queries(true).build(), as_netresult).validate_no_error();
-    c2.async_connect(connect_params_builder().multi_queries(true).build(), as_netresult).validate_no_error();
+    results rlock, r1;
+    const auto params = connect_params_builder().disable_ssl().build();
+    c1.async_connect(params, as_netresult).validate_no_error();
+    c2.async_connect(params, as_netresult).validate_no_error();
 
-    // Create a record in a table and lock it, so we can have a long-running query
-    c1.async_execute(
-          "INSERT INTO locks_table VALUES();"
-          "START TRANSACTION;"
-          "SELECT * FROM locks_table WHERE id = LAST_INSERT_ID() FOR UPDATE",
-          r1,
-          as_netresult
-    )
-        .validate_no_error();
-    auto id = r1.at(0).last_insert_id();
+    // Get a unique lock name. We can use the connection id for this
+    const auto lock_name = std::to_string(c1.connection_id().value());
 
-    // Launch a long-running query. It won't finish until we explicitly unlock the record
-    auto execute_res = c2.async_execute(
-        with_params("SELECT * FROM locks_table WHERE id = {}", id),
-        r1,
-        as_netresult
-    );
+    // Issue a long-running query by trying to acquire an acquired lock. -1 = no timeout
+    c1.async_execute(with_params("DO GET_LOCK({}, -1)", lock_name), rlock, as_netresult).validate_no_error();
+    auto execute_res = c2.async_execute(with_params("DO GET_LOCK({}, -1)", lock_name), rlock, as_netresult);
 
     // Other operations fail because the connection is engaged
-    c2.async_execute("SELECT 1", r2, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_execute("SELECT 1", r1, as_netresult).validate_error(client_errc::operation_in_progress);
     c2.async_prepare_statement("SELECT 1", as_netresult).validate_error(client_errc::operation_in_progress);
     c2.async_reset_connection(as_netresult).validate_error(client_errc::operation_in_progress);
     c2.async_connect(connect_params{}, as_netresult).validate_error(client_errc::operation_in_progress);
     c2.async_close(as_netresult).validate_error(client_errc::operation_in_progress);
 
-    // Unlock the record, so the query finishes
-    c1.async_execute(with_params("DELETE FROM locks_table WHERE id = {}; COMMIT", id), r2, as_netresult)
-        .validate_no_error();
+    // Release the lock, so the query finishes
+    c1.async_execute("DO RELEASE_ALL_LOCKS()", r1, as_netresult).validate_no_error();
     std::move(execute_res).validate_no_error();
 
     // The error is non-fatal: we can issue more queries
-    c2.async_execute("SELECT 1", r2, as_netresult).validate_no_error();
+    c2.async_execute("SELECT 1", r1, as_netresult).validate_no_error();
 }
 
 BOOST_FIXTURE_TEST_CASE(op_in_progress_connect, any_connection_fixture)
