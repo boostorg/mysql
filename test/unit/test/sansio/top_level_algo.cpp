@@ -40,9 +40,6 @@ using boost::mysql::client_errc;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 
-// TODO: test that diagnostics are cleared
-// TODO: test that we set/clear the in progress flag
-
 BOOST_AUTO_TEST_SUITE(test_top_level_algo)
 
 void transfer(span<std::uint8_t> buff, span<const std::uint8_t> bytes)
@@ -615,10 +612,78 @@ BOOST_AUTO_TEST_CASE(diagnostics_passed)
 
     // Continue
     act = algo.resume(error_code(), 0);
-    BOOST_TEST(act.is_done());
+    BOOST_TEST(act.success());
 
     // Diagnostics still the same
     BOOST_TEST(diag == create_server_diag("abc"));
+}
+
+// The in-progress flag is set and cleared
+BOOST_AUTO_TEST_CASE(in_progress_flag_success)
+{
+    struct mock_algo
+    {
+        boost::asio::coroutine coro;
+
+        next_action resume(connection_state_data& st, diagnostics&, error_code)
+        {
+            BOOST_ASIO_CORO_REENTER(coro)
+            {
+                BOOST_TEST(st.op_in_progress);  // always set when running an algo
+                BOOST_ASIO_CORO_YIELD return next_action::ssl_handshake();
+                BOOST_TEST(st.op_in_progress);  // always set when running an algo
+            }
+            return next_action();
+        }
+    };
+
+    connection_state_data st(0);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
+
+    // Initiating sets the flag
+    auto act = algo.resume(error_code(), 0);
+    BOOST_TEST(act.type() == next_action_type::ssl_handshake);
+    BOOST_TEST(st.op_in_progress);
+
+    // Finishing clears it
+    act = algo.resume(error_code(), 0);
+    BOOST_TEST(act.success());
+    BOOST_TEST(!st.op_in_progress);
+}
+
+BOOST_AUTO_TEST_CASE(in_progress_flag_error)
+{
+    struct mock_algo
+    {
+        boost::asio::coroutine coro;
+
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
+        {
+            BOOST_ASIO_CORO_REENTER(coro)
+            {
+                BOOST_TEST(st.op_in_progress);  // always set when running an algo
+                BOOST_ASIO_CORO_YIELD return next_action::ssl_handshake();
+                BOOST_TEST(st.op_in_progress);  // always set when running an algo
+            }
+            return ec;  // return the error passed to the algo
+        }
+    };
+
+    connection_state_data st(0);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
+
+    // Initiating sets the flag
+    auto act = algo.resume(error_code(), 0);
+    BOOST_TEST(act.type() == next_action_type::ssl_handshake);
+    BOOST_TEST(st.op_in_progress);
+
+    // Finishing clears it, even if there was an error either in the algo itself
+    // or in the code managed by top_level_algo (e.g. a network error)
+    act = algo.resume(client_errc::sequence_number_mismatch, 0);
+    BOOST_TEST(act.error() == client_errc::sequence_number_mismatch);
+    BOOST_TEST(!st.op_in_progress);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
