@@ -38,7 +38,6 @@ using boost::asio::coroutine;
 using boost::mysql::client_errc;
 using boost::mysql::diagnostics;
 using boost::mysql::error_code;
-using u8vec = std::vector<std::uint8_t>;
 
 // TODO: test that diagnostics are cleared
 // TODO: test that the diagnostics used to construct the object are passed
@@ -52,8 +51,8 @@ void transfer(span<std::uint8_t> buff, span<const std::uint8_t> bytes)
     std::memcpy(buff.data(), bytes.data(), bytes.size());
 }
 
-const u8vec msg1{0x01, 0x02, 0x03};
-const u8vec msg2(50, 0x04);
+const std::vector<std::uint8_t> msg1{0x01, 0x02, 0x03};
+const std::vector<std::uint8_t> msg2(50, 0x04);
 
 BOOST_AUTO_TEST_CASE(read_cached)
 {
