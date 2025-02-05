@@ -26,6 +26,7 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
+#include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/mock_message.hpp"
@@ -40,7 +41,6 @@ using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 
 // TODO: test that diagnostics are cleared
-// TODO: test that the diagnostics used to construct the object are passed
 // TODO: test that we set/clear the in progress flag
 
 BOOST_AUTO_TEST_SUITE(test_top_level_algo)
@@ -572,6 +572,53 @@ BOOST_AUTO_TEST_CASE(immediate_completion)
     // Initial run yields completion
     auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.success());
+}
+
+// Diagnostics are correctly passed around
+BOOST_AUTO_TEST_CASE(diagnostics_passed)
+{
+    struct mock_algo
+    {
+        coroutine coro;
+        const diagnostics* expected_diag;
+
+        explicit mock_algo(const diagnostics* expected_diag) : expected_diag(expected_diag) {}
+
+        next_action resume(connection_state_data&, diagnostics& diag, error_code)
+        {
+            BOOST_ASIO_CORO_REENTER(coro)
+            {
+                // Diagnostics passed by reference
+                BOOST_TEST(&diag == expected_diag);
+
+                // We can set the output value
+                diag = create_server_diag("abc");
+                BOOST_ASIO_CORO_YIELD return next_action::ssl_handshake();
+
+                // The same object is passed again
+                BOOST_TEST(&diag == expected_diag);
+            }
+            return next_action();
+        }
+    };
+
+    connection_state_data st(512);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag, &diag);
+
+    // Initiate
+    auto act = algo.resume(error_code(), 0);
+    BOOST_TEST(act.type() == next_action_type::ssl_handshake);
+
+    // We can see the diagnostics set by the algorithm
+    BOOST_TEST(diag == create_server_diag("abc"));
+
+    // Continue
+    act = algo.resume(error_code(), 0);
+    BOOST_TEST(act.is_done());
+
+    // Diagnostics still the same
+    BOOST_TEST(diag == create_server_diag("abc"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
