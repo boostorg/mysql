@@ -177,9 +177,10 @@ struct caching_sha2_lock : any_connection_fixture
         conn.async_connect(connect_params_builder().credentials("root", "").build(), as_netresult)
             .validate_no_error();
 
-        // Acquire the lock. -1 = no timeout
+        // Acquire the lock, using a long timeout
         results r;
-        conn.async_execute("DO GET_LOCK('sha256_cache', -1)", r, as_netresult).validate_no_error();
+        conn.async_execute("CALL get_lock_checked('sha256_cache', 3600)", r, as_netresult)
+            .validate_no_error();
 
         // The lock is released on fixture destruction, when the connection is closed
     }

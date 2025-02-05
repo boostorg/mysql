@@ -401,9 +401,14 @@ BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, io_context_fixture)
     // Get a unique lock name. We can use the connection id for this
     const auto lock_name = std::to_string(c1.connection_id().value());
 
-    // Issue a long-running query by trying to acquire an acquired lock. -1 = no timeout
-    c1.async_execute(with_params("DO GET_LOCK({}, -1)", lock_name), rlock, as_netresult).validate_no_error();
-    auto execute_res = c2.async_execute(with_params("DO GET_LOCK({}, -1)", lock_name), rlock, as_netresult);
+    // Issue a long-running query by trying to acquire an acquired lock with a long timeout
+    c1.async_execute(with_params("CALL get_lock_checked({}, 60)", lock_name), rlock, as_netresult)
+        .validate_no_error();
+    auto execute_res = c2.async_execute(
+        with_params("CALL get_lock_checked({}, 60)", lock_name),
+        rlock,
+        as_netresult
+    );
 
     // Other operations fail because the connection is engaged
     c2.async_execute("SELECT 1", r1, as_netresult).validate_error(client_errc::operation_in_progress);
