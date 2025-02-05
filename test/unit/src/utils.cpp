@@ -173,7 +173,6 @@ public:
 void boost::mysql::test::algo_test::check_network_errors_impl(
     any_algo_ref algo,
     detail::connection_state_data& st,
-    diagnostics& diag,
     std::size_t step_number,
     source_location loc
 ) const
@@ -186,6 +185,7 @@ void boost::mysql::test::algo_test::check_network_errors_impl(
         state_checker checker(st, state_changes_);
 
         // Run all the steps that shouldn't cause an error
+        diagnostics diag;  // Clearing diagnostics is not the algo's responsibility
         auto act = run_algo_until_step(algo, st, diag, step_number);
         BOOST_TEST_REQUIRE(act.type() == steps_[step_number].type);
 
@@ -205,7 +205,6 @@ void boost::mysql::test::algo_test::check_network_errors_impl(
 void boost::mysql::test::algo_test::check_impl(
     any_algo_ref algo,
     detail::connection_state_data& st,
-    diagnostics& diag,
     error_code expected_ec,
     const diagnostics& expected_diag,
     source_location loc
@@ -217,6 +216,7 @@ void boost::mysql::test::algo_test::check_impl(
         state_checker checker(st, state_changes_);
 
         // Run the op until completion
+        diagnostics diag;  // Clearing diagnostics is not the algo's responsibility
         auto act = run_algo_until_step(algo, st, diag, steps_.size());
 
         // Check that we've finished

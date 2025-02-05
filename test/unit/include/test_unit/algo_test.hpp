@@ -26,7 +26,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "test_common/create_diagnostics.hpp"
 #include "test_common/source_location.hpp"
 
 namespace boost {
@@ -90,7 +89,6 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
 
     static void handle_read(detail::connection_state_data& st, const step_t& op);
 
-    // TODO: do we need to pass diagnostics& here?
     detail::next_action run_algo_until_step(
         any_algo_ref algo,
         detail::connection_state_data& st,
@@ -103,7 +101,6 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     void check_impl(
         any_algo_ref algo,
         detail::connection_state_data& st,
-        diagnostics& diag,
         error_code expected_ec,
         const diagnostics& expected_diag,
         source_location loc
@@ -114,7 +111,6 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     void check_network_errors_impl(
         any_algo_ref algo,
         detail::connection_state_data& st,
-        diagnostics& diag,
         std::size_t step_number,
         source_location loc
     ) const;
@@ -177,7 +173,7 @@ public:
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) const
     {
-        check_impl(fix.algo, fix.st, fix.diag, expected_ec, expected_diag, loc);
+        check_impl(fix.algo, fix.st, expected_ec, expected_diag, loc);
     }
 
     template <class AlgoFixture>
@@ -186,7 +182,7 @@ public:
         for (std::size_t i = 0; i < num_steps(); ++i)
         {
             AlgoFixture fix;
-            check_network_errors_impl(fix.algo, fix.st, fix.diag, i, loc);
+            check_network_errors_impl(fix.algo, fix.st, i, loc);
         }
     }
 };
@@ -196,18 +192,12 @@ struct algo_fixture_base
     static constexpr std::size_t default_max_buffsize = 1024u;
 
     detail::connection_state_data st;
-    diagnostics diag;
 
-    algo_fixture_base(
-        diagnostics initial_diag = create_server_diag("Diagnostics not cleared"),
-        std::size_t max_buffer_size = default_max_buffsize
-    )
-        : st(max_buffer_size, max_buffer_size), diag(std::move(initial_diag))
+    algo_fixture_base(std::size_t max_buffer_size = default_max_buffsize)
+        : st(max_buffer_size, max_buffer_size)
     {
         st.write_buffer.push_back(0xff);  // Check that we clear the write buffer at each step
     }
-
-    algo_fixture_base(std::size_t max_buffer_size) : algo_fixture_base(diagnostics(), max_buffer_size) {}
 };
 
 }  // namespace test

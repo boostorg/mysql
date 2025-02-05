@@ -35,9 +35,6 @@ BOOST_AUTO_TEST_SUITE(test_reset_connection)
 struct read_response_fixture : algo_fixture_base
 {
     detail::read_reset_connection_response_algo algo{11};
-
-    // Clearing diagnostics is not this algorithm's responsibility
-    read_response_fixture() : algo_fixture_base(diagnostics()) {}
 };
 
 BOOST_AUTO_TEST_CASE(read_response_success)

@@ -18,6 +18,7 @@
 #include <cstdint>
 
 #include "test_common/buffer_concat.hpp"
+#include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_frame.hpp"
