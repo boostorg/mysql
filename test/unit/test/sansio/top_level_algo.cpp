@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/next_action.hpp>
@@ -35,8 +36,13 @@ using namespace boost::mysql::test;
 using boost::span;
 using boost::asio::coroutine;
 using boost::mysql::client_errc;
+using boost::mysql::diagnostics;
 using boost::mysql::error_code;
 using u8vec = std::vector<std::uint8_t>;
+
+// TODO: test that diagnostics are cleared
+// TODO: test that the diagnostics used to construct the object are passed
+// TODO: test that we set/clear the in progress flag
 
 BOOST_AUTO_TEST_SUITE(test_top_level_algo)
 
@@ -61,7 +67,7 @@ BOOST_AUTO_TEST_CASE(read_cached)
         coroutine coro;
         std::uint8_t seqnum{};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -80,7 +86,8 @@ BOOST_AUTO_TEST_CASE(read_cached)
     };
 
     connection_state_data st(512);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
     auto act = algo.resume(error_code(), 0);
@@ -105,7 +112,7 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
         coroutine coro;
         std::uint8_t seqnum{};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -120,7 +127,8 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a read request and resizes the buffer aprorpiately
     auto act = algo.resume(error_code(), 0);
@@ -155,7 +163,7 @@ BOOST_AUTO_TEST_CASE(read_parsing_error)
         coroutine coro;
         std::uint8_t seqnum{42u};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -168,7 +176,8 @@ BOOST_AUTO_TEST_CASE(read_parsing_error)
     };
 
     connection_state_data st(512);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
     auto act = algo.resume(error_code(), 0);
@@ -190,7 +199,7 @@ BOOST_AUTO_TEST_CASE(read_io_error)
         coroutine coro;
         std::uint8_t seqnum{};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -203,7 +212,8 @@ BOOST_AUTO_TEST_CASE(read_io_error)
     };
 
     connection_state_data st(512);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a read request. We don't have cached data, so run_op returns it
     auto act = algo.resume(error_code(), 0);
@@ -223,7 +233,7 @@ BOOST_AUTO_TEST_CASE(read_buffer_size_exceeded)
         coroutine coro;
         std::uint8_t seqnum{42u};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -236,7 +246,8 @@ BOOST_AUTO_TEST_CASE(read_buffer_size_exceeded)
     };
 
     connection_state_data st(32, 64);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a read request. We don't have cached data, so resume returns it
     auto act = algo.resume(error_code(), 0);
@@ -258,7 +269,7 @@ BOOST_AUTO_TEST_CASE(read_ssl_active)
     {
         std::uint8_t seqnum{};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_TEST(ec == error_code());
             return st.read(seqnum);
@@ -266,7 +277,8 @@ BOOST_AUTO_TEST_CASE(read_ssl_active)
     };
 
     connection_state_data st(512);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
     st.ssl = ssl_state::active;
 
     // Yielding a read with ssl active sets the use_ssl flag
@@ -284,7 +296,7 @@ BOOST_AUTO_TEST_CASE(write_short)
         coroutine coro;
         std::uint8_t seqnum{};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -298,7 +310,8 @@ BOOST_AUTO_TEST_CASE(write_short)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a write request
     auto act = algo.resume(error_code(), 0);
@@ -323,7 +336,7 @@ BOOST_AUTO_TEST_CASE(write_io_error)
         coroutine coro;
         std::uint8_t seqnum{};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -336,7 +349,8 @@ BOOST_AUTO_TEST_CASE(write_io_error)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a write request. Fail it
     auto act = algo.resume(error_code(), 0);
@@ -355,7 +369,7 @@ BOOST_AUTO_TEST_CASE(write_max_buffer_size_exact)
         std::uint8_t seqnum{};
         const std::array<std::uint8_t, 60> long_msg{};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -368,7 +382,8 @@ BOOST_AUTO_TEST_CASE(write_max_buffer_size_exact)
     };
 
     connection_state_data st(32, 64);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a write request, exactly of max_size. This succeeds
     auto act = algo.resume(error_code(), 0);
@@ -386,7 +401,7 @@ BOOST_AUTO_TEST_CASE(write_ssl_active)
     {
         std::uint8_t seqnum{};
 
-        next_action resume(connection_state_data& st, error_code ec)
+        next_action resume(connection_state_data& st, diagnostics&, error_code ec)
         {
             BOOST_TEST(ec == error_code());
             return st.write(mock_message{msg1}, seqnum);
@@ -394,7 +409,8 @@ BOOST_AUTO_TEST_CASE(write_ssl_active)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
     st.ssl = ssl_state::active;
 
     // Yielding a write request when ssl_active() returns an action with the flag set
@@ -410,7 +426,7 @@ BOOST_AUTO_TEST_CASE(ssl_handshake)
     {
         boost::asio::coroutine coro;
 
-        next_action resume(connection_state_data&, error_code ec)
+        next_action resume(connection_state_data&, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -423,7 +439,8 @@ BOOST_AUTO_TEST_CASE(ssl_handshake)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a SSL handshake request. These are always returned
     auto act = algo.resume(error_code(), 0);
@@ -442,7 +459,7 @@ BOOST_AUTO_TEST_CASE(ssl_shutdown)
     {
         coroutine coro;
 
-        next_action resume(connection_state_data&, error_code ec)
+        next_action resume(connection_state_data&, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -455,7 +472,8 @@ BOOST_AUTO_TEST_CASE(ssl_shutdown)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a SSL handshake request. These are always returned
     auto act = algo.resume(error_code(), 0);
@@ -470,16 +488,17 @@ BOOST_AUTO_TEST_CASE(ssl_shutdown)
 
 BOOST_AUTO_TEST_CASE(connect)
 {
+    // TODO: check the connect arg
     struct mock_algo
     {
         boost::asio::coroutine coro;
 
-        next_action resume(connection_state_data&, error_code ec)
+        next_action resume(connection_state_data&, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return next_action::connect();
+                BOOST_ASIO_CORO_YIELD return next_action::connect(nullptr);
                 BOOST_TEST(ec == client_errc::wrong_num_params);
             }
             return next_action();
@@ -487,7 +506,8 @@ BOOST_AUTO_TEST_CASE(connect)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a connect request. These are always returned
     auto act = algo.resume(error_code(), 0);
@@ -506,7 +526,7 @@ BOOST_AUTO_TEST_CASE(close)
     {
         boost::asio::coroutine coro;
 
-        next_action resume(connection_state_data&, error_code ec)
+        next_action resume(connection_state_data&, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -519,7 +539,8 @@ BOOST_AUTO_TEST_CASE(close)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields a close request. These are always returned
     auto act = algo.resume(error_code(), 0);
@@ -538,7 +559,7 @@ BOOST_AUTO_TEST_CASE(immediate_completion)
     {
         boost::asio::coroutine coro;
 
-        next_action resume(connection_state_data&, error_code ec)
+        next_action resume(connection_state_data&, diagnostics&, error_code ec)
         {
             BOOST_ASIO_CORO_REENTER(coro)
             {
@@ -551,7 +572,8 @@ BOOST_AUTO_TEST_CASE(immediate_completion)
     };
 
     connection_state_data st(0);
-    top_level_algo<mock_algo> algo(st);
+    diagnostics diag;
+    top_level_algo<mock_algo> algo(st, diag);
 
     // Initial run yields completion
     auto act = algo.resume(error_code(), 0);

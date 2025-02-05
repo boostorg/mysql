@@ -37,12 +37,17 @@ namespace test {
 class any_algo_ref
 {
     template <class Algo>
-    static detail::next_action do_resume(void* self, detail::connection_state_data& st, error_code ec)
+    static detail::next_action do_resume(
+        void* self,
+        detail::connection_state_data& st,
+        diagnostics& diag,
+        error_code ec
+    )
     {
-        return static_cast<Algo*>(self)->resume(st, ec);
+        return static_cast<Algo*>(self)->resume(st, diag, ec);
     }
 
-    using fn_t = detail::next_action (*)(void*, detail::connection_state_data&, error_code);
+    using fn_t = detail::next_action (*)(void*, detail::connection_state_data&, diagnostics&, error_code);
 
     void* algo_{};
     fn_t fn_{};
@@ -53,9 +58,9 @@ public:
     {
     }
 
-    detail::next_action resume(detail::connection_state_data& st, error_code ec)
+    detail::next_action resume(detail::connection_state_data& st, diagnostics& diag, error_code ec)
     {
-        return fn_(algo_, st, ec);
+        return fn_(algo_, st, diag, ec);
     }
 };
 
@@ -85,18 +90,20 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
 
     static void handle_read(detail::connection_state_data& st, const step_t& op);
 
+    // TODO: do we need to pass diagnostics& here?
     detail::next_action run_algo_until_step(
-        detail::connection_state_data& st,
         any_algo_ref algo,
+        detail::connection_state_data& st,
+        diagnostics& diag,
         std::size_t num_steps_to_run
     ) const;
 
     algo_test& add_step(detail::next_action_type act_type, std::vector<std::uint8_t> bytes, error_code ec);
 
     void check_impl(
-        detail::connection_state_data& st,
         any_algo_ref algo,
-        const diagnostics& actual_diag,
+        detail::connection_state_data& st,
+        diagnostics& diag,
         error_code expected_ec,
         const diagnostics& expected_diag,
         source_location loc
@@ -105,10 +112,10 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     std::size_t num_steps() const { return steps_.size(); }
 
     void check_network_errors_impl(
-        detail::connection_state_data& st,
         any_algo_ref algo,
+        detail::connection_state_data& st,
+        diagnostics& diag,
         std::size_t step_number,
-        const diagnostics& actual_diag,
         source_location loc
     ) const;
 
@@ -170,7 +177,7 @@ public:
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) const
     {
-        check_impl(fix.st, fix.algo, fix.diag, expected_ec, expected_diag, loc);
+        check_impl(fix.algo, fix.st, fix.diag, expected_ec, expected_diag, loc);
     }
 
     template <class AlgoFixture>
@@ -179,7 +186,7 @@ public:
         for (std::size_t i = 0; i < num_steps(); ++i)
         {
             AlgoFixture fix;
-            check_network_errors_impl(fix.st, fix.algo, i, fix.diag, loc);
+            check_network_errors_impl(fix.algo, fix.st, fix.diag, i, loc);
         }
     }
 };

@@ -157,16 +157,16 @@ public:
     }
 
     // Connect and close
-    void connect(error_code& ec)
+    void connect(const void* server_address, error_code& ec)
     {
-        calls.push_back(next_action::connect());
+        calls.push_back(next_action::connect(server_address));
         ec = op_error_;
     }
 
     template <class CompletionToken>
-    void async_connect(CompletionToken&& token)
+    void async_connect(const void* server_address, CompletionToken&& token)
     {
-        calls.push_back(next_action::connect());
+        calls.push_back(next_action::connect(server_address));
         complete_immediate(std::forward<CompletionToken>(token));
     }
 
@@ -332,20 +332,21 @@ BOOST_AUTO_TEST_CASE(next_action_write)
 // returning next_action::connect/ssl_handshake/ssl_shutdown/close calls the relevant stream function
 BOOST_AUTO_TEST_CASE(next_action_other)
 {
+    // TODO: check connect args
     struct
     {
         const char* name;
         signature_t fn;
         next_action act;
     } test_cases[] = {
-        {"connect_sync",        sync_fn,  next_action::connect()      },
-        {"connect_async",       async_fn, next_action::connect()      },
-        {"ssl_handshake_sync",  sync_fn,  next_action::ssl_handshake()},
-        {"ssl_handshake_async", async_fn, next_action::ssl_handshake()},
-        {"ssl_shutdown_sync",   sync_fn,  next_action::ssl_shutdown() },
-        {"ssl_shutdown_async",  async_fn, next_action::ssl_shutdown() },
-        {"close_sync",          sync_fn,  next_action::close()        },
-        {"close_async",         async_fn, next_action::close()        },
+        {"connect_sync",        sync_fn,  next_action::connect(nullptr)},
+        {"connect_async",       async_fn, next_action::connect(nullptr)},
+        {"ssl_handshake_sync",  sync_fn,  next_action::ssl_handshake() },
+        {"ssl_handshake_async", async_fn, next_action::ssl_handshake() },
+        {"ssl_shutdown_sync",   sync_fn,  next_action::ssl_shutdown()  },
+        {"ssl_shutdown_async",  async_fn, next_action::ssl_shutdown()  },
+        {"close_sync",          sync_fn,  next_action::close()         },
+        {"close_async",         async_fn, next_action::close()         },
     };
 
     for (const auto& tc : test_cases)
@@ -370,6 +371,7 @@ BOOST_AUTO_TEST_CASE(next_action_other)
 }
 
 // Stream errors get propagated to the algorithm and don't exit the loop
+// TODO: check connect args
 BOOST_AUTO_TEST_CASE(stream_errors)
 {
     std::array<std::uint8_t, 8> buff{};
@@ -385,8 +387,8 @@ BOOST_AUTO_TEST_CASE(stream_errors)
         {"read_async",          async_fn, next_action::read({buff, false})  },
         {"write_sync",          sync_fn,  next_action::write({cbuff, false})},
         {"write_async",         async_fn, next_action::write({cbuff, false})},
-        {"connect_sync",        sync_fn,  next_action::connect()            },
-        {"connect_async",       async_fn, next_action::connect()            },
+        {"connect_sync",        sync_fn,  next_action::connect(nullptr)     },
+        {"connect_async",       async_fn, next_action::connect(nullptr)     },
         {"ssl_handshake_sync",  sync_fn,  next_action::ssl_handshake()      },
         {"ssl_handshake_async", async_fn, next_action::ssl_handshake()      },
         {"ssl_shutdown_sync",   sync_fn,  next_action::ssl_shutdown()       },
@@ -510,7 +512,7 @@ BOOST_AUTO_TEST_CASE(resume_error_successive_calls)
         {
             // Setup
             io_context_fixture fix;
-            mock_algo algo(next_action::connect(), next_action(tc.ec));
+            mock_algo algo(next_action::connect(nullptr), next_action(tc.ec));
             test_engine eng{fix.ctx.get_executor()};
 
             tc.fn(eng, any_resumable_ref(algo))

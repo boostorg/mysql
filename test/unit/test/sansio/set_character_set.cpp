@@ -76,7 +76,7 @@ struct read_response_fixture : algo_fixture_base
 
     // Clearing diagnostics is not this algorithm's responsibility
     read_response_fixture(character_set charset = utf8mb4_charset)
-        : algo_fixture_base(diagnostics()), algo(diag, charset, 29)
+        : algo_fixture_base(diagnostics()), algo(charset, 29)
     {
     }
 };
@@ -136,11 +136,8 @@ struct set_charset_fixture : algo_fixture_base
 {
     detail::set_character_set_algo algo;
 
-    set_charset_fixture(character_set charset = utf8mb4_charset) : algo(diag, {charset}) {}
-    set_charset_fixture(std::size_t max_bufsize)
-        : algo_fixture_base(max_bufsize), algo(diag, {utf8mb4_charset})
-    {
-    }
+    set_charset_fixture(character_set charset = utf8mb4_charset) : algo({charset}) {}
+    set_charset_fixture(std::size_t max_bufsize) : algo_fixture_base(max_bufsize), algo({utf8mb4_charset}) {}
 };
 
 BOOST_AUTO_TEST_CASE(set_charset_success)

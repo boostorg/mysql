@@ -68,7 +68,7 @@ struct fixture_base : algo_fixture_base
         span<const std::uint8_t> req_buffer = mock_request,
         std::vector<stage_response>* response = nullptr
     )
-        : algo(diag, {req_buffer, stages, response})
+        : algo({req_buffer, stages, response})
     {
     }
 };

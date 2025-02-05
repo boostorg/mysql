@@ -42,7 +42,6 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     std::array<row1, 3> storage;
     detail::read_some_rows_algo algo{
-        diag,
         {&proc, ref()}
     };
 
