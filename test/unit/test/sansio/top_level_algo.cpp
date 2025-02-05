@@ -52,11 +52,6 @@ void transfer(span<std::uint8_t> buff, span<const std::uint8_t> bytes)
     std::memcpy(buff.data(), bytes.data(), bytes.size());
 }
 
-void transfer(span<std::uint8_t> buff, const std::vector<std::uint8_t>& bytes)
-{
-    transfer(buff, boost::span<const std::uint8_t>(bytes));
-}
-
 const u8vec msg1{0x01, 0x02, 0x03};
 const u8vec msg2(50, 0x04);
 
@@ -130,7 +125,7 @@ BOOST_AUTO_TEST_CASE(read_short_and_buffer_resizing)
     diagnostics diag;
     top_level_algo<mock_algo> algo(st, diag);
 
-    // Initial run yields a read request and resizes the buffer aprorpiately
+    // Initial run yields a read request and resizes the buffer appropriately
     auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action_type::read);
     BOOST_TEST(act.read_args().buffer.data() == st.reader.buffer().data());
