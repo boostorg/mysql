@@ -457,29 +457,23 @@ BOOST_FIXTURE_TEST_CASE(connection_id, any_connection_fixture)
 // }
 
 // It's safe to obtain the connection id while an operation is in progress
-BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, io_context_fixture)
+BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, any_connection_fixture)
 {
     // Setup
-    any_connection c1(ctx), c2(ctx);
-    results r1, r2;
-    const auto params = connect_params_builder().disable_ssl().build();
-    c1.async_connect(params, as_netresult).validate_no_error();
-    c2.async_connect(params, as_netresult).validate_no_error();
+    connect();
+    const auto expected_id = call_connection_id(conn);
 
-    // Create a long-running query by trying to acquire a lock that is already acquired.
-    // We choose the lock name to be one of the connection ids, since these are unique.
-    // SLEEP sometimes finishes without error when killed, so it's not reliable
-    auto lock_name = std::to_string(call_connection_id(c1));
-    c1.async_execute(with_params("DO GET_LOCK({}, -1)", lock_name), r1, as_netresult).validate_no_error();
-    auto execute_result = c2.async_execute(with_params("DO GET_LOCK({}, -1)", lock_name), r2, as_netresult);
+    // Issue a query
+    results r;
+    auto execute_result = conn.async_execute("SELECT * FROM three_rows_table", r, as_netresult);
 
-    // Use the other connection to kill the query
-    c1.async_execute(with_params("KILL QUERY {}", c2.connection_id().value()), r1, as_netresult)
-        .validate_no_error();
+    // While in progress, obtain the connection id. We would usually do this to
+    // open a new connection and run a KILL statement. We don't do it here because
+    // it's unreliable as a test due to race conditions between sessions in the server.
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id));
 
-    // It had the intended effect
-    std::move(execute_result)
-        .validate_error(common_server_errc::er_query_interrupted, "Query execution was interrupted");
+    // Finish
+    std::move(execute_result).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
