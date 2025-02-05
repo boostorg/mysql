@@ -479,7 +479,6 @@ BOOST_AUTO_TEST_CASE(ssl_shutdown)
 
 BOOST_AUTO_TEST_CASE(connect)
 {
-    // TODO: check the connect arg
     struct mock_algo
     {
         boost::asio::coroutine coro;
@@ -489,7 +488,7 @@ BOOST_AUTO_TEST_CASE(connect)
             BOOST_ASIO_CORO_REENTER(coro)
             {
                 BOOST_TEST(ec == error_code());
-                BOOST_ASIO_CORO_YIELD return next_action::connect(nullptr);
+                BOOST_ASIO_CORO_YIELD return next_action::connect(reinterpret_cast<const void*>(42u));
                 BOOST_TEST(ec == client_errc::wrong_num_params);
             }
             return next_action();
@@ -500,9 +499,11 @@ BOOST_AUTO_TEST_CASE(connect)
     diagnostics diag;
     top_level_algo<mock_algo> algo(st, diag);
 
-    // Initial run yields a connect request. These are always returned
+    // Initial run yields a connect request. These are always returned.
+    // The connect argument is not used, only forwarded
     auto act = algo.resume(error_code(), 0);
     BOOST_TEST(act.type() == next_action_type::connect);
+    BOOST_TEST(act.connect_endpoint() == reinterpret_cast<const void*>(42u));
 
     // Fail the op
     act = algo.resume(client_errc::wrong_num_params, 0);
