@@ -429,10 +429,7 @@ BOOST_FIXTURE_TEST_CASE(op_in_progress_connect, any_connection_fixture)
     // While in progress, launch another one, with different params.
     // This fails with the expected error
     conn.async_connect(
-            connect_params_builder()
-                .server_address(host_and_port{"bad", 1000})
-                .credentials("bad_username", "bad_password")
-                .build(),
+            connect_params_builder().set_tcp("bad", 1000).credentials("bad_username", "bad_password").build(),
             as_netresult
     )
         .validate_error(client_errc::operation_in_progress);

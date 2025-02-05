@@ -16,6 +16,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <cstdint>
+#include <string>
 
 #include "test_common/ci_server.hpp"
 
@@ -31,9 +32,9 @@ class connect_params_builder
 public:
     connect_params_builder() { addr_.emplace_host_and_port(get_hostname()); }
 
-    connect_params_builder& server_address(any_address addr)
+    connect_params_builder& set_tcp(std::string hostname, unsigned short port)
     {
-        addr_ = std::move(addr);
+        addr_.emplace_host_and_port(std::move(hostname), port);
         return *this;
     }
 
