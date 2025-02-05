@@ -466,15 +466,20 @@ BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, io_context_fixture)
     c1.async_connect(params, as_netresult).validate_no_error();
     c2.async_connect(params, as_netresult).validate_no_error();
 
-    // Issue a long running query
-    auto execute_result = c1.async_execute("DO SLEEP(60)", r1, as_netresult);
+    // Create a long-running query by trying to acquire a lock that is already acquired.
+    // We choose the lock name to be one of the connection ids, since these are unique.
+    // SLEEP sometimes finishes without error when killed, so it's not reliable
+    auto lock_name = std::to_string(call_connection_id(c1));
+    c1.async_execute(with_params("DO GET_LOCK({}, -1)", lock_name), r1, as_netresult).validate_no_error();
+    auto execute_result = c2.async_execute(with_params("DO GET_LOCK({}, -1)", lock_name), r2, as_netresult);
 
     // Use the other connection to kill the query
-    c2.async_execute(with_params("KILL QUERY {}", c1.connection_id().value()), r2, as_netresult)
+    c1.async_execute(with_params("KILL QUERY {}", c2.connection_id().value()), r1, as_netresult)
         .validate_no_error();
 
     // It had the intended effect
-    std::move(execute_result).validate_no_error();
+    std::move(execute_result)
+        .validate_error(common_server_errc::er_query_interrupted, "Query execution was interrupted");
 }
 
 BOOST_AUTO_TEST_SUITE_END()
