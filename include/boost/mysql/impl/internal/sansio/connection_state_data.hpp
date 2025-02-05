@@ -49,6 +49,9 @@ struct connection_state_data
     // What are the connection's capabilities?
     capabilities current_capabilities;
 
+    // The current connection ID. Supplied by handshake, can be used in KILL statements
+    std::uint32_t connection_id{};
+
     // Used by async ops without output diagnostics params, to avoid allocations
     diagnostics shared_diag;
 

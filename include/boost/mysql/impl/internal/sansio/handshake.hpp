@@ -106,9 +106,10 @@ class handshake_algo
         if (err)
             return err;
 
-        // Set capabilities & db flavor
+        // Set capabilities, db flavor and connection ID
         st.current_capabilities = negotiated_caps;
         st.flavor = hello.server;
+        st.connection_id = hello.connection_id;
 
         // If we're using SSL, mark the channel as secure
         secure_channel_ = secure_channel_ || use_ssl(st);
