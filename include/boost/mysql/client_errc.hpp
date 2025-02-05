@@ -139,7 +139,10 @@ enum class client_errc : int
      */
     max_buffer_size_exceeded,
 
-    // TODO: implement in to string and document
+    /**
+     * \brief Another operation is currently in progress for this connection. Make sure
+     * that a single connection does not run two asynchronous operations in parallel.
+     */
     operation_in_progress,
 };
 

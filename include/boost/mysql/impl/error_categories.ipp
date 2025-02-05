@@ -86,6 +86,9 @@ inline const char* error_to_string(client_errc error)
     case client_errc::max_buffer_size_exceeded:
         return "An operation attempted to read or write a packet larger than the maximum buffer size. "
                "Try increasing any_connection_params::max_buffer_size.";
+    case client_errc::operation_in_progress:
+        return "Another operation is currently in progress for this connection. Make sure that a single "
+               "connection does not run two asynchronous operations in parallel.";
 
     default: return "<unknown MySQL client error>";
     }
