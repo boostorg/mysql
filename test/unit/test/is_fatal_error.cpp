@@ -83,6 +83,7 @@ BOOST_AUTO_TEST_CASE(test_is_fatal_error)
         {"format_string_invalid_specifier", client_errc::format_string_invalid_specifier,                   false},
         {"format_arg_not_found",            client_errc::format_arg_not_found,                              false},
         {"unknown_character_set",           client_errc::unknown_character_set,                             false},
+        {"operation_in_progress",           client_errc::operation_in_progress,                             false},
 
         // Fatal server errors
         {"ER_UNKNOWN_COM_ERROR",            common_server_errc::er_unknown_com_error,                       true },
