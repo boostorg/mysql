@@ -80,6 +80,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         boost::optional<bool> is_connected;
         boost::optional<detail::db_flavor> flavor;
         boost::optional<detail::capabilities> current_capabilities;
+        boost::optional<std::uint32_t> connection_id;
         boost::optional<detail::ssl_state> ssl;
         boost::optional<bool> backslash_escapes;
         boost::optional<character_set> current_charset;

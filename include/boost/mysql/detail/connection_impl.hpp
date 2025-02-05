@@ -30,9 +30,11 @@
 #include <boost/mysql/detail/intermediate_handler.hpp>
 
 #include <boost/asio/any_io_executor.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/system/result.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <type_traits>
@@ -339,6 +341,7 @@ public:
     BOOST_MYSQL_DECL bool ssl_active() const;
     BOOST_MYSQL_DECL bool backslash_escapes() const;
     BOOST_MYSQL_DECL system::result<character_set> current_character_set() const;
+    BOOST_MYSQL_DECL boost::optional<std::uint32_t> connection_id() const;
     BOOST_MYSQL_DECL diagnostics& shared_diag();
 
     engine& get_engine()
