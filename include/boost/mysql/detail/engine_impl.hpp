@@ -111,7 +111,11 @@ struct run_algo_op
                 }
                 else if (act.type() == next_action_type::connect)
                 {
-                    BOOST_MYSQL_YIELD(resume_point_, 6, stream_.async_connect(std::move(self)))
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        6,
+                        stream_.async_connect(act.connect_endpoint(), std::move(self))
+                    )
                     has_done_io_ = true;
                 }
                 else
@@ -128,7 +132,6 @@ struct run_algo_op
 //    using executor_type = asio::any_io_executor;
 //    executor_type get_executor();
 //    bool supports_ssl() const;
-//    void set_endpoint(const void* endpoint);
 //    std::size_t read_some(asio::mutable_buffer, bool use_ssl, error_code&);
 //    void async_read_some(asio::mutable_buffer, bool use_ssl, CompletinToken&&);
 //    std::size_t write_some(asio::const_buffer, bool use_ssl, error_code&);
@@ -137,8 +140,8 @@ struct run_algo_op
 //    void async_ssl_handshake(CompletionToken&&);
 //    void ssl_shutdown(error_code&);
 //    void async_ssl_shutdown(CompletionToken&&);
-//    void connect(error_code&);
-//    void async_connect(CompletionToken&&);
+//    void connect(const void* server_address, error_code&);
+//    void async_connect(const void* server_address, CompletionToken&&);
 //    void close(error_code&);
 // Async operations are only required to support callback types
 // See stream_adaptor for an implementation
@@ -160,8 +163,6 @@ public:
     executor_type get_executor() override final { return stream_.get_executor(); }
 
     bool supports_ssl() const override final { return stream_.supports_ssl(); }
-
-    void set_endpoint(const void* endpoint) override final { stream_.set_endpoint(endpoint); }
 
     void run(any_resumable_ref resumable, error_code& ec) override final
     {
@@ -207,7 +208,7 @@ public:
             }
             else if (act.type() == next_action_type::connect)
             {
-                stream_.connect(io_ec);
+                stream_.connect(act.connect_endpoint(), io_ec);
             }
             else
             {

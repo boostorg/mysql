@@ -138,6 +138,12 @@ enum class client_errc : int
      * size. Try increasing \ref any_connection_params::max_buffer_size.
      */
     max_buffer_size_exceeded,
+
+    /**
+     * \brief Another operation is currently in progress for this connection. Make sure
+     * that a single connection does not run two asynchronous operations in parallel.
+     */
+    operation_in_progress,
 };
 
 BOOST_MYSQL_DECL

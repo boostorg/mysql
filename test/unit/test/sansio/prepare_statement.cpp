@@ -13,6 +13,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_err.hpp"
@@ -30,10 +31,7 @@ BOOST_AUTO_TEST_SUITE(test_prepare_statement)
 //
 struct read_response_fixture : algo_fixture_base
 {
-    detail::read_prepare_statement_response_algo algo{diag, 19};
-
-    // Clearing diagnostics is not this algorithm's responsibility
-    read_response_fixture() : algo_fixture_base(diagnostics()) {}
+    detail::read_prepare_statement_response_algo algo{19};
 
     statement result() const { return algo.result(st); }
 };
@@ -156,7 +154,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 //
 struct prepare_fixture : algo_fixture_base
 {
-    detail::prepare_statement_algo algo{diag, {"SELECT 1"}};
+    detail::prepare_statement_algo algo{{"SELECT 1"}};
 
     prepare_fixture() = default;
     prepare_fixture(std::size_t max_bufsize) : algo_fixture_base(max_bufsize) {}

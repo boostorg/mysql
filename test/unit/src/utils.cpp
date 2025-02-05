@@ -9,6 +9,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/column_type.hpp>
+#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 
@@ -89,15 +90,16 @@ void boost::mysql::test::algo_test::handle_read(detail::connection_state_data& s
 }
 
 detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
-    detail::connection_state_data& st,
     any_algo_ref algo,
+    detail::connection_state_data& st,
+    diagnostics& diag,
     std::size_t num_steps_to_run
 ) const
 {
     BOOST_ASSERT(num_steps_to_run <= num_steps());
 
     // Start the op
-    auto act = algo.resume(st, error_code());
+    auto act = algo.resume(st, diag, error_code());
 
     // Go through the requested steps
     for (std::size_t i = 0; i < num_steps_to_run; ++i)
@@ -112,7 +114,7 @@ detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
                 BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, step.bytes);
             // Other actions don't need any handling
 
-            act = algo.resume(st, step.result);
+            act = algo.resume(st, diag, step.result);
         }
     }
 
@@ -167,14 +169,14 @@ public:
         BOOST_TEST(st_.ssl == expected_ssl);
         BOOST_TEST(st_.backslash_escapes == expected_backslash_escapes);
         BOOST_TEST(st_.current_charset == expected_charset);
+        BOOST_TEST(!st_.op_in_progress);  // No algorithm should modify this
     }
 };
 
 void boost::mysql::test::algo_test::check_network_errors_impl(
-    detail::connection_state_data& st,
     any_algo_ref algo,
+    detail::connection_state_data& st,
     std::size_t step_number,
-    const diagnostics& actual_diag,
     source_location loc
 ) const
 {
@@ -186,16 +188,17 @@ void boost::mysql::test::algo_test::check_network_errors_impl(
         state_checker checker(st, state_changes_);
 
         // Run all the steps that shouldn't cause an error
-        auto act = run_algo_until_step(st, algo, step_number);
+        diagnostics diag;  // Clearing diagnostics is not the algo's responsibility
+        auto act = run_algo_until_step(algo, st, diag, step_number);
         BOOST_TEST_REQUIRE(act.type() == steps_[step_number].type);
 
         // Trigger an error in the requested step
-        act = algo.resume(st, asio::error::bad_descriptor);
+        act = algo.resume(st, diag, asio::error::bad_descriptor);
 
         // The operation finished and returned the network error
         BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
         BOOST_TEST(act.error() == error_code(asio::error::bad_descriptor));
-        BOOST_TEST(actual_diag == diagnostics());
+        BOOST_TEST(diag == diagnostics());
 
         // Check state changes
         checker.check();
@@ -203,9 +206,8 @@ void boost::mysql::test::algo_test::check_network_errors_impl(
 }
 
 void boost::mysql::test::algo_test::check_impl(
-    detail::connection_state_data& st,
     any_algo_ref algo,
-    const diagnostics& actual_diag,
+    detail::connection_state_data& st,
     error_code expected_ec,
     const diagnostics& expected_diag,
     source_location loc
@@ -217,14 +219,15 @@ void boost::mysql::test::algo_test::check_impl(
         state_checker checker(st, state_changes_);
 
         // Run the op until completion
-        auto act = run_algo_until_step(st, algo, steps_.size());
+        diagnostics diag;  // Clearing diagnostics is not the algo's responsibility
+        auto act = run_algo_until_step(algo, st, diag, steps_.size());
 
         // Check that we've finished
         BOOST_TEST_REQUIRE(act.type() == detail::next_action_type::none);
 
         // Check results
         BOOST_TEST(act.error() == expected_ec);
-        BOOST_TEST(actual_diag == expected_diag);
+        BOOST_TEST(diag == expected_diag);
 
         // Check state changes
         checker.check();

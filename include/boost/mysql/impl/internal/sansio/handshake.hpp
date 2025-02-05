@@ -68,7 +68,6 @@ inline error_code process_capabilities(
 class handshake_algo
 {
     int resume_point_{0};
-    diagnostics* diag_;
     handshake_params hparams_;
     auth_response auth_resp_;
     std::uint8_t sequence_number_{0};
@@ -92,11 +91,15 @@ class handshake_algo
     // Once the handshake is processed, the capabilities are stored in the connection state
     bool use_ssl(const connection_state_data& st) const { return st.current_capabilities.has(CLIENT_SSL); }
 
-    error_code process_handshake(connection_state_data& st, span<const std::uint8_t> buffer)
+    error_code process_handshake(
+        connection_state_data& st,
+        diagnostics& diag,
+        span<const std::uint8_t> buffer
+    )
     {
         // Deserialize server hello
         server_hello hello{};
-        auto err = deserialize_server_hello(buffer, hello, *diag_);
+        auto err = deserialize_server_hello(buffer, hello, diag);
         if (err)
             return err;
 
@@ -194,14 +197,12 @@ class handshake_algo
     }
 
 public:
-    handshake_algo(diagnostics& diag, handshake_algo_params params) noexcept
-        : diag_(&diag), hparams_(params.hparams), secure_channel_(params.secure_channel)
+    handshake_algo(handshake_algo_params params) noexcept
+        : hparams_(params.hparams), secure_channel_(params.secure_channel)
     {
     }
 
-    diagnostics& diag() { return *diag_; }
-
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
             return ec;
@@ -213,14 +214,13 @@ public:
         case 0:
 
             // Setup
-            diag_->clear();
             st.reset();
 
             // Read server greeting
             BOOST_MYSQL_YIELD(resume_point_, 1, st.read(sequence_number_))
 
             // Process server greeting
-            ec = process_handshake(st, st.reader.message());
+            ec = process_handshake(st, diag, st.reader.message());
             if (ec)
                 return ec;
 
@@ -247,7 +247,7 @@ public:
                 BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
 
                 // Process it
-                resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, *diag_);
+                resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, diag);
                 if (resp.type == handhake_server_response::type_t::ok)
                 {
                     // Auth success, quit

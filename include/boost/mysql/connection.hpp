@@ -55,6 +55,11 @@ class static_execution_state;
  * the stream using \ref connection::stream, and its executor via \ref connection::get_executor. The
  * executor used by this object is always the same as the underlying stream.
  *
+ * \par Single outstanding async operation per connection
+ * At any given point in time, only one async operation can be outstanding
+ * per connection. If an async operation is initiated while another one is in progress,
+ * it will fail with \ref client_errc::operation_in_progress.
+ *
  * \par Thread safety
  * Distinct objects: safe. \n
  * Shared objects: unsafe. \n

@@ -42,7 +42,6 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     std::array<row1, 3> storage;
     detail::read_some_rows_algo algo{
-        diag,
         {&proc, ref()}
     };
 
@@ -254,7 +253,6 @@ BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
 
     // Run the algo again
     fix.algo.reset();
-    fix.diag = create_server_diag("Diagnostics not cleared");
     algo_test()
         .expect_read(buffer_builder().add(boost::span<const std::uint8_t>(eof).subspan(6)).build())
         .check(fix);

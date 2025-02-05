@@ -65,7 +65,6 @@ class start_execution_algo
 
     std::uint8_t& seqnum() { return processor().sequence_number(); }
     execution_processor& processor() { return read_head_st_.processor(); }
-    diagnostics& diag() { return read_head_st_.diag(); }
 
     static resultset_encoding get_encoding(any_execution_request::type_t type)
     {
@@ -114,21 +113,18 @@ class start_execution_algo
     }
 
 public:
-    start_execution_algo(diagnostics& diag, start_execution_algo_params params) noexcept
-        : read_head_st_(diag, {params.proc}), req_(params.req)
+    start_execution_algo(start_execution_algo_params params) noexcept
+        : read_head_st_({params.proc}), req_(params.req)
     {
     }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         next_action act;
 
         switch (resume_point_)
         {
         case 0:
-
-            // Clear diagnostics
-            diag().clear();
 
             // Reset the processor
             processor().reset(get_encoding(req_.type), st.meta_mode);
@@ -139,7 +135,7 @@ public:
                 return ec;
 
             // Read the first resultset's head and return its result
-            while (!(act = read_head_st_.resume(st, ec)).is_done())
+            while (!(act = read_head_st_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
             return act;
         }

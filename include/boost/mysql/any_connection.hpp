@@ -132,6 +132,11 @@ struct any_connection_params
  *
  * This is a move-only type.
  *
+ * \par Single outstanding async operation per connection
+ * At any given point in time, only one async operation can be outstanding
+ * per connection. If an async operation is initiated while another one is in progress,
+ * it will fail with \ref client_errc::operation_in_progress.
+ *
  * \par Default completion tokens
  * The default completion token for all async operations in this class is
  * `with_diagnostics(asio::deferred)`, which allows you to use `co_await`

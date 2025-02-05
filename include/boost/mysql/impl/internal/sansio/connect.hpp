@@ -25,16 +25,17 @@ namespace detail {
 class connect_algo
 {
     int resume_point_{0};
+    const void* server_address_;
     handshake_algo handshake_;
     error_code stored_ec_;
 
 public:
-    connect_algo(diagnostics& diag, connect_algo_params params) noexcept
-        : handshake_(diag, {params.hparams, params.secure_channel})
+    connect_algo(connect_algo_params params) noexcept
+        : server_address_(params.server_address), handshake_({params.hparams, params.secure_channel})
     {
     }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         next_action act;
 
@@ -42,16 +43,13 @@ public:
         {
         case 0:
 
-            // Clear diagnostics
-            handshake_.diag().clear();
-
             // Physical connect
-            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::connect())
+            BOOST_MYSQL_YIELD(resume_point_, 1, next_action::connect(server_address_))
             if (ec)
                 return ec;
 
             // Handshake
-            while (!(act = handshake_.resume(st, ec)).is_done())
+            while (!(act = handshake_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
 
             // If handshake failed, close the stream ignoring the result
