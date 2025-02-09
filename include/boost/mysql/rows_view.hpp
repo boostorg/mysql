@@ -30,36 +30,32 @@ namespace mysql {
  * Models a non-owning matrix-like container. Indexing a `rows_view` object (by using iterators,
  * \ref rows_view::at or \ref rows_view::operator[]) returns a \ref row_view object, representing a
  * single row. All rows in the collection are the same size (as given by \ref num_columns).
- * \n
+ *
  * A `rows_view` object points to memory owned by an external entity (like `string_view` does). The
  * validity of a `rows_view` object depends on how it was obtained:
- * \n
+ *
  * \li If it was constructed from a \ref rows object (by calling \ref rows::operator rows_view()),
  *     the view acts as a reference to the `rows`' allocated memory, and is valid as long as
  *     references to that `rows` elements are valid.
  * \li If it was obtained by calling \ref connection::read_some_rows it's valid until the
  *     `connection` performs the next network call or is destroyed.
- * \n
+ *
  * \ref row_view's and \ref field_view's obtained by using a `rows_view` object are valid as long as
  * the underlying storage that `*this` points to is valid. Destroying `*this` doesn't invalidate
  * such references.
- * \n
+ *
  * Calling any member function on an invalid view results in undefined behavior.
- * \n
+ *
  * Instances of this class are usually created by the library, not by the user.
  */
 class rows_view
 {
 public:
-#ifdef BOOST_MYSQL_DOXYGEN
     /**
      * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = __see_below__;
-#else
-    using iterator = detail::rows_iterator;
-#endif
+    using iterator = impl_defined::rows_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;
@@ -245,10 +241,8 @@ private:
         BOOST_ASSERT(num_columns == 0 || (num_fields % num_columns == 0));
     }
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
     friend class rows;
-#endif
 };
 
 }  // namespace mysql

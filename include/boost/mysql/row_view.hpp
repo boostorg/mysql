@@ -21,27 +21,30 @@
 
 namespace boost {
 namespace mysql {
+namespace impl_defined {
+using row_view_iterator = const field_view*;
+}
 
 /**
  * \brief A non-owning read-only reference to a sequence of fields.
  * \details
  * A `row_view` points to memory owned by an external entity (like `string_view` does). The validity
  * of a `row_view` depends on how it was obtained:
- * \n
+ *
  * \li If it was constructed from a \ref row object (by calling \ref row::operator row_view()), the
  *     view acts as a reference to the row's allocated memory, and is valid as long as references
  *     to that row elements are valid.
  * \li If it was obtained by indexing a \ref rows object, the same applies.
  * \li If it was obtained by indexing a \ref rows_view object, it's valid as long as the
  *    `rows_view` is valid.
- * \n
+ *
  * Calling any member function on an invalid view results in undefined behavior.
- * \n
+ *
  * When indexed (by using iterators, \ref row_view::at or \ref row_view::operator[]), it returns
  * \ref field_view elements that are valid as long as the underlying storage that `*this` points
  * to is valid. Destroying a `row_view` doesn't invalidate `field_view`s obtained from
  * it.
- * \n Instances of this class are usually created by the library, not by the user.
+ * Instances of this class are usually created by the library, not by the user.
  */
 class row_view
 {
@@ -53,15 +56,11 @@ public:
      */
     row_view() = default;
 
-#ifdef BOOST_MYSQL_DOXYGEN
     /**
      * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = __see_below__;
-#else
-    using iterator = const field_view*;
-#endif
+    using iterator = impl_defined::row_view_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;
@@ -206,10 +205,8 @@ private:
     const field_view* fields_{};
     std::size_t size_{};
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
     friend class row;
-#endif
 };
 
 /**

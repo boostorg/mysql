@@ -30,11 +30,11 @@ namespace mysql {
  * \brief Type representing MySQL `DATETIME` and `TIMESTAMP` data types.
  * \details Represents a Gregorian date and time broken by its year, month, day, hour, minute, second and
  * microsecond components, without a time zone.
- * \n
+ *
  * This type is close to the protocol and should not be used as a vocabulary type.
  * Instead, cast it to a `std::chrono::time_point` by calling \ref as_time_point,
  * \ref get_time_point, \ref as_local_time_point or \ref get_local_time_point.
- * \n
+ *
  * Datetimes retrieved from MySQL don't include any time zone information. Determining the time zone
  * is left to the application. Thus, any time point obtained from this class should be
  * interpreted as a local time in an unspecified time zone, like `std::chrono::local_time`.
@@ -42,10 +42,10 @@ namespace mysql {
  * `system_clock` time points. These should be interpreted as local times rather
  * than UTC. Prefer using \ref as_local_time_point or \ref get_local_time_point
  * if your compiler supports them, as they provide more accurate semantics.
- * \n
+ *
  * As opposed to `time_point`, this type allows representing MySQL invalid and zero datetimes.
  * These values are allowed by MySQL but don't represent real time points.
- * \n
+ *
  * Note: using `std::chrono` time zone functionality under MSVC may cause memory leaks to be reported.
  * See <a href="https://github.com/microsoft/STL/issues/2047">this issue</a> for an explanation and
  * <a href="https://github.com/microsoft/STL/issues/2504">this other issue</a> for a workaround.
@@ -123,7 +123,7 @@ public:
      * \details
      * Equivalent to constructing a `date` from a `time_point` with the same
      * `time_since_epoch()` as `tp`.
-     * \n
+     *
      * Requires C++20 calendar types.
      *
      * \par Exception safety
@@ -258,7 +258,7 @@ public:
      * The returned object has the same `time_since_epoch()` as `this->get_time_point()`,
      * but uses the `std::chrono::local_t` pseudo-clock to better represent
      * the absence of time zone information.
-     * \n
+     *
      * Requires C++20 calendar types.
      *
      * \par Preconditions
@@ -279,7 +279,7 @@ public:
      * The returned object has the same `time_since_epoch()` as `this->as_time_point()`,
      * but uses the `std::chrono::local_t` pseudo-clock to better represent
      * the absence of time zone information.
-     * \n
+     *
      * Requires C++20 calendar types.
      *
      * \par Exception safety

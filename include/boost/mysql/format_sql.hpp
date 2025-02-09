@@ -36,40 +36,41 @@ namespace mysql {
  * This type can be specialized for custom types to make them formattable.
  * This makes them satisfy the `Formattable` concept, and thus usable in
  * \ref format_sql and similar functions.
- * \n
+ *
  * A `formatter` specialization for a type `T` should have the following form:
- * ```
+ * \code
  * template <>
  * struct formatter<T>
  * {
  *     const char* parse(const char* begin, const char* end); // parse format specs
  *     void format(const T& value, format_context_base& ctx) const; // perform the actual formatting
  * };
- * ```
- * \n
- * When a value with a custom formatter is formatted (using \ref format_sql or a similar
- * function), the library performs the following actions: \n
- *   - An instance of `formatter<T>` is default-constructed, where `T` is the type of the
- *     value being formatted after removing const and references.
- *   - The `parse` function is invoked on the constructed instance,
- *     with `[begin, end)` pointing to the format specifier
- *     that the current replacement field has. If `parse` finds specifiers it understands, it should
- *     remember them, usually setting some flag in the `formatter` instance.
- *     `parse` must return an iterator to the first
- *     unparsed character in the range (or the `end` iterator, if everything was parsed).
- *     Some examples of what would get passed to `parse`:
- *       - In `"SELECT {}"`, the range would be empty.
- *       - In `"SELECT {:abc}"`, the range would be `"abc"`.
- *       - In `"SELECT {0:i}"`, the range would be `"i"`.
- *   - If `parse` didn't manage to parse all the passed specifiers (i.e. if it returned an iterator
- *     different to the passed's end), a \ref client_errc::format_string_invalid_specifier
- *     is emitted and the format operation finishes.
- *   - Otherwise, `format` is invoked on the formatter instance, passing the value to be formatted
- *     and the \ref format_context_base where format operation is running.
- *     This function should perform the actual formatting, usually calling
- *     \ref format_sql_to on the passed context.
+ * \endcode
  *
- * \n
+ * When a value with a custom formatter is formatted (using \ref format_sql or a similar
+ * function), the library performs the following actions:
+ *
+ *   \li An instance of `formatter<T>` is default-constructed, where `T` is the type of the
+ *       value being formatted after removing const and references.
+ *   \li The `parse` function is invoked on the constructed instance,
+ *       with `[begin, end)` pointing to the format specifier
+ *       that the current replacement field has. If `parse` finds specifiers it understands, it should
+ *       remember them, usually setting some flag in the `formatter`
+ *       instance. `parse` must return an iterator to the first
+ *       unparsed character in the range (or the `end` iterator, if everything was parsed).
+ *       Some examples of what would get passed to `parse`:
+ *         \li In `"SELECT {}"`, the range would be empty.
+ *         \li In `"SELECT {:abc}"`, the range would be `"abc"`.
+ *         \li In `"SELECT {0:i}"`, the range would be `"i"`.
+ *   \li If `parse` didn't manage to parse all the passed specifiers (i.e. if it returned an iterator
+ *       different to the passed's end), a \ref client_errc::format_string_invalid_specifier
+ *       is emitted and the format operation finishes.
+ *   \li Otherwise, `format` is invoked on the formatter instance, passing the value to be formatted
+ *       and the \ref format_context_base where format operation is running.
+ *       This function should perform the actual formatting,
+ *       usually calling \ref format_sql_to on the passed context.
+ *
+ *
  * Don't specialize `formatter` for built-in types, like `int`, `std::string` or
  * optionals (formally, any type satisfying `WritableField`), as the specializations will be ignored.
  */
@@ -96,16 +97,15 @@ struct formatter
 class formattable_ref
 {
     detail::formattable_ref_impl impl_;
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
+
 public:
     /**
      * \brief Constructor.
      * \details
      * Constructs a type-erased formattable reference from a concrete
      * `Formattable` type.
-     * \n
+     *
      * This constructor participates in overload resolution only if
      * the passed value meets the `Formattable` concept and
      * is not a `formattable_ref` or a reference to one.
@@ -144,7 +144,6 @@ public:
  */
 class format_arg
 {
-#ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
         string_view name;
@@ -152,7 +151,6 @@ class format_arg
     } impl_;
 
     friend struct detail::access;
-#endif
 
 public:
     /**
@@ -175,24 +173,24 @@ public:
 /**
  * \brief Base class for concrete format contexts.
  * \details
- * Conceptually, a format context contains: \n
+ * Conceptually, a format context contains:
+ *
  *   \li The result string. Output operations append characters to this output string.
  *       `format_context_base` is agnostic to the output string type.
  *   \li \ref format_options required to format values.
  *   \li An error state (\ref error_state) that is set by output operations when they fail.
  *       The error state is propagated to \ref basic_format_context::get.
- * \n
+ *
  * References to this class are useful when you need to manipulate
  * a format context without knowing the type of the actual context that will be used,
  * like when specializing \ref formatter.
- * \n
+ *
  * This class can't be
  * instantiated directly - use \ref basic_format_context, instead.
  * Do not subclass it, either.
  */
 class format_context_base
 {
-#ifndef BOOST_MYSQL_DOXYGEN
     struct
     {
         detail::output_string_ref output;
@@ -202,7 +200,6 @@ class format_context_base
 
     friend struct detail::access;
     friend class detail::format_state;
-#endif
 
     BOOST_MYSQL_DECL void format_arg(detail::formattable_ref_impl arg, string_view format_spec);
 
@@ -229,10 +226,10 @@ public:
      * \brief Adds raw SQL to the output string (low level).
      * \details
      * Adds raw, unescaped SQL to the output string. Doesn't alter the error state.
-     * \n
+     *
      * By default, the passed SQL should be available at compile-time.
      * Use \ref runtime if you need to use runtime values.
-     * \n
+     *
      * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
@@ -253,14 +250,15 @@ public:
      * value is formatted according to its type, applying the passed format specifiers.
      * If formatting generates an error (for instance, a string with invalid encoding is passed),
      * the error state may be set.
-     * \n
+     *
      * This is a low level function. In general, prefer \ref format_sql_to, instead.
      *
      * \par Exception safety
      * Basic guarantee. Memory allocations may throw.
      *
      * \par Errors
-     * The error state may be updated with the following errors: \n
+     * The error state may be updated with the following errors:
+     *
      * \li \ref client_errc::invalid_encoding if a string with byte sequences that can't be decoded
      *          with the current character set is passed.
      * \li \ref client_errc::unformattable_value if a NaN or infinity `float` or `double` is passed.
@@ -283,11 +281,11 @@ public:
      * This function can be used by custom formatters to report that they
      * received a value that can't be formatted. For instance, it's used by
      * the built-in string formatter when a string with an invalid encoding is supplied.
-     * \n
+     *
      * If the error state is not set before calling this function, the error
      * state is updated to `ec`. Otherwise, the error is ignored.
      * This implies that once the error state is set, it can't be reset.
-     * \n
+     *
      * \par Exception safety
      * No-throw guarantee.
      */
@@ -320,7 +318,7 @@ public:
  * The primary interface for incremental SQL formatting. Contrary to \ref format_context_base,
  * this type is aware of the output string's actual type. `basic_format_context` owns
  * an instance of `OutputString`. Format operations will append characters to such string.
- * \n
+ *
  * Objects of this type are single-use: once the result has been retrieved using \ref get,
  * they cannot be re-used. This is a move-only type.
  */
@@ -342,10 +340,8 @@ public:
      * \par Exception safety
      * Strong guarantee: exceptions thrown by default-constructing `OutputString` are propagated.
      */
-    explicit basic_format_context(format_options opts)
-#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
-        noexcept(std::is_nothrow_default_constructible<OutputString>::value)
-#endif
+    explicit basic_format_context(format_options opts
+    ) noexcept(std::is_nothrow_default_constructible<OutputString>::value)
         : format_context_base(ref(), opts)
     {
     }
@@ -357,24 +353,18 @@ public:
      * the output string is cleared. Uses an empty
      * error code as error state. This constructor allows re-using existing
      * memory for the output string.
-     * \n
+     *
      *
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context(format_options opts, OutputString&& storage)
-#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
-        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
-#endif
+    basic_format_context(format_options opts, OutputString&& storage) noexcept(
+        std::is_nothrow_move_constructible<OutputString>::value
+    )
         : format_context_base(ref(), opts), output_(std::move(storage))
     {
         output_.clear();
     }
-
-#ifndef BOOST_MYSQL_DOXYGEN
-    basic_format_context(const basic_format_context&) = delete;
-    basic_format_context& operator=(const basic_format_context&) = delete;
-#endif
 
     /**
      * \brief Move constructor.
@@ -386,13 +376,13 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context(basic_format_context&& rhs)
-#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
-        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
-#endif
+    basic_format_context(basic_format_context&& rhs
+    ) noexcept(std::is_nothrow_move_constructible<OutputString>::value)
         : format_context_base(ref(), rhs), output_(std::move(rhs.output_))
     {
     }
+
+    basic_format_context(const basic_format_context&) = delete;
 
     /**
      * \brief Move assignment.
@@ -404,15 +394,15 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context& operator=(basic_format_context&& rhs)
-#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
-        noexcept(std::is_nothrow_move_assignable<OutputString>::value)
-#endif
+    basic_format_context& operator=(basic_format_context&& rhs
+    ) noexcept(std::is_nothrow_move_assignable<OutputString>::value)
     {
         output_ = std::move(rhs.output_);
         assign(rhs);
         return *this;
     }
+
+    basic_format_context& operator=(const basic_format_context&) = delete;
 
     /**
      * \brief Retrieves the result of the formatting operation.
@@ -420,19 +410,16 @@ public:
      * After running the relevant formatting operations (using \ref append_raw,
      * \ref append_value or \ref format_sql_to), call this function to retrieve the
      * overall result of the operation.
-     * \n
+     *
      * If \ref error_state is a non-empty error code, returns it as an error.
      * Otherwise, returns the output string, move-constructing it into the `system::result` object.
-     * \n
+     *
      * This function is move-only: once called, `*this` is left in a valid but unspecified state.
      *
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    system::result<OutputString> get() &&
-#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
-        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
-#endif
+    system::result<OutputString> get() && noexcept(std::is_nothrow_move_constructible<OutputString>::value)
     {
         auto ec = error_state();
         if (ec)
@@ -453,12 +440,13 @@ using format_context = basic_format_context<std::string>;
  * \details
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
  * by formatted arguments, extracted from `args`.
- * \n
+ *
  * Formatting is performed as if \ref format_context_base::append_raw and
  * \ref format_context_base::append_value were called on `ctx`, effectively appending
  * characters to its output string.
- * \n
- * Compared to \ref format_sql, this function is more flexible, allowing the following use cases: \n
+ *
+ * Compared to \ref format_sql, this function is more flexible, allowing the following use cases:
+ *
  *   \li Appending characters to an existing context. Can be used to concatenate the output of successive
  *       format operations efficiently.
  *   \li Using string types different to `std::string` (works with any \ref basic_format_context).
@@ -498,7 +486,7 @@ void format_sql_to(format_context_base& ctx, constant_string_view format_str, Fo
 /**
  * \copydoc format_sql_to
  * \details
- * \n
+ *
  * This overload allows using named arguments.
  */
 inline void format_sql_to(
@@ -516,10 +504,10 @@ inline void format_sql_to(
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
  * by formatted arguments, extracted from `args`. `opts` is using to parse the string and format string
  * arguments.
- * \n
+ *
  * Formatting is performed as if \ref format_context::append_raw and \ref format_context::append_value
  * were called on a context created by this function.
- * \n
+ *
  *
  * \par Exception safety
  * Strong guarantee. Memory allocations may throw. `boost::system::system_error` is thrown if an error
@@ -548,7 +536,7 @@ std::string format_sql(format_options opts, constant_string_view format_str, For
 /**
  * \copydoc format_sql
  * \details
- * \n
+ *
  * This overload allows using named arguments.
  */
 BOOST_MYSQL_DECL

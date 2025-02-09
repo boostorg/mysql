@@ -46,7 +46,7 @@ struct sequence_range_impl<T[N]>
 };
 
 template <class T>
-using sequence_range_type = sequence_range_impl<compat::remove_cvref_t<T>>;
+using sequence_range_t = typename sequence_range_impl<compat::remove_cvref_t<T>>::type;
 
 template <class Range>
 Range&& cast_range(Range&& range)
@@ -90,6 +90,15 @@ concept format_fn_for_range = requires(const FormatFn& format_fn, Range&& range,
 #endif
 
 }  // namespace detail
+
+namespace impl_defined {
+
+// Required by the doc toolchain
+template <class T>
+using sequence_range_t = detail::sequence_range_t<T>;
+
+}  // namespace impl_defined
+
 }  // namespace mysql
 }  // namespace boost
 

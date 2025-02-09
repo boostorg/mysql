@@ -40,19 +40,17 @@ namespace mysql {
  * it does not modify the signature, and calls the underlying token's initiation directly.
  * This has the following implications:
  *
- *   - `asio::as_tuple(with_diagnostics(X))` is equivalent to `asio::as_tuple(X)`.
- *   - `asio::redirect_error(with_diagnostics(X))` is equivalent to `asio::redirect_error(X)`.
- *   - Tokens like `asio::as_tuple` and `asio::redirect_error` can be used as partial tokens
- *     when `with_diagnostics` is the default completion token, as is the case for \ref any_connection.
+ *   \li `asio::as_tuple(with_diagnostics(X))` is equivalent to `asio::as_tuple(X)`.
+ *   \li `asio::redirect_error(with_diagnostics(X))` is equivalent to `asio::redirect_error(X)`.
+ *   \li Tokens like `asio::as_tuple` and `asio::redirect_error` can be used as partial tokens
+ *       when `with_diagnostics` is the default completion token, as is the case for \ref any_connection.
  */
 template <class CompletionToken>
 class with_diagnostics_t
 {
     CompletionToken impl_;
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 
 public:
     /**

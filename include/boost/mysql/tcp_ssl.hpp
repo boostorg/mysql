@@ -24,7 +24,7 @@ namespace mysql {
  * \ref connection and its helper typedefs, as it's simpler to use
  * and provides the same level of performance.
  */
-using tcp_ssl_connection = connection<boost::asio::ssl::stream<boost::asio::ip::tcp::socket>>;
+using tcp_ssl_connection = connection<asio::ssl::stream<asio::ip::tcp::socket>>;
 
 }  // namespace mysql
 }  // namespace boost

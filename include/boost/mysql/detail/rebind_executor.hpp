@@ -28,6 +28,14 @@ struct rebind_executor<boost::asio::ssl::stream<Stream>, Executor>
 };
 
 }  // namespace detail
+
+namespace impl_defined {
+
+template <class Stream, class Executor>
+using rebind_executor = typename detail::rebind_executor<Stream, Executor>::type;
+
+}
+
 }  // namespace mysql
 }  // namespace boost
 

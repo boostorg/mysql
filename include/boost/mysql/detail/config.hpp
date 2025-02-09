@@ -13,7 +13,7 @@
 // clang-format off
 
 // Concepts
-#if defined(__cpp_concepts) && defined(__cpp_lib_concepts)
+#if defined(__cpp_concepts) && defined(__cpp_lib_concepts) && !defined(BOOST_MYSQL_DOXYGEN)
     #define BOOST_MYSQL_HAS_CONCEPTS
 #endif
 
@@ -44,8 +44,10 @@
 #define BOOST_MYSQL_RETURN_TYPE(...)
 #endif
 
-// Chrono calendar types and functions
-#if __cpp_lib_chrono >= 201907L
+// Chrono calendar types and functions.
+// When generating docs, the standard library may not have support for everything
+// in C++20 chrono, but enough for render docs.
+#if (__cpp_lib_chrono >= 201907L) || (defined(BOOST_MYSQL_DOXYGEN) && __cplusplus >= 201907L)
 #define BOOST_MYSQL_HAS_LOCAL_TIME
 #endif
 

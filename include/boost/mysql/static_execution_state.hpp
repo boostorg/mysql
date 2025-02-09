@@ -29,7 +29,7 @@ namespace mysql {
  * \ref should_start_op, \ref should_read_rows, \ref should_read_head
  * and \ref complete. They are mutually exclusive.
  * More states may be added in the future as more protocol features are implemented.
- * \n
+ *
  * Note that this class doesn't store rows anyhow. Row template parameters are
  * used to validate their compatibility with the data that will be returned by the server.
  *
@@ -38,7 +38,8 @@ namespace mysql {
  * All the passed types must fulfill the `StaticRow` concept.
  *
  * \par Thread safety
- * Distinct objects: safe. \n
+ * Distinct objects: safe.
+ *
  * Shared objects: unsafe.
  */
 template <class... StaticRow>
@@ -160,6 +161,7 @@ public:
 
     /**
      * \brief Returns the number of rows affected by the SQL statement associated to this resultset.
+     * \details
      * Note that this is NOT the number of matched rows. If a row
      * is matched but not affected, it won't be accounted for here.
      *
@@ -194,9 +196,9 @@ public:
     /**
      * \brief Returns additional text information about this resultset.
      * \details
-     * The format of this information is documented by MySQL <a
-     * href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
-     * \n
+     * The format of this information is documented by MySQL
+     * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
+     *
      * The returned string always uses ASCII encoding, regardless of the connection's character set.
      *
      * \par Exception safety
@@ -227,9 +229,7 @@ private:
 
     static_assert(sizeof...(StaticRow) > 0, "static_execution_state requires one row type, at least");
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 };
 
 }  // namespace mysql

@@ -44,40 +44,40 @@ enum class quoting_context : char
  * block for composing client-side queries with runtime string values without
  * incurring in SQL injection vulnerabilities.
  * If you can, prefer using higher-level functions like \ref format_sql.
- * \n
+ *
  * Escaping rules are different depending on the context a string is
  * being used in. `quot_ctx` identifies where the string will appear in
- * a query. Possible values are: \n
+ * a query. Possible values are:
+ *
  * \li \ref quoting_context::double_quote : the string is surrounded by
  *     double quotes.
  * \li \ref quoting_context::single_quote : the string is surrounded by
  *     single quotes.
  * \li \ref quoting_context::backtick : the string is surrounded by
  *     backticks, as happens when escaping identifiers.
- * \n
+ *
  * By default, MySQL treats backslash characters as escapes in string values
- * (for instance, the string `"\n"` is treated as a newline). This behavior is
+ * (for instance, the string `"\\n"` is treated as a newline). This behavior is
  * enabled by default, but can be disabled by enabling the
- * <a
- *    href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">`NO_BACKSLASH_ESCAPES`</a>
+ * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_no_backslash_escapes">NO_BACKSLASH_ESCAPES</a>
  * SQL mode. When enabled, backslashes no longer have a special meaning, which changes
  * the escaping rules. `opts.backslash_escapes` should be set to `true` if backslashes represent
  * escapes (i.e. `NO_BACKSLASH_ESCAPES` is not enabled), and `false` otherwise.
- * \n
+ *
  * MySQL can be configured to treat double-quoted strings as identifiers instead of values.
  * This is enabled by activating the
- * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_ansi_quotes">`ANSI_QUOTES`</a> or
- * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_ansi">`ANSI`</a> SQL modes.
+ * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_ansi_quotes">ANSI_QUOTES</a> or
+ * <a href="https://dev.mysql.com/doc/refman/8.0/en/sql-mode.html#sqlmode_ansi">ANSI</a> SQL modes.
  * Servers don't report whether this mode is enabled to clients.
  * This SQL mode is not directly supported by this function.
- * \n
+ *
  * `opts.charset` should identify the connection's character set (as given by the
  * `character_set_client` session variable). The character set is used to iterate
  * over the input string. It must be an ASCII-compatible character set (like \ref utf8mb4_charset).
  * All character sets allowed by `character_set_client` satisfy this requirement.
- * \n
+ *
  * You can use \ref any_connection::format_opts to retrieve an `opts` value suitable for your connection.
- * \n
+ *
  * \par Exception safety
  * Basic guarantee. Memory allocations may throw.
  *

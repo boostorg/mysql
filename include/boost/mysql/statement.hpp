@@ -20,21 +20,9 @@
 namespace boost {
 namespace mysql {
 
-/**
- * \brief A statement with bound parameters, represented as a `std::tuple`.
- * \details
- * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
- * \ref connection::start_execution or their async counterparts.
- */
 template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
 class bound_statement_tuple;
 
-/**
- * \brief A statement with bound parameters, represented as an iterator range.
- * \details
- * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
- * \ref connection::start_execution or their async counterparts.
- */
 template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
 class bound_statement_iterator_range;
 
@@ -42,13 +30,14 @@ class bound_statement_iterator_range;
  * \brief Represents a server-side prepared statement.
  * \details
  * This is a lightweight class, holding a handle to a server-side prepared statement.
- * \n
+ *
  * Note that statement's destructor doesn't deallocate the statement from the
  * server, as this implies a network transfer that may fail.
  *
  * \par Thread safety
- * Distinct objects: safe. \n
- * Shared objects: unsafe. \n
+ * Distinct objects: safe.
+ *
+ * Shared objects: unsafe.
  */
 class statement
 {
@@ -66,7 +55,7 @@ public:
      * \brief Returns `true` if the object represents an actual server statement.
      * \details Calling any function other than assignment on a statement for which
      * this function returns `false` results in undefined behavior.
-     * \n
+     *
      * Returns `false` for default-constructed statements.
      *
      * \par Exception safety
@@ -110,26 +99,21 @@ public:
      * Creates an object that packages `*this` and the statement actual parameters `params`.
      * This object can be passed to \ref connection::execute, \ref connection::start_execution
      * and their async counterparts.
-     * \n
+     *
      * The parameters are copied into a `std::tuple` by using `std::make_tuple`. This function
      * only participates in overload resolution if `std::make_tuple(FWD(args)...)` yields a
      * `WritableFieldTuple`. Equivalent to `this->bind(std::make_tuple(std::forward<T>(params)...))`.
-     * \n
+     *
      * This function doesn't involve communication with the server.
      *
      * \par Preconditions
      * `this->valid() == true`
-     * \n
+     *
      * \par Exception safety
      * Strong guarantee. Only throws if constructing any of the internal tuple elements throws.
      */
     template <class... T>
-#ifdef BOOST_MYSQL_DOXYGEN
-    bound_statement_tuple<std::tuple<__see_below__>>
-#else
-    auto
-#endif
-    bind(T&&... params) const->typename std::enable_if<
+    auto bind(T&&... params) const -> typename std::enable_if<
         detail::is_writable_field_tuple<decltype(std::make_tuple(std::forward<T>(params)...))>::value,
         bound_statement_tuple<decltype(std::make_tuple(std::forward<T>(params)...))>>::type
     {
@@ -142,21 +126,25 @@ public:
      * Creates an object that packages `*this` and the statement actual parameters `params`.
      * This object can be passed to \ref connection::execute, \ref connection::start_execution
      * or their async counterparts.
-     * \n
+     *
      * The `params` tuple is decay-copied into the returned object.
-     * \n
+     *
      * This function doesn't involve communication with the server.
      *
      * \par Preconditions
      * `this->valid() == true`
-     * \n
+     *
      * \par Exception safety
      * Strong guarantee. Only throws if the decay-copy of the tuple throws.
      */
     template <
-        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple,
+        BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
         typename EnableIf =
-            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type>
+            typename std::enable_if<detail::is_writable_field_tuple<WritableFieldTuple>::value>::type
+#endif
+        >
     bound_statement_tuple<typename std::decay<WritableFieldTuple>::type> bind(WritableFieldTuple&& params
     ) const;
 
@@ -167,19 +155,23 @@ public:
      * as the iterator range `[params_first, params_last)`.
      * This object can be passed to \ref connection::execute, \ref connection::start_execution
      * or their async counterparts.
-     * \n
+     *
      * This function doesn't involve communication with the server.
      *
      * \par Preconditions
      * `this->valid() == true`
-     * \n
+     *
      * \par Exception safety
      * Strong guarantee. Only throws if copy-constructing iterators throws.
      */
     template <
-        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator,
-        typename EnableIf = typename std::enable_if<
-            detail::is_field_view_forward_iterator<FieldViewFwdIterator>::value>::type>
+        BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator
+#ifndef BOOST_MYSQL_DOXYGEN
+        ,
+        typename EnableIf =
+            typename std::enable_if<detail::is_field_view_forward_iterator<FieldViewFwdIterator>::value>::type
+#endif
+        >
     bound_statement_iterator_range<FieldViewFwdIterator> bind(
         FieldViewFwdIterator params_first,
         FieldViewFwdIterator params_last
@@ -195,9 +187,60 @@ private:
     {
     }
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
+};
+
+/**
+ * \brief A statement with bound parameters, represented as a `std::tuple`.
+ * \details
+ * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
+ * \ref connection::start_execution or their async counterparts.
+ */
+template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
+class bound_statement_tuple
+{
+    friend class statement;
+    friend struct detail::access;
+
+    struct impl
+    {
+        statement stmt;
+        WritableFieldTuple params;
+    } impl_;
+
+    template <typename TupleType>
+    bound_statement_tuple(const statement& stmt, TupleType&& t) : impl_{stmt, std::forward<TupleType>(t)}
+    {
+    }
+};
+
+/**
+ * \brief A statement with bound parameters, represented as an iterator range.
+ * \details
+ * This class satisfies `ExecutionRequest`. You can pass instances of this class to \ref connection::execute,
+ * \ref connection::start_execution or their async counterparts.
+ */
+template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
+class bound_statement_iterator_range
+{
+    friend class statement;
+    friend struct detail::access;
+
+    struct impl
+    {
+        statement stmt;
+        FieldViewFwdIterator first;
+        FieldViewFwdIterator last;
+    } impl_;
+
+    bound_statement_iterator_range(
+        const statement& stmt,
+        FieldViewFwdIterator first,
+        FieldViewFwdIterator last
+    )
+        : impl_{stmt, first, last}
+    {
+    }
 };
 
 }  // namespace mysql

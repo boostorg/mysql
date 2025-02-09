@@ -263,10 +263,6 @@ BOOST_INLINE_CONSTEXPR std::array<results_resultset_descriptor, sizeof...(Static
         mp11::make_index_sequence<sizeof...(StaticRow)>()
     );
 
-template <std::size_t I, class... StaticRow>
-using rows_span_t = boost::span<
-    const typename std::tuple_element<I, std::tuple<underlying_row_t<StaticRow>...>>::type>;
-
 template <BOOST_MYSQL_STATIC_ROW... StaticRow>
 class static_results_impl
 {
@@ -331,7 +327,7 @@ public:
 
     // User facing
     template <std::size_t I>
-    rows_span_t<I, StaticRow...> get_rows() const noexcept
+    span<const std::tuple_element_t<I, std::tuple<underlying_row_t<StaticRow>...>>> get_rows() const noexcept
     {
         return std::get<I>(data_.rows);
     }
