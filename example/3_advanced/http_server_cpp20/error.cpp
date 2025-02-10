@@ -7,7 +7,7 @@
 
 //[example_http_server_cpp20_error_cpp
 
-#include <boost/system/detail/error_category.hpp>
+#include <boost/system/error_category.hpp>
 
 #include <iostream>
 #include <mutex>

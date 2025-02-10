@@ -36,7 +36,7 @@
 #include <boost/json/value_from.hpp>
 #include <boost/json/value_to.hpp>
 #include <boost/optional/optional.hpp>
-#include <boost/system/detail/error_code.hpp>
+#include <boost/system/error_code.hpp>
 #include <boost/system/result.hpp>
 #include <boost/url/parse.hpp>
 #include <boost/url/url_view.hpp>
