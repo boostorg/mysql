@@ -5,6 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/asio/awaitable.hpp>
+#include <boost/pfr/config.hpp>
+#if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
+
 //[example_http_server_cpp20_error_cpp
 
 #include <boost/system/error_category.hpp>
@@ -67,3 +71,5 @@ void orders::log_error(std::string_view header, boost::system::error_code ec)
 }
 
 //]
+
+#endif
