@@ -417,14 +417,11 @@ asio::awaitable<http::response<http::string_body>> orders::handle_request(
     if (it3 == it2)
         co_return error_response(http::status::method_not_allowed, "Unsupported HTTP method");
 
-    // Compose the data struct (TODO)
-    request_data data{request, *target, pool};
-
     // Invoke the handler
     try
     {
         // Attempt to handle the request
-        co_return co_await it3->second.handler(data);
+        co_return co_await it3->second.handler(request_data{request, *target, pool});
     }
     catch (const mysql::error_with_diagnostics& err)
     {
