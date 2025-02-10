@@ -46,7 +46,6 @@
 
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/connection_pool.hpp>
-#include <boost/mysql/pfr.hpp>
 #include <boost/mysql/pool_params.hpp>
 
 #include <boost/asio/awaitable.hpp>

@@ -19,28 +19,22 @@
 
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
-#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
-#include <boost/mysql/static_results.hpp>
 
 #include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
-#include <boost/asio/spawn.hpp>
-#include <boost/beast/http/message_fwd.hpp>
+#include <boost/beast/http/message.hpp>
 #include <boost/beast/http/status.hpp>
-#include <boost/beast/http/string_body_fwd.hpp>
+#include <boost/beast/http/string_body.hpp>
 #include <boost/beast/http/verb.hpp>
-#include <boost/json/error.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/serialize.hpp>
 #include <boost/json/value_from.hpp>
 #include <boost/json/value_to.hpp>
-#include <boost/optional/optional.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/system/result.hpp>
 #include <boost/url/parse.hpp>
 #include <boost/url/url_view.hpp>
-#include <boost/variant2/variant.hpp>
 
 #include <algorithm>
 #include <charconv>
