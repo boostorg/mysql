@@ -27,9 +27,9 @@
 namespace orders {
 
 // Encapsulates database logic.
-// If the database is unavailable, all of these functions throw.
+// If the database is unavailable, these functions throw.
 // Additionally, functions that may fail depending on the supplied input
-// return boost::system::result<T> to avoid exceptions in common cases.
+// return boost::system::result<T>, avoiding exceptions in common cases.
 class db_repository
 {
     boost::mysql::connection_pool& pool_;

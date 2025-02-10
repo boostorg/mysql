@@ -13,6 +13,9 @@
 //
 // File: handle_request.cpp
 //
+// This file contains all the boilerplate code to dispatch HTTP
+// requests to API endpoints. Functions here end up calling
+// db_repository fuctions.
 
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/diagnostics.hpp>
@@ -24,6 +27,7 @@
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/beast/http/message_fwd.hpp>
+#include <boost/beast/http/status.hpp>
 #include <boost/beast/http/string_body_fwd.hpp>
 #include <boost/beast/http/verb.hpp>
 #include <boost/json/error.hpp>
@@ -55,10 +59,6 @@
 #include "repository.hpp"
 #include "types.hpp"
 
-// This file contains all the boilerplate code to dispatch HTTP
-// requests to API endpoints. Functions here end up calling
-// note_repository fuctions.
-
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
 namespace mysql = boost::mysql;
@@ -66,6 +66,8 @@ using boost::system::result;
 
 namespace {
 
+// Helper function that logs errors thrown by db_repository
+// when an unexpected database error happens
 void log_mysql_error(boost::system::error_code ec, const mysql::diagnostics& diag)
 {
     // Lock std::cerr, to avoid race conditions
@@ -103,7 +105,7 @@ std::optional<std::int64_t> parse_id(std::string_view from)
     return id;
 }
 
-// Creates an error response
+// Helpers to create error responses with a single line of code
 http::response<http::string_body> error_response(http::status code, std::string_view msg)
 {
     http::response<http::string_body> res;
@@ -112,27 +114,17 @@ http::response<http::string_body> error_response(http::status code, std::string_
     return res;
 }
 
-// TODO
-http::response<http::string_body> bad_request(std::string body)
+// Like error_response, but always uses a 400 status code
+http::response<http::string_body> bad_request(std::string_view body)
 {
-    return error_response(http::status::bad_request, std::move(body));
+    return error_response(http::status::bad_request, body);
 }
 
-// Used when the user requested a note (e.g. using GET /note/<id> or PUT /note/<id>)
-// but the note doesn't exist
-http::response<http::string_body> not_found(std::string body = "The requested resource was not found")
-{
-    return error_response(http::status::not_found, std::move(body));
-}
-
-http::response<http::string_body> unprocessable_entity(std::string body)
-{
-    return error_response(http::status::unprocessable_entity, std::move(body));
-}
-
+// Like error_response, but always uses a 500 status code and
+// never provides extra information that might help potential attackers.
 http::response<http::string_body> internal_server_error()
 {
-    return error_response(http::status::internal_server_error, {});
+    return error_response(http::status::internal_server_error, "Internal server error");
 }
 
 // Creates a response with a serialized JSON body.
@@ -173,17 +165,24 @@ result<T> parse_json(std::string_view json_string)
     return boost::json::try_value_to<T>(val);
 }
 
+// Generates an HTTP error response based on an error code
+// returned by db_repository.
 http::response<http::string_body> response_from_db_error(boost::system::error_code ec)
 {
     if (ec.category() == orders::get_orders_category())
     {
         switch (static_cast<orders::errc>(ec.value()))
         {
-        case orders::errc::not_found: return not_found("The referenced entity does not exist");
+        case orders::errc::not_found:
+            return error_response(http::status::not_found, "The referenced entity does not exist");
         case orders::errc::product_not_found:
-            return unprocessable_entity("The referenced product does not exist");
+            return error_response(
+                http::status::unprocessable_entity,
+                "The referenced product does not exist"
+            );
         case orders::errc::order_invalid_status:
-            return unprocessable_entity(
+            return error_response(
+                http::status::unprocessable_entity,
                 "The referenced order doesn't have the status required by the operation"
             );
         default: return internal_server_error();
@@ -211,7 +210,14 @@ struct request_data
     orders::db_repository repo() const { return orders::db_repository(pool); }
 };
 
-// GET /products: search for available products
+//
+// Endpoint handlers. They should be functions with signature
+// asio::awaitable<http::response<http::string_body>>(const request_data&).
+// Handlers are associated to a single URL path and HTTP method
+//
+
+// GET /products?search={s}: returns a list of products.
+// The 'search' parameter is mandatory.
 asio::awaitable<http::response<http::string_body>> handle_get_products(const request_data& input)
 {
     // Parse the query parameter
@@ -227,14 +233,18 @@ asio::awaitable<http::response<http::string_body>> handle_get_products(const req
     co_return json_response(products);
 }
 
+// GET /orders: returns all orders
+// GET /orders?id={}: returns a single order
+// Both endpoints share handler because they share path and method
 asio::awaitable<http::response<http::string_body>> handle_get_orders(const request_data& input)
 {
     // Parse the query parameter
     auto params_it = input.target.params().find("id");
 
+    // Which of the two endpoints are we serving?
     if (params_it == input.target.params().end())
     {
-        // If the query parameter is not present, return all orders
+        // GET /orders
         // Invoke the database logic
         std::vector<orders::order> orders = co_await input.repo().get_orders();
 
@@ -243,7 +253,7 @@ asio::awaitable<http::response<http::string_body>> handle_get_orders(const reque
     }
     else
     {
-        // Otherwise, query by ID
+        // GET /orders?id={}
         // Parse the query parameter
         auto order_id = parse_id((*params_it).value);
         if (!order_id.has_value())
@@ -259,6 +269,8 @@ asio::awaitable<http::response<http::string_body>> handle_get_orders(const reque
     }
 }
 
+// POST /orders: creates a new order.
+// Orders are created empty, so this request has no body.
 asio::awaitable<http::response<http::string_body>> handle_create_order(const request_data& input)
 {
     // Invoke the database logic
@@ -268,6 +280,8 @@ asio::awaitable<http::response<http::string_body>> handle_create_order(const req
     co_return json_response(order);
 }
 
+// POST /orders/items: adds a new order item to an existing order.
+// The request has a JSON body, described by the add_order_item_request struct.
 asio::awaitable<http::response<http::string_body>> handle_add_order_item(const request_data& input)
 {
     // Check that the request has the appropriate content type
@@ -290,6 +304,8 @@ asio::awaitable<http::response<http::string_body>> handle_add_order_item(const r
     co_return json_response(*res);
 }
 
+// DELETE /orders/items?id={}: deletes an order item.
+// The request has no body.
 asio::awaitable<http::response<http::string_body>> handle_remove_order_item(const request_data& input)
 {
     // Parse the query parameter
@@ -309,6 +325,8 @@ asio::awaitable<http::response<http::string_body>> handle_remove_order_item(cons
     co_return json_response(*res);
 }
 
+// POST /orders/checkout?id={}: checks out an order.
+// The request has no body.
 asio::awaitable<http::response<http::string_body>> handle_checkout_order(const request_data& input)
 {
     // Parse the query parameter
@@ -328,6 +346,8 @@ asio::awaitable<http::response<http::string_body>> handle_checkout_order(const r
     co_return json_response(*res);
 }
 
+// POST /orders/complete?id={}: marks an order as completed.
+// The request has no body.
 asio::awaitable<http::response<http::string_body>> handle_complete_order(const request_data& input)
 {
     // Parse the query parameter
@@ -347,13 +367,20 @@ asio::awaitable<http::response<http::string_body>> handle_complete_order(const r
     co_return json_response(*res);
 }
 
+// handle_request uses a table to dispatch to each endpoint.
+// This is the table's element type.
 struct http_endpoint
 {
+    // The HTTP method associated to this endpoint.
     http::verb method;
+
+    // The endpoint handler.
     asio::awaitable<http::response<http::string_body>> (*handler)(const request_data&);
 };
 
-const std::unordered_multimap<std::string_view, http_endpoint> endpoints{
+// Maps from a URL path to an endpoint handler.
+// A URL path might be present more than once, for different methods.
+const std::unordered_multimap<std::string_view, http_endpoint> endpoint_table{
     {"/products",        {http::verb::get, &handle_get_products}         },
     {"/orders",          {http::verb::get, &handle_get_orders}           },
     {"/orders",          {http::verb::post, &handle_create_order}        },
@@ -377,11 +404,13 @@ asio::awaitable<http::response<http::string_body>> orders::handle_request(
         co_return bad_request("Invalid request target");
 
     // Try to find an endpoint
-    auto [it1, it2] = endpoints.equal_range(target->path());
-    if (it1 == endpoints.end())
-        co_return not_found("The request endpoint does not exist");
+    auto [it1, it2] = endpoint_table.equal_range(target->path());
+    if (it1 == endpoint_table.end())
+        co_return error_response(http::status::not_found, "The requested endpoint does not exist");
 
-    // Match the verb
+    // Match the verb. The table structure that we created
+    // allows us to distinguish between an "endpoint does not exist" error
+    // and an "unsupported method" error.
     auto it3 = std::find_if(it1, it2, [&request](const std::pair<std::string_view, http_endpoint>& ep) {
         return ep.second.method == request.method();
     });
@@ -389,13 +418,13 @@ asio::awaitable<http::response<http::string_body>> orders::handle_request(
         co_return error_response(http::status::method_not_allowed, "Unsupported HTTP method");
 
     // Compose the data struct (TODO)
-    request_data h{request, *target, pool};
+    request_data data{request, *target, pool};
 
     // Invoke the handler
     try
     {
         // Attempt to handle the request
-        co_return co_await it3->second.handler(h);
+        co_return co_await it3->second.handler(data);
     }
     catch (const mysql::error_with_diagnostics& err)
     {
