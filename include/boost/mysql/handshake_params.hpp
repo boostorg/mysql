@@ -22,7 +22,7 @@ namespace mysql {
  *
  * \par Object lifetimes
  * This object stores references to strings (like username and password), performing
- * no copy of these values. Users are resposible for keeping them alive until required.
+ * no copy of these values. Users are responsible for keeping them alive until required.
  *
  * \par Legacy
  * This class is used with the legacy \ref connection class.

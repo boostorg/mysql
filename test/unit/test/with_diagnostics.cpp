@@ -305,7 +305,7 @@ static_assert(
     ""
 );
 
-// Applying with_diagnostics to an unkown signature is a pass-through
+// Applying with_diagnostics to an unknown signature is a pass-through
 struct no_ec_initiation
 {
     template <class Handler, class T1, class T2, class T3>

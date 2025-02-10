@@ -91,6 +91,15 @@ boost::system::result<boost::mysql::character_set> boost::mysql::detail::connect
     return charset;
 }
 
+boost::optional<std::uint32_t> boost::mysql::detail::connection_impl::connection_id() const
+{
+    const auto& data = st_->data();
+    if (!data.is_connected)
+        return {};
+    else
+        return data.connection_id;
+}
+
 boost::mysql::detail::run_pipeline_algo_params boost::mysql::detail::connection_impl::make_params_pipeline(
     const pipeline_request& req,
     std::vector<stage_response>& response

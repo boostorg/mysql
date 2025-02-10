@@ -51,7 +51,7 @@ struct fixture : algo_fixture_base
         any_execution_request req = any_execution_request("SELECT 1"),
         std::size_t max_bufsize = default_max_buffsize
     )
-        : algo_fixture_base(max_bufsize), algo(diag, {req, &proc})
+        : algo_fixture_base(max_bufsize), algo({req, &proc})
     {
     }
 };

@@ -8,7 +8,6 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_SANSIO_READ_SOME_ROWS_DYNAMIC_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_READ_SOME_ROWS_DYNAMIC_HPP
 
-#include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/rows_view.hpp>
 
@@ -29,8 +28,8 @@ namespace detail {
 class read_some_rows_dynamic_algo : public read_some_rows_algo
 {
 public:
-    read_some_rows_dynamic_algo(diagnostics& diag, read_some_rows_dynamic_algo_params params) noexcept
-        : read_some_rows_algo(diag, read_some_rows_algo_params{params.exec_st, output_ref()})
+    read_some_rows_dynamic_algo(read_some_rows_dynamic_algo_params params) noexcept
+        : read_some_rows_algo(read_some_rows_algo_params{params.exec_st, output_ref()})
     {
     }
 

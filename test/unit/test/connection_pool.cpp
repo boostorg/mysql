@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(move_ctor_invalid_invalid)
     pooled_connection conn;
     pooled_connection conn2;
 
-    // Moving an invalid souce to an invalid target works
+    // Moving an invalid source to an invalid target works
     conn = std::move(conn2);
     BOOST_TEST(!conn.valid());
     BOOST_TEST(!conn2.valid());

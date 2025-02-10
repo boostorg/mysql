@@ -224,17 +224,15 @@ for more info.
 
 [section:async Single outstanding async operation per connection]
 
-At any given point in time, a `any_connection` may only have a single async operation outstanding.
-Because MySQL sessions are stateful, and to keep the implementation simple, messages
-are written to the underlying transport without any locking or queueing.
-If you perform several async operations concurrently on a single connection without any
-serialization, messages from different operations will be interleaved, leading to undefined behavior.
+At any given point in time, an `any_connection` can only have a single async operation outstanding.
+In other words, connections implement no asynchronous locking or queueing, which
+keeps code simple and efficient. If you need to perform several operations in parallel,
+you can open more connections or use [reflink connection_pool].
 
-For example, doing the following is illegal and should be avoided:
+Trying to run operations concurrently on a single connection is detected at
+runtime and generates a `client_errc::operation_in_progress` error:
 
-[overview_async_dont]
-
-If you need to perform queries in parallel, open more connections to the server.
+[overview_async_parallel]
 
 [endsect]
 
