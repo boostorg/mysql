@@ -12,27 +12,36 @@
 //[example_http_server_cpp20_main_cpp
 
 /**
- * TODO: review this
- * This example demonstrates how to use a connection_pool.
- * It implements a minimal REST API to manage notes.
- * A note is a simple object containing a user-defined title and content.
- * The REST API offers CRUD operations on such objects:
+ * Implements a HTTP REST API using Boost.MySQL and Boost.Beast.
+ * The API models a simplified order management system for an online store.
+ * Using the API, users can query the store's product catalog, create and
+ * edit orders, and check them out for payment.
+ *
+ * The API defines the following endpoints:
+ *
  *    GET    /products?search={s}       Returns a list of products
  *    GET    /orders                    Returns all orders
  *    GET    /orders?id={}              Returns a single order
- *    POST   /orders                    Creates a new order.
- *    POST   /orders/items              Adds a new order item to an existing order.
+ *    POST   /orders                    Creates a new order
+ *    POST   /orders/items              Adds a new order item to an existing order
  *    DELETE /orders/items?id={}        Deletes an order item
  *    POST   /orders/checkout?id={}     Checks out an order
  *    POST   /orders/complete?id={}     Completes an order
  *
- * Notes are stored in MySQL. The note_repository class encapsulates
- *   access to MySQL, offering friendly functions to manipulate notes.
- * server.cpp encapsulates all the boilerplate to launch an HTTP server,
- *   match URLs to API endpoints, and invoke the relevant note_repository functions.
- * All communication happens asynchronously. We use stackful coroutines to simplify
- *   development, using boost::asio::spawn and boost::asio::yield_context.
- * This example requires linking to Boost::context, Boost::json and Boost::url.
+ * Each order can have any number of order items. An order item
+ * represents an individual product that has been added to an order.
+ * Orders are created empty, in a 'draft' state. Items can then be
+ * added and removed from the order. After adding the desired items,
+ * orders can be checked out for payment. A third-party service, like Stripe,
+ * would be used to collect the payment. For simplicity, we've left this part
+ * out of the example. Once checked out, an order is no longer editable.
+ * Finally, after successful payment, order are transitioned to the
+ * 'complete' status.
+ *
+ * The server uses C++20 coroutines and is multi-threaded.
+ * It also requires linking to Boost::json and Boost::url.
+ * The database schema is defined in db_setup.sql, in the same directory as this file.
+ * You need to source this file before running the example.
  */
 
 #include <boost/mysql/any_address.hpp>
@@ -51,7 +60,6 @@
 #include <cstdlib>
 #include <exception>
 #include <iostream>
-#include <memory>
 #include <string>
 
 #include "server.hpp"
@@ -128,8 +136,13 @@ int main_impl(int argc, char* argv[])
 
     // Start listening for HTTP connections. This will run until the context is stopped
     asio::co_spawn(
+        // Use the thread pool to run the listener coroutine
         th_pool,
+
+        // The coroutine to run
         [&pool, port] { return listener(pool, port); },
+
+        // If an exception is thrown in the listener coroutine, propagate it
         [](std::exception_ptr exc) {
             if (exc)
                 std::rethrow_exception(exc);
