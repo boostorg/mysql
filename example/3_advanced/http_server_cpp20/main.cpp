@@ -140,7 +140,7 @@ int main_impl(int argc, char* argv[])
         th_pool,
 
         // The coroutine to run
-        [&pool, port] { return listener(pool, port); },
+        [&pool, port] { return run_server(pool, port); },
 
         // If an exception is thrown in the listener coroutine, propagate it
         [](std::exception_ptr exc) {

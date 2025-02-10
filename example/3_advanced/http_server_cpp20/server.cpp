@@ -144,7 +144,7 @@ static asio::awaitable<void> run_http_session(asio::ip::tcp::socket sock, mysql:
 
 }  // namespace
 
-asio::awaitable<void> orders::listener(mysql::connection_pool& pool, unsigned short port)
+asio::awaitable<void> orders::run_server(mysql::connection_pool& pool, unsigned short port)
 {
     // An object that allows us to accept incoming TCP connections.
     // Since we're in a multi-threaded environment, we create a strand for the acceptor,

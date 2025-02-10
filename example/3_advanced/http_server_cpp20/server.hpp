@@ -19,13 +19,11 @@
 
 namespace orders {
 
-// TODO: review
 // Launches a HTTP server that will listen on 0.0.0.0:port.
-// If the server fails to launch (e.g. because the port is aleady in use),
-// returns a non-zero error code. ex should identify the io_context or thread_pool
-// where the server should run. The server is run until the underlying execution
+// If the server fails to launch (e.g. because the port is already in use),
+// throws an exception. The server runs until the underlying execution
 // context is stopped.
-boost::asio::awaitable<void> listener(boost::mysql::connection_pool& pool, unsigned short port);
+boost::asio::awaitable<void> run_server(boost::mysql::connection_pool& pool, unsigned short port);
 
 }  // namespace orders
 
