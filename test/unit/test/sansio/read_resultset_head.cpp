@@ -19,6 +19,7 @@
 
 #include "test_common/buffer_concat.hpp"
 #include "test_common/check_meta.hpp"
+#include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_err.hpp"
@@ -38,7 +39,7 @@ BOOST_AUTO_TEST_SUITE(test_read_resultset_head)
 struct fixture : algo_fixture_base
 {
     mock_execution_processor proc;
-    detail::read_resultset_head_algo algo{diag, {&proc}};
+    detail::read_resultset_head_algo algo{{&proc}};
 
     fixture()
     {

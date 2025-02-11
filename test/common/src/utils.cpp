@@ -401,7 +401,7 @@ void boost::mysql::test::poll_until(
         ctx.restart();
 
         // Poll until this time point
-        constexpr std::chrono::seconds timeout(5);
+        constexpr std::chrono::seconds timeout(15);
         auto timeout_tp = steady_clock::now() + timeout;
 
         // Perform the polling

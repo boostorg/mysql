@@ -15,6 +15,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
@@ -31,10 +32,7 @@ BOOST_AUTO_TEST_SUITE(test_ping)
 //
 struct read_response_fixture : algo_fixture_base
 {
-    detail::read_ping_response_algo algo{diag, 57};
-
-    // Clearing diagnostics is not this algorithm's responsibility
-    read_response_fixture() : algo_fixture_base(diagnostics()) {}
+    detail::read_ping_response_algo algo{57};
 };
 
 BOOST_AUTO_TEST_CASE(read_response_success)
@@ -89,7 +87,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
 
 struct ping_fixture : algo_fixture_base
 {
-    detail::run_pipeline_algo algo{diag, detail::setup_ping_pipeline(st)};
+    detail::run_pipeline_algo algo{detail::setup_ping_pipeline(st)};
 };
 
 BOOST_AUTO_TEST_CASE(ping_success)

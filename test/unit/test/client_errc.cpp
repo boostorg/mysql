@@ -33,7 +33,7 @@ BOOST_AUTO_TEST_CASE(coverage)
 {
     // Check that no value causes problems.
     // Ensure that all branches of the switch/case are covered
-    for (int i = 1; i <= 25; ++i)
+    for (int i = 1; i <= 26; ++i)
     {
         BOOST_TEST_CONTEXT(i)
         {

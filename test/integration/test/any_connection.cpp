@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
@@ -366,6 +367,8 @@ BOOST_FIXTURE_TEST_CASE(default_token_redirect_error, any_connection_fixture)
     });
 }
 
+#endif
+
 // Spotcheck: immediate completions dispatched to the immediate executor
 BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
 {
@@ -385,7 +388,64 @@ BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
     });
 }
 
-#endif
+// Spotcheck: attempting to run an async op in an engaged connection fails without UB
+BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, io_context_fixture)
+{
+    // Setup
+    any_connection c1(ctx), c2(ctx);
+    results rlock, r1;
+    const auto params = connect_params_builder().disable_ssl().build();
+    c1.async_connect(params, as_netresult).validate_no_error();
+    c2.async_connect(params, as_netresult).validate_no_error();
+
+    // Get a unique lock name. We can use the connection id for this
+    const auto lock_name = std::to_string(c1.connection_id().value());
+
+    // Issue a long-running query by trying to acquire an acquired lock with a long timeout
+    c1.async_execute(with_params("CALL get_lock_checked({}, 60)", lock_name), rlock, as_netresult)
+        .validate_no_error();
+    auto execute_res = c2.async_execute(
+        with_params("CALL get_lock_checked({}, 60)", lock_name),
+        rlock,
+        as_netresult
+    );
+
+    // Other operations fail because the connection is engaged
+    c2.async_execute("SELECT 1", r1, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_prepare_statement("SELECT 1", as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_reset_connection(as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_connect(connect_params{}, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_close(as_netresult).validate_error(client_errc::operation_in_progress);
+
+    // Release the lock, so the query finishes
+    c1.async_execute("DO RELEASE_ALL_LOCKS()", r1, as_netresult).validate_no_error();
+    std::move(execute_res).validate_no_error();
+
+    // The error is non-fatal: we can issue more queries
+    c2.async_execute("SELECT 1", r1, as_netresult).validate_no_error();
+}
+
+BOOST_FIXTURE_TEST_CASE(op_in_progress_connect, any_connection_fixture)
+{
+    // Launch a connect op
+    const auto params = connect_params_builder().build();
+    auto connect_result = conn.async_connect(params, as_netresult);
+
+    // While in progress, launch another one, with different params.
+    // This fails with the expected error
+    conn.async_connect(
+            connect_params_builder().set_tcp("bad", 1000).credentials("bad_username", "bad_password").build(),
+            as_netresult
+    )
+        .validate_error(client_errc::operation_in_progress);
+
+    // The initial operation succeeds
+    std::move(connect_result).validate_no_error();
+
+    // The connection is usable
+    results r;
+    conn.async_execute("SELECT 1", r, as_netresult).validate_no_error();
+}
 
 // connection_id
 std::uint32_t call_connection_id(any_connection& conn)
