@@ -18,7 +18,9 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/immediate.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/assert.hpp>
@@ -33,6 +35,11 @@ namespace detail {
 inline asio::mutable_buffer to_buffer(span<std::uint8_t> buff) noexcept
 {
     return asio::mutable_buffer(buff.data(), buff.size());
+}
+
+inline bool has_terminal_cancellation(asio::cancellation_type_t cancel_type)
+{
+    return static_cast<bool>(cancel_type & asio::cancellation_type_t::terminal);
 }
 
 template <class EngineStream>
@@ -57,6 +64,13 @@ struct run_algo_op
 
             while (true)
             {
+                // If we were cancelled, but the last operation completed successfully,
+                // set a cancelled error code so the algorithm exits. This might happen
+                // if a cancellation signal is emitted after an intermediate operation succeeded
+                // but before the handler was called.
+                if (!io_ec && has_terminal_cancellation(self.cancelled()))
+                    io_ec = asio::error::operation_aborted;
+
                 // Run the op
                 act = resumable_.resume(io_ec, bytes_transferred);
                 if (act.is_done())
