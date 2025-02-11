@@ -66,7 +66,7 @@ class TestOrders(unittest.TestCase):
     def test_order_lifecycle(self) -> None:
         # Create an order
         order = self._request_as_json('post', '/orders')
-        order_id: int = order['id']
+        order_id = order['id']
         self.assertIsInstance(order_id, int)
         self.assertEqual(order['status'], 'draft')
         self.assertEqual(order['items'], [])
@@ -101,7 +101,7 @@ class TestOrders(unittest.TestCase):
     def test_remove_items(self) -> None:
         # Create an order
         order1 = self._request_as_json('post', '/orders')
-        order_id: int = order1['id']
+        order_id = order1['id']
 
         # Create two items
         self._request_as_json('post', '/orders/items', json={
