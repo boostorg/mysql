@@ -427,34 +427,33 @@ BOOST_FIXTURE_TEST_CASE(connection_id, any_connection_fixture)
 
 // After a fatal error (where we didn't call async_close), re-establishing the session
 // updates the connection id
-// TODO: this test requires fixing https://github.com/boostorg/mysql/issues/199
-// BOOST_FIXTURE_TEST_CASE(connection_id_after_error, any_connection_fixture)
-// {
-//     // Connect
-//     connect();
-//     auto id1 = call_connection_id(conn);
+BOOST_FIXTURE_TEST_CASE(connection_id_after_error, any_connection_fixture)
+{
+    // Connect
+    connect();
+    auto id1 = call_connection_id(conn);
 
-//     // Force a fatal error
-//     results r;
-//     asio::cancellation_signal sig;
-//     auto execute_result = conn.async_execute(
-//         "DO SLEEP(60)",
-//         r,
-//         asio::bind_cancellation_slot(sig.slot(), as_netresult)
-//     );
-//     sig.emit(asio::cancellation_type_t::terminal);
-//     std::move(execute_result).validate_error(asio::error::operation_aborted);
+    // Force a fatal error
+    results r;
+    asio::cancellation_signal sig;
+    auto execute_result = conn.async_execute(
+        "DO SLEEP(60)",
+        r,
+        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+    );
+    sig.emit(asio::cancellation_type_t::terminal);
+    std::move(execute_result).validate_error(asio::error::operation_aborted);
 
-//     // The id can be obtained even after the fatal error
-//     BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(id1));
+    // The id can be obtained even after the fatal error
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(id1));
 
-//     // Reconnect
-//     connect();
-//     auto id2 = call_connection_id(conn);
+    // Reconnect
+    connect();
+    auto id2 = call_connection_id(conn);
 
-//     // The new id can be obtained
-//     BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(id2));
-// }
+    // The new id can be obtained
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(id2));
+}
 
 // It's safe to obtain the connection id while an operation is in progress
 BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, any_connection_fixture)
