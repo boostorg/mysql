@@ -169,16 +169,17 @@ asio::awaitable<boost::system::result<order_with_items>> db_repository::add_orde
     auto conn = co_await pool_.async_get_connection();
 
     // Retrieve the order and the product.
-    // SELECT ... FOR SHARE places a shared lock on the retrieved rows,
+    // SELECT ... FOR UPDATE places a lock on the retrieved rows,
     // so they're not modified by other transactions while we use them.
+    // If you're targeting MySQL 8.0+, you can also use SELECT ... FOR SHARE.
     // For the product, we only need to check that it does exist,
     // so we get its ID and parse the returned rows into a std::tuple.
     mysql::static_results<std::tuple<>, order, std::tuple<std::int64_t>> result1;
     co_await conn->async_execute(
         mysql::with_params(
             "START TRANSACTION;"
-            "SELECT id, status FROM orders WHERE id = {} FOR SHARE;"
-            "SELECT id FROM products WHERE id = {} FOR SHARE",
+            "SELECT id, status FROM orders WHERE id = {} FOR UPDATE;"
+            "SELECT id FROM products WHERE id = {} FOR UPDATE",
             order_id,
             product_id
         ),
@@ -195,7 +196,7 @@ asio::awaitable<boost::system::result<order_with_items>> db_repository::add_orde
     const order& ord = result1.rows<1>().front();
 
     // Verify that the order is editable.
-    // Using SELECT ... FOR SHARE prevents race conditions with this check.
+    // Using SELECT ... FOR UPDATE prevents race conditions with this check.
     if (ord.status != status_draft)
     {
         co_return orders::errc::order_invalid_status;
@@ -239,7 +240,7 @@ asio::awaitable<boost::system::result<order_with_items>> db_repository::remove_o
     auto conn = co_await pool_.async_get_connection();
 
     // Retrieve the order.
-    // SELECT ... FOR SHARE places a shared lock on the order and the item,
+    // SELECT ... FOR UPDATE places a lock on the order and the item,
     // so they're not modified by other transactions while we use them.
     mysql::static_results<std::tuple<>, order> result1;
     co_await conn->async_execute(
@@ -247,7 +248,7 @@ asio::awaitable<boost::system::result<order_with_items>> db_repository::remove_o
             "START TRANSACTION;"
             "SELECT ord.id AS id, status FROM orders ord"
             "  JOIN order_items it ON (ord.id = it.order_id)"
-            "  WHERE it.id = {} FOR SHARE",
+            "  WHERE it.id = {} FOR UPDATE",
             item_id
         ),
         result1
