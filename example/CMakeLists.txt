@@ -113,3 +113,20 @@ add_example(
     PYTHON_RUNNER run_connection_pool.py
     ARGS ${SERVER_HOST}
 )
+
+add_example(
+    http_server_cpp20
+    SOURCES
+        3_advanced/http_server_cpp20/error.cpp
+        3_advanced/http_server_cpp20/repository.cpp
+        3_advanced/http_server_cpp20/handle_request.cpp
+        3_advanced/http_server_cpp20/server.cpp
+        3_advanced/http_server_cpp20/main.cpp
+    LIBS
+        Boost::json
+        Boost::url
+        Boost::beast
+        Boost::pfr
+    PYTHON_RUNNER run_orders.py
+    ARGS ${SERVER_HOST}
+)

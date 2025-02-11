@@ -89,7 +89,7 @@ def main():
     args = parser.parse_args()
 
     # Launch the server
-    with launch_server(args.executable, args.host) as listening_port:
+    with launch_server(args.executable, args.host, 'example_user', 'example_password') as listening_port:
     # Run the tests
         _call_endpoints(listening_port)
 

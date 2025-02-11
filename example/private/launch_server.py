@@ -26,10 +26,10 @@ def _parse_server_start_line(line: str) -> int:
 
 
 @contextmanager
-def launch_server(exe: str, host: str):
+def launch_server(exe: str, host: str, username: str, password: str):
     # Launch server and let it choose a free port for us.
     # This prevents port clashes during b2 parallel test runs
-    server = Popen([exe, 'example_user', 'example_password', host, '0'], stdout=PIPE, stderr=STDOUT)
+    server = Popen([exe, username, password, host, '0'], stdout=PIPE, stderr=STDOUT)
     assert server.stdout is not None
     with server:
         try:
