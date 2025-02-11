@@ -16,8 +16,11 @@
 #include <boost/asio/any_completion_handler.hpp>
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/async_result.hpp>
+#include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/bind_executor.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/cancellation_signal.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/coroutine.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -29,6 +32,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <ostream>
 
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/io_context_fixture.hpp"
@@ -41,6 +45,7 @@ using namespace boost::mysql::test;
 using namespace boost::mysql::detail;
 namespace asio = boost::asio;
 using boost::mysql::error_code;
+using boost::test_tools::per_element;
 
 BOOST_AUTO_TEST_SUITE(test_engine_impl)
 
@@ -230,7 +235,21 @@ using signature_t = netmaker_t::signature;
 // A mock for a sans-io algorithm. Can be converted to any_resumable_ref
 struct mock_algo
 {
-    using call_args = std::pair<error_code, std::size_t>;
+    struct call_args
+    {
+        error_code ec;
+        std::size_t bytes_transferred;
+
+        bool operator==(const call_args& rhs) const
+        {
+            return ec == rhs.ec && bytes_transferred == rhs.bytes_transferred;
+        }
+
+        friend std::ostream& operator<<(std::ostream& os, const call_args& v)
+        {
+            return os << "{" << v.ec << ", " << v.bytes_transferred << "}";
+        }
+    };
 
     std::size_t current_call{0};
     std::vector<next_action> acts;
@@ -239,7 +258,7 @@ struct mock_algo
     mock_algo(next_action act) : acts{act} {}
     mock_algo(next_action act1, next_action act2) : acts{act1, act2} {}
 
-    void check_calls(const std::vector<call_args>& expected) { BOOST_TEST(calls == expected); }
+    void check_calls(const std::vector<call_args>& expected) { BOOST_TEST(calls == expected, per_element()); }
 
     next_action resume(error_code ec, std::size_t bytes_transferred)
     {
@@ -557,6 +576,104 @@ BOOST_AUTO_TEST_CASE(resume_error_successive_calls)
             });
         }
     }
+}
+
+// Regression tests for https://github.com/boostorg/mysql/issues/199
+// If a cancellation signal is emitted after an operation completes successfully
+// and before its handler gets called, engine uses the composed op's cancellation
+// state and resumes the algorithm with a cancelled error code
+BOOST_FIXTURE_TEST_CASE(cancel_during_post, io_context_fixture)
+{
+    // Setup
+    mock_algo algo(next_action::ssl_handshake());
+    test_engine eng{ctx.get_executor()};
+    asio::cancellation_signal sig;
+
+    // Start the operation. The mock stream will immediately complete the requested operation
+    // by calling asio::post.
+    auto run_result = eng.async_run(
+        any_resumable_ref(algo),
+        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+    );
+
+    // At this point, the completion hasn't been called yet, since run() hasn't been called.
+    // Emit the cancellation signal
+    sig.emit(asio::cancellation_type_t::terminal);
+
+    // Run until completion
+    std::move(run_result).validate_no_error_nodiag();
+
+    // The algorithm was resumed with the relevant error
+    BOOST_TEST(eng.value.stream().calls.size() == 1u);
+    BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::ssl_handshake);
+    algo.check_calls({
+        {error_code(),                   0u},
+        {asio::error::operation_aborted, 0u}
+    });
+}
+
+// We do nothing for cancellation types != terminal
+BOOST_FIXTURE_TEST_CASE(cancel_during_post_cancel_type_non_terminal, io_context_fixture)
+{
+    // Setup
+    mock_algo algo(next_action::ssl_handshake());
+    test_engine eng{ctx.get_executor()};
+    asio::cancellation_signal sig;
+
+    // Start the operation. The mock stream will immediately complete the requested operation
+    // by calling asio::post.
+    auto run_result = eng.async_run(
+        any_resumable_ref(algo),
+        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+    );
+
+    // At this point, the completion hasn't been called yet, since run() hasn't been called.
+    // Emit the cancellation signal
+    sig.emit(asio::cancellation_type_t::total);
+
+    // Run until completion
+    std::move(run_result).validate_no_error_nodiag();
+
+    // The cancellation is ignored because algorithms don't support total cancellation
+    BOOST_TEST(eng.value.stream().calls.size() == 1u);
+    BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::ssl_handshake);
+    algo.check_calls({
+        {error_code(), 0u},
+        {error_code(), 0u}
+    });
+}
+
+// If the operation failed with another error code, we don't override it
+BOOST_FIXTURE_TEST_CASE(cancel_during_post_other_error, io_context_fixture)
+{
+    // Setup
+    mock_algo algo(next_action::ssl_handshake());
+    test_engine eng{
+        {ctx.get_executor(), asio::error::network_reset}
+    };
+    asio::cancellation_signal sig;
+
+    // Start the operation. The mock stream will immediately complete the requested operation
+    // by calling asio::post.
+    auto run_result = eng.async_run(
+        any_resumable_ref(algo),
+        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+    );
+
+    // At this point, the completion hasn't been called yet, since run() hasn't been called.
+    // Emit the cancellation signal
+    sig.emit(asio::cancellation_type_t::terminal);
+
+    // Run until completion
+    std::move(run_result).validate_no_error_nodiag();
+
+    // The cancellation didn't override the operation's error code
+    BOOST_TEST(eng.value.stream().calls.size() == 1u);
+    BOOST_TEST(eng.value.stream().calls[0].type() == next_action_type::ssl_handshake);
+    algo.check_calls({
+        {error_code(),               0u},
+        {asio::error::network_reset, 0u}
+    });
 }
 
 BOOST_AUTO_TEST_SUITE_END()
