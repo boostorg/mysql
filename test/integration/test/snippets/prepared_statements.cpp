@@ -9,6 +9,7 @@
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 #include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/field.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
 
@@ -17,6 +18,7 @@
 
 #include <optional>
 #include <string_view>
+#include <vector>
 
 #include "test_integration/run_coro.hpp"
 #include "test_integration/snippets/snippets_fixture.hpp"
@@ -109,14 +111,14 @@ asio::awaitable<void> section_main(asio::io_context& ctx, mysql::any_connection&
         co_await insert_employee(conn, stmt, "John", "Doe", {}, "HGS");
 
         // Verify that everything's OK with the range execution function
-        co_await execute_statement(
-            conn,
-            stmt,
-            {mysql::field_view("John"),
-             mysql::field_view("Doe"),
-             mysql::field_view(35000),
-             mysql::field_view("HGS")}
-        );
+        // Note: don't inline params in the execute_statement call, as it triggers a gcc ICE
+        const std::vector<mysql::field> params{
+            mysql::field_view("John"),
+            mysql::field_view("Doe"),
+            mysql::field_view(35000),
+            mysql::field_view("HGS")
+        };
+        co_await execute_statement(conn, stmt, params);
     }
 }
 
