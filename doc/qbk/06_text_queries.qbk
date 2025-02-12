@@ -39,7 +39,7 @@ string with placeholders and a set of parameters. When passed to
 the query is expanded in the client with the supplied parameters and
 sent to the server for execution:
 
-[sql_formatting_simple]
+[text_queries_with_params_simple]
 
 Curly braces (`{}`) represent placeholders (technically called ['replacement fields]).
 The notation and semantics are similar to [@https://en.cppreference.com/w/cpp/utility/format/format `std::format`].
@@ -47,15 +47,15 @@ The notation and semantics are similar to [@https://en.cppreference.com/w/cpp/ut
 All fundamental types can be used as query parameters. This includes integers, floating point types,
 strings, blobs, dates and times:
 
-[sql_formatting_other_scalars]
+[text_queries_with_params_scalars]
 
 `std::optional<T>` and `boost::optional<T>` can also be used:
 
-[sql_formatting_optionals]
+[text_queries_with_params_optionals]
 
 Collections and ranges are supported, as long as its elements can be formatted:
 
-[sql_formatting_ranges]
+[text_queries_with_params_ranges]
 
 See [link mysql.sql_formatting_advanced.ranges this section] for more on formatting ranges,
 and [link mysql.sql_formatting_advanced.reference this table] for a reference of types
@@ -68,7 +68,7 @@ that have built-in support for SQL formatting.
 
 Like `std::format`, you can use arguments with explicit indices:
 
-[sql_formatting_manual_indices]
+[text_queries_with_params_manual_indices]
 
 See [link mysql.sql_formatting_advanced.format_string_syntax this section]
 for a reference on the format string syntax.
@@ -108,7 +108,7 @@ will be issued and the query won't be sent to the server. Here are the most comm
 
 For example:
 
-[sql_formatting_invalid_encoding]
+[text_queries_with_params_invalid_encoding]
 
 [endsect]
 
@@ -194,7 +194,7 @@ This is trivial for simple queries, but may be an issue with more complex ones,
 involving ranges or dynamic identifiers. For instance, the following query may
 expand to invalid SQL if the provided range is empty:
 
-[sql_formatting_empty_ranges]
+[text_queries_with_params_empty_ranges]
 
 The risk is higher if you're building your query by pieces using [reflink format_sql_to].
 
