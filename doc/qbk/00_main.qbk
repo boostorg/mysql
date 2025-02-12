@@ -197,7 +197,7 @@ END
 [include 03_7_tutorial_error_handling.qbk]
 [include 04_overview.qbk]
 [include 05_connection_establishment.qbk]
-[include 06_sql_formatting.qbk]
+[include 06_text_queries.qbk]
 [include 07_prepared_statements.qbk]
 [include 08_dynamic_interface.qbk]
 [include 09_static_interface.qbk]
