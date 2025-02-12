@@ -105,17 +105,17 @@ run_example unix_socket : 2_simple/unix_socket.cpp
     ;
 
 # Advanced
-run_example connection_pool :
-        3_advanced/connection_pool/main.cpp
-        3_advanced/connection_pool/repository.cpp
-        3_advanced/connection_pool/handle_request.cpp
-        3_advanced/connection_pool/server.cpp
+run_example http_server_cpp11_coroutines :
+        3_advanced/http_server_cpp11_coroutines/main.cpp
+        3_advanced/http_server_cpp11_coroutines/repository.cpp
+        3_advanced/http_server_cpp11_coroutines/handle_request.cpp
+        3_advanced/http_server_cpp11_coroutines/server.cpp
         /boost/mysql/test//boost_context_lib
         /boost/mysql/test//boost_json_lib
         /boost/url//boost_url
         /boost/mysql/test//boost_beast_lib
     : $(hostname)
-    : run_connection_pool.py
+    : run_notes.py
     :
         # MSVC 14.1 fails with an internal compiler error while building server.cpp for this config
         <toolset>msvc-14.1,<address-model>32,<cxxstd>17,<variant>release:<build>no

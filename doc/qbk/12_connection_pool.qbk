@@ -91,7 +91,7 @@ per-operation cancellation mechanism:
 
 You might consider setting the timeout at a higher level, instead. For instance,
 if you're handling an HTTP request, you can use `cancel_after` to set a timeout
-to the entire request. The [link mysql.examples.connection_pool connection pool example]
+to the entire request. The [link mysql.examples.http_server_cpp20 connection pool example]
 takes this approach.
 
 
