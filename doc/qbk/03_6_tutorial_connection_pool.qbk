@@ -34,7 +34,7 @@ The protocol is TCP based, and can be described as follows:
 
 This protocol is intentionally overly simplistic, and
 shouldn't be used in production. See our
-[link mysql.examples.connection_pool HTTP examples]
+[link mysql.examples.http_server_cpp20 HTTP examples]
 for more advanced use cases.
 
 

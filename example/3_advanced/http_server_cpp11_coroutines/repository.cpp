@@ -9,7 +9,7 @@
 
 #ifdef BOOST_MYSQL_CXX14
 
-//[example_connection_pool_repository_cpp
+//[example_http_server_cpp11_coroutines_repository_cpp
 //
 // File: repository.cpp
 //
