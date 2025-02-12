@@ -8,9 +8,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/character_set.hpp>
 #include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/connect_params.hpp>
 #include <boost/mysql/format_sql.hpp>
-#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/sequence.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -22,10 +20,8 @@
 #include <boost/system/result.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <cassert>
 #include <cmath>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -37,6 +33,9 @@
 
 #ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
+#endif
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
+#include <string_view>
 #endif
 #ifdef __cpp_lib_polymorphic_allocator
 #include <memory_resource>
@@ -106,7 +105,7 @@ void run_query(
     conn.async_execute(q, r, as_netresult).validate_no_error(loc);
 }
 
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+#if !defined(BOOST_NO_CXX17_HDR_OPTIONAL) && !defined(BOOST_NO_CXX17_HDR_STRING_VIEW)
 //[sql_formatting_incremental_fn
 // Compose a query that retrieves all employees in a company,
 // with an optional limit
@@ -160,7 +159,7 @@ BOOST_FIXTURE_TEST_CASE(section_sql_formatting, snippets_fixture)
 
         run_query(conn, query);
     }
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+#if !defined(BOOST_NO_CXX17_HDR_OPTIONAL) && !defined(BOOST_NO_CXX17_HDR_STRING_VIEW)
     {
         //[sql_formatting_incremental_use
         std::string query = compose_select_query(conn.format_opts().value(), "HGS", {});
@@ -204,6 +203,7 @@ BOOST_FIXTURE_TEST_CASE(section_sql_formatting, snippets_fixture)
         //]
         run_query(conn, query);
     }
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
     {
         //[sql_formatting_sequence_2
         // A collection of filters to apply to a query
@@ -229,6 +229,7 @@ BOOST_FIXTURE_TEST_CASE(section_sql_formatting, snippets_fixture)
         //]
         run_query(conn, query);
     }
+#endif
 
     {
         //[sql_formatting_specifiers
