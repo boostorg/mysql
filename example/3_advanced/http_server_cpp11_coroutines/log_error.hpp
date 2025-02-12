@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_CONNECTION_POOL_LOG_ERROR_HPP
-#define BOOST_MYSQL_EXAMPLE_3_ADVANCED_CONNECTION_POOL_LOG_ERROR_HPP
+#ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP11_COROUTINES_LOG_ERROR_HPP
+#define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP11_COROUTINES_LOG_ERROR_HPP
 
-//[example_connection_pool_log_error_hpp
+//[example_http_server_cpp11_coroutines_log_error_hpp
 //
 // File: log_error.hpp
 //

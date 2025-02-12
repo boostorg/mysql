@@ -11,7 +11,7 @@
 
 #ifdef BOOST_MYSQL_CXX14
 
-//[example_connection_pool_server_cpp
+//[example_http_server_cpp11_coroutines_server_cpp
 //
 // File: server.cpp
 //

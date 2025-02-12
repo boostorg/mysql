@@ -142,16 +142,16 @@ ADVANCED_EXAMPLES = [
         '3_advanced/http_server_cpp20/server.cpp',
     ], 'A REST API server that uses C++20 coroutines'),
 
-    MultiExample('connection_pool', [
-        '3_advanced/connection_pool/main.cpp',
-        '3_advanced/connection_pool/types.hpp',
-        '3_advanced/connection_pool/repository.hpp',
-        '3_advanced/connection_pool/repository.cpp',
-        '3_advanced/connection_pool/handle_request.hpp',
-        '3_advanced/connection_pool/handle_request.cpp',
-        '3_advanced/connection_pool/server.hpp',
-        '3_advanced/connection_pool/server.cpp',
-        '3_advanced/connection_pool/log_error.hpp',
+    MultiExample('http_server_cpp11_coroutines', [
+        '3_advanced/http_server_cpp11_coroutines/main.cpp',
+        '3_advanced/http_server_cpp11_coroutines/types.hpp',
+        '3_advanced/http_server_cpp11_coroutines/repository.hpp',
+        '3_advanced/http_server_cpp11_coroutines/repository.cpp',
+        '3_advanced/http_server_cpp11_coroutines/handle_request.hpp',
+        '3_advanced/http_server_cpp11_coroutines/handle_request.cpp',
+        '3_advanced/http_server_cpp11_coroutines/server.hpp',
+        '3_advanced/http_server_cpp11_coroutines/server.cpp',
+        '3_advanced/http_server_cpp11_coroutines/log_error.hpp',
     ], 'A REST API server that uses asio::yield_context'),
 ]
 

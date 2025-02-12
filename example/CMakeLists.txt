@@ -99,18 +99,18 @@ endif()
 
 # Advanced
 add_example(
-    connection_pool
+    http_server_cpp11_coroutines
     SOURCES
-        3_advanced/connection_pool/repository.cpp
-        3_advanced/connection_pool/handle_request.cpp
-        3_advanced/connection_pool/server.cpp
-        3_advanced/connection_pool/main.cpp
+        3_advanced/http_server_cpp11_coroutines/repository.cpp
+        3_advanced/http_server_cpp11_coroutines/handle_request.cpp
+        3_advanced/http_server_cpp11_coroutines/server.cpp
+        3_advanced/http_server_cpp11_coroutines/main.cpp
     LIBS
         Boost::context
         Boost::json
         Boost::url
         Boost::beast
-    PYTHON_RUNNER run_connection_pool.py
+    PYTHON_RUNNER run_notes.py
     ARGS ${SERVER_HOST}
 )
 

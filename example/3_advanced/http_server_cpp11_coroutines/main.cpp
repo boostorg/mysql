@@ -11,10 +11,13 @@
 
 #ifdef BOOST_MYSQL_CXX14
 
-//[example_connection_pool_main_cpp
+//[example_http_server_cpp11_coroutines_main_cpp
 
 /**
- * This example demonstrates how to use a connection_pool.
+ * Implements a HTTP REST API using Boost.MySQL and Boost.Beast.
+ * The server is asynchronous and uses asio::yield_context as its completion
+ * style. It only requires C++11 to work.
+ *
  * It implements a minimal REST API to manage notes.
  * A note is a simple object containing a user-defined title and content.
  * The REST API offers CRUD operations on such objects:
