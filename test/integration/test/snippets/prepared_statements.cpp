@@ -12,6 +12,7 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/statement.hpp>
 
+#include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <optional>
@@ -61,9 +62,9 @@ asio::awaitable<void> execute_statement(
 }
 //]
 
-BOOST_FIXTURE_TEST_CASE(section_prepared_statements, snippets_fixture)
+asio::awaitable<void> section_main(asio::io_context& ctx, mysql::any_connection& conn)
 {
-    run_coro(ctx, [&]() -> asio::awaitable<void> {
+    {
         //[prepared_statements_prepare
         // Ask the server to prepare a statement to insert a new employee.
         // statement is a lightweight handle to the server-side statement.
@@ -86,9 +87,9 @@ BOOST_FIXTURE_TEST_CASE(section_prepared_statements, snippets_fixture)
         // Note that closing the connection will also deallocate the statement.
         co_await conn.async_close_statement(stmt);
         //]
-    });
+    }
 
-    run_coro(ctx, [&]() -> asio::awaitable<void> {
+    {
         //[prepared_statements_casting
         // Prepare the statement
         mysql::statement stmt = co_await conn.async_prepare_statement(
@@ -116,7 +117,12 @@ BOOST_FIXTURE_TEST_CASE(section_prepared_statements, snippets_fixture)
              mysql::field_view(35000),
              mysql::field_view("HGS")}
         );
-    });
+    }
+}
+
+BOOST_FIXTURE_TEST_CASE(section_prepared_statements, snippets_fixture)
+{
+    run_coro(ctx, [this]() { return section_main(ctx, conn); });
 }
 
 }  // namespace
