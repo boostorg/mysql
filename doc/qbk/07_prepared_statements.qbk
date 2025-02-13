@@ -11,7 +11,7 @@ This section covers using [mysqllink sql-prepared-statements.html
 server-side prepared statements], an alternative to [reflink with_params].
 In general, prepared statements are more complex and less flexible than `with_params`,
 but might provide more efficiency under certain circumstances. Prefer
-`with_params` if you're not sure. See [link mysql.sql_formatting.comparison this section]
+`with_params` if you're not sure. See [link mysql.text_queries.comparison this section]
 for a comparison between `with_params` and prepared statements.
 
 Working with statements involves three networking operations:

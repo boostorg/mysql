@@ -35,9 +35,10 @@ add_executable(
     test/snippets/tutorials.cpp
     test/snippets/overview.cpp
     test/snippets/connection_establishment.cpp
+    test/snippets/text_queries.cpp
+    test/snippets/prepared_statements.cpp
     test/snippets/dynamic.cpp
     test/snippets/static.cpp
-    test/snippets/prepared_statements.cpp
     test/snippets/multi_resultset.cpp
     test/snippets/multi_function.cpp
     test/snippets/metadata.cpp
@@ -45,8 +46,8 @@ add_executable(
     test/snippets/time_types.cpp
     test/snippets/connection_pool.cpp
     test/snippets/interfacing_sync_async.cpp
-    test/snippets/sql_formatting.cpp
-    test/snippets/sql_formatting_custom.cpp
+    test/snippets/sql_formatting_advanced.cpp
+    test/snippets/sql_formatting_advanced_2.cpp
     test/snippets/pipeline.cpp
     test/snippets/templated_connection.cpp
 )
