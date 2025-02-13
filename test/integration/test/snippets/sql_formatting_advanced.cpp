@@ -37,7 +37,7 @@
 #ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 #include <string_view>
 #endif
-#ifdef __cpp_lib_polymorphic_allocator
+#ifndef BOOST_NO_CXX17_HDR_MEMORY_RESOURCE
 #include <memory_resource>
 #endif
 #ifdef BOOST_MYSQL_HAS_RANGES
@@ -348,7 +348,7 @@ BOOST_FIXTURE_TEST_CASE(section_sql_formatting, snippets_fixture)
         // res.value() would throw an error, like format_sql would
         //]
     }
-#ifdef __cpp_lib_polymorphic_allocator
+#ifndef BOOST_NO_CXX17_HDR_MEMORY_RESOURCE
     {
         //[sql_formatting_custom_string
         // Create a format context that uses std::pmr::string
