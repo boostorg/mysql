@@ -42,7 +42,7 @@ Note that pooling works only with [reflink any_connection].
 [note
     `connection_pool` exposes async functions only. This has to do
     with efficiency and oddities in Boost.Asio executor model.
-    If you need a sync API, please visit [link mysql.connection_pool.sync this section].
+    If you need to use it from sync code, please visit [link mysql.interfacing_sync_async this section].
 ]
 
 
@@ -197,19 +197,6 @@ falling back to plaintext TCP if it does not.
 You can use [refmem pool_params ssl_ctx] to configure TLS options for
 connections created by the pool. If no context is provided, one will be created for you internally.
 
-
-
-[heading:sync Implementing sync functions]
-
-`connection_pool` is internally implemented in terms of `any_connection` async functions because:
-
-* When managing hundrends of connections, it's much more efficient to use
-  async functions and a limited number of threads, than a thread per connection.
-* Sync functions don't allow setting timeouts.
-
-You can build a sync connection pool on top of `connection_pool` using code like this:
-
-[connection_pool_sync]
 
 
 
