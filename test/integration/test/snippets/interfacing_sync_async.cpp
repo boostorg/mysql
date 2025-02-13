@@ -26,21 +26,19 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/use_future.hpp>
 #include <boost/config.hpp>
+#include <boost/core/ignore_unused.hpp>
 #include <boost/describe/class.hpp>
+#include <boost/system/system_error.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include <chrono>
 #include <cstdint>
+#include <exception>
 #include <future>
 #include <optional>
 #include <string>
-#include <string_view>
-#include <vector>
 
 #include "test_common/ci_server.hpp"
-#include "test_integration/run_coro.hpp"
 #include "test_integration/snippets/credentials.hpp"
-#include "test_integration/snippets/snippets_fixture.hpp"
 
 namespace asio = boost::asio;
 namespace mysql = boost::mysql;
@@ -93,6 +91,7 @@ std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::in
 
     // ...
     //<-
+    boost::ignore_unused(id);
     return {};
     //->
 }
@@ -207,6 +206,72 @@ std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::in
 
 }  // namespace v4
 
+namespace v5 {
+
+//[interfacing_sync_async_v5
+// Gets an employee's name given their ID, using a connection pool. This is a sync function.
+std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::int64_t id)
+{
+    using namespace std::chrono_literals;
+
+    // A promise, so we can wait for the task to complete
+    std::promise<std::optional<employee>> prom;
+
+    // These temporary variables should be kept alive until all async operations
+    // complete, so they're declared here
+    mysql::pooled_connection conn;
+    mysql::static_results<employee> r;
+
+    // Ensure that everything runs within the thread pool
+    asio::dispatch(asio::bind_executor(pool.get_executor(), [&] {
+        // Get a connection from the pool
+        pool.async_get_connection(asio::cancel_after(
+            30s,
+            [&](boost::system::error_code ec, mysql::pooled_connection temp_conn) {
+                if (ec)
+                {
+                    // If there was an error getting the connection, complete the promise and return
+                    prom.set_exception(std::make_exception_ptr(boost::system::system_error(ec)));
+                }
+                else
+                {
+                    // Store the connection somewhere. If it gets destroyed, it's returned to the pool
+                    conn = std::move(temp_conn);
+
+                    // Start executing the query
+                    conn->async_execute(
+                        mysql::with_params("SELECT * FROM employee WHERE id = {}", id),
+                        r,
+                        asio::cancel_after(
+                            30s,
+                            [&](boost::system::error_code ec) {
+                                if (ec)
+                                {
+                                    // If there was an error, complete the promise and return
+                                    prom.set_exception(std::make_exception_ptr(boost::system::system_error(ec)
+                                    ));
+                                }
+                                else
+                                {
+                                    // Done
+                                    prom.set_value(
+                                        r.rows().empty() ? std::optional<employee>() : r.rows()[0]
+                                    );
+                                }
+                            }
+                        )
+                    );
+                }
+            }
+        ));
+    }));
+
+    return prom.get_future().get();
+}
+//]
+
+}  // namespace v5
+
 BOOST_AUTO_TEST_CASE(section_interfacing_sync_async_v4_v5)
 {
     auto server_hostname = get_hostname();
@@ -233,6 +298,7 @@ BOOST_AUTO_TEST_CASE(section_interfacing_sync_async_v4_v5)
 
     // Check that everything's OK
     v4::get_employee_by_id(pool, 0xfffff);
+    v5::get_employee_by_id(pool, 1);
 }
 
 }  // namespace
