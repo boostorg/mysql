@@ -5,7 +5,7 @@
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:interfacing_sync_async Interfacing sync and async code: a sync connection pool]
+[section:interfacing_sync_async Interfacing sync and async code: using connection_pool in sync code]
 [nochunk]
 
 As you may already know, we recommend using asynchronous functions over sync ones because
@@ -17,7 +17,7 @@ as explained in the tutorials. However, some legacy applications are inherently 
 and might need to call asynchronous code and wait for it synchronously.
 
 This section explains how to handle these cases. We will build a synchronous
-function that, given the ID of an employee, returns their name.
+function that retrieves an employee object from the database given their ID.
 It will use [reflink connection_pool] and `asio::cancel_after`, which
 can only be accessed through asynchronous functions.
 
@@ -59,33 +59,33 @@ The race condition goes like this:
 
 * The thread calling `async_get_connection` sets up the timer required by `asio::cancel_after`.
 * In parallel, the thread running the execution context sees that there is a healthy connection
-  and completes the `async_get_connection` operation. As part of this, the timer is cancelled.
-  Thus, the timer is accessed concurrently without protection.
+  and completes the `async_get_connection` operation. As a result, the timer is cancelled.
+  Thus, the timer is accessed concurrently from both threads without protection.
 
 Note that this happens even if the pool is thread-safe because the timer is not part of the pool.
 
 To work this around, we can use a [@boost:/doc/html/boost_asio/overview/core/strands.html strand],
 Asio's mechanism to protect against data races. We will create a strand, then enter it and use it
 to run `async_get_connection`. This is a chain of asynchronous operations, so we can use
-a [asioreflink deferred deferred] chain to implement it:
+an [asioreflink deferred deferred] chain to implement it:
 
 [interfacing_sync_async_v3]
 
 Don't worry if this looks intimidating. Let's break this down into pieces:
 
-* A strand is a compliant Asio executor. This means that it can be used with `asio::dispatch` and similar functions.
-* [asioreflink dispatch dispatch] executes a function using the completion token bound to that function.
+* A strand is a compliant Asio executor. This means that we can use `asio::dispatch` and similar functions
+  to submit work to it.
+* [asioreflink dispatch dispatch] submits a piece of work to an executor. We specify the work to execute 
+  as a completion token. It uses the executor bound to the passed completion token.
 * [asioreflink bind_executor bind_executor] binds an executor to a completion token. Here, we're binding
   the strand to a deferred completion chain. This means that `dispatch` will use the strand to run its work.
 * When passing [asioreflink deferred deferred] to an async operation, like `dispatch`, it returns a packaged
   async operation. We can call the operation with any completion token to initiate it. Here, we use `asio::use_future`
-  to transform the operation into a future. If we were in a C++20 coroutine, we could co_await the object, too.
-* The function passed to `deferred` will be executed when the first operation completes. This is, the function
-  will be run within the strand. This is similar to JavaScript promise chains.
-* If we return a deferred object from the function, the asynchronous operation will be executed as part of
-  the deferred chain. Our next operation is `async_get_connection`.
-* We use `bind_executor` with `asio::deferred` to make all handlers go through the strand, effectively protecting
-  our timer.
+  to transform the operation into a future. If we were in a C++20 coroutine, we could co_await the returned object, too.
+* The function passed to `deferred` will be executed when the first operation completes, and determines what to do next.
+  This is similar to JavaScript promise chains. Our next operation is `async_get_connection`.
+* We use `bind_executor` with `asio::deferred` to make any intermediate handlers used by `async_get_connection`
+  and `asio::cancel_after` go through the strand, effectively protecting our timer.
 * The future will complete once the entire chain finishes.
 
 

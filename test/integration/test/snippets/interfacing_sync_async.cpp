@@ -67,7 +67,7 @@ std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::in
     // As we will explain later, you need a thread running your execution context for this to complete
     mysql::pooled_connection conn = fut.get();
 
-    // There is an execute sync function, so we can use this
+    // There is a sync version of execute, so we can use it
     mysql::static_results<employee> r;
     conn->execute(mysql::with_params("SELECT * FROM employee WHERE id = {}", id), r);
 
@@ -119,7 +119,7 @@ std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::in
         asio::bind_executor(
             strand,
             asio::deferred([&] {
-                // This function will be called when we're in the strand
+                // This function will be called when we're in the strand and determines what to do next
                 return pool.async_get_connection(
                     asio::cancel_after(10s, asio::bind_executor(strand, asio::deferred))
                 );
@@ -148,8 +148,8 @@ BOOST_AUTO_TEST_CASE(section_interfacing_sync_async_v1_v3)
     // Initialization code - run this once at program startup
 
     // Execution context, required to run all async operations.
-    // This is equivalent to asio::io_context plus a thread calling run()
-    asio::thread_pool ctx(1);
+    // This is equivalent to using asio::io_context and a thread that calls run()
+    asio::thread_pool ctx(1);  // Use only one thread
 
     // Create the connection pool
     mysql::pool_params params;
@@ -175,7 +175,7 @@ std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::in
 {
     using namespace std::chrono_literals;
 
-    // Spawn a coroutine in the pool's executor - that is, in the thread_pool with one thread.
+    // Spawn a coroutine in the pool's executor - that is, in the thread_pool.
     // Since the pool has only one thread, and all code in the coroutine runs within that thread,
     // there is no need for a strand here.
     // co_spawn is an async operation, and can be used with asio::use_future
