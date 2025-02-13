@@ -50,7 +50,7 @@ struct employee
 {
     std::string first_name;
     std::string last_name;
-    std::int64_t salary;
+    std::optional<std::int64_t> salary;
 };
 BOOST_DESCRIBE_STRUCT(employee, (), (first_name, last_name, salary))
 
