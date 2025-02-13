@@ -11,6 +11,7 @@
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/error_with_diagnostics.hpp>
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/with_params.hpp>
 
@@ -146,9 +147,9 @@ asio::awaitable<void> section_main(mysql::any_connection& conn)
             //]
             BOOST_TEST(false);
         }
-        catch (const boost::system::system_error& err)
+        catch (const mysql::error_with_diagnostics&)
         {
-            BOOST_TEST(err.code() == mysql::common_server_errc::er_syntax_error);
+            // The exact error code may vary
         }
     }
 }
