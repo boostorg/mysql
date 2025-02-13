@@ -37,6 +37,9 @@
 #ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 #include <string_view>
 #endif
+#ifndef BOOST_NO_CXX17_HDR_MEMORY_RESOURCE
+#include <memory_resource>
+#endif
 #ifdef BOOST_MYSQL_HAS_RANGES
 #include <ranges>
 #endif
