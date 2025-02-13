@@ -144,7 +144,7 @@ BOOST_AUTO_TEST_CASE(from_boost_string_view)
     BOOST_TEST(v.as_string() == "test");
 }
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 BOOST_AUTO_TEST_CASE(from_std_string_view)
 {
     std::string_view sv("test123", 4);
@@ -433,7 +433,7 @@ BOOST_AUTO_TEST_CASE(from_boost_string_view)
     BOOST_TEST(v.as_string() == "test");
 }
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 BOOST_AUTO_TEST_CASE(from_std_string_view)
 {
     std::string_view sv("test123", 4);
