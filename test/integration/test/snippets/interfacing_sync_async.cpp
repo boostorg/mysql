@@ -5,6 +5,9 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/config.hpp>
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+
 #include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/connection_pool.hpp>
@@ -167,6 +170,7 @@ BOOST_AUTO_TEST_CASE(section_interfacing_sync_async_v1_v3)
     v3::get_employee_by_id(pool, 2);
 }
 
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
 namespace v4 {
 
 //[interfacing_sync_async_v4
@@ -205,6 +209,7 @@ std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::in
 //]
 
 }  // namespace v4
+#endif
 
 namespace v5 {
 
@@ -294,11 +299,15 @@ BOOST_AUTO_TEST_CASE(section_interfacing_sync_async_v4_v5)
     // Run the pool. async_run should be executed in the thread_pool's thread -
     // otherwise, we have a race condition
     asio::dispatch(asio::bind_executor(ctx.get_executor(), [&] { pool.async_run(asio::detached); }));
-    //]
+//]
 
-    // Check that everything's OK
+// Check that everything's OK
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
     v4::get_employee_by_id(pool, 0xfffff);
+#endif
     v5::get_employee_by_id(pool, 1);
 }
 
 }  // namespace
+
+#endif
