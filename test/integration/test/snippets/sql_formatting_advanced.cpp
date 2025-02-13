@@ -138,8 +138,10 @@ std::string compose_select_query(
 //]
 #endif
 
-BOOST_FIXTURE_TEST_CASE(section_sql_formatting, snippets_fixture)
+BOOST_AUTO_TEST_CASE(section_sql_formatting)
 {
+    snippets_fixture fix;  // Prevent name shadowing warnings under MSVC with ctx
+    auto& conn = fix.conn;
     const auto opts = conn.format_opts().value();
 
     {
