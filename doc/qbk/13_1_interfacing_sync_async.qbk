@@ -32,26 +32,7 @@ will complete when the task finishes.
 
 With this knowledge, we can write a first version of our function:
 
-```
-// Gets an employee's name given their ID, using a connection pool. This is a sync function.
-std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::int64_t id)
-{
-    // TODO: with_patams
-    // Get a connection from the pool. This will launch the operation, but won't wait for it
-    std::future<mysql::pooled_connection> fut = pool.async_get_connection(asio::use_future);
-
-    // Block the current thread until the operation completes.
-    // As we will explain later, you need a thread running your execution context for this to complete
-    mysql::pooled_connection conn = fut.get();
-
-    // There is an execute sync function, so we can use this
-    mysql::static_results<employee> r;
-    conn->execute("SELECT first_name, last_name, salary FROM employee", r);
-
-    // Done
-    return r.rows().empty() ? std::nullopt : r.rows()[0];
-}
-```
+[interfacing_sync_async_v1]
 
 
 For this to work, we need a thread that runs the execution context (event loop).
@@ -60,23 +41,7 @@ Also note that our function will be called from a thread different to the
 one running the execution context, so we need to make our pool thread-safe:
 
 
-```
-// Initialization code - run this once at program startup
-
-// Execution context, required to run all async operations.
-// This is equivalent to asio::io_context plus a thread calling run()
-asio::thread_pool ctx (1);
-
-// Create the connection pool
-mysql::pool_params params;
-params.server_address.emplace_host_and_port(server_hostname);
-params.username = username;
-params.password = password;
-params.database = "boost_mysql_examples";
-params.thread_safe = true; // allow initiating async_get_connection from any thread
-mysql::connection_pool pool (ctx, std::move(params));
-pool.async_run(asio::detached);
-```
+[interfacing_sync_async_v1_init]
 
 
 
@@ -86,17 +51,7 @@ pool.async_run(asio::detached);
 As you might know, [refmemunq connection_pool async_get_connection] may block indefinitely,
 so we should use [asioreflink cancel_after cancel_after] to set a timeout. We might be tempted to do this:
 
-```
-std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::int64_t id)
-{
-    using std::chrono_literals;
-
-    // Do NOT do this!! This is a race condition!!
-    auto fut = pool.async_get_connection(asio::cancel_after(10s, asio::use_future));
-
-    // ...
-}
-```
+[interfacing_sync_async_v2]
 
 It might not be obvious, but this is a data race. `asio::cancel_after` creates a timer under the hood.
 This timer is shared between the thread calling `async_get_connection` and the one running the execution context.
@@ -114,34 +69,7 @@ Asio's mechanism to protect against data races. We will create a strand, then en
 to run `async_get_connection`. This is a chain of asynchronous operations, so we can use
 a [asioreflink deferred deferred] chain to implement it:
 
-```
-std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::int64_t id)
-{
-    using std::chrono_literals;
-
-    // Create a strand for this operation. Strands require an underlying
-    // executor. Use the pool's executor, which points to the thread_pool we created.
-    auto strand = asio::make_strand(pool.get_executor());
-
-    // First enter the strand with asio::dispatch, then call async_get_connection through the strand.
-    // asio::dispatch + asio::bind_executor is Asio's standard way to "run a function in an executor"
-    std::future<mysql::pooled_connection> fut = asio::dispatch(
-        // bind_executor binds an executor to a completion token.
-        // deferred creates an async chain
-        asio::bind_executor(
-            strand,
-            asio::deferred([] {
-                // This function will be called when we're in the strand
-                return async_get_connection(
-                    asio::cancel_after(10s, asio::bind_executor(strand, asio::deferred))
-                );
-            })
-        )
-    )(asio::use_future); // Initiate the chain and convert it into a future
-
-    // ...
-}
-```
+[interfacing_sync_async_v3]
 
 Don't worry if this looks intimidating. Let's break this down into pieces:
 
@@ -171,41 +99,23 @@ Reasoning about their thread safety is non-trivial, either.
 If you're in C++20 or above, a cleaner approach is to encapsulate all operations
 involving networking into a coroutine:
 
-
-```
-// Gets an employee's name given their ID, using a connection pool. This is a sync function.
-std::optional<employee> get_employee_by_id(mysql::connection_pool& pool, std::int64_t id)
-{
-    // Spawn a coroutine in the pool's executor - that is, in the thread_pool with one thread.
-    // Since the pool has only one thread, and all code in the coroutine runs within that thread,
-    // there is no need for a strand here.
-    // co_spawn is an async operation, and can be used with asio::use_future
-    return asio::co_spawn(
-        pool.get_executor(),
-        [&pool, id] () -> asio::awaitable<std::optional<employee>> {
-            // Get a connection from the pool
-            auto conn = co_await async_get_connection(asio::cancel_after(30s));
-
-            // Execute
-            mysql::static_results<employee> r;
-            co_await conn->async_execute("SELECT first_name, last_name, salary FROM employee", r, asio::cancel_after(30s));
-
-            // Done
-            co_return r.rows().empty() ? std::nullopt : r.rows()[0];
-        },
-        asio::use_future
-    ).get();
-}
-```
+[interfacing_sync_async_v4]
 
 We're keeping all interactions with the `connection_pool` within coroutines,
-so we don't need to make it thread-safe anymore. We can also encapsulate all
-database access code into a class. With these changes, we have:
+so we don't need to make it thread-safe anymore:
+
+[interfacing_sync_async_v4_init]
 
 
---- TODO ---
 
-If you're in C++ < 20, you can use asio::spawn, or imitate the behavior of co_spawn + use_future manually using callbacks (do we show this, too?)
+[heading If C++20 is not available]
+
+If you can't use C++20, you can still use `asio::spawn` or imitate the behavior
+of `asio::use_future` with callbacks. This is what the latter could look like:
+
+[interfacing_sync_async_v5]
+
+It's not as clean, but the idea remains the same.
 
 
 [endsect]
