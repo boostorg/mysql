@@ -12,7 +12,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 #include <string_view>
 #endif
 
@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(ctor_string_view)
 }
 #endif
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 BOOST_AUTO_TEST_CASE(ctor_std_string_view)
 {
     constexpr std::string_view s = "abcd";
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(runtime_string)
     BOOST_TEST(f(runtime(s)) == "abc");
 }
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 BOOST_AUTO_TEST_CASE(runtime_std_string_view)
 {
     std::string_view s = "abc";
