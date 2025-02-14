@@ -16,7 +16,6 @@
 #include <boost/mysql/connection_pool.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/asio/error.hpp>
 #include <boost/asio/spawn.hpp>
 #include <boost/optional/optional.hpp>
 
@@ -25,9 +24,6 @@
 #include "types.hpp"
 
 namespace notes {
-
-using boost::optional;
-using boost::mysql::string_view;
 
 // A lightweight wrapper around a connection_pool that allows
 // creating, updating, retrieving and deleting notes in MySQL.
@@ -48,19 +44,23 @@ public:
 
     // Retrieves a single note by ID. Returns an empty optional
     // if no note with the given ID is present in the database.
-    optional<note_t> get_note(std::int64_t note_id, boost::asio::yield_context yield);
+    boost::optional<note_t> get_note(std::int64_t note_id, boost::asio::yield_context yield);
 
     // Creates a new note in the database with the given components.
     // Returns the newly created note, including the newly allocated ID.
-    note_t create_note(string_view title, string_view content, boost::asio::yield_context yield);
+    note_t create_note(
+        boost::mysql::string_view title,
+        boost::mysql::string_view content,
+        boost::asio::yield_context yield
+    );
 
     // Replaces the note identified by note_id, setting its components to the
     // ones passed. Returns the updated note. If no note with ID matching
     // note_id can be found, an empty optional is returned.
-    optional<note_t> replace_note(
+    boost::optional<note_t> replace_note(
         std::int64_t note_id,
-        string_view title,
-        string_view content,
+        boost::mysql::string_view title,
+        boost::mysql::string_view content,
         boost::asio::yield_context yield
     );
 

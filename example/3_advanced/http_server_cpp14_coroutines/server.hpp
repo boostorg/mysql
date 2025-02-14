@@ -15,9 +15,7 @@
 
 #include <boost/mysql/connection_pool.hpp>
 
-#include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/system/error_code.hpp>
+#include <boost/asio/spawn.hpp>
 
 #include <memory>
 
@@ -40,11 +38,7 @@ struct shared_state
 // returns a non-zero error code. ex should identify the io_context or thread_pool
 // where the server should run. The server is run until the underlying execution
 // context is stopped.
-boost::system::error_code launch_server(
-    boost::asio::any_io_executor ex,
-    std::shared_ptr<shared_state> state,
-    unsigned short port
-);
+void run_server(std::shared_ptr<shared_state> st, unsigned short port, boost::asio::yield_context yield);
 
 }  // namespace notes
 

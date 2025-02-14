@@ -13,19 +13,18 @@
 // File: handle_request.hpp
 //
 
-#include <boost/asio/error.hpp>
+#include <boost/mysql/connection_pool.hpp>
+
 #include <boost/asio/spawn.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
-
-#include "repository.hpp"
 
 namespace notes {
 
 // Handles an individual HTTP request, producing a response.
 boost::beast::http::response<boost::beast::http::string_body> handle_request(
+    boost::mysql::connection_pool& pool,
     const boost::beast::http::request<boost::beast::http::string_body>& request,
-    note_repository repo,
     boost::asio::yield_context yield
 );
 

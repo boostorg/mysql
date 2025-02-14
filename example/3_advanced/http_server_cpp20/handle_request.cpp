@@ -22,7 +22,6 @@
 #include <boost/mysql/error_with_diagnostics.hpp>
 
 #include <boost/asio/awaitable.hpp>
-#include <boost/asio/cancel_after.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/status.hpp>
 #include <boost/beast/http/string_body.hpp>

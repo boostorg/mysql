@@ -6,9 +6,6 @@
 //
 
 #include <boost/mysql/static_results.hpp>
-
-#include "log_error.hpp"
-
 #ifdef BOOST_MYSQL_CXX14
 
 //[example_http_server_cpp14_coroutines_handle_request_cpp
@@ -19,19 +16,20 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
 
-#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/spawn.hpp>
+#include <boost/beast/http/message.hpp>
+#include <boost/beast/http/string_body.hpp>
+#include <boost/beast/http/verb.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/serialize.hpp>
 #include <boost/json/value_from.hpp>
 #include <boost/json/value_to.hpp>
 #include <boost/optional/optional.hpp>
 #include <boost/url/parse.hpp>
-#include <boost/variant2/variant.hpp>
 
-#include <chrono>
 #include <cstdint>
 #include <exception>
+#include <iostream>
 #include <string>
 
 #include "handle_request.hpp"
@@ -43,12 +41,37 @@
 // note_repository functions.
 
 namespace asio = boost::asio;
+namespace mysql = boost::mysql;
 namespace http = boost::beast::http;
-using boost::mysql::error_code;
-using boost::mysql::string_view;
 using namespace notes;
 
 namespace {
+
+// Helper function that logs errors thrown by db_repository
+// when an unexpected database error happens
+void log_mysql_error(boost::system::error_code ec, const mysql::diagnostics& diag)
+{
+    // Inserting the error code only prints the number and category. Add the message, too.
+    std::cerr << "MySQL error: " << ec << " " << ec.message();
+
+    // client_message() contains client-side generated messages that don't
+    // contain user-input. This is usually embedded in exceptions.
+    // When working with error codes, we need to log it explicitly
+    if (!diag.client_message().empty())
+    {
+        std::cerr << ": " << diag.client_message();
+    }
+
+    // server_message() contains server-side messages, and thus may
+    // contain user-supplied input. Printing it is safe.
+    if (!diag.server_message().empty())
+    {
+        std::cerr << ": " << diag.server_message();
+    }
+
+    // Done
+    std::cerr << std::endl;
+}
 
 // Attempts to parse a numeric ID from a string.
 // If you're using C++17, you can use std::from_chars, instead
@@ -70,304 +93,252 @@ static boost::optional<std::int64_t> parse_id(const std::string& from)
     }
 }
 
-// Encapsulates the logic required to match a HTTP request
-// to an API endpoint, call the relevant note_repository function,
-// and return an HTTP response.
-class request_handler
+// Helpers to create error responses with a single line of code
+http::response<http::string_body> error_response(http::status code, const char* msg)
 {
-    // The HTTP request we're handling. Requests are small in size,
-    // so we use http::request<http::string_body>
-    const http::request<http::string_body>& request_;
+    http::response<http::string_body> res;
+    res.result(code);
+    res.body() = msg;
+    return res;
+}
 
-    // The repository to access MySQL
-    note_repository repo_;
+// Like error_response, but always uses a 400 status code
+http::response<http::string_body> bad_request(const char* body)
+{
+    return error_response(http::status::bad_request, body);
+}
 
-    // Creates an error response
-    http::response<http::string_body> error_response(http::status code, string_view msg) const
-    {
-        http::response<http::string_body> res;
+// Like error_response, but always uses a 500 status code and
+// never provides extra information that might help potential attackers.
+http::response<http::string_body> internal_server_error()
+{
+    return error_response(http::status::internal_server_error, "Internal server error");
+}
 
-        // Set the status code
-        res.result(code);
+// Creates a response with a serialized JSON body.
+// T should be a type with Boost.Describe metadata containing the
+// body data to be serialized
+template <class T>
+http::response<http::string_body> json_response(const T& body)
+{
+    http::response<http::string_body> res;
 
-        // Set the keep alive option
-        res.keep_alive(request_.keep_alive());
+    // Set the content-type header
+    res.set("Content-Type", "application/json");
 
-        // Set the body
-        res.body() = msg;
+    // Serialize the body data into a string and use it as the response body.
+    // We use Boost.JSON's automatic serialization feature, which uses Boost.Describe
+    // reflection data to generate a serialization function for us.
+    res.body() = boost::json::serialize(boost::json::value_from(body));
 
-        // Adjust the content-length field
-        res.prepare_payload();
+    // Done
+    return res;
+}
 
-        // Done
-        return res;
-    }
+// Returns true if the request's Content-Type is set to JSON
+bool has_json_content_type(const http::request<http::string_body>& req)
+{
+    auto it = req.find("Content-Type");
+    return it != req.end() && it->value() == "application/json";
+}
 
-    // Used when the request's Content-Type header doesn't match what we expect
-    http::response<http::string_body> invalid_content_type() const
-    {
-        return error_response(http::status::bad_request, "Invalid content-type");
-    }
+// Attempts to parse the request body as a JSON into an object of type T.
+// T should be a type with Boost.Describe metadata.
+// We use boost::system::result, which may contain a result or an error.
+template <class T>
+boost::system::result<T> parse_json_request(const http::request<http::string_body>& req)
+{
+    boost::system::error_code ec;
 
-    // Used when the request body didn't match the format we expect
-    http::response<http::string_body> invalid_body() const
-    {
-        return error_response(http::status::bad_request, "Invalid body");
-    }
+    // Attempt to parse the request into a json::value.
+    // This will fail if the provided body isn't valid JSON.
+    auto val = boost::json::parse(req.body(), ec);
+    if (ec)
+        return ec;
 
-    // Used when the request's method didn't match the ones allowed by the endpoint
-    http::response<http::string_body> method_not_allowed() const
-    {
-        return error_response(http::status::method_not_allowed, "Method not allowed");
-    }
+    // Attempt to parse the json::value into a T. This will
+    // fail if the provided JSON doesn't match T's shape.
+    return boost::json::try_value_to<T>(val);
+}
 
-    // Used when the request target couldn't be matched to any API endpoint
-    http::response<http::string_body> endpoint_not_found() const
-    {
-        return error_response(http::status::not_found, "The requested resource was not found");
-    }
+// Contains data associated to an HTTP request.
+// To be passed to individual handler functions
+struct request_data
+{
+    // The incoming request
+    const http::request<http::string_body>& request;
 
-    // Used when the user requested a note (e.g. using GET /note/<id> or PUT /note/<id>)
-    // but the note doesn't exist
-    http::response<http::string_body> note_not_found() const
-    {
-        return error_response(http::status::not_found, "The requested note was not found");
-    }
+    // The URL the request is targeting
+    boost::urls::url_view target;
 
-    // Creates a response with a serialized JSON body.
-    // T should be a type with Boost.Describe metadata containing the
-    // body data to be serialized
-    template <class T>
-    http::response<http::string_body> json_response(const T& body) const
-    {
-        http::response<http::string_body> res;
+    // Connection pool
+    mysql::connection_pool& pool;
 
-        // A JSON response is always a 200
-        res.result(http::status::ok);
-
-        // Set the content-type header
-        res.set("Content-Type", "application/json");
-
-        // Set the keep-alive option
-        res.keep_alive(request_.keep_alive());
-
-        // Serialize the body data into a string and use it as the response body.
-        // We use Boost.JSON's automatic serialization feature, which uses Boost.Describe
-        // reflection data to generate a serialization function for us.
-        res.body() = boost::json::serialize(boost::json::value_from(body));
-
-        // Adjust the content-length header
-        res.prepare_payload();
-
-        // Done
-        return res;
-    }
-
-    // Returns true if the request's Content-Type is set to JSON
-    bool has_json_content_type() const
-    {
-        auto it = request_.find("Content-Type");
-        return it != request_.end() && it->value() == "application/json";
-    }
-
-    // Attempts to parse the request body as a JSON into an object of type T.
-    // T should be a type with Boost.Describe metadata.
-    // We use boost::system::result, which may contain a result or an error.
-    template <class T>
-    boost::system::result<T> parse_json_request() const
-    {
-        error_code ec;
-
-        // Attempt to parse the request into a json::value.
-        // This will fail if the provided body isn't valid JSON.
-        auto val = boost::json::parse(request_.body(), ec);
-        if (ec)
-            return ec;
-
-        // Attempt to parse the json::value into a T. This will
-        // fail if the provided JSON doesn't match T's shape.
-        return boost::json::try_value_to<T>(val);
-    }
-
-    http::response<http::string_body> handle_request_impl(boost::asio::yield_context yield)
-    {
-        // Parse the request target. We use Boost.Url to do this.
-        auto url = boost::urls::parse_origin_form(request_.target());
-        if (url.has_error())
-            return error_response(http::status::bad_request, "Invalid request target");
-
-        // We will be iterating over the target's segments to determine
-        // which endpoint we are being requested
-        auto segs = url->segments();
-        auto segit = segs.begin();
-        auto seg = *segit++;
-
-        // All endpoints start with /notes
-        if (seg != "notes")
-            return endpoint_not_found();
-
-        if (segit == segs.end())
-        {
-            if (request_.method() == http::verb::get)
-            {
-                // GET /notes: retrieves all the notes.
-                // The request doesn't have a body.
-                // The response has a JSON body with multi_notes_response format
-                auto res = repo_.get_notes(yield);
-                return json_response(multi_notes_response{std::move(res)});
-            }
-            else if (request_.method() == http::verb::post)
-            {
-                // POST /notes: creates a note.
-                // The request has a JSON body with note_request_body format.
-                // The response has a JSON body with single_note_response format.
-
-                // Parse the request body
-                if (!has_json_content_type())
-                    return invalid_content_type();
-                auto args = parse_json_request<note_request_body>();
-                if (args.has_error())
-                    return invalid_body();
-
-                // Actually create the note
-                auto res = repo_.create_note(args->title, args->content, yield);
-
-                // Return the newly created note as response
-                return json_response(single_note_response{std::move(res)});
-            }
-            else
-            {
-                return method_not_allowed();
-            }
-        }
-        else
-        {
-            // The URL has the form /notes/<note-id>. Parse the note ID.
-            auto note_id = parse_id(*segit++);
-            if (!note_id.has_value())
-            {
-                return error_response(
-                    http::status::bad_request,
-                    "Invalid note_id specified in request target"
-                );
-            }
-
-            // /notes/<note-id>/<something-else> is not a valid endpoint
-            if (segit != segs.end())
-                return endpoint_not_found();
-
-            if (request_.method() == http::verb::get)
-            {
-                // GET /notes/<note-id>: retrieves a single note.
-                // The request doesn't have a body.
-                // The response has a JSON body with single_note_response format
-
-                // Get the note
-                auto res = repo_.get_note(*note_id, yield);
-
-                // If we didn't find it, return a 404 error
-                if (!res.has_value())
-                    return note_not_found();
-
-                // Return it as response
-                return json_response(single_note_response{std::move(*res)});
-            }
-            else if (request_.method() == http::verb::put)
-            {
-                // PUT /notes/<note-id>: replaces a note.
-                // The request has a JSON body with note_request_body format.
-                // The response has a JSON body with single_note_response format.
-
-                // Parse the JSON body
-                if (!has_json_content_type())
-                    return invalid_content_type();
-                auto args = parse_json_request<note_request_body>();
-                if (args.has_error())
-                    return invalid_body();
-
-                // Perform the update
-                auto res = repo_.replace_note(*note_id, args->title, args->content, yield);
-
-                // Check that it took effect. Otherwise, it's because the note wasn't there
-                if (!res.has_value())
-                    return note_not_found();
-
-                // Return the updated note as response
-                return json_response(single_note_response{std::move(*res)});
-            }
-            else if (request_.method() == http::verb::delete_)
-            {
-                // DELETE /notes/<note-id>: deletes a note.
-                // The request doesn't have a body.
-                // The response has a JSON body with delete_note_response format.
-
-                // Attempt to delete the note
-                bool deleted = repo_.delete_note(*note_id, yield);
-
-                // Return whether the delete was successful in the response.
-                // We don't fail DELETEs for notes that don't exist.
-                return json_response(delete_note_response{deleted});
-            }
-            else
-            {
-                return method_not_allowed();
-            }
-        }
-    }
-
-public:
-    // Constructor
-    request_handler(const http::request<http::string_body>& req, note_repository repo)
-        : request_(req), repo_(repo)
-    {
-    }
-
-    // Generates a response for the request passed to the constructor
-    http::response<http::string_body> handle_request(boost::asio::yield_context yield)
-    {
-        try
-        {
-            // Attempt to handle the request. We use cancel_after to set
-            // a timeout to the overall operation
-            return asio::spawn(
-                yield.get_executor(),
-                [this](asio::yield_context yield2) { return handle_request_impl(yield2); },
-                asio::cancel_after(std::chrono::seconds(30), yield)
-            );
-        }
-        catch (const boost::mysql::error_with_diagnostics& err)
-        {
-            // A Boost.MySQL error. This will happen if you don't have connectivity
-            // to your database, your schema is incorrect or your credentials are invalid.
-            // Log the error, including diagnostics, and return a generic 500
-            log_error(
-                "Uncaught exception: ",
-                err.what(),
-                "\nServer diagnostics: ",
-                err.get_diagnostics().server_message()
-            );
-            return error_response(http::status::internal_server_error, "Internal error");
-        }
-        catch (const std::exception& err)
-        {
-            // Another kind of error. This indicates a programming error or a severe
-            // server condition (e.g. out of memory). Same procedure as above.
-            log_error("Uncaught exception: ", err.what());
-            return error_response(http::status::internal_server_error, "Internal error");
-        }
-    }
+    note_repository repo() const { return note_repository(pool); }
 };
+
+http::response<http::string_body> handle_get(const request_data& input, asio::yield_context yield)
+{
+    // Parse the query parameter
+    auto params_it = input.target.params().find("id");
+
+    // Did the client specify an ID?
+    if (params_it == input.target.params().end())
+    {
+        // GET /notes: retrieves all the notes.
+        // The request doesn't have a body.
+        // The response has a JSON body with multi_notes_response format
+        auto res = input.repo().get_notes(yield);
+        return json_response(multi_notes_response{std::move(res)});
+    }
+    else
+    {
+        // GET /notes?id=<note-id>: retrieves a single note.
+        // The request doesn't have a body.
+        // The response has a JSON body with single_note_response format
+
+        // Parse id
+        auto id = parse_id((*params_it).value);
+        if (!id.has_value())
+            return bad_request("URL parameter 'id' should be a valid integer");
+
+        // Get the note
+        auto res = input.repo().get_note(*id, yield);
+
+        // If we didn't find it, return a 404 error
+        if (!res.has_value())
+            return error_response(http::status::not_found, "The requested note was not found");
+
+        // Return it as response
+        return json_response(single_note_response{std::move(*res)});
+    }
+}
+
+http::response<http::string_body> handle_post(const request_data& input, asio::yield_context yield)
+{
+    // POST /notes: creates a note.
+    // The request has a JSON body with note_request_body format.
+    // The response has a JSON body with single_note_response format.
+
+    // Parse the request body
+    if (!has_json_content_type(input.request))
+        return bad_request("Invalid Content-Type: expected 'application/json'");
+    auto args = parse_json_request<note_request_body>(input.request);
+    if (args.has_error())
+        return bad_request("Invalid JSON");
+
+    // Actually create the note
+    auto res = input.repo().create_note(args->title, args->content, yield);
+
+    // Return the newly created note as response
+    return json_response(single_note_response{std::move(res)});
+}
+
+http::response<http::string_body> handle_put(const request_data& input, asio::yield_context yield)
+{
+    // PUT /notes?id=<note-id>: replaces a note.
+    // The request has a JSON body with note_request_body format.
+    // The response has a JSON body with single_note_response format.
+
+    // Parse the query parameter
+    auto params_it = input.target.params().find("id");
+    if (params_it == input.target.params().end())
+        return bad_request("Mandatory URL parameter 'id' not found");
+    auto id = parse_id((*params_it).value);
+    if (!id.has_value())
+        return bad_request("URL parameter 'id' should be a valid integer");
+
+    // Parse the request body
+    if (!has_json_content_type(input.request))
+        return bad_request("Invalid Content-Type: expected 'application/json'");
+    auto args = parse_json_request<note_request_body>(input.request);
+    if (args.has_error())
+        return bad_request("Invalid JSON");
+
+    // Perform the update
+    auto res = input.repo().replace_note(*id, args->title, args->content, yield);
+
+    // Check that it took effect. Otherwise, it's because the note wasn't there
+    if (!res.has_value())
+        return bad_request("The requested note was not found");
+
+    // Return the updated note as response
+    return json_response(single_note_response{std::move(*res)});
+}
+
+http::response<http::string_body> handle_delete(const request_data& input, asio::yield_context yield)
+{
+    // DELETE /notes/<note-id>: deletes a note.
+    // The request doesn't have a body.
+    // The response has a JSON body with delete_note_response format.
+
+    // Parse the query parameter
+    auto params_it = input.target.params().find("id");
+    if (params_it == input.target.params().end())
+        return bad_request("Mandatory URL parameter 'id' not found");
+    auto id = parse_id((*params_it).value);
+    if (!id.has_value())
+        return bad_request("URL parameter 'id' should be a valid integer");
+
+    // Attempt to delete the note
+    bool deleted = input.repo().delete_note(*id, yield);
+
+    // Return whether the delete was successful in the response.
+    // We don't fail DELETEs for notes that don't exist.
+    return json_response(delete_note_response{deleted});
+}
 
 }  // namespace
 
 // External interface
-boost::beast::http::response<boost::beast::http::string_body> notes::handle_request(
-    const boost::beast::http::request<boost::beast::http::string_body>& request,
-    note_repository repo,
-    boost::asio::yield_context yield
+http::response<http::string_body> notes::handle_request(
+    mysql::connection_pool& pool,
+    const http::request<http::string_body>& request,
+    asio::yield_context yield
 )
 {
-    return request_handler(request, repo).handle_request(yield);
+    // Parse the request target
+    auto target = boost::urls::parse_origin_form(request.target());
+    if (!target.has_value())
+        return bad_request("Invalid request target");
+
+    // All our endpoints have /notes as path, with different verbs and parameters.
+    // Verify that the path matches
+    if (target->path() != "/notes")
+        return error_response(http::status::not_found, "Endpoint not found");
+
+    // Compose the request_data object
+    request_data input{request, *target, pool};
+
+    // Invoke the relevant handler, depending on the method
+    try
+    {
+        switch (input.request.method())
+        {
+        case http::verb::get: return handle_get(input, yield);
+        case http::verb::post: return handle_post(input, yield);
+        case http::verb::put: return handle_put(input, yield);
+        case http::verb::delete_: return handle_delete(input, yield);
+        default: return error_response(http::status::method_not_allowed, "Method not allowed for /notes");
+        }
+    }
+    catch (const mysql::error_with_diagnostics& err)
+    {
+        // A Boost.MySQL error. This will happen if you don't have connectivity
+        // to your database, your schema is incorrect or your credentials are invalid.
+        // Log the error, including diagnostics
+        log_mysql_error(err.code(), err.get_diagnostics());
+
+        // Never disclose error info to a potential attacker
+        return internal_server_error();
+    }
+    catch (const std::exception& err)
+    {
+        // Another kind of error. This indicates a programming error or a severe
+        // server condition (e.g. out of memory). Same procedure as above.
+        std::cerr << "Uncaught exception: " << err.what() << std::endl;
+        return internal_server_error();
+    }
 }
 
 //]

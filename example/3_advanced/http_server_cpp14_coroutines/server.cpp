@@ -6,9 +6,6 @@
 //
 
 #include <boost/mysql/static_results.hpp>
-
-#include "log_error.hpp"
-
 #ifdef BOOST_MYSQL_CXX14
 
 //[example_http_server_cpp14_coroutines_server_cpp
@@ -16,14 +13,10 @@
 // File: server.cpp
 //
 
-#include <boost/mysql/connection_pool.hpp>
-#include <boost/mysql/error_code.hpp>
-
-#include <boost/asio/any_io_executor.hpp>
+#include <boost/asio/cancel_after.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/spawn.hpp>
-#include <boost/asio/strand.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/error.hpp>
 #include <boost/beast/http/message.hpp>
@@ -32,39 +25,40 @@
 #include <boost/beast/http/string_body.hpp>
 #include <boost/beast/http/write.hpp>
 
-#include <cstddef>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
 #include <memory>
-#include <string>
 
 #include "handle_request.hpp"
-#include "repository.hpp"
 #include "server.hpp"
-#include "types.hpp"
 
 // This file contains all the boilerplate code to implement a HTTP
 // server. Functions here end up invoking handle_request.
 
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
-using boost::mysql::error_code;
 using namespace notes;
 
 namespace {
 
-static void run_http_session(
-    boost::asio::ip::tcp::socket sock,
-    std::shared_ptr<shared_state> st,
-    boost::asio::yield_context yield
-)
+void run_http_session(std::shared_ptr<shared_state> st, asio::ip::tcp::socket sock, asio::yield_context yield)
 {
-    error_code ec;
+    using namespace std::chrono_literals;
+
+    boost::system::error_code ec;
 
     // A buffer to read incoming client requests
     boost::beast::flat_buffer buff;
 
+    // A timer, to use with asio::cancel_after to implement timeouts.
+    // Re-using the same timer multiple times with cancel_after
+    // is more efficient than using raw cancel_after,
+    // since the timer doesn't need to be re-created for every operation.
+    asio::steady_timer timer(yield.get_executor());
+
+    // A HTTP session might involve more than one message if
+    // keep-alive semantics are used. Loop until the connection closes.
     while (true)
     {
         // Construct a new parser for each message
@@ -75,7 +69,7 @@ static void run_http_session(
         parser.body_limit(10000);
 
         // Read a request
-        http::async_read(sock, buff, parser.get(), yield[ec]);
+        http::async_read(sock, buff, parser.get(), asio::cancel_after(60s, yield[ec]));
 
         if (ec)
         {
@@ -87,22 +81,40 @@ static void run_http_session(
             else
             {
                 // An unknown error happened
-                log_error("Error reading HTTP request: ", ec);
+                std::cout << "Error reading HTTP request: " << ec.message() << std::endl;
             }
             return;
         }
 
-        // Process the request to generate a response.
-        // This invokes the business logic, which will need to access MySQL data
-        auto response = handle_request(parser.get(), note_repository(st->pool), yield);
+        const auto& request = parser.get();
 
-        // Determine if we should close the connection
+        // Process the request to generate a response.
+        // This invokes the business logic, which will need to access MySQL data.
+        // Apply a timeout to the overall request handling process.
+        auto response = asio::spawn(
+            // Use the same executor as this coroutine
+            yield.get_executor(),
+
+            // The logic to invoke
+            [&](asio::yield_context yield2) { return handle_request(st->pool, request, yield2); },
+
+            // Completion token. Returns an object that can be co_await'ed
+            asio::cancel_after(timer, 30s, yield)
+        );
+
+        // Adjust the response, setting fields common to all responses
         bool keep_alive = response.keep_alive();
+        response.version(request.version());
+        response.keep_alive(keep_alive);
+        response.prepare_payload();
 
         // Send the response
-        http::async_write(sock, response, yield[ec]);
+        http::async_write(sock, response, asio::cancel_after(60s, yield[ec]));
         if (ec)
-            return log_error("Error writing HTTP response: ", ec);
+        {
+            std::cout << "Error writing HTTP response: " << ec.message() << std::endl;
+            return;
+        }
 
         // This means we should close the connection, usually because
         // the response indicated the "Connection: close" semantic.
@@ -114,91 +126,67 @@ static void run_http_session(
     }
 }
 
-// Implements the server's accept loop. The server will
-// listen for connections until stopped.
-static void do_accept(
-    asio::any_io_executor executor,  // The original executor (without strands)
-    std::shared_ptr<asio::ip::tcp::acceptor> acceptor,
-    std::shared_ptr<shared_state> st
-)
-{
-    acceptor->async_accept([executor, st, acceptor](error_code ec, asio::ip::tcp::socket sock) {
-        // If there was an error accepting the connection, exit our loop
-        if (ec)
-            return log_error("Error while accepting connection", ec);
-
-        // Launch a new session for this connection. Each session gets its
-        // own stackful coroutine, so we can get back to listening for new connections.
-        boost::asio::spawn(
-            // Every session gets its own strand. This prevents data races.
-            asio::make_strand(executor),
-
-            // The actual coroutine
-            [st, socket = std::move(sock)](boost::asio::yield_context yield) mutable {
-                run_http_session(std::move(socket), std::move(st), yield);
-            },
-
-            // All errors in the session are handled via error codes or by catching
-            // exceptions explicitly. An unhandled exception here means an error.
-            // Rethrowing it will propagate the exception, making io_context::run()
-            // to throw and terminate the program.
-            [](std::exception_ptr ex) {
-                if (ex)
-                    std::rethrow_exception(ex);
-            }
-        );
-
-        // Accept a new connection
-        do_accept(executor, acceptor, st);
-    });
-}
-
 }  // namespace
 
-error_code notes::launch_server(
-    boost::asio::any_io_executor ex,
-    std::shared_ptr<shared_state> st,
-    unsigned short port
-)
+void notes::run_server(std::shared_ptr<shared_state> st, unsigned short port, asio::yield_context yield)
 {
-    error_code ec;
-
-    // An object that allows us to accept incoming TCP connections.
-    // Since we're in a multi-threaded environment, we create a strand for the acceptor,
-    // so all accept handlers are run serialized
-    auto acceptor = std::make_shared<asio::ip::tcp::acceptor>(asio::make_strand(ex));
+    // An object that allows us to accept incoming TCP connections
+    asio::ip::tcp::acceptor acc(yield.get_executor());
 
     // The endpoint where the server will listen. Edit this if you want to
     // change the address or port we bind to.
-    boost::asio::ip::tcp::endpoint listening_endpoint(boost::asio::ip::make_address("0.0.0.0"), port);
+    asio::ip::tcp::endpoint listening_endpoint(asio::ip::make_address("0.0.0.0"), port);
 
     // Open the acceptor
-    acceptor->open(listening_endpoint.protocol(), ec);
-    if (ec)
-        return ec;
+    acc.open(listening_endpoint.protocol());
 
     // Allow address reuse
-    acceptor->set_option(asio::socket_base::reuse_address(true), ec);
-    if (ec)
-        return ec;
+    acc.set_option(asio::socket_base::reuse_address(true));
 
     // Bind to the server address
-    acceptor->bind(listening_endpoint, ec);
-    if (ec)
-        return ec;
+    acc.bind(listening_endpoint);
 
     // Start listening for connections
-    acceptor->listen(asio::socket_base::max_listen_connections, ec);
-    if (ec)
-        return ec;
+    acc.listen(asio::socket_base::max_listen_connections);
 
-    std::cout << "Server listening at " << acceptor->local_endpoint() << std::endl;
+    std::cout << "Server listening at " << acc.local_endpoint() << std::endl;
 
-    // Launch the acceptor loop
-    do_accept(std::move(ex), std::move(acceptor), std::move(st));
+    // Start the acceptor loop
+    while (true)
+    {
+        // Accept a new connection
+        asio::ip::tcp::socket sock = acc.async_accept(yield);
 
-    // Done
-    return error_code();
+        // Launch a new session for this connection. Each session gets its
+        // own coroutine, so we can get back to listening for new connections.
+        asio::spawn(
+            yield.get_executor(),
+
+            // Function implementing our session logic.
+            // Takes ownership of the socket.
+            [st, sock = std::move(sock)](asio::yield_context yield2) mutable {
+                return run_http_session(std::move(st), std::move(sock), yield2);
+            },
+
+            // Callback to run when the coroutine finishes
+            [](std::exception_ptr ptr) {
+                if (ptr)
+                {
+                    // For extra safety, log the exception but don't propagate it.
+                    // If we failed to anticipate an error condition that ends up raising an exception,
+                    // terminate only the affected session, instead of crashing the server.
+                    try
+                    {
+                        std::rethrow_exception(ptr);
+                    }
+                    catch (const std::exception& exc)
+                    {
+                        std::cerr << "Uncaught error in a session: " << exc.what() << std::endl;
+                    }
+                }
+            }
+        );
+    }
 }
 
 //]
