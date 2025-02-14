@@ -380,8 +380,6 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 [example_http_server_cpp14_coroutines_server_cpp]
 
-[example_http_server_cpp14_coroutines_log_error_hpp]
-
 [endsect]
 
 

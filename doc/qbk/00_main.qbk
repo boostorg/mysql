@@ -166,7 +166,6 @@ END
 [import ../../example/3_advanced/http_server_cpp14_coroutines/handle_request.cpp]
 [import ../../example/3_advanced/http_server_cpp14_coroutines/server.hpp]
 [import ../../example/3_advanced/http_server_cpp14_coroutines/server.cpp]
-[import ../../example/3_advanced/http_server_cpp14_coroutines/log_error.hpp]
 [import ../../test/integration/test/snippets/prepared_statements.cpp]
 [import ../../test/integration/test/snippets/sql_formatting_advanced.cpp]
 [import ../../test/integration/test/snippets/connection_establishment.cpp]
