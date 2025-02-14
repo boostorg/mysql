@@ -5,19 +5,17 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP11_COROUTINES_SERVER_HPP
-#define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP11_COROUTINES_SERVER_HPP
+#ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP14_COROUTINES_SERVER_HPP
+#define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP14_COROUTINES_SERVER_HPP
 
-//[example_http_server_cpp11_coroutines_server_hpp
+//[example_http_server_cpp14_coroutines_server_hpp
 //
 // File: server.hpp
 //
 
 #include <boost/mysql/connection_pool.hpp>
 
-#include <boost/asio/any_io_executor.hpp>
-#include <boost/asio/io_context.hpp>
-#include <boost/system/error_code.hpp>
+#include <boost/asio/spawn.hpp>
 
 #include <memory>
 
@@ -32,19 +30,14 @@ struct shared_state
 {
     boost::mysql::connection_pool pool;
 
-    shared_state(boost::mysql::connection_pool pool) : pool(std::move(pool)) {}
+    shared_state(boost::mysql::connection_pool pool) noexcept : pool(std::move(pool)) {}
 };
 
-// Launches a HTTP server that will listen on 0.0.0.0:port.
+// Runs a HTTP server that will listen on 0.0.0.0:port.
 // If the server fails to launch (e.g. because the port is already in use),
-// returns a non-zero error code. ex should identify the io_context or thread_pool
-// where the server should run. The server is run until the underlying execution
+// throws an exception. The server runs until the underlying execution
 // context is stopped.
-boost::system::error_code launch_server(
-    boost::asio::any_io_executor ex,
-    std::shared_ptr<shared_state> state,
-    unsigned short port
-);
+void run_server(std::shared_ptr<shared_state> st, unsigned short port, boost::asio::yield_context yield);
 
 }  // namespace notes
 
