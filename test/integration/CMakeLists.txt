@@ -45,6 +45,7 @@ add_executable(
     test/snippets/charsets.cpp
     test/snippets/time_types.cpp
     test/snippets/connection_pool.cpp
+    test/snippets/interfacing_sync_async.cpp
     test/snippets/sql_formatting_advanced.cpp
     test/snippets/sql_formatting_advanced_2.cpp
     test/snippets/pipeline.cpp

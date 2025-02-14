@@ -34,7 +34,7 @@ Additionally, we will modify how we use `asio::cancel_after` to make the system 
 
 
 
-[heading Completion tokens]
+[heading:completion_token Completion tokens]
 
 Before proceeding, we need to understand what a completion token is.
 The concepts in this section are not specific to Boost.MySQL, but apply
