@@ -37,7 +37,7 @@ add_executable(
     test/snippets/connection_establishment.cpp
     test/snippets/text_queries.cpp
     test/snippets/prepared_statements.cpp
-    test/snippets/dynamic.cpp
+    test/snippets/dynamic_interface.cpp
     test/snippets/static.cpp
     test/snippets/multi_resultset.cpp
     test/snippets/multi_function.cpp
