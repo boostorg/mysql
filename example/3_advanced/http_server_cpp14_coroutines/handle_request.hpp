@@ -22,6 +22,8 @@
 namespace notes {
 
 // Handles an individual HTTP request, producing a response.
+// The caller of this function should use response::version,
+// response::keep_alive and response::prepare_payload to adjust the response.
 boost::beast::http::response<boost::beast::http::string_body> handle_request(
     boost::mysql::connection_pool& pool,
     const boost::beast::http::request<boost::beast::http::string_body>& request,

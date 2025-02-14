@@ -13,7 +13,7 @@
 /**
  * Implements a HTTP REST API using Boost.MySQL and Boost.Beast.
  * The server is asynchronous and uses asio::yield_context as its completion
- * style. It only requires C++11 to work.
+ * style. It only requires C++14 to work.
  *
  * It implements a minimal REST API to manage notes.
  * A note is a simple object containing a user-defined title and content.
@@ -25,11 +25,12 @@
  *    DELETE /notes?id=<id>   Deletes a note.
  *
  * Notes are stored in MySQL. The note_repository class encapsulates
- *   access to MySQL, offering friendly functions to manipulate notes.
+ * access to MySQL, offering friendly functions to manipulate notes.
  * server.cpp encapsulates all the boilerplate to launch an HTTP server,
- *   match URLs to API endpoints, and invoke the relevant note_repository functions.
+ * match URLs to API endpoints, and invoke the relevant note_repository functions.
+ *
  * All communication happens asynchronously. We use stackful coroutines to simplify
- *   development, using asio::spawn and asio::yield_context.
+ * development, using asio::spawn and asio::yield_context.
  * This example requires linking to Boost::context, Boost::json and Boost::url.
  */
 
@@ -88,7 +89,11 @@ int main(int argc, char* argv[])
         "boost_mysql_examples",
     };
 
-    // Create the connection pool
+    // Create the connection pool.
+    // shared_state contains all singleton objects that our application may need.
+    // Coroutines created by asio::spawn might survive until the io_context is destroyed
+    // (even after io_context::stop() has been called). This is not the case for callbacks
+    // and C++20 coroutines. Using a shared_ptr here ensures that the pool survives long enough.
     auto st = std::make_shared<shared_state>(mysql::connection_pool(ctx, std::move(params)));
 
     // Launch the MySQL pool
@@ -103,13 +108,13 @@ int main(int argc, char* argv[])
 
     // Launch the server. This will run until the context is stopped
     asio::spawn(
-        // Use the thread pool to run the listener coroutine
+        // Spawn the coroutine in the io_context
         ctx,
 
         // The coroutine to run
         [st, port](asio::yield_context yield) { run_server(st, port, yield); },
 
-        // If an exception is thrown in the listener coroutine, propagate it
+        // If an exception is thrown in the coroutine, propagate it
         [](std::exception_ptr exc) {
             if (exc)
                 std::rethrow_exception(exc);

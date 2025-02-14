@@ -30,13 +30,12 @@ struct shared_state
 {
     boost::mysql::connection_pool pool;
 
-    shared_state(boost::mysql::connection_pool pool) : pool(std::move(pool)) {}
+    shared_state(boost::mysql::connection_pool pool) noexcept : pool(std::move(pool)) {}
 };
 
-// Launches a HTTP server that will listen on 0.0.0.0:port.
+// Runs a HTTP server that will listen on 0.0.0.0:port.
 // If the server fails to launch (e.g. because the port is already in use),
-// returns a non-zero error code. ex should identify the io_context or thread_pool
-// where the server should run. The server is run until the underlying execution
+// throws an exception. The server runs until the underlying execution
 // context is stopped.
 void run_server(std::shared_ptr<shared_state> st, unsigned short port, boost::asio::yield_context yield);
 

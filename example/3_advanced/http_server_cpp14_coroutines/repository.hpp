@@ -25,19 +25,17 @@
 
 namespace notes {
 
-// A lightweight wrapper around a connection_pool that allows
-// creating, updating, retrieving and deleting notes in MySQL.
-// This class encapsulates the database logic.
-// All operations are async, and use stackful coroutines (boost::asio::yield_context).
+// Encapsulates database logic.
+// All operations are async, and use stackful coroutines (asio::yield_context).
 // If the database can't be contacted, or unexpected database errors are found,
-// an exception of type boost::mysql::error_with_diagnostics is thrown.
+// an exception of type mysql::error_with_diagnostics is thrown.
 class note_repository
 {
     boost::mysql::connection_pool& pool_;
 
 public:
     // Constructor (this is a cheap-to-construct object)
-    note_repository(boost::mysql::connection_pool& pool) : pool_(pool) {}
+    note_repository(boost::mysql::connection_pool& pool) noexcept : pool_(pool) {}
 
     // Retrieves all notes present in the database
     std::vector<note_t> get_notes(boost::asio::yield_context yield);

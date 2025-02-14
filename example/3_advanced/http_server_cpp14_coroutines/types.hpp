@@ -12,20 +12,17 @@
 //
 // File: types.hpp
 //
-
-#include <boost/core/span.hpp>
-#include <boost/describe/class.hpp>
-#include <boost/optional/optional.hpp>
-
-#include <cstdint>
-#include <string>
-#include <vector>
-
 // Contains type definitions used in the REST API and database code.
 // We use Boost.Describe (BOOST_DESCRIBE_STRUCT) to add reflection
 // capabilities to our types. This allows using Boost.MySQL
 // static interface (i.e. static_results<T>) to parse query results,
 // and Boost.JSON automatic serialization/deserialization.
+
+#include <boost/describe/class.hpp>
+
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace notes {
 

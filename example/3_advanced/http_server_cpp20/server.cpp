@@ -173,16 +173,8 @@ asio::awaitable<void> orders::run_server(mysql::connection_pool& pool, unsigned 
     // Start the acceptor loop
     while (true)
     {
-        // Accept a new connection. asio::as_tuple prevents async_accept
-        // from throwing exceptions on failure.
-        auto [ec, sock] = co_await acc.async_accept(asio::as_tuple);
-
-        // If there was an error accepting the connection, exit our loop
-        if (ec)
-        {
-            log_error("Error while accepting connection", ec);
-            co_return;
-        }
+        // Accept a new connection
+        asio::ip::tcp::socket sock = co_await acc.async_accept();
 
         // Function implementing our session logic.
         // Takes ownership of the socket.

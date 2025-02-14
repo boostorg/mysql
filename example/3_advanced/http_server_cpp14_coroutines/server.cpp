@@ -12,6 +12,8 @@
 //
 // File: server.cpp
 //
+// This file contains all the boilerplate code to implement a HTTP
+// server. Functions here end up invoking handle_request.
 
 #include <boost/asio/cancel_after.hpp>
 #include <boost/asio/ip/address.hpp>
@@ -33,15 +35,13 @@
 #include "handle_request.hpp"
 #include "server.hpp"
 
-// This file contains all the boilerplate code to implement a HTTP
-// server. Functions here end up invoking handle_request.
-
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
 using namespace notes;
 
 namespace {
 
+// Runs a single HTTP session until the client closes the connection
 void run_http_session(std::shared_ptr<shared_state> st, asio::ip::tcp::socket sock, asio::yield_context yield)
 {
     using namespace std::chrono_literals;
@@ -68,7 +68,8 @@ void run_http_session(std::shared_ptr<shared_state> st, asio::ip::tcp::socket so
         // of the body in bytes to prevent abuse.
         parser.body_limit(10000);
 
-        // Read a request
+        // Read a request. yield[ec] prevents exceptions from being thrown
+        // on error. We use cancel_after to set a timeout for the overall read operation.
         http::async_read(sock, buff, parser.get(), asio::cancel_after(60s, yield[ec]));
 
         if (ec)
@@ -98,7 +99,8 @@ void run_http_session(std::shared_ptr<shared_state> st, asio::ip::tcp::socket so
             // The logic to invoke
             [&](asio::yield_context yield2) { return handle_request(st->pool, request, yield2); },
 
-            // Completion token. Returns an object that can be co_await'ed
+            // Completion token. Passing yield blocks the current coroutine
+            // until handle_request completes.
             asio::cancel_after(timer, 30s, yield)
         );
 

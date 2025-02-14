@@ -12,8 +12,15 @@
 //
 // File: repository.cpp
 //
+// SQL code to create the notes table is located under $REPO_ROOT/example/db_setup.sql
+// The table looks like this:
+//
+// CREATE TABLE notes(
+//     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+//     title TEXT NOT NULL,
+//     content TEXT NOT NULL
+// );
 
-#include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/with_diagnostics.hpp>
@@ -30,15 +37,6 @@ namespace asio = boost::asio;
 namespace mysql = boost::mysql;
 using namespace notes;
 using mysql::with_diagnostics;
-
-// SQL code to create the notes table is located under $REPO_ROOT/example/db_setup.sql
-// The table looks like this:
-//
-// CREATE TABLE notes(
-//     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-//     title TEXT NOT NULL,
-//     content TEXT NOT NULL
-// );
 
 std::vector<note_t> note_repository::get_notes(asio::yield_context yield)
 {

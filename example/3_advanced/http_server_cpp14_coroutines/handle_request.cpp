@@ -12,14 +12,19 @@
 //
 // File: handle_request.cpp
 //
+// This file contains all the boilerplate code to dispatch HTTP
+// requests to API endpoints. Functions here end up calling
+// note_repository functions.
 
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/error_with_diagnostics.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/asio/spawn.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/string_body.hpp>
 #include <boost/beast/http/verb.hpp>
+#include <boost/charconv/from_chars.hpp>
 #include <boost/json/parse.hpp>
 #include <boost/json/serialize.hpp>
 #include <boost/json/value_from.hpp>
@@ -35,10 +40,6 @@
 #include "handle_request.hpp"
 #include "repository.hpp"
 #include "types.hpp"
-
-// This file contains all the boilerplate code to dispatch HTTP
-// requests to API endpoints. Functions here end up calling
-// note_repository functions.
 
 namespace asio = boost::asio;
 namespace mysql = boost::mysql;
@@ -75,22 +76,13 @@ void log_mysql_error(boost::system::error_code ec, const mysql::diagnostics& dia
 
 // Attempts to parse a numeric ID from a string.
 // If you're using C++17, you can use std::from_chars, instead
-static boost::optional<std::int64_t> parse_id(const std::string& from)
+boost::optional<std::int64_t> parse_id(const std::string& from)
 {
-    try
-    {
-        std::size_t consumed = 0;
-        int res = std::stoi(from, &consumed);
-        if (consumed != from.size())
-            return {};
-        else if (res < 0)
-            return {};
-        return res;
-    }
-    catch (const std::exception&)
-    {
+    std::int64_t id{};
+    auto res = boost::charconv::from_chars(from.data(), from.data() + from.size(), id);
+    if (res.ec != std::errc{} || res.ptr != from.data() + from.size())
         return {};
-    }
+    return id;
 }
 
 // Helpers to create error responses with a single line of code
@@ -142,17 +134,16 @@ bool has_json_content_type(const http::request<http::string_body>& req)
     return it != req.end() && it->value() == "application/json";
 }
 
-// Attempts to parse the request body as a JSON into an object of type T.
+// Attempts to parse a string as a JSON into an object of type T.
 // T should be a type with Boost.Describe metadata.
 // We use boost::system::result, which may contain a result or an error.
 template <class T>
-boost::system::result<T> parse_json_request(const http::request<http::string_body>& req)
+boost::system::result<T> parse_json(boost::mysql::string_view json_string)
 {
-    boost::system::error_code ec;
-
     // Attempt to parse the request into a json::value.
     // This will fail if the provided body isn't valid JSON.
-    auto val = boost::json::parse(req.body(), ec);
+    boost::system::error_code ec;
+    auto val = boost::json::parse(json_string, ec);
     if (ec)
         return ec;
 
@@ -177,6 +168,20 @@ struct request_data
     note_repository repo() const { return note_repository(pool); }
 };
 
+//
+// Endpoint handlers. We have a function per method.
+// All of our endpoints have /notes as the URL path.
+//
+
+// GET /notes: retrieves all the notes.
+// The request doesn't have a body.
+// The response has a JSON body with multi_notes_response format
+//
+// GET /notes?id=<note-id>: retrieves a single note.
+// The request doesn't have a body.
+// The response has a JSON body with single_note_response format
+//
+// Both endpoints share path and method, so they share handler function
 http::response<http::string_body> handle_get(const request_data& input, asio::yield_context yield)
 {
     // Parse the query parameter
@@ -185,18 +190,11 @@ http::response<http::string_body> handle_get(const request_data& input, asio::yi
     // Did the client specify an ID?
     if (params_it == input.target.params().end())
     {
-        // GET /notes: retrieves all the notes.
-        // The request doesn't have a body.
-        // The response has a JSON body with multi_notes_response format
         auto res = input.repo().get_notes(yield);
         return json_response(multi_notes_response{std::move(res)});
     }
     else
     {
-        // GET /notes?id=<note-id>: retrieves a single note.
-        // The request doesn't have a body.
-        // The response has a JSON body with single_note_response format
-
         // Parse id
         auto id = parse_id((*params_it).value);
         if (!id.has_value())
@@ -214,16 +212,15 @@ http::response<http::string_body> handle_get(const request_data& input, asio::yi
     }
 }
 
+// POST /notes: creates a note.
+// The request has a JSON body with note_request_body format.
+// The response has a JSON body with single_note_response format.
 http::response<http::string_body> handle_post(const request_data& input, asio::yield_context yield)
 {
-    // POST /notes: creates a note.
-    // The request has a JSON body with note_request_body format.
-    // The response has a JSON body with single_note_response format.
-
     // Parse the request body
     if (!has_json_content_type(input.request))
         return bad_request("Invalid Content-Type: expected 'application/json'");
-    auto args = parse_json_request<note_request_body>(input.request);
+    auto args = parse_json<note_request_body>(input.request.body());
     if (args.has_error())
         return bad_request("Invalid JSON");
 
@@ -234,12 +231,11 @@ http::response<http::string_body> handle_post(const request_data& input, asio::y
     return json_response(single_note_response{std::move(res)});
 }
 
+// PUT /notes?id=<note-id>: replaces a note.
+// The request has a JSON body with note_request_body format.
+// The response has a JSON body with single_note_response format.
 http::response<http::string_body> handle_put(const request_data& input, asio::yield_context yield)
 {
-    // PUT /notes?id=<note-id>: replaces a note.
-    // The request has a JSON body with note_request_body format.
-    // The response has a JSON body with single_note_response format.
-
     // Parse the query parameter
     auto params_it = input.target.params().find("id");
     if (params_it == input.target.params().end())
@@ -251,7 +247,7 @@ http::response<http::string_body> handle_put(const request_data& input, asio::yi
     // Parse the request body
     if (!has_json_content_type(input.request))
         return bad_request("Invalid Content-Type: expected 'application/json'");
-    auto args = parse_json_request<note_request_body>(input.request);
+    auto args = parse_json<note_request_body>(input.request.body());
     if (args.has_error())
         return bad_request("Invalid JSON");
 
@@ -266,12 +262,11 @@ http::response<http::string_body> handle_put(const request_data& input, asio::yi
     return json_response(single_note_response{std::move(*res)});
 }
 
+// DELETE /notes/<note-id>: deletes a note.
+// The request doesn't have a body.
+// The response has a JSON body with delete_note_response format.
 http::response<http::string_body> handle_delete(const request_data& input, asio::yield_context yield)
 {
-    // DELETE /notes/<note-id>: deletes a note.
-    // The request doesn't have a body.
-    // The response has a JSON body with delete_note_response format.
-
     // Parse the query parameter
     auto params_it = input.target.params().find("id");
     if (params_it == input.target.params().end())
