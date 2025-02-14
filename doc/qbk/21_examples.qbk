@@ -360,7 +360,7 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
-[section:http_server_cpp14_coroutines A REST API server that uses asio::yield_context]
+[section:http_server_cpp14_coroutines A C++14 REST API server that uses asio::yield_context]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 

@@ -152,7 +152,7 @@ ADVANCED_EXAMPLES = [
         '3_advanced/http_server_cpp14_coroutines/server.hpp',
         '3_advanced/http_server_cpp14_coroutines/server.cpp',
         '3_advanced/http_server_cpp14_coroutines/log_error.hpp',
-    ], 'A REST API server that uses asio::yield_context'),
+    ], 'A C++14 REST API server that uses asio::yield_context'),
 ]
 
 ALL_EXAMPLES = TUTORIALS + SIMPLE_EXAMPLES + ADVANCED_EXAMPLES
