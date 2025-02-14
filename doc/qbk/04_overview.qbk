@@ -89,7 +89,7 @@ Boost.MySQL provides two interfaces to run queries with parameters:
     ]
     [
         [
-            [link mysql.sql_formatting Client-side SQL formatting]:
+            [link mysql.text_queries Client-side SQL formatting]:
 
             * Securely expands queries client-side.
             * Text-based protocol.
@@ -116,7 +116,7 @@ Boost.MySQL provides two interfaces to run queries with parameters:
 
 By default, we recommend using [reflink with_params] because it's
 simpler and entails less round-trips to the server.
-See [link mysql.sql_formatting.comparison the comparison section] for more info.
+See [link mysql.text_queries.comparison the comparison section] for more info.
 
 Client-side SQL formatting can also be used to
 [link mysql.sql_formatting_advanced.expand expand queries]
