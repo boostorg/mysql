@@ -142,16 +142,16 @@ ADVANCED_EXAMPLES = [
         '3_advanced/http_server_cpp20/server.cpp',
     ], 'A REST API server that uses C++20 coroutines'),
 
-    MultiExample('http_server_cpp11_coroutines', [
-        '3_advanced/http_server_cpp11_coroutines/main.cpp',
-        '3_advanced/http_server_cpp11_coroutines/types.hpp',
-        '3_advanced/http_server_cpp11_coroutines/repository.hpp',
-        '3_advanced/http_server_cpp11_coroutines/repository.cpp',
-        '3_advanced/http_server_cpp11_coroutines/handle_request.hpp',
-        '3_advanced/http_server_cpp11_coroutines/handle_request.cpp',
-        '3_advanced/http_server_cpp11_coroutines/server.hpp',
-        '3_advanced/http_server_cpp11_coroutines/server.cpp',
-        '3_advanced/http_server_cpp11_coroutines/log_error.hpp',
+    MultiExample('http_server_cpp14_coroutines', [
+        '3_advanced/http_server_cpp14_coroutines/main.cpp',
+        '3_advanced/http_server_cpp14_coroutines/types.hpp',
+        '3_advanced/http_server_cpp14_coroutines/repository.hpp',
+        '3_advanced/http_server_cpp14_coroutines/repository.cpp',
+        '3_advanced/http_server_cpp14_coroutines/handle_request.hpp',
+        '3_advanced/http_server_cpp14_coroutines/handle_request.cpp',
+        '3_advanced/http_server_cpp14_coroutines/server.hpp',
+        '3_advanced/http_server_cpp14_coroutines/server.cpp',
+        '3_advanced/http_server_cpp14_coroutines/log_error.hpp',
     ], 'A REST API server that uses asio::yield_context'),
 ]
 

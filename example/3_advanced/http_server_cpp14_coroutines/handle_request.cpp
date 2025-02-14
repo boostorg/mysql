@@ -11,7 +11,7 @@
 
 #ifdef BOOST_MYSQL_CXX14
 
-//[example_http_server_cpp11_coroutines_handle_request_cpp
+//[example_http_server_cpp14_coroutines_handle_request_cpp
 //
 // File: handle_request.cpp
 //

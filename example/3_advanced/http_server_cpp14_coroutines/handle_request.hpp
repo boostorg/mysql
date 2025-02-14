@@ -5,10 +5,10 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP11_COROUTINES_HANDLE_REQUEST_HPP
-#define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP11_COROUTINES_HANDLE_REQUEST_HPP
+#ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP14_COROUTINES_HANDLE_REQUEST_HPP
+#define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP14_COROUTINES_HANDLE_REQUEST_HPP
 
-//[example_http_server_cpp11_coroutines_handle_request_hpp
+//[example_http_server_cpp14_coroutines_handle_request_hpp
 //
 // File: handle_request.hpp
 //

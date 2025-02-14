@@ -11,7 +11,7 @@
 
 #ifdef BOOST_MYSQL_CXX14
 
-//[example_http_server_cpp11_coroutines_main_cpp
+//[example_http_server_cpp14_coroutines_main_cpp
 
 /**
  * Implements a HTTP REST API using Boost.MySQL and Boost.Beast.
