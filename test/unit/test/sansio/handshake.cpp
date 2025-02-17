@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -69,6 +70,7 @@ public:
     }
     server_hello_builder& auth_data(std::vector<std::uint8_t> v)
     {
+        BOOST_ASSERT(v.size() >= 8u);  // split in two parts, and the 1st one is fixed size at 8 bytes
         BOOST_ASSERT(v.size() <= 0xfeu);
         auth_plugin_data_ = std::move(v);
         return *this;
@@ -343,6 +345,20 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_auth_error)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
+// The authentication plugin generates an error during fast track
+BOOST_AUTO_TEST_CASE(mnp_fast_track_bad_challenge_length)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(std::vector<std::uint8_t>(21, 0x0a)).build())
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, client_errc::protocol_value_error);
+}
+
 BOOST_AUTO_TEST_CASE(mnp_auth_switch_success)
 {
     // Setup
@@ -391,6 +407,28 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_auth_error)
         .will_set_capabilities(min_caps)  // incidental
         .will_set_connection_id(42)       // incidental
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
+// The authentication plugin generates an error during auth switch
+BOOST_AUTO_TEST_CASE(mnp_auth_switch_bad_challenge_length)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", std::vector<std::uint8_t>(21, 0x0a))
+        )
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, client_errc::protocol_value_error);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
