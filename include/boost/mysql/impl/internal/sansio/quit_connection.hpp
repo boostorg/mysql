@@ -26,6 +26,7 @@ class quit_connection_algo
 {
     int resume_point_{0};
     std::uint8_t sequence_number_{0};
+    bool should_perform_shutdown_{};
 
 public:
     quit_connection_algo(quit_connection_algo_params) noexcept {}
@@ -35,28 +36,27 @@ public:
         switch (resume_point_)
         {
         case 0:
-
-            // Send quit message
-            BOOST_MYSQL_YIELD(resume_point_, 1, st.write(quit_command(), sequence_number_))
-
-            // If there was no error and TLS is active, attempt TLS shutdown.
-            // MySQL usually just closes the socket, instead of
-            // sending the close_notify message required by the shutdown, so we ignore this error.
-            if (!ec && st.ssl == ssl_state::active)
-            {
-                BOOST_MYSQL_YIELD(resume_point_, 2, next_action::ssl_shutdown())
-                ec = error_code();
-            }
-
             // Mark the session as finished
+            should_perform_shutdown_ = st.ssl_active();
             st.is_connected = false;
             if (st.ssl_active())
                 st.ssl = ssl_state::inactive;
 
-            // Done
+            // Send quit message
+            BOOST_MYSQL_YIELD(resume_point_, 1, st.write(quit_command(), sequence_number_))
+            if (ec)
+                return ec;
+
+            // If there was no error and TLS is active, attempt TLS shutdown.
+            // MySQL usually just closes the socket, instead of
+            // sending the close_notify message required by the shutdown, so we ignore this error.
+            if (should_perform_shutdown_)
+            {
+                BOOST_MYSQL_YIELD(resume_point_, 2, next_action::ssl_shutdown())
+            }
         }
 
-        return ec;
+        return next_action();
     }
 };
 
