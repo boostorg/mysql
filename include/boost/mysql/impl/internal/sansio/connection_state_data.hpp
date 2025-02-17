@@ -35,7 +35,6 @@ enum class ssl_state
     unsupported,
     inactive,
     active,
-    torn_down,
 };
 
 struct connection_state_data

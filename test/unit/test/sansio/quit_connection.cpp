@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(ssl_success)
         .expect_write(expected_request())
         .expect_ssl_shutdown()
         .will_set_is_connected(false)
-        .will_set_ssl(detail::ssl_state::torn_down)
+        .will_set_ssl(detail::ssl_state::inactive)
         .check(fix);
 }
 
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(ssl_error_quit)
     algo_test()
         .expect_write(expected_request(), asio::error::network_reset)
         .will_set_is_connected(false)
-        // .will_set_ssl(detail::ssl_state::torn_down)
+        // .will_set_ssl(detail::ssl_state::inactive)
         .check(fix, asio::error::network_reset);
 }
 
@@ -95,7 +95,7 @@ BOOST_AUTO_TEST_CASE(ssl_error_shutdown)
         .expect_write(expected_request())
         .expect_ssl_shutdown(asio::error::network_reset)
         .will_set_is_connected(false)
-        .will_set_ssl(detail::ssl_state::torn_down)
+        .will_set_ssl(detail::ssl_state::inactive)
         .check(fix);  // SSL shutdown errors ignored
 }
 

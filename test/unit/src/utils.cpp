@@ -629,7 +629,6 @@ static const char* to_string(detail::ssl_state v)
     case detail::ssl_state::unsupported: return "ssl_state::unsupported";
     case detail::ssl_state::inactive: return "ssl_state::inactive";
     case detail::ssl_state::active: return "ssl_state::active";
-    case detail::ssl_state::torn_down: return "ssl_state::torn_down";
     default: return "<unknown ssl_state>";
     }
 }

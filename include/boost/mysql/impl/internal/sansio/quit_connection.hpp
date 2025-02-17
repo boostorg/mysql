@@ -50,7 +50,7 @@ public:
             if (st.ssl == ssl_state::active)
             {
                 BOOST_MYSQL_YIELD(resume_point_, 2, next_action::ssl_shutdown())
-                st.ssl = ssl_state::torn_down;
+                st.ssl = ssl_state::inactive;
             }
 
             // Done
