@@ -292,10 +292,6 @@ std::vector<std::uint8_t> csha2p_response()
 //
 
 // mysql_native_password
-//     auth switch success
-//         hello, login request, auth switch, auth switch response, ok
-//     auth switch error
-//         hello, login request, auth switch, auth switch response, error
 //     bad challenge length in any of them
 //     more data
 
@@ -311,7 +307,7 @@ std::vector<std::uint8_t> csha2p_response()
 //             0xa6, 0xc9, 0x9b, 0x58, 0x3c, 0x9e, 0x89, 0x94, 0x34, 0x41};
 // }
 
-BOOST_AUTO_TEST_CASE(mnp_fast_track_ok)
+BOOST_AUTO_TEST_CASE(mnp_fast_track_success)
 {
     // Setup
     fixture fix;
@@ -328,7 +324,7 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_ok)
         .check(fix);
 }
 
-BOOST_AUTO_TEST_CASE(mnp_fast_track_error)
+BOOST_AUTO_TEST_CASE(mnp_fast_track_auth_error)
 {
     // Setup
     fixture fix;
@@ -347,7 +343,7 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_error)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
-BOOST_AUTO_TEST_CASE(mnp_auth_switch_ok)
+BOOST_AUTO_TEST_CASE(mnp_auth_switch_success)
 {
     // Setup
     fixture fix;
@@ -369,6 +365,32 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_ok)
         .will_set_current_charset(utf8mb4_charset)
         .will_set_connection_id(42)
         .check(fix);
+}
+
+BOOST_AUTO_TEST_CASE(mnp_auth_switch_auth_error)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
+        .expect_write(create_frame(3, mnp_response()))
+        .expect_read(err_builder()
+                         .seqnum(4)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
