@@ -54,6 +54,8 @@ constexpr capabilities min_caps{
     detail::CLIENT_DEPRECATE_EOF | detail::CLIENT_SECURE_CONNECTION
 };
 
+constexpr capabilities tls_caps{min_caps.get() | detail::CLIENT_SSL};
+
 // Helpers to create the relevant packets
 class server_hello_builder
 {
@@ -63,7 +65,7 @@ class server_hello_builder
     string_view auth_plugin_name_{"mysql_native_password"};
 
 public:
-    server_hello_builder& version(string_view v) noexcept
+    server_hello_builder& version(string_view v)
     {
         server_version_ = v;
         return *this;
@@ -75,12 +77,12 @@ public:
         auth_plugin_data_ = std::move(v);
         return *this;
     }
-    server_hello_builder& caps(detail::capabilities v) noexcept
+    server_hello_builder& caps(detail::capabilities v)
     {
         server_caps_ = v;
         return *this;
     }
-    server_hello_builder& auth_plugin(string_view v) noexcept
+    server_hello_builder& auth_plugin(string_view v)
     {
         auth_plugin_name_ = v;
         return *this;
@@ -131,6 +133,7 @@ public:
 
 class login_request_builder
 {
+    std::uint8_t seqnum_{1};
     capabilities caps_{min_caps};
     std::uint32_t collation_id_{45};  // utf8_general_ci
     string_view username_{"example_user"};
@@ -141,19 +144,25 @@ class login_request_builder
 public:
     login_request_builder() = default;
 
-    login_request_builder& caps(detail::capabilities v) noexcept
+    login_request_builder& seqnum(std::uint8_t v)
+    {
+        seqnum_ = v;
+        return *this;
+    }
+
+    login_request_builder& caps(detail::capabilities v)
     {
         caps_ = v;
         return *this;
     }
 
-    login_request_builder& collation(std::uint32_t v) noexcept
+    login_request_builder& collation(std::uint32_t v)
     {
         collation_id_ = v;
         return *this;
     }
 
-    login_request_builder& username(string_view v) noexcept
+    login_request_builder& username(string_view v)
     {
         username_ = v;
         return *this;
@@ -165,13 +174,13 @@ public:
         return *this;
     }
 
-    login_request_builder& db(string_view v) noexcept
+    login_request_builder& db(string_view v)
     {
         database_ = v;
         return *this;
     }
 
-    login_request_builder& auth_plugin(string_view v) noexcept
+    login_request_builder& auth_plugin(string_view v)
     {
         auth_plugin_name_ = v;
         return *this;
@@ -189,6 +198,24 @@ public:
                 database_,
                 auth_plugin_name_
             });
+        });
+        return create_frame(seqnum_, body);
+    }
+};
+
+class ssl_request_builder
+{
+    capabilities caps_{tls_caps};
+    std::uint32_t collation_id_{45};
+
+public:
+    ssl_request_builder() = default;
+
+    std::vector<std::uint8_t> build()
+    {
+        const auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
+            detail::ssl_request req{caps_, detail::max_packet_size, collation_id_};
+            req.serialize(ctx);
         });
         return create_frame(1, body);
     }
@@ -430,6 +457,32 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_bad_challenge_length)
         .will_set_connection_id(42)       // incidental
         .check(fix, client_errc::protocol_value_error);
 }
+
+// Spotcheck: mysql_native_password doesn't have interactions with TLS
+BOOST_AUTO_TEST_CASE(mnp_tls)
+{
+    // Setup
+    fixture fix;
+    fix.st.tls_supported = true;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
+        .expect_write(ssl_request_builder().build())
+        .expect_ssl_handshake()
+        .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response()).build())
+        .expect_read(create_ok_frame(3, ok_builder().build()))
+        .will_set_is_connected(true)
+        .will_set_tls_active(true)
+        .will_set_capabilities(tls_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// TODO: auth switch after auth switch
+// TODO: more data fast track
+// TODO: more data after auth switch
 
 BOOST_AUTO_TEST_SUITE_END()
 
