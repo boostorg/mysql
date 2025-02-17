@@ -6,6 +6,7 @@
 //
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/string_view.hpp>
 
@@ -29,7 +30,9 @@
 #include <cassert>
 #include <vector>
 
+#include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
+#include "test_unit/create_err.hpp"
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
@@ -38,6 +41,8 @@
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 using detail::capabilities;
+
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
@@ -181,6 +186,20 @@ public:
     }
 };
 
+std::vector<std::uint8_t> create_auth_switch_frame(
+    std::uint8_t seqnum,
+    string_view plugin_name,
+    boost::span<const std::uint8_t> data
+)
+{
+    return create_frame(seqnum, serialize_to_vector([=](detail::serialization_context& ctx) {
+                            ctx.add(0xfe);  // auth switch header
+                            detail::string_null{plugin_name}.serialize(ctx);
+                            ctx.add(data);
+                            ctx.add(std::uint8_t(0));  // This has a NULL byte at the end
+                        }));
+}
+
 struct fixture : algo_fixture_base
 {
     detail::handshake_algo algo{
@@ -230,39 +249,61 @@ other stuff
     backslash escapes
     flags in hello
     connection_id
+    everything is correctly reset
 Network errors
     Auth with more data
     Auth with auth switch
     Using SSL
 */
 
+// These challenge/responses have been captured with Wireshark
+std::vector<std::uint8_t> mnp_challenge()
+{
+    return {0x1b, 0x0f, 0x6e, 0x59, 0x1b, 0x70, 0x33, 0x01, 0x0c, 0x01,
+            0x7e, 0x2e, 0x30, 0x7a, 0x79, 0x5c, 0x02, 0x50, 0x51, 0x35};
+}
+
+std::vector<std::uint8_t> mnp_response()
+{
+    return {0xbe, 0xa5, 0xb5, 0xe7, 0x9c, 0x05, 0x23, 0x34, 0xda, 0x06,
+            0x1d, 0xaf, 0xd9, 0x8b, 0x4b, 0x09, 0x86, 0xe5, 0xd1, 0x4a};
+}
+
+std::vector<std::uint8_t> csha2p_challenge()
+{
+    return {0x6f, 0x1b, 0x3b, 0x64, 0x39, 0x01, 0x46, 0x44, 0x53, 0x3b,
+            0x74, 0x3c, 0x3e, 0x3c, 0x3c, 0x0b, 0x30, 0x77, 0x1a, 0x49};
+}
+
+std::vector<std::uint8_t> csha2p_response()
+{
+    return {0xa7, 0xc3, 0x7f, 0x88, 0x25, 0xec, 0x92, 0x2c, 0x88, 0xba, 0x47, 0x04, 0x14, 0xd2, 0xa3, 0xa3,
+            0x5e, 0xa9, 0x41, 0x8e, 0xdc, 0x89, 0xeb, 0xe2, 0xa1, 0xec, 0xd8, 0x4f, 0x73, 0xa1, 0x49, 0x60};
+}
+
 //
 // mysql_native_password
 //
 
 // mysql_native_password
-//     fast track success:
-//         hello, login request, ok
-//     fast track error:
-//         hello, login request, error
 //     auth switch success
 //         hello, login request, auth switch, auth switch response, ok
 //     auth switch error
 //         hello, login request, auth switch, auth switch response, error
 //     bad challenge length in any of them
 //     more data
-static std::vector<std::uint8_t> server_plugin_data()
-{
-    // Mock data, must be 20 bytes long
-    return {0x1b, 0x0f, 0x6e, 0x59, 0x1b, 0x70, 0x33, 0x01, 0x0c, 0x01,
-            0x7e, 0x2e, 0x30, 0x7a, 0x79, 0x5c, 0x02, 0x50, 0x51, 0x35};
-}
 
-static std::vector<std::uint8_t> client_plugin_data()
-{
-    return {0xbe, 0xa5, 0xb5, 0xe7, 0x9c, 0x05, 0x23, 0x34, 0xda, 0x06,
-            0x1d, 0xaf, 0xd9, 0x8b, 0x4b, 0x09, 0x86, 0xe5, 0xd1, 0x4a};
-}
+// std::vector<std::uint8_t> challenge2()
+// {
+//     return {0x36, 0x2c, 0x3f, 0x49, 0x1e, 0x51, 0x13, 0x79, 0x4c, 0x0b,
+//             0x0e, 0x06, 0x08, 0x40, 0x04, 0x0b, 0x2c, 0x53, 0x1e, 0x36};
+// }
+
+// std::vector<std::uint8_t> response2()
+// {
+//     return {0x21, 0x34, 0xca, 0xa6, 0x49, 0x91, 0x77, 0x63, 0x72, 0x7a,
+//             0xa6, 0xc9, 0x9b, 0x58, 0x3c, 0x9e, 0x89, 0x94, 0x34, 0x41};
+// }
 
 BOOST_AUTO_TEST_CASE(mnp_fast_track_ok)
 {
@@ -271,9 +312,56 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_ok)
 
     // Run the test
     algo_test()
-        .expect_read(create_frame(0, server_hello_builder().auth_data(server_plugin_data()).build()))
-        .expect_write(create_frame(1, login_request_builder().auth_response(client_plugin_data()).build()))
-        .expect_read(create_ok_frame(2, ok_builder().build()))  // OK response
+        .expect_read(create_frame(0, server_hello_builder().auth_data(mnp_challenge()).build()))
+        .expect_write(create_frame(1, login_request_builder().auth_response(mnp_response()).build()))
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_is_connected(true)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+BOOST_AUTO_TEST_CASE(mnp_fast_track_error)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(create_frame(0, server_hello_builder().auth_data(mnp_challenge()).build()))
+        .expect_write(create_frame(1, login_request_builder().auth_response(mnp_response()).build()))
+        .expect_read(err_builder()
+                         .seqnum(2)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
+BOOST_AUTO_TEST_CASE(mnp_auth_switch_ok)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(create_frame(
+            0,
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        ))
+        .expect_write(create_frame(
+            1,
+            login_request_builder()
+                .auth_plugin("caching_sha2_password")
+                .auth_response(csha2p_response())
+                .build()
+        ))
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
+        .expect_write(create_frame(3, mnp_response()))
+        .expect_read(create_ok_frame(4, ok_builder().build()))
         .will_set_is_connected(true)
         .will_set_capabilities(min_caps)
         .will_set_current_charset(utf8mb4_charset)
@@ -282,3 +370,5 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_ok)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace
