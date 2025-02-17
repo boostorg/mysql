@@ -46,7 +46,8 @@ public:
             if (ec)
                 return ec;
 
-            // Shutdown SSL. MySQL doesn't always shut down SSL correctly, so we ignore this error.
+            // Attempt TLS shutdown. MySQL usually just closes the socket, instead of
+            // sending the close_notify message required by the shutdown, so we ignore this error.
             if (st.ssl == ssl_state::active)
             {
                 BOOST_MYSQL_YIELD(resume_point_, 2, next_action::ssl_shutdown())
