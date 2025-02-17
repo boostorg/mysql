@@ -39,25 +39,24 @@ public:
             // Send quit message
             BOOST_MYSQL_YIELD(resume_point_, 1, st.write(quit_command(), sequence_number_))
 
-            // Mark the session as finished, regardless of the write result
-            st.is_connected = false;
-
-            // If write resulted in an error, return
-            if (ec)
-                return ec;
-
-            // Attempt TLS shutdown. MySQL usually just closes the socket, instead of
+            // If there was no error and TLS is active, attempt TLS shutdown.
+            // MySQL usually just closes the socket, instead of
             // sending the close_notify message required by the shutdown, so we ignore this error.
-            if (st.ssl == ssl_state::active)
+            if (!ec && st.ssl == ssl_state::active)
             {
                 BOOST_MYSQL_YIELD(resume_point_, 2, next_action::ssl_shutdown())
-                st.ssl = ssl_state::inactive;
+                ec = error_code();
             }
+
+            // Mark the session as finished
+            st.is_connected = false;
+            if (st.ssl_active())
+                st.ssl = ssl_state::inactive;
 
             // Done
         }
 
-        return next_action();
+        return ec;
     }
 };
 
