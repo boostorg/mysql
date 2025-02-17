@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -34,9 +34,11 @@
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/deferred.hpp>
 #include <boost/assert.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/system/result.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -53,11 +55,7 @@ class pipeline_request;
 class stage_response;
 
 /**
- * \brief (EXPERIMENTAL) Configuration parameters that can be passed to \ref any_connection's constructor.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
+ * \brief Configuration parameters that can be passed to \ref any_connection's constructor.
  */
 struct any_connection_params
 {
@@ -110,19 +108,34 @@ struct any_connection_params
 };
 
 /**
- * \brief (EXPERIMENTAL) A type-erased connection to a MySQL server.
+ * \brief A connection to a MySQL server.
  * \details
- * Represents a connection to a MySQL server. Compared to \ref connection, this class:
- * \n
- * \li Is type-erased. The type of the connection doesn't depend on the transport being used.
- *     Supported transports include plaintext TCP, SSL over TCP and UNIX domain sockets.
- * \li Is easier to connect, as \ref connect and \ref async_connect handle hostname resolution.
- * \li Can always be re-connected after being used or encountering an error.
- * \li Doesn't support default completion tokens.
- * \n
- * Provides a level of performance similar to \ref connection.
- * \n
+ * Represents a connection to a MySQL server.
+ * This is the main I/O object that this library implements. It's logically comprised
+ * of session state and an internal stream (usually a socket). The stream is not directly
+ * accessible. It's constructed using the executor passed to the constructor.
+ *
+ * This class supports establishing connections
+ * with servers using TCP, TCP over TLS and UNIX sockets.
+ *
+ * The class is named `any_connection` because it's not templated on a `Stream`
+ * type, as opposed to \ref connection. New code should prefer using `any_connection`
+ * whenever possible.
+ *
+ * Compared to \ref connection, this class:
+ *
+ * - Is type-erased. The type of the connection doesn't depend on the transport being used.
+ * - Is easier to connect, as \ref connect and \ref async_connect handle hostname resolution.
+ * - Can always be re-connected after being used or encountering an error.
+ * - Always uses `asio::any_io_executor`.
+ * - Has the same level of performance.
+ *
  * This is a move-only type.
+ *
+ * \par Single outstanding async operation per connection
+ * At any given point in time, only one async operation can be outstanding
+ * per connection. If an async operation is initiated while another one is in progress,
+ * it will fail with \ref client_errc::operation_in_progress.
  *
  * \par Default completion tokens
  * The default completion token for all async operations in this class is
@@ -134,10 +147,6 @@ struct any_connection_params
  * Shared objects: unsafe. \n
  * This class is <b>not thread-safe</b>: for a single object, if you
  * call its member functions concurrently from separate threads, you will get a race condition.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
  */
 class any_connection
 {
@@ -305,7 +314,7 @@ public:
     }
 
     /**
-     * \brief Returns format options suitable to format SQL according to the current connection configuation.
+     * \brief Returns format options suitable to format SQL according to the current connection configuration.
      * \details
      * If the current character set is known (as given by \ref current_character_set), returns
      * a value suitable to be passed to SQL formatting functions. Otherwise, returns an error.
@@ -324,11 +333,65 @@ public:
         return format_options{res.value(), backslash_escapes()};
     }
 
-    /// \copydoc connection::meta_mode
+    /**
+     * \brief Returns the current metadata mode that this connection is using.
+     * \details
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \returns The metadata mode that will be used for queries and statement executions.
+     */
     metadata_mode meta_mode() const noexcept { return impl_.meta_mode(); }
 
-    /// \copydoc connection::set_meta_mode
+    /**
+     * \brief Sets the metadata mode.
+     * \details
+     * Will affect any query and statement executions performed after the call.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     *
+     * \par Preconditions
+     * No asynchronous operation should be outstanding when this function is called.
+     *
+     * \param v The new metadata mode.
+     */
     void set_meta_mode(metadata_mode v) noexcept { impl_.set_meta_mode(v); }
+
+    /**
+     * \brief Retrieves the connection id associated to the current session.
+     * \details
+     * If a session has been established, returns its associated connection id.
+     * If no session has been established (i.e. \ref async_connect hasn't been called yet)
+     * or the session has been terminated (i.e. \ref async_close has been called), an empty
+     * optional is returned.
+     *
+     * The connection id is a 4 byte value that uniquely identifies a client session
+     * at a given point in time. It can be used with the
+     * <a href="https://dev.mysql.com/doc/refman/8.4/en/kill.html">`KILL`</a> SQL statement
+     * to cancel queries and terminate connections.
+     *
+     * The server sends the connection id assigned to the current session as part of the
+     * handshake process. The value is stored and made available through this function.
+     * The same id can also be obtained by calling the
+     * <a
+     * href="https://dev.mysql.com/doc/refman/8.4/en/information-functions.html#function_connection-id">CONNECTION_ID()</a>
+     * SQL function. However, this function is faster and more reliable, since it does not entail
+     * communication with the server.
+     *
+     * This function is equivalent to the
+     * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-thread-id.html">`mysql_thread_id`</a> function
+     * in the C connector. This function works properly in 64-bit systems, as opposed to what
+     * the official docs suggest (see
+     * <a href="https://dev.mysql.com/doc/relnotes/mysql/5.7/en/news-5-7-5.html">this changelog</a>).
+     *
+     * It is safe to call this function while an async operation is outstanding, except for \ref async_connect
+     * and \ref async_close.
+     *
+     * \par Exception safety
+     * No-throw guarantee.
+     */
+    boost::optional<std::uint32_t> connection_id() const noexcept { return impl_.connection_id(); }
 
     /**
      * \brief Establishes a connection to a MySQL server.
@@ -358,7 +421,7 @@ public:
      * \li If the transport is TCP, and `params.ssl == ssl_mode::enable`, the connection will use TLS
      *     only if the server supports it.
      * \li If the transport is TCP, and `params.ssl == ssl_mode::require`, the connection will always use TLS.
-     *     If the server doesn't support it, this function will fail with \ref
+     *     If the server doesn't support it, the operation will fail with \ref
      *     client_errc::server_doesnt_support_ssl.
      * \n
      * If `params.connection_collation` is within a set of well-known collations, this function
@@ -389,6 +452,16 @@ public:
      *
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
@@ -409,7 +482,21 @@ public:
         return async_connect(params, impl_.shared_diag(), std::forward<CompletionToken>(token));
     }
 
-    /// \copydoc connection::execute
+    /**
+     * \brief Executes a text query or prepared statement.
+     * \details
+     * Sends `req` to the server for execution and reads the response into `result`.
+     * `result` may be either a \ref results or \ref static_results object.
+     * `req` should may be either a type convertible to \ref string_view containing valid SQL
+     * or a bound prepared statement, obtained by calling \ref statement::bind.
+     * If a string, it must be encoded using the connection's character set.
+     * Any string parameters provided to \ref statement::bind should also be encoded
+     * using the connection's character set.
+     * \n
+     * After this operation completes successfully, `result.has_value() == true`.
+     * \n
+     * Metadata in `result` will be populated according to `this->meta_mode()`.
+     */
     template <BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest, BOOST_MYSQL_RESULTS_TYPE ResultsType>
     void execute(ExecutionRequest&& req, ResultsType& result, error_code& err, diagnostics& diag)
     {
@@ -426,7 +513,33 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /// \copydoc connection::async_execute
+    /**
+     * \copydoc execute
+     * \par Object lifetimes
+     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the caller is
+     * responsible for managing `req`'s validity following these rules:
+     * \n
+     * \li If `req` is `string_view`, the string pointed to by `req`
+     *     must be kept alive by the caller until the operation is initiated.
+     * \li If `req` is a \ref bound_statement_tuple, and any of the parameters is a reference
+     *     type (like `string_view`), the caller must keep the values pointed by these references alive
+     *     until the operation is initiated.
+     * \li If `req` is a \ref bound_statement_iterator_range, the caller must keep objects in
+     *     the iterator range passed to \ref statement::bind alive until the  operation is initiated.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_RESULTS_TYPE ResultsType,
@@ -464,7 +577,31 @@ public:
         );
     }
 
-    /// \copydoc connection::start_execution
+    /**
+     * \brief Starts a SQL execution as a multi-function operation.
+     * \details
+     * Writes the execution request and reads the initial server response and the column
+     * metadata, but not the generated rows or subsequent resultsets, if any.
+     * `st` may be either an \ref execution_state or \ref static_execution_state object.
+     * \n
+     * After this operation completes, `st` will have
+     * \ref execution_state::meta populated.
+     * Metadata will be populated according to `this->meta_mode()`.
+     * \n
+     * If the operation generated any rows or more than one resultset, these <b>must</b> be read (by using
+     * \ref read_some_rows and \ref read_resultset_head) before engaging in any further network operation.
+     * Otherwise, the results are undefined.
+     * \n
+     * req may be either a type convertible to \ref string_view containing valid SQL
+     * or a bound prepared statement, obtained by calling \ref statement::bind.
+     * If a string, it must be encoded using the connection's character set.
+     * Any string parameters provided to \ref statement::bind should also be encoded
+     * using the connection's character set.
+     * \n
+     * When using the static interface, this function will detect schema mismatches for the first
+     * resultset. Further errors may be detected by \ref read_resultset_head and \ref read_some_rows.
+     * \n
+     */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
@@ -485,7 +622,33 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /// \copydoc connection::async_start_execution
+    /**
+     * \copydoc start_execution
+     * \par Object lifetimes
+     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the caller is
+     * responsible for managing `req`'s validity following these rules:
+     * \n
+     * \li If `req` is `string_view`, the string pointed to by `req`
+     *     must be kept alive by the caller until the operation is initiated.
+     * \li If `req` is a \ref bound_statement_tuple, and any of the parameters is a reference
+     *     type (like `string_view`), the caller must keep the values pointed by these references alive
+     *     until the operation is initiated.
+     * \li If `req` is a \ref bound_statement_iterator_range, the caller must keep objects in
+     *     the iterator range passed to \ref statement::bind alive until the  operation is initiated.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     */
     template <
         BOOST_MYSQL_EXECUTION_REQUEST ExecutionRequest,
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
@@ -530,7 +693,13 @@ public:
         );
     }
 
-    /// \copydoc connection::prepare_statement
+    /**
+     * \brief Prepares a statement server-side.
+     * \details
+     * `stmt` should be encoded using the connection's character set.
+     * \n
+     * The returned statement has `valid() == true`.
+     */
     statement prepare_statement(string_view stmt, error_code& err, diagnostics& diag)
     {
         return impl_.run(detail::prepare_statement_algo_params{stmt}, err, diag);
@@ -546,7 +715,27 @@ public:
         return res;
     }
 
-    /// \copydoc connection::async_prepare_statement
+    /**
+     * \copydoc prepare_statement
+     * \details
+     * \par Object lifetimes
+     * If `CompletionToken` is a deferred completion token (e.g. `use_awaitable`), the string
+     * pointed to by `stmt` must be kept alive by the caller until the operation is
+     * initiated.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code, boost::mysql::statement)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::statement))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
@@ -570,7 +759,14 @@ public:
         );
     }
 
-    /// \copydoc connection::close_statement
+    /**
+     * \brief Closes a statement, deallocating it from the server.
+     * \details
+     * After this operation succeeds, `stmt` must not be used again for execution.
+     * \n
+     * \par Preconditions
+     *    `stmt.valid() == true`
+     */
     void close_statement(const statement& stmt, error_code& err, diagnostics& diag)
     {
         impl_.run(impl_.make_params_close_statement(stmt), err, diag);
@@ -585,7 +781,25 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /// \copydoc connection::async_close_statement
+    /**
+     * \copydoc close_statement
+     * \details
+     * \par Object lifetimes
+     * It is not required to keep `stmt` alive, as copies are made by the implementation as required.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
@@ -606,7 +820,21 @@ public:
             .async_run(impl_.make_params_close_statement(stmt), diag, std::forward<CompletionToken>(token));
     }
 
-    /// \copydoc connection::read_some_rows
+    /**
+     * \brief Reads a batch of rows.
+     * \details
+     * The number of rows that will be read is unspecified. If the operation represented by `st`
+     * has still rows to read, at least one will be read. If there are no more rows, or
+     * `st.should_read_rows() == false`, returns an empty `rows_view`.
+     * \n
+     * The number of rows that will be read depends on the connection's buffer size. The bigger the buffer,
+     * the greater the batch size (up to a maximum). You can set the initial buffer size in the
+     * constructor. The buffer may be
+     * grown bigger by other read operations, if required.
+     * \n
+     * The returned view points into memory owned by `*this`. It will be valid until
+     * `*this` performs the next network operation or is destroyed.
+     */
     rows_view read_some_rows(execution_state& st, error_code& err, diagnostics& diag)
     {
         return impl_.run(impl_.make_params_read_some_rows(st), err, diag);
@@ -622,7 +850,23 @@ public:
         return res;
     }
 
-    /// \copydoc connection::async_read_some_rows(execution_state&,CompletionToken&&)
+    /**
+     * \copydoc read_some_rows(execution_state&,error_code&,diagnostics&)
+     * \details
+     * \par Handler signature
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::rows_view)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::rows_view))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
@@ -751,6 +995,16 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, std::size_t)`.
      *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     *
      * \par Object lifetimes
      * The storage that `output` references must be kept alive until the operation completes.
      */
@@ -799,6 +1053,16 @@ public:
      * The handler signature for this operation is
      * `void(boost::mysql::error_code, std::size_t)`.
      *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     *
      * \par Object lifetimes
      * The storage that `output` references must be kept alive until the operation completes.
      */
@@ -822,7 +1086,26 @@ public:
     }
 #endif
 
-    /// \copydoc connection::read_resultset_head
+    /**
+     * \brief Reads metadata for subsequent resultsets in a multi-resultset operation.
+     * \details
+     * If `st.should_read_head() == true`, this function will read the next resultset's
+     * initial response message and metadata, if any. If the resultset indicates a failure
+     * (e.g. the query associated to this resultset contained an error), this function will fail
+     * with that error.
+     * \n
+     * If `st.should_read_head() == false`, this function is a no-op.
+     * \n
+     * `st` may be either an \ref execution_state or \ref static_execution_state object.
+     * \n
+     * This function is only relevant when using multi-function operations with statements
+     * that return more than one resultset.
+     * \n
+     * When using the static interface, this function will detect schema mismatches for the resultset
+     * currently being read. Further errors may be detected by subsequent invocations of this function
+     * and by \ref read_some_rows.
+     * \n
+     */
     template <BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType>
     void read_resultset_head(ExecutionStateType& st, error_code& err, diagnostics& diag)
     {
@@ -839,7 +1122,22 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /// \copydoc connection::async_read_resultset_head
+    /**
+     * \copydoc read_resultset_head
+     * \par Handler signature
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     */
     template <
         BOOST_MYSQL_EXECUTION_STATE_TYPE ExecutionStateType,
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -903,6 +1201,16 @@ public:
      * \n
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -930,7 +1238,17 @@ public:
         );
     }
 
-    /// \copydoc connection::ping
+    /**
+     * \brief Checks whether the server is alive.
+     * \details
+     * If the server is alive, this function will complete without error.
+     * If it's not, it will fail with the relevant network or protocol error.
+     * \n
+     * Note that ping requests are treated as any other type of request at the protocol
+     * level, and won't be prioritized anyhow by the server. If the server is stuck
+     * in a long-running query, the ping request won't be answered until the query is
+     * finished.
+     */
     void ping(error_code& err, diagnostics& diag) { impl_.run(detail::ping_algo_params{}, err, diag); }
 
     /// \copydoc ping
@@ -942,7 +1260,23 @@ public:
         detail::throw_on_error_loc(err, diag, BOOST_CURRENT_LOCATION);
     }
 
-    /// \copydoc connection::async_ping
+    /**
+     * \copydoc ping
+     * \details
+     * \n
+     * \par Handler signature
+     * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
@@ -1017,6 +1351,16 @@ public:
      * \n
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -1076,6 +1420,16 @@ public:
      * \details
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(error_code))
@@ -1142,6 +1496,16 @@ public:
      * \details
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`.
+     *
+     * \par Executor
+     * Intermediate completion handlers, as well as the final handler, are executed using
+     * `token`'s associated executor, or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
      *
      * \par Object lifetimes
      * The request and response objects must be kept alive and should not be modified

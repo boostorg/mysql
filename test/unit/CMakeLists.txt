@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -9,8 +9,7 @@ add_executable(
     boost_mysql_unittests
 
     # Helpers
-    src/test_stream.cpp
-    src/printing.cpp
+    src/utils.cpp
 
     # Actual tests
     test/auth/auth.cpp
@@ -51,9 +50,6 @@ add_executable(
     test/execution_processor/results_impl.cpp
     test/execution_processor/static_results_impl.cpp
 
-    test/connection_pool/timer_list.cpp
-    test/connection_pool/wait_group.cpp
-    test/connection_pool/run_with_timeout.cpp
     test/connection_pool/sansio_connection_node.cpp
     test/connection_pool/connection_pool_impl.cpp
 

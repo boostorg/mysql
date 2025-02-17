@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -31,61 +31,48 @@ namespace mysql {
 namespace detail {
 
 // Connect and close helpers
-template <class Stream, class = void>
-struct endpoint_storage  // prevent build errors for non socket streams
-{
-    void store(const void*) { BOOST_ASSERT(false); }  // LCOV_EXCL_LINE
-};
-
-template <class Stream>
-struct endpoint_storage<Stream, void_t<typename Stream::lowest_layer_type::endpoint_type>>
-{
-    using endpoint_type = typename Stream::lowest_layer_type::endpoint_type;
-    endpoint_type value;
-    void store(const void* v) { value = *static_cast<const endpoint_type*>(v); }
-};
-
 // LCOV_EXCL_START
 template <class Stream>
-void do_connect_impl(Stream&, const endpoint_storage<Stream>&, error_code&, std::false_type)
+void do_connect_impl(Stream&, const void*, error_code&, std::false_type)
 {
     BOOST_ASSERT(false);
 }
 // LCOV_EXCL_STOP
 
 template <class Stream>
-void do_connect_impl(Stream& stream, const endpoint_storage<Stream>& ep, error_code& ec, std::true_type)
+void do_connect_impl(Stream& stream, const void* ep, error_code& ec, std::true_type)
 {
-    stream.lowest_layer().connect(ep.value, ec);
+    stream.lowest_layer().connect(
+        *static_cast<const typename Stream::lowest_layer_type::endpoint_type*>(ep),
+        ec
+    );
 }
 
 template <class Stream>
-void do_connect(Stream& stream, const endpoint_storage<Stream>& ep, error_code& ec)
+void do_connect(Stream& stream, const void* ep, error_code& ec)
 {
     do_connect_impl(stream, ep, ec, is_socket_stream<Stream>{});
 }
 
 // LCOV_EXCL_START
 template <class Stream, class CompletionToken>
-void do_async_connect_impl(Stream&, const endpoint_storage<Stream>&, CompletionToken&&, std::false_type)
+void do_async_connect_impl(Stream&, const void*, CompletionToken&&, std::false_type)
 {
     BOOST_ASSERT(false);
 }
 // LCOV_EXCL_STOP
 
 template <class Stream, class CompletionToken>
-void do_async_connect_impl(
-    Stream& stream,
-    const endpoint_storage<Stream>& ep,
-    CompletionToken&& token,
-    std::true_type
-)
+void do_async_connect_impl(Stream& stream, const void* ep, CompletionToken&& token, std::true_type)
 {
-    stream.lowest_layer().async_connect(ep.value, std::forward<CompletionToken>(token));
+    stream.lowest_layer().async_connect(
+        *static_cast<const typename Stream::lowest_layer_type::endpoint_type*>(ep),
+        std::forward<CompletionToken>(token)
+    );
 }
 
 template <class Stream, class CompletionToken>
-void do_async_connect(Stream& stream, const endpoint_storage<Stream>& ep, CompletionToken&& token)
+void do_async_connect(Stream& stream, const void* ep, CompletionToken&& token)
 {
     do_async_connect_impl(stream, ep, std::forward<CompletionToken>(token), is_socket_stream<Stream>{});
 }
@@ -115,7 +102,6 @@ template <class Stream>
 class engine_stream_adaptor
 {
     Stream stream_;
-    endpoint_storage<Stream> endpoint_;
 
 public:
     template <class... Args>
@@ -127,8 +113,6 @@ public:
     const Stream& stream() const { return stream_; }
 
     bool supports_ssl() const { return false; }
-
-    void set_endpoint(const void* val) { endpoint_.store(val); }
 
     using executor_type = asio::any_io_executor;
     executor_type get_executor() { return stream_.get_executor(); }
@@ -185,12 +169,12 @@ public:
     }
 
     // Connect and close
-    void connect(error_code& ec) { do_connect(stream_, endpoint_, ec); }
+    void connect(const void* endpoint, error_code& ec) { do_connect(stream_, endpoint, ec); }
 
     template <class CompletionToken>
-    void async_connect(CompletionToken&& token)
+    void async_connect(const void* endpoint, CompletionToken&& token)
     {
-        do_async_connect(stream_, endpoint_, std::forward<CompletionToken>(token));
+        do_async_connect(stream_, endpoint, std::forward<CompletionToken>(token));
     }
 
     void close(error_code& ec) { do_close(stream_, ec); }
@@ -200,7 +184,6 @@ template <class Stream>
 class engine_stream_adaptor<asio::ssl::stream<Stream>>
 {
     asio::ssl::stream<Stream> stream_;
-    endpoint_storage<asio::ssl::stream<Stream>> endpoint_;
 
 public:
     template <class... Args>
@@ -212,8 +195,6 @@ public:
     const asio::ssl::stream<Stream>& stream() const { return stream_; }
 
     bool supports_ssl() const { return true; }
-
-    void set_endpoint(const void* val) { endpoint_.store(val); }
 
     using executor_type = asio::any_io_executor;
     executor_type get_executor() { return stream_.get_executor(); }
@@ -288,12 +269,12 @@ public:
     }
 
     // Connect and close
-    void connect(error_code& ec) { do_connect(stream_, endpoint_, ec); }
+    void connect(const void* endpoint, error_code& ec) { do_connect(stream_, endpoint, ec); }
 
     template <class CompletionToken>
-    void async_connect(CompletionToken&& token)
+    void async_connect(const void* endpoint, CompletionToken&& token)
     {
-        do_async_connect(stream_, endpoint_, std::forward<CompletionToken>(token));
+        do_async_connect(stream_, endpoint, std::forward<CompletionToken>(token));
     }
 
     void close(error_code& ec) { do_close(stream_, ec); }

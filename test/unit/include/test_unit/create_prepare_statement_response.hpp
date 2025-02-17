@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,14 +8,8 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_PREPARE_STATEMENT_RESPONSE_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_CREATE_PREPARE_STATEMENT_RESPONSE_HPP
 
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-
 #include <cstdint>
 #include <vector>
-
-#include "test_unit/create_frame.hpp"
-#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {
@@ -55,20 +49,7 @@ public:
         return *this;
     }
 
-    std::vector<std::uint8_t> build() const
-    {
-        auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
-            ctx.serialize(
-                detail::int1{0u},             // OK header
-                detail::int4{statement_id_},  // statement_id
-                detail::int2{num_columns_},   // num columns
-                detail::int2{num_params_},    // num_params
-                detail::int1{0u},             // reserved
-                detail::int2{90u}             // warning_count
-            );
-        });
-        return create_frame(seqnum_, body);
-    }
+    std::vector<std::uint8_t> build() const;
 };
 
 }  // namespace test

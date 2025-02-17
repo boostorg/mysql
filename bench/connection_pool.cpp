@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -227,7 +227,7 @@ void run_nopool(mysql::any_address server_addr, bool use_ssl)
     // Run
     ctx.run();
 
-    // Print ellapsed time
+    // Print elapsed time
     std::cout << coord.ellapsed().count() << std::flush;
 }
 
@@ -261,7 +261,7 @@ void run_pool(mysql::any_address server_addr, bool use_ssl)
     // Run
     ctx.run();
 
-    // Print ellapsed time
+    // Print elapsed time
     std::cout << coord.ellapsed().count() << std::flush;
 }
 

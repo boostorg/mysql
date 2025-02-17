@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -56,11 +56,14 @@ inline const char* error_to_string(client_errc error)
     case client_errc::row_type_mismatch:
         return "The StaticRow type passed to read_some_rows does not correspond to the resultset type being "
                "read";
-    case client_errc::timeout: return "An operation controlled by Boost.MySQL timed out";
-    case client_errc::cancelled: return "An operation controlled by Boost.MySQL was cancelled";
     case client_errc::pool_not_running:
-        return "Getting a connection from a connection_pool failed because the pool is not running. Ensure "
+        return "Getting a connection from a connection_pool was cancelled before the pool was run. Ensure "
                "that you're calling connection_pool::async_run.";
+    case client_errc::pool_cancelled:
+        return "Getting a connection from a connection_pool failed because the pool was cancelled.";
+    case client_errc::no_connection_available:
+        return "Getting a connection from a connection_pool was cancelled before "
+               "a connection was available.";
     case client_errc::invalid_encoding:
         return "A string passed to a formatting function contains a byte sequence that can't be decoded with "
                "the current character set.";
@@ -83,6 +86,9 @@ inline const char* error_to_string(client_errc error)
     case client_errc::max_buffer_size_exceeded:
         return "An operation attempted to read or write a packet larger than the maximum buffer size. "
                "Try increasing any_connection_params::max_buffer_size.";
+    case client_errc::operation_in_progress:
+        return "Another operation is currently in progress for this connection. Make sure that a single "
+               "connection does not run two asynchronous operations in parallel.";
 
     default: return "<unknown MySQL client error>";
     }

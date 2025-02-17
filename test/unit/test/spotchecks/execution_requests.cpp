@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,6 +23,7 @@
 
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/detached.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
@@ -33,8 +34,9 @@
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/buffer_concat.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/network_result.hpp"
-#include "test_common/tracker_executor.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_query_frame.hpp"
@@ -53,9 +55,9 @@ BOOST_AUTO_TEST_SUITE(test_execution_requests)
 // Note: netmakers intentionally not used here
 BOOST_AUTO_TEST_SUITE(forwarding_constness)
 
-struct fixture
+struct fixture : io_context_fixture
 {
-    any_connection conn{create_test_any_connection()};
+    any_connection conn{create_test_any_connection(ctx)};
     results result;
     execution_state st;
 
@@ -165,7 +167,8 @@ BOOST_FIXTURE_TEST_CASE(start_execution_async_deferred, fixture)
 // Intentionally not run
 void old_connection()
 {
-    tcp_connection conn(global_context_executor());
+    asio::io_context ctx;
+    tcp_connection conn(ctx);
     auto req = fixture::make_request();
     results result;
     execution_state st;
@@ -190,9 +193,9 @@ BOOST_AUTO_TEST_SUITE_END()
 // Move-only objects work correctly
 BOOST_AUTO_TEST_SUITE(forwarding_rvalues)
 
-struct fixture
+struct fixture : io_context_fixture
 {
-    any_connection conn{create_test_any_connection()};
+    any_connection conn{create_test_any_connection(ctx)};
     results result;
     execution_state st;
 
@@ -307,7 +310,8 @@ BOOST_FIXTURE_TEST_CASE(start_execution_async_deferred, fixture)
 // Intentionally not run
 void old_connection()
 {
-    tcp_connection conn(global_context_executor());
+    asio::io_context ctx;
+    tcp_connection conn(ctx);
     results result;
     execution_state st;
     error_code ec;
@@ -331,7 +335,7 @@ BOOST_AUTO_TEST_SUITE_END()
 // Lvalues are not moved
 BOOST_AUTO_TEST_SUITE(forwarding_lvalues)
 
-struct fixture
+struct fixture : io_context_fixture
 {
     // A request where we can detect moved-from state.
     // std::string move-constructor doesn't offer guarantees about moved-from objects,
@@ -345,7 +349,7 @@ struct fixture
         operator string_view() const { return {buff.data(), buff.size()}; }
     };
 
-    any_connection conn{create_test_any_connection()};
+    any_connection conn{create_test_any_connection(ctx)};
     results result;
     execution_state st;
     vector_request req{"SELECT 'abcd'"};
@@ -448,7 +452,8 @@ BOOST_FIXTURE_TEST_CASE(start_execution_async_deferred, fixture)
 // Intentionally not run
 void old_connection()
 {
-    tcp_connection conn(global_context_executor());
+    asio::io_context ctx;
+    tcp_connection conn(ctx);
     results result;
     execution_state st;
     error_code ec;
@@ -472,10 +477,10 @@ BOOST_AUTO_TEST_SUITE_END()
 // Deferred tokens appropriately decay-copy lvalues
 BOOST_AUTO_TEST_SUITE(deferred_tokens_lvalues)
 
-BOOST_AUTO_TEST_CASE(execute)
+BOOST_FIXTURE_TEST_CASE(execute, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     results result;
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
     std::string req(128, 'a');
@@ -496,10 +501,10 @@ BOOST_AUTO_TEST_CASE(execute)
     );
 }
 
-BOOST_AUTO_TEST_CASE(start_execution)
+BOOST_FIXTURE_TEST_CASE(start_execution, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     execution_state st;
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
     std::string req(128, 'a');
@@ -563,9 +568,9 @@ BOOST_AUTO_TEST_CASE(with_params_types)
 }
 
 // Regression test: async_execute() doesn't cause side effects in the initiation
-BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
+BOOST_FIXTURE_TEST_CASE(async_execute_side_effects_in_initiation, io_context_fixture)
 {
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     results result1, result2;
 
     // Resultsets will be complete as soon as a message is read
@@ -582,7 +587,7 @@ BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
     std::move(q1)(as_netresult).validate_no_error();
 
     // Check that we wrote Q2's message first, then Q1's
-    auto expected = concat_copy(
+    auto expected = concat(
         create_frame(0, {0x03, 0x51, 0x32}),  // query request Q2
         create_frame(0, {0x03, 0x51, 0x31})   // query request Q1
     );
@@ -595,7 +600,7 @@ BOOST_AUTO_TEST_CASE(async_execute_side_effects_in_initiation)
 
 // Regression test: bound statements correctly store statement handle and params
 // when used with deferred tokens
-BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes)
+BOOST_FIXTURE_TEST_CASE(async_execute_deferred_lifetimes, io_context_fixture)
 {
     // Setup
     constexpr std::uint8_t expected_msg[] = {
@@ -603,7 +608,7 @@ BOOST_AUTO_TEST_CASE(async_execute_deferred_lifetimes)
         0x00, 0x02, 0x01, 0xfe, 0x00, 0x06, 0x00, 0x04, 0x74, 0x65, 0x73, 0x74,
     };
     results result;
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
 
     // Create a bound statement on the heap. This helps tooling detect memory errors

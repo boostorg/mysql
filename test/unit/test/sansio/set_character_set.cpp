@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,8 +17,8 @@
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
-#include "test_common/create_basic.hpp"
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_ok.hpp"
@@ -74,11 +74,7 @@ struct read_response_fixture : algo_fixture_base
 {
     detail::read_set_character_set_response_algo algo;
 
-    // Clearing diagnostics is not this algorithm's responsibility
-    read_response_fixture(character_set charset = utf8mb4_charset)
-        : algo_fixture_base(diagnostics()), algo(diag, charset, 29)
-    {
-    }
+    read_response_fixture(character_set charset = utf8mb4_charset) : algo(charset, 29) {}
 };
 
 BOOST_AUTO_TEST_CASE(read_response_success)
@@ -87,10 +83,10 @@ BOOST_AUTO_TEST_CASE(read_response_success)
     read_response_fixture fix;
 
     // Run the algo
-    algo_test().expect_read(create_ok_frame(29, ok_builder().build())).check(fix);
-
-    // The charset was updated
-    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
+    algo_test()
+        .expect_read(create_ok_frame(29, ok_builder().build()))
+        .will_set_current_charset(utf8mb4_charset)  // charset updated
+        .check(fix);
 }
 
 BOOST_AUTO_TEST_CASE(read_response_success_previous_charset)
@@ -100,10 +96,10 @@ BOOST_AUTO_TEST_CASE(read_response_success_previous_charset)
     fix.st.current_charset = ascii_charset;
 
     // Run the algo
-    algo_test().expect_read(create_ok_frame(29, ok_builder().build())).check(fix);
-
-    // The charset was updated
-    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
+    algo_test()
+        .expect_read(create_ok_frame(29, ok_builder().build()))
+        .will_set_current_charset(utf8mb4_charset)  // charset updated
+        .check(fix);
 }
 
 BOOST_AUTO_TEST_CASE(read_response_error_network)
@@ -119,7 +115,7 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
     // Setup
     read_response_fixture fix;
 
-    // Run the algo
+    // Run the algo. The current charset was not updated
     algo_test()
         .expect_read(err_builder()
                          .seqnum(29)
@@ -127,9 +123,6 @@ BOOST_AUTO_TEST_CASE(read_response_error_packet)
                          .message("Unknown charset")
                          .build_frame())
         .check(fix, common_server_errc::er_unknown_character_set, create_server_diag("Unknown charset"));
-
-    // The current character set was not updated
-    BOOST_TEST(fix.st.current_charset == character_set());
 }
 
 //
@@ -139,11 +132,8 @@ struct set_charset_fixture : algo_fixture_base
 {
     detail::set_character_set_algo algo;
 
-    set_charset_fixture(character_set charset = utf8mb4_charset) : algo(diag, {charset}) {}
-    set_charset_fixture(std::size_t max_bufsize)
-        : algo_fixture_base(max_bufsize), algo(diag, {utf8mb4_charset})
-    {
-    }
+    set_charset_fixture(character_set charset = utf8mb4_charset) : algo({charset}) {}
+    set_charset_fixture(std::size_t max_bufsize) : algo_fixture_base(max_bufsize), algo({utf8mb4_charset}) {}
 };
 
 BOOST_AUTO_TEST_CASE(set_charset_success)
@@ -155,22 +145,22 @@ BOOST_AUTO_TEST_CASE(set_charset_success)
     algo_test()
         .expect_write(create_query_frame(0, "SET NAMES 'utf8mb4'"))
         .expect_read(create_ok_frame(1, ok_builder().build()))
+        .will_set_current_charset(utf8mb4_charset)  // charset updated
         .check(fix);
-
-    // The charset was updated
-    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
 }
 
 // Ensure we don't create vulnerabilities when composing SET NAMES
 BOOST_AUTO_TEST_CASE(set_charset_name_needs_escaping)
 {
     // Setup
-    set_charset_fixture fix({"lat'in\\", utf8mb4_charset.next_char});
+    const character_set new_charset{"lat'in\\", utf8mb4_charset.next_char};
+    set_charset_fixture fix(new_charset);
 
     // Run the algo
     algo_test()
         .expect_write(create_query_frame(0, "SET NAMES 'lat\\'in\\\\'"))
         .expect_read(create_ok_frame(1, ok_builder().build()))
+        .will_set_current_charset(new_charset)
         .check(fix);
 }
 
@@ -180,11 +170,8 @@ BOOST_AUTO_TEST_CASE(set_charset_error_composing_request)
     set_charset_fixture fix({"lat\xc3\xadn", utf8mb4_charset.next_char});
     fix.st.current_charset = ascii_charset;
 
-    // Run the algo
+    // Run the algo. The current charset was not updated
     algo_test().check(fix, client_errc::invalid_encoding);
-
-    // The current character set was not updated
-    BOOST_TEST(fix.st.current_charset == ascii_charset);
 }
 
 BOOST_AUTO_TEST_CASE(set_charset_error_network)

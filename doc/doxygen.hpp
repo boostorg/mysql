@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -34,6 +34,14 @@
  * (Include only for async ops)
  * \par Handler signature
  * The handler signature for this operation is `void(boost::mysql::error_code)`
+ *
+ * \par Per-operation cancellation
+ * This operation supports per-operation cancellation. <Describe effects>
+ * The following `asio::cancellation_type_t` values are supported:
+ *
+ *   - `asio::cancellation_type_t::terminal`
+ *   - `asio::cancellation_type_t::partial`
+ *   - `asio::cancellation_type_t::total`
  *
  * Specify this where it adds any value.
  * \par Thread safety

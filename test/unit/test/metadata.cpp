@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,7 +21,7 @@ using namespace boost::mysql::test;
 namespace collations = boost::mysql::mysql_collations;
 namespace column_flags = boost::mysql::detail::column_flags;
 
-// TODO: these tests should be more targetted towards metadata's object responsibilities
+// TODO: these tests should be more targeted towards metadata's object responsibilities
 // and less integration-y
 
 BOOST_AUTO_TEST_SUITE(test_metadata)

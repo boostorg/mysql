@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,11 +12,8 @@
 #include <boost/mysql/defaults.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 
-#include <boost/mysql/detail/access.hpp>
-
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/ssl/context.hpp>
-#include <boost/asio/strand.hpp>
 #include <boost/optional/optional.hpp>
 
 #include <chrono>
@@ -27,53 +24,9 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) Executor configuration for connection pools.
- * \details
- * Contains two executors: one for the pool's internal objects, and another for the connections
- * created by the pool.
- * \n
- * You may use \ref thread_safe to create an instance of this class
- * that makes pools thread-safe.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
- */
-struct pool_executor_params
-{
-    /// The executor to be used by the pool's internal objects.
-    asio::any_io_executor pool_executor;
-
-    /// The executor to be used by connections created by the pool.
-    asio::any_io_executor connection_executor;
-
-    /**
-     * \brief Creates a pool_executor_params object that makes pools thread-safe.
-     * \details
-     * Creates an `asio::strand` object wrapping `ex` and uses it as the pool
-     * executor. Uses `ex` directly for the connections. The resulting configuration
-     * makes safe to call \ref connection_pool::async_get_connection,
-     * \ref connection_pool::async_run, \ref connection_pool::cancel,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset
-     * concurrently from different threads.
-     *
-     * \par Exception safety
-     * Strong guarantee. Creating the strand may throw.
-     */
-    static pool_executor_params thread_safe(asio::any_io_executor ex)
-    {
-        return pool_executor_params{asio::make_strand(ex), ex};
-    }
-};
-
-/**
- * \brief (EXPERIMENTAL) Configuration parameters for \ref connection_pool.
+ * \brief Configuration parameters for \ref connection_pool.
  * \details
  * This is an owning type.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
  */
 struct pool_params
 {
@@ -182,10 +135,15 @@ struct pool_params
      * `ping_interval`, a health-check will be performed (using \ref any_connection::async_ping).
      * Pings will be sent with a periodicity of `ping_interval` until the connection
      * is handed to the user, or a ping fails.
-     * \n
+     *
      * Set this interval to zero to disable pings.
-     * \n
-     * This value must not be negative.
+     *
+     * This value must not be negative. It should be smaller than the server's
+     * idle timeout (as determined by the
+     * <a
+     * href="https://dev.mysql.com/doc/refman/8.4/en/server-system-variables.html#sysvar_wait_timeout">wait_timeout</a>
+     * session variable). Otherwise, the server might close connections
+     * without the pool detecting it.
      */
     std::chrono::steady_clock::duration ping_interval{std::chrono::hours(1)};
 
@@ -201,6 +159,34 @@ struct pool_params
      * This value must not be negative.
      */
     std::chrono::steady_clock::duration ping_timeout{std::chrono::seconds(10)};
+
+    /**
+     * \brief Enables or disables thread-safety.
+     * \details
+     * When set to `true`, the resulting connection pool are able to
+     * be shared between threads at the cost of some performance.
+     *
+     * Enabling thread safety for a pool creates an internal `asio::strand` object
+     * wrapping the executor passed to the pool's constructor.
+     * All state-mutating functions (including \ref connection_pool::async_run,
+     * \ref connection_pool::async_get_connection and returning connections)
+     * will be run through the created strand.
+     *
+     * Thread-safety doesn't extend to individual connections: \ref pooled_connection
+     * objects can't be shared between threads.
+     */
+    bool thread_safe{false};
+
+    /**
+     * \brief The executor to be used by individual connections created by the pool.
+     * \details
+     * If this member is set to a non-empty value
+     * (that is, `static_cast<bool>(connection_executor) == true`),
+     * individual connections will be created using this executor.
+     * Otherwise, connections will use the pool's executor
+     * (as per \ref connection_pool::get_executor).
+     */
+    asio::any_io_executor connection_executor{};
 };
 
 }  // namespace mysql

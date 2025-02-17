@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(add)
             ctx.add(tc.payload);
 
             // Check
-            auto expected = test::concat_copy(initial_buffer, tc.expected_buffer);
+            auto expected = test::concat(initial_buffer, tc.expected_buffer);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
             BOOST_TEST(ctx.next_header_offset() == tc.expected_next_frame_offset + initial_buffer.size());
             BOOST_TEST(ctx.error() == error_code());
@@ -222,7 +222,7 @@ BOOST_AUTO_TEST_CASE(write_frame_headers)
 
             // Call and check
             auto seqnum = ctx.write_frame_headers(42, initial_buffer.size());
-            const auto expected = test::concat_copy(initial_buffer, tc.expected);
+            const auto expected = test::concat(initial_buffer, tc.expected);
             BOOST_MYSQL_ASSERT_BUFFER_EQUALS(buff, expected);
             BOOST_TEST(seqnum == tc.expected_seqnum);
             BOOST_TEST(ctx.error() == error_code());

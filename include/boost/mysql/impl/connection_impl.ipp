@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -89,6 +89,15 @@ boost::system::result<boost::mysql::character_set> boost::mysql::detail::connect
     if (charset.name == nullptr)
         return client_errc::unknown_character_set;
     return charset;
+}
+
+boost::optional<std::uint32_t> boost::mysql::detail::connection_impl::connection_id() const
+{
+    const auto& data = st_->data();
+    if (!data.is_connected)
+        return {};
+    else
+        return data.connection_id;
 }
 
 boost::mysql::detail::run_pipeline_algo_params boost::mysql::detail::connection_impl::make_params_pipeline(

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,6 +19,7 @@
 
 #include "test_common/buffer_concat.hpp"
 #include "test_common/check_meta.hpp"
+#include "test_common/create_diagnostics.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_coldef_frame.hpp"
 #include "test_unit/create_err.hpp"
@@ -38,7 +39,7 @@ BOOST_AUTO_TEST_SUITE(test_read_resultset_head)
 struct fixture : algo_fixture_base
 {
     mock_execution_processor proc;
-    detail::read_resultset_head_algo algo{diag, {&proc}};
+    detail::read_resultset_head_algo algo{{&proc}};
 
     fixture()
     {
@@ -64,7 +65,6 @@ BOOST_AUTO_TEST_CASE(success_meta)
     BOOST_TEST(fix.proc.sequence_number() == 3u);
     BOOST_TEST(fix.proc.num_meta() == 1u);
     check_meta(fix.proc.meta(), {std::make_pair(column_type::varchar, "mycol")});
-    BOOST_TEST(fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(success_ok_packet)
@@ -83,7 +83,6 @@ BOOST_AUTO_TEST_CASE(success_ok_packet)
     BOOST_TEST(fix.proc.is_complete());
     BOOST_TEST(fix.proc.affected_rows() == 42u);
     BOOST_TEST(fix.proc.info() == "abc");
-    BOOST_TEST(fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(success_ok_packet_no_backslash_escapes)
@@ -92,11 +91,13 @@ BOOST_AUTO_TEST_CASE(success_ok_packet_no_backslash_escapes)
     fixture fix;
 
     // Run the algo
-    algo_test().expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build())).check(fix);
+    algo_test()
+        .expect_read(create_ok_frame(1, ok_builder().no_backslash_escapes(true).build()))
+        .will_set_backslash_escapes(false)
+        .check(fix);
 
     // Verify
     fix.proc.num_calls().on_head_ok_packet(1).validate();
-    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 // Check that we don't attempt to read the rows even if they're available

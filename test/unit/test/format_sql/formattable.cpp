@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -14,6 +14,7 @@
 #include <boost/mysql/row_view.hpp>
 #include <boost/mysql/rows.hpp>
 #include <boost/mysql/rows_view.hpp>
+#include <boost/mysql/sequence.hpp>
 
 #include <boost/optional/optional.hpp>
 
@@ -24,10 +25,10 @@
 #include "format_common.hpp"
 #include "test_common/has_ranges.hpp"
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 #include <string_view>
 #endif
-#ifdef __cpp_lib_optional
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
 #endif
 #ifdef BOOST_MYSQL_HAS_RANGES
@@ -93,7 +94,7 @@ BOOST_MYSQL_CHECK_FORMATTABLE(const char, false)
 BOOST_MYSQL_CHECK_FORMATTABLE(std::string, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(string_with_alloc, true)
 BOOST_MYSQL_CHECK_FORMATTABLE(string_view, true)
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 BOOST_MYSQL_CHECK_FORMATTABLE(std::string_view, true)
 #endif
 BOOST_MYSQL_CHECK_FORMATTABLE(const char*, true)
@@ -175,8 +176,8 @@ BOOST_MYSQL_CHECK_FORMATTABLE(const filter_t&&, false);
 
 // sequence is formattable
 using format_fn_t = void (*)(int, format_context_base&);
-using format_view_t = format_sequence_view<const int*, const int*, format_fn_t>;
-BOOST_MYSQL_CHECK_FORMATTABLE(format_view_t, true)
+using format_seq_t = format_sequence<std::vector<int>, format_fn_t>;
+BOOST_MYSQL_CHECK_FORMATTABLE(format_seq_t, true)
 
 // other stuff not accepted
 BOOST_MYSQL_CHECK_FORMATTABLE(void*, false)

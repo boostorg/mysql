@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -930,8 +930,7 @@ BOOST_AUTO_TEST_CASE(deserialize_row_message_error)
             {},
             client_errc::incomplete_message,
             ""
-        }
-        // clang-format on
+        }  // clang-format on
     };
 
     for (const auto& tc : test_cases)
@@ -1278,6 +1277,7 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_impl_success)
     BOOST_TEST(actual.server == db_flavor::mysql);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(actual.auth_plugin_data.to_span(), auth_plugin_data);
     BOOST_TEST(actual.server_capabilities == capabilities(caps));
+    BOOST_TEST(actual.connection_id == 2u);
     BOOST_TEST(actual.auth_plugin_name == "mysql_native_password");
 
     // TODO: mysql8, mariadb, edge case where auth plugin length is < 13
@@ -1491,6 +1491,7 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_success)
     BOOST_TEST(actual.server == db_flavor::mysql);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(actual.auth_plugin_data.to_span(), auth_plugin_data);
     BOOST_TEST(actual.server_capabilities == capabilities(caps));
+    BOOST_TEST(actual.connection_id == 2u);
     BOOST_TEST(actual.auth_plugin_name == "mysql_native_password");
 }
 

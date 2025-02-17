@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -82,7 +82,7 @@ def b2_build(
         _conditional('address-sanitizer=norecover', address_sanitizer),
         _conditional('undefined-sanitizer=norecover', undefined_sanitizer),
         _conditional('coverage=on', coverage),
-        _conditional('valgrind=on', valgrind),
+        _conditional('boost.mysql.valgrind=on', valgrind),
         'warnings=extra',
         'warnings-as-errors=on',
         '-j4',

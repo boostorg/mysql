@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -15,8 +15,6 @@ import ac ;
 import indirect ;
 import config : requires ;
 
-project : requirements <library>/boost/mysql//boost_mysql ;
-
 # Support header-only builds
 feature.feature boost.mysql.separate-compilation : on off : propagated composite ;
 
@@ -25,6 +23,10 @@ feature.feature boost.mysql.use-ts-executor : off on : propagated composite ;
 
 # Support builds forcing !BOOST_ASIO_HAS_LOCAL_SOCKETS
 feature.feature boost.mysql.disable-local-sockets : off on : propagated composite ;
+
+# Support valgrind
+feature.feature boost.mysql.valgrind : off on : propagated composite ;
+feature.compose <boost.mysql.valgrind>on : <define>BOOST_USE_VALGRIND ;
 
 # Configure openssl if it hasn't been done yet
 using openssl ;
@@ -57,17 +59,25 @@ local requirements =
         <define>BOOST_ASIO_HAS_DEFAULT_FUNCTION_TEMPLATE_ARGUMENTS=1
         <define>BOOST_ALLOW_DEPRECATED_HEADERS=1
         # Disable warning C4702: unreachable code, produced by Boost.Asio buffer.hpp
-        <toolset>msvc:<cxxflags>"/bigobj /wd4702 /permissive-"
+        # Remove /wd4100 when PFR fixes warnings
+        <toolset>msvc:<cxxflags>"/bigobj /wd4702 /wd4100 /permissive-"
         <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS=1
         <toolset>msvc:<define>_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ADAPTOR_TYPEDEFS_DEPRECATION_WARNING
         <toolset>msvc:<define>_SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
+        <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS # Required by Asio
         # gcc-13+ doesn't understand view types and issues array bound warnings that don't make sense.
         # -Wno-implicit-fallthrough is required by Asio SSL components
         <toolset>gcc:<cxxflags>"-Wno-dangling-reference -Wno-array-bounds -Wno-implicit-fallthrough"
         # gcc-13+ complains about TSAN not supporting std::atomic_thread_fence,
         # used by Asio old net-ts type-erased executors.
         <toolset>gcc,<thread-sanitizer>norecover:<cxxflags>-Wno-tsan
+        # gcc-11 emits spurious warnings for valid vector::insert ops
+        <toolset>gcc-11:<cxxflags>-Wno-stringop-overflow
+        # TODO: remove when PFR unused warnings are fixed
+        # https://github.com/boostorg/pfr/pull/187
+        <toolset>gcc:<cxxflags>-Wno-unused-parameter
+        <toolset>clang:<cxxflags>-Wno-unused-parameter
         <target-os>linux:<define>_XOPEN_SOURCE=600
         <target-os>linux:<define>_GNU_SOURCE=1
         <target-os>windows:<define>_WIN32_WINNT=0x0601
@@ -79,7 +89,7 @@ local requirements =
 
 alias boost_mysql
     :
-        /boost/charconv//boost_charconv
+        $(boost_dependencies)/<warnings-as-errors>off
         /openssl//ssl/<link>shared
         /openssl//crypto/<link>shared
     : requirements
@@ -121,20 +131,16 @@ lib boost_mysql_compiled
 alias common_test_sources
     :
         common/src/entry_point.cpp
-        common/src/tracker_executor.cpp
-        common/src/printing.cpp
+        common/src/utils.cpp
     ;
 
 # Boost.Context causes failures with warnings-as-errors
 # under libc++, because it builds objects that raise a -stdlib=libc++ unused warning
-alias boost_context_lib
-    :
-        /boost/context//boost_context/<warnings-as-errors>off
-    : usage-requirements
-        # gcc-14+ seem to enable CET by default, which causes warnings with Boost.Context.
-        # Disable CET until https://github.com/boostorg/context/issues/263 gets fixed
-        <toolset>gcc-14:<cxxflags>-fcf-protection=none
-    ;
+alias boost_context_lib : /boost/context//boost_context/<warnings-as-errors>off ;
+
+# Beast and JSON depend on Container, which causes trouble with <warnings-as-errors>on
+alias boost_beast_lib : /boost/beast//boost_beast/<warnings-as-errors>off ;
+alias boost_json_lib : /boost/json//boost_json/<warnings-as-errors>off ;
 
 alias boost_mysql_test
     :
@@ -152,7 +158,7 @@ alias boost_mysql_test
 # an intermediate Python runner, so just setting testing.launcher globally is incorrect
 alias launch_with_valgrind
     : usage-requirements
-        <valgrind>on:<testing.launcher>"valgrind --leak-check=full --error-limit=yes --error-exitcode=1 --gen-suppressions=all"
+        <boost.mysql.valgrind>on:<testing.launcher>"valgrind --leak-check=full --error-limit=yes --error-exitcode=1 --gen-suppressions=all"
     ;
 
 build-project unit ;

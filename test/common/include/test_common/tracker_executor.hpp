@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -29,8 +29,8 @@ struct tracker_executor_result
 // Create
 tracker_executor_result create_tracker_executor(asio::any_io_executor inner);
 
-// Get the ID of the executor we're currently running on, or -1 if none
-int current_executor_id();
+// Get the executor call stack, as a span of IDs. Most recent call last.
+boost::span<const int> executor_stack();
 
 // Get the ID of a tracker executor, or -1 if it's not a tracker executor
 int get_executor_id(asio::any_io_executor);
@@ -49,9 +49,6 @@ struct initiation_guard
     ~initiation_guard();
 };
 bool is_initiation_function();
-
-asio::any_io_executor global_context_executor();
-void run_global_context();
 
 }  // namespace test
 }  // namespace mysql

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,29 +12,14 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 
 #include "test_unit/create_frame.hpp"
-#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-inline std::vector<std::uint8_t> serialize_err_impl(detail::err_view pack, bool with_header)
-{
-    return serialize_to_vector([=](detail::serialization_context& ctx) {
-        if (with_header)
-            ctx.add(0xff);  // header
-        ctx.serialize(
-            detail::int2{pack.error_code},
-            detail::string_fixed<1>{},  // SQL state marker
-            detail::string_fixed<5>{},  // SQL state
-            detail::string_eof{pack.error_message}
-        );
-    });
-}
+std::vector<std::uint8_t> serialize_err_impl(detail::err_view pack, bool with_header);
 
 class err_builder
 {

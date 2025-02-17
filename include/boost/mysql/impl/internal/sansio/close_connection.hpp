@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -24,13 +24,13 @@ namespace detail {
 class close_connection_algo
 {
     int resume_point_{0};
-    quit_connection_algo quit_;
+    quit_connection_algo quit_{{}};
     error_code stored_ec_;
 
 public:
-    close_connection_algo(diagnostics& diag, close_connection_algo_params) noexcept : quit_(diag, {}) {}
+    close_connection_algo(close_connection_algo_params) noexcept {}
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         next_action act;
 
@@ -38,15 +38,12 @@ public:
         {
         case 0:
 
-            // Clear diagnostics
-            quit_.diag().clear();
-
             // If we're not connected, we're done
             if (!st.is_connected)
                 return next_action();
 
             // Attempt quit
-            while (!(act = quit_.resume(st, ec)).is_done())
+            while (!(act = quit_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 1, act)
             stored_ec_ = act.error();
 

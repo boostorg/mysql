@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -77,11 +77,6 @@ bool boost::mysql::is_fatal_error(error_code ec) noexcept
         case client_errc::num_resultsets_mismatch:
         case client_errc::row_type_mismatch:
         case client_errc::static_row_parsing_error:
-
-        // While these are currently produced only by the connection pool,
-        // any timed out or cancelled operation would leave the connection in an undefined state
-        case client_errc::timeout:
-        case client_errc::cancelled:
 
         // These are only produced by handshake. We categorize them as fatal because they need reconnection,
         // although anything affecting handshake effectively does.

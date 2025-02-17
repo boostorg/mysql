@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -104,7 +104,7 @@ I would like to specially acknowledge [@https://github.com/madmongo1 Richard Hod
 for his invaluable technical guidance during development. Thanks also to
 Christian Mazakas for his ideas in early stages, and to
 [@https://github.com/klemens-morgenstern Klemens Morgenstern] and
-and [@https://github.com/vinniefalco Vinnie Falco] for his techincal advice.
+and [@https://github.com/vinniefalco Vinnie Falco] for his technical advice.
 Without you, this library would not exist.
 
 Finally, thanks to [@https://github.com/chriskohlhoff Christopher Kohlhoff]

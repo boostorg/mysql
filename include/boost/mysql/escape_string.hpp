@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,7 +22,7 @@ namespace mysql {
 struct format_options;
 
 /**
- * \brief (EXPERIMENTAL) Identifies the context which a string is being escaped for.
+ * \brief Identifies the context which a string is being escaped for.
  */
 enum class quoting_context : char
 {
@@ -37,7 +37,7 @@ enum class quoting_context : char
 };
 
 /**
- * \brief (EXPERIMENTAL) Escapes a string, making it safe for query composition.
+ * \brief Escapes a string, making it safe for query composition.
  * \details
  * Given a string `input`, computes a string with special characters
  * escaped, and places it in `output`. This function is a low-level building
@@ -49,14 +49,11 @@ enum class quoting_context : char
  * being used in. `quot_ctx` identifies where the string will appear in
  * a query. Possible values are: \n
  * \li \ref quoting_context::double_quote : the string is surrounded by
- *     double quotes. For example:
- *     \code "SELECT * FROM employee WHERE company = \"<runtime_value>\"" \endcode
+ *     double quotes.
  * \li \ref quoting_context::single_quote : the string is surrounded by
- *     single quotes. For example:
- *     \code "SELECT * FROM employee WHERE company = '<runtime_value>'" \endcode
+ *     single quotes.
  * \li \ref quoting_context::backtick : the string is surrounded by
- *     backticks. This may happen when escaping identifiers. For example:
- *     \code "SELECT `<runtime_column>` FROM employee" \endcode
+ *     backticks, as happens when escaping identifiers.
  * \n
  * By default, MySQL treats backslash characters as escapes in string values
  * (for instance, the string `"\n"` is treated as a newline). This behavior is

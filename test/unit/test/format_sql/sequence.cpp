@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,12 +8,15 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/constant_string_view.hpp>
 #include <boost/mysql/format_sql.hpp>
+#include <boost/mysql/sequence.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/test/unit_test.hpp>
 
 #include <array>
 #include <forward_list>
+#include <functional>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <vector>
@@ -33,6 +36,46 @@ BOOST_AUTO_TEST_SUITE(test_format_sql_sequence)
 
 constexpr format_options opts{utf8mb4_charset, true};
 constexpr const char* single_fmt = "SELECT {};";
+
+//
+// sequence_range_t type trait
+//
+template <class Input, class Expected>
+constexpr bool check_sequence_range()
+{
+    return std::is_same<sequence_range_t<Input>, Expected>::value;
+}
+
+using intvec = std::vector<int>;
+
+// Regular values kept
+static_assert(check_sequence_range<intvec, intvec>(), "");
+static_assert(check_sequence_range<std::forward_list<int>, std::forward_list<int>>(), "");
+
+// References and cv-qualifiers stripped
+static_assert(check_sequence_range<intvec&, intvec>(), "");
+static_assert(check_sequence_range<intvec&&, intvec>(), "");
+static_assert(check_sequence_range<const intvec&, intvec>(), "");
+static_assert(check_sequence_range<const intvec&&, intvec>(), "");
+static_assert(check_sequence_range<const intvec, intvec>(), "");
+
+// Reference wrappers converted to references
+static_assert(check_sequence_range<std::reference_wrapper<intvec>, intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<const intvec>, const intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<intvec>&, intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<const intvec>&, const intvec&>(), "");
+static_assert(check_sequence_range<const std::reference_wrapper<intvec>&, intvec&>(), "");
+static_assert(check_sequence_range<const std::reference_wrapper<const intvec>&, const intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<intvec>&&, intvec&>(), "");
+static_assert(check_sequence_range<std::reference_wrapper<const intvec>&&, const intvec&>(), "");
+static_assert(check_sequence_range<const std::reference_wrapper<intvec>, intvec&>(), "");
+static_assert(check_sequence_range<const std::reference_wrapper<const intvec>, const intvec&>(), "");
+
+// C arrays converted to std::array
+static_assert(check_sequence_range<int (&)[2], std::array<int, 2>>(), "");
+static_assert(check_sequence_range<int (&&)[2], std::array<int, 2>>(), "");
+static_assert(check_sequence_range<const int (&)[2], std::array<int, 2>>(), "");
+static_assert(check_sequence_range<const int (&&)[2], std::array<int, 2>>(), "");
 
 //
 // Different element types
@@ -106,12 +149,71 @@ BOOST_AUTO_TEST_CASE(glue)
 //
 // Different range types
 //
-const auto fmt_as_str = [](int v, format_context_base& ctx) { format_sql_to(ctx, "{}", std::to_string(v)); };
+
+constexpr struct fmt_as_str_t
+{
+    void operator()(int v, format_context_base& ctx) const { format_sql_to(ctx, "{}", std::to_string(v)); };
+} fmt_as_str{};
 
 BOOST_AUTO_TEST_CASE(range_c_array)
 {
     int arr[] = {1, 4, 2};
-    BOOST_TEST(format_sql(opts, single_fmt, sequence(arr, fmt_as_str)) == "SELECT '1', '4', '2';");
+    auto seq = sequence(arr, fmt_as_str);
+    static_assert(std::is_same<decltype(seq), format_sequence<std::array<int, 3>, fmt_as_str_t>>::value, "");
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
+}
+
+BOOST_AUTO_TEST_CASE(range_const_c_array)
+{
+    const int arr[] = {1, 4, 2};
+    auto seq = sequence(arr, fmt_as_str);
+    static_assert(std::is_same<decltype(seq), format_sequence<std::array<int, 3>, fmt_as_str_t>>::value, "");
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
+}
+
+// MSVC 14.1 rvalue references to C arrays don't work
+#if !BOOST_WORKAROUND(BOOST_MSVC, < 1920)
+BOOST_AUTO_TEST_CASE(range_move_only_c_array)
+{
+    std::unique_ptr<int> arr[] = {std::unique_ptr<int>(new int(10)), std::unique_ptr<int>(new int(20))};
+    auto fn = [](const std::unique_ptr<int>& ptr, format_context_base& ctx) { ctx.append_value(*ptr); };
+    auto seq = sequence(std::move(arr), fn);
+    static_assert(
+        std::is_same<decltype(seq), format_sequence<std::array<std::unique_ptr<int>, 2>, decltype(fn)>>::
+            value,
+        ""
+    );
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT 10, 20;");
+}
+#endif
+
+BOOST_AUTO_TEST_CASE(range_std_array)
+{
+    std::array<int, 3> arr{
+        {1, 4, 2}
+    };
+    auto seq = sequence(arr, fmt_as_str);
+    static_assert(std::is_same<decltype(seq), format_sequence<std::array<int, 3>, fmt_as_str_t>>::value, "");
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
+}
+
+BOOST_AUTO_TEST_CASE(range_ref)
+{
+    std::vector<int> vec{1, 4, 2};
+    auto seq = sequence(std::ref(vec), fmt_as_str);
+    static_assert(std::is_same<decltype(seq), format_sequence<std::vector<int>&, fmt_as_str_t>>::value, "");
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
+}
+
+BOOST_AUTO_TEST_CASE(range_const_ref)
+{
+    const std::vector<int> vec{1, 4, 2};
+    auto seq = sequence(std::ref(vec), fmt_as_str);
+    static_assert(
+        std::is_same<decltype(seq), format_sequence<const std::vector<int>&, fmt_as_str_t>>::value,
+        ""
+    );
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
 }
 
 BOOST_AUTO_TEST_CASE(range_forward_list)
@@ -141,8 +243,9 @@ BOOST_AUTO_TEST_CASE(range_not_common)
 
 BOOST_AUTO_TEST_CASE(range_not_const)
 {
+    // We decay-copy the range, so this works even if the range is const
     std::vector<long> values{4, 10, 1, 21};
-    auto r = values | std::ranges::views::filter([](long v) { return v >= 10; });
+    const auto r = values | std::ranges::views::filter([](long v) { return v >= 10; });
     BOOST_TEST(format_sql(opts, single_fmt, sequence(r, fmt_as_str)) == "SELECT '10', '21';");
 }
 #endif
@@ -159,6 +262,19 @@ BOOST_AUTO_TEST_CASE(num_elms)
 {
     BOOST_TEST(format_sql(opts, single_fmt, sequence(std::vector<int>{}, fmt_as_str)) == "SELECT ;");
     BOOST_TEST(format_sql(opts, single_fmt, sequence(std::vector<int>{1}, fmt_as_str)) == "SELECT '1';");
+}
+
+// Spotcheck: lvalues work
+BOOST_AUTO_TEST_CASE(lvalue)
+{
+    auto seq = sequence(std::vector<int>{1, 4, 2}, fmt_as_str);
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
+}
+
+BOOST_AUTO_TEST_CASE(const_lvalue)
+{
+    const auto seq = sequence(std::vector<int>{1, 4, 2}, fmt_as_str);
+    BOOST_TEST(format_sql(opts, single_fmt, seq) == "SELECT '1', '4', '2';");
 }
 
 //
@@ -191,11 +307,11 @@ BOOST_AUTO_TEST_CASE(error_formatting_element)
 {
     auto fn = [](int v, format_context_base& ctx) {
         if (v == 42)
-            ctx.add_error(client_errc::cancelled);
+            ctx.add_error(client_errc::wrong_num_params);
         format_sql_to(ctx, "{}", v);
     };
     std::vector<int> col{1, 42, 10};
-    BOOST_TEST(format_single_error("{}", sequence(col, fn)) == client_errc::cancelled);
+    BOOST_TEST(format_single_error("{}", sequence(col, fn)) == client_errc::wrong_num_params);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

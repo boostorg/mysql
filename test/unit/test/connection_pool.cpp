@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -40,10 +40,9 @@ BOOST_AUTO_TEST_SUITE(test_pooled_connection)
 struct pooled_connection_fixture
 {
     asio::io_context ctx;
-    std::shared_ptr<detail::pool_impl> pool{std::make_shared<detail::pool_impl>(
-        pool_executor_params{ctx.get_executor(), ctx.get_executor()},
-        pool_params{}
-    )};
+    std::shared_ptr<detail::pool_impl> pool{
+        std::make_shared<detail::pool_impl>(ctx.get_executor(), pool_params{})
+    };
 
     std::unique_ptr<detail::connection_node> create_node()
     {
@@ -143,7 +142,7 @@ BOOST_AUTO_TEST_CASE(move_ctor_invalid_invalid)
     pooled_connection conn;
     pooled_connection conn2;
 
-    // Moving an invalid souce to an invalid target works
+    // Moving an invalid source to an invalid target works
     conn = std::move(conn2);
     BOOST_TEST(!conn.valid());
     BOOST_TEST(!conn2.valid());
@@ -202,20 +201,6 @@ struct pool_fixture
     connection_pool pool{ctx, pool_params{}};
 };
 
-BOOST_AUTO_TEST_CASE(ctor_from_pool_executor_params)
-{
-    // Construct
-    asio::io_context ctx1, ctx2;
-    connection_pool pool(pool_executor_params{ctx1.get_executor(), ctx2.get_executor()}, pool_params{});
-
-    // Executors are correct
-    BOOST_TEST((pool.get_executor() == ctx1.get_executor()));
-    BOOST_TEST((detail::access::get_impl(pool)->connection_ex() == ctx2.get_executor()));
-
-    // The pool is valid
-    BOOST_TEST(pool.valid());
-}
-
 BOOST_AUTO_TEST_CASE(ctor_from_executor)
 {
     // Construct
@@ -242,6 +227,18 @@ BOOST_AUTO_TEST_CASE(ctor_from_execution_context)
 
     // The pool is valid
     BOOST_TEST(pool.valid());
+}
+
+BOOST_AUTO_TEST_CASE(get_executor_thread_safe)
+{
+    // Construct
+    asio::io_context ctx;
+    pool_params params;
+    params.thread_safe = true;
+    connection_pool pool(ctx, std::move(params));
+
+    // get_executor() should return ctx's executor, not any internally created strand
+    BOOST_TEST((pool.get_executor() == ctx.get_executor()));
 }
 
 BOOST_FIXTURE_TEST_CASE(move_ctor_valid, pool_fixture)
@@ -310,13 +307,11 @@ BOOST_FIXTURE_TEST_CASE(move_assign_invalid_invalid, pool_fixture)
 // Regression check: deferred works even in C++11
 void deferred_spotcheck()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
-    std::chrono::seconds timeout(5);
 
     (void)pool.async_run(asio::deferred);
-    (void)pool.async_get_connection(timeout, diag, asio::deferred);
-    (void)pool.async_get_connection(timeout, asio::deferred);
     (void)pool.async_get_connection(diag, asio::deferred);
     (void)pool.async_get_connection(asio::deferred);
 }
@@ -325,13 +320,11 @@ void deferred_spotcheck()
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
 asio::awaitable<void> spotcheck_default_tokens()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
-    std::chrono::seconds timeout(5);
 
     co_await pool.async_run();
-    co_await pool.async_get_connection(timeout, diag);
-    co_await pool.async_get_connection(timeout);
     co_await pool.async_get_connection(diag);
     co_await pool.async_get_connection();
 }
@@ -354,14 +347,12 @@ void check_run_op(asio::deferred_async_operation<void(T), Rest...>)
 
 void spotcheck_partial_tokens()
 {
-    connection_pool pool(test::global_context_executor(), pool_params());
+    asio::io_context ctx;
+    connection_pool pool(ctx, pool_params());
     diagnostics diag;
-    std::chrono::seconds timeout(5);
     auto tok = asio::cancel_after(std::chrono::seconds(10));
 
     check_op(pool.async_run(tok));
-    check_op(pool.async_get_connection(timeout, diag, tok));
-    check_op(pool.async_get_connection(timeout, tok));
     check_op(pool.async_get_connection(diag, tok));
     check_op(pool.async_get_connection(tok));
 }

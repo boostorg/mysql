@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -20,12 +20,12 @@ jobs:
   fuzz:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/anarthal-containers/build-clang18:1e06ba22fc5ab038a3c4ce4a73d0d624848c8f70
+      image: ghcr.io/anarthal-containers/build-clang18:61b5b771ffefa8c04c43ddc9e023152461a8295f
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
       mysql:
-        image: ghcr.io/anarthal-containers/ci-db:mysql-8.4.1-1e06ba22fc5ab038a3c4ce4a73d0d624848c8f70
+        image: ghcr.io/anarthal-containers/ci-db:mysql-8.4.1-61b5b771ffefa8c04c43ddc9e023152461a8295f
         ports:
           - 3306:3306
         volumes:

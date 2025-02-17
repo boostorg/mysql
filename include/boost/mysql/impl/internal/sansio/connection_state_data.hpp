@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -40,6 +40,10 @@ enum class ssl_state
 
 struct connection_state_data
 {
+    // Are we currently executing an operation?
+    // Prevent the user from running concurrent operations
+    bool op_in_progress{false};
+
     // Is the connection actually connected? Set by handshake
     bool is_connected{false};
 
@@ -48,6 +52,9 @@ struct connection_state_data
 
     // What are the connection's capabilities?
     capabilities current_capabilities;
+
+    // The current connection ID. Supplied by handshake, can be used in KILL statements
+    std::uint32_t connection_id{};
 
     // Used by async ops without output diagnostics params, to avoid allocations
     diagnostics shared_diag;

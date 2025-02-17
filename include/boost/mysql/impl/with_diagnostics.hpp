@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -50,8 +50,14 @@ struct with_diag_handler_fn
     std::shared_ptr<diagnostics> owning_diag;
 };
 
+// By default, don't modify the signature.
+// This makes asio::as_tuple(with_diagnostics(X)) equivalent
+// to asio::as_tuple(X).
 template <typename Signature>
-struct with_diag_signature;
+struct with_diag_signature
+{
+    using type = Signature;
+};
 
 template <typename R, typename... Args>
 struct with_diag_signature<R(error_code, Args...)>
@@ -146,14 +152,23 @@ struct with_diag_init : public Initiation
     }
 };
 
-}  // namespace detail
-}  // namespace mysql
+// Did with_diagnostics modify any of the signatures?
+// We really support only modifying all or none, and that's enough.
+template <class Signature>
+using with_diag_has_original_signature = std::
+    is_same<Signature, typename with_diag_signature<Signature>::type>;
 
-namespace asio {
+template <class... Signatures>
+using with_diag_has_original_signatures = mp11::
+    mp_all_of<mp11::mp_list<Signatures...>, with_diag_has_original_signature>;
 
+template <typename CompletionToken, bool has_original_signatures, typename... Signatures>
+struct with_diagnostics_async_result;
+
+// async_result when the signature was modified
 template <typename CompletionToken, typename... Signatures>
-struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
-    : async_result<CompletionToken, typename mysql::detail::with_diag_signature<Signatures>::type...>
+struct with_diagnostics_async_result<CompletionToken, false, Signatures...>
+    : asio::async_result<CompletionToken, typename with_diag_signature<Signatures>::type...>
 {
     template <class RawCompletionToken>
     using maybe_const_token_t = typename std::conditional<
@@ -163,24 +178,63 @@ struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
 
     template <typename Initiation, typename RawCompletionToken, typename... Args>
     static auto initiate(Initiation&& initiation, RawCompletionToken&& token, Args&&... args)
-        -> decltype(async_initiate<
+        -> decltype(asio::async_initiate<
                     maybe_const_token_t<RawCompletionToken>,
-                    typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            std::declval<mysql::detail::with_diag_init<typename std::decay<Initiation>::type>>(),
-            mysql::detail::access::get_impl(token),
+                    typename with_diag_signature<Signatures>::type...>(
+            with_diag_init<typename std::decay<Initiation>::type>{std::forward<Initiation>(initiation)},
+            access::get_impl(token),
             std::forward<Args>(args)...
         ))
     {
-        return async_initiate<
+        return asio::async_initiate<
             maybe_const_token_t<RawCompletionToken>,
-            typename mysql::detail::with_diag_signature<Signatures>::type...>(
-            mysql::detail::with_diag_init<typename std::decay<Initiation>::type>{
-                std::forward<Initiation>(initiation)
-            },
-            mysql::detail::access::get_impl(token),
+            typename with_diag_signature<Signatures>::type...>(
+            with_diag_init<typename std::decay<Initiation>::type>{std::forward<Initiation>(initiation)},
+            access::get_impl(token),
             std::forward<Args>(args)...
         );
     }
+};
+
+// async_result when the signature wasn't modified (pass-through)
+template <typename CompletionToken, typename... Signatures>
+struct with_diagnostics_async_result<CompletionToken, true, Signatures...>
+    : asio::async_result<CompletionToken, Signatures...>
+{
+    template <class RawCompletionToken>
+    using maybe_const_token_t = typename std::conditional<
+        std::is_const<typename std::remove_reference<RawCompletionToken>::type>::value,
+        const CompletionToken,
+        CompletionToken>::type;
+
+    template <typename Initiation, typename RawCompletionToken, typename... Args>
+    static auto initiate(Initiation&& initiation, RawCompletionToken&& token, Args&&... args)
+        -> decltype(asio::async_initiate<maybe_const_token_t<RawCompletionToken>, Signatures...>(
+            std::forward<Initiation>(initiation),
+            access::get_impl(token),
+            std::forward<Args>(args)...
+        ))
+    {
+        return asio::async_initiate<maybe_const_token_t<RawCompletionToken>, Signatures...>(
+            std::forward<Initiation>(initiation),
+            access::get_impl(token),
+            std::forward<Args>(args)...
+        );
+    }
+};
+
+}  // namespace detail
+}  // namespace mysql
+
+namespace asio {
+
+template <typename CompletionToken, typename... Signatures>
+struct async_result<mysql::with_diagnostics_t<CompletionToken>, Signatures...>
+    : mysql::detail::with_diagnostics_async_result<
+          CompletionToken,
+          mysql::detail::with_diag_has_original_signatures<Signatures...>::value,
+          Signatures...>
+{
 };
 
 }  // namespace asio

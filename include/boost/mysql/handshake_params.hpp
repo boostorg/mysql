@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,10 +18,16 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Parameters defining how to perform the handshake with a MySQL server.
+ * \brief (Legacy) Parameters defining how to perform the handshake with a MySQL server.
+ *
  * \par Object lifetimes
  * This object stores references to strings (like username and password), performing
- * no copy of these values. Users are resposible for keeping them alive until required.
+ * no copy of these values. Users are responsible for keeping them alive until required.
+ *
+ * \par Legacy
+ * This class is used with the legacy \ref connection class.
+ * New code should use \ref any_connection, instead.
+ * The equivalent to `handshake_params` is \ref connect_params.
  */
 class handshake_params
 {

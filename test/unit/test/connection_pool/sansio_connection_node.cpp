@@ -1,24 +1,37 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/common_server_errc.hpp>
+#include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_categories.hpp>
 #include <boost/mysql/error_code.hpp>
+#include <boost/mysql/mysql_server_errc.hpp>
 
 #include <boost/mysql/impl/internal/connection_pool/sansio_connection_node.hpp>
 
+#include <boost/asio/error.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <cstddef>
+#include <string>
 
+#include "test_common/create_diagnostics.hpp"
+#include "test_common/printing.hpp"
 #include "test_unit/printing.hpp"
 
-using namespace boost::mysql::detail;
-using boost::mysql::client_errc;
-using boost::mysql::error_code;
+using namespace boost::mysql;
+using namespace boost::mysql::test;
+namespace asio = boost::asio;
+using detail::collection_state;
+using detail::connection_status;
+using detail::next_connection_action;
+using detail::num_connections_to_create;
+using detail::sansio_connection_node;
 
 BOOST_AUTO_TEST_SUITE(test_sansio_connection_node)
 
@@ -153,7 +166,7 @@ BOOST_AUTO_TEST_CASE(connect_error)
     mock_node nod(connection_status::connect_in_progress);
 
     // Fail connecting
-    auto act = nod.resume(client_errc::timeout, collection_state::none);
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::sleep_connect_failed);
     nod.check(connection_status::sleep_connect_failed_in_progress, 0);
 
@@ -179,7 +192,7 @@ BOOST_AUTO_TEST_CASE(ping_error)
     nod.check(connection_status::ping_in_progress, exit_idle | enter_pending);
 
     // Ping fails
-    act = nod.resume(client_errc::cancelled, collection_state::none);
+    act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
     nod.check(connection_status::connect_in_progress, 0);
 
@@ -200,7 +213,7 @@ BOOST_AUTO_TEST_CASE(reset_error)
     nod.check(connection_status::reset_in_progress, enter_pending);
 
     // Reset fails
-    act = nod.resume(client_errc::timeout, collection_state::none);
+    act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
     nod.check(connection_status::connect_in_progress, 0);
 
@@ -219,12 +232,12 @@ BOOST_AUTO_TEST_CASE(sleep_between_retries_fail)
     mock_node nod(connection_status::connect_in_progress);
 
     // Fail connecting
-    auto act = nod.resume(client_errc::timeout, collection_state::none);
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::sleep_connect_failed);
     nod.check(connection_status::sleep_connect_failed_in_progress, 0);
 
     // Sleep reports an error. It will get ignored
-    act = nod.resume(client_errc::cancelled, collection_state::none);
+    act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
     nod.check(connection_status::connect_in_progress, 0);
 }
@@ -238,7 +251,7 @@ BOOST_AUTO_TEST_CASE(idle_wait_fail)
     mock_node nod(connection_status::idle);
 
     // Idle wait failed. Error gets ignored
-    auto act = nod.resume(client_errc::cancelled, collection_state::none);
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::ping);
     nod.check(connection_status::ping_in_progress, exit_idle | enter_pending);
 }
@@ -252,7 +265,7 @@ BOOST_AUTO_TEST_CASE(idle_wait_fail_in_use)
     mock_node nod(connection_status::in_use);
 
     // Idle wait failed. Error gets ignored
-    auto act = nod.resume(client_errc::cancelled, collection_state::needs_collect_with_reset);
+    auto act = nod.resume(asio::error::operation_aborted, collection_state::needs_collect_with_reset);
     BOOST_TEST(act == next_connection_action::reset);
     nod.check(connection_status::reset_in_progress, enter_pending);
 }
@@ -283,17 +296,149 @@ BOOST_AUTO_TEST_CASE(cancel)
             nod.cancel();
 
             // Next action will always return none
-            auto act = nod.resume(client_errc::cancelled, collection_state::none);
+            auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
             BOOST_TEST(act == next_connection_action::none);
             nod.check(connection_status::terminated, tc.hooks);
 
             // Cancel again does nothing
             nod.cancel();
-            act = nod.resume(client_errc::cancelled, collection_state::none);
+            act = nod.resume(asio::error::operation_aborted, collection_state::none);
             BOOST_TEST(act == next_connection_action::none);
             nod.check(connection_status::terminated, 0);
         }
     }
+}
+
+// Connect diagnostics creation
+BOOST_AUTO_TEST_CASE(create_connect_diagnostics_)
+{
+    struct
+    {
+        string_view name;
+        error_code input_ec;
+        diagnostics input_diag;
+        diagnostics expected;
+    } test_cases[]{
+        // Success
+        {"no_error", error_code(), diagnostics(), diagnostics()},
+
+        // Edge case: no error but diagnostics is set. Just ignore its value
+        {"no_error_diag", error_code(), create_server_diag("something"), diagnostics()},
+
+        // Timeout (operation_aborted) gets special handling
+        {"timeout",
+         asio::error::operation_aborted,
+         diagnostics(),
+         create_client_diag("Last connection attempt timed out")},
+
+        // Network error numbers are OS-specific
+        {"network_error",
+         asio::error::network_reset,
+         diagnostics(),
+         create_client_diag(
+             "Last connection attempt failed with: " + error_code(asio::error::network_reset).message() +
+             " [system:" + std::to_string(static_cast<int>(asio::error::network_reset)) + "]"
+         )},
+
+        // Common server, with diagnostics
+        {"server_error_diag",
+         common_server_errc::er_no_such_table,
+         create_server_diag("Table 'abc' does not exist"),
+         create_server_diag("Last connection attempt failed with: er_no_such_table "
+                            "[mysql.common-server:1146]: Table 'abc' does not exist")},
+
+        // Common server, without diagnostics. Results in a client message, because it contains no server
+        // output
+        {"server_error_nodiag",
+         common_server_errc::er_no_such_table,
+         create_server_diag(""),
+         create_client_diag("Last connection attempt failed with: er_no_such_table [mysql.common-server:1146]"
+         )},
+
+        // MySQL/MariaDB specific errors
+        {"specific_server_error",
+         error_code(mysql_server_errc::er_binlog_fatal_error, get_mysql_server_category()),
+         create_server_diag("something failed"),
+         create_server_diag("Last connection attempt failed with: er_binlog_fatal_error "
+                            "[mysql.mysql-server:1593]: something failed")},
+
+        // A client error with diagnostics
+        {"client_error_diag",
+         client_errc::auth_plugin_requires_ssl,
+         create_client_diag("Something client-side failed"),
+         create_client_diag("Last connection attempt failed with: The authentication plugin requires the "
+                            "connection to use SSL [mysql.client:7]: Something client-side failed")},
+
+        // A client error, no diagnostics
+        {"client_error_nodiag",
+         client_errc::auth_plugin_requires_ssl,
+         diagnostics(),
+         create_client_diag("Last connection attempt failed with: The authentication plugin requires the "
+                            "connection to use SSL [mysql.client:7]")},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            const auto actual = detail::create_connect_diagnostics(tc.input_ec, tc.input_diag);
+            BOOST_TEST(actual == tc.expected);
+        }
+    }
+}
+
+// Initial cases (when the pool starts running)
+BOOST_AUTO_TEST_CASE(num_connections_to_create_initial)
+{
+    // Order: initial, max, current, pending connections, pending requests
+
+    // default
+    BOOST_TEST(num_connections_to_create(1, 151, 0, 0, 0) == 1u);
+
+    // increased initial_size
+    BOOST_TEST(num_connections_to_create(5, 151, 0, 0, 0) == 5u);
+
+    // initial_size == max_size
+    BOOST_TEST(num_connections_to_create(151, 151, 0, 0, 0) == 151u);
+
+    // with pending requests
+    BOOST_TEST(num_connections_to_create(1, 151, 0, 0, 5) == 5u);
+
+    // with pending requests < initial size
+    BOOST_TEST(num_connections_to_create(6, 151, 0, 0, 5) == 6u);
+
+    // with pending requests > max size
+    BOOST_TEST(num_connections_to_create(5, 151, 0, 0, 200) == 151u);
+}
+
+// Pool resize cases (when the pool is already running, and more connections are required)
+BOOST_AUTO_TEST_CASE(num_connections_to_create_resize)
+{
+    // Order: initial, max, current, pending connections, pending requests
+
+    // all connections are in use
+    BOOST_TEST(num_connections_to_create(1, 151, 1, 0, 1) == 1u);
+    BOOST_TEST(num_connections_to_create(1, 151, 5, 0, 1) == 1u);
+
+    // all connections are in use and there are already requests waiting for pending connections
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 1, 2) == 1u);
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 2, 3) == 1u);
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 2, 5) == 3u);
+
+    // creating connections would exceed the limit
+    BOOST_TEST(num_connections_to_create(1, 151, 149, 0, 3) == 2u);
+    BOOST_TEST(num_connections_to_create(1, 151, 150, 1, 3) == 1u);
+    BOOST_TEST(num_connections_to_create(1, 151, 151, 2, 3) == 0u);
+
+    // there are enough pending connections (e.g. we're struggling to connect)
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 10, 3) == 0u);
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 10, 9) == 0u);
+    BOOST_TEST(num_connections_to_create(1, 151, 10, 10, 10) == 0u);
+
+    // edge case: we don't have the required initial connections created yet
+    BOOST_TEST(num_connections_to_create(10, 151, 3, 0, 2) == 7u);
+    BOOST_TEST(num_connections_to_create(10, 151, 3, 2, 4) == 7u);
+    BOOST_TEST(num_connections_to_create(10, 151, 3, 2, 20) == 18u);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -25,16 +25,12 @@ namespace detail {
 class read_reset_connection_response_algo
 {
     int resume_point_{0};
-    diagnostics* diag_;
     std::uint8_t seqnum_{0};
 
 public:
-    read_reset_connection_response_algo(diagnostics& diag, std::uint8_t seqnum) noexcept
-        : diag_(&diag), seqnum_(seqnum)
-    {
-    }
+    read_reset_connection_response_algo(std::uint8_t seqnum) noexcept : seqnum_(seqnum) {}
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         switch (resume_point_)
         {
@@ -46,7 +42,7 @@ public:
                 return ec;
 
             // Verify it's what we expected
-            ec = st.deserialize_ok(*diag_);
+            ec = st.deserialize_ok(diag);
             if (!ec)
             {
                 // Reset was successful. Resetting changes the connection's character set

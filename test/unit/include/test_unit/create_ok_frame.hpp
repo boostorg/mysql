@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -10,33 +10,13 @@
 
 #include <boost/mysql/detail/ok_view.hpp>
 
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-
 #include "test_unit/create_frame.hpp"
-#include "test_unit/serialize_to_vector.hpp"
 
 namespace boost {
 namespace mysql {
 namespace test {
 
-inline std::vector<std::uint8_t> serialize_ok_impl(const detail::ok_view& pack, std::uint8_t header)
-{
-    return serialize_to_vector([=](detail::serialization_context& ctx) {
-        ctx.serialize(
-            detail::int1{header},
-            detail::int_lenenc{pack.affected_rows},
-            detail::int_lenenc{pack.last_insert_id},
-            detail::int2{pack.status_flags},
-            detail::int2{pack.warnings}
-        );
-        // When info is empty, it's actually omitted in the ok_packet
-        if (!pack.info.empty())
-        {
-            detail::string_lenenc{pack.info}.serialize(ctx);
-        }
-    });
-}
+std::vector<std::uint8_t> serialize_ok_impl(const detail::ok_view& pack, std::uint8_t header);
 
 inline std::vector<std::uint8_t> create_ok_body(const detail::ok_view& ok)
 {

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -25,7 +25,6 @@ public:
     virtual ~engine() {}
     virtual executor_type get_executor() = 0;
     virtual bool supports_ssl() const = 0;
-    virtual void set_endpoint(const void* endpoint) = 0;
     virtual void run(any_resumable_ref resumable, error_code& err) = 0;
     virtual void async_run(any_resumable_ref resumable, asio::any_completion_handler<void(error_code)>) = 0;
 };

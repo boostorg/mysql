@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,6 +8,7 @@
 
 set -e
 GLOBIGNORE=".:.."
+export DEBIAN_FRONTEND=noninteractive
 
 # Install dependencies. rsync is needed by the GitHub action to upload the pages
 apt-get update
@@ -16,22 +17,13 @@ apt-get install --no-install-recommends -y \
     xsltproc \
     wget \
     ca-certificates \
-    clang-11 \
+    g++ \
     python3 \
     python-is-python3 \
-    rsync
-ln -s /usr/bin/clang++-11 /usr/bin/clang++
-ln -s /usr/bin/clang-11 /usr/bin/clang
-
-# Install saxonhe
-mkdir -p /tmp/saxonhe
-cd /tmp/saxonhe
-wget -q -O saxonhe.zip https://sourceforge.net/projects/saxon/files/Saxon-HE/9.9/SaxonHE9-9-1-4J.zip/download
-unzip -o -qq saxonhe.zip
-mkdir -p /usr/share/java/
-mv saxon9he.jar /usr/share/java/Saxon-HE.jar
-cd
-rm -rf /tmp/saxonhe
+    python3-jinja2 \
+    rsync \
+    git \
+    unzip
 
 # Install docbook XSL stylesheets
 mkdir -p $DOCBOOK_XSL_DIR

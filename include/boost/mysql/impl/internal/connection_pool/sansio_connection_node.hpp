@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -11,7 +11,11 @@
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
+#include <boost/asio/error.hpp>
 #include <boost/assert.hpp>
+
+#include <algorithm>
+#include <cstddef>
 
 namespace boost {
 namespace mysql {
@@ -193,6 +197,83 @@ public:
     // Exposed for testing
     connection_status status() const noexcept { return status_; }
 };
+
+// Composes a diagnostics object containing info about the last connect error.
+// Suitable for the diagnostics output of async_get_connection
+inline diagnostics create_connect_diagnostics(error_code connect_ec, const diagnostics& connect_diag)
+{
+    diagnostics res;
+    if (connect_ec)
+    {
+        // Manipulating the internal representations is more efficient here,
+        // and better than using stringstream
+        auto& res_impl = access::get_impl(res);
+        const auto& connect_diag_impl = access::get_impl(connect_diag);
+
+        if (connect_ec == asio::error::operation_aborted)
+        {
+            // operation_aborted in this context means timeout
+            res_impl.msg = "Last connection attempt timed out";
+            res_impl.is_server = false;
+        }
+        else
+        {
+            // Add the error code information
+            res_impl.msg = "Last connection attempt failed with: ";
+            res_impl.msg += connect_ec.message();
+            res_impl.msg += " [";
+            res_impl.msg += connect_ec.to_string();
+            res_impl.msg += "]";
+
+            // Add any diagnostics
+            if (connect_diag_impl.msg.empty())
+            {
+                // The resulting object doesn't contain server-supplied info
+                res_impl.is_server = false;
+            }
+            else
+            {
+                // The resulting object may contain server-supplied info
+                res_impl.msg += ": ";
+                res_impl.msg += connect_diag_impl.msg;
+                res_impl.is_server = connect_diag_impl.is_server;
+            }
+        }
+    }
+    return res;
+}
+
+// Given config params and the current state, computes the number
+// of connections that the pool should create at any given point in time
+inline std::size_t num_connections_to_create(
+    std::size_t initial_size,         // config
+    std::size_t max_size,             // config
+    std::size_t current_connections,  // the number of connections in the pool, in any state
+    std::size_t pending_connections,  // the number of connections in the pool in pending state
+    std::size_t pending_requests      // the current number of async_get_connection requests that are waiting
+)
+{
+    BOOST_ASSERT(initial_size <= max_size);
+    BOOST_ASSERT(current_connections <= max_size);
+    BOOST_ASSERT(pending_connections <= current_connections);
+
+    // We aim to have one pending connection per pending request.
+    // When these connections successfully connect, they will fulfill the pending requests.
+    std::size_t required_by_requests = pending_requests > pending_connections
+                                           ? static_cast<std::size_t>(pending_requests - pending_connections)
+                                           : 0u;
+
+    // We should always have at least min_connections.
+    // This might not be the case if the pool is just starting.
+    std::size_t required_by_min = current_connections < initial_size
+                                      ? static_cast<std::size_t>(initial_size - current_connections)
+                                      : 0u;
+
+    // We can't excess max_connections. This is the room for new connections that we have
+    std::size_t room = static_cast<std::size_t>(max_size - current_connections);
+
+    return (std::min)((std::max)(required_by_requests, required_by_min), room);
+}
 
 }  // namespace detail
 }  // namespace mysql

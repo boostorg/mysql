@@ -78,5 +78,6 @@ And with the following databases:
   respectively.
 - Encrypted connections (TLS).
 - TCP and UNIX socket transports.
-- (Experimental) connection pools.
-- (Experimental) friendly client-side generated SQL.
+- Connection pools.
+- Friendly client-side generated SQL.
+- (Experimental) pipelines.

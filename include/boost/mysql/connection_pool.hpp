@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -31,12 +31,12 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) A proxy to a connection owned by a pool that returns it to the pool when destroyed.
+ * \brief A proxy to a connection owned by a pool that returns it to the pool when destroyed.
  * \details
  * A `pooled_connection` behaves like to a `std::unique_ptr`: it has exclusive ownership of an
  * \ref any_connection created by the pool. When destroyed, it returns the connection to the pool.
  * A `pooled_connection` may own nothing. We say such a connection is invalid (`this->valid() == false`).
- * \n
+ *
  * This class is movable but not copyable.
  *
  * \par Object lifetimes
@@ -44,29 +44,39 @@ namespace mysql {
  * automatically. It's safe to destroy the `connection_pool` object before `*this`.
  *
  * \par Thread safety
- * By default, individual connections created by the pool are **not** thread-safe,
- * even if the pool was created using \ref pool_executor_params::thread_safe.
- * \n
- * Distinct objects: safe. \n
- * Shared objects: unsafe. \n
+ * This object and the \ref any_connection object it may point to are **not thread safe**,
+ * even if the connection pool used to obtain them was constructed with
+ * \ref pool_params::thread_safe set to true.
  *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
+ * Functions that return the underlying connection to the pool
+ * cause a mutation on the pool state object. Calling such functions
+ * on objects obtained from the same pool
+ * is thread-safe only if the pool was constructed with \ref pool_params::thread_safe set to true.
+ *
+ * In other words, individual connections can't be shared between threads. Pools can
+ * be shared only if they're constructed with \ref pool_params::thread_safe set to true.
+ *
+ * - Distinct objects: safe if the \ref connection_pool that was used to obtain the objects
+ *   was created with \ref pool_params::thread_safe set to true. Otherwise, unsafe.
+ * - Shared objects: always unsafe.
  */
 class pooled_connection
 {
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-    friend class detail::basic_pool_impl<detail::io_traits, pooled_connection>;
+    friend class detail::basic_pool_impl<any_connection, std::chrono::steady_clock, pooled_connection>;
 #endif
 
-    detail::connection_node* impl_{nullptr};
-    std::shared_ptr<detail::pool_impl> pool_impl_;
+    struct impl_t
+    {
+        detail::connection_node* node;
+        std::shared_ptr<detail::pool_impl> pool;
+    } impl_{};
 
     pooled_connection(detail::connection_node& node, std::shared_ptr<detail::pool_impl> pool_impl) noexcept
-        : impl_(&node), pool_impl_(std::move(pool_impl))
+        : impl_{&node, std::move(pool_impl)}
     {
+        BOOST_ASSERT(impl_.pool);
     }
 
 public:
@@ -84,18 +94,14 @@ public:
      * \brief Move constructor.
      * \details
      * Transfers connection ownership from `other` to `*this`.
-     * \n
+     *
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
      * In any case, `other` will become invalid (`other.valid() == false`).
      *
      * \par Exception safety
      * No-throw guarantee.
      */
-    pooled_connection(pooled_connection&& other) noexcept
-        : impl_(other.impl_), pool_impl_(std::move(other.pool_impl_))
-    {
-        other.impl_ = nullptr;
-    }
+    pooled_connection(pooled_connection&& other) noexcept : impl_(std::move(other.impl_)) {}
 
     /**
      * \brief Move assignment.
@@ -103,20 +109,25 @@ public:
      * If `this->valid()`, returns the connection owned by `*this` to the pool and marks
      * it as pending reset (as if the destructor was called).
      * It then transfers connection ownership from `other` to `*this`.
-     * \n
+     *
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
      * In any case, `other` will become invalid (`other.valid() == false`).
+     *
+     * \par Thread-safety
+     * May cause a mutation on the connection pool that `this` points to.
+     * Thread-safe for a shared pool only if it was constructed with
+     * \ref pool_params::thread_safe set to true.
      *
      * \par Exception safety
      * No-throw guarantee.
      */
     pooled_connection& operator=(pooled_connection&& other) noexcept
     {
-        if (impl_)
-            detail::return_connection(std::move(pool_impl_), *impl_, true);
-        impl_ = other.impl_;
-        other.impl_ = nullptr;
-        pool_impl_ = std::move(other.pool_impl_);
+        if (valid())
+        {
+            detail::return_connection(*impl_.pool, *impl_.node, true);
+        }
+        impl_ = std::move(other.impl_);
         return *this;
     }
 
@@ -132,16 +143,15 @@ public:
      * and marks it as pending reset. If your connection doesn't need to be reset
      * (e.g. because you didn't mutate session state), use \ref return_without_reset.
      *
-     * \par Thead-safety
-     * If the \ref connection_pool object that `*this` references has been constructed
-     * with adequate executor configuration, this function is safe to be called concurrently
-     * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
-     * \ref connection_pool::cancel and \ref return_without_reset on other `pooled_connection` objects.
+     * \par Thread-safety
+     * May cause a mutation on the connection pool that `this` points to.
+     * Thread-safe for a shared pool only if it was constructed with
+     * \ref pool_params::thread_safe set to true.
      */
     ~pooled_connection()
     {
-        if (impl_)
-            detail::return_connection(std::move(pool_impl_), *impl_, true);
+        if (valid())
+            detail::return_connection(*impl_.pool, *impl_.node, true);
     }
 
     /**
@@ -149,7 +159,7 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    bool valid() const noexcept { return impl_ != nullptr; }
+    bool valid() const noexcept { return impl_.pool.get() != nullptr; }
 
     /**
      * \brief Retrieves the connection owned by this object.
@@ -163,10 +173,10 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      */
-    any_connection& get() noexcept { return detail::get_connection(*impl_); }
+    any_connection& get() noexcept { return detail::get_connection(*impl_.node); }
 
     /// \copydoc get
-    const any_connection& get() const noexcept { return detail::get_connection(*impl_); }
+    const any_connection& get() const noexcept { return detail::get_connection(*impl_.node); }
 
     /// \copydoc get
     any_connection* operator->() noexcept { return &get(); }
@@ -197,42 +207,41 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * If the \ref connection_pool object that `*this` references has been constructed
-     * with adequate executor configuration, this function is safe to be called concurrently
-     * with \ref connection_pool::async_run, \ref connection_pool::async_get_connection,
-     * \ref connection_pool::cancel and `~pooled_connection`.
+     * \par Thread-safety
+     * Causes a mutation on the connection pool that `this` points to.
+     * Thread-safe for a shared pool only if it was constructed with
+     * \ref pool_params::thread_safe set to true.
      */
     void return_without_reset() noexcept
     {
         BOOST_ASSERT(valid());
-        detail::return_connection(std::move(pool_impl_), *impl_, false);
-        impl_ = nullptr;
+        detail::return_connection(*impl_.pool, *impl_.node, false);
+        impl_ = impl_t{};
     }
 };
 
 /**
- * \brief (EXPERIMENTAL) A pool of connections of variable size.
+ * \brief A pool of connections of variable size.
  * \details
  * A connection pool creates and manages \ref any_connection objects.
  * Using a pool allows to reuse sessions, avoiding part of the overhead associated
  * to session establishment. It also features built-in error handling and reconnection.
  * See the discussion and examples for more details on when to use this class.
- * \n
+ *
  * Connections are retrieved by \ref async_get_connection, which yields a
  * \ref pooled_connection object. They are returned to the pool when the
  * `pooled_connection` is destroyed, or by calling \ref pooled_connection::return_without_reset.
- * \n
+ *
  * A pool needs to be run before it can return any connection. Use \ref async_run for this.
  * Pools can only be run once.
- * \n
+ *
  * Connections are created, connected and managed internally by the pool, following
  * a well-defined state model. Please refer to the discussion for details.
- * \n
+ *
  * Due to oddities in Boost.Asio's universal async model, this class only
  * exposes async functions. You can use `asio::use_future` to transform them
  * into sync functions (please read the discussion for details).
- * \n
+ *
  * This is a move-only type.
  *
  * \par Default completion tokens
@@ -241,23 +250,45 @@ public:
  * and have the expected exceptions thrown on error.
  *
  * \par Thread-safety
- * By default, connection pools are *not* thread-safe, but most functions can
- * be made thread-safe by passing an adequate \ref pool_executor_params objects
- * to the constructor. See \ref pool_executor_params::thread_safe and the discussion
- * for details.
- * \n
- * Distinct objects: safe. \n
- * Shared objects: unsafe, unless passing adequate values to the constructor.
+ * Pools are composed of an internal state object, plus a handle to such state.
+ * Each component has different thread-safety rules.
+ *
+ * Regarding **internal state**, connection pools are **not thread-safe by default**,
+ * but can be made safe by constructing them with
+ * \ref pool_params::thread_safe set to `true`.
+ * Internal state is also mutated by some functions outside `connection_pool`, like
+ * returning connections.
+ *
+ * The following actions imply a pool state mutation, and are protected by a strand
+ * when thread-safety is enabled:
+ *
+ * - Calling \ref connection_pool::async_run.
+ * - Calling \ref connection_pool::async_get_connection.
+ * - Cancelling \ref async_get_connection by emitting a cancellation signal.
+ * - Returning a connection by destroying a \ref pooled_connection or
+ *   calling \ref pooled_connection::return_without_reset.
+ * - Cancelling the pool by calling \ref connection_pool::cancel,
+ *   emitting a cancellation signal for \ref async_run, or destroying the
+ *   `connection_pool` object.
+ *
+ * The **handle to the pool state** is **never thread-safe**, even for
+ * pools with thread-safety enabled. Functions like assignments
+ * modify the handle, and cause race conditions if called
+ * concurrently with other functions. Other objects,
+ * like \ref pooled_connection, have their own state handle,
+ * and thus interact only with the pool state.
+ *
+ * In summary:
+ *
+ * - Distinct objects: safe. \n
+ * - Shared objects: unsafe. Setting \ref pool_params::thread_safe
+ *   to `true` makes some functions safe.
  *
  * \par Object lifetimes
  * Connection pool objects create an internal state object that is referenced
  * by other objects and operations (like \ref pooled_connection). This object
  * will be kept alive using shared ownership semantics even after the `connection_pool`
  * object is destroyed. This results in intuitive lifetime rules.
- *
- * \par Experimental
- * This part of the API is experimental, and may change in successive
- * releases without previous notice.
  */
 class connection_pool
 {
@@ -266,11 +297,6 @@ class connection_pool
 #ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
 #endif
-
-    static constexpr std::chrono::steady_clock::duration get_default_timeout() noexcept
-    {
-        return std::chrono::seconds(30);
-    }
 
     struct initiate_run : detail::initiation_base
     {
@@ -295,37 +321,26 @@ class connection_pool
         using detail::initiation_base::initiation_base;
 
         template <class Handler>
-        void operator()(
-            Handler&& h,
-            diagnostics* diag,
-            std::shared_ptr<detail::pool_impl> self,
-            std::chrono::steady_clock::duration timeout
-        )
+        void operator()(Handler&& h, diagnostics* diag, std::shared_ptr<detail::pool_impl> self)
         {
-            async_get_connection_erased(std::move(self), timeout, diag, std::forward<Handler>(h));
+            async_get_connection_erased(std::move(self), diag, std::forward<Handler>(h));
         }
     };
 
     BOOST_MYSQL_DECL
     static void async_get_connection_erased(
         std::shared_ptr<detail::pool_impl> pool,
-        std::chrono::steady_clock::duration timeout,
         diagnostics* diag,
         asio::any_completion_handler<void(error_code, pooled_connection)> handler
     );
 
     template <class CompletionToken>
-    auto async_get_connection_impl(
-        std::chrono::steady_clock::duration timeout,
-        diagnostics* diag,
-        CompletionToken&& token
-    )
+    auto async_get_connection_impl(diagnostics* diag, CompletionToken&& token)
         -> decltype(asio::async_initiate<CompletionToken, void(error_code, pooled_connection)>(
             std::declval<initiate_get_connection>(),
             token,
             diag,
-            impl_,
-            timeout
+            impl_
         ))
     {
         BOOST_ASSERT(valid());
@@ -333,49 +348,33 @@ class connection_pool
             initiate_get_connection{get_executor()},
             token,
             diag,
-            impl_,
-            timeout
+            impl_
         );
     }
 
     BOOST_MYSQL_DECL
-    connection_pool(pool_executor_params&& ex_params, pool_params&& params, int);
+    connection_pool(asio::any_io_executor ex, pool_params&& params, int);
 
 public:
     /**
      * \brief Constructs a connection pool.
      * \details
-     * Internal I/O objects (like timers) are constructed using
-     * `ex_params.pool_executor`. Connections are constructed using
-     * `ex_params.connection_executor`. This can be used to create
-     * thread-safe pools.
-     * \n
+     *
      * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
-     * with \ref client_errc::cancelled.
-     * \n
+     * "running" state.
+     *
      * The constructed pool is always valid (`this->valid() == true`).
      *
-     * \par Exception safety
-     * Strong guarantee. Exceptions may be thrown by memory allocations.
-     * \throws std::invalid_argument If `params` contains values that violate the rules described in \ref
-     *         pool_params.
-     */
-    connection_pool(pool_executor_params ex_params, pool_params params)
-        : connection_pool(std::move(ex_params), std::move(params), 0)
-    {
-    }
-
-    /**
-     * \brief Constructs a connection pool.
-     * \details
-     * Both internal I/O objects and connections are constructed using the passed executor.
-     * \n
-     * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
-     * with \ref client_errc::cancelled.
-     * \n
-     * The constructed pool is always valid (`this->valid() == true`).
+     * \par Executor
+     * The passed executor becomes the pool executor, available through \ref get_executor.
+     * `ex` is used as follows:
+     *
+     *   - If `params.thread_safe == true`, `ex` is used to build a strand. The strand is used
+     *     to build internal I/O objects, like timers.
+     *   - If `params.thread_safe == false`, `ex` is used directly to build internal I/O objects.
+     *   - If `params.connection_executor` is empty, `ex` is used to build individual connections,
+     *     regardless of the chosen thread-safety mode. Otherwise, `params.connection_executor`
+     *     is used.
      *
      * \par Exception safety
      * Strong guarantee. Exceptions may be thrown by memory allocations.
@@ -383,21 +382,15 @@ public:
      *         pool_params.
      */
     connection_pool(asio::any_io_executor ex, pool_params params)
-        : connection_pool(pool_executor_params{ex, ex}, std::move(params), 0)
+        : connection_pool(std::move(ex), std::move(params), 0)
     {
     }
 
     /**
      * \brief Constructs a connection pool.
      * \details
-     * Both internal I/O objects and connections are constructed using `ctx.get_executor()`.
-     * \n
-     * The pool is created in a "not-running" state. Call \ref async_run to transition to the
-     * "running" state. Calling \ref async_get_connection in the "not-running" state will fail
-     * with \ref client_errc::cancelled.
-     * \n
-     * The constructed pool is always valid (`this->valid() == true`).
-     * \n
+     * Equivalent to `connection_pool(ctx.get_executor(), params)`.
+     *
      * This function participates in overload resolution only if `ExecutionContext`
      * satisfies the `ExecutionContext` requirements imposed by Boost.Asio.
      *
@@ -416,7 +409,7 @@ public:
 #endif
         >
     connection_pool(ExecutionContext& ctx, pool_params params)
-        : connection_pool({ctx.get_executor(), ctx.get_executor()}, std::move(params), 0)
+        : connection_pool(ctx.get_executor(), std::move(params), 0)
     {
     }
 
@@ -429,20 +422,25 @@ public:
      * \brief Move-constructor.
      * \details
      * Constructs a connection pool by taking ownership of `other`.
-     * \n
+     *
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
      * In any case, `other` will become invalid (`other.valid() == false`).
-     * \n
+     *
      * Moving a connection pool with outstanding async operations
      * is safe.
      *
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * This function is never thread-safe, regardless of the executor
-     * configuration passed to the constructor. Calling this function
-     * concurrently with any other function introduces data races.
+     * \par Thread-safety
+     * Mutates `other`'s internal state handle. Does not access the pool state.
+     * This function **can never be called concurrently with other functions
+     * that read the internal state handle**, even for pools created
+     * with \ref pool_params::thread_safe set to true.
+     *
+     * The internal pool state is not accessed, so this function can be called
+     * concurrently with functions that only access the pool's internal state,
+     * like returning connections.
      */
     connection_pool(connection_pool&& other) = default;
 
@@ -450,25 +448,49 @@ public:
      * \brief Move assignment.
      * \details
      * Assigns `other` to `*this`, transferring ownership.
-     * \n
+     *
      * After this function returns, if `other.valid() == true`, `this->valid() == true`.
      * In any case, `other` will become invalid (`other.valid() == false`).
-     * \n
+     *
      * Moving a connection pool with outstanding async operations
      * is safe.
      *
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * This function is never thread-safe, regardless of the executor
-     * configuration passed to the constructor. Calling this function
-     * concurrently with any other function introduces data races.
+     * \par Thread-safety
+     * Mutates `*this` and `other`'s internal state handle. Does not access the pool state.
+     * This function **can never be called concurrently with other functions
+     * that read the internal state handle**, even for pools created
+     * with \ref pool_params::thread_safe set to true.
+     *
+     * The internal pool state is not accessed, so this function can be called
+     * concurrently with functions that only access the pool's internal state,
+     * like returning connections.
      */
     connection_pool& operator=(connection_pool&& other) = default;
 
-    /// Destructor.
-    ~connection_pool() = default;
+    /**
+     * \brief Destructor.
+     * \details
+     * Cancels all outstanding async operations on `*this`, as per \ref cancel.
+     *
+     * \par Thread-safety
+     * Mutates the internal state handle. Mutates the pool state.
+     * This function **can never be called concurrently with other functions
+     * that read the internal state handle**, even for pools created
+     * with \ref pool_params::thread_safe set to true.
+     *
+     * The internal pool state is modified as per \ref cancel.
+     * If thread-safety is enabled, it's safe to call the destructor concurrently
+     * with functions that only access the pool's internal state,
+     * like returning connections.
+     */
+    ~connection_pool()
+    {
+        if (valid())
+            cancel();
+    }
 
     /**
      * \brief Returns whether the object is in a moved-from state.
@@ -480,10 +502,12 @@ public:
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * This function is never thread-safe, regardless of the executor
-     * configuration passed to the constructor. Calling this function
-     * concurrently with any other function introduces data races.
+     * \par Thread-safety
+     * Reads the internal state handle. Does not access the pool state.
+     * Can be called concurrently with any other function that reads the state handle,
+     * like \ref async_run or \ref async_get_connection.
+     * It can't be called concurrently with functions modifying the handle, like assignments,
+     * even if \ref pool_params::thread_safe is set to true.
      */
     bool valid() const noexcept { return impl_.get() != nullptr; }
 
@@ -493,16 +517,17 @@ public:
     /**
      * \brief Retrieves the executor associated to this object.
      * \details
-     * Returns the pool executor passed to the constructor, as per
-     * \ref pool_executor_params::pool_executor.
+     * Returns the executor used to construct the pool as first argument.
+     * This is the case even when using \ref pool_params::thread_safe -
+     * the internal strand created in this case is never exposed.
      *
      * \par Exception safety
      * No-throw guarantee.
      *
-     * \par Thead-safety
-     * This function is never thread-safe, regardless of the executor
-     * configuration passed to the constructor. Calling this function
-     * concurrently with any other function introduces data races.
+     * \par Thread-safety
+     * Reads the internal state handle. Reads the pool state.
+     * If the pool was built with thread-safety enabled, it can be called
+     * concurrently with other functions that don't modify the state handle.
      */
     BOOST_MYSQL_DECL
     executor_type get_executor() noexcept;
@@ -513,19 +538,19 @@ public:
      * This function creates and connects new connections, and resets and pings
      * already created ones. You need to call this function for \ref async_get_connection
      * to succeed.
-     * \n
+     *
      * The async operation will run indefinitely, until the pool is cancelled
-     * (by being destroyed or calling \ref cancel). The operation completes once
-     * all internal connection operations (including connects, pings and resets)
-     * complete.
-     * \n
+     * (by calling \ref cancel or using per-operation cancellation on the `async_run` operation).
+     * The operation completes once all internal connection operations
+     * (including connects, pings and resets) complete.
+     *
      * It is safe to call this function after calling \ref cancel.
      *
      * \par Preconditions
      * This function can be called at most once for a single pool.
      * Formally, `async_run` hasn't been called before on `*this` or any object
      * used to move-construct or move-assign `*this`.
-     * \n
+     *
      * Additionally, `this->valid() == true`.
      *
      * \par Object lifetimes
@@ -535,19 +560,37 @@ public:
      * \par Handler signature
      * The handler signature for this operation is `void(boost::mysql::error_code)`
      *
+     * \par Executor
+     *
+     * The final handler is executed using `token`'s associated executor,
+     * or `this->get_executor()` if the token doesn't have an associated
+     * executor. The final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     *
+     * If the pool was constructed with thread-safety enabled, intermediate
+     * completion handlers are executed using an internal strand that wraps `this->get_executor()`.
+     * Otherwise, intermediate handlers are executed using `this->get_executor()`.
+     * In any case, the token's associated executor is only used for the final handler.
+     *
+     * \par Per-operation cancellation
+     * This operation supports per-operation cancellation. Cancelling `async_run`
+     * is equivalent to calling \ref connection_pool::cancel.
+     * The following `asio::cancellation_type_t` values are supported:
+     *
+     *   - `asio::cancellation_type_t::terminal`
+     *   - `asio::cancellation_type_t::partial`
+     *
+     * Note that `asio::cancellation_type_t::total` is not supported because invoking
+     * `async_run` always has observable side effects.
+     *
      * \par Errors
      * This function always complete successfully. The handler signature ensures
      * maximum compatibility with Boost.Asio infrastructure.
      *
-     * \par Executor
-     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
-     * No internal data will be accessed or modified as part of the initiating function.
-     * This simplifies thread-safety.
-     *
-     * \par Thead-safety
-     * When the pool is constructed with adequate executor configuration, this function
-     * is safe to be called concurrently with \ref async_get_connection, \ref cancel,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
+     * \par Thread-safety
+     * Reads the internal state handle. Mutates the pool state.
+     * If the pool was built with thread-safety enabled, it can be called
+     * concurrently with other functions that don't modify the state handle.
      */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code))
@@ -569,165 +612,113 @@ public:
         );
     }
 
-    /// \copydoc async_get_connection(diagnostics&,CompletionToken&&)
+    /**
+     * \brief Retrieves a connection from the pool.
+     * \details
+     * Retrieves an idle connection from the pool to be used.
+     *
+     * If this function completes successfully (empty error code), the return \ref pooled_connection
+     * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
+     * it will have `valid() == false`.
+     *
+     * If a connection is idle when the operation is started, it will complete immediately
+     * with that connection. Otherwise, it will wait for a connection to become idle
+     * (possibly creating one in the process, if pool configuration allows it), until
+     * the operation is cancelled (by emitting a cancellation signal) or the pool
+     * is cancelled (by calling \ref connection_pool::cancel).
+     * If the pool is not running, the operation fails immediately.
+     *
+     * If the operation is cancelled, and the overload with \ref diagnostics was used,
+     * the output diagnostics will contain the most recent error generated by
+     * the connections attempting to connect (via \ref any_connection::async_connect), if any.
+     * In cases where \ref async_get_connection doesn't complete because connections are unable
+     * to connect, this feature can help figuring out where the problem is.
+     *
+     * \par Preconditions
+     * `this->valid() == true` \n
+     *
+     * \par Object lifetimes
+     * While the operation is outstanding, the pool's internal data will be kept alive.
+     * It is safe to destroy `*this` while the operation is outstanding.
+     *
+     * \par Handler signature
+     * The handler signature for this operation is
+     * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
+     *
+     * \par Executor
+     *
+     * If the final handler has an associated immediate executor, and the operation
+     * completes immediately, the final handler is dispatched to it.
+     * Otherwise, the final handler is called as if it was submitted using `asio::post`,
+     * and is never be called inline from within this function.
+     * Immediate completions can only happen when thread-safety is not enabled.
+     *
+     * The final handler is executed using `token`'s associated executor,
+     * or `this->get_executor()` if the token doesn't have an associated
+     * executor.
+     *
+     * If the pool was constructed with thread-safety enabled, intermediate
+     * completion handlers are executed using an internal strand that wraps `this->get_executor()`.
+     * Otherwise, intermediate handlers are executed using
+     * `token`'s associated executor if it has one, or `this->get_executor()` if it hasn't.
+     *
+     * \par Per-operation cancellation
+     * This operation supports per-operation cancellation.
+     * Cancelling `async_get_connection` has no observable side effects.
+     * The following `asio::cancellation_type_t` values are supported:
+     *
+     *   - `asio::cancellation_type_t::terminal`
+     *   - `asio::cancellation_type_t::partial`
+     *   - `asio::cancellation_type_t::total`
+     *
+     * \par Errors
+     *   - \ref client_errc::no_connection_available, if the `async_get_connection`
+     *     operation is cancelled before a connection becomes available.
+     *   - \ref client_errc::pool_not_running, if the `async_get_connection`
+     *     operation is cancelled before async_run is called.
+     *   - \ref client_errc::pool_cancelled, if the pool is cancelled before
+     *     the operation completes, or `async_get_connection` is called
+     *     on a pool that has been cancelled.
+     *
+     * \par Thread-safety
+     * Reads the internal state handle. Mutates the pool state.
+     * If the pool was built with thread-safety enabled, it can be called
+     * concurrently with other functions that don't modify the state handle.
+     */
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_get_connection(CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
-        decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
+        decltype(async_get_connection_impl(nullptr, std::forward<CompletionToken>(token)))
     )
     {
-        return async_get_connection_impl(
-            get_default_timeout(),
-            nullptr,
-            std::forward<CompletionToken>(token)
-        );
+        return async_get_connection_impl(nullptr, std::forward<CompletionToken>(token));
     }
 
-    /**
-     * \brief Retrieves a connection from the pool.
-     * \details
-     * Retrieves an idle connection from the pool to be used.
-     * \n
-     * If this function completes successfully (empty error code), the return \ref pooled_connection
-     * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
-     * it will have `valid() == false`.
-     * \n
-     * If a connection is idle when the operation is started, it will complete immediately
-     * with that connection. Otherwise, it will wait for a connection to become idle
-     * (possibly creating one in the process, if pool configuration allows it), up to
-     * a duration of 30 seconds.
-     * \n
-     * If a timeout happens because connection establishment has failed, appropriate
-     * diagnostics will be returned.
-     *
-     * \par Preconditions
-     * `this->valid() == true` \n
-     *
-     * \par Object lifetimes
-     * While the operation is outstanding, the pool's internal data will be kept alive.
-     * It is safe to destroy `*this` while the operation is outstanding.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
-     *
-     * \par Errors
-     * \li Any error returned by \ref any_connection::async_connect, if a timeout
-     *     happens because connection establishment is failing.
-     * \li \ref client_errc::timeout, if a timeout happens for any other reason
-     *     (e.g. all connections are in use and limits forbid creating more).
-     * \li \ref client_errc::cancelled if \ref cancel was called before the operation is started or while
-     *     it is outstanding, or if the pool is not running.
-     *
-     * \par Executor
-     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
-     * No internal data will be accessed or modified as part of the initiating function.
-     * This simplifies thread-safety.
-     *
-     * \par Thead-safety
-     * When the pool is constructed with adequate executor configuration, this function
-     * is safe to be called concurrently with \ref async_run, \ref cancel,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
-     */
+    /// \copydoc async_get_connection
     template <
         BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
             CompletionToken = with_diagnostics_t<asio::deferred_t>>
     auto async_get_connection(diagnostics& diag, CompletionToken&& token = {}) BOOST_MYSQL_RETURN_TYPE(
-        decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
+        decltype(async_get_connection_impl(nullptr, std::forward<CompletionToken>(token)))
     )
     {
-        return async_get_connection_impl(get_default_timeout(), &diag, std::forward<CompletionToken>(token));
-    }
-
-    /// \copydoc async_get_connection(std::chrono::steady_clock::duration,diagnostics&,CompletionToken&&)
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken = with_diagnostics_t<asio::deferred_t>>
-    auto async_get_connection(std::chrono::steady_clock::duration timeout, CompletionToken&& token = {})
-        BOOST_MYSQL_RETURN_TYPE(
-            decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
-        )
-    {
-        return async_get_connection_impl(timeout, nullptr, std::forward<CompletionToken>(token));
-    }
-
-    /**
-     * \brief Retrieves a connection from the pool.
-     * \details
-     * Retrieves an idle connection from the pool to be used.
-     * \n
-     * If this function completes successfully (empty error code), the return \ref pooled_connection
-     * will have `valid() == true` and will be usable. If it completes with a non-empty error code,
-     * it will have `valid() == false`.
-     * \n
-     * If a connection is idle when the operation is started, it will complete immediately
-     * with that connection. Otherwise, it will wait for a connection to become idle
-     * (possibly creating one in the process, if pool configuration allows it), up to
-     * a duration of `timeout`. A zero timeout disables it.
-     * \n
-     * If a timeout happens because connection establishment has failed, appropriate
-     * diagnostics will be returned.
-     *
-     * \par Preconditions
-     * `this->valid() == true` \n
-     * Timeout values must be positive: `timeout.count() >= 0`.
-     *
-     * \par Object lifetimes
-     * While the operation is outstanding, the pool's internal data will be kept alive.
-     * It is safe to destroy `*this` while the operation is outstanding.
-     *
-     * \par Handler signature
-     * The handler signature for this operation is
-     * `void(boost::mysql::error_code, boost::mysql::pooled_connection)`
-     *
-     * \par Errors
-     * \li Any error returned by \ref any_connection::async_connect, if a timeout
-     *     happens because connection establishment is failing.
-     * \li \ref client_errc::timeout, if a timeout happens for any other reason
-     *     (e.g. all connections are in use and limits forbid creating more).
-     * \li \ref client_errc::cancelled if \ref cancel was called before the operation is started or while
-     *     it is outstanding, or if the pool is not running.
-     *
-     * \par Executor
-     * This function will run entirely in the pool's executor (as given by `this->get_executor()`).
-     * No internal data will be accessed or modified as part of the initiating function.
-     * This simplifies thread-safety.
-     *
-     * \par Thead-safety
-     * When the pool is constructed with adequate executor configuration, this function
-     * is safe to be called concurrently with \ref async_run, \ref cancel,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
-     */
-    template <
-        BOOST_ASIO_COMPLETION_TOKEN_FOR(void(::boost::mysql::error_code, ::boost::mysql::pooled_connection))
-            CompletionToken = with_diagnostics_t<asio::deferred_t>>
-    auto async_get_connection(
-        std::chrono::steady_clock::duration timeout,
-        diagnostics& diag,
-        CompletionToken&& token = {}
-    )
-        BOOST_MYSQL_RETURN_TYPE(
-            decltype(async_get_connection_impl({}, nullptr, std::forward<CompletionToken>(token)))
-        )
-    {
-        return async_get_connection_impl(timeout, &diag, std::forward<CompletionToken>(token));
+        return async_get_connection_impl(&diag, std::forward<CompletionToken>(token));
     }
 
     /**
      * \brief Stops any current outstanding operation and marks the pool as cancelled.
      * \details
      * This function has the following effects:
-     * \n
+     *
      * \li Stops the currently outstanding \ref async_run operation, if any, which will complete
      *     with a success error code.
-     * \li Cancels any outstanding \ref async_get_connection operations, which will complete with
-     *     \ref client_errc::cancelled.
-     * \li Marks the pool as cancelled. Successive `async_get_connection` calls will complete
-     *     immediately with \ref client_errc::cancelled.
-     * \n
+     * \li Cancels any outstanding \ref async_get_connection operations.
+     * \li Marks the pool as cancelled. Successive `async_get_connection` calls will
+     *     fail immediately.
+     *
      * This function will return immediately, without waiting for the cancelled operations to complete.
-     * \n
+     *
      * You may call this function any number of times. Successive calls will have no effect.
      *
      * \par Preconditions
@@ -736,10 +727,10 @@ public:
      * \par Exception safety
      * Basic guarantee. Memory allocations and acquiring mutexes may throw.
      *
-     * \par Thead-safety
-     * When the pool is constructed with adequate executor configuration, this function
-     * is safe to be called concurrently with \ref async_run, \ref async_get_connection,
-     * `~pooled_connection` and \ref pooled_connection::return_without_reset.
+     * \par Thread-safety
+     * Reads the internal state handle. Mutates the pool state.
+     * If the pool was built with thread-safety enabled, it can be called
+     * concurrently with other functions that don't modify the state handle.
      */
     BOOST_MYSQL_DECL
     void cancel();

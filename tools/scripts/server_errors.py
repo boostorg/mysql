@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -48,8 +48,10 @@ COMMON_ERROR_LAST = 1880
 SERVER_ERROR_LAST = 5000
 
 COMMON_SERVER_ERRC_ENTRY = '''
-    /// Common server error. Error number: {number}, symbol:
-    /// <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_{symbol_lower}">{symbol_upper}</a>.
+    /**
+     * \\brief Common server error. Error number: {number}, symbol:
+     * <a href="https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html#error_{symbol_lower}">{symbol_upper}</a>.
+     */
     {symbol_lower} = {number},
 '''
 

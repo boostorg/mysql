@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,10 +17,6 @@
 #include <iterator>
 #include <type_traits>
 #include <utility>
-
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-#include <concepts>
-#endif
 
 namespace boost {
 namespace mysql {
@@ -108,13 +104,6 @@ concept formattable =
     is_formattable_range<T>::value ||
     // This covers passing formattable_ref as a format argument
     is_formattable_ref<T>::value;
-
-template <class FormatFn, class Range>
-concept format_fn_for_range = requires(const FormatFn& format_fn, Range&& range, format_context_base& ctx) {
-    { std::begin(range) != std::end(range) } -> std::convertible_to<bool>;
-    format_fn(*std::begin(range), ctx);
-    std::end(range);
-};
 
 #define BOOST_MYSQL_FORMATTABLE ::boost::mysql::detail::formattable
 

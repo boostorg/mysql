@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,6 +12,12 @@ from os import path
 from typing import List, Tuple
 import glob
 from abc import abstractmethod, ABCMeta
+import sys
+
+THIS_FOLDER = path.abspath(path.dirname(path.realpath(__file__)))
+sys.path.append(path.join(THIS_FOLDER))
+
+import examples_qbk
 
 # Script to get file headers (copyright notices
 # and include guards) okay and up to date
@@ -38,7 +44,7 @@ BASE_FILES = [
 HTML_GEN_PATH = path.join(REPO_BASE, 'doc', 'html')
 
 HEADER_TEMPLATE = '''{begin}
-{linesym} Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+{linesym} Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 {linesym}
 {linesym} Distributed under the Boost Software License, Version 1.0. (See accompanying
 {linesym} file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -284,6 +290,7 @@ def verify_test_consistency():
 def main():
     process_all_files()
     verify_test_consistency()
+    examples_qbk.main()
             
             
 if __name__ == '__main__':

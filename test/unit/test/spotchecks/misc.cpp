@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -31,6 +31,7 @@
 
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/buffer_concat.hpp"
+#include "test_common/io_context_fixture.hpp"
 #include "test_common/netfun_maker.hpp"
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
@@ -44,7 +45,6 @@
 #include "test_unit/create_statement.hpp"
 #include "test_unit/fail_count.hpp"
 #include "test_unit/test_any_connection.hpp"
-#include "test_unit/test_stream.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -55,10 +55,10 @@ BOOST_AUTO_TEST_SUITE(test_misc)
 // spotcheck for the dynamic interface
 // Verifies that execute (dynamic interface) works when rows come in separate batches
 // This is testing the interaction between the network algorithm and results
-BOOST_AUTO_TEST_CASE(execute_multiple_batches)
+BOOST_FIXTURE_TEST_CASE(execute_multiple_batches, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     results result;
 
     // Message sequence (each on its own read)
@@ -111,10 +111,10 @@ BOOST_AUTO_TEST_CASE(execute_multiple_batches)
 
 // Regression check: async_close_statement doesn't require the passed-in statement to be alive
 // when used with deferred tokens.
-BOOST_AUTO_TEST_CASE(async_close_statement_handle_deferred_tokens)
+BOOST_FIXTURE_TEST_CASE(async_close_statement_handle_deferred_tokens, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     std::unique_ptr<statement> stmt{new statement(statement_builder().id(3).build())};
     get_stream(conn).add_bytes(create_ok_frame(1, ok_builder().build()));
 
@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE(async_close_statement_handle_deferred_tokens)
     std::move(op)(as_netresult).validate_no_error();
 
     // verify that the op had the intended effects
-    const auto expected_message = concat_copy(
+    const auto expected_message = concat(
         create_frame(0, {0x19, 0x03, 0x00, 0x00, 0x00}),
         create_frame(0, {0x0e})
     );
@@ -154,7 +154,8 @@ BOOST_AUTO_TEST_CASE(net_error_prepare_statement)
         BOOST_TEST_CONTEXT(fn.name)
         {
             // Setup
-            auto conn = create_test_any_connection();
+            io_context_fixture fix;
+            auto conn = create_test_any_connection(fix.ctx);
             get_stream(conn).set_fail_count(fail_count(0, boost::asio::error::connection_reset));
 
             fn.prepare_statement(conn, "SELECT 1").validate_error(boost::asio::error::connection_reset);
@@ -179,7 +180,8 @@ BOOST_AUTO_TEST_CASE(net_error_read_some_rows)
         BOOST_TEST_CONTEXT(fn.name)
         {
             // Setup
-            auto conn = create_test_any_connection();
+            io_context_fixture fix;
+            auto conn = create_test_any_connection(fix.ctx);
             get_stream(conn).set_fail_count(fail_count(0, boost::asio::error::connection_reset));
             execution_state st;
             add_meta(get_iface(st), {column_type::bigint});
@@ -206,7 +208,8 @@ BOOST_AUTO_TEST_CASE(net_error_void_signature)
         BOOST_TEST_CONTEXT(fn.name)
         {
             // Setup
-            auto conn = create_test_any_connection();
+            io_context_fixture fix;
+            auto conn = create_test_any_connection(fix.ctx);
             get_stream(conn).set_fail_count(fail_count(0, boost::asio::error::connection_reset));
             results r;
 
@@ -216,10 +219,10 @@ BOOST_AUTO_TEST_CASE(net_error_void_signature)
 }
 
 // empty pipelines complete immediately, posting adequately
-BOOST_AUTO_TEST_CASE(empty_pipeline)
+BOOST_FIXTURE_TEST_CASE(empty_pipeline, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     pipeline_request req;
     std::vector<stage_response> res;
 
@@ -231,10 +234,10 @@ BOOST_AUTO_TEST_CASE(empty_pipeline)
 }
 
 // fatal errors in pipelines behave correctly
-BOOST_AUTO_TEST_CASE(pipeline_fatal_error)
+BOOST_FIXTURE_TEST_CASE(pipeline_fatal_error, io_context_fixture)
 {
     // Setup
-    auto conn = create_test_any_connection();
+    auto conn = create_test_any_connection(ctx);
     pipeline_request req;
     std::vector<stage_response> res;
     req.add_execute("SELECT 1").add_execute("SELECT 2");

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -12,6 +12,7 @@ RUN \
     apt-get --no-install-recommends -y install \
         ca-certificates \
         clang-18 \
+        llvm-18 \
         libclang-rt-18-dev \
         libc++-18-dev \
         libc++abi-18-dev \

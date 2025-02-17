@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(move_assign)
     std::unique_ptr<archetype_context> source{new archetype_context(opts, string_archetype(42))};
     source->append_raw("SELECT ");
     archetype_context ctx(ascii_opts, string_archetype(42));
-    ctx.append_raw("abc").add_error(client_errc::cancelled);
+    ctx.append_raw("abc").add_error(client_errc::wrong_num_params);
 
     // Assign
     ctx = std::move(*source);

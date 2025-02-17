@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -179,6 +179,9 @@ public:
     /**
      * \brief Returns the number of rows affected by the executed SQL statement.
      * \details
+     * Note that this is NOT the number of matched rows. If a row
+     * is matched but not affected, it won't be accounted for here.
+     *
      * \tparam I Resultset index. For operations returning more than one resultset, you can explicitly
      * specify this parameter to obtain the number of affected rows by the i-th resultset. If left
      * unspecified, the number of affected rows by the first resultset is returned.

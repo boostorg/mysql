@@ -1,0 +1,225 @@
+[/
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:prepared_statements Prepared statements]
+
+This section covers using [mysqllink sql-prepared-statements.html
+server-side prepared statements], an alternative to [reflink with_params].
+In general, prepared statements are more complex and less flexible than `with_params`,
+but might provide more efficiency under certain circumstances. Prefer
+`with_params` if you're not sure. See [link mysql.text_queries.comparison this section]
+for a comparison between `with_params` and prepared statements.
+
+Working with statements involves three networking operations:
+
+* Preparing a statement: [refmem any_connection async_prepare_statement].
+* Executing a statement: [refmem any_connection async_execute] or [refmem any_connection async_start_execution].
+* Closing a statement (optional): [refmem any_connection async_close_statement].
+
+The [reflink statement] class holds a server-supplied handle to an open prepared statement.
+
+[heading Preparing a statement]
+
+Calling [refmemunq any_connection async_prepare_statement] yields a [reflink statement] object:
+
+[prepared_statements_prepare]
+
+The question mark characters (`?`) represent parameters 
+(as described [mysqllink prepare.html here]).
+When you execute the statement (next section), you
+provide values for each of the parameters you declared, and the server
+will use these values to run the statement.
+
+[heading Executing a statement]
+
+Before executing a statement, you must specify its actual parameters by calling [refmem statement bind].
+Binding happens client-side: the statement handle and the passed parameters are packed into an object
+that can be passed to [refmemunq any_connection async_execute], without any communication with the server.
+The object returned by `bind` can be passed to `async_execute`:
+
+[prepared_statements_execute]
+
+
+Some observations:
+
+* You must pass in [*exactly as many parameters
+  as the statement has]. Failing to do so will result in an error.
+* You don't need to sanitize the parameters anyhow. The server takes care of it.
+* Actual parameters are matched to `?` placeholders by order. 
+* You can pass types like built-in integers, `float`, [reflink date] or `std::string`,
+  with the expected effects. [link mysql.prepared_statements.writable_field_reference This table]
+  contains a reference with all the allowed types.
+* You can also use [link mysql.static_interface the static interface] to execute statements by replacing [reflink results]
+  by [reflink static_results].
+
+
+[heading Closing a statement]
+
+Prepared statements are created server-side, and thus consume server resources.
+You can deallocate statements that you don't need anymore by calling [refmemunq any_connection async_close_statement]:
+
+[prepared_statements_close]
+
+Prepared statements are managed by the server on a per-session basis.
+This is, once you close your connection with the server, any allocated prepared statements
+will be automatically closed for you. Calling [refmem any_connection async_reset_connection]
+will also close all the statements prepared by the current session. This is used by
+[reflink connection_pool] to clean up sessions.
+
+In general, avoid closing statements explicitly if you're using `async_reset_connection` or
+`connection_pool`, or if you're preparing a fixed number of statements at program startup.
+Closing statements involves network traffic that can be avoided.
+On the other hand, if you are creating and destroying prepared statements
+dynamically without using the aforementioned techniques, consider closing
+statement explicitly to limit server resource consumption.
+
+[note
+    [reflink statement]'s destructor [*does not deallocate the statement from the server].
+    This is intentional, as closing a statement involves a network
+    operation that may block or fail, and is not required by strategies
+    involving `async_reset_connection`.
+]
+
+
+
+[heading NULLs and optionals]
+
+You can pass `std::optional` and `boost::optional` for parameters that may be `NULL`:
+
+[prepared_statements_execute_null]
+
+
+
+[heading Parameter server-side type casting]
+
+MySQL is quite permissive with the type of statement parameters. In most cases,
+it will perform the required casts for you. For example, the following will work:
+
+[prepared_statements_casting]
+
+
+
+
+[heading Executing a statement with a variable number of parameters]
+
+[refmem statement bind] has two forms:
+
+* A variadic form, where each statement argument is passed as a C++ argument.
+  This is what we've been using until now. It can only be used if the number
+  of arguments a statement has is known at compile time.
+* A range form, where arguments are passed as a range of variants.
+  This one should only be used if the number of arguments is unknown at compile time.
+
+The range should contain [reflink field] or [reflink field_view] elements, which
+can represent any MySQL type. For example:
+
+[prepared_statements_iterator_range]
+
+
+
+
+[heading Type mapping reference for prepared statement parameters]
+
+The following table contains a reference of the types that can be used when binding a statement.
+If a type can be used this way, we say to satisfy the `WritableField` concept.
+The table shows how a parameter `v` in a expression `conn.execute(stmt.bind(v), result)`
+is interpreted by MySQL, depending on `v`'s type.
+
+
+[table:writable_field_reference
+    [
+        [C++ type]
+        [MySQL type]
+        [Compatible with...]
+    ]
+    [
+        [`signed char`, `short`, `int`, `long`, `long long`]
+        [`BIGINT`]
+        [Signed `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`]
+    ]
+    [
+        [`unsigned char`, `unsigned short`, `unsigned int`, `unsigned long`, `unsigned long long`]
+        [`UNSIGNED BIGINT`]
+        [Unsigned `TINYINT`, `SMALLINT`, `MEDIUMINT`, `INT`, `BIGINT`, `YEAR`, `BIT`]
+    ]
+    [
+        [`bool`]
+        [`BIGINT` (`1` if `true`, `0` if `false`)]
+        [`TINYINT`]
+    ]
+    [
+        [`std::basic_string<char, std::char_traits<char>, Allocator>` (including `std::string`), [reflink string_view], `std::string_view`, `const char*`]
+        [`VARCHAR`]
+        [`CHAR`, `VARCHAR`, `TEXT` (all sizes), `ENUM`, `SET`, `JSON`, `DECIMAL`, `NUMERIC`]
+    ]
+    [
+        [`std::basic_vector<unsigned char, Allocator>` (including [reflink blob]), [reflink blob_view]]
+        [`BLOB`]
+        [`BINARY`, `VARBINARY`, `BLOB` (all sizes), `GEOMETRY`]
+    ]
+    [
+        [`float`]
+        [`FLOAT`]
+        [`FLOAT`]
+    ]
+    [
+        [`double`]
+        [`DOUBLE`]
+        [`DOUBLE`]
+    ]
+    [
+        [[reflink date]]
+        [`DATE`]
+        [`DATE`]
+    ]
+    [
+        [[reflink datetime]]
+        [`DATETIME`]
+        [`DATETIME`, `TIMESTAMP`]
+    ]
+    [
+        [
+            [reflink time][br]
+            Any `std::chrono::duration` convertible to `time`
+        ]
+        [`TIME`]
+        [`TIME`]
+    ]
+    [
+        [`std::nullptr_t`]
+        [`NULL`]
+        [Any of the other types. Used to insert `NULL`s, for example.]
+    ]
+    [
+        [`std::optional<T>`]
+        [
+            Applies `T`'s type mapping if the optional has a value.[br]
+            `NULL` otherwise
+        ]
+        []
+    ]
+    [
+        [`boost::optional<T>`]
+        [
+            Applies `T`'s type mapping if the optional has a value.[br]
+            `NULL` otherwise
+        ]
+        []
+    ]
+    [
+        [[reflink field_view]]
+        [Depends on the actual type stored by the field]
+        []
+    ]
+    [
+        [[reflink field]]
+        [Depends on the actual type stored by the field]
+        []
+    ]
+]
+
+[endsect]

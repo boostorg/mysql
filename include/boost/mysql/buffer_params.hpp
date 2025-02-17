@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,7 +18,12 @@ namespace boost {
 namespace mysql {
 
 /**
- * \brief Buffer configuration parameters for a connection.
+ * \brief (Legacy) Buffer configuration parameters for a connection.
+ *
+ * \par Legacy
+ * This class is used with the legacy \ref connection class.
+ * New code should use \ref any_connection, instead.
+ * The equivalent to `buffer_params` is \ref any_connection_params::initial_buffer_size.
  */
 class buffer_params
 {

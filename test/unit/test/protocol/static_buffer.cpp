@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -99,7 +99,7 @@ BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_midsize, fixture)
     wipe_midsize();  // Check it was actually copied
 
     // Verify
-    auto expected = concat_copy(initial, original_midsize());
+    auto expected = concat(initial, original_midsize());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), expected);
 }
 
@@ -115,7 +115,7 @@ BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_maxsize, fixture)
     wipe_midsize();  // Verify that we actually copied the data
 
     // Verify
-    auto expected = concat_copy(original_midsize(), newbuff);
+    auto expected = concat(original_midsize(), newbuff);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), expected);
 }
 

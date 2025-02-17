@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,19 +23,15 @@
 #include <boost/system/result.hpp>
 
 #include <initializer_list>
-#include <iterator>
 #include <string>
 #include <type_traits>
 #include <utility>
-#ifdef BOOST_MYSQL_HAS_CONCEPTS
-#include <concepts>
-#endif
 
 namespace boost {
 namespace mysql {
 
 /**
- * \brief (EXPERIMENTAL) An extension point to customize SQL formatting.
+ * \brief An extension point to customize SQL formatting.
  * \details
  * This type can be specialized for custom types to make them formattable.
  * This makes them satisfy the `Formattable` concept, and thus usable in
@@ -87,7 +83,7 @@ struct formatter
 ;
 
 /**
- * \brief (EXPERIMENTAL) A type-erased reference to a `Formattable` value.
+ * \brief A type-erased reference to a `Formattable` value.
  * \details
  * This type can hold references to any value that satisfies the `Formattable`
  * concept. The `formattable_ref` type itself satisfies `Formattable`,
@@ -137,7 +133,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) A named format argument, to be used in initializer lists.
+ * \brief A named format argument, to be used in initializer lists.
  * \details
  * Represents a name, value pair to be passed to a formatting function.
  * This type should only be used in initializer lists, as a function argument.
@@ -177,7 +173,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Base class for concrete format contexts.
+ * \brief Base class for concrete format contexts.
  * \details
  * Conceptually, a format context contains: \n
  *   \li The result string. Output operations append characters to this output string.
@@ -319,7 +315,7 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Format context for incremental SQL formatting.
+ * \brief Format context for incremental SQL formatting.
  * \details
  * The primary interface for incremental SQL formatting. Contrary to \ref format_context_base,
  * this type is aware of the output string's actual type. `basic_format_context` owns
@@ -346,8 +342,10 @@ public:
      * \par Exception safety
      * Strong guarantee: exceptions thrown by default-constructing `OutputString` are propagated.
      */
-    explicit basic_format_context(format_options opts
-    ) noexcept(std::is_nothrow_default_constructible<OutputString>::value)
+    explicit basic_format_context(format_options opts)
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_default_constructible<OutputString>::value)
+#endif
         : format_context_base(ref(), opts)
     {
     }
@@ -364,9 +362,10 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context(format_options opts, OutputString&& storage) noexcept(
-        std::is_nothrow_move_constructible<OutputString>::value
-    )
+    basic_format_context(format_options opts, OutputString&& storage)
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+#endif
         : format_context_base(ref(), opts), output_(std::move(storage))
     {
         output_.clear();
@@ -387,8 +386,10 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context(basic_format_context&& rhs
-    ) noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+    basic_format_context(basic_format_context&& rhs)
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+#endif
         : format_context_base(ref(), rhs), output_(std::move(rhs.output_))
     {
     }
@@ -403,8 +404,10 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    basic_format_context& operator=(basic_format_context&& rhs
-    ) noexcept(std::is_nothrow_move_assignable<OutputString>::value)
+    basic_format_context& operator=(basic_format_context&& rhs)
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_move_assignable<OutputString>::value)
+#endif
     {
         output_ = std::move(rhs.output_);
         assign(rhs);
@@ -426,7 +429,10 @@ public:
      * \par Exception safety
      * Basic guarantee: exceptions thrown by move-constructing `OutputString` are propagated.
      */
-    system::result<OutputString> get() && noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+    system::result<OutputString> get() &&
+#ifndef BOOST_MYSQL_DOXYGEN  // TODO: remove when https://github.com/boostorg/docca/issues/169 gets done
+        noexcept(std::is_nothrow_move_constructible<OutputString>::value)
+#endif
     {
         auto ec = error_state();
         if (ec)
@@ -436,89 +442,14 @@ public:
 };
 
 /**
- * \brief (EXPERIMENTAL) Format context for incremental SQL formatting.
+ * \brief Format context for incremental SQL formatting.
  * \details
  * Convenience type alias for `basic_format_context`'s most common case.
  */
 using format_context = basic_format_context<std::string>;
 
 /**
- * \brief (EXPERIMENTAL) The return type of \ref sequence.
- * \details
- * Contains a range view (as an interator/sentinel pair), a formatter function, and a glue string.
- * This type satisfies the `Formattable` concept. See \ref sequence for a detailed
- * description of what formatting this class does.
- * \n
- * Don't instantiate this class directly - use \ref sequence, instead.
- * The exact definition may vary between releases.
- */
-template <class It, class Sentinel, class FormatFn>
-struct format_sequence_view
-#ifndef BOOST_MYSQL_DOXYGEN
-{
-    It it;
-    Sentinel sentinel;
-    FormatFn fn;
-    constant_string_view glue;
-}
-#endif
-;
-
-/**
- * \brief Makes a range formattable by supplying a per-element formatter function.
- * \details
- * Objects returned by this function satisfy `Formattable`.
- * When formatted, the formatter function `fn` is invoked for each element
- * in the range. The glue string `glue` is output raw (as per \ref format_context_base::append_raw)
- * between consecutive invocations of the formatter function, generating an effect
- * similar to `std::ranges::views::join`.
- * \n
- * \par Type requirements
- *   - FormatFn should be move constructible.
- *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
- *     pair that can be compared for (in)equality.
- *   - The expression `static_cast<const FormatFn&>(fn)(*std::begin(range), ctx)`
- *     should be well formed, with `ctx` begin a `format_context_base&`.
- *
- * \par Object lifetimes
- * The input range is stored in \ref format_sequence_view as a view, using an iterator/sentinel pair,
- * and is never copied. The caller must make sure that the elements pointed by the obtained
- * iterator/sentinel are kept alive until the view is formatted.
- *
- * \par Exception safety
- * Strong-throw guarantee. Throws any exception that `std::begin`, `std::end`
- * or move-constructing `FormatFn` may throw.
- */
-template <class Range, class FormatFn>
-#if defined(BOOST_MYSQL_HAS_CONCEPTS)
-    requires std::move_constructible<FormatFn> && detail::format_fn_for_range<FormatFn, Range>
-#endif
-auto sequence(Range&& range, FormatFn fn, constant_string_view glue = ", ")
-    -> format_sequence_view<decltype(std::begin(range)), decltype(std::end(range)), FormatFn>
-{
-    return {std::begin(range), std::end(range), std::move(fn), glue};
-}
-
-template <class It, class Sentinel, class FormatFn>
-struct formatter<format_sequence_view<It, Sentinel, FormatFn>>
-{
-    const char* parse(const char* begin, const char*) { return begin; }
-
-    void format(const format_sequence_view<It, Sentinel, FormatFn>& value, format_context_base& ctx) const
-    {
-        bool is_first = true;
-        for (auto it = value.it; it != value.sentinel; ++it)
-        {
-            if (!is_first)
-                ctx.append_raw(value.glue);
-            is_first = false;
-            value.fn(*it, ctx);
-        }
-    }
-};
-
-/**
- * \brief (EXPERIMENTAL) Composes a SQL query client-side appending it to a format context.
+ * \brief Composes a SQL query client-side appending it to a format context.
  * \details
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
  * by formatted arguments, extracted from `args`.
@@ -580,7 +511,7 @@ inline void format_sql_to(
 }
 
 /**
- * \brief (EXPERIMENTAL) Composes a SQL query client-side.
+ * \brief Composes a SQL query client-side.
  * \details
  * Parses `format_str` as a format string, substituting replacement fields (like `{}`, `{1}` or `{name}`)
  * by formatted arguments, extracted from `args`. `opts` is using to parse the string and format string

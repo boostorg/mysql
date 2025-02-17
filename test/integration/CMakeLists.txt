@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -32,20 +32,24 @@ add_executable(
     test/database_types.cpp
 
     # Snippets
+    test/snippets/tutorials.cpp
     test/snippets/overview.cpp
-    test/snippets/dynamic.cpp
-    test/snippets/static.cpp
+    test/snippets/connection_establishment.cpp
+    test/snippets/text_queries.cpp
     test/snippets/prepared_statements.cpp
+    test/snippets/dynamic_interface.cpp
+    test/snippets/static.cpp
     test/snippets/multi_resultset.cpp
     test/snippets/multi_function.cpp
     test/snippets/metadata.cpp
     test/snippets/charsets.cpp
     test/snippets/time_types.cpp
-    test/snippets/any_connection.cpp
     test/snippets/connection_pool.cpp
-    test/snippets/sql_formatting.cpp
-    test/snippets/sql_formatting_custom.cpp
+    test/snippets/interfacing_sync_async.cpp
+    test/snippets/sql_formatting_advanced.cpp
+    test/snippets/sql_formatting_advanced_2.cpp
     test/snippets/pipeline.cpp
+    test/snippets/templated_connection.cpp
 )
 target_include_directories(
     boost_mysql_integrationtests
@@ -56,7 +60,6 @@ target_link_libraries(
     boost_mysql_integrationtests
     PRIVATE
     boost_mysql_testing
-    Boost::context
 )
 boost_mysql_common_target_settings(boost_mysql_integrationtests)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)

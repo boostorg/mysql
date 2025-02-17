@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -28,7 +28,7 @@ using boost::mysql::detail::pos_absent;
 using boost::mysql::detail::pos_map_add_field;
 using boost::mysql::detail::pos_map_reset;
 
-BOOST_AUTO_TEST_SUITE(test_post_map)
+BOOST_AUTO_TEST_SUITE(test_pos_map)
 
 BOOST_AUTO_TEST_CASE(reset_empty)
 {
@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(reset_nonempty)
     BOOST_TEST(map[0] == pos_absent);
     BOOST_TEST(map[1] == pos_absent);
     BOOST_TEST(map[2] == pos_absent);
-    BOOST_TEST(map[3] == 45u);  // didn't modify any extra storage
+    BOOST_TEST(storage[3] == 45u);  // didn't modify any extra storage
 }
 
 BOOST_AUTO_TEST_CASE(add_field_empty)

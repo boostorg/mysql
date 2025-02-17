@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -42,7 +42,6 @@ struct fixture : algo_fixture_base
     mock_execution_processor proc;
     std::array<row1, 3> storage;
     detail::read_some_rows_algo algo{
-        diag,
         {&proc, ref()}
     };
 
@@ -56,7 +55,6 @@ struct fixture : algo_fixture_base
             {meta_builder().type(column_type::varchar).name("fvarchar").nullable(false).build_coldef()}
         );
         proc.sequence_number() = 42;
-        st.backslash_escapes = false;
     }
 
     void validate_refs(std::size_t num_rows)
@@ -85,7 +83,6 @@ BOOST_AUTO_TEST_CASE(eof)
     BOOST_TEST(fix.proc.is_reading_head());
     BOOST_TEST(fix.proc.affected_rows() == 1u);
     BOOST_TEST(fix.proc.info() == "1st");
-    BOOST_TEST(fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(eof_no_backslash_escapes)
@@ -96,11 +93,11 @@ BOOST_AUTO_TEST_CASE(eof_no_backslash_escapes)
     // Run the test
     algo_test()
         .expect_read(create_eof_frame(42, ok_builder().no_backslash_escapes(true).more_results(true).build()))
+        .will_set_backslash_escapes(false)
         .check(fix);
 
     BOOST_TEST(fix.result() == 0u);  // num read rows
     BOOST_TEST(fix.proc.is_reading_head());
-    BOOST_TEST(!fix.st.backslash_escapes);
 }
 
 BOOST_AUTO_TEST_CASE(batch_with_rows)
@@ -256,7 +253,6 @@ BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
 
     // Run the algo again
     fix.algo.reset();
-    fix.diag = create_server_diag("Diagnostics not cleared");
     algo_test()
         .expect_read(buffer_builder().add(boost::span<const std::uint8_t>(eof).subspan(6)).build())
         .check(fix);

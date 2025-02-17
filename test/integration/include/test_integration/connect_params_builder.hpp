@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,6 +16,7 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <cstdint>
+#include <string>
 
 #include "test_common/ci_server.hpp"
 
@@ -30,6 +31,12 @@ class connect_params_builder
 
 public:
     connect_params_builder() { addr_.emplace_host_and_port(get_hostname()); }
+
+    connect_params_builder& set_tcp(std::string hostname, unsigned short port)
+    {
+        addr_.emplace_host_and_port(std::move(hostname), port);
+        return *this;
+    }
 
     connect_params_builder& set_unix()
     {
