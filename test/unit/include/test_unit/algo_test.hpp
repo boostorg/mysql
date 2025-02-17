@@ -153,6 +153,20 @@ public:
     }
 
     BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_is_connected(bool expected)
+    {
+        state_changes_.is_connected = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_ssl(detail::ssl_state expected)
+    {
+        state_changes_.ssl = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
     algo_test& will_set_current_charset(character_set expected)
     {
         state_changes_.current_charset = expected;
