@@ -64,7 +64,7 @@ asio::awaitable<void> execute_statement(
 }
 //]
 
-asio::awaitable<void> section_main(asio::io_context& ctx, mysql::any_connection& conn)
+asio::awaitable<void> section_main(mysql::any_connection& conn)
 {
     {
         //[prepared_statements_prepare
@@ -124,7 +124,7 @@ asio::awaitable<void> section_main(asio::io_context& ctx, mysql::any_connection&
 
 BOOST_FIXTURE_TEST_CASE(section_prepared_statements, snippets_fixture)
 {
-    run_coro(ctx, [this]() { return section_main(ctx, conn); });
+    run_coro(ctx, [this]() { return section_main(conn); });
 }
 
 }  // namespace
