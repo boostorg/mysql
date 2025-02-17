@@ -42,6 +42,7 @@ add_executable(
     test/sansio/reset_connection.cpp
     test/sansio/prepare_statement.cpp
     test/sansio/run_pipeline.cpp
+    test/sansio/quit_connection.cpp
 
     test/execution_processor/execution_processor.cpp
     test/execution_processor/execution_state_impl.cpp

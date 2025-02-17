@@ -103,7 +103,7 @@ public:
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             1,
-                            next_action::read({st_->reader.buffer(), st_->ssl_active()})
+                            next_action::read({st_->reader.buffer(), st_->tls_active})
                         )
                         valgrind_make_mem_defined(st_->reader.buffer().data(), bytes_transferred);
                         st_->reader.resume(bytes_transferred);
@@ -125,7 +125,7 @@ public:
                         BOOST_MYSQL_YIELD(
                             resume_point_,
                             2,
-                            next_action::write({bytes_to_write_, st_->ssl_active()})
+                            next_action::write({bytes_to_write_, st_->tls_active})
                         )
                         bytes_to_write_ = bytes_to_write_.subspan(bytes_transferred);
                     }

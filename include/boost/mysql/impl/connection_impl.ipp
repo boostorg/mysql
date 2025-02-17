@@ -70,7 +70,7 @@ boost::mysql::metadata_mode boost::mysql::detail::connection_impl::meta_mode() c
 
 void boost::mysql::detail::connection_impl::set_meta_mode(metadata_mode v) { st_->data().meta_mode = v; }
 
-bool boost::mysql::detail::connection_impl::ssl_active() const { return st_->data().ssl_active(); }
+bool boost::mysql::detail::connection_impl::ssl_active() const { return st_->data().tls_active; }
 
 bool boost::mysql::detail::connection_impl::backslash_escapes() const
 {

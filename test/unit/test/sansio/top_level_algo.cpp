@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE(read_ssl_active)
     connection_state_data st(512);
     diagnostics diag;
     top_level_algo<mock_algo> algo(st, diag);
-    st.ssl = ssl_state::active;
+    st.tls_active = true;
 
     // Yielding a read with ssl active sets the use_ssl flag
     auto act = algo.resume(error_code(), 0);
@@ -402,7 +402,7 @@ BOOST_AUTO_TEST_CASE(write_ssl_active)
     connection_state_data st(0);
     diagnostics diag;
     top_level_algo<mock_algo> algo(st, diag);
-    st.ssl = ssl_state::active;
+    st.tls_active = true;
 
     // Yielding a write request when ssl_active() returns an action with the flag set
     auto act = algo.resume(error_code(), 0);
