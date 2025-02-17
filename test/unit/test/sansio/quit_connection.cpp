@@ -59,14 +59,14 @@ BOOST_AUTO_TEST_CASE(ssl_success)
 {
     // Setup
     fixture fix;
-    fix.st.ssl = detail::ssl_state::active;
+    fix.st.tls_active = true;
 
     // Run the algo
     algo_test()
         .expect_write(expected_request())
         .expect_ssl_shutdown()
         .will_set_is_connected(false)
-        .will_set_ssl(detail::ssl_state::inactive)
+        .will_set_tls_active(false)
         .check(fix);
 }
 
@@ -74,13 +74,13 @@ BOOST_AUTO_TEST_CASE(ssl_error_quit)
 {
     // Setup
     fixture fix;
-    fix.st.ssl = detail::ssl_state::active;
+    fix.st.tls_active = true;
 
     // Run the algo
     algo_test()
         .expect_write(expected_request(), asio::error::network_reset)
         .will_set_is_connected(false)
-        .will_set_ssl(detail::ssl_state::inactive)
+        .will_set_tls_active(false)
         .check(fix, asio::error::network_reset);
 }
 
@@ -88,14 +88,14 @@ BOOST_AUTO_TEST_CASE(ssl_error_shutdown)
 {
     // Setup
     fixture fix;
-    fix.st.ssl = detail::ssl_state::active;
+    fix.st.tls_active = true;
 
     // Run the algo
     algo_test()
         .expect_write(expected_request())
         .expect_ssl_shutdown(asio::error::network_reset)
         .will_set_is_connected(false)
-        .will_set_ssl(detail::ssl_state::inactive)
+        .will_set_tls_active(false)
         .check(fix);  // SSL shutdown errors ignored
 }
 

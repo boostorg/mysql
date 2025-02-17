@@ -37,10 +37,9 @@ public:
         {
         case 0:
             // Mark the session as finished
-            should_perform_shutdown_ = st.ssl_active();
+            should_perform_shutdown_ = st.tls_active;
             st.is_connected = false;
-            if (st.ssl_active())
-                st.ssl = ssl_state::inactive;
+            st.tls_active = false;
 
             // Send quit message
             BOOST_MYSQL_YIELD(resume_point_, 1, st.write(quit_command(), sequence_number_))

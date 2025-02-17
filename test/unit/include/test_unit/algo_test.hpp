@@ -81,7 +81,8 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         boost::optional<detail::db_flavor> flavor;
         boost::optional<detail::capabilities> current_capabilities;
         boost::optional<std::uint32_t> connection_id;
-        boost::optional<detail::ssl_state> ssl;
+        boost::optional<bool> tls_supported;
+        boost::optional<bool> tls_active;
         boost::optional<bool> backslash_escapes;
         boost::optional<character_set> current_charset;
     } state_changes_;
@@ -160,9 +161,9 @@ public:
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    algo_test& will_set_ssl(detail::ssl_state expected)
+    algo_test& will_set_tls_active(bool expected)
     {
-        state_changes_.ssl = expected;
+        state_changes_.tls_active = expected;
         return *this;
     }
 

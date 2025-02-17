@@ -105,7 +105,7 @@ class handshake_algo
 
         // Check capabilities
         capabilities negotiated_caps;
-        err = process_capabilities(hparams_, hello, negotiated_caps, st.supports_ssl());
+        err = process_capabilities(hparams_, hello, negotiated_caps, st.tls_supported);
         if (err)
             return err;
 
@@ -234,7 +234,7 @@ public:
                 BOOST_MYSQL_YIELD(resume_point_, 3, next_action::ssl_handshake())
 
                 // Mark the connection as using ssl
-                st.ssl = ssl_state::active;
+                st.tls_active = true;
             }
 
             // Compose and send handshake response
