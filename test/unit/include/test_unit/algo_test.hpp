@@ -153,6 +153,34 @@ public:
     }
 
     BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_is_connected(bool expected)
+    {
+        state_changes_.is_connected = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_capabilities(detail::capabilities expected)
+    {
+        state_changes_.current_capabilities = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_connection_id(std::uint32_t expected)
+    {
+        state_changes_.connection_id = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_flavor(detail::db_flavor expected)
+    {
+        state_changes_.flavor = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
     algo_test& will_set_current_charset(character_set expected)
     {
         state_changes_.current_charset = expected;

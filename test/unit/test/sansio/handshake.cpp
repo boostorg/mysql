@@ -100,7 +100,7 @@ public:
             ctx.serialize(
                 int1{10},  // protocol_version
                 string_null{server_version_},
-                int4{123456},   // connection_id
+                int4{42},       // connection_id
                 plugin_data_1,  // plugin data, 1st part
                 int1{0},        // filler
                 caps_low,
@@ -184,7 +184,6 @@ public:
 struct fixture : algo_fixture_base
 {
     detail::handshake_algo algo{
-        diag,
         {handshake_params("example_user", "example_password"), false}
     };
 };
@@ -229,6 +228,8 @@ other stuff
     Error: capabilities are insufficient
     The correct DB flavor is set
     backslash escapes
+    flags in hello
+    connection_id
 Network errors
     Auth with more data
     Auth with auth switch
@@ -238,7 +239,6 @@ Network errors
 //
 // mysql_native_password
 //
-BOOST_AUTO_TEST_SUITE(mysql_native_password)
 
 // mysql_native_password
 //     fast track success:
@@ -264,7 +264,7 @@ static std::vector<std::uint8_t> client_plugin_data()
             0x1d, 0xaf, 0xd9, 0x8b, 0x4b, 0x09, 0x86, 0xe5, 0xd1, 0x4a};
 }
 
-BOOST_AUTO_TEST_CASE(fast_track_ok)
+BOOST_AUTO_TEST_CASE(mnp_fast_track_ok)
 {
     // Setup
     fixture fix;
@@ -274,17 +274,11 @@ BOOST_AUTO_TEST_CASE(fast_track_ok)
         .expect_read(create_frame(0, server_hello_builder().auth_data(server_plugin_data()).build()))
         .expect_write(create_frame(1, login_request_builder().auth_response(client_plugin_data()).build()))
         .expect_read(create_ok_frame(2, ok_builder().build()))  // OK response
+        .will_set_is_connected(true)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
         .check(fix);
-
-    // Check
-    BOOST_TEST(fix.st.is_connected);
-    BOOST_TEST(fix.st.flavor == detail::db_flavor::mysql);
-    BOOST_TEST(fix.st.current_capabilities == min_caps);
-    BOOST_TEST(fix.st.backslash_escapes);
-    BOOST_TEST(fix.st.current_charset == utf8mb4_charset);
-    // TODO: check ssl
 }
-
-BOOST_AUTO_TEST_SUITE_END()
 
 BOOST_AUTO_TEST_SUITE_END()
