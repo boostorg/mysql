@@ -28,6 +28,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <vector>
 
 #include "test_common/create_diagnostics.hpp"
@@ -85,40 +86,44 @@ public:
 
     std::vector<std::uint8_t> build() const
     {
-        return serialize_to_vector([this](detail::serialization_context& ctx) {
-            using namespace detail;
+        return create_frame(
+            0,
+            serialize_to_vector([this](detail::serialization_context& ctx) {
+                using namespace detail;
 
-            // Auth plugin data is separated in two parts
-            string_fixed<8> plugin_data_1{};
-            auto plug_data_begin = reinterpret_cast<const char*>(auth_plugin_data_.data());
-            std::copy(plug_data_begin, plug_data_begin + 8, plugin_data_1.value.data());
-            auto plugin_data_2 = boost::span<const std::uint8_t>(auth_plugin_data_).subspan(8);
+                // Auth plugin data is separated in two parts
+                string_fixed<8> plugin_data_1{};
+                auto plug_data_begin = reinterpret_cast<const char*>(auth_plugin_data_.data());
+                std::copy(plug_data_begin, plug_data_begin + 8, plugin_data_1.value.data());
+                auto plugin_data_2 = boost::span<const std::uint8_t>(auth_plugin_data_).subspan(8);
 
-            // Capabilities is also divided in 2 parts
-            string_fixed<2> caps_low{};
-            string_fixed<2> caps_high{};
-            std::uint32_t caps_little = boost::endian::native_to_little(server_caps_.get());
-            auto* caps_begin = reinterpret_cast<const char*>(&caps_little);
-            std::copy(caps_begin, caps_begin + 2, caps_low.value.data());
-            std::copy(caps_begin + 2, caps_begin + 4, caps_high.value.data());
+                // Capabilities is also divided in 2 parts
+                string_fixed<2> caps_low{};
+                string_fixed<2> caps_high{};
+                std::uint32_t caps_little = boost::endian::native_to_little(server_caps_.get());
+                auto* caps_begin = reinterpret_cast<const char*>(&caps_little);
+                std::copy(caps_begin, caps_begin + 2, caps_low.value.data());
+                std::copy(caps_begin + 2, caps_begin + 4, caps_high.value.data());
 
-            ctx.serialize(
-                int1{10},  // protocol_version
-                string_null{server_version_},
-                int4{42},       // connection_id
-                plugin_data_1,  // plugin data, 1st part
-                int1{0},        // filler
-                caps_low,
-                int1{25},  // character set
-                int2{0},   // status flags
-                caps_high,
-                int1{static_cast<std::uint8_t>(auth_plugin_data_.size() + 1u)},  // auth plugin data length
-                string_fixed<10>{}                                               // reserved
-            );
-            ctx.add(plugin_data_2);
-            ctx.add(0);  // extra null byte that mysql adds here
-            ctx.serialize(string_null{auth_plugin_name_});
-        });
+                ctx.serialize(
+                    int1{10},  // protocol_version
+                    string_null{server_version_},
+                    int4{42},       // connection_id
+                    plugin_data_1,  // plugin data, 1st part
+                    int1{0},        // filler
+                    caps_low,
+                    int1{25},  // character set
+                    int2{0},   // status flags
+                    caps_high,
+                    int1{static_cast<std::uint8_t>(auth_plugin_data_.size() + 1u)
+                    },                  // auth plugin data length
+                    string_fixed<10>{}  // reserved
+                );
+                ctx.add(plugin_data_2);
+                ctx.add(0);  // extra null byte that mysql adds here
+                ctx.serialize(string_null{auth_plugin_name_});
+            })
+        );
     }
 };
 
@@ -172,7 +177,7 @@ public:
 
     std::vector<std::uint8_t> build() const
     {
-        return serialize_to_vector([this](detail::serialization_context& ctx) {
+        auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
             ctx.serialize(detail::login_request{
                 caps_,
                 detail::max_packet_size,
@@ -183,6 +188,7 @@ public:
                 auth_plugin_name_
             });
         });
+        return create_frame(1, body);
     }
 };
 
@@ -312,8 +318,8 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_ok)
 
     // Run the test
     algo_test()
-        .expect_read(create_frame(0, server_hello_builder().auth_data(mnp_challenge()).build()))
-        .expect_write(create_frame(1, login_request_builder().auth_response(mnp_response()).build()))
+        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().auth_response(mnp_response()).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_is_connected(true)
         .will_set_capabilities(min_caps)
@@ -329,8 +335,8 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_error)
 
     // Run the test
     algo_test()
-        .expect_read(create_frame(0, server_hello_builder().auth_data(mnp_challenge()).build()))
-        .expect_write(create_frame(1, login_request_builder().auth_response(mnp_response()).build()))
+        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().auth_response(mnp_response()).build())
         .expect_read(err_builder()
                          .seqnum(2)
                          .code(common_server_errc::er_access_denied_error)
@@ -348,17 +354,13 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_ok)
 
     // Run the test
     algo_test()
-        .expect_read(create_frame(
-            0,
+        .expect_read(
             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
-        ))
-        .expect_write(create_frame(
-            1,
-            login_request_builder()
-                .auth_plugin("caching_sha2_password")
-                .auth_response(csha2p_response())
-                .build()
-        ))
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
         .expect_write(create_frame(3, mnp_response()))
         .expect_read(create_ok_frame(4, ok_builder().build()))
