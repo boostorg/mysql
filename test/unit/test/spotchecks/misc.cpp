@@ -23,6 +23,8 @@
 #include <boost/mysql/detail/engine_impl.hpp>
 #include <boost/mysql/detail/engine_stream_adaptor.hpp>
 
+#include <boost/mysql/impl/internal/sansio/connection_state.hpp>
+
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/test/unit_test.hpp>
@@ -254,6 +256,20 @@ BOOST_FIXTURE_TEST_CASE(pipeline_fatal_error, io_context_fixture)
     BOOST_TEST(res[0].diag() == diagnostics());
     BOOST_TEST(res[1].error() == boost::asio::error::network_reset);
     BOOST_TEST(res[1].diag() == diagnostics());
+}
+
+// close errors behave correctly
+BOOST_FIXTURE_TEST_CASE(close_error, io_context_fixture)
+{
+    // Setup
+    auto conn = create_test_any_connection(ctx);
+    detail::access::get_impl(conn).state().data().is_connected = true;
+
+    // The write will fail
+    get_stream(conn).set_fail_count(fail_count(1, boost::asio::error::network_reset));
+
+    // Run it
+    conn.async_close(as_netresult).validate_error(boost::asio::error::network_reset);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
