@@ -13,7 +13,6 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-#include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
@@ -59,7 +58,7 @@ inline error_code process_field_definition(
     return proc.on_meta(coldef, diag);
 }
 
-class read_resultset_head_impl_algo
+class read_resultset_head_algo
 {
     execution_processor* proc_;
 
@@ -69,7 +68,7 @@ class read_resultset_head_impl_algo
     } state_;
 
 public:
-    read_resultset_head_impl_algo(read_resultset_head_algo_params params) noexcept : proc_(params.proc) {}
+    read_resultset_head_algo(read_resultset_head_algo_params params) noexcept : proc_(params.proc) {}
 
     void reset() { state_ = state_t{}; }
 
@@ -113,50 +112,6 @@ public:
         }
 
         return next_action();
-    }
-};
-
-class read_resultset_head_algo
-{
-    int resume_point_{0};
-    read_resultset_head_impl_algo impl_;
-
-public:
-    read_resultset_head_algo(diagnostics& diag, read_resultset_head_algo_params params) noexcept
-        : impl_(diag, params)
-    {
-    }
-
-    next_action resume(connection_state_data& st, error_code ec)
-    {
-        next_action act;
-
-        switch (resume_point_)
-        {
-        case 0:
-
-            // Clear diagnostics
-            impl_.diag().clear();
-
-            // If we're not reading head, return
-            if (!impl_.processor().is_reading_head())
-                return next_action();
-
-            // Check status
-            ec = st.check_status_multi_function();
-            if (ec)
-                return ec;
-
-            // Actually run the algo
-            while (!(act = impl_.resume(st, ec)).is_done())
-                BOOST_MYSQL_YIELD(resume_point_, 1, act)
-
-            // If this was the end of the multi-function operation, record it
-            if (impl_.processor().is_complete())
-                st.status = connection_status::ready;
-        }
-
-        return act;
     }
 };
 

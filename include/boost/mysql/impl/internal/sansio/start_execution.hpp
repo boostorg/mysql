@@ -26,7 +26,6 @@
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 
 #include <boost/core/span.hpp>
@@ -58,14 +57,14 @@ struct query_with_params
     }
 };
 
-// Used internally
-class start_execution_impl_algo
+class start_execution_algo
 {
     int resume_point_{0};
-    read_resultset_head_impl_algo read_head_st_;
+    read_resultset_head_algo read_head_st_;
     any_execution_request req_;
 
     std::uint8_t& seqnum() { return processor().sequence_number(); }
+    execution_processor& processor() { return read_head_st_.processor(); }
 
     static resultset_encoding get_encoding(any_execution_request::type_t type)
     {
@@ -114,12 +113,10 @@ class start_execution_impl_algo
     }
 
 public:
-    start_execution_impl_algo(start_execution_algo_params params) noexcept
+    start_execution_algo(start_execution_algo_params params) noexcept
         : read_head_st_({params.proc}), req_(params.req)
     {
     }
-
-    execution_processor& processor() { return read_head_st_.processor(); }
 
     next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
@@ -144,47 +141,6 @@ public:
         }
 
         return next_action();
-    }
-};
-
-class start_execution_algo
-{
-    int resume_point_{0};
-    start_execution_impl_algo impl_;
-
-public:
-    start_execution_algo(diagnostics& diag, start_execution_algo_params params) noexcept : impl_(diag, params)
-    {
-    }
-
-    next_action resume(connection_state_data& st, error_code ec)
-    {
-        next_action act;
-
-        switch (resume_point_)
-        {
-        case 0:
-            // Clear diagnostics
-            impl_.diag().clear();
-
-            // Check status
-            ec = st.check_status_ready();
-            if (ec)
-                return ec;
-
-            // We're starting a multi-function operation
-            st.status = connection_status::engaged_in_multi_function;
-
-            // Run the actual algorithm
-            while (!(act = impl_.resume(st, ec)).is_done())
-                BOOST_MYSQL_YIELD(resume_point_, 1, act)
-
-            // If the multi-function operation finished here, record it
-            if (impl_.processor().is_complete())
-                st.status = connection_status::ready;
-        }
-
-        return act;
     }
 };
 

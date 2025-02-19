@@ -11,7 +11,6 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
-#include <boost/mysql/is_fatal_error.hpp>
 
 #include <boost/mysql/detail/next_action.hpp>
 
