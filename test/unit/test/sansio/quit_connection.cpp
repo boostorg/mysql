@@ -27,8 +27,6 @@ BOOST_AUTO_TEST_SUITE(test_quit_connection)
 struct fixture : algo_fixture_base
 {
     detail::quit_connection_algo algo{{}};
-
-    fixture() { st.status = detail::connection_status::ready; }
 };
 
 // A serialized quit request
@@ -103,8 +101,8 @@ BOOST_AUTO_TEST_CASE(ssl_error_shutdown)
         .check(fix);  // SSL shutdown errors ignored
 }
 
-// quit runs regardless of the session state we have
-BOOST_AUTO_TEST_CASE(connected_flag_ignored)
+// quit runs regardless of the session status we have
+BOOST_AUTO_TEST_CASE(status_ignored)
 {
     // Setup
     fixture fix;
