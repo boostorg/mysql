@@ -62,6 +62,7 @@ class start_execution_algo
     int resume_point_{0};
     read_resultset_head_algo read_head_st_;
     any_execution_request req_;
+    bool is_top_level_;
 
     std::uint8_t& seqnum() { return processor().sequence_number(); }
     execution_processor& processor() { return read_head_st_.processor(); }
@@ -113,8 +114,10 @@ class start_execution_algo
     }
 
 public:
-    start_execution_algo(start_execution_algo_params params) noexcept
-        : read_head_st_({params.proc}), req_(params.req)
+    // We pass false to the read head algo's constructor because it's a subordinate algos.
+    // This suppresses state checks.
+    start_execution_algo(start_execution_algo_params params, bool is_top_level = true) noexcept
+        : read_head_st_({params.proc}, false), req_(params.req), is_top_level_(is_top_level)
     {
     }
 
@@ -125,6 +128,13 @@ public:
         switch (resume_point_)
         {
         case 0:
+            // Check connection status. The check is only correct if we're the top-level algorithm
+            if (is_top_level_)
+            {
+                ec = st.check_status_ready();
+                if (ec)
+                    return ec;
+            }
 
             // Reset the processor
             processor().reset(get_encoding(req_.type), st.meta_mode);

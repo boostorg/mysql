@@ -29,6 +29,7 @@ class read_some_rows_algo
 {
     execution_processor* proc_;
     output_ref output_;
+    bool is_top_level_;
 
     struct state_t
     {
@@ -93,8 +94,8 @@ class read_some_rows_algo
     }
 
 public:
-    read_some_rows_algo(read_some_rows_algo_params params) noexcept
-        : proc_(params.proc), output_(params.output)
+    read_some_rows_algo(read_some_rows_algo_params params, bool is_top_level = true) noexcept
+        : proc_(params.proc), output_(params.output), is_top_level_(is_top_level)
     {
     }
 
@@ -116,9 +117,17 @@ public:
             // Required for the dynamic version to work.
             st.shared_fields.clear();
 
-            // If we are not reading rows, return
+            // If we are not reading rows, return (for compatibility, we don't error here)
             if (!processor().is_reading_rows())
                 return next_action();
+
+            // Check connection status. The check is only correct if we're the top-level algorithm
+            if (is_top_level_)
+            {
+                ec = st.check_status_multi_function();
+                if (ec)
+                    return ec;
+            }
 
             // Read at least one message. Keep parsing state, in case a previous message
             // was parsed partially

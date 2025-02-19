@@ -61,6 +61,7 @@ inline error_code process_field_definition(
 class read_resultset_head_algo
 {
     execution_processor* proc_;
+    bool is_top_level_;
 
     struct state_t
     {
@@ -68,7 +69,10 @@ class read_resultset_head_algo
     } state_;
 
 public:
-    read_resultset_head_algo(read_resultset_head_algo_params params) noexcept : proc_(params.proc) {}
+    read_resultset_head_algo(read_resultset_head_algo_params params, bool is_top_level = true) noexcept
+        : proc_(params.proc), is_top_level_(is_top_level)
+    {
+    }
 
     void reset() { state_ = state_t{}; }
 
@@ -83,9 +87,17 @@ public:
         {
         case 0:
 
-            // If we're not reading head, return
+            // If we're not reading head, return (for compatibility, we don't error here).
             if (!proc_->is_reading_head())
                 return next_action();
+
+            // Check connection status. The check is only correct if we're the top-level algorithm
+            if (is_top_level_)
+            {
+                ec = st.check_status_multi_function();
+                if (ec)
+                    return ec;
+            }
 
             // Read the response
             BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number()))
