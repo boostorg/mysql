@@ -37,23 +37,22 @@ using namespace boost::mysql::test;
 
 BOOST_AUTO_TEST_SUITE(test_read_resultset_head)
 
-// The impl algorithm works
-struct impl_fixture : algo_fixture_base
+struct fixture : algo_fixture_base
 {
     mock_execution_processor proc;
     detail::read_resultset_head_algo algo{{&proc}};
 
-    impl_fixture()
+    fixture()
     {
         // The initial request writing should have advanced this to 1 (or bigger)
         proc.sequence_number() = 1;
     }
 };
 
-BOOST_AUTO_TEST_CASE(impl_success_meta)
+BOOST_AUTO_TEST_CASE(success_meta)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
 
     // Run the algo
     algo_test()
@@ -69,10 +68,10 @@ BOOST_AUTO_TEST_CASE(impl_success_meta)
     check_meta(fix.proc.meta(), {std::make_pair(column_type::varchar, "mycol")});
 }
 
-BOOST_AUTO_TEST_CASE(impl_success_ok_packet)
+BOOST_AUTO_TEST_CASE(success_ok_packet)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
 
     // Run the algo
     algo_test()
@@ -87,10 +86,10 @@ BOOST_AUTO_TEST_CASE(impl_success_ok_packet)
     BOOST_TEST(fix.proc.info() == "abc");
 }
 
-BOOST_AUTO_TEST_CASE(impl_success_ok_packet_no_backslash_escapes)
+BOOST_AUTO_TEST_CASE(success_ok_packet_no_backslash_escapes)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
 
     // Run the algo
     algo_test()
@@ -103,10 +102,10 @@ BOOST_AUTO_TEST_CASE(impl_success_ok_packet_no_backslash_escapes)
 }
 
 // Check that we don't attempt to read the rows even if they're available
-BOOST_AUTO_TEST_CASE(impl_success_rows_available)
+BOOST_AUTO_TEST_CASE(success_rows_available)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
 
     // Run the algo
     algo_test()
@@ -127,10 +126,10 @@ BOOST_AUTO_TEST_CASE(impl_success_rows_available)
 }
 
 // Check that we don't attempt to read the next resultset even if it's available
-BOOST_AUTO_TEST_CASE(impl_success_ok_packet_next_resultset)
+BOOST_AUTO_TEST_CASE(success_ok_packet_next_resultset)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
 
     // Run the algo
     algo_test()
@@ -146,7 +145,37 @@ BOOST_AUTO_TEST_CASE(impl_success_ok_packet_next_resultset)
     BOOST_TEST(fix.proc.info() == "1st");
 }
 
-BOOST_AUTO_TEST_CASE(impl_error_network_error)
+BOOST_AUTO_TEST_CASE(state_complete)
+{
+    // Setup
+    fixture fix;
+    add_ok(fix.proc, ok_builder().affected_rows(42).build());
+
+    // Should be a no-op
+    algo_test().check(fix);
+
+    // Nothing changed
+    fix.proc.num_calls().on_head_ok_packet(1).validate();
+    BOOST_TEST(fix.proc.is_complete());
+    BOOST_TEST(fix.proc.affected_rows() == 42u);
+}
+
+BOOST_AUTO_TEST_CASE(state_reading_rows)
+{
+    // Setup
+    fixture fix;
+    add_meta(fix.proc, {meta_builder().type(column_type::bit).build_coldef()});
+
+    // Should be a no-op
+    algo_test().check(fix);
+
+    // Nothing changed
+    fix.proc.num_calls().on_num_meta(1).on_meta(1).validate();
+    BOOST_TEST(fix.proc.is_reading_rows());
+    check_meta(fix.proc.meta(), {column_type::bit});
+}
+
+BOOST_AUTO_TEST_CASE(error_network_error)
 {
     // This covers testing for network errors for all the reads we perform
     algo_test()
@@ -157,15 +186,15 @@ BOOST_AUTO_TEST_CASE(impl_error_network_error)
         .expect_read(
             create_coldef_frame(3, meta_builder().type(column_type::tinyint).name("f2").build_coldef())
         )
-        .check_network_errors<impl_fixture>();
+        .check_network_errors<fixture>();
 }
 
 // All cases where the deserialization of the execution_response
 // yields an error are handled uniformly, so it's enough with this test
-BOOST_AUTO_TEST_CASE(impl_error_deserialize_execution_response)
+BOOST_AUTO_TEST_CASE(error_deserialize_execution_response)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
 
     // Run the algo
     algo_test()
@@ -175,10 +204,10 @@ BOOST_AUTO_TEST_CASE(impl_error_deserialize_execution_response)
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("no_db"));
 }
 
-BOOST_AUTO_TEST_CASE(impl_error_deserialize_metadata)
+BOOST_AUTO_TEST_CASE(error_deserialize_metadata)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
 
     // Run the algo
     algo_test()
@@ -188,10 +217,10 @@ BOOST_AUTO_TEST_CASE(impl_error_deserialize_metadata)
 }
 
 // The execution processor signals an error on head packet (e.g. meta mismatch)
-BOOST_AUTO_TEST_CASE(impl_error_on_head_ok_packet)
+BOOST_AUTO_TEST_CASE(error_on_head_ok_packet)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
     fix.proc.set_fail_count(
         fail_count(0, client_errc::metadata_check_failed),
         create_client_diag("some message")
@@ -206,10 +235,10 @@ BOOST_AUTO_TEST_CASE(impl_error_on_head_ok_packet)
     fix.proc.num_calls().on_head_ok_packet(1).validate();
 }
 
-BOOST_AUTO_TEST_CASE(impl_error_on_meta)
+BOOST_AUTO_TEST_CASE(error_on_meta)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
     fix.proc.set_fail_count(
         fail_count(0, client_errc::metadata_check_failed),
         create_client_diag("some message")
@@ -225,10 +254,10 @@ BOOST_AUTO_TEST_CASE(impl_error_on_meta)
     fix.proc.num_calls().on_num_meta(1).on_meta(1).validate();
 }
 
-BOOST_AUTO_TEST_CASE(impl_reset)
+BOOST_AUTO_TEST_CASE(reset)
 {
     // Setup
-    impl_fixture fix;
+    fixture fix;
 
     // Run the algo once
     algo_test()
@@ -244,133 +273,6 @@ BOOST_AUTO_TEST_CASE(impl_reset)
     // Run it again
     algo_test().expect_read(create_ok_frame(3, ok_builder().build())).check(fix);
     fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).on_head_ok_packet(1).validate();
-}
-
-// The actual algorithm works
-struct algo_fixture : algo_fixture_base
-{
-    mock_execution_processor proc;
-    detail::read_resultset_head_algo algo{diag, {&proc}};
-
-    algo_fixture()
-    {
-        // The connection should be engaged in a multi-function op
-        st.status = detail::connection_status::engaged_in_multi_function;
-
-        // The initial request writing should have advanced this to 1 (or bigger)
-        proc.sequence_number() = 1;
-    }
-};
-
-BOOST_AUTO_TEST_CASE(algo_success_meta)
-{
-    // Setup
-    algo_fixture fix;
-
-    // Run the algo
-    algo_test()
-        .expect_read(create_frame(1, {0x01}))  // 1 metadata follows
-        .expect_read(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
-        .check(fix);
-
-    // Verify
-    fix.proc.num_calls().on_num_meta(1).on_meta(1).validate();
-    BOOST_TEST(fix.proc.is_reading_rows());
-    check_meta(fix.proc.meta(), {std::make_pair(column_type::varchar, "mycol")});
-    // TODO: check status
-}
-
-BOOST_AUTO_TEST_CASE(algo_success_ok_packet)
-{
-    // Setup
-    algo_fixture fix;
-
-    // Run the algo
-    algo_test()
-        .expect_read(create_ok_frame(1, ok_builder().affected_rows(42).info("abc").build()))
-        .will_change_status(detail::connection_status::ready)
-        .check(fix);
-
-    // Verify
-    fix.proc.num_calls().on_head_ok_packet(1).validate();
-    BOOST_TEST(fix.proc.meta().size() == 0u);
-    BOOST_TEST(fix.proc.is_complete());
-    BOOST_TEST(fix.proc.affected_rows() == 42u);
-    BOOST_TEST(fix.proc.info() == "abc");
-    BOOST_TEST(fix.st.backslash_escapes);
-}
-
-BOOST_AUTO_TEST_CASE(algo_state_complete)
-{
-    // Setup
-    algo_fixture fix;
-    add_ok(fix.proc, ok_builder().affected_rows(42).build());
-
-    // Should be a no-op
-    algo_test().check(fix);
-
-    // Nothing changed
-    fix.proc.num_calls().on_head_ok_packet(1).validate();
-    BOOST_TEST(fix.proc.is_complete());
-    BOOST_TEST(fix.proc.affected_rows() == 42u);
-}
-
-BOOST_AUTO_TEST_CASE(algo_state_reading_rows)
-{
-    // Setup
-    algo_fixture fix;
-    add_meta(fix.proc, {meta_builder().type(column_type::bit).build_coldef()});
-
-    // Should be a no-op
-    algo_test().check(fix);
-
-    // Nothing changed
-    fix.proc.num_calls().on_num_meta(1).on_meta(1).validate();
-    BOOST_TEST(fix.proc.is_reading_rows());
-    check_meta(fix.proc.meta(), {column_type::bit});
-}
-
-// For compatibility, this should be a no-op, too
-BOOST_AUTO_TEST_CASE(algo_state_complete_bad_status)
-{
-    // Setup
-    algo_fixture fix;
-    fix.st.status = detail::connection_status::not_connected;
-    add_ok(fix.proc, ok_builder().affected_rows(42).build());
-
-    // Should be a no-op
-    algo_test().check(fix);
-
-    // Nothing changed
-    fix.proc.num_calls().on_head_ok_packet(1).validate();
-    BOOST_TEST(fix.proc.is_complete());
-    BOOST_TEST(fix.proc.affected_rows() == 42u);
-}
-
-// Connection state checked correctly
-BOOST_AUTO_TEST_CASE(algo_error_invalid_connection_state)
-{
-    struct
-    {
-        detail::connection_status status;
-        error_code expected_err;
-    } test_cases[] = {
-        {detail::connection_status::not_connected, client_errc::not_connected                },
-        {detail::connection_status::ready,         client_errc::not_engaged_in_multi_function},
-    };
-
-    for (const auto& tc : test_cases)
-    {
-        BOOST_TEST_CONTEXT(tc.status)
-        {
-            // Setup
-            algo_fixture fix;
-            fix.st.status = tc.status;
-
-            // Run the algo
-            algo_test().check(fix, tc.expected_err);
-        }
-    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()

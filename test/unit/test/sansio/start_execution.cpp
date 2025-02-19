@@ -45,7 +45,7 @@ BOOST_AUTO_TEST_SUITE(test_start_execution)
 struct fixture : algo_fixture_base
 {
     mock_execution_processor proc;
-    detail::start_execution_impl_algo algo;
+    detail::start_execution_algo algo;
 
     fixture(
         any_execution_request req = any_execution_request("SELECT 1"),
