@@ -21,7 +21,6 @@
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 
 #include <boost/assert.hpp>
@@ -35,9 +34,21 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+enum class connection_status
+{
+    // Never connected or closed
+    not_connected,
+
+    // Connected and ready for a command
+    ready,
+
+    // In the middle of a multi-function operation
+    engaged_in_multi_function,
+};
+
 struct connection_state_data
 {
-    // Are we connected? In the middle of a multifn op?
+    // Are we connected? In the middle of a multi-function operation?
     connection_status status{connection_status::not_connected};
 
     // Are we currently executing an operation?
