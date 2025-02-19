@@ -55,8 +55,6 @@ public:
         {
         case 0:
 
-            // Note: diagnostics should have been cleaned by other algos
-
             // Read response
             BOOST_MYSQL_YIELD(resume_point_, 1, st.read(sequence_number_))
 

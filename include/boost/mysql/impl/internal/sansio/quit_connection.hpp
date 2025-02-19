@@ -17,7 +17,6 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
 namespace boost {
 namespace mysql {
@@ -37,6 +36,9 @@ public:
         switch (resume_point_)
         {
         case 0:
+            // This can only be top-level in connection, and never in any_connection.
+            // State checks are not worthy here - already handled by close.
+
             // Mark the session as finished
             should_perform_shutdown_ = st.tls_active;
             st.status = connection_status::not_connected;

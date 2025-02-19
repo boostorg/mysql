@@ -212,7 +212,7 @@ public:
         switch (resume_point_)
         {
         case 0:
-
+            // Handshake wipes out state, so no state checks are performed.
             // Setup
             st.reset();
 
