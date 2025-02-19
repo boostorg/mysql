@@ -8,6 +8,9 @@
 [section:static_interface The static interface]
 [nochunk]
 
+We have already covered the static interface basics in
+[link mysql.tutorial_static_interface the tutorials]. This section expands on this topic.
+
 To use the static interface, we must first define a data structure that describes the shape of
 our rows. We have several options:
 
@@ -16,9 +19,6 @@ our rows. We have several options:
 * Use __Pfr__ and [reflink pfr_by_name] or [reflink pfr_by_position]
   to use PFR automatic reflection capabilities.
 * Use `std::tuple`.
-
-We will start with Boost.Describe and explain the other options later.
-For a comparison, please refer to [link mysql.static_interface.comparison this table].
 
 We will work with the following table:
 
@@ -34,7 +34,14 @@ CREATE TABLE employee(
 );
 ```
 
-If we want to query the first three fields, we can define our row type like this:
+[note
+    For simplicity, code snippets use C++20 coroutines. You can use the techniques
+    described here with lower C++ standards by using sync functions, callbacks or
+    `asio::yield_context`. The [link mysql.static_interface.comparison comparison table]
+    shows the C++ standard required by each technique shown here.
+]
+
+Let's start with Boost.Describe. If we want to query the first three fields, we can define our row type like this:
 
 [static_interface_describe_employee_v1]
 

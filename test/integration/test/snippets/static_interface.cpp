@@ -41,16 +41,6 @@ using namespace mysql::test;
 // PFR types can't be placed in anonymous namespaces
 namespace snippets_static {
 
-//[static_interface_pfr_employee
-// employee_v4 doesn't contain any metadata - we're not using BOOST_DESCRIBE_STRUCT here
-struct employee_v4
-{
-    int id;
-    std::string first_name;
-    std::string last_name;
-};
-//]
-
 //[static_interface_describe_employee_v1
 // We can use a plain struct with ints and strings to describe our rows.
 struct employee_v1
@@ -97,6 +87,17 @@ struct employee_v3
     std::optional<unsigned> salary;  // salary might be NULL in the database
 };
 BOOST_DESCRIBE_STRUCT(employee_v3, (), (id, first_name, last_name, salary))
+//]
+
+//[static_interface_pfr_employee
+// employee_v4 doesn't contain any metadata - we're not using BOOST_DESCRIBE_STRUCT here
+struct employee_v4
+{
+    int id;
+    std::string first_name;
+    std::string last_name;
+    std::optional<unsigned> salary;
+};
 //]
 
 asio::awaitable<void> section_main(mysql::any_connection& conn)
@@ -162,7 +163,7 @@ asio::awaitable<void> section_main(mysql::any_connection& conn)
         // Fields in employee_v4 must appear in the same order as in the query,
         // as matching will be done by position.
         mysql::static_results<mysql::pfr_by_position<employee_v4>> result;
-        co_await conn.async_execute("SELECT id, first_name, last_name FROM employee", result);
+        co_await conn.async_execute("SELECT id, first_name, last_name, salary FROM employee", result);
 
         // The underlying row type is employee_v4
         for (const employee_v4& emp : result.rows())
@@ -222,7 +223,7 @@ BOOST_DESCRIBE_STRUCT(employee, (), (id, first_name, last_name))
 }  // namespace descr_type
 
 namespace pfr_type {
-//[static_comparison_pfr_struct
+//[static_interface_comparison_pfr_struct
 // Definition should be at namespace scope
 struct employee
 {
