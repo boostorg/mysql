@@ -5,28 +5,66 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/static_results.hpp>
+#ifdef BOOST_MYSQL_CXX14
+
+#include <boost/mysql/any_connection.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/pfr.hpp>
 #include <boost/mysql/results.hpp>
-#include <boost/mysql/static_results.hpp>
 
+#include <boost/asio/as_tuple.hpp>
+#include <boost/asio/awaitable.hpp>
 #include <boost/config.hpp>
+#include <boost/describe/class.hpp>
 #include <boost/test/unit_test.hpp>
 
+#include <cstdint>
+#include <optional>
+#include <string>
 #include <tuple>
 
-#include "test_integration/snippets/describe.hpp"
-#include "test_integration/snippets/get_connection.hpp"
+#include "test_common/network_result.hpp"
+#include "test_common/printing.hpp"
+#include "test_integration/run_coro.hpp"
+#include "test_integration/snippets/snippets_fixture.hpp"
 
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-#include <optional>
-#endif
+namespace asio = boost::asio;
+namespace mysql = boost::mysql;
+using namespace mysql::test;
 
-using namespace boost::mysql;
+//
+// Main explanation. These snippets require C++20
+//
+#ifdef BOOST_ASIO_HAS_CO_AWAIT
 
 // PFR types can't be placed in anonymous namespaces
 namespace snippets_static {
 
-//[describe_statistics
+//[static_interface_pfr_employee
+// employee_v4 doesn't contain any metadata - we're not using BOOST_DESCRIBE_STRUCT here
+struct employee_v4
+{
+    int id;
+    std::string first_name;
+    std::string last_name;
+};
+//]
+
+//[static_interface_describe_employee_v1
+// We can use a plain struct with ints and strings to describe our rows.
+struct employee_v1
+{
+    int id;
+    std::string first_name;
+    std::string last_name;
+};
+
+// This must be placed at the namespace level. It adds reflection capabilities to our struct
+BOOST_DESCRIBE_STRUCT(employee_v1, (), (id, first_name, last_name))
+//]
+
+//[static_interface_describe_statistics
 struct statistics
 {
     std::string company;
@@ -36,93 +74,47 @@ struct statistics
 BOOST_DESCRIBE_STRUCT(statistics, (), (company, average, max_value))
 //]
 
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-//[describe_post_v2
-struct post_v2
+//[static_interface_describe_employee_v2
+// If we try to query the employee table with this struct definition,
+// an error will be issued because salary can be NULL in the database,
+// but not in the C++ type
+struct employee_v2
 {
     int id;
-    std::string title;
-    std::optional<std::string> body;  // body may be NULL
+    std::string first_name;
+    std::string last_name;
+    unsigned salary;
 };
-BOOST_DESCRIBE_STRUCT(post_v2, (), (id, title, body))
+BOOST_DESCRIBE_STRUCT(employee_v2, (), (id, first_name, last_name, salary))
 //]
-#endif
 
-//[describe_post_pfr
-// post_v3 doesn't contain any metadata - we're not using BOOST_DESCRIBE_STRUCT here
-struct post_v3
+//[static_interface_describe_employee_v3
+struct employee_v3
 {
     int id;
-    std::string title;
-    std::string body;
+    std::string first_name;
+    std::string last_name;
+    std::optional<unsigned> salary;  // salary might be NULL in the database
 };
+BOOST_DESCRIBE_STRUCT(employee_v3, (), (id, first_name, last_name, salary))
 //]
 
-//
-// Comparison table - we want all type definitions to be similar
-//
-namespace descr_type {
-//[static_comparison_describe_struct
-// Definition should be at namespace scope
-struct post
+asio::awaitable<void> section_main(mysql::any_connection& conn)
 {
-    int id;
-    std::string title;
-    std::string body;
-};
-BOOST_DESCRIBE_STRUCT(post, (), (id, title, body))
-//]
-}  // namespace descr_type
-
-namespace pfr_type {
-//[static_comparison_pfr_struct
-// Definition should be at namespace scope
-struct post
-{
-    int id;
-    std::string title;
-    std::string body;
-};
-//]
-}  // namespace pfr_type
-
-BOOST_AUTO_TEST_CASE(section_static)
-{
-#ifdef BOOST_MYSQL_CXX14
-
-    auto& conn = test::get_connection();
-
     {
-        //[static_setup
-        constexpr const char* table_definition = R"%(
-            CREATE TEMPORARY TABLE posts (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR (256) NOT NULL,
-                body TEXT NOT NULL
-            )
-        )%";
-        //]
+        //[static_interface_query
+        mysql::static_results<employee_v1> result;
+        co_await conn.async_execute("SELECT id, first_name, last_name FROM employee LIMIT 10", result);
 
-        results r;
-        conn.execute(table_definition, r);
-    }
-
-    {
-        using test::post;
-
-        //[static_query
-        static_results<post> result;
-        conn.execute("SELECT id, title, body FROM posts", result);
-
-        for (const post& p : result.rows())
+        for (const employee_v1& emp : result.rows())
         {
-            // Process the post as required
-            std::cout << "Title: " << p.title << "\n" << p.body << "\n";
+            // Process the employee as required
+            std::cout << "ID: " << emp.id << ": " << emp.first_name << ' ' << emp.last_name << "\n";
         }
         //]
     }
     {
-        //[static_field_order
+        //[static_interface_field_order
         // Summing 0e0 is MySQL way to cast a DECIMAL field to DOUBLE
         constexpr const char* sql = R"%(
             SELECT
@@ -133,120 +125,155 @@ BOOST_AUTO_TEST_CASE(section_static)
             GROUP BY company_id
         )%";
 
-        static_results<statistics> result;
-        conn.execute(sql, result);
+        mysql::static_results<statistics> result;
+        co_await conn.async_execute(sql, result);
         //]
+    }
+    {
+        // Check that the optional version works
+        mysql::static_results<employee_v3> result;
+        co_await conn.async_execute("SELECT * FROM employee LIMIT 1", result);
     }
 #if BOOST_PFR_CORE_NAME_ENABLED
     {
-        //[static_pfr_by_name
+        //[static_interface_pfr_by_name
         // pfr_by_name is a marker type. It tells static_results to use
         // Boost.PFR for reflection, instead of Boost.Describe.
-        static_results<pfr_by_name<post_v3>> result;
+        mysql::static_results<mysql::pfr_by_name<employee_v4>> result;
 
         // As with Boost.Describe, query fields are matched to struct
         // members by name. This means that the fields in the query
         // may appear in any order.
-        conn.execute("SELECT body, id, title FROM posts", result);
+        co_await conn.async_execute("SELECT * FROM employee LIMIT 10", result);
 
-        // Note that result.rows() is a span of post_v3 objects,
-        // rather than pfr_by_name<post_v3> objects. post_v3
-        // is the underlying row type for pfr_by_name<post_v3>
-        for (const post_v3& p : result.rows())
+        // Note that result.rows() is a span of employee_v4 objects,
+        // rather than pfr_by_name<employee_v4> objects. employee_v4
+        // is the underlying row type for pfr_by_name<employee_v4>
+        for (const employee_v4& emp : result.rows())
         {
-            // Process the post as required
-            std::cout << "Title: " << p.title << "\n" << p.body << "\n";
+            // Process the employee as required
+            std::cout << "ID: " << emp.id << ": " << emp.first_name << ' ' << emp.last_name << "\n";
         }
         //]
     }
-#endif
-#if BOOST_PFR_USE_CPP17
     {
-        //[static_pfr_by_position
+        //[static_interface_pfr_by_position
         // pfr_by_position is another marker type.
-        // Fields in post_v3 must appear in the same order as in the query,
+        // Fields in employee_v4 must appear in the same order as in the query,
         // as matching will be done by position.
-        static_results<pfr_by_position<post_v3>> result;
-        conn.execute("SELECT id, title, body FROM posts", result);
+        mysql::static_results<mysql::pfr_by_position<employee_v4>> result;
+        co_await conn.async_execute("SELECT id, first_name, last_name FROM employee", result);
 
-        // The underlying row type is post_v3
-        for (const post_v3& p : result.rows())
+        // The underlying row type is employee_v4
+        for (const employee_v4& emp : result.rows())
         {
-            // Process the post as required
-            std::cout << "Title: " << p.title << "\n" << p.body << "\n";
+            // Process the employee as required
+            std::cout << "ID: " << emp.id << ": " << emp.first_name << ' ' << emp.last_name << "\n";
         }
         //]
     }
 #endif
     {
-        //[static_tuples
-        static_results<std::tuple<std::int64_t>> result;
-        conn.execute("SELECT COUNT(*) FROM employee", result);
+        //[static_interface_tuples
+        mysql::static_results<std::tuple<std::int64_t>> result;
+        co_await conn.async_execute("SELECT COUNT(*) FROM employee", result);
         std::cout << "Number of employees: " << std::get<0>(result.rows()[0]) << "\n";
         //]
     }
-#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
-    {
-        //[static_nulls_table
-        constexpr const char* table_definition = R"%(
-            CREATE TEMPORARY TABLE posts_v2 (
-                id INT PRIMARY KEY AUTO_INCREMENT,
-                title VARCHAR (256) NOT NULL,
-                body TEXT
-            )
-        )%";
-        //]
+}
 
-        // Verify that post_v2's definition is correct
-        results r;
-        conn.execute(table_definition, r);
-        static_results<post_v2> result;
-        conn.execute("SELECT * FROM posts_v2", result);
-        conn.execute("DROP TABLE posts_v2", r);
-    }
-#endif  // BOOST_NO_CXX17_HDR_OPTIONAL
+BOOST_FIXTURE_TEST_CASE(section_static_interface, snippets_fixture)
+{
+    run_coro(ctx, [this] { return section_main(conn); });
+}
+
+BOOST_FIXTURE_TEST_CASE(section_static_interface_error, snippets_fixture)
+{
+    // Check the nullability error. At the moment, this is a fatal error,
+    // so it must be run in a separate test case
+    mysql::static_results<employee_v2> result;
+    conn.async_execute("SELECT * FROM employee LIMIT 1", result, as_netresult)
+        .validate_error(
+            mysql::client_errc::metadata_check_failed,
+            "NULL checks failed for field 'salary': the database type may be NULL, but the C++ type cannot. "
+            "Use std::optional<T> or boost::optional<T>"
+        );
+}
+
+#endif
+
+//
+// Comparison table. This part does not require C++20,
+// since the table has a "C++ standard required" field.
+// We want all type definitions here to be similar.
+//
+
+namespace descr_type {
+//[static_interface_comparison_describe_struct
+// Definition should be at namespace scope
+struct employee
+{
+    int id;
+    std::string first_name;
+    std::string last_name;
+};
+BOOST_DESCRIBE_STRUCT(employee, (), (id, first_name, last_name))
+//]
+}  // namespace descr_type
+
+namespace pfr_type {
+//[static_comparison_pfr_struct
+// Definition should be at namespace scope
+struct employee
+{
+    int id;
+    std::string first_name;
+    std::string last_name;
+};
+//]
+}  // namespace pfr_type
+
+BOOST_FIXTURE_TEST_CASE(section_static_interface_comparison_table, snippets_fixture)
+{
+    // Left as sync because the table has a "C++ standard required" field
+    // that is < C++20 for most of the techniques
     {
         using namespace descr_type;
-        //[static_comparison_describe
+        //[static_interface_comparison_describe
         // Usage
-        static_results<post> result;
-        conn.execute("SELECT title, body, id FROM posts", result);
+        mysql::static_results<employee> result;
+        conn.execute("SELECT first_name, last_name, id FROM employee", result);
         //]
     }
 #if BOOST_PFR_CORE_NAME_ENABLED
     {
         using namespace pfr_type;
-        //[static_comparison_pfr_by_name
+        //[static_interface_comparison_pfr_by_name
         // Usage
-        static_results<pfr_by_name<post>> result;
-        conn.execute("SELECT title, body, id FROM posts", result);
+        mysql::static_results<mysql::pfr_by_name<employee>> result;
+        conn.execute("SELECT first_name, last_name, id FROM employee", result);
         //]
     }
 #endif
 #if BOOST_PFR_USE_CPP17
     {
         using namespace pfr_type;
-        //[static_comparison_pfr_by_position
+        //[static_interface_comparison_pfr_by_position
         // Usage
-        static_results<pfr_by_position<post>> result;
-        conn.execute("SELECT id, title, body FROM posts", result);
+        mysql::static_results<mysql::pfr_by_position<employee>> result;
+        conn.execute("SELECT id, first_name, last_name FROM employee", result);
         //]
     }
 #endif
     {
-        //[static_comparison_tuples
+        //[static_interface_comparison_tuples
         using tuple_t = std::tuple<int, std::string, std::string>;
-        static_results<tuple_t> result;
-        conn.execute("SELECT id, title, body FROM posts", result);
+        mysql::static_results<tuple_t> result;
+        conn.execute("SELECT id, first_name, last_name FROM employee", result);
         //]
     }
-
-    {
-        results r;
-        conn.execute("DROP TABLE posts", r);
-    }
-
-#endif  // BOOST_MYSQL_CXX14
 }
 
 }  // namespace snippets_static
+
+#endif
