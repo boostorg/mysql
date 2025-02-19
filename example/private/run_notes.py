@@ -27,14 +27,14 @@ def _random_string() -> str:
 
 
 def _call_endpoints(port: int):
-    base_url = 'http://127.0.0.1:{}'.format(port)
+    url = 'http://127.0.0.1:{}/notes'.format(port)
 
     # Create a note
     note_unique = _random_string()
     title = 'My note {}'.format(note_unique)
     content = 'This is a note about {}'.format(note_unique)
     res = requests.post(
-        '{}/notes'.format(base_url),
+        url,
         json={'title': title, 'content': content}
     )
     _check_response(res)
@@ -44,7 +44,7 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Retrieve all notes
-    res = requests.get('{}/notes'.format(base_url))
+    res = requests.get(url)
     _check_response(res)
     all_notes = res.json()
     assert len([n for n in all_notes['notes'] if n['id'] == note_id]) == 1
@@ -54,7 +54,8 @@ def _call_endpoints(port: int):
     title = 'Edited {}'.format(note_unique)
     content = 'This is a note an edit on {}'.format(note_unique)
     res = requests.put(
-        '{}/notes/{}'.format(base_url, note_id),
+        url,
+        params={'id': note_id},
         json={'title': title, 'content': content}
     )
     _check_response(res)
@@ -64,7 +65,7 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Retrieve the note
-    res = requests.get('{}/notes/{}'.format(base_url, note_id))
+    res = requests.get(url, params={'id': note_id})
     _check_response(res)
     note = res.json()
     assert int(note['note']['id']) == note_id
@@ -72,12 +73,12 @@ def _call_endpoints(port: int):
     assert note['note']['content'] == content
 
     # Delete the note
-    res = requests.delete('{}/notes/{}'.format(base_url, note_id))
+    res = requests.delete(url, params={'id': note_id})
     _check_response(res)
     assert res.json()['deleted'] == True
 
     # The note is not there
-    res = requests.get('{}/notes/{}'.format(base_url, note_id))
+    res = requests.get(url, params={'id': note_id})
     assert res.status_code == 404
 
 

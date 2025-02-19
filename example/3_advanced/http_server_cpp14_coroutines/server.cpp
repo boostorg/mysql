@@ -5,57 +5,44 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/asio/awaitable.hpp>
-#include <boost/pfr/config.hpp>
-#if defined(BOOST_ASIO_HAS_CO_AWAIT) && BOOST_PFR_CORE_NAME_ENABLED
+#include <boost/mysql/static_results.hpp>
+#ifdef BOOST_MYSQL_CXX14
 
-//[example_http_server_cpp20_server_cpp
+//[example_http_server_cpp14_coroutines_server_cpp
 //
 // File: server.cpp
 //
 // This file contains all the boilerplate code to implement a HTTP
 // server. Functions here end up invoking handle_request.
 
-#include <boost/mysql/connection_pool.hpp>
-#include <boost/mysql/error_code.hpp>
-
-#include <boost/asio/as_tuple.hpp>
-#include <boost/asio/awaitable.hpp>
 #include <boost/asio/cancel_after.hpp>
-#include <boost/asio/co_spawn.hpp>
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/redirect_error.hpp>
-#include <boost/asio/steady_timer.hpp>
-#include <boost/asio/strand.hpp>
-#include <boost/asio/this_coro.hpp>
+#include <boost/asio/spawn.hpp>
 #include <boost/beast/core/flat_buffer.hpp>
 #include <boost/beast/http/error.hpp>
 #include <boost/beast/http/message.hpp>
 #include <boost/beast/http/parser.hpp>
 #include <boost/beast/http/read.hpp>
 #include <boost/beast/http/string_body.hpp>
-#include <boost/beast/http/verb.hpp>
 #include <boost/beast/http/write.hpp>
 
 #include <cstdlib>
 #include <exception>
 #include <iostream>
-#include <string_view>
+#include <memory>
 
-#include "error.hpp"
 #include "handle_request.hpp"
 #include "server.hpp"
 
 namespace asio = boost::asio;
 namespace http = boost::beast::http;
-namespace mysql = boost::mysql;
+using namespace notes;
 
 namespace {
 
-// Runs a single HTTP session until the client closes the connection.
-// This coroutine will be spawned on a strand, to prevent data races.
-asio::awaitable<void> run_http_session(asio::ip::tcp::socket sock, mysql::connection_pool& pool)
+// Runs a single HTTP session until the client closes the connection
+void run_http_session(std::shared_ptr<shared_state> st, asio::ip::tcp::socket sock, asio::yield_context yield)
 {
     using namespace std::chrono_literals;
 
@@ -68,7 +55,7 @@ asio::awaitable<void> run_http_session(asio::ip::tcp::socket sock, mysql::connec
     // Re-using the same timer multiple times with cancel_after
     // is more efficient than using raw cancel_after,
     // since the timer doesn't need to be re-created for every operation.
-    asio::steady_timer timer(co_await asio::this_coro::executor);
+    asio::steady_timer timer(yield.get_executor());
 
     // A HTTP session might involve more than one message if
     // keep-alive semantics are used. Loop until the connection closes.
@@ -81,14 +68,9 @@ asio::awaitable<void> run_http_session(asio::ip::tcp::socket sock, mysql::connec
         // of the body in bytes to prevent abuse.
         parser.body_limit(10000);
 
-        // Read a request. redirect_error prevents exceptions from being thrown
+        // Read a request. yield[ec] prevents exceptions from being thrown
         // on error. We use cancel_after to set a timeout for the overall read operation.
-        co_await http::async_read(
-            sock,
-            buff,
-            parser.get(),
-            asio::cancel_after(timer, 60s, asio::redirect_error(ec))
-        );
+        http::async_read(sock, buff, parser.get(), asio::cancel_after(60s, yield[ec]));
 
         if (ec)
         {
@@ -100,9 +82,9 @@ asio::awaitable<void> run_http_session(asio::ip::tcp::socket sock, mysql::connec
             else
             {
                 // An unknown error happened
-                orders::log_error("Error reading HTTP request: ", ec);
+                std::cout << "Error reading HTTP request: " << ec.message() << std::endl;
             }
-            co_return;
+            return;
         }
 
         const auto& request = parser.get();
@@ -110,15 +92,16 @@ asio::awaitable<void> run_http_session(asio::ip::tcp::socket sock, mysql::connec
         // Process the request to generate a response.
         // This invokes the business logic, which will need to access MySQL data.
         // Apply a timeout to the overall request handling process.
-        auto response = co_await asio::co_spawn(
-            // Use the same executor as this coroutine (it will be a strand)
-            co_await asio::this_coro::executor,
+        auto response = asio::spawn(
+            // Use the same executor as this coroutine
+            yield.get_executor(),
 
             // The logic to invoke
-            [&] { return orders::handle_request(request, pool); },
+            [&](asio::yield_context yield2) { return handle_request(st->pool, request, yield2); },
 
-            // Completion token. Returns an object that can be co_await'ed
-            asio::cancel_after(timer, 30s)
+            // Completion token. Passing yield blocks the current coroutine
+            // until handle_request completes.
+            asio::cancel_after(timer, 30s, yield)
         );
 
         // Adjust the response, setting fields common to all responses
@@ -128,11 +111,11 @@ asio::awaitable<void> run_http_session(asio::ip::tcp::socket sock, mysql::connec
         response.prepare_payload();
 
         // Send the response
-        co_await http::async_write(sock, response, asio::cancel_after(timer, 60s, asio::redirect_error(ec)));
+        http::async_write(sock, response, asio::cancel_after(60s, yield[ec]));
         if (ec)
         {
-            orders::log_error("Error writing HTTP response: ", ec);
-            co_return;
+            std::cout << "Error writing HTTP response: " << ec.message() << std::endl;
+            return;
         }
 
         // This means we should close the connection, usually because
@@ -140,17 +123,17 @@ asio::awaitable<void> run_http_session(asio::ip::tcp::socket sock, mysql::connec
         if (!keep_alive)
         {
             sock.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
-            co_return;
+            return;
         }
     }
 }
 
 }  // namespace
 
-asio::awaitable<void> orders::run_server(mysql::connection_pool& pool, unsigned short port)
+void notes::run_server(std::shared_ptr<shared_state> st, unsigned short port, asio::yield_context yield)
 {
     // An object that allows us to accept incoming TCP connections
-    asio::ip::tcp::acceptor acc(co_await asio::this_coro::executor);
+    asio::ip::tcp::acceptor acc(yield.get_executor());
 
     // The endpoint where the server will listen. Edit this if you want to
     // change the address or port we bind to.
@@ -174,24 +157,18 @@ asio::awaitable<void> orders::run_server(mysql::connection_pool& pool, unsigned 
     while (true)
     {
         // Accept a new connection
-        asio::ip::tcp::socket sock = co_await acc.async_accept();
-
-        // Function implementing our session logic.
-        // Takes ownership of the socket.
-        // Having this as a named variable workarounds a gcc bug
-        // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=107288)
-        auto session_logic = [&pool, socket = std::move(sock)]() mutable {
-            return run_http_session(std::move(socket), pool);
-        };
+        asio::ip::tcp::socket sock = acc.async_accept(yield);
 
         // Launch a new session for this connection. Each session gets its
         // own coroutine, so we can get back to listening for new connections.
-        asio::co_spawn(
-            // Every session gets its own strand. This prevents data races.
-            asio::make_strand(co_await asio::this_coro::executor),
+        asio::spawn(
+            yield.get_executor(),
 
-            // The actual coroutine
-            std::move(session_logic),
+            // Function implementing our session logic.
+            // Takes ownership of the socket.
+            [st, sock = std::move(sock)](asio::yield_context yield2) mutable {
+                return run_http_session(std::move(st), std::move(sock), yield2);
+            },
 
             // Callback to run when the coroutine finishes
             [](std::exception_ptr ptr) {
@@ -206,7 +183,6 @@ asio::awaitable<void> orders::run_server(mysql::connection_pool& pool, unsigned 
                     }
                     catch (const std::exception& exc)
                     {
-                        auto guard = lock_cerr();
                         std::cerr << "Uncaught error in a session: " << exc.what() << std::endl;
                     }
                 }

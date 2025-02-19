@@ -6,33 +6,31 @@
 //
 
 #include <boost/mysql/static_results.hpp>
-
-#include "log_error.hpp"
-
 #ifdef BOOST_MYSQL_CXX14
 
-//[example_http_server_cpp11_coroutines_main_cpp
+//[example_http_server_cpp14_coroutines_main_cpp
 
 /**
  * Implements a HTTP REST API using Boost.MySQL and Boost.Beast.
  * The server is asynchronous and uses asio::yield_context as its completion
- * style. It only requires C++11 to work.
+ * style. It only requires C++14 to work.
  *
  * It implements a minimal REST API to manage notes.
  * A note is a simple object containing a user-defined title and content.
  * The REST API offers CRUD operations on such objects:
- *    POST   /notes        Creates a new note.
- *    GET    /notes        Retrieves all notes.
- *    GET    /notes/<id>   Retrieves a single note.
- *    PUT    /notes/<id>   Replaces a note, changing its title and content.
- *    DELETE /notes/<id>   Deletes a note.
+ *    POST   /notes           Creates a new note.
+ *    GET    /notes           Retrieves all notes.
+ *    GET    /notes?id=<id>   Retrieves a single note.
+ *    PUT    /notes?id=<id>   Replaces a note, changing its title and content.
+ *    DELETE /notes?id=<id>   Deletes a note.
  *
  * Notes are stored in MySQL. The note_repository class encapsulates
- *   access to MySQL, offering friendly functions to manipulate notes.
+ * access to MySQL, offering friendly functions to manipulate notes.
  * server.cpp encapsulates all the boilerplate to launch an HTTP server,
- *   match URLs to API endpoints, and invoke the relevant note_repository functions.
+ * match URLs to API endpoints, and invoke the relevant note_repository functions.
+ *
  * All communication happens asynchronously. We use stackful coroutines to simplify
- *   development, using boost::asio::spawn and boost::asio::yield_context.
+ * development, using asio::spawn and asio::yield_context.
  * This example requires linking to Boost::context, Boost::json and Boost::url.
  */
 
@@ -41,11 +39,12 @@
 #include <boost/mysql/pool_params.hpp>
 
 #include <boost/asio/detached.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/signal_set.hpp>
+#include <boost/asio/spawn.hpp>
 #include <boost/asio/thread_pool.hpp>
 #include <boost/system/error_code.hpp>
 
-#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <memory>
@@ -53,10 +52,9 @@
 
 #include "server.hpp"
 
+namespace asio = boost::asio;
+namespace mysql = boost::mysql;
 using namespace notes;
-
-// The number of threads to use
-static constexpr std::size_t num_threads = 5;
 
 int main(int argc, char* argv[])
 {
@@ -74,14 +72,12 @@ int main(int argc, char* argv[])
     auto port = static_cast<unsigned short>(std::stoi(argv[4]));
 
     // An event loop, where the application will run.
-    // We will use the main thread to run the pool, too, so we use
-    // one thread less than configured
-    boost::asio::thread_pool th_pool(num_threads - 1);
+    asio::io_context ctx;
 
     // Configuration for the connection pool
-    boost::mysql::pool_params pool_prms{
+    mysql::pool_params params{
         // Connect using TCP, to the given hostname and using the default port
-        boost::mysql::host_and_port{mysql_hostname},
+        mysql::host_and_port{mysql_hostname},
 
         // Authenticate using the given username
         mysql_username,
@@ -93,47 +89,40 @@ int main(int argc, char* argv[])
         "boost_mysql_examples",
     };
 
-    // Using thread_safe will make the pool thread-safe by internally
-    // creating and using a strand.
-    // This allows us to share the pool between sessions, which may run
-    // concurrently, on different threads.
-    pool_prms.thread_safe = true;
-
-    // Create the connection pool
-    auto shared_st = std::make_shared<shared_state>(
-        boost::mysql::connection_pool(th_pool, std::move(pool_prms))
-    );
-
-    // A signal_set allows us to intercept SIGINT and SIGTERM and
-    // exit gracefully
-    boost::asio::signal_set signals{th_pool.get_executor(), SIGINT, SIGTERM};
+    // Create the connection pool.
+    // shared_state contains all singleton objects that our application may need.
+    // Coroutines created by asio::spawn might survive until the io_context is destroyed
+    // (even after io_context::stop() has been called). This is not the case for callbacks
+    // and C++20 coroutines. Using a shared_ptr here ensures that the pool survives long enough.
+    auto st = std::make_shared<shared_state>(mysql::connection_pool(ctx, std::move(params)));
 
     // Launch the MySQL pool
-    shared_st->pool.async_run(boost::asio::detached);
+    st->pool.async_run(asio::detached);
 
-    // Start listening for HTTP connections. This will run until the context is stopped
-    auto ec = launch_server(th_pool.get_executor(), shared_st, port);
-    if (ec)
-    {
-        log_error("Error launching server: ", ec);
-        exit(EXIT_FAILURE);
-    }
-
-    // Capture SIGINT and SIGTERM to perform a clean shutdown
-    signals.async_wait([shared_st, &th_pool](boost::system::error_code, int) {
-        // Cancel the pool. This will cause async_run to complete.
-        shared_st->pool.cancel();
-
+    // A signal_set allows us to intercept SIGINT and SIGTERM and exit gracefully
+    asio::signal_set signals{ctx.get_executor(), SIGINT, SIGTERM};
+    signals.async_wait([st, &ctx](boost::system::error_code, int) {
         // Stop the execution context. This will cause main to exit
-        th_pool.stop();
+        ctx.stop();
     });
 
-    // Attach the current thread to the thread pool. This will block
-    // until stop() is called
-    th_pool.attach();
+    // Launch the server. This will run until the context is stopped
+    asio::spawn(
+        // Spawn the coroutine in the io_context
+        ctx,
 
-    // Wait until all threads have exited
-    th_pool.join();
+        // The coroutine to run
+        [st, port](asio::yield_context yield) { run_server(st, port, yield); },
+
+        // If an exception is thrown in the coroutine, propagate it
+        [](std::exception_ptr exc) {
+            if (exc)
+                std::rethrow_exception(exc);
+        }
+    );
+
+    // Run the server until stopped
+    ctx.run();
 
     std::cout << "Server exiting" << std::endl;
 

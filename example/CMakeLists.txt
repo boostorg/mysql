@@ -99,12 +99,12 @@ endif()
 
 # Advanced
 add_example(
-    http_server_cpp11_coroutines
+    http_server_cpp14_coroutines
     SOURCES
-        3_advanced/http_server_cpp11_coroutines/repository.cpp
-        3_advanced/http_server_cpp11_coroutines/handle_request.cpp
-        3_advanced/http_server_cpp11_coroutines/server.cpp
-        3_advanced/http_server_cpp11_coroutines/main.cpp
+        3_advanced/http_server_cpp14_coroutines/repository.cpp
+        3_advanced/http_server_cpp14_coroutines/handle_request.cpp
+        3_advanced/http_server_cpp14_coroutines/server.cpp
+        3_advanced/http_server_cpp14_coroutines/main.cpp
     LIBS
         Boost::context
         Boost::json
