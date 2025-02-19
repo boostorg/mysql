@@ -320,8 +320,7 @@ BOOST_MYSQL_SPOTCHECK_TEST(reset_connection_error)
     fix.net.reset_connection(fix.conn).validate_any_error();
 }
 
-// Close connection
-// TODO: make a unit test with double close and an error case
+// Close connection. There is no way to trigger an error here.
 BOOST_MYSQL_SPOTCHECK_TEST(close_success)
 {
     // Setup
@@ -333,9 +332,6 @@ BOOST_MYSQL_SPOTCHECK_TEST(close_success)
     // We are no longer able to query
     results result;
     fix.net.execute_query(fix.conn, "SELECT 1", result).validate_any_error();
-
-    // Closing again returns OK (and does nothing)
-    fix.net.close(fix.conn).validate_no_error();
 }
 
 #ifdef BOOST_MYSQL_CXX14

@@ -52,10 +52,11 @@ public:
 
             // If quit resulted in an error, keep that error.
             // Otherwise, return any error derived from close
-            return stored_ec_ ? stored_ec_ : ec;
+            if (stored_ec_)
+                ec = stored_ec_;
         }
 
-        return next_action();
+        return ec;
     }
 };
 
