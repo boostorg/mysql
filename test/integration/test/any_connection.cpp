@@ -535,4 +535,20 @@ BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, any_connection_fixture)
     std::move(execute_result).validate_no_error();
 }
 
+// Double close is safe
+BOOST_FIXTURE_TEST_CASE(double_close, any_connection_fixture)
+{
+    // Setup
+    connect();
+
+    // Close the connection
+    conn.async_close(as_netresult).validate_no_error();
+
+    // We're no longer able to run operations
+    conn.async_ping(as_netresult).validate_any_error();
+
+    // Closing again is OK
+    conn.async_close(as_netresult).validate_no_error();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
