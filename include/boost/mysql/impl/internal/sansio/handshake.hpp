@@ -25,7 +25,6 @@
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
 #include <cstdint>
 
