@@ -20,9 +20,11 @@
 #include <boost/test/unit_test.hpp>
 
 #include <cstdint>
-#include <optional>
 #include <string>
 #include <tuple>
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
+#include <optional>
+#endif
 
 #include "test_common/network_result.hpp"
 #include "test_common/printing.hpp"
@@ -33,13 +35,13 @@ namespace asio = boost::asio;
 namespace mysql = boost::mysql;
 using namespace mysql::test;
 
+// PFR types can't be placed in anonymous namespaces
+namespace snippets_static {
+
 //
 // Main explanation. These snippets require C++20
 //
 #ifdef BOOST_ASIO_HAS_CO_AWAIT
-
-// PFR types can't be placed in anonymous namespaces
-namespace snippets_static {
 
 //[static_interface_describe_employee_v1
 // We can use a plain struct with ints and strings to describe our rows.
