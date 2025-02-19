@@ -580,9 +580,6 @@ public:
         const pipeline_request& req,
         std::vector<stage_response>& response
     );
-
-    // Exposed for testing
-    connection_state& state() { return *st_; }
 };
 
 // To use some completion tokens, like deferred, in C++11, the old macros
