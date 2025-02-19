@@ -146,6 +146,7 @@ enum class client_errc : int
     operation_in_progress,
 
     // TODO: document
+    not_connected,
     engaged_in_multi_function,
     not_engaged_in_multi_function,
 };
