@@ -28,7 +28,7 @@ struct fixture : algo_fixture_base
 {
     detail::quit_connection_algo algo{{}};
 
-    fixture() { st.is_connected = true; }
+    fixture() { st.status = detail::connection_status::ready; }
 };
 
 // A serialized quit request
@@ -40,7 +40,10 @@ BOOST_AUTO_TEST_CASE(plaintext_success)
     fixture fix;
 
     // Run the algo
-    algo_test().expect_write(expected_request()).will_set_is_connected(false).check(fix);
+    algo_test()
+        .expect_write(expected_request())
+        .will_set_status(detail::connection_status::not_connected)
+        .check(fix);
 }
 
 BOOST_AUTO_TEST_CASE(plaintext_error_network)
@@ -51,7 +54,8 @@ BOOST_AUTO_TEST_CASE(plaintext_error_network)
     // Run the algo
     algo_test()
         .expect_write(expected_request(), asio::error::network_reset)
-        .will_set_is_connected(false)  // State change happens even if the quit request fails
+        .will_set_status(detail::connection_status::not_connected
+        )  // State change happens even if the quit request fails
         .check(fix, asio::error::network_reset);
 }
 
@@ -65,7 +69,7 @@ BOOST_AUTO_TEST_CASE(ssl_success)
     algo_test()
         .expect_write(expected_request())
         .expect_ssl_shutdown()
-        .will_set_is_connected(false)
+        .will_set_status(detail::connection_status::not_connected)
         .will_set_tls_active(false)
         .check(fix);
 }
@@ -79,7 +83,7 @@ BOOST_AUTO_TEST_CASE(ssl_error_quit)
     // Run the algo
     algo_test()
         .expect_write(expected_request(), asio::error::network_reset)
-        .will_set_is_connected(false)
+        .will_set_status(detail::connection_status::not_connected)
         .will_set_tls_active(false)
         .check(fix, asio::error::network_reset);
 }
@@ -94,7 +98,7 @@ BOOST_AUTO_TEST_CASE(ssl_error_shutdown)
     algo_test()
         .expect_write(expected_request())
         .expect_ssl_shutdown(asio::error::network_reset)
-        .will_set_is_connected(false)
+        .will_set_status(detail::connection_status::not_connected)
         .will_set_tls_active(false)
         .check(fix);  // SSL shutdown errors ignored
 }
@@ -104,7 +108,7 @@ BOOST_AUTO_TEST_CASE(connected_flag_ignored)
 {
     // Setup
     fixture fix;
-    fix.st.is_connected = false;
+    fix.st.status = detail::connection_status::not_connected;
 
     // Run the algo
     algo_test().expect_write(expected_request()).check(fix);
