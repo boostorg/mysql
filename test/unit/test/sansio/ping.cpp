@@ -128,8 +128,8 @@ BOOST_AUTO_TEST_CASE(ping_error_response)
         .check(fix, common_server_errc::er_bad_db_error, create_server_diag("my_message"));
 }
 
-// Connection state checked correctly
-BOOST_AUTO_TEST_CASE(ping_error_invalid_connection_state)
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(ping_error_invalid_connection_status)
 {
     struct
     {

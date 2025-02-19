@@ -218,8 +218,8 @@ BOOST_AUTO_TEST_CASE(prepare_error_max_buffer_size)
     algo_test().check(fix, client_errc::max_buffer_size_exceeded);
 }
 
-// Connection state checked correctly
-BOOST_AUTO_TEST_CASE(prepare_error_invalid_connection_state)
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(prepare_error_invalid_connection_status)
 {
     struct
     {
