@@ -62,6 +62,36 @@ BOOST_AUTO_TEST_CASE(success_tls)
         .check(fix);
 }
 
+// Close runs normally even if the connection is engaged in a multi-function operation
+// TODO: write an integration test that verifies this
+BOOST_AUTO_TEST_CASE(success_multi_function)
+{
+    // Setup
+    fixture fix;
+
+    // Run the algo
+    algo_test()
+        .expect_write(expected_request())
+        .expect_close()
+        .will_set_status(detail::connection_status::not_connected)
+        .check(fix);
+}
+
+// If the session hasn't been established, or has been already torn down, close is a no-op
+BOOST_AUTO_TEST_CASE(not_connected)
+{
+    // Setup
+    fixture fix;
+    fix.st.status = detail::connection_status::engaged_in_multi_function;
+
+    // Run the algo
+    algo_test()
+        .expect_write(expected_request())
+        .expect_close()
+        .will_set_status(detail::connection_status::not_connected)
+        .check(fix);
+}
+
 BOOST_AUTO_TEST_CASE(error_close)
 {
     // Setup
@@ -100,17 +130,6 @@ BOOST_AUTO_TEST_CASE(error_quit_close)
         .expect_close(asio::error::shut_down)
         .will_set_status(detail::connection_status::not_connected)  // state change happens even if quit fails
         .check(fix, asio::error::network_reset);                    // the 1st error code wins
-}
-
-// If the session hasn't been established, or has been already torn down, close is a no-op
-BOOST_AUTO_TEST_CASE(not_connected)
-{
-    // Setup
-    fixture fix;
-    fix.st.status = detail::connection_status::not_connected;
-
-    // Run the algo
-    algo_test().check(fix);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
