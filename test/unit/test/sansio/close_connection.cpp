@@ -56,6 +56,7 @@ BOOST_AUTO_TEST_CASE(success_tls)
         .expect_ssl_shutdown()
         .expect_close()
         .will_set_is_connected(false)
+        .will_set_tls_active(false)
         .check(fix);
 }
 
