@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,7 +18,9 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/buffer.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/asio/immediate.hpp>
 #include <boost/asio/post.hpp>
 #include <boost/assert.hpp>
@@ -33,6 +35,11 @@ namespace detail {
 inline asio::mutable_buffer to_buffer(span<std::uint8_t> buff) noexcept
 {
     return asio::mutable_buffer(buff.data(), buff.size());
+}
+
+inline bool has_terminal_cancellation(asio::cancellation_type_t cancel_type)
+{
+    return static_cast<bool>(cancel_type & asio::cancellation_type_t::terminal);
 }
 
 template <class EngineStream>
@@ -57,6 +64,13 @@ struct run_algo_op
 
             while (true)
             {
+                // If we were cancelled, but the last operation completed successfully,
+                // set a cancelled error code so the algorithm exits. This might happen
+                // if a cancellation signal is emitted after an intermediate operation succeeded
+                // but before the handler was called.
+                if (!io_ec && has_terminal_cancellation(self.cancelled()))
+                    io_ec = asio::error::operation_aborted;
+
                 // Run the op
                 act = resumable_.resume(io_ec, bytes_transferred);
                 if (act.is_done())
@@ -111,7 +125,11 @@ struct run_algo_op
                 }
                 else if (act.type() == next_action_type::connect)
                 {
-                    BOOST_MYSQL_YIELD(resume_point_, 6, stream_.async_connect(std::move(self)))
+                    BOOST_MYSQL_YIELD(
+                        resume_point_,
+                        6,
+                        stream_.async_connect(act.connect_endpoint(), std::move(self))
+                    )
                     has_done_io_ = true;
                 }
                 else
@@ -128,7 +146,6 @@ struct run_algo_op
 //    using executor_type = asio::any_io_executor;
 //    executor_type get_executor();
 //    bool supports_ssl() const;
-//    void set_endpoint(const void* endpoint);
 //    std::size_t read_some(asio::mutable_buffer, bool use_ssl, error_code&);
 //    void async_read_some(asio::mutable_buffer, bool use_ssl, CompletinToken&&);
 //    std::size_t write_some(asio::const_buffer, bool use_ssl, error_code&);
@@ -137,8 +154,8 @@ struct run_algo_op
 //    void async_ssl_handshake(CompletionToken&&);
 //    void ssl_shutdown(error_code&);
 //    void async_ssl_shutdown(CompletionToken&&);
-//    void connect(error_code&);
-//    void async_connect(CompletionToken&&);
+//    void connect(const void* server_address, error_code&);
+//    void async_connect(const void* server_address, CompletionToken&&);
 //    void close(error_code&);
 // Async operations are only required to support callback types
 // See stream_adaptor for an implementation
@@ -160,8 +177,6 @@ public:
     executor_type get_executor() override final { return stream_.get_executor(); }
 
     bool supports_ssl() const override final { return stream_.supports_ssl(); }
-
-    void set_endpoint(const void* endpoint) override final { stream_.set_endpoint(endpoint); }
 
     void run(any_resumable_ref resumable, error_code& ec) override final
     {
@@ -207,7 +222,7 @@ public:
             }
             else if (act.type() == next_action_type::connect)
             {
-                stream_.connect(io_ec);
+                stream_.connect(act.connect_endpoint(), io_ec);
             }
             else
             {

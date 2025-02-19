@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -129,17 +129,29 @@ SIMPLE_EXAMPLES = [
 ]
 
 ADVANCED_EXAMPLES = [
-    MultiExample('connection_pool', [
-        '3_advanced/connection_pool/main.cpp',
-        '3_advanced/connection_pool/types.hpp',
-        '3_advanced/connection_pool/repository.hpp',
-        '3_advanced/connection_pool/repository.cpp',
-        '3_advanced/connection_pool/handle_request.hpp',
-        '3_advanced/connection_pool/handle_request.cpp',
-        '3_advanced/connection_pool/server.hpp',
-        '3_advanced/connection_pool/server.cpp',
-        '3_advanced/connection_pool/log_error.hpp',
-    ], 'A REST API server that uses connection pooling')
+    MultiExample('http_server_cpp20', [
+        '3_advanced/http_server_cpp20/main.cpp',
+        '3_advanced/http_server_cpp20/types.hpp',
+        '3_advanced/http_server_cpp20/error.hpp',
+        '3_advanced/http_server_cpp20/error.cpp',
+        '3_advanced/http_server_cpp20/repository.hpp',
+        '3_advanced/http_server_cpp20/repository.cpp',
+        '3_advanced/http_server_cpp20/handle_request.hpp',
+        '3_advanced/http_server_cpp20/handle_request.cpp',
+        '3_advanced/http_server_cpp20/server.hpp',
+        '3_advanced/http_server_cpp20/server.cpp',
+    ], 'A REST API server that uses C++20 coroutines'),
+
+    MultiExample('http_server_cpp14_coroutines', [
+        '3_advanced/http_server_cpp14_coroutines/main.cpp',
+        '3_advanced/http_server_cpp14_coroutines/types.hpp',
+        '3_advanced/http_server_cpp14_coroutines/repository.hpp',
+        '3_advanced/http_server_cpp14_coroutines/repository.cpp',
+        '3_advanced/http_server_cpp14_coroutines/handle_request.hpp',
+        '3_advanced/http_server_cpp14_coroutines/handle_request.cpp',
+        '3_advanced/http_server_cpp14_coroutines/server.hpp',
+        '3_advanced/http_server_cpp14_coroutines/server.cpp',
+    ], 'A C++14 REST API server that uses asio::yield_context'),
 ]
 
 ALL_EXAMPLES = TUTORIALS + SIMPLE_EXAMPLES + ADVANCED_EXAMPLES

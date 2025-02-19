@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -165,8 +165,8 @@ BOOST_FIXTURE_TEST_CASE(tcp_connection_, tcp_connection_fixture)
 
 BOOST_AUTO_TEST_SUITE_END()  // mysql_native_password
 
-// caching_sha2_password. We acquire a lock on the sha256_mutex
-// (dummy table, used as a mutex) to avoid race conditions with other test runs
+// caching_sha2_password. We acquire a named lock
+// to avoid race conditions with other test runs
 // (which happens in b2 builds).
 // The sha256 cache is shared between all clients.
 struct caching_sha2_lock : any_connection_fixture
@@ -177,9 +177,10 @@ struct caching_sha2_lock : any_connection_fixture
         conn.async_connect(connect_params_builder().credentials("root", "").build(), as_netresult)
             .validate_no_error();
 
-        // Acquire the lock
+        // Acquire the lock, using a long timeout
         results r;
-        conn.async_execute("LOCK TABLE sha256_mutex WRITE", r, as_netresult).validate_no_error();
+        conn.async_execute("CALL get_lock_checked('sha256_cache', 3600)", r, as_netresult)
+            .validate_no_error();
 
         // The lock is released on fixture destruction, when the connection is closed
     }

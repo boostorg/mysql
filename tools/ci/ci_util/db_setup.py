@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -92,6 +92,7 @@ def db_setup(
 
     # Source files
     _run_sql_file(source_dir.joinpath('example', 'db_setup.sql'))
+    _run_sql_file(source_dir.joinpath('example', '3_advanced', 'http_server_cpp20', 'db_setup.sql'))
     _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
     if not disabled_features['sha256']:
         _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))

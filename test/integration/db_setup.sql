@@ -1,5 +1,5 @@
 --
--- Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+-- Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 --
 -- Distributed under the Boost Software License, Version 1.0. (See accompanying
 -- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -512,6 +512,22 @@ GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;
 
 -- Stored procedures
 DELIMITER //
+
+CREATE PROCEDURE get_lock_checked(
+    IN lock_name VARCHAR(255),
+    IN timeout_seconds INT
+)
+BEGIN
+    DECLARE lock_status INT;
+    
+    -- Attempt to acquire the lock
+    SELECT GET_LOCK(lock_name, timeout_seconds) INTO lock_status;
+    
+    -- Check if the lock was acquired
+    IF lock_status <> 1 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Failed to acquire lock';
+    END IF;
+END //
 
 CREATE PROCEDURE sp_insert(IN pin VARCHAR(255))
 BEGIN

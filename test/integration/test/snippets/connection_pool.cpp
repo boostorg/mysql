@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -79,55 +79,6 @@ boost::asio::awaitable<void> apply_timeout(boost::mysql::connection_pool& pool)
     conn.return_without_reset();
 }
 #endif
-
-//[connection_pool_sync
-// Wraps a connection_pool and offers a sync interface.
-// sync_pool is thread-safe
-class sync_pool
-{
-    // A thread pool with a single thread. This is used to
-    // run the connection pool. The thread is automatically
-    // joined when sync_pool is destroyed.
-    boost::asio::thread_pool thread_pool_{1};
-
-    // The async connection pool
-    boost::mysql::connection_pool conn_pool_;
-
-public:
-    // Constructor: constructs the connection_pool object from
-    // the single-thread pool and calls async_run.
-    // The pool has a single thread, which creates an implicit strand.
-    // There is no need to use pool_params::thread_safe
-    sync_pool(boost::mysql::pool_params params) : conn_pool_(thread_pool_, std::move(params))
-    {
-        // Run the pool in the background (this is performed by the thread_pool thread).
-        // When sync_pool is destroyed, this task will be stopped and joined automatically.
-        conn_pool_.async_run(boost::asio::detached);
-    }
-
-    // Retrieves a connection from the pool. Throws an exception on error
-    boost::mysql::pooled_connection get_connection(
-        std::chrono::steady_clock::duration timeout = std::chrono::seconds(30)
-    )
-    {
-        // use_future returns a std::future<pooled_connection>.
-        // Calling get() waits for the future to complete and throws an exception on failure.
-        // with_diagnostics ensures that the exception contains any server-supplied information.
-        // cancel_after applies a timeout to the operation
-        // <-
-        // clang-format off
-        // ->
-        return conn_pool_
-            .async_get_connection(
-                with_diagnostics(boost::asio::cancel_after(timeout, boost::asio::use_future))
-            )
-            .get();
-        // <-
-        // clang-format on
-        // ->
-    }
-};
-//]
 
 BOOST_AUTO_TEST_CASE(section_connection_pool)
 {
@@ -215,18 +166,6 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
         // and call async_get_connection concurrently without problem.
         // Individual connections are still not thread-safe.
         //]
-    }
-    {
-        boost::mysql::pool_params params;
-        params.server_address.emplace_host_and_port(server_hostname);
-        params.username = mysql_username;
-        params.password = mysql_password;
-        params.database = "boost_mysql_examples";
-
-        sync_pool spool(std::move(params));
-
-        auto conn1 = spool.get_connection();
-        BOOST_TEST(conn1.valid());
     }
 }
 

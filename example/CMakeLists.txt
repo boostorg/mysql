@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -99,17 +99,34 @@ endif()
 
 # Advanced
 add_example(
-    connection_pool
+    http_server_cpp14_coroutines
     SOURCES
-        3_advanced/connection_pool/repository.cpp
-        3_advanced/connection_pool/handle_request.cpp
-        3_advanced/connection_pool/server.cpp
-        3_advanced/connection_pool/main.cpp
+        3_advanced/http_server_cpp14_coroutines/repository.cpp
+        3_advanced/http_server_cpp14_coroutines/handle_request.cpp
+        3_advanced/http_server_cpp14_coroutines/server.cpp
+        3_advanced/http_server_cpp14_coroutines/main.cpp
     LIBS
         Boost::context
         Boost::json
         Boost::url
         Boost::beast
-    PYTHON_RUNNER run_connection_pool.py
+    PYTHON_RUNNER run_notes.py
+    ARGS ${SERVER_HOST}
+)
+
+add_example(
+    http_server_cpp20
+    SOURCES
+        3_advanced/http_server_cpp20/error.cpp
+        3_advanced/http_server_cpp20/repository.cpp
+        3_advanced/http_server_cpp20/handle_request.cpp
+        3_advanced/http_server_cpp20/server.cpp
+        3_advanced/http_server_cpp20/main.cpp
+    LIBS
+        Boost::json
+        Boost::url
+        Boost::beast
+        Boost::pfr
+    PYTHON_RUNNER run_orders.py
     ARGS ${SERVER_HOST}
 )

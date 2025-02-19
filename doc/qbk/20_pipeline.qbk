@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -38,7 +38,7 @@ You should use pipelines for lightweight operations, dominated by round-trip tim
 You should [*avoid] pipelines for the following cases:
 
 * When you can achieve the same functionality using semicolon-separated queries
-  (thus using [link mysql.multi_resultset.multi_queries multi-queries] and [link mysql.sql_formatting client-side SQL formatting]).
+  (thus using [link mysql.multi_resultset.multi_queries multi-queries] and [link mysql.text_queries client-side SQL formatting]).
   Multi-queries will stop after the first error, which is usually what you want. See [link mysql.pipeline.pitfalls this section] for more info.
 * When running heavyweight queries, where the gains in round-trip time are not significant.
 * When there are dependencies between stages in the pipeline. Lack of protocol support makes this use case impossible.

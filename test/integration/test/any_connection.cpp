@@ -1,10 +1,11 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/any_address.hpp>
 #include <boost/mysql/any_connection.hpp>
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
@@ -16,6 +17,7 @@
 #include <boost/mysql/results.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
+#include <boost/mysql/with_params.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/engine_impl.hpp>
@@ -24,14 +26,19 @@
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
+#include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/cancel_after.hpp>
+#include <boost/asio/cancellation_signal.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/local/basic_endpoint.hpp>
 #include <boost/asio/redirect_error.hpp>
+#include <boost/optional/optional.hpp>
 #include <boost/test/data/test_case.hpp>
 
 #include <chrono>
+#include <cstdint>
 #include <string>
 
 #include "test_common/create_basic.hpp"
@@ -386,6 +393,8 @@ BOOST_FIXTURE_TEST_CASE(default_token_redirect_error, any_connection_fixture)
     });
 }
 
+#endif
+
 // Spotcheck: immediate completions dispatched to the immediate executor
 BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
 {
@@ -405,6 +414,151 @@ BOOST_FIXTURE_TEST_CASE(immediate_completions, any_connection_fixture)
     });
 }
 
-#endif
+// Spotcheck: attempting to run an async op in an engaged connection fails without UB
+BOOST_FIXTURE_TEST_CASE(op_in_progress_execute, io_context_fixture)
+{
+    // Setup
+    any_connection c1(ctx), c2(ctx);
+    results rlock, r1;
+    const auto params = connect_params_builder().disable_ssl().build();
+    c1.async_connect(params, as_netresult).validate_no_error();
+    c2.async_connect(params, as_netresult).validate_no_error();
+
+    // Get a unique lock name. We can use the connection id for this
+    const auto lock_name = std::to_string(c1.connection_id().value());
+
+    // Issue a long-running query by trying to acquire an acquired lock with a long timeout
+    c1.async_execute(with_params("CALL get_lock_checked({}, 60)", lock_name), rlock, as_netresult)
+        .validate_no_error();
+    auto execute_res = c2.async_execute(
+        with_params("CALL get_lock_checked({}, 60)", lock_name),
+        rlock,
+        as_netresult
+    );
+
+    // Other operations fail because the connection is engaged
+    c2.async_execute("SELECT 1", r1, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_prepare_statement("SELECT 1", as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_reset_connection(as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_connect(connect_params{}, as_netresult).validate_error(client_errc::operation_in_progress);
+    c2.async_close(as_netresult).validate_error(client_errc::operation_in_progress);
+
+    // Release the lock, so the query finishes
+    c1.async_execute("DO RELEASE_ALL_LOCKS()", r1, as_netresult).validate_no_error();
+    std::move(execute_res).validate_no_error();
+
+    // The error is non-fatal: we can issue more queries
+    c2.async_execute("SELECT 1", r1, as_netresult).validate_no_error();
+}
+
+BOOST_FIXTURE_TEST_CASE(op_in_progress_connect, any_connection_fixture)
+{
+    // Launch a connect op
+    const auto params = connect_params_builder().build();
+    auto connect_result = conn.async_connect(params, as_netresult);
+
+    // While in progress, launch another one, with different params.
+    // This fails with the expected error
+    conn.async_connect(
+            connect_params_builder().set_tcp("bad", 1000).credentials("bad_username", "bad_password").build(),
+            as_netresult
+    )
+        .validate_error(client_errc::operation_in_progress);
+
+    // The initial operation succeeds
+    std::move(connect_result).validate_no_error();
+
+    // The connection is usable
+    results r;
+    conn.async_execute("SELECT 1", r, as_netresult).validate_no_error();
+}
+
+// connection_id
+std::uint32_t call_connection_id(any_connection& conn)
+{
+    results r;
+    conn.async_execute("SELECT CONNECTION_ID()", r, as_netresult).validate_no_error();
+    return static_cast<std::uint32_t>(r.rows().at(0).at(0).as_uint64());
+}
+
+BOOST_FIXTURE_TEST_CASE(connection_id, any_connection_fixture)
+{
+    // Before connection, connection_id returns an empty optional
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>());
+
+    // Connect
+    connect();
+
+    // The returned id matches CONNECTION_ID()
+    auto expected_id = call_connection_id(conn);
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id));
+
+    // Calling reset connection doesn't change the ID
+    conn.async_reset_connection(as_netresult).validate_no_error();
+    expected_id = call_connection_id(conn);
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id));
+
+    // Close the connection
+    conn.async_close(as_netresult).validate_no_error();
+
+    // After session termination, connection_id returns an empty optional
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>());
+
+    // If we re-establish the session, we get another connection id
+    connect();
+    auto expected_id_2 = call_connection_id(conn);
+    BOOST_TEST(expected_id_2 != expected_id);
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id_2));
+}
+
+// After a fatal error (where we didn't call async_close), re-establishing the session
+// updates the connection id
+BOOST_FIXTURE_TEST_CASE(connection_id_after_error, any_connection_fixture)
+{
+    // Connect
+    connect();
+    auto id1 = call_connection_id(conn);
+
+    // Force a fatal error
+    results r;
+    asio::cancellation_signal sig;
+    auto execute_result = conn.async_execute(
+        "DO SLEEP(60)",
+        r,
+        asio::bind_cancellation_slot(sig.slot(), as_netresult)
+    );
+    sig.emit(asio::cancellation_type_t::terminal);
+    std::move(execute_result).validate_error(asio::error::operation_aborted);
+
+    // The id can be obtained even after the fatal error
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(id1));
+
+    // Reconnect
+    connect();
+    auto id2 = call_connection_id(conn);
+
+    // The new id can be obtained
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(id2));
+}
+
+// It's safe to obtain the connection id while an operation is in progress
+BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, any_connection_fixture)
+{
+    // Setup
+    connect();
+    const auto expected_id = call_connection_id(conn);
+
+    // Issue a query
+    results r;
+    auto execute_result = conn.async_execute("SELECT * FROM three_rows_table", r, as_netresult);
+
+    // While in progress, obtain the connection id. We would usually do this to
+    // open a new connection and run a KILL statement. We don't do it here because
+    // it's unreliable as a test due to race conditions between sessions in the server.
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id));
+
+    // Finish
+    std::move(execute_result).validate_no_error();
+}
 
 BOOST_AUTO_TEST_SUITE_END()

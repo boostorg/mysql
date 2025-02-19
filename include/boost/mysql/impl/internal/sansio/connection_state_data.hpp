@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -35,14 +35,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-enum class ssl_state
-{
-    unsupported,
-    inactive,
-    active,
-    torn_down,
-};
-
 struct connection_state_data
 {
     // Are we connected? In the middle of a multifn op?
@@ -58,6 +50,9 @@ struct connection_state_data
     // What are the connection's capabilities?
     capabilities current_capabilities;
 
+    // The current connection ID. Supplied by handshake, can be used in KILL statements
+    std::uint32_t connection_id{};
+
     // Used by async ops without output diagnostics params, to avoid allocations
     diagnostics shared_diag;
 
@@ -70,8 +65,11 @@ struct connection_state_data
     // Do we want to retain metadata strings or not? Used to save allocations
     metadata_mode meta_mode{metadata_mode::minimal};
 
-    // Is SSL supported/enabled for the current connection?
-    ssl_state ssl;
+    // Is TLS supported for the current connection?
+    bool tls_supported;
+
+    // Is TLS enabled for the current connection?
+    bool tls_active{false};
 
     // Do backslashes represent escape sequences? By default they do, but they can
     // be disabled using a variable. OK packets include a flag with this info.
@@ -87,16 +85,13 @@ struct connection_state_data
     message_reader reader;
 
     std::size_t max_buffer_size() const { return reader.max_buffer_size(); }
-    bool ssl_active() const { return ssl == ssl_state::active; }
-    bool supports_ssl() const { return ssl != ssl_state::unsupported; }
 
     connection_state_data(
         std::size_t read_buffer_size,
         std::size_t max_buff_size = static_cast<std::size_t>(-1),
         bool transport_supports_ssl = false
     )
-        : ssl(transport_supports_ssl ? ssl_state::inactive : ssl_state::unsupported),
-          reader(read_buffer_size, max_buff_size)
+        : tls_supported(transport_supports_ssl), reader(read_buffer_size, max_buff_size)
     {
     }
 
@@ -108,8 +103,7 @@ struct connection_state_data
         // Metadata mode does not get reset on handshake
         reader.reset();
         // Writer does not need reset, since every write clears previous state
-        if (supports_ssl())
-            ssl = ssl_state::inactive;
+        tls_active = false;
         backslash_escapes = true;
         current_charset = character_set{};
     }

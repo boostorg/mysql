@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -139,11 +139,15 @@ enum class client_errc : int
      */
     max_buffer_size_exceeded,
 
+    /**
+     * \brief Another operation is currently in progress for this connection. Make sure
+     * that a single connection does not run two asynchronous operations in parallel.
+     */
+    operation_in_progress,
+
     // TODO: document
-    not_connected,
     engaged_in_multi_function,
     not_engaged_in_multi_function,
-    operation_in_progress,
 };
 
 BOOST_MYSQL_DECL

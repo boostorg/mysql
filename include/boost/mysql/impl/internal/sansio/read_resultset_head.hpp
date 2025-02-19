@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -61,7 +61,6 @@ inline error_code process_field_definition(
 
 class read_resultset_head_impl_algo
 {
-    diagnostics* diag_;
     execution_processor* proc_;
 
     struct state_t
@@ -70,17 +69,13 @@ class read_resultset_head_impl_algo
     } state_;
 
 public:
-    read_resultset_head_impl_algo(diagnostics& diag, read_resultset_head_algo_params params) noexcept
-        : diag_(&diag), proc_(params.proc)
-    {
-    }
+    read_resultset_head_impl_algo(read_resultset_head_algo_params params) noexcept : proc_(params.proc) {}
 
     void reset() { state_ = state_t{}; }
 
-    diagnostics& diag() { return *diag_; }
     execution_processor& processor() { return *proc_; }
 
-    next_action resume(connection_state_data& st, error_code ec)
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
             return ec;
@@ -89,15 +84,16 @@ public:
         {
         case 0:
 
-            // Clear diagnostics
-            diag_->clear();
+            // If we're not reading head, return
+            if (!proc_->is_reading_head())
+                return next_action();
 
             // Read the response
             BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number()))
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
-            ec = process_execution_response(st, *proc_, st.reader.message(), *diag_);
+            ec = process_execution_response(st, *proc_, st.reader.message(), diag);
             if (ec)
                 return ec;
 
@@ -108,7 +104,7 @@ public:
                 BOOST_MYSQL_YIELD(state_.resume_point, 2, st.read(proc_->sequence_number()))
 
                 // Process the metadata packet
-                ec = process_field_definition(*proc_, st.reader.message(), *diag_);
+                ec = process_field_definition(*proc_, st.reader.message(), diag);
                 if (ec)
                     return ec;
             }

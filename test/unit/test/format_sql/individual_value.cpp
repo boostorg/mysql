@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -29,10 +29,10 @@
 #include "test_common/create_basic.hpp"
 #include "test_common/printing.hpp"
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 #include <string_view>
 #endif
-#ifdef __cpp_lib_optional
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 #include <optional>
 #endif
 
@@ -278,7 +278,7 @@ BOOST_AUTO_TEST_CASE(string_view_)
     BOOST_TEST(format_sql(opts, identifier_fmt, string_view("abc")) == "SELECT `abc` FROM myt");
 }
 
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 BOOST_AUTO_TEST_CASE(std_string_view)
 {
     BOOST_TEST(format_sql(opts, single_fmt, std::string_view("abc")) == "SELECT 'abc';");
@@ -486,7 +486,7 @@ BOOST_AUTO_TEST_CASE(boost_optional)
     BOOST_TEST(format_sql(opts, single_fmt, co_clval) == "SELECT 'abdef';");
 }
 
-#ifdef __cpp_lib_optional
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 BOOST_AUTO_TEST_CASE(std_optional)
 {
     std::optional<std::string> o_lval("abc");
@@ -681,7 +681,7 @@ void optional_error_test()
 
 BOOST_AUTO_TEST_CASE(boost_optional_error) { optional_error_test<boost::optional>(); }
 
-#ifdef __cpp_lib_optional
+#ifndef BOOST_NO_CXX17_HDR_OPTIONAL
 BOOST_AUTO_TEST_CASE(std_optional_error) { optional_error_test<std::optional>(); }
 #endif
 

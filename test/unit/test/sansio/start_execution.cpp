@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -51,7 +51,7 @@ struct fixture : algo_fixture_base
         any_execution_request req = any_execution_request("SELECT 1"),
         std::size_t max_bufsize = default_max_buffsize
     )
-        : algo_fixture_base(max_bufsize), algo(diag, {req, &proc})
+        : algo_fixture_base(max_bufsize), algo({req, &proc})
     {
     }
 };

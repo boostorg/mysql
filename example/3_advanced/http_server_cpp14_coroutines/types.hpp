@@ -1,30 +1,28 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_CONNECTION_POOL_TYPES_HPP
-#define BOOST_MYSQL_EXAMPLE_3_ADVANCED_CONNECTION_POOL_TYPES_HPP
+#ifndef BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP14_COROUTINES_TYPES_HPP
+#define BOOST_MYSQL_EXAMPLE_3_ADVANCED_HTTP_SERVER_CPP14_COROUTINES_TYPES_HPP
 
-//[example_connection_pool_types_hpp
+//[example_http_server_cpp14_coroutines_types_hpp
 //
 // File: types.hpp
 //
-
-#include <boost/core/span.hpp>
-#include <boost/describe/class.hpp>
-#include <boost/optional/optional.hpp>
-
-#include <string>
-#include <vector>
-
 // Contains type definitions used in the REST API and database code.
 // We use Boost.Describe (BOOST_DESCRIBE_STRUCT) to add reflection
 // capabilities to our types. This allows using Boost.MySQL
 // static interface (i.e. static_results<T>) to parse query results,
 // and Boost.JSON automatic serialization/deserialization.
+
+#include <boost/describe/class.hpp>
+
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace notes {
 

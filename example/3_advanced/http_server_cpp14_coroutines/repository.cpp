@@ -1,20 +1,26 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
 #include <boost/mysql/static_results.hpp>
-
 #ifdef BOOST_MYSQL_CXX14
 
-//[example_connection_pool_repository_cpp
+//[example_http_server_cpp14_coroutines_repository_cpp
 //
 // File: repository.cpp
 //
+// SQL code to create the notes table is located under $REPO_ROOT/example/db_setup.sql
+// The table looks like this:
+//
+// CREATE TABLE notes(
+//     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+//     title TEXT NOT NULL,
+//     content TEXT NOT NULL
+// );
 
-#include <boost/mysql/statement.hpp>
 #include <boost/mysql/static_results.hpp>
 #include <boost/mysql/string_view.hpp>
 #include <boost/mysql/with_diagnostics.hpp>
@@ -27,20 +33,12 @@
 #include "repository.hpp"
 #include "types.hpp"
 
-using namespace notes;
+namespace asio = boost::asio;
 namespace mysql = boost::mysql;
+using namespace notes;
 using mysql::with_diagnostics;
 
-// SQL code to create the notes table is located under $REPO_ROOT/example/db_setup.sql
-// The table looks like this:
-//
-// CREATE TABLE notes(
-//     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-//     title TEXT NOT NULL,
-//     content TEXT NOT NULL
-// );
-
-std::vector<note_t> note_repository::get_notes(boost::asio::yield_context yield)
+std::vector<note_t> note_repository::get_notes(asio::yield_context yield)
 {
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
@@ -72,7 +70,7 @@ std::vector<note_t> note_repository::get_notes(boost::asio::yield_context yield)
     // return the connection automatically to the pool.
 }
 
-optional<note_t> note_repository::get_note(std::int64_t note_id, boost::asio::yield_context yield)
+boost::optional<note_t> note_repository::get_note(std::int64_t note_id, asio::yield_context yield)
 {
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
@@ -98,7 +96,11 @@ optional<note_t> note_repository::get_note(std::int64_t note_id, boost::asio::yi
         return std::move(result.rows()[0]);
 }
 
-note_t note_repository::create_note(string_view title, string_view content, boost::asio::yield_context yield)
+note_t note_repository::create_note(
+    mysql::string_view title,
+    mysql::string_view content,
+    asio::yield_context yield
+)
 {
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the
@@ -129,11 +131,11 @@ note_t note_repository::create_note(string_view title, string_view content, boos
     // pooled_connection's destructor takes care of it.
 }
 
-optional<note_t> note_repository::replace_note(
+boost::optional<note_t> note_repository::replace_note(
     std::int64_t note_id,
-    string_view title,
-    string_view content,
-    boost::asio::yield_context yield
+    mysql::string_view title,
+    mysql::string_view content,
+    asio::yield_context yield
 )
 {
     // Get a fresh connection from the pool. This returns a pooled_connection object,
@@ -165,7 +167,7 @@ optional<note_t> note_repository::replace_note(
     return note_t{note_id, title, content};
 }
 
-bool note_repository::delete_note(std::int64_t note_id, boost::asio::yield_context yield)
+bool note_repository::delete_note(std::int64_t note_id, asio::yield_context yield)
 {
     // Get a fresh connection from the pool. This returns a pooled_connection object,
     // which is a proxy to an any_connection object. Connections are returned to the

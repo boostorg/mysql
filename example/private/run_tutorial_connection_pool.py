@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 #
-# Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+# Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 #
 # Distributed under the Boost Software License, Version 1.0. (See accompanying
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -67,7 +67,7 @@ def main():
     args = parser.parse_args()
 
     # Launch the server
-    with launch_server(args.executable, args.host) as listening_port:
+    with launch_server(args.executable, args.host, 'example_user', 'example_password') as listening_port:
     # Run the tests
         _Runner(listening_port).run(args.test_errors)
 

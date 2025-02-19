@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -13,9 +13,11 @@
 
 #include <boost/test/unit_test.hpp>
 
-#include "test_integration/snippets/get_any_connection.hpp"
+#include "test_common/network_result.hpp"
+#include "test_integration/snippets/snippets_fixture.hpp"
 
-using namespace boost::mysql;
+namespace mysql = boost::mysql;
+using namespace mysql::test;
 
 namespace {
 
@@ -88,14 +90,13 @@ struct formatter<employee>
 
 namespace {
 
-BOOST_AUTO_TEST_CASE(section_sql_formatting_custom)
+BOOST_FIXTURE_TEST_CASE(section_sql_formatting_formatter_specifiers, snippets_fixture)
 {
-    auto& conn = test::get_any_connection();
-    results r;
+    mysql::results r;
 
     //[sql_formatting_formatter_use_specifiers
     // We can now use the 'u' specifier with employee
-    std::string query = boost::mysql::format_sql(
+    std::string query = mysql::format_sql(
         conn.format_opts().value(),
         "UPDATE employee SET {:u} WHERE id = {}",
         employee{"John", "Doe", "HGS"},
@@ -106,11 +107,11 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting_custom)
         query == "UPDATE employee SET first_name='John', last_name='Doe', company_id='HGS' WHERE id = 42"
     );
     //<-
-    conn.execute(query, r);
+    conn.async_execute(query, r, as_netresult).validate_no_error();
     //->
 
     // If no format specifier is provided, we get the old behavior
-    query = boost::mysql::format_sql(
+    query = mysql::format_sql(
         conn.format_opts().value(),
         "INSERT INTO employee (first_name, last_name, company_id) VALUES ({}), ({})",
         employee{"John", "Doe", "HGS"},
@@ -123,7 +124,7 @@ BOOST_AUTO_TEST_CASE(section_sql_formatting_custom)
         "('John', 'Doe', 'HGS'), ('Rick', 'Johnson', 'AWC')"
     );
     //]
-    conn.execute(query, r);
+    conn.async_execute(query, r, as_netresult).validate_no_error();
 }
 
 }  // namespace

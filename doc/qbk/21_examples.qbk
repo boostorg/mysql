@@ -331,27 +331,54 @@ This example assumes you have gone through the [link mysql.examples.setup setup]
 
 
 
-[section:connection_pool A REST API server that uses connection pooling]
+[section:http_server_cpp20 A REST API server that uses C++20 coroutines]
 
 This example assumes you have gone through the [link mysql.examples.setup setup].
 
-[example_connection_pool_main_cpp]
+[example_http_server_cpp20_main_cpp]
 
-[example_connection_pool_types_hpp]
+[example_http_server_cpp20_types_hpp]
 
-[example_connection_pool_repository_hpp]
+[example_http_server_cpp20_error_hpp]
 
-[example_connection_pool_repository_cpp]
+[example_http_server_cpp20_error_cpp]
 
-[example_connection_pool_handle_request_hpp]
+[example_http_server_cpp20_repository_hpp]
 
-[example_connection_pool_handle_request_cpp]
+[example_http_server_cpp20_repository_cpp]
 
-[example_connection_pool_server_hpp]
+[example_http_server_cpp20_handle_request_hpp]
 
-[example_connection_pool_server_cpp]
+[example_http_server_cpp20_handle_request_cpp]
 
-[example_connection_pool_log_error_hpp]
+[example_http_server_cpp20_server_hpp]
+
+[example_http_server_cpp20_server_cpp]
+
+[endsect]
+
+
+
+
+[section:http_server_cpp14_coroutines A C++14 REST API server that uses asio::yield_context]
+
+This example assumes you have gone through the [link mysql.examples.setup setup].
+
+[example_http_server_cpp14_coroutines_main_cpp]
+
+[example_http_server_cpp14_coroutines_types_hpp]
+
+[example_http_server_cpp14_coroutines_repository_hpp]
+
+[example_http_server_cpp14_coroutines_repository_cpp]
+
+[example_http_server_cpp14_coroutines_handle_request_hpp]
+
+[example_http_server_cpp14_coroutines_handle_request_cpp]
+
+[example_http_server_cpp14_coroutines_server_hpp]
+
+[example_http_server_cpp14_coroutines_server_cpp]
 
 [endsect]
 

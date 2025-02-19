@@ -1,0 +1,121 @@
+[/
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:interfacing_sync_async Interfacing sync and async code: using connection_pool in sync code]
+[nochunk]
+
+As you may already know, we recommend using asynchronous functions over sync ones because
+they are more versatile and scalable. Additionally, some classes like [reflink connection_pool]
+do not offer a sync API.
+
+If your entire application uses Asio, you can use async functions everywhere
+as explained in the tutorials. However, some legacy applications are inherently synchronous,
+and might need to call asynchronous code and wait for it synchronously.
+
+This section explains how to handle these cases. We will build a synchronous
+function that retrieves an employee object from the database given their ID.
+It will use [reflink connection_pool] and `asio::cancel_after`, which
+can only be accessed through asynchronous functions.
+
+
+
+
+[heading The asio::use_future completion token]
+
+[asioreflink use_future use_future] is a [link mysql.tutorial_error_handling.completion_token completion token]
+that does what we want: it launches an asynchronous operation and returns a `std::future` that
+will complete when the task finishes.
+
+With this knowledge, we can write a first version of our function:
+
+[interfacing_sync_async_v1]
+
+
+For this to work, we need a thread that runs the execution context (event loop).
+This is, calling `get()` on the future doesn't run the event loop.
+Also note that our function will be called from a thread different to the
+one running the execution context, so we need to make our pool thread-safe:
+
+
+[interfacing_sync_async_v1_init]
+
+
+
+
+[heading Adding timeouts]
+
+As you might know, [refmemunq connection_pool async_get_connection] may block indefinitely,
+so we should use [asioreflink cancel_after cancel_after] to set a timeout. We might be tempted to do this:
+
+[interfacing_sync_async_v2]
+
+It might not be obvious, but this is a data race. `asio::cancel_after` creates a timer under the hood.
+This timer is shared between the thread calling `async_get_connection` and the one running the execution context.
+The race condition goes like this:
+
+* The thread calling `async_get_connection` sets up the timer required by `asio::cancel_after`.
+* In parallel, the thread running the execution context sees that there is a healthy connection
+  and completes the `async_get_connection` operation. As a result, the timer is cancelled.
+  Thus, the timer is accessed concurrently from both threads without protection.
+
+Note that this happens even if the pool is thread-safe because the timer is not part of the pool.
+
+To work this around, we can use a [@boost:/doc/html/boost_asio/overview/core/strands.html strand],
+Asio's mechanism to protect against data races. We will create a strand, then enter it and use it
+to run `async_get_connection`. This is a chain of asynchronous operations, so we can use
+an [asioreflink deferred deferred] chain to implement it:
+
+[interfacing_sync_async_v3]
+
+Don't worry if this looks intimidating. Let's break this down into pieces:
+
+* A strand is a compliant Asio executor. This means that we can use `asio::dispatch` and similar functions
+  to submit work to it.
+* [asioreflink dispatch dispatch] submits a piece of work to an executor. We specify the work to execute 
+  as a completion token. It uses the executor bound to the passed completion token.
+* [asioreflink bind_executor bind_executor] binds an executor to a completion token. Here, we're binding
+  the strand to a deferred completion chain. This means that `dispatch` will use the strand to run its work.
+* When passing [asioreflink deferred deferred] to an async operation, like `dispatch`, it returns a packaged
+  async operation. We can call the operation with any completion token to initiate it. Here, we use `asio::use_future`
+  to transform the operation into a future. If we were in a C++20 coroutine, we could co_await the returned object, too.
+* The function passed to `deferred` will be executed when the first operation completes, and determines what to do next.
+  This is similar to JavaScript promise chains. Our next operation is `async_get_connection`.
+* We use `bind_executor` with `asio::deferred` to make any intermediate handlers used by `async_get_connection`
+  and `asio::cancel_after` go through the strand, effectively protecting our timer.
+* The future will complete once the entire chain finishes.
+
+
+
+
+[heading Refactoring to use C++20 coroutines]
+
+Deferred compositions can be used even in C++11, but they can get messy pretty fast.
+Reasoning about their thread safety is non-trivial, either.
+
+If you're in C++20 or above, a cleaner approach is to encapsulate all operations
+involving networking into a coroutine:
+
+[interfacing_sync_async_v4]
+
+We're keeping all interactions with the `connection_pool` within coroutines,
+so we don't need to make it thread-safe anymore:
+
+[interfacing_sync_async_v4_init]
+
+
+
+[heading If C++20 is not available]
+
+If you can't use C++20, you can still use `asio::spawn` or imitate the behavior
+of `asio::use_future` with callbacks. This is what the latter could look like:
+
+[interfacing_sync_async_v5]
+
+It's not as clean, but the idea remains the same.
+
+
+[endsect]

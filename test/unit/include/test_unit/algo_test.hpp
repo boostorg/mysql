@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -8,11 +8,14 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_ALGO_TEST_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_ALGO_TEST_HPP
 
+#include <boost/mysql/character_set.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 
 #include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
+#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
@@ -24,7 +27,6 @@
 #include <cstdint>
 #include <vector>
 
-#include "test_common/create_diagnostics.hpp"
 #include "test_common/source_location.hpp"
 
 namespace boost {
@@ -35,12 +37,17 @@ namespace test {
 class any_algo_ref
 {
     template <class Algo>
-    static detail::next_action do_resume(void* self, detail::connection_state_data& st, error_code ec)
+    static detail::next_action do_resume(
+        void* self,
+        detail::connection_state_data& st,
+        diagnostics& diag,
+        error_code ec
+    )
     {
-        return static_cast<Algo*>(self)->resume(st, ec);
+        return static_cast<Algo*>(self)->resume(st, diag, ec);
     }
 
-    using fn_t = detail::next_action (*)(void*, detail::connection_state_data&, error_code);
+    using fn_t = detail::next_action (*)(void*, detail::connection_state_data&, diagnostics&, error_code);
 
     void* algo_{};
     fn_t fn_{};
@@ -51,9 +58,9 @@ public:
     {
     }
 
-    detail::next_action resume(detail::connection_state_data& st, error_code ec)
+    detail::next_action resume(detail::connection_state_data& st, diagnostics& diag, error_code ec)
     {
-        return fn_(algo_, st, ec);
+        return fn_(algo_, st, diag, ec);
     }
 };
 
@@ -69,20 +76,35 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     std::vector<step_t> steps_;
     boost::optional<detail::connection_status> status_change;
 
+    // Monitor connection_state_data for relevant changes
+    struct expected_state_changes_t
+    {
+        boost::optional<bool> is_connected;
+        boost::optional<detail::db_flavor> flavor;
+        boost::optional<detail::capabilities> current_capabilities;
+        boost::optional<std::uint32_t> connection_id;
+        boost::optional<bool> tls_supported;
+        boost::optional<bool> tls_active;
+        boost::optional<bool> backslash_escapes;
+        boost::optional<character_set> current_charset;
+    } state_changes_;
+
+    class state_checker;
+
     static void handle_read(detail::connection_state_data& st, const step_t& op);
 
     detail::next_action run_algo_until_step(
-        detail::connection_state_data& st,
         any_algo_ref algo,
+        detail::connection_state_data& st,
+        diagnostics& diag,
         std::size_t num_steps_to_run
     ) const;
 
     algo_test& add_step(detail::next_action_type act_type, std::vector<std::uint8_t> bytes, error_code ec);
 
     void check_impl(
-        detail::connection_state_data& st,
         any_algo_ref algo,
-        const diagnostics& actual_diag,
+        detail::connection_state_data& st,
         error_code expected_ec,
         const diagnostics& expected_diag,
         source_location loc
@@ -91,10 +113,9 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     std::size_t num_steps() const { return steps_.size(); }
 
     void check_network_errors_impl(
-        detail::connection_state_data& st,
         any_algo_ref algo,
+        detail::connection_state_data& st,
         std::size_t step_number,
-        const diagnostics& actual_diag,
         source_location loc
     ) const;
 
@@ -135,9 +156,30 @@ public:
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    algo_test& will_change_status(detail::connection_status st)
+    algo_test& will_set_is_connected(bool expected)
     {
-        status_change = st;
+        state_changes_.is_connected = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_tls_active(bool expected)
+    {
+        state_changes_.tls_active = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_current_charset(character_set expected)
+    {
+        state_changes_.current_charset = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_backslash_escapes(bool expected)
+    {
+        state_changes_.backslash_escapes = expected;
         return *this;
     }
 
@@ -149,7 +191,7 @@ public:
         source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     ) const
     {
-        check_impl(fix.st, fix.algo, fix.diag, expected_ec, expected_diag, loc);
+        check_impl(fix.algo, fix.st, expected_ec, expected_diag, loc);
     }
 
     template <class AlgoFixture>
@@ -158,7 +200,7 @@ public:
         for (std::size_t i = 0; i < num_steps(); ++i)
         {
             AlgoFixture fix;
-            check_network_errors_impl(fix.st, fix.algo, i, fix.diag, loc);
+            check_network_errors_impl(fix.algo, fix.st, i, loc);
         }
     }
 };
@@ -168,19 +210,13 @@ struct algo_fixture_base
     static constexpr std::size_t default_max_buffsize = 1024u;
 
     detail::connection_state_data st;
-    diagnostics diag;
 
-    algo_fixture_base(
-        diagnostics initial_diag = create_server_diag("Diagnostics not cleared"),
-        std::size_t max_buffer_size = default_max_buffsize
-    )
-        : st(max_buffer_size, max_buffer_size), diag(std::move(initial_diag))
+    algo_fixture_base(std::size_t max_buffer_size = default_max_buffsize)
+        : st(max_buffer_size, max_buffer_size)
     {
         st.status = detail::connection_status::ready;
         st.write_buffer.push_back(0xff);  // Check that we clear the write buffer at each step
     }
-
-    algo_fixture_base(std::size_t max_buffer_size) : algo_fixture_base(diagnostics(), max_buffer_size) {}
 };
 
 }  // namespace test

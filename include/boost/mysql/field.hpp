@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -16,12 +16,13 @@
 #include <boost/mysql/detail/config.hpp>
 #include <boost/mysql/detail/field_impl.hpp>
 
+#include <boost/config.hpp>
 #include <boost/variant2/variant.hpp>
 
 #include <cstddef>
 #include <iosfwd>
 #include <string>
-#ifdef __cpp_lib_string_view
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
 #include <string_view>
 #endif
 
@@ -187,7 +188,7 @@ public:
     /// \copydoc field(const std::string&)
     explicit field(string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 
-#if defined(__cpp_lib_string_view)
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
     /// \copydoc field(const std::string&)
     explicit field(std::string_view v) : repr_(boost::variant2::in_place_type_t<std::string>(), v) {}
 #endif
@@ -412,7 +413,7 @@ public:
         return *this;
     }
 
-#if defined(__cpp_lib_string_view)
+#ifndef BOOST_NO_CXX17_HDR_STRING_VIEW
     /// \copydoc operator=(const std::string&)
     field& operator=(std::string_view v)
     {

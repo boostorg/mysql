@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -169,6 +169,7 @@ struct server_hello
 {
     using auth_buffer_type = static_buffer<8 + 0xff>;
     db_flavor server;
+    std::uint32_t connection_id{};
     auth_buffer_type auth_plugin_data;
     capabilities server_capabilities{};
     string_view auth_plugin_name;
@@ -834,6 +835,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
         return to_error_code(err);
 
     // Compose output
+    output.connection_id = pack.connection_id.value;
     output.server = parse_db_version(pack.server_version.value);
     output.server_capabilities = cap;
     output.auth_plugin_name = pack.auth_plugin_name.value;

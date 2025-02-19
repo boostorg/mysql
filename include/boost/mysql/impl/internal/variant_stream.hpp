@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -183,8 +183,6 @@ public:
 
     bool supports_ssl() const { return true; }
 
-    void set_endpoint(const void* value) { address_ = static_cast<const any_address*>(value); }
-
     // Executor
     using executor_type = asio::any_io_executor;
     executor_type get_executor() { return st_.sock.get_executor(); }
@@ -272,10 +270,10 @@ public:
     }
 
     // Connect and close
-    void connect(error_code& output_ec)
+    void connect(const void* server_address, error_code& output_ec)
     {
         // Setup
-        variant_stream_connect_algo algo(st_, *address_);
+        variant_stream_connect_algo algo(st_, *static_cast<const any_address*>(server_address));
         error_code ec;
         asio::ip::tcp::resolver::results_type resolver_results;
 
@@ -298,9 +296,13 @@ public:
     }
 
     template <class CompletionToken>
-    void async_connect(CompletionToken&& token)
+    void async_connect(const void* server_address, CompletionToken&& token)
     {
-        asio::async_compose<CompletionToken, void(error_code)>(connect_op(*this), token, get_executor());
+        asio::async_compose<CompletionToken, void(error_code)>(
+            connect_op(*this, *static_cast<const any_address*>(server_address)),
+            token,
+            get_executor()
+        );
     }
 
     void close(error_code& ec)
@@ -313,15 +315,14 @@ public:
     const asio::generic::stream_protocol::socket& socket() const { return st_.sock; }
 
 private:
-    const any_address* address_{};
     variant_stream_state st_;
 
     struct connect_op
     {
         std::unique_ptr<variant_stream_connect_algo> algo_;
 
-        connect_op(variant_stream& this_obj)
-            : algo_(new variant_stream_connect_algo(this_obj.st_, *this_obj.address_))
+        connect_op(variant_stream& this_obj, const any_address& server_address)
+            : algo_(new variant_stream_connect_algo(this_obj.st_, server_address))
         {
         }
 

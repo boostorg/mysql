@@ -1,11 +1,11 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 ]
 
-[section:sql_formatting Text queries and client-side SQL formatting]
+[section:text_queries Text queries and client-side SQL formatting]
 [nochunk]
 
 ['Text queries] are those that use MySQL text protocol for execution.
@@ -30,8 +30,8 @@ which can improve efficiency.
 [reflink with_params] is the easiest way to use client-side SQL formatting.
 It can be used as a simpler and more flexible alternative to prepared statements.
 While prepared statements expand queries server-side, SQL formatting does it client-side.
-Please read the [link mysql.sql_formatting.comparison comparison with prepared statements]
-and the [link mysql.sql_formatting.comparison.security security considerations] sections for more info.
+Please read the [link mysql.text_queries.comparison comparison with prepared statements]
+and the [link mysql.text_queries.comparison.security security considerations] sections for more info.
 
 [reflink with_params] takes a SQL query
 string with placeholders and a set of parameters. When passed to
@@ -39,7 +39,7 @@ string with placeholders and a set of parameters. When passed to
 the query is expanded in the client with the supplied parameters and
 sent to the server for execution:
 
-[sql_formatting_simple]
+[text_queries_with_params_simple]
 
 Curly braces (`{}`) represent placeholders (technically called ['replacement fields]).
 The notation and semantics are similar to [@https://en.cppreference.com/w/cpp/utility/format/format `std::format`].
@@ -47,15 +47,15 @@ The notation and semantics are similar to [@https://en.cppreference.com/w/cpp/ut
 All fundamental types can be used as query parameters. This includes integers, floating point types,
 strings, blobs, dates and times:
 
-[sql_formatting_other_scalars]
+[text_queries_with_params_scalars]
 
 `std::optional<T>` and `boost::optional<T>` can also be used:
 
-[sql_formatting_optionals]
+[text_queries_with_params_optionals]
 
 Collections and ranges are supported, as long as its elements can be formatted:
 
-[sql_formatting_ranges]
+[text_queries_with_params_ranges]
 
 See [link mysql.sql_formatting_advanced.ranges this section] for more on formatting ranges,
 and [link mysql.sql_formatting_advanced.reference this table] for a reference of types
@@ -68,7 +68,7 @@ that have built-in support for SQL formatting.
 
 Like `std::format`, you can use arguments with explicit indices:
 
-[sql_formatting_manual_indices]
+[text_queries_with_params_manual_indices]
 
 See [link mysql.sql_formatting_advanced.format_string_syntax this section]
 for a reference on the format string syntax.
@@ -108,7 +108,7 @@ will be issued and the query won't be sent to the server. Here are the most comm
 
 For example:
 
-[sql_formatting_invalid_encoding]
+[text_queries_with_params_invalid_encoding]
 
 [endsect]
 
@@ -127,13 +127,13 @@ your queries as opaque strings. Client-side SQL yields [*greater flexibility] (y
 compose any query), while statements have more limitations. This also means that
 [*you need to pay more attention to compose valid queries], specially when dealing with complex conditionals.
 Logic errors may lead to exploits. Please read the
-[link mysql.sql_formatting.comparison.security security considerations section]
+[link mysql.text_queries.comparison.security security considerations section]
 for more info.
 
 Client-side SQL entails [*less round-trips to the server] than statements, and is usually more efficient
 for lightweight queries. However, it uses the less compact text protocol, which may be slower for
 queries retrieving a lot of data. See the
-[link mysql.sql_formatting.comparison.efficiency efficiency considerations section] for more info.
+[link mysql.text_queries.comparison.efficiency efficiency considerations section] for more info.
 
 In general, [*use client-side SQL] formatting for the following cases:
 
@@ -194,7 +194,7 @@ This is trivial for simple queries, but may be an issue with more complex ones,
 involving ranges or dynamic identifiers. For instance, the following query may
 expand to invalid SQL if the provided range is empty:
 
-[sql_formatting_empty_ranges]
+[text_queries_with_params_empty_ranges]
 
 The risk is higher if you're building your query by pieces using [reflink format_sql_to].
 
@@ -208,7 +208,7 @@ To sum up:
     * When using ranges, consider if the empty range would lead to valid SQL or not.
     * Thoroughly test complex query generation logic.
 * Client-side SQL requires knowing the connection's current character set. This usually happens
-  out of the box, and will lead to a [link mysql.sql_formatting.errors controlled error]
+  out of the box, and will lead to a [link mysql.text_queries.errors controlled error]
   otherwise. Some recommendations:
     * If in doubt, always use the default character set (`utf8mb4`).
     * Never issue `SET NAMES` or `SET CHARACTER SET` statements directly -

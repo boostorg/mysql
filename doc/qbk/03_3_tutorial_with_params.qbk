@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -62,7 +62,7 @@ Boost.MySQL offers two options to deal with this:
   executing same query repeatedly.
 
 In this tutorial, we will use client-side generation
-(termed [link mysql.sql_formatting client-side SQL formatting] throughout the documentation).
+(termed [link mysql.text_queries client-side SQL formatting] throughout the documentation).
 
 
 
@@ -81,7 +81,7 @@ The query template uses a syntax similar to `std::format`.
 You can use numbers, strings,
 dates, times and many other types as parameters.
 More information about client-side SQL formatting
-is available in [link mysql.sql_formatting this page].
+is available in [link mysql.text_queries this page].
 
 
 

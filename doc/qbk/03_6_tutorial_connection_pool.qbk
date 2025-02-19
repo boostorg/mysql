@@ -1,5 +1,5 @@
 [/
-    Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
    
     Distributed under the Boost Software License, Version 1.0. (See accompanying
     file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -34,7 +34,7 @@ The protocol is TCP based, and can be described as follows:
 
 This protocol is intentionally overly simplistic, and
 shouldn't be used in production. See our
-[link mysql.examples.connection_pool HTTP examples]
+[link mysql.examples.http_server_cpp20 HTTP examples]
 for more advanced use cases.
 
 

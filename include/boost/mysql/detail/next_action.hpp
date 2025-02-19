@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2019-2024 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -58,6 +58,7 @@ public:
         BOOST_ASSERT(is_done());
         return data_.ec;
     }
+    const void* connect_endpoint() const noexcept { return data_.connect_endpoint; }
     read_args_t read_args() const noexcept
     {
         BOOST_ASSERT(type_ == next_action_type::read);
@@ -69,7 +70,10 @@ public:
         return data_.write_args;
     }
 
-    static next_action connect() noexcept { return next_action(next_action_type::connect, data_t()); }
+    static next_action connect(const void* endpoint) noexcept
+    {
+        return next_action(next_action_type::connect, endpoint);
+    }
     static next_action read(read_args_t args) noexcept { return next_action(next_action_type::read, args); }
     static next_action write(write_args_t args) noexcept
     {
@@ -90,10 +94,12 @@ private:
     union data_t
     {
         error_code ec;
+        const void* connect_endpoint;
         read_args_t read_args;
         write_args_t write_args;
 
         data_t() noexcept : ec(error_code()) {}
+        data_t(const void* endpoint) noexcept : connect_endpoint(endpoint) {}
         data_t(error_code ec) noexcept : ec(ec) {}
         data_t(read_args_t args) noexcept : read_args(args) {}
         data_t(write_args_t args) noexcept : write_args(args) {}
