@@ -14,6 +14,7 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
@@ -106,9 +107,6 @@ public:
 
     next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
-        if (ec)
-            return ec;
-
         switch (state_.resume_point)
         {
         case 0:
@@ -132,10 +130,25 @@ public:
             // Read at least one message. Keep parsing state, in case a previous message
             // was parsed partially
             BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number(), true))
+            if (ec)
+            {
+                // If there was an error reading the message, we're no longer in a multi-function operation
+                st.status = connection_status::ready;
+                return ec;
+            }
 
             // Process messages
             std::tie(ec, state_.rows_read) = process_some_rows(st, *proc_, output_, diag);
-            return ec;
+            if (ec)
+            {
+                // If there was an error parsing the message, we're no longer in a multi-function operation
+                st.status = connection_status::ready;
+                return ec;
+            }
+
+            // If we received the final OK packet, we're no longer in a multi-function operation
+            if (proc_->is_complete())
+                st.status = connection_status::ready;
         }
 
         return next_action();

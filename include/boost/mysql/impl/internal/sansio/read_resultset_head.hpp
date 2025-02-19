@@ -13,6 +13,7 @@
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
+#include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
@@ -81,7 +82,11 @@ public:
     next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
+        {
+            // If there was a network error, we're no longer running a multi-function operation
+            st.status = connection_status::ready;
             return ec;
+        }
 
         switch (state_.resume_point)
         {
@@ -106,7 +111,11 @@ public:
             // (not implemented), or response with fields
             ec = process_execution_response(st, *proc_, st.reader.message(), diag);
             if (ec)
+            {
+                // We're no longer running a multi-function op
+                st.status = connection_status::ready;
                 return ec;
+            }
 
             // Read all of the field definitions
             while (proc_->is_reading_meta())
@@ -117,10 +126,18 @@ public:
                 // Process the metadata packet
                 ec = process_field_definition(*proc_, st.reader.message(), diag);
                 if (ec)
+                {
+                    // We're no longer running a multi-function op
+                    st.status = connection_status::ready;
                     return ec;
+                }
             }
 
             // No EOF packet is expected here, as we require deprecate EOF capabilities
+
+            // If the received the final OK packet, we're no longer running a multi-function op
+            if (proc_->is_complete())
+                st.status = connection_status::ready;
         }
 
         return next_action();

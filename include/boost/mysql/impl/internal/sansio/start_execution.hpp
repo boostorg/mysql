@@ -144,13 +144,18 @@ public:
             if (ec)
                 return ec;
 
+            // If the request was sent successfully, and we're the top-level algorithm,
+            // we're now running a multi-function operation. The status flag is cleared
+            // by the other algorithms on error or when an OK packet is received
+            if (is_top_level_)
+                st.status = connection_status::engaged_in_multi_function;
+
             // Read the first resultset's head and return its result
             while (!(act = read_head_st_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
-            return act;
         }
 
-        return next_action();
+        return act;
     }
 };
 
