@@ -15,6 +15,7 @@
 
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_frame.hpp"
+#include "test_unit/printing.hpp"
 
 namespace asio = boost::asio;
 using namespace boost::mysql::test;
@@ -104,12 +105,23 @@ BOOST_AUTO_TEST_CASE(ssl_error_shutdown)
 // quit runs regardless of the session status we have
 BOOST_AUTO_TEST_CASE(status_ignored)
 {
-    // Setup
-    fixture fix;
-    fix.st.status = detail::connection_status::not_connected;
+    constexpr detail::connection_status test_status[] = {
+        detail::connection_status::not_connected,
+        detail::connection_status::engaged_in_multi_function
+    };
 
-    // Run the algo
-    algo_test().expect_write(expected_request()).check(fix);
+    for (const auto status : test_status)
+    {
+        BOOST_TEST_CONTEXT(status)
+        {
+            // Setup
+            fixture fix;
+            fix.st.status = detail::connection_status::not_connected;
+
+            // Run the algo
+            algo_test().expect_write(expected_request()).check(fix);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
