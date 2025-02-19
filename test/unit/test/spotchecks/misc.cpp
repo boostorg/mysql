@@ -23,8 +23,6 @@
 #include <boost/mysql/detail/engine_impl.hpp>
 #include <boost/mysql/detail/engine_stream_adaptor.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
-
 #include <boost/asio/deferred.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/test/unit_test.hpp>

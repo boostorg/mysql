@@ -13,8 +13,6 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/static_execution_state.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
-
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 

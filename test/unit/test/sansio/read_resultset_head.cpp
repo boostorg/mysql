@@ -13,7 +13,6 @@
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 #include <boost/mysql/impl/internal/sansio/read_resultset_head.hpp>
 
 #include <boost/test/unit_test.hpp>

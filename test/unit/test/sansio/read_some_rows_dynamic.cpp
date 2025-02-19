@@ -12,7 +12,6 @@
 #include <boost/mysql/detail/execution_processor/execution_state_impl.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 #include <boost/mysql/impl/internal/sansio/read_some_rows_dynamic.hpp>
 
 #include <boost/test/unit_test.hpp>

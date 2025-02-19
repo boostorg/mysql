@@ -17,7 +17,6 @@
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
@@ -74,12 +73,11 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     };
 
     std::vector<step_t> steps_;
-    boost::optional<detail::connection_status> status_change;
 
     // Monitor connection_state_data for relevant changes
     struct expected_state_changes_t
     {
-        boost::optional<bool> is_connected;
+        boost::optional<detail::connection_status> status;
         boost::optional<detail::db_flavor> flavor;
         boost::optional<detail::capabilities> current_capabilities;
         boost::optional<std::uint32_t> connection_id;
@@ -156,9 +154,9 @@ public:
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    algo_test& will_set_is_connected(bool expected)
+    algo_test& will_set_status(detail::connection_status expected)
     {
-        state_changes_.is_connected = expected;
+        state_changes_.status = expected;
         return *this;
     }
 

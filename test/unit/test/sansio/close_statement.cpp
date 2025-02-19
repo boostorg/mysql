@@ -11,7 +11,6 @@
 #include <boost/mysql/statement.hpp>
 
 #include <boost/mysql/impl/internal/sansio/close_statement.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
 #include <boost/mysql/impl/internal/sansio/run_pipeline.hpp>
 
 #include <boost/test/unit_test.hpp>

@@ -30,6 +30,7 @@
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -139,7 +140,7 @@ class boost::mysql::test::algo_test::state_checker
 
     // The values we expect to get after running the algorithm.
     // If a change is not in expected_state_changes_t, the value shouldn't change
-    bool expected_is_connected;
+    detail::connection_status expected_status;
     detail::db_flavor expected_flavor;
     detail::capabilities expected_capabilities;
     std::uint32_t expected_connection_id;
@@ -151,7 +152,7 @@ class boost::mysql::test::algo_test::state_checker
 public:
     state_checker(detail::connection_state_data& st, const expected_state_changes_t& changes) noexcept
         : st_(st),
-          expected_is_connected(changes.is_connected.value_or(st.is_connected)),
+          expected_status(changes.status.value_or(st.status)),
           expected_flavor(changes.flavor.value_or(st.flavor)),
           expected_capabilities(changes.current_capabilities.value_or(st.current_capabilities)),
           expected_connection_id(changes.connection_id.value_or(st.connection_id)),
@@ -164,7 +165,7 @@ public:
 
     void check() const
     {
-        BOOST_TEST(st_.is_connected == expected_is_connected);
+        BOOST_TEST(st_.status == expected_status);
         BOOST_TEST(st_.flavor == expected_flavor);
         BOOST_TEST(st_.current_capabilities == expected_capabilities);
         BOOST_TEST(st_.connection_id == expected_connection_id);

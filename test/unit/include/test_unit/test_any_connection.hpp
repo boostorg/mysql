@@ -10,7 +10,7 @@
 
 #include <boost/mysql/any_connection.hpp>
 
-#include <boost/mysql/impl/internal/sansio/connection_status.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/asio/io_context.hpp>
 
