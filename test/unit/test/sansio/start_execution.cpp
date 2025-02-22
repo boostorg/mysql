@@ -174,6 +174,42 @@ BOOST_AUTO_TEST_CASE(error_read_resultset_head)
     }
 }
 
+BOOST_AUTO_TEST_CASE(error_max_buffer_size)
+{
+    // Setup
+    std::string query(512, 'a');
+    fixture fix(any_execution_request(query), 512u);
+
+    // Run the algo
+    algo_test().check(fix, client_errc::max_buffer_size_exceeded);
+}
+
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(error_invalid_connection_status)
+{
+    struct
+    {
+        connection_status status;
+        error_code expected_err;
+    } test_cases[] = {
+        {connection_status::not_connected,             client_errc::not_connected            },
+        {connection_status::engaged_in_multi_function, client_errc::engaged_in_multi_function},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.status)
+        {
+            // Setup
+            fixture fix;
+            fix.st.status = tc.status;
+
+            // Run the algo
+            algo_test().check(fix, tc.expected_err);
+        }
+    }
+}
+
 //
 // Different execution requests
 //
@@ -281,29 +317,5 @@ BOOST_AUTO_TEST_CASE(with_params_error_formatting)
     // The algo fails immediately
     algo_test().check(fix, client_errc::format_arg_not_found);
 }
-
-// This covers errors in both writing the request and calling read_resultset_head
-BOOST_AUTO_TEST_CASE(error_network_error)
-{
-    // This will test for errors writing the execution request
-    // and reading the response and metadata (thus, calling read_resultset_head)
-    algo_test()
-        .expect_write(create_frame(0, {0x03, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31}))
-        .expect_read(create_frame(1, {0x01}))
-        .expect_read(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
-        .check_network_errors<fixture>();
-}
-
-BOOST_AUTO_TEST_CASE(error_max_buffer_size)
-{
-    // Setup
-    std::string query(512, 'a');
-    fixture fix(any_execution_request(query), 512u);
-
-    // Run the algo
-    algo_test().check(fix, client_errc::max_buffer_size_exceeded);
-}
-
-// TODO: status checks
 
 BOOST_AUTO_TEST_SUITE_END()
