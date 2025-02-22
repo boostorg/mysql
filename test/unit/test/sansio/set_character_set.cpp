@@ -24,6 +24,7 @@
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_query_frame.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -190,6 +191,32 @@ BOOST_AUTO_TEST_CASE(set_charset_error_max_buffer_size)
 
     // Run the algo
     algo_test().check(fix, client_errc::max_buffer_size_exceeded);
+}
+
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(set_charset_error_invalid_connection_status)
+{
+    struct
+    {
+        detail::connection_status status;
+        error_code expected_err;
+    } test_cases[] = {
+        {detail::connection_status::not_connected,             client_errc::not_connected            },
+        {detail::connection_status::engaged_in_multi_function, client_errc::engaged_in_multi_function},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.status)
+        {
+            // Setup
+            set_charset_fixture fix;
+            fix.st.status = tc.status;
+
+            // Run the algo
+            algo_test().check(fix, tc.expected_err);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
