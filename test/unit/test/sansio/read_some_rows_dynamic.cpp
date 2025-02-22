@@ -115,7 +115,10 @@ BOOST_AUTO_TEST_CASE(error)
     fixture fix;
 
     // Run the algo
-    algo_test().expect_read(client_errc::incomplete_message).check(fix, client_errc::incomplete_message);
+    algo_test()
+        .expect_read(client_errc::incomplete_message)
+        .will_set_status(detail::connection_status::ready)  // Errors finish multi-function operations
+        .check(fix, client_errc::incomplete_message);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
