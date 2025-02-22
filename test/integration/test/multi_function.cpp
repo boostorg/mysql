@@ -50,6 +50,24 @@ BOOST_FIXTURE_TEST_CASE(status_checks, any_connection_fixture)
     conn.async_execute("SELECT 1", r, as_netresult).validate_no_error();
 }
 
+// We don't mess up with status in case of errors
+BOOST_FIXTURE_TEST_CASE(status_checks_errors, any_connection_fixture)
+{
+    connect();
+
+    // Start the operation, which finishes with an error
+    execution_state st;
+    conn.async_start_execution("SELECT * FROM bad_table", st, as_netresult)
+        .validate_error(
+            common_server_errc::er_no_such_table,
+            "Table 'boost_mysql_integtests.bad_table' doesn't exist"
+        );
+
+    // We can keep using the connection
+    results r;
+    conn.async_execute("SELECT 1", r, as_netresult).validate_no_error();
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
