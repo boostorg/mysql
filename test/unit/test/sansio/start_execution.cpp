@@ -66,6 +66,7 @@ BOOST_AUTO_TEST_CASE(text_query)
         .expect_write(create_frame(0, {0x03, 0x53, 0x45, 0x4c, 0x45, 0x43, 0x54, 0x20, 0x31}))
         .expect_read(create_frame(1, {0x01}))
         .expect_read(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
+        .will_set_status(detail::connection_status::engaged_in_multi_function)  // Starts a multi-function op
         .check(fix);
 
     // Verify
@@ -93,6 +94,7 @@ BOOST_AUTO_TEST_CASE(stmt_success)
         ))
         .expect_read(create_frame(1, {0x01}))
         .expect_read(create_coldef_frame(2, meta_builder().type(column_type::varchar).build_coldef()))
+        .will_set_status(detail::connection_status::engaged_in_multi_function)  // Starts a multi-function op
         .check(fix);
 
     // Verify
@@ -180,5 +182,8 @@ BOOST_AUTO_TEST_CASE(error_max_buffer_size)
     // Run the algo
     algo_test().check(fix, client_errc::max_buffer_size_exceeded);
 }
+
+// TODO: status checks
+// TODO: is_top_level = false
 
 BOOST_AUTO_TEST_SUITE_END()
