@@ -69,6 +69,14 @@ class read_resultset_head_algo
         int resume_point{0};
     } state_;
 
+    // Status changes are only performed if we're the top-level algorithm.
+    // After an error, multi-function operations are considered finished
+    void maybe_set_status_ready(connection_state_data& st) const
+    {
+        if (is_top_level_)
+            st.status = connection_status::ready;
+    }
+
 public:
     read_resultset_head_algo(read_resultset_head_algo_params params, bool is_top_level = true) noexcept
         : proc_(params.proc), is_top_level_(is_top_level)
@@ -81,13 +89,6 @@ public:
 
     next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
     {
-        if (ec)
-        {
-            // If there was a network error, we're no longer running a multi-function operation
-            st.status = connection_status::ready;
-            return ec;
-        }
-
         switch (state_.resume_point)
         {
         case 0:
@@ -106,14 +107,18 @@ public:
 
             // Read the response
             BOOST_MYSQL_YIELD(state_.resume_point, 1, st.read(proc_->sequence_number()))
+            if (ec)
+            {
+                maybe_set_status_ready(st);
+                return ec;
+            }
 
             // Response may be: ok_packet, err_packet, local infile request
             // (not implemented), or response with fields
             ec = process_execution_response(st, *proc_, st.reader.message(), diag);
             if (ec)
             {
-                // We're no longer running a multi-function op
-                st.status = connection_status::ready;
+                maybe_set_status_ready(st);
                 return ec;
             }
 
@@ -122,13 +127,17 @@ public:
             {
                 // Read a message
                 BOOST_MYSQL_YIELD(state_.resume_point, 2, st.read(proc_->sequence_number()))
+                if (ec)
+                {
+                    maybe_set_status_ready(st);
+                    return ec;
+                }
 
                 // Process the metadata packet
                 ec = process_field_definition(*proc_, st.reader.message(), diag);
                 if (ec)
                 {
-                    // We're no longer running a multi-function op
-                    st.status = connection_status::ready;
+                    maybe_set_status_ready(st);
                     return ec;
                 }
             }
@@ -136,7 +145,7 @@ public:
             // No EOF packet is expected here, as we require deprecate EOF capabilities
 
             // If the received the final OK packet, we're no longer running a multi-function op
-            if (proc_->is_complete())
+            if (proc_->is_complete() && is_top_level_)
                 st.status = connection_status::ready;
         }
 

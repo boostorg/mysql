@@ -153,9 +153,21 @@ public:
             // Read the first resultset's head and return its result
             while (!(act = read_head_st_.resume(st, diag, ec)).is_done())
                 BOOST_MYSQL_YIELD(resume_point_, 2, act)
+
+            // If there was an error, we're no longer running a multi-function operation
+            if (act.error())
+            {
+                if (is_top_level_)
+                    st.status = connection_status::ready;
+                return act;
+            }
+
+            // If we received the final OK packet, we're no longer running a multi-function operation
+            if (processor().is_complete() && is_top_level_)
+                st.status = connection_status::ready;
         }
 
-        return act;
+        return next_action();
     }
 };
 

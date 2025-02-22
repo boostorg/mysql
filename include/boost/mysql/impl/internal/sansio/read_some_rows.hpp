@@ -94,6 +94,14 @@ class read_some_rows_algo
         return {error_code(), read_rows};
     }
 
+    // Status changes are only performed if we're the top-level algorithm.
+    // After an error, multi-function operations are considered finished
+    void maybe_set_status_ready(connection_state_data& st) const
+    {
+        if (is_top_level_)
+            st.status = connection_status::ready;
+    }
+
 public:
     read_some_rows_algo(read_some_rows_algo_params params, bool is_top_level = true) noexcept
         : proc_(params.proc), output_(params.output), is_top_level_(is_top_level)
@@ -133,7 +141,7 @@ public:
             if (ec)
             {
                 // If there was an error reading the message, we're no longer in a multi-function operation
-                st.status = connection_status::ready;
+                maybe_set_status_ready(st);
                 return ec;
             }
 
@@ -142,12 +150,12 @@ public:
             if (ec)
             {
                 // If there was an error parsing the message, we're no longer in a multi-function operation
-                st.status = connection_status::ready;
+                maybe_set_status_ready(st);
                 return ec;
             }
 
             // If we received the final OK packet, we're no longer in a multi-function operation
-            if (proc_->is_complete())
+            if (proc_->is_complete() && is_top_level_)
                 st.status = connection_status::ready;
         }
 

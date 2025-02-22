@@ -185,5 +185,6 @@ BOOST_AUTO_TEST_CASE(error_max_buffer_size)
 
 // TODO: status checks
 // TODO: is_top_level = false
+// TODO: check if we have tests for fatal/non-fatal errors, errors in read_resultset_head
 
 BOOST_AUTO_TEST_SUITE_END()

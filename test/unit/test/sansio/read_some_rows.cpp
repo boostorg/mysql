@@ -245,7 +245,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_out_of_span_space)
 BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
 {
     // Setup
-    fixture fix(false);
+    fixture fix;
 
     // Run the algo
     auto eof = create_eof_frame(44, ok_builder().affected_rows(1).info("1st").build());
@@ -270,7 +270,7 @@ BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
         .validate();
 
     // Run the algo again
-    fix.algo.reset();
+    fix.algo = detail::read_some_rows_algo({&fix.proc, fix.ref()});
     algo_test()
         .expect_read(buffer_builder().add(boost::span<const std::uint8_t>(eof).subspan(6)).build())
         .will_set_status(detail::connection_status::ready)
@@ -423,10 +423,7 @@ BOOST_AUTO_TEST_CASE(reset)
     fix.algo.reset();
 
     // Run the algo again. Read an OK packet
-    algo_test()
-        .expect_read(create_eof_frame(43, ok_builder().build()))
-        .will_set_status(detail::connection_status::ready)
-        .check(fix);
+    algo_test().expect_read(create_eof_frame(43, ok_builder().build())).check(fix);
 
     // Check
     BOOST_TEST(fix.result() == 0u);  // num read rows
