@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/execution_state.hpp>
 #include <boost/mysql/results.hpp>
 
 #include <boost/asio/bind_cancellation_slot.hpp>
@@ -35,7 +36,7 @@ std::uint32_t call_connection_id(any_connection& conn)
     return static_cast<std::uint32_t>(r.rows().at(0).at(0).as_uint64());
 }
 
-BOOST_FIXTURE_TEST_CASE(connection_id, any_connection_fixture)
+BOOST_FIXTURE_TEST_CASE(success, any_connection_fixture)
 {
     // Before connection, connection_id returns an empty optional
     BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>());
@@ -67,7 +68,7 @@ BOOST_FIXTURE_TEST_CASE(connection_id, any_connection_fixture)
 
 // After a fatal error (where we didn't call async_close), re-establishing the session
 // updates the connection id
-BOOST_FIXTURE_TEST_CASE(connection_id_after_error, any_connection_fixture)
+BOOST_FIXTURE_TEST_CASE(after_error, any_connection_fixture)
 {
     // Connect
     connect();
@@ -96,7 +97,7 @@ BOOST_FIXTURE_TEST_CASE(connection_id_after_error, any_connection_fixture)
 }
 
 // It's safe to obtain the connection id while an operation is in progress
-BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, any_connection_fixture)
+BOOST_FIXTURE_TEST_CASE(op_in_progress, any_connection_fixture)
 {
     // Setup
     connect();
@@ -113,6 +114,21 @@ BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, any_connection_fixture)
 
     // Finish
     std::move(execute_result).validate_no_error();
+}
+
+// It's safe to obtain the connection id while a multi-function operation is in progress
+BOOST_FIXTURE_TEST_CASE(multi_function, any_connection_fixture)
+{
+    // Setup
+    connect();
+    const auto expected_id = call_connection_id(conn);
+
+    // Start a multi-function operation
+    execution_state st;
+    conn.async_start_execution("SELECT * FROM three_rows_table", st, as_netresult).validate_no_error();
+
+    // Obtain the connection id
+    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
