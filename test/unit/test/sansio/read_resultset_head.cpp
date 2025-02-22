@@ -40,9 +40,9 @@ BOOST_AUTO_TEST_SUITE(test_read_resultset_head)
 struct fixture : algo_fixture_base
 {
     mock_execution_processor proc;
-    detail::read_resultset_head_algo algo{{&proc}};
+    detail::read_resultset_head_algo algo;
 
-    fixture()
+    fixture(bool is_top_level = true) : algo({&proc}, is_top_level)
     {
         // The top-level algorithm requires the connection to be engaged in a multi-function op
         st.status = detail::connection_status::engaged_in_multi_function;
@@ -316,10 +316,14 @@ BOOST_AUTO_TEST_CASE(error_invalid_connection_status)
     }
 }
 
+//
+// If is_top_level = false (subordinate algorithm)
+//
+
 BOOST_AUTO_TEST_CASE(reset)
 {
     // Setup
-    fixture fix;
+    fixture fix(false);
 
     // Run the algo once
     algo_test()
@@ -337,8 +341,7 @@ BOOST_AUTO_TEST_CASE(reset)
     fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).on_head_ok_packet(1).validate();
 }
 
-// Status checks
-// Status checks not performed if top_level=false
-// Status updated even if top_level=false
+// TODO: Status checks not performed if top_level=false
+// TODO: Status updated even if top_level=false
 
 BOOST_AUTO_TEST_SUITE_END()
