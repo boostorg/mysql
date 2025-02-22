@@ -23,11 +23,11 @@
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_execution_processor.hpp"
-#include "test_unit/create_meta.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/create_row_message.hpp"
 #include "test_unit/mock_execution_processor.hpp"
+#include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -496,6 +496,32 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
     }
 }
 
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(error_invalid_connection_status)
+{
+    struct
+    {
+        connection_status status;
+        error_code expected_err;
+    } test_cases[] = {
+        {connection_status::not_connected, client_errc::not_connected                },
+        {connection_status::ready,         client_errc::not_engaged_in_multi_function},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.status)
+        {
+            // Setup
+            fixture fix;
+            fix.st.status = tc.status;
+
+            // Run the algo
+            algo_test().check(fix, tc.expected_err);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(reset)
 {
     // Setup
@@ -534,7 +560,5 @@ BOOST_AUTO_TEST_CASE(reset)
         .on_row_ok_packet(1)
         .validate();
 }
-
-// TODO: state checks
 
 BOOST_AUTO_TEST_SUITE_END()
