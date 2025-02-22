@@ -145,6 +145,7 @@ struct connection_state_data
         return next_action::write({write_buffer, false});
     }
 
+    // Helpers to implement connection status in algorithms
     error_code check_status_ready() const
     {
         switch (status)
