@@ -37,6 +37,9 @@ struct fixture : algo_fixture_base
 
     fixture()
     {
+        // This algorithm requires us to be engaged in a multi-function op
+        st.status = detail::connection_status::engaged_in_multi_function;
+
         // Prepare the state, such that it's ready to read rows
         add_meta(exec_st, {meta_builder().type(column_type::varchar).build_coldef()});
         exec_st.sequence_number() = 42;
@@ -56,6 +59,7 @@ BOOST_AUTO_TEST_CASE(eof)
     // Run the algo
     algo_test()
         .expect_read(create_eof_frame(42, ok_builder().affected_rows(1).info("1st").build()))
+        .will_set_status(detail::connection_status::ready)
         .check(fix);
 
     BOOST_TEST(fix.result() == makerows(1));
@@ -94,6 +98,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_eof)
                          .add(create_text_row_message(43, "von"))
                          .add(create_eof_frame(44, ok_builder().affected_rows(1).info("1st").build()))
                          .build())
+        .will_set_status(detail::connection_status::ready)
         .check(fix);
 
     // Check
@@ -110,7 +115,10 @@ BOOST_AUTO_TEST_CASE(error)
     fixture fix;
 
     // Run the algo
-    algo_test().expect_read(client_errc::incomplete_message).check(fix, client_errc::incomplete_message);
+    algo_test()
+        .expect_read(client_errc::incomplete_message)
+        .will_set_status(detail::connection_status::ready)  // Errors finish multi-function operations
+        .check(fix, client_errc::incomplete_message);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

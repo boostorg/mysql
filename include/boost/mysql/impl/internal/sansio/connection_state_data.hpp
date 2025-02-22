@@ -9,7 +9,9 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_CONNECTION_STATE_DATA_HPP
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
+#include <boost/mysql/error_code.hpp>
 #include <boost/mysql/field_view.hpp>
 #include <boost/mysql/metadata_mode.hpp>
 
@@ -21,6 +23,8 @@
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/sansio/message_reader.hpp>
 
+#include <boost/assert.hpp>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -30,14 +34,26 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+enum class connection_status
+{
+    // Never connected or closed
+    not_connected,
+
+    // Connected and ready for a command
+    ready,
+
+    // In the middle of a multi-function operation
+    engaged_in_multi_function,
+};
+
 struct connection_state_data
 {
+    // Are we connected? In the middle of a multi-function operation?
+    connection_status status{connection_status::not_connected};
+
     // Are we currently executing an operation?
     // Prevent the user from running concurrent operations
     bool op_in_progress{false};
-
-    // Is the connection actually connected? Set by handshake
-    bool is_connected{false};
 
     // Are we talking to MySQL or MariaDB?
     db_flavor flavor{db_flavor::mysql};
@@ -92,7 +108,7 @@ struct connection_state_data
 
     void reset()
     {
-        is_connected = false;
+        status = connection_status::not_connected;
         flavor = db_flavor::mysql;
         current_capabilities = capabilities();
         // Metadata mode does not get reset on handshake
@@ -127,6 +143,27 @@ struct connection_state_data
             return res.err;
         seqnum = res.seqnum;
         return next_action::write({write_buffer, false});
+    }
+
+    // Helpers to implement connection status in algorithms
+    error_code check_status_ready() const
+    {
+        switch (status)
+        {
+        case connection_status::not_connected: return client_errc::not_connected;
+        case connection_status::engaged_in_multi_function: return client_errc::engaged_in_multi_function;
+        default: BOOST_ASSERT(status == connection_status::ready); return error_code();
+        }
+    }
+
+    error_code check_status_multi_function() const
+    {
+        switch (status)
+        {
+        case connection_status::not_connected: return client_errc::not_connected;
+        case connection_status::ready: return client_errc::not_engaged_in_multi_function;
+        default: BOOST_ASSERT(status == connection_status::engaged_in_multi_function); return error_code();
+        }
     }
 };
 

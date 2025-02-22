@@ -38,8 +38,9 @@ public:
         {
         case 0:
 
-            // If we're not connected, we're done
-            if (!st.is_connected)
+            // If we're not connected, we're done.
+            // If we're in a multi-function operation, it's safe to proceed.
+            if (st.status == connection_status::not_connected)
                 return next_action();
 
             // Attempt quit

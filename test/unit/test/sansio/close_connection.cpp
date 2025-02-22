@@ -19,6 +19,7 @@
 namespace asio = boost::asio;
 using namespace boost::mysql::test;
 using namespace boost::mysql;
+using detail::connection_status;
 
 namespace {
 
@@ -27,8 +28,6 @@ BOOST_AUTO_TEST_SUITE(test_close_connection)
 struct fixture : algo_fixture_base
 {
     detail::close_connection_algo algo{{}};
-
-    fixture() { st.is_connected = true; }
 };
 
 // A serialized quit request
@@ -40,7 +39,11 @@ BOOST_AUTO_TEST_CASE(success)
     fixture fix;
 
     // Run the algo
-    algo_test().expect_write(expected_request()).expect_close().will_set_is_connected(false).check(fix);
+    algo_test()
+        .expect_write(expected_request())
+        .expect_close()
+        .will_set_status(connection_status::not_connected)
+        .check(fix);
 }
 
 // If we're using TLS, close calls quit, which shuts it down
@@ -55,9 +58,35 @@ BOOST_AUTO_TEST_CASE(success_tls)
         .expect_write(expected_request())
         .expect_ssl_shutdown()
         .expect_close()
-        .will_set_is_connected(false)
+        .will_set_status(connection_status::not_connected)
         .will_set_tls_active(false)
         .check(fix);
+}
+
+// If the session hasn't been established, or has been already torn down, close is a no-op
+BOOST_AUTO_TEST_CASE(success_multi_function)
+{
+    // Setup
+    fixture fix;
+    fix.st.status = connection_status::engaged_in_multi_function;
+
+    // Run the algo
+    algo_test()
+        .expect_write(expected_request())
+        .expect_close()
+        .will_set_status(connection_status::not_connected)
+        .check(fix);
+}
+
+// Close runs normally even if the connection is engaged in a multi-function operation
+BOOST_AUTO_TEST_CASE(not_connected)
+{
+    // Setup
+    fixture fix;
+    fix.st.status = connection_status::not_connected;
+
+    // Run the algo
+    algo_test().check(fix);
 }
 
 BOOST_AUTO_TEST_CASE(error_close)
@@ -69,7 +98,7 @@ BOOST_AUTO_TEST_CASE(error_close)
     algo_test()
         .expect_write(expected_request())
         .expect_close(asio::error::network_reset)
-        .will_set_is_connected(false)  // State change happens even if close fails
+        .will_set_status(connection_status::not_connected)  // State change happens even if close fails
         .check(fix, asio::error::network_reset);
 }
 
@@ -81,9 +110,9 @@ BOOST_AUTO_TEST_CASE(error_quit)
     // Run the algo
     algo_test()
         .expect_write(expected_request(), asio::error::network_reset)
-        .expect_close()                           // close is issued even if quit fails
-        .will_set_is_connected(false)             // state change happens even if quit fails
-        .check(fix, asio::error::network_reset);  // error code is propagated
+        .expect_close()                                     // close is issued even if quit fails
+        .will_set_status(connection_status::not_connected)  // state change happens even if quit fails
+        .check(fix, asio::error::network_reset);            // error code is propagated
 }
 
 BOOST_AUTO_TEST_CASE(error_quit_close)
@@ -95,19 +124,8 @@ BOOST_AUTO_TEST_CASE(error_quit_close)
     algo_test()
         .expect_write(expected_request(), asio::error::network_reset)
         .expect_close(asio::error::shut_down)
-        .will_set_is_connected(false)             // state change happens even if quit fails
-        .check(fix, asio::error::network_reset);  // the 1st error code wins
-}
-
-// If the session hasn't been established, or has been already torn down, close is a no-op
-BOOST_AUTO_TEST_CASE(not_connected)
-{
-    // Setup
-    fixture fix;
-    fix.st.is_connected = false;
-
-    // Run the algo
-    algo_test().check(fix);
+        .will_set_status(connection_status::not_connected)  // state change happens even if quit fails
+        .check(fix, asio::error::network_reset);            // the 1st error code wins
 }
 
 BOOST_AUTO_TEST_SUITE_END()

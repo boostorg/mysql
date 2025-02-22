@@ -17,6 +17,7 @@
 #include <boost/mysql/detail/connection_impl.hpp>
 
 #include <boost/mysql/impl/internal/sansio/connection_state.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/throw_exception.hpp>
 
@@ -94,7 +95,7 @@ boost::system::result<boost::mysql::character_set> boost::mysql::detail::connect
 boost::optional<std::uint32_t> boost::mysql::detail::connection_impl::connection_id() const
 {
     const auto& data = st_->data();
-    if (!data.is_connected)
+    if (data.status == connection_status::not_connected)
         return {};
     else
         return data.connection_id;

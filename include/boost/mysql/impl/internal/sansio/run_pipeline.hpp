@@ -201,6 +201,11 @@ public:
             if (stages_.empty())
                 break;
 
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
+
             // Write the request. use_ssl is attached by top_level_algo
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::write({request_buffer_, false}))
 

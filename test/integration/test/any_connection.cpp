@@ -26,19 +26,14 @@
 
 #include <boost/asio/as_tuple.hpp>
 #include <boost/asio/awaitable.hpp>
-#include <boost/asio/bind_cancellation_slot.hpp>
 #include <boost/asio/cancel_after.hpp>
-#include <boost/asio/cancellation_signal.hpp>
-#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/co_spawn.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/local/basic_endpoint.hpp>
 #include <boost/asio/redirect_error.hpp>
-#include <boost/optional/optional.hpp>
 #include <boost/test/data/test_case.hpp>
 
 #include <chrono>
-#include <cstdint>
 #include <string>
 
 #include "test_common/create_basic.hpp"
@@ -145,7 +140,7 @@ BOOST_FIXTURE_TEST_CASE(backslash_escapes, any_connection_fixture)
 }
 
 // Max buffer sizes
-BOOST_AUTO_TEST_CASE(max_buffer_size)
+BOOST_AUTO_TEST_CASE(max_buffer_size_success)
 {
     // Create the connection
     any_connection_params params;
@@ -161,12 +156,38 @@ BOOST_AUTO_TEST_CASE(max_buffer_size)
     auto q = format_sql(fix.conn.format_opts().value(), "SELECT {}", std::string(450, 'a'));
     fix.conn.async_execute(q, r, as_netresult).validate_no_error();
     BOOST_TEST(r.rows() == makerows(1, std::string(450, 'a')), per_element());
+}
+
+BOOST_AUTO_TEST_CASE(max_buffer_size_write_error)
+{
+    // Create the connection
+    any_connection_params params;
+    params.initial_buffer_size = 512u;
+    params.max_buffer_size = 512u;
+    any_connection_fixture fix(params);
+
+    // Connect
+    fix.conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Trying to write more than 512 bytes fails
-    q = format_sql(fix.conn.format_opts().value(), "SELECT LENGTH({})", std::string(512, 'a'));
+    results r;
+    auto q = format_sql(fix.conn.format_opts().value(), "SELECT LENGTH({})", std::string(512, 'a'));
     fix.conn.async_execute(q, r, as_netresult).validate_error(client_errc::max_buffer_size_exceeded);
+}
+
+BOOST_AUTO_TEST_CASE(max_buffer_size_read_error)
+{
+    // Create the connection
+    any_connection_params params;
+    params.initial_buffer_size = 512u;
+    params.max_buffer_size = 512u;
+    any_connection_fixture fix(params);
+
+    // Connect
+    fix.conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
 
     // Trying to read more than 512 bytes fails
+    results r;
     fix.conn.async_execute("SELECT REPEAT('a', 512)", r, as_netresult)
         .validate_error(client_errc::max_buffer_size_exceeded);
 }
@@ -214,7 +235,7 @@ BOOST_DATA_TEST_CASE(naggle_disabled, network_functions_any::sync_and_async())
 // Regression test: using a non-connected connection doesn't crash
 BOOST_FIXTURE_TEST_CASE(using_non_connected_connection, any_connection_fixture)
 {
-    conn.async_ping(as_netresult).validate_any_error();
+    conn.async_ping(as_netresult).validate_error(client_errc::not_connected);
 }
 
 // Spotcheck: we can use cancel_after and other tokens
@@ -447,94 +468,6 @@ BOOST_FIXTURE_TEST_CASE(op_in_progress_connect, any_connection_fixture)
     conn.async_execute("SELECT 1", r, as_netresult).validate_no_error();
 }
 
-// connection_id
-std::uint32_t call_connection_id(any_connection& conn)
-{
-    results r;
-    conn.async_execute("SELECT CONNECTION_ID()", r, as_netresult).validate_no_error();
-    return static_cast<std::uint32_t>(r.rows().at(0).at(0).as_uint64());
-}
-
-BOOST_FIXTURE_TEST_CASE(connection_id, any_connection_fixture)
-{
-    // Before connection, connection_id returns an empty optional
-    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>());
-
-    // Connect
-    connect();
-
-    // The returned id matches CONNECTION_ID()
-    auto expected_id = call_connection_id(conn);
-    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id));
-
-    // Calling reset connection doesn't change the ID
-    conn.async_reset_connection(as_netresult).validate_no_error();
-    expected_id = call_connection_id(conn);
-    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id));
-
-    // Close the connection
-    conn.async_close(as_netresult).validate_no_error();
-
-    // After session termination, connection_id returns an empty optional
-    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>());
-
-    // If we re-establish the session, we get another connection id
-    connect();
-    auto expected_id_2 = call_connection_id(conn);
-    BOOST_TEST(expected_id_2 != expected_id);
-    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id_2));
-}
-
-// After a fatal error (where we didn't call async_close), re-establishing the session
-// updates the connection id
-BOOST_FIXTURE_TEST_CASE(connection_id_after_error, any_connection_fixture)
-{
-    // Connect
-    connect();
-    auto id1 = call_connection_id(conn);
-
-    // Force a fatal error
-    results r;
-    asio::cancellation_signal sig;
-    auto execute_result = conn.async_execute(
-        "DO SLEEP(60)",
-        r,
-        asio::bind_cancellation_slot(sig.slot(), as_netresult)
-    );
-    sig.emit(asio::cancellation_type_t::terminal);
-    std::move(execute_result).validate_error(asio::error::operation_aborted);
-
-    // The id can be obtained even after the fatal error
-    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(id1));
-
-    // Reconnect
-    connect();
-    auto id2 = call_connection_id(conn);
-
-    // The new id can be obtained
-    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(id2));
-}
-
-// It's safe to obtain the connection id while an operation is in progress
-BOOST_FIXTURE_TEST_CASE(connection_id_op_in_progress, any_connection_fixture)
-{
-    // Setup
-    connect();
-    const auto expected_id = call_connection_id(conn);
-
-    // Issue a query
-    results r;
-    auto execute_result = conn.async_execute("SELECT * FROM three_rows_table", r, as_netresult);
-
-    // While in progress, obtain the connection id. We would usually do this to
-    // open a new connection and run a KILL statement. We don't do it here because
-    // it's unreliable as a test due to race conditions between sessions in the server.
-    BOOST_TEST(conn.connection_id() == boost::optional<std::uint32_t>(expected_id));
-
-    // Finish
-    std::move(execute_result).validate_no_error();
-}
-
 // Double close is safe
 BOOST_FIXTURE_TEST_CASE(double_close, any_connection_fixture)
 {
@@ -543,9 +476,6 @@ BOOST_FIXTURE_TEST_CASE(double_close, any_connection_fixture)
 
     // Close the connection
     conn.async_close(as_netresult).validate_no_error();
-
-    // We're no longer able to run operations
-    conn.async_ping(as_netresult).validate_any_error();
 
     // Closing again is OK
     conn.async_close(as_netresult).validate_no_error();

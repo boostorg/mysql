@@ -181,7 +181,7 @@ class handshake_algo
 
     void on_success(connection_state_data& st, const ok_view& ok)
     {
-        st.is_connected = true;
+        st.status = connection_status::ready;
         st.backslash_escapes = ok.backslash_escapes();
         st.current_charset = collation_id_to_charset(hparams_.connection_collation());
     }
@@ -212,7 +212,7 @@ public:
         switch (resume_point_)
         {
         case 0:
-
+            // Handshake wipes out state, so no state checks are performed.
             // Setup
             st.reset();
 

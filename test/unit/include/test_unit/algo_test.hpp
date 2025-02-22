@@ -77,7 +77,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
     // Monitor connection_state_data for relevant changes
     struct expected_state_changes_t
     {
-        boost::optional<bool> is_connected;
+        boost::optional<detail::connection_status> status;
         boost::optional<detail::db_flavor> flavor;
         boost::optional<detail::capabilities> current_capabilities;
         boost::optional<std::uint32_t> connection_id;
@@ -154,9 +154,9 @@ public:
     }
 
     BOOST_ATTRIBUTE_NODISCARD
-    algo_test& will_set_is_connected(bool expected)
+    algo_test& will_set_status(detail::connection_status expected)
     {
-        state_changes_.is_connected = expected;
+        state_changes_.status = expected;
         return *this;
     }
 
@@ -212,6 +212,7 @@ struct algo_fixture_base
     algo_fixture_base(std::size_t max_buffer_size = default_max_buffsize)
         : st(max_buffer_size, max_buffer_size)
     {
+        st.status = detail::connection_status::ready;
         st.write_buffer.push_back(0xff);  // Check that we clear the write buffer at each step
     }
 };

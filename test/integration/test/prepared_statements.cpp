@@ -122,8 +122,7 @@ BOOST_FIXTURE_TEST_CASE(wrong_num_params, any_connection_fixture)
     conn.async_execute(stmt.bind(42), result, as_netresult).validate_error(client_errc::wrong_num_params);
 }
 
-// Note: multifn query is already covered in spotchecks
-BOOST_FIXTURE_TEST_CASE(multifn, any_connection_fixture)
+BOOST_FIXTURE_TEST_CASE(multi_function, any_connection_fixture)
 {
     connect();
 

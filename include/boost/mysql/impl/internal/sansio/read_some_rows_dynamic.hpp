@@ -28,6 +28,7 @@ namespace detail {
 class read_some_rows_dynamic_algo : public read_some_rows_algo
 {
 public:
+    // This algorithm is always top-level
     read_some_rows_dynamic_algo(read_some_rows_dynamic_algo_params params) noexcept
         : read_some_rows_algo(read_some_rows_algo_params{params.exec_st, output_ref()})
     {

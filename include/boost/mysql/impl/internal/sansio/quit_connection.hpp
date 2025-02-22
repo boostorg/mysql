@@ -36,9 +36,12 @@ public:
         switch (resume_point_)
         {
         case 0:
+            // This can only be top-level in connection, and never in any_connection.
+            // State checks are not worthy here - already handled by close.
+
             // Mark the session as finished
             should_perform_shutdown_ = st.tls_active;
-            st.is_connected = false;
+            st.status = connection_status::not_connected;
             st.tls_active = false;
 
             // Send quit message
