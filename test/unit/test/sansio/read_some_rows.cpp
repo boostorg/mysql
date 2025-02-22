@@ -41,14 +41,15 @@ struct fixture : algo_fixture_base
 
     mock_execution_processor proc;
     std::array<row1, 3> storage;
-    detail::read_some_rows_algo algo{
-        {&proc, ref()}
-    };
+    detail::read_some_rows_algo algo;
 
     output_ref ref() noexcept { return output_ref(span<row1>(storage), 0); }
 
-    fixture()
+    fixture(bool is_top_level = true) : algo({&proc, ref()}, is_top_level)
     {
+        // The connection should be engaged in a multi-function operation
+        st.status = detail::connection_status::engaged_in_multi_function;
+
         // Prepare the processor, such that it's ready to read rows
         add_meta(
             proc,
@@ -68,6 +69,23 @@ struct fixture : algo_fixture_base
 };
 
 BOOST_AUTO_TEST_CASE(eof)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(create_eof_frame(42, ok_builder().affected_rows(1).info("1st").build()))
+        .will_set_status(detail::connection_status::ready)
+        .check(fix);
+
+    BOOST_TEST(fix.result() == 0u);  // num read rows
+    BOOST_TEST(fix.proc.is_complete());
+    BOOST_TEST(fix.proc.affected_rows() == 1u);
+    BOOST_TEST(fix.proc.info() == "1st");
+}
+
+BOOST_AUTO_TEST_CASE(eof_more_results)
 {
     // Setup
     fixture fix;
@@ -227,7 +245,7 @@ BOOST_AUTO_TEST_CASE(batch_with_rows_out_of_span_space)
 BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
 {
     // Setup
-    fixture fix;
+    fixture fix(false);
 
     // Run the algo
     auto eof = create_eof_frame(44, ok_builder().affected_rows(1).info("1st").build());
@@ -255,6 +273,7 @@ BOOST_AUTO_TEST_CASE(successive_calls_keep_parsing_state)
     fix.algo.reset();
     algo_test()
         .expect_read(buffer_builder().add(boost::span<const std::uint8_t>(eof).subspan(6)).build())
+        .will_set_status(detail::connection_status::ready)
         .check(fix);
 
     // Validate
@@ -305,7 +324,10 @@ BOOST_AUTO_TEST_CASE(state_reading_head)
 
 BOOST_AUTO_TEST_CASE(error_network_error)
 {
-    algo_test().expect_read(create_text_row_message(42, "aaa")).check_network_errors<fixture>();
+    algo_test()
+        .expect_read(create_text_row_message(42, "aaa"))
+        .will_set_status(detail::connection_status::ready)  // Errors end multi-function operations
+        .check_network_errors<fixture>();
 }
 
 BOOST_AUTO_TEST_CASE(error_seqnum_mismatch_successive_messages)
@@ -319,6 +341,7 @@ BOOST_AUTO_TEST_CASE(error_seqnum_mismatch_successive_messages)
                          .add(create_text_row_message(42, "abc"))
                          .add(create_text_row_message(45, "von"))  // seqnum mismatch here
                          .build())
+        .will_set_status(detail::connection_status::ready)  // Errors end multi-function operations
         .check(fix, client_errc::sequence_number_mismatch);
 }
 
@@ -333,6 +356,7 @@ BOOST_AUTO_TEST_CASE(error_on_row)
     // Run the algo
     algo_test()
         .expect_read(create_text_row_message(42, 10))
+        .will_set_status(detail::connection_status::ready)  // Errors end multi-function operations
         .check(fix, client_errc::static_row_parsing_error);
 
     // Validate
@@ -350,6 +374,7 @@ BOOST_AUTO_TEST_CASE(error_on_row_ok_packet)
     // Run the algo
     algo_test()
         .expect_read(create_eof_frame(42, ok_builder().build()))
+        .will_set_status(detail::connection_status::ready)  // Errors end multi-function operations
         .check(fix, client_errc::num_resultsets_mismatch);
 
     // Validate
@@ -367,6 +392,7 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
         .expect_read(
             err_builder().seqnum(42).code(common_server_errc::er_alter_info).message("abc").build_frame()
         )
+        .will_set_status(detail::connection_status::ready)  // Errors end multi-function operations
         .check(fix, common_server_errc::er_alter_info, create_server_diag("abc"));
 
     // Validate
@@ -376,7 +402,7 @@ BOOST_AUTO_TEST_CASE(error_deserialize_row_message)
 BOOST_AUTO_TEST_CASE(reset)
 {
     // Setup
-    fixture fix;
+    fixture fix(false);
 
     // Run the algo. Read a row
     algo_test().expect_read(create_text_row_message(42, "abc")).check(fix);
@@ -397,7 +423,10 @@ BOOST_AUTO_TEST_CASE(reset)
     fix.algo.reset();
 
     // Run the algo again. Read an OK packet
-    algo_test().expect_read(create_eof_frame(43, ok_builder().build())).check(fix);
+    algo_test()
+        .expect_read(create_eof_frame(43, ok_builder().build()))
+        .will_set_status(detail::connection_status::ready)
+        .check(fix);
 
     // Check
     BOOST_TEST(fix.result() == 0u);  // num read rows
@@ -411,5 +440,8 @@ BOOST_AUTO_TEST_CASE(reset)
         .on_row_ok_packet(1)
         .validate();
 }
+
+// TODO: state checks
+// TODO: is_top_level = false
 
 BOOST_AUTO_TEST_SUITE_END()
