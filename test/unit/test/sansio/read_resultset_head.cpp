@@ -290,6 +290,32 @@ BOOST_AUTO_TEST_CASE(error_on_meta)
     fix.proc.num_calls().on_num_meta(1).on_meta(1).validate();
 }
 
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(error_invalid_connection_status)
+{
+    struct
+    {
+        detail::connection_status status;
+        error_code expected_err;
+    } test_cases[] = {
+        {detail::connection_status::not_connected, client_errc::not_connected                },
+        {detail::connection_status::ready,         client_errc::not_engaged_in_multi_function},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.status)
+        {
+            // Setup
+            fixture fix;
+            fix.st.status = tc.status;
+
+            // Run the algo
+            algo_test().check(fix, tc.expected_err);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_CASE(reset)
 {
     // Setup
@@ -310,5 +336,9 @@ BOOST_AUTO_TEST_CASE(reset)
     algo_test().expect_read(create_ok_frame(3, ok_builder().more_results(true).build())).check(fix);
     fix.proc.num_calls().on_num_meta(1).on_meta(1).on_row_ok_packet(1).on_head_ok_packet(1).validate();
 }
+
+// Status checks
+// Status checks not performed if top_level=false
+// Status updated even if top_level=false
 
 BOOST_AUTO_TEST_SUITE_END()
