@@ -48,11 +48,10 @@ BOOST_AUTO_TEST_CASE(plaintext_error_network)
     // Setup
     fixture fix;
 
-    // Run the algo
+    // Run the algo. State change happens even if the quit request fails
     algo_test()
         .expect_write(expected_request(), asio::error::network_reset)
-        .will_set_status(connection_status::not_connected
-        )  // State change happens even if the quit request fails
+        .will_set_status(connection_status::not_connected)
         .check(fix, asio::error::network_reset);
 }
 
