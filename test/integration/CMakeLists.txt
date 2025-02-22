@@ -23,6 +23,7 @@ add_executable(
     test/stored_procedures.cpp
     test/multi_queries.cpp
     test/static_interface.cpp
+    test/multi_function.cpp
     test/reconnect.cpp
     test/any_connection.cpp
     test/character_set_tracking.cpp
