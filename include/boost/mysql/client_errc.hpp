@@ -145,9 +145,23 @@ enum class client_errc : int
      */
     operation_in_progress,
 
-    // TODO: document
+    /**
+     * \brief The requested operation requires an established session.
+     * Call connect before invoking other operations.
+     */
     not_connected,
+
+    /**
+     * \brief The connection is currently engaged in a multi-function operation.
+     * Finish the current operation by calling read_some_rows and read_resultset_head
+     * before starting any other operation.
+     */
     engaged_in_multi_function,
+
+    /**
+     * \brief The operation requires the connection to be engaged in a multi-function operation.
+     * Use start_execution to start one.
+     */
     not_engaged_in_multi_function,
 };
 
