@@ -360,57 +360,37 @@ BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_success)
     static_state_t st;
 
     // Start
-    fix.net.start_execution_static(fix.conn, "CALL sp_spotchecks()", st).validate_no_error();
+    fix.net.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 1", st)
+        .validate_no_error();
     BOOST_TEST(st.should_read_rows());
 
-    // Read r1 rows
+    // Read rows
     std::array<row_multifield, 2> storage;
-    std::size_t num_rows = fix.net.read_some_rows_static_1(fix.conn, st, storage).get();
+    std::size_t num_rows = fix.net.read_some_rows_static(fix.conn, st, storage).get();
     row_multifield expected_multifield{boost::optional<float>(1.1f), 11, std::string("aaa")};  // MSVC 14.1
     BOOST_TEST(num_rows == 1u);
     BOOST_TEST(storage[0] == expected_multifield);
 
-    // Ensure we're in the next resultset
-    num_rows = fix.net.read_some_rows_static_1(fix.conn, st, storage).get();
+    // Finish
+    num_rows = fix.net.read_some_rows_static(fix.conn, st, storage).get();
     BOOST_TEST(num_rows == 0u);
-    BOOST_TEST(st.should_read_head());
-
-    // Read r2 head
-    fix.net.read_resultset_head_static(fix.conn, st).validate_no_error();
-    BOOST_TEST(st.should_read_rows());
-
-    // Read r2 rows
-    std::array<row_2fields, 2> storage2;
-    num_rows = fix.net.read_some_rows_static_2(fix.conn, st, storage2).get();
-    BOOST_TEST(num_rows == 1u);
-    row_2fields expected_2fields{1, std::string("f0")};
-    BOOST_TEST(storage2[0] == expected_2fields);
-
-    // Ensure we're in the next resultset
-    num_rows = fix.net.read_some_rows_static_2(fix.conn, st, storage2).get();
-    BOOST_TEST(num_rows == 0u);
-    BOOST_TEST(st.should_read_head());
-
-    // Read r3 head (empty)
-    fix.net.read_resultset_head_static(fix.conn, st).validate_no_error();
     BOOST_TEST(st.complete());
 }
 
 BOOST_MYSQL_SPOTCHECK_TEST(read_some_rows_static_error)
 {
     // Setup
-    fix.connect();
+    fix.connect(connect_params_builder().multi_queries(true));
     static_state_t st;
 
     // Start
-    fix.net.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 42", st)
+    fix.net.start_execution_static(fix.conn, "SELECT * FROM multifield_table WHERE id = 42; SELECT 1", st)
         .validate_no_error();
     BOOST_TEST(st.should_read_rows());
 
     // No rows matched, so reading rows reads the OK packet. This will report the num resultsets mismatch
     std::array<row_multifield, 2> storage;
-    fix.net.read_some_rows_static_1(fix.conn, st, storage)
-        .validate_error(client_errc::num_resultsets_mismatch);
+    fix.net.read_some_rows_static(fix.conn, st, storage).validate_error(client_errc::num_resultsets_mismatch);
 }
 #endif
 
