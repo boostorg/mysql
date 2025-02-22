@@ -12,6 +12,7 @@
 
 #include "test_common/network_result.hpp"
 #include "test_integration/any_connection_fixture.hpp"
+#include "test_integration/connect_params_builder.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -66,6 +67,37 @@ BOOST_FIXTURE_TEST_CASE(status_checks_errors, any_connection_fixture)
     // We can keep using the connection
     results r;
     conn.async_execute("SELECT 1", r, as_netresult).validate_no_error();
+}
+
+// connect works to reconnect the connection,
+// even if we're in the middle of a multi-function operation
+BOOST_FIXTURE_TEST_CASE(connect_during_multi_function, any_connection_fixture)
+{
+    connect();
+
+    // Start the operation, which finishes with an error
+    execution_state st;
+    conn.async_start_execution("SELECT * FROM empty_table", st, as_netresult).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // We can keep use connect here, and we get a usable connection
+    conn.async_connect(connect_params_builder().disable_ssl().build(), as_netresult).validate_no_error();
+    conn.async_ping(as_netresult).validate_no_error();
+}
+
+// close can be called even if we're in the middle of a multi-function operation
+BOOST_FIXTURE_TEST_CASE(close_during_multi_function, any_connection_fixture)
+{
+    // Connect with TLS enabled
+    conn.async_connect(connect_params_builder().build(), as_netresult).validate_no_error();
+
+    // Start the operation, which finishes with an error
+    execution_state st;
+    conn.async_start_execution("SELECT * FROM empty_table", st, as_netresult).validate_no_error();
+    BOOST_TEST_REQUIRE(st.should_read_rows());
+
+    // We can use close here without errors
+    conn.async_close(as_netresult).validate_no_error();
 }
 
 BOOST_AUTO_TEST_SUITE_END()
