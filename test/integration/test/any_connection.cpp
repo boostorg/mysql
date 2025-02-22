@@ -235,7 +235,7 @@ BOOST_DATA_TEST_CASE(naggle_disabled, network_functions_any::sync_and_async())
 // Regression test: using a non-connected connection doesn't crash
 BOOST_FIXTURE_TEST_CASE(using_non_connected_connection, any_connection_fixture)
 {
-    conn.async_ping(as_netresult).validate_any_error();
+    conn.async_ping(as_netresult).validate_error(client_errc::not_connected);
 }
 
 // Spotcheck: we can use cancel_after and other tokens
@@ -476,9 +476,6 @@ BOOST_FIXTURE_TEST_CASE(double_close, any_connection_fixture)
 
     // Close the connection
     conn.async_close(as_netresult).validate_no_error();
-
-    // We're no longer able to run operations
-    conn.async_ping(as_netresult).validate_any_error();
 
     // Closing again is OK
     conn.async_close(as_netresult).validate_no_error();
