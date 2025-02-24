@@ -166,7 +166,7 @@ In short:
   setting [refmem pool_params ping_interval] to zero.
 
 
-[heading Thread-safety]
+[heading:thread_safe Thread-safety]
 
 By default, [reflink connection_pool] is [*not thread-safe], but it can
 be easily made thread-safe by setting [refmem pool_params thread_safe]:
