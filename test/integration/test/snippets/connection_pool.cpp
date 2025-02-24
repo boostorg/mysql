@@ -252,6 +252,7 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
 #endif
         handle_session_v2(pool);
         pool.cancel();
+        ctx.join();
     }
 }
 
