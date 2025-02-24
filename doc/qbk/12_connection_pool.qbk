@@ -171,16 +171,16 @@ In short:
 By default, [reflink connection_pool] is [*not thread-safe], but it can
 be easily made thread-safe by setting [refmem pool_params thread_safe]:
 
-[connection_pool_thread_safe]
+[connection_pool_thread_safe_create]
 
-To correctly understand what is protected by [reflink pool_params thread_safe]
+To correctly understand what is protected by [refmem pool_params thread_safe]
 and what is not, we need a grasp of how pools are implemented.
-Both [reflink connection_pool] and individual [reflink pooled_connection]s
+Both [reflink connection_pool] and individual [reflink pooled_connection]'s
 hold pointers to a shared state object containing all data required by the pool:
 
 [$mysql/images/connection_pool_impl.svg [align center]]
 
-Thread-safe connection pools internally create  a [asioreflink strand strand]
+Thread-safe connection pools internally create an [asioreflink strand strand]
 that protects the connection pool's state. Operations like
 [refmemunq connection_pool async_get_connection], [refmemunq connection_pool async_run]
 and [reflink pooled_connection]'s destructor will run through the strand,
@@ -190,39 +190,16 @@ are not thread-safe].
 
 Data outside the pool's state is not protected. In particular,
 [*`asio::cancel_after` creates an internal timer that can cause
-inadvertent race conditions]:
+inadvertent race conditions]. For example:
 
-```
-// A function that needs to access MySQL to perform its work
-asio::awaitable<void> handle_request(mysql::connection_pool& pool)
-{
-    // asio::cancel_after creates a timer that is *not* part of the pool's state
-    // and thus not protected by the pool's strand. handle_request must
-    // be run within a strand for this to be safe
-    co_await pool.async_get_connection(asio::cancel_after(30s));
-    
-    // Use the connection
-}
+[connection_pool_thread_safe_use]
 
-// OK: the entire coroutine runs within a strand.
-// In a typical server setup, each request usually gets its own strand,
-// so it can run in parallel with other requests.
-asio::co_spawn(
-  asio::make_strand(ctx),
-  [&pool] { return handle_request(pool); },
-  asio::detached
-);
+This coroutine must be run within a strand:
 
-// Wrong! This is a race condition.
-// The timer state isn't protected
-asio::co_spawn(
-  ctx,
-  [&pool] { return handle_request(pool); },
-  asio::detached
-);
-```
+[connection_pool_thread_safe_spawn]
 
-The race condition goes like this:
+
+If we don't use `asio::make_shared`, we have the following race condition:
 
 * The thread calling `async_get_connection` sets up the timer required by `asio::cancel_after`.
 * In parallel, the thread running the execution context sees that there is a healthy connection
@@ -230,31 +207,10 @@ The race condition goes like this:
   Thus, the timer is accessed concurrently from both threads without protection.
 
 
-If you're using callbacks, code gets slightly more convoluted:
+If you're using callbacks, code gets slightly more convoluted. The
+above coroutine can be rewritten as:
 
-```
-class request_handler : public std::enable_shared_from_this<request_handler> {
-  mysql::connection_pool& pool_;
-  asio::strand<asio::any_io_executor> strand_;
-public:
-  void start() {
-    asio::dispatch(asio::bind_executor(strand_, [self = shared_from_this()] {
-      self->get_connection();
-    }));
-  }
-
-  void get_connection() {
-    pool_.async_get_connection(asio::cancel_after(30s, asio::bind_executor(strand_, [self = shared_from_this()] (...) {
-
-    })));
-  }
-};
-
-void handle_request(mysql::connection_pool& pool)
-{
-  std::make_shared<request_handler>()->start();
-}
-```
+[connection_pool_thread_safe_callbacks]
 
 Thread-safety is disabled by default because strands impose a performance
 penalty that is avoidable in single-threaded programs.
