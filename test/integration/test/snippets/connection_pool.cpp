@@ -22,7 +22,7 @@
 #include <boost/asio/thread_pool.hpp>
 #include <boost/asio/use_future.hpp>
 #include <boost/config.hpp>
-#include <boost/system/detail/error_code.hpp>
+#include <boost/system/error_code.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <chrono>
@@ -100,6 +100,7 @@ asio::awaitable<void> handle_session(mysql::connection_pool& pool)
 //]
 #endif
 
+#ifndef BOOST_NO_CXX14_INITIALIZED_LAMBDA_CAPTURES
 //[connection_pool_thread_safe_callbacks
 // Holds per-session state
 class session_handler : public std::enable_shared_from_this<session_handler>
@@ -129,9 +130,8 @@ public:
     {
         // This function will run within the strand. Binding the passed callback to
         // the strand will make async_get_connection run it within the strand, too.
-        using namespace std::chrono_literals;
         pool_.async_get_connection(asio::cancel_after(
-            30s,
+            std::chrono::seconds(30),
             asio::bind_executor(
                 strand_,
                 [self = shared_from_this()](boost::system::error_code, mysql::pooled_connection) {
@@ -148,6 +148,7 @@ void handle_session_v2(mysql::connection_pool& pool)
     std::make_shared<session_handler>(pool)->start();
 }
 //]
+#endif
 
 BOOST_AUTO_TEST_CASE(section_connection_pool)
 {
@@ -250,7 +251,9 @@ BOOST_AUTO_TEST_CASE(section_connection_pool)
         );
         //]
 #endif
+#ifndef BOOST_NO_CXX14_INITIALIZED_LAMBDA_CAPTURES
         handle_session_v2(pool);
+#endif
         pool.cancel();
         ctx.join();
     }
