@@ -205,6 +205,99 @@ BOOST_FIXTURE_TEST_CASE(unix_unsupported, fixture)
 }
 #endif
 
+// Cancellation: we use the cancellation state and error on cancellation
+// Only relevant in the TCP case, as UNIX connect is a single operation
+// If the cancellation state contains the terminal type, we fail
+BOOST_FIXTURE_TEST_CASE(cancellation_contains_terminal, fixture)
+{
+    struct
+    {
+        const char* name;
+        cancellation_type_t cancellation_state;
+    } test_cases[] = {
+        {"terminal", cancellation_type_t::terminal},
+        {"all",      cancellation_type_t::all     },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            addr.emplace_host_and_port("my_host", 1234);
+            detail::variant_stream_connect_algo algo{st, addr};
+
+            // Initiate: we should resolve
+            auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
+            BOOST_TEST(act.type == vsconnect_action_type::resolve);
+
+            // Resolving finished successfully, but the cancellation state is set
+            auto endpoints = tcp_endpoints();
+            auto r = tcp::resolver::results_type::create(
+                endpoints.begin(),
+                endpoints.end(),
+                "my_host",
+                "1234"
+            );
+            act = algo.resume(error_code(), &r, tc.cancellation_state);
+            BOOST_TEST(act.type == vsconnect_action_type::none);
+            BOOST_TEST(act.data.err == asio::error::operation_aborted);
+        }
+    }
+}
+
+// Since we only support terminal cancellation, we ignore other cancellation types
+BOOST_FIXTURE_TEST_CASE(cancellation_no_terminal, fixture)
+{
+    struct
+    {
+        const char* name;
+        cancellation_type_t cancellation_state;
+    } test_cases[] = {
+        {"partial",       cancellation_type_t::partial                             },
+        {"total",         cancellation_type_t::total                               },
+        {"partial+total", cancellation_type_t::partial | cancellation_type_t::total},
+        {"other",         static_cast<cancellation_type_t>(0x80)                   },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            addr.emplace_host_and_port("my_host", 1234);
+            detail::variant_stream_connect_algo algo{st, addr};
+
+            // Initiate: we should resolve
+            auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
+            BOOST_TEST(act.type == vsconnect_action_type::resolve);
+            BOOST_TEST(*act.data.resolve.hostname == "my_host");
+            BOOST_TEST(*act.data.resolve.service == "1234");
+
+            // Resolving done: we should connect
+            auto endpoints = tcp_endpoints();
+            auto r = tcp::resolver::results_type::create(
+                endpoints.begin(),
+                endpoints.end(),
+                "my_host",
+                "1234"
+            );
+            act = algo.resume(error_code(), &r, tc.cancellation_state);
+            BOOST_TEST(act.type == vsconnect_action_type::connect);
+            BOOST_TEST(act.data.connect == endpoints, per_element());
+
+            // Connect done: success
+            // Simulate a connection - otherwise setting sock options fails
+            st.sock.open(asio::ip::tcp::v4());
+            act = algo.resume(error_code(), nullptr, tc.cancellation_state);
+            BOOST_TEST(act.type == vsconnect_action_type::none);
+            BOOST_TEST(act.data.err == error_code());
+        }
+    }
+}
+
+//   if terminal + an existing error code
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
