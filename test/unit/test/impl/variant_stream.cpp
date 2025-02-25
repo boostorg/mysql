@@ -10,6 +10,7 @@
 
 #include <boost/mysql/impl/internal/variant_stream.hpp>
 
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/asio/generic/stream_protocol.hpp>
 #include <boost/asio/ip/address.hpp>
@@ -28,6 +29,7 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
+using asio::cancellation_type_t;
 using asio::ip::tcp;
 using boost::test_tools::per_element;
 using detail::vsconnect_action_type;
@@ -86,7 +88,7 @@ BOOST_FIXTURE_TEST_CASE(tcp_success, fixture)
     detail::variant_stream_connect_algo algo{st, addr};
 
     // Initiate: we should resolve
-    auto act = algo.resume(error_code(), nullptr);
+    auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::resolve);
     BOOST_TEST(*act.data.resolve.hostname == "my_host");
     BOOST_TEST(*act.data.resolve.service == "1234");
@@ -94,13 +96,13 @@ BOOST_FIXTURE_TEST_CASE(tcp_success, fixture)
     // Resolving done: we should connect
     auto endpoints = tcp_endpoints();
     auto r = tcp::resolver::results_type::create(endpoints.begin(), endpoints.end(), "my_host", "1234");
-    act = algo.resume(error_code(), &r);
+    act = algo.resume(error_code(), &r, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::connect);
     BOOST_TEST(act.data.connect == endpoints, per_element());
 
     // Connect done: success
     st.sock.open(asio::ip::tcp::v4());  // Simulate a connection - otherwise setting sock options fails
-    act = algo.resume(error_code(), nullptr);
+    act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::none);
     BOOST_TEST(act.data.err == error_code());
 }
@@ -112,14 +114,14 @@ BOOST_FIXTURE_TEST_CASE(tcp_error_resolve, fixture)
     detail::variant_stream_connect_algo algo{st, addr};
 
     // Initiate: we should resolve
-    auto act = algo.resume(error_code(), nullptr);
+    auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::resolve);
     BOOST_TEST(*act.data.resolve.hostname == "my_host");
     BOOST_TEST(*act.data.resolve.service == "1234");
 
     // Resolving error: done
     asio::ip::tcp::resolver::results_type r;
-    act = algo.resume(asio::error::connection_reset, &r);
+    act = algo.resume(asio::error::connection_reset, &r, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::none);
     BOOST_TEST(act.data.err == asio::error::connection_reset);
 }
@@ -131,7 +133,7 @@ BOOST_FIXTURE_TEST_CASE(tcp_error_connect, fixture)
     detail::variant_stream_connect_algo algo{st, addr};
 
     // Initiate: we should resolve
-    auto act = algo.resume(error_code(), nullptr);
+    auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::resolve);
     BOOST_TEST(*act.data.resolve.hostname == "my_host");
     BOOST_TEST(*act.data.resolve.service == "1234");
@@ -139,12 +141,12 @@ BOOST_FIXTURE_TEST_CASE(tcp_error_connect, fixture)
     // Resolving done: we should connect
     auto endpoints = tcp_endpoints();
     auto r = tcp::resolver::results_type::create(endpoints.begin(), endpoints.end(), "my_host", "1234");
-    act = algo.resume(error_code(), &r);
+    act = algo.resume(error_code(), &r, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::connect);
     BOOST_TEST(act.data.connect == endpoints, per_element());
 
     // Connect failed: done. No socket option is set
-    act = algo.resume(asio::error::connection_reset, nullptr);
+    act = algo.resume(asio::error::connection_reset, nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::none);
     BOOST_TEST(act.data.err == asio::error::connection_reset);
 }
@@ -158,12 +160,12 @@ BOOST_FIXTURE_TEST_CASE(unix_success, fixture)
 
     // Initiate: we should connect
     const asio::local::stream_protocol::endpoint endpoints[]{"/my/path"};
-    auto act = algo.resume(error_code(), nullptr);
+    auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::connect);
     BOOST_TEST(act.data.connect == endpoints, per_element());
 
     // Connect done: success. No socket option is set
-    act = algo.resume(error_code(), nullptr);
+    act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::none);
     BOOST_TEST(act.data.err == error_code());
 }
@@ -176,12 +178,12 @@ BOOST_FIXTURE_TEST_CASE(unix_error_connect, fixture)
 
     // Initiate: we should connect
     const asio::local::stream_protocol::endpoint endpoints[]{"/my/path"};
-    auto act = algo.resume(error_code(), nullptr);
+    auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::connect);
     BOOST_TEST(act.data.connect == endpoints, per_element());
 
     // Connect failed: done. No socket option is set
-    act = algo.resume(asio::error::network_reset, nullptr);
+    act = algo.resume(asio::error::network_reset, nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::none);
     BOOST_TEST(act.data.err == asio::error::network_reset);
 }
@@ -193,11 +195,11 @@ BOOST_FIXTURE_TEST_CASE(unix_unsupported, fixture)
     detail::variant_stream_connect_algo algo{st, addr};
 
     // Initiate: immediate completion
-    auto act = algo.resume(error_code(), nullptr);
+    auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::immediate);
 
     // Resuming again yields the error
-    act = algo.resume(error_code(), nullptr);
+    act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::none);
     BOOST_TEST(act.data.err == asio::error::operation_not_supported);
 }
