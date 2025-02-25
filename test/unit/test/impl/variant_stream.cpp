@@ -296,7 +296,25 @@ BOOST_FIXTURE_TEST_CASE(cancellation_no_terminal, fixture)
     }
 }
 
-//   if terminal + an existing error code
+// If there is an I/O error and the cancellation state is set, the error wins
+BOOST_FIXTURE_TEST_CASE(cancellation_error, fixture)
+{
+    // Setup
+    addr.emplace_host_and_port("my_host", 1234);
+    detail::variant_stream_connect_algo algo{st, addr};
+
+    // Initiate: we should resolve
+    auto act = algo.resume(error_code(), nullptr, cancellation_type_t::none);
+    BOOST_TEST(act.type == vsconnect_action_type::resolve);
+    BOOST_TEST(*act.data.resolve.hostname == "my_host");
+    BOOST_TEST(*act.data.resolve.service == "1234");
+
+    // Resolving error, and the cancellation state is set
+    asio::ip::tcp::resolver::results_type r;
+    act = algo.resume(asio::error::connection_reset, &r, cancellation_type_t::terminal);
+    BOOST_TEST(act.type == vsconnect_action_type::none);
+    BOOST_TEST(act.data.err == asio::error::connection_reset);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
