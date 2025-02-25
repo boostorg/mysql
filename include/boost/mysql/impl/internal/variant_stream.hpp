@@ -127,7 +127,10 @@ public:
         if (ec)
             return ec;
 
-        // If we got requested a terminal cancellation, exit with the appropriate error code
+        // If we received a terminal cancellation signal, exit with the appropriate error code.
+        // In composed async operations, if the cancellation arrives after an intermediate operation
+        // has completed, but before the handler is called, the operation finishes successfully,
+        // but the cancellation state is set. This check covers this case.
         if (!!(cancel_state & asio::cancellation_type_t::terminal))
             return error_code(asio::error::operation_aborted);
 
