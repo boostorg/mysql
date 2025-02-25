@@ -16,6 +16,7 @@
 #include <boost/asio/ip/address.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/local/stream_protocol.hpp>
+#include <boost/core/span.hpp>
 #include <boost/test/tools/detail/per_element_manip.hpp>
 #include <boost/test/tools/detail/print_helper.hpp>
 #include <boost/test/unit_test.hpp>
@@ -70,7 +71,7 @@ struct fixture : io_context_fixture
     detail::variant_stream_state st{ctx.get_executor(), nullptr};
     any_address addr;
 
-    std::array<tcp::endpoint, 2> tcp_endpoints() const
+    static std::array<tcp::endpoint, 2> tcp_endpoints()
     {
         return {
             {
@@ -78,6 +79,11 @@ struct fixture : io_context_fixture
              tcp::endpoint(asio::ip::make_address("fe76::abab:4567:72b4:9876"), 1234),
              }
         };
+    }
+
+    static tcp::resolver::results_type make_resolver_results(boost::span<const tcp::endpoint> endpoints)
+    {
+        return tcp::resolver::results_type::create(endpoints.begin(), endpoints.end(), "my_host", "1234");
     }
 };
 
@@ -95,7 +101,7 @@ BOOST_FIXTURE_TEST_CASE(tcp_success, fixture)
 
     // Resolving done: we should connect
     auto endpoints = tcp_endpoints();
-    auto r = tcp::resolver::results_type::create(endpoints.begin(), endpoints.end(), "my_host", "1234");
+    auto r = make_resolver_results(endpoints);
     act = algo.resume(error_code(), &r, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::connect);
     BOOST_TEST(act.data.connect == endpoints, per_element());
@@ -140,7 +146,7 @@ BOOST_FIXTURE_TEST_CASE(tcp_error_connect, fixture)
 
     // Resolving done: we should connect
     auto endpoints = tcp_endpoints();
-    auto r = tcp::resolver::results_type::create(endpoints.begin(), endpoints.end(), "my_host", "1234");
+    auto r = make_resolver_results(endpoints);
     act = algo.resume(error_code(), &r, cancellation_type_t::none);
     BOOST_TEST(act.type == vsconnect_action_type::connect);
     BOOST_TEST(act.data.connect == endpoints, per_element());
@@ -233,12 +239,7 @@ BOOST_FIXTURE_TEST_CASE(cancellation_contains_terminal, fixture)
 
             // Resolving finished successfully, but the cancellation state is set
             auto endpoints = tcp_endpoints();
-            auto r = tcp::resolver::results_type::create(
-                endpoints.begin(),
-                endpoints.end(),
-                "my_host",
-                "1234"
-            );
+            auto r = make_resolver_results(endpoints);
             act = algo.resume(error_code(), &r, tc.cancellation_state);
             BOOST_TEST(act.type == vsconnect_action_type::none);
             BOOST_TEST(act.data.err == asio::error::operation_aborted);
@@ -276,12 +277,7 @@ BOOST_FIXTURE_TEST_CASE(cancellation_no_terminal, fixture)
 
             // Resolving done: we should connect
             auto endpoints = tcp_endpoints();
-            auto r = tcp::resolver::results_type::create(
-                endpoints.begin(),
-                endpoints.end(),
-                "my_host",
-                "1234"
-            );
+            auto r = make_resolver_results(endpoints);
             act = algo.resume(error_code(), &r, tc.cancellation_state);
             BOOST_TEST(act.type == vsconnect_action_type::connect);
             BOOST_TEST(act.data.connect == endpoints, per_element());
