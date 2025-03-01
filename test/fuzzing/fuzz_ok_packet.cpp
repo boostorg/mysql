@@ -14,7 +14,8 @@ using namespace boost::mysql::detail;
 static bool parse_ok_packet(const uint8_t* data, size_t size) noexcept
 {
     ok_view msg{};
-    auto ec = deserialize_ok_packet({data, size}, msg);
+    db_flavor flavor{db::mysql};
+    auto ec = deserialize_ok_packet({data, size}, msg, flavor);
     return !ec.failed() && msg.is_out_params();
 }
 

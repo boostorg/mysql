@@ -47,7 +47,7 @@ namespace mysql {
 namespace detail {
 
 // OK packets (views because strings are non-owning)
-inline error_code deserialize_ok_packet(span<const std::uint8_t> msg, ok_view& output);  // for testing
+inline error_code deserialize_ok_packet(span<const std::uint8_t> msg, ok_view& output, db_flavor flavor);  // for testing
 
 // Error packets (exposed for testing)
 struct err_view
@@ -71,6 +71,12 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code process_error_packet(
 // Applicable for commands like ping and reset connection.
 // If the response is an OK packet, sets backslash_escapes according to the
 // OK packet's server status flags
+BOOST_ATTRIBUTE_NODISCARD inline deserialize_errc get_info_value(
+    deserialization_context& ctx,
+    string_view& output,
+    db_flavor flavor
+);
+
 BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_ok_response(
     span<const std::uint8_t> message,
     db_flavor flavor,
@@ -268,9 +274,32 @@ BOOST_INLINE_CONSTEXPR std::uint8_t ok_packet_header = 0x00;
 //
 
 // OK packets
+boost::mysql::detail::deserialize_errc boost::mysql::detail::get_info_value(
+    deserialization_context& ctx,
+    string_view& output,
+    db_flavor flavor
+)
+{
+    boost::mysql::detail::deserialize_errc err;
+    if (flavor == db_flavor::clickhouse)
+    {
+        string_eof info;
+        err = info.deserialize(ctx);
+        output = info.value;
+
+    } else
+    {
+        string_lenenc info;
+        err = info.deserialize(ctx);
+        output = info.value;
+    }
+    return err;
+}
+
 boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
     span<const std::uint8_t> msg,
-    ok_view& output
+    ok_view& output,
+    db_flavor flavor
 )
 {
     struct ok_packet
@@ -280,9 +309,9 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
         int_lenenc last_insert_id;
         int2 status_flags;  // server_status_flags
         int2 warnings;
-        // CLIENT_SESSION_TRACK: not implemented
-        string_lenenc info;
     } pack{};
+
+    string_view info_value;
 
     deserialization_context ctx(msg);
     auto err = ctx.deserialize(pack.affected_rows, pack.last_insert_id, pack.status_flags, pack.warnings);
@@ -291,7 +320,8 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
 
     if (ctx.enough_size(1))  // message is optional, may be omitted
     {
-        err = pack.info.deserialize(ctx);
+        // CLIENT_SESSION_TRACK: not implemented
+        err = get_info_value(ctx, info_value, flavor);
         if (err != deserialize_errc::ok)
             return to_error_code(err);
     }
@@ -301,7 +331,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_packet(
         pack.last_insert_id.value,
         pack.status_flags.value,
         pack.warnings.value,
-        pack.info.value,
+        info_value,
     };
 
     return ctx.check_extra_bytes();
@@ -474,7 +504,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_ok_response(
     {
         // Verify that the ok_packet is correct
         ok_view ok{};
-        err = deserialize_ok_packet(ctx.to_span(), ok);
+        err = deserialize_ok_packet(ctx.to_span(), ok, flavor);
         if (err)
             return err;
         backslash_escapes = ok.backslash_escapes();
@@ -575,7 +605,7 @@ boost::mysql::detail::execute_response boost::mysql::detail::deserialize_execute
     if (msg_type.value == ok_packet_header)
     {
         ok_view ok{};
-        err = deserialize_ok_packet(ctx.to_span(), ok);
+        err = deserialize_ok_packet(ctx.to_span(), ok, flavor);
         if (err)
             return err;
         return ok;
@@ -631,7 +661,7 @@ boost::mysql::detail::row_message boost::mysql::detail::deserialize_row_message(
     {
         // end of resultset => this is a ok_packet, not a row
         ok_view ok{};
-        auto err = deserialize_ok_packet(ctx.to_span(), ok);
+        auto err = deserialize_ok_packet(ctx.to_span(), ok, flavor);
         if (err)
             return err;
         return ok;
@@ -763,7 +793,13 @@ inline capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> hi
 
 inline db_flavor parse_db_version(string_view version_string)
 {
-    return version_string.find("MariaDB") != string_view::npos ? db_flavor::mariadb : db_flavor::mysql;
+    if (version_string.find("MariaDB") != std::string_view::npos) {
+        return db_flavor::mariadb;
+    } else if (version_string.find("ClickHouse") != std::string_view::npos) {
+        return db_flavor::clickhouse;
+    } else {
+        return db_flavor::mysql;
+    }
 }
 
 }  // namespace detail
@@ -942,7 +978,7 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
     if (msg_type.value == ok_packet_header)
     {
         ok_view ok{};
-        err = deserialize_ok_packet(ctx.to_span(), ok);
+        err = deserialize_ok_packet(ctx.to_span(), ok, flavor);
         if (err)
             return err;
         return ok;
