@@ -8,76 +8,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
-#include <vector>
 
 using namespace std;
-
-constexpr const char* create_table = R"SQL(
-CREATE TEMPORARY TABLE myt(
-    id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    s8_0 TINYINT NOT NULL,
-    u8_0 TINYINT UNSIGNED NOT NULL,
-    s16_0 SMALLINT NOT NULL,
-    u16_0 SMALLINT UNSIGNED NOT NULL,
-    s32_0 INT NOT NULL,
-    u32_0 INT UNSIGNED NOT NULL,
-    s64_0 BIGINT NOT NULL,
-    u64_0 BIGINT UNSIGNED NOT NULL,
-    s1_0 VARCHAR(256),
-    s2_0 TEXT,
-    b1_0 VARBINARY(256),
-    b2_0 BLOB,
-    flt_0 FLOAT,
-    dbl_0 DOUBLE,
-    dt_0 DATE,
-    dtime_0 DATETIME,
-    t_0 TIME
-)
-)SQL";
-
-constexpr const char* insert_data = R"SQL(
-INSERT INTO myt
-    (
-        s8_0, u8_0, s16_0, u16_0, s32_0, u32_0, s64_0, u64_0, s1_0, s2_0, b1_0, b2_0, flt_0, dbl_0, dt_0, dtime_0, t_0
-    )
-    VALUES (
-        FLOOR(RAND()*(0x7f+0x80+1)-0x80),
-        FLOOR(RAND()*(0xff+1)),
-        FLOOR(RAND()*(0x7fff+0x8000+1)-0x8000),
-        FLOOR(RAND()*(0xffff+1)),
-        FLOOR(RAND()*(0x7fffffff+0x80000000+1)-0x80000000),
-        FLOOR(RAND()*(0xffffffff+1)),
-        FLOOR(RAND()*(0x7fffffffffffffff+0x8000000000000000)-0x7fffffffffffffff),
-        FLOOR(RAND()*(0xffffffffffffffff)),
-        REPEAT(UUID(), 5),
-        REPEAT(UUID(), FLOOR(RAND()*(1500-1000+1)+1000)),
-        REPEAT(UUID(), 5),
-        REPEAT(UUID(), FLOOR(RAND()*(1500-1000+1)+1000)),
-        RAND(),
-        RAND(),
-        CURDATE(),
-        CURTIME(),
-        SEC_TO_TIME(RAND() + FLOOR(RAND()*(839*3600+839*3600+1)-839*3600))
-    )
-)SQL";
-
-void test_error(MYSQL* mysql, int status)
-{
-    if (status)
-    {
-        fprintf(stderr, "%s\n", mysql_error(mysql));
-        mysql_close(mysql);
-        exit(1);
-    }
-}
-void test_stmt_error(MYSQL_STMT* mysql, int status)
-{
-    if (status)
-    {
-        fprintf(stderr, "%s\n", mysql_stmt_error(mysql));
-        exit(1);
-    }
-}
 
 int main()
 {
@@ -107,18 +39,6 @@ int main()
         exit(1);
     }
 
-    // Run setup data
-    if (mysql_real_query(con, create_table, strlen(create_table)))
-    {
-        fprintf(stderr, "Error running create table: %s\n", mysql_error(con));
-        exit(1);
-    }
-    if (mysql_real_query(con, insert_data, strlen(insert_data)))
-    {
-        fprintf(stderr, "Error running insert data: %s\n", mysql_error(con));
-        exit(1);
-    }
-
     // Prepare stmt
     MYSQL_STMT* stmt;
     stmt = mysql_stmt_init(con);
@@ -127,7 +47,7 @@ int main()
         printf("Could not initialize statement\n");
         exit(1);
     }
-    constexpr const char* stmt_str = "SELECT * FROM myt WHERE id = 1";
+    constexpr const char* stmt_str = "SELECT * FROM test_data WHERE id = 1";
     if (mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str)))
     {
         fprintf(stderr, "Error preparing statement: %s\n", mysql_stmt_error(stmt));
@@ -242,9 +162,6 @@ int main()
     binds[16].buffer = &t;
     binds[16].buffer_length = sizeof(t);
 
-    //
-    // bench begins here
-    //
     auto tbegin = std::chrono::steady_clock::now();
     for (int i = 0; i < 10000; ++i)
     {
@@ -303,11 +220,6 @@ int main()
     }
 
     auto tend = std::chrono::steady_clock::now();
-
-    //
-    // bench ends here
-    //
-
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
     mysql_stmt_close(stmt);

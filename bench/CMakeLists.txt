@@ -20,21 +20,21 @@ target_link_libraries(
 boost_mysql_common_target_settings(boost_mysql_bench_connection_pool)
 
 add_executable(
-    main
+    one_row_libmysqlclient
     one_row_libmysqlclient.cpp
 )
-target_link_libraries(main PRIVATE mysqlclient z zstd ssl crypto resolv m)
+target_link_libraries(one_row_libmysqlclient PRIVATE mysqlclient z zstd ssl crypto resolv m)
 
 add_executable(
-    mainboost
+    one_row_boost
     one_row_boost.cpp
 )
 target_link_libraries(
-    mainboost
+    one_row_boost
     PUBLIC
     boost_mysql_compiled
 )
-boost_mysql_common_target_settings(mainboost)
+boost_mysql_common_target_settings(one_row_boost)
 
 
 
