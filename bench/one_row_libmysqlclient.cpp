@@ -245,58 +245,70 @@ int main()
     //
     // bench begins here
     //
-    if (mysql_stmt_execute(stmt))
+    auto tbegin = std::chrono::steady_clock::now();
+    for (int i = 0; i < 10000; ++i)
     {
-        fprintf(stderr, "Error executing statement: %s\n", mysql_stmt_error(stmt));
-        exit(1);
-    }
-
-    if (mysql_stmt_bind_result(stmt, binds))
-    {
-        fprintf(stderr, "Error binding result: %s\n", mysql_stmt_error(stmt));
-        exit(1);
-    }
-
-    while (true)
-    {
-        auto status = mysql_stmt_fetch(stmt);
-
-        if (status == MYSQL_DATA_TRUNCATED)
+        if (mysql_stmt_execute(stmt))
         {
-            if (s2_length > s2.size())
-            {
-                s2.resize(s2_length);
-                binds[10].buffer = s2.data();
-                binds[10].buffer_length = s2_length;
-                if (mysql_stmt_fetch_column(stmt, &binds[10], 10, 0))
-                {
-                    fprintf(stderr, "Error fetching s2: %s\n", mysql_stmt_error(stmt));
-                    exit(1);
-                }
-            }
-
-            if (b2_length > b2.size())
-            {
-                b2.resize(b2_length);
-                binds[12].buffer = b2.data();
-                binds[12].buffer_length = b2_length;
-                if (mysql_stmt_fetch_column(stmt, &binds[12], 12, 0))
-                {
-                    fprintf(stderr, "Error fetching b2: %s\n", mysql_stmt_error(stmt));
-                    exit(1);
-                }
-            }
-        }
-        else if (status == MYSQL_NO_DATA)
-        {
-            break;
-        }
-        else if (status == 1)
-        {
-            fprintf(stderr, "Error fetching result: %s\n", mysql_stmt_error(stmt));
+            fprintf(stderr, "Error executing statement: %s\n", mysql_stmt_error(stmt));
             exit(1);
         }
+
+        if (mysql_stmt_bind_result(stmt, binds))
+        {
+            fprintf(stderr, "Error binding result: %s\n", mysql_stmt_error(stmt));
+            exit(1);
+        }
+
+        while (true)
+        {
+            auto status = mysql_stmt_fetch(stmt);
+
+            if (status == MYSQL_DATA_TRUNCATED)
+            {
+                if (s2_length > s2.size())
+                {
+                    s2.resize(s2_length);
+                    binds[10].buffer = s2.data();
+                    binds[10].buffer_length = s2_length;
+                    if (mysql_stmt_fetch_column(stmt, &binds[10], 10, 0))
+                    {
+                        fprintf(stderr, "Error fetching s2: %s\n", mysql_stmt_error(stmt));
+                        exit(1);
+                    }
+                }
+
+                if (b2_length > b2.size())
+                {
+                    b2.resize(b2_length);
+                    binds[12].buffer = b2.data();
+                    binds[12].buffer_length = b2_length;
+                    if (mysql_stmt_fetch_column(stmt, &binds[12], 12, 0))
+                    {
+                        fprintf(stderr, "Error fetching b2: %s\n", mysql_stmt_error(stmt));
+                        exit(1);
+                    }
+                }
+            }
+            else if (status == MYSQL_NO_DATA)
+            {
+                break;
+            }
+            else if (status == 1)
+            {
+                fprintf(stderr, "Error fetching result: %s\n", mysql_stmt_error(stmt));
+                exit(1);
+            }
+        }
     }
+
+    auto tend = std::chrono::steady_clock::now();
+
+    //
+    // bench ends here
+    //
+
+    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
     mysql_stmt_close(stmt);
     mysql_close(con);
