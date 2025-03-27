@@ -1,7 +1,14 @@
+--
+-- Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+--
+-- Distributed under the Boost Software License, Version 1.0. (See accompanying
+-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+--
 
-DROP DATABASE IF EXISTS mytest;
-CREATE DATABASE mytest;
-USE mytest;
+-- Database
+DROP DATABASE IF EXISTS boost_mysql_bench;
+CREATE DATABASE boost_mysql_bench;
+USE boost_mysql_bench;
 
 -- Required for the WITH RECURSIVE and the amount of rows we're generating
 SET SESSION cte_max_recursion_depth = 15000;
@@ -10,6 +17,7 @@ SET SESSION cte_max_recursion_depth = 15000;
 -- deterministic sequence, vs RAND(@seed)
 SET @seed = 3;
 
+-- Table, with a column per major type
 CREATE TABLE test_data(
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
     s8 TINYINT NOT NULL,
@@ -31,6 +39,7 @@ CREATE TABLE test_data(
     t TIME
 );
 
+-- Generate 10000 random rows
 INSERT INTO test_data(
     s8,
     u8,
@@ -55,7 +64,7 @@ WITH RECURSIVE cte AS (
     UNION ALL
     SELECT num + 1 FROM cte
     WHERE num < 10000
-) SELECT 
+) SELECT
     FLOOR(RAND(@seed)*(0x7f+0x80+1)-0x80),
     FLOOR(RAND(@seed)*(0xff+1)),
     FLOOR(RAND(@seed)*(0x7fff+0x8000+1)-0x8000),
@@ -64,13 +73,13 @@ WITH RECURSIVE cte AS (
     FLOOR(RAND(@seed)*(0xffffffff+1)),
     FLOOR(RAND(@seed)*(0x7fffffffffffffff+0x8000000000000000)-0x7fffffffffffffff),
     FLOOR(RAND(@seed)*(0xffffffffffffffff)),
-    REPEAT(UUID(), 5),
-    REPEAT(UUID(), FLOOR(RAND(@seed)*(1500-1000+1)+1000)),
-    REPEAT(UUID(), 5),
-    REPEAT(UUID(), FLOOR(RAND(@seed)*(1500-1000+1)+1000)),
+    REPEAT('a', 180),
+    REPEAT('b', FLOOR(RAND(@seed)*(54000-36000+1)+36000)),
+    REPEAT('c', 180),
+    REPEAT('d', FLOOR(RAND(@seed)*(54000-36000+1)+36000)),
     RAND(@seed),
     RAND(@seed),
-    CURDATE(),
-    CURTIME(),
+    DATE_ADD('2020-01-01', INTERVAL FLOOR(RAND(@seed)*(5000+5000+1)-5000) DAY),
+    DATE_ADD('2010-03-20', INTERVAL FLOOR(RAND(@seed)*(3600*24*365*20+3600*24*365*20+1)-3600*24*365*20) SECOND),
     SEC_TO_TIME(RAND(@seed) + FLOOR(RAND(@seed)*(839*3600+839*3600+1)-839*3600))
 FROM cte;
