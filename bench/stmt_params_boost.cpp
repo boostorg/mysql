@@ -35,7 +35,7 @@ int main()
     params.server_address.emplace_unix_path("/var/run/mysqld/mysqld.sock");
     params.username = "root";
     params.password = "";
-    params.database = "mytest";
+    params.database = "boost_mysql_bench";
     params.ssl = mysql::ssl_mode::disable;
     conn.connect(params);
 

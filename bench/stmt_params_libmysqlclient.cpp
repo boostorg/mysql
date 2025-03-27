@@ -34,7 +34,8 @@ int main()
         exit(1);
     }
 
-    if (mysql_real_connect(con, NULL, "root", "", "mytest", 0, "/var/run/mysqld/mysqld.sock", 0) == NULL)
+    if (mysql_real_connect(con, NULL, "root", "", "boost_mysql_bench", 0, "/var/run/mysqld/mysqld.sock", 0) ==
+        NULL)
     {
         fprintf(stderr, "%s\n", mysql_error(con));
         mysql_close(con);
