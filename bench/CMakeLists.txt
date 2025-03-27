@@ -55,3 +55,21 @@ target_link_libraries(
     boost_mysql_compiled
 )
 boost_mysql_common_target_settings(many_rows_boost)
+
+
+add_executable(
+    stmt_params_libmysqlclient
+    stmt_params_libmysqlclient.cpp
+)
+target_link_libraries(stmt_params_libmysqlclient PRIVATE mysqlclient z zstd ssl crypto resolv m)
+
+add_executable(
+    stmt_params_boost
+    stmt_params_boost.cpp
+)
+target_link_libraries(
+    stmt_params_boost
+    PUBLIC
+    boost_mysql_compiled
+)
+boost_mysql_common_target_settings(stmt_params_boost)
