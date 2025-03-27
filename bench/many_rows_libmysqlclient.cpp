@@ -56,7 +56,7 @@ int main()
 
     // Prepare the bind objects
     long long int out_id = 0;
-    MYSQL_BIND binds[21]{};
+    MYSQL_BIND binds[18]{};
     binds[0].buffer_type = MYSQL_TYPE_LONGLONG;
     binds[0].buffer = &out_id;
     binds[0].buffer_length = 8;
@@ -138,29 +138,29 @@ int main()
     binds[12].error = &b2_truncated;
 
     float flt{};
-    binds[12].buffer_type = MYSQL_TYPE_FLOAT;
-    binds[12].buffer = &flt;
-    binds[12].buffer_length = 4;
+    binds[13].buffer_type = MYSQL_TYPE_FLOAT;
+    binds[13].buffer = &flt;
+    binds[13].buffer_length = 4;
 
     double dbl{};
-    binds[13].buffer_type = MYSQL_TYPE_DOUBLE;
-    binds[13].buffer = &dbl;
-    binds[13].buffer_length = 8;
+    binds[14].buffer_type = MYSQL_TYPE_DOUBLE;
+    binds[14].buffer = &dbl;
+    binds[14].buffer_length = 8;
 
     MYSQL_TIME dt{};
-    binds[14].buffer_type = MYSQL_TYPE_DATE;
-    binds[14].buffer = &dt;
-    binds[14].buffer_length = sizeof(dt);
+    binds[15].buffer_type = MYSQL_TYPE_DATE;
+    binds[15].buffer = &dt;
+    binds[15].buffer_length = sizeof(dt);
 
     MYSQL_TIME dtime{};
-    binds[15].buffer_type = MYSQL_TYPE_DATETIME;
-    binds[15].buffer = &dtime;
-    binds[15].buffer_length = sizeof(dtime);
+    binds[16].buffer_type = MYSQL_TYPE_DATETIME;
+    binds[16].buffer = &dtime;
+    binds[16].buffer_length = sizeof(dtime);
 
     MYSQL_TIME t{};
-    binds[16].buffer_type = MYSQL_TYPE_TIME;
-    binds[16].buffer = &t;
-    binds[16].buffer_length = sizeof(t);
+    binds[17].buffer_type = MYSQL_TYPE_TIME;
+    binds[17].buffer = &t;
+    binds[17].buffer_length = sizeof(t);
 
     auto tbegin = std::chrono::steady_clock::now();
     if (mysql_stmt_execute(stmt))
