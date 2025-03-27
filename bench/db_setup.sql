@@ -3,7 +3,12 @@ DROP DATABASE IF EXISTS mytest;
 CREATE DATABASE mytest;
 USE mytest;
 
+-- Required for the WITH RECURSIVE and the amount of rows we're generating
 SET SESSION cte_max_recursion_depth = 15000;
+
+-- An arbitrary value to pass to RAND(@seed). RAND(@i) generates a
+-- deterministic sequence, vs RAND(@seed)
+SET @seed = 3;
 
 CREATE TABLE test_data(
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
@@ -35,21 +40,21 @@ WITH RECURSIVE cte AS (
     SELECT num + 1 FROM cte
     WHERE num < 10000
 ) SELECT 
-    FLOOR(RAND()*(0x7f+0x80+1)-0x80),
-    FLOOR(RAND()*(0xff+1)),
-    FLOOR(RAND()*(0x7fff+0x8000+1)-0x8000),
-    FLOOR(RAND()*(0xffff+1)),
-    FLOOR(RAND()*(0x7fffffff+0x80000000+1)-0x80000000),
-    FLOOR(RAND()*(0xffffffff+1)),
-    FLOOR(RAND()*(0x7fffffffffffffff+0x8000000000000000)-0x7fffffffffffffff),
-    FLOOR(RAND()*(0xffffffffffffffff)),
+    FLOOR(RAND(@seed)*(0x7f+0x80+1)-0x80),
+    FLOOR(RAND(@seed)*(0xff+1)),
+    FLOOR(RAND(@seed)*(0x7fff+0x8000+1)-0x8000),
+    FLOOR(RAND(@seed)*(0xffff+1)),
+    FLOOR(RAND(@seed)*(0x7fffffff+0x80000000+1)-0x80000000),
+    FLOOR(RAND(@seed)*(0xffffffff+1)),
+    FLOOR(RAND(@seed)*(0x7fffffffffffffff+0x8000000000000000)-0x7fffffffffffffff),
+    FLOOR(RAND(@seed)*(0xffffffffffffffff)),
     REPEAT(UUID(), 5),
-    REPEAT(UUID(), FLOOR(RAND()*(1500-1000+1)+1000)),
+    REPEAT(UUID(), FLOOR(RAND(@seed)*(1500-1000+1)+1000)),
     REPEAT(UUID(), 5),
-    REPEAT(UUID(), FLOOR(RAND()*(1500-1000+1)+1000)),
-    RAND(),
-    RAND(),
+    REPEAT(UUID(), FLOOR(RAND(@seed)*(1500-1000+1)+1000)),
+    RAND(@seed),
+    RAND(@seed),
     CURDATE(),
     CURTIME(),
-    SEC_TO_TIME(RAND() + FLOOR(RAND()*(839*3600+839*3600+1)-839*3600))
+    SEC_TO_TIME(RAND(@seed) + FLOOR(RAND(@seed)*(839*3600+839*3600+1)-839*3600))
 FROM cte;
