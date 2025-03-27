@@ -41,9 +41,9 @@ int main()
 
     // Prepare stmt
     auto stmt = conn.prepare_statement(
-        "SELECT id FROM test_data WHERE id = 1 AND s8_0 = ? AND u8_0 = ? AND s16_0 = ? AND u16_0 = ? AND "
-        "s32_0 = ? AND u32_0 = ? AND s64_0 = ? AND u64_0 = ? AND s1_0 = ? AND s2_0 = ? AND b1_0 = ? AND "
-        "b2_0 = ? AND flt_0 = ? AND dbl_0 = ? AND dt_0 = ? AND dtime_0 = ? AND t_0 = ?"
+        "SELECT id FROM test_data WHERE id = 1 AND s8 = ? AND u8 = ? AND s16 = ? AND u16 = ? AND "
+        "s32 = ? AND u32 = ? AND s64 = ? AND u64 = ? AND s1 = ? AND s2 = ? AND b1 = ? AND "
+        "b2 = ? AND flt = ? AND dbl = ? AND dt = ? AND dtime = ? AND t = ?"
     );
 
     // Statement params

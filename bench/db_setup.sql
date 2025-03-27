@@ -12,27 +12,43 @@ SET @seed = 3;
 
 CREATE TABLE test_data(
     id INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
-    s8_0 TINYINT NOT NULL,
-    u8_0 TINYINT UNSIGNED NOT NULL,
-    s16_0 SMALLINT NOT NULL,
-    u16_0 SMALLINT UNSIGNED NOT NULL,
-    s32_0 INT NOT NULL,
-    u32_0 INT UNSIGNED NOT NULL,
-    s64_0 BIGINT NOT NULL,
-    u64_0 BIGINT UNSIGNED NOT NULL,
-    s1_0 VARCHAR(256),
-    s2_0 TEXT,
-    b1_0 VARBINARY(256),
-    b2_0 BLOB,
-    flt_0 FLOAT,
-    dbl_0 DOUBLE,
-    dt_0 DATE,
-    dtime_0 DATETIME,
-    t_0 TIME
+    s8 TINYINT NOT NULL,
+    u8 TINYINT UNSIGNED NOT NULL,
+    s16 SMALLINT NOT NULL,
+    u16 SMALLINT UNSIGNED NOT NULL,
+    s32 INT NOT NULL,
+    u32 INT UNSIGNED NOT NULL,
+    s64 BIGINT NOT NULL,
+    u64 BIGINT UNSIGNED NOT NULL,
+    s1 VARCHAR(256),
+    s2 TEXT,
+    b1 VARBINARY(256),
+    b2 BLOB,
+    flt FLOAT,
+    dbl DOUBLE,
+    dt DATE,
+    dtime DATETIME,
+    t TIME
 );
 
 INSERT INTO test_data(
-    s8_0, u8_0, s16_0, u16_0, s32_0, u32_0, s64_0, u64_0, s1_0, s2_0, b1_0, b2_0, flt_0, dbl_0, dt_0, dtime_0, t_0
+    s8,
+    u8,
+    s16,
+    u16,
+    s32,
+    u32,
+    s64,
+    u64,
+    s1,
+    s2,
+    b1,
+    b2,
+    flt,
+    dbl,
+    dt,
+    dtime,
+    t
 )
 WITH RECURSIVE cte AS (
     SELECT 0 num
