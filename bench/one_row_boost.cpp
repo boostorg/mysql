@@ -36,12 +36,14 @@ int main()
     auto stmt = conn.prepare_statement("SELECT * FROM test_data WHERE id = 1");
 
     // Output results
-    mysql::results r;
+    mysql::execution_state st;
 
     auto tbegin = std::chrono::steady_clock::now();
     for (int i = 0; i < 10000; ++i)
     {
-        conn.execute(stmt.bind(), r);
+        conn.start_execution(stmt.bind(), st);
+        while (!st.complete())
+            conn.read_some_rows(st);
     }
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
