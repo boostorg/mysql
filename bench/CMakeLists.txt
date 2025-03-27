@@ -5,71 +5,34 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+# Utility target
+add_custom_target(boost_mysql_bench)
 
-add_executable(
-    boost_mysql_bench_connection_pool
-    connection_pool.cpp
-)
+# Adds a benchmark that uses Boost.MySQL
+function (add_bench cpp_name)
+    set(target_name "boost_mysql_bench_${cpp_name}")
+    add_executable(${target_name} ${cpp_name}.cpp)
+    target_link_libraries(${target_name} PUBLIC boost_mysql_compiled)
+    boost_mysql_common_target_settings(${target_name})
+    add_dependencies(boost_mysql_bench ${target_name})
+endfunction()
 
-target_link_libraries(
-    boost_mysql_bench_connection_pool
-    PUBLIC
-    boost_mysql_compiled
-)
-
-boost_mysql_common_target_settings(boost_mysql_bench_connection_pool)
-
-add_executable(
-    one_row_libmysqlclient
-    one_row_libmysqlclient.cpp
-)
-target_link_libraries(one_row_libmysqlclient PRIVATE mysqlclient z zstd ssl crypto resolv m)
-
-add_executable(
-    one_row_boost
-    one_row_boost.cpp
-)
-target_link_libraries(
-    one_row_boost
-    PUBLIC
-    boost_mysql_compiled
-)
-boost_mysql_common_target_settings(one_row_boost)
+# Adds a benchmark that uses the official C API
+function (add_bench_libmysqlclient cpp_name)
+    set(target_name "boost_mysql_bench_${cpp_name}")
+    add_executable(${target_name} ${cpp_name}.cpp)
+    target_link_libraries(${target_name} PRIVATE mysqlclient z zstd ssl crypto resolv m)
+    add_dependencies(boost_mysql_bench ${target_name})
+endfunction()
 
 
+# Connection pool
+add_bench(connection_pool)
 
-
-add_executable(
-    many_rows_libmysqlclient
-    many_rows_libmysqlclient.cpp
-)
-target_link_libraries(many_rows_libmysqlclient PRIVATE mysqlclient z zstd ssl crypto resolv m)
-
-add_executable(
-    many_rows_boost
-    many_rows_boost.cpp
-)
-target_link_libraries(
-    many_rows_boost
-    PUBLIC
-    boost_mysql_compiled
-)
-boost_mysql_common_target_settings(many_rows_boost)
-
-
-add_executable(
-    stmt_params_libmysqlclient
-    stmt_params_libmysqlclient.cpp
-)
-target_link_libraries(stmt_params_libmysqlclient PRIVATE mysqlclient z zstd ssl crypto resolv m)
-
-add_executable(
-    stmt_params_boost
-    stmt_params_boost.cpp
-)
-target_link_libraries(
-    stmt_params_boost
-    PUBLIC
-    boost_mysql_compiled
-)
-boost_mysql_common_target_settings(stmt_params_boost)
+# Protocol benchmarks
+add_bench(one_row_boost)
+add_bench_libmysqlclient(one_row_libmysqlclient)
+add_bench(many_rows_boost)
+add_bench_libmysqlclient(many_rows_libmysqlclient)
+add_bench(stmt_params_boost)
+add_bench_libmysqlclient(stmt_params_libmysqlclient)
