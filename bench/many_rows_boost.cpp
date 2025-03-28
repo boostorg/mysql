@@ -30,6 +30,8 @@ int main()
     params.ssl = mysql::ssl_mode::disable;
     conn.connect(params);
 
+    unsigned res = 0;
+
     // Prepare stmt
     auto stmt = conn.prepare_statement("SELECT * FROM test_data");
 
@@ -38,7 +40,9 @@ int main()
     auto tbegin = std::chrono::steady_clock::now();
     conn.start_execution(stmt.bind(), st);
     while (!st.complete())
-        conn.read_some_rows(st);
+        res += conn.read_some_rows(st).size();
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
+
+    return res != 0;
 }

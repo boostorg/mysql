@@ -39,6 +39,8 @@ int main()
     params.ssl = mysql::ssl_mode::disable;
     conn.connect(params);
 
+    unsigned res = 0;
+
     // Prepare stmt
     auto stmt = conn.prepare_statement(
         "SELECT id FROM test_data WHERE id = 1 AND s8 = ? AND u8 = ? AND s16 = ? AND u16 = ? AND "
@@ -93,7 +95,10 @@ int main()
             ),
             r
         );
+        res += r.rows().size();
     }
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
+
+    return res != 0;
 }
