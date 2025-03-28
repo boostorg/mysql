@@ -12,7 +12,7 @@ add_custom_target(boost_mysql_bench)
 function (add_bench cpp_name)
     set(target_name "boost_mysql_bench_${cpp_name}")
     add_executable(${target_name} ${cpp_name}.cpp)
-    target_link_libraries(${target_name} PUBLIC boost_mysql_compiled)
+    target_link_libraries(${target_name} PUBLIC boost_mysql)
     boost_mysql_common_target_settings(${target_name})
     add_dependencies(boost_mysql_bench ${target_name})
 endfunction()
@@ -25,6 +25,14 @@ function (add_bench_libmysqlclient cpp_name)
     add_dependencies(boost_mysql_bench ${target_name})
 endfunction()
 
+# Adds a benchmark that uses the MariaDB C API
+function (add_bench_libmariadb cpp_name)
+    set(target_name "boost_mysql_bench_${cpp_name}")
+    add_executable(${target_name} ${cpp_name}.cpp)
+    target_link_libraries(${target_name} PRIVATE mariadb z zstd ssl crypto resolv m)
+    add_dependencies(boost_mysql_bench ${target_name})
+endfunction()
+
 
 # Connection pool
 add_bench(connection_pool)
@@ -32,7 +40,12 @@ add_bench(connection_pool)
 # Protocol benchmarks
 add_bench(one_row_boost)
 add_bench_libmysqlclient(one_row_libmysqlclient)
+add_bench_libmariadb(one_row_libmariadb)
+
 add_bench(many_rows_boost)
 add_bench_libmysqlclient(many_rows_libmysqlclient)
+add_bench_libmariadb(many_rows_libmariadb)
+
 add_bench(stmt_params_boost)
 add_bench_libmysqlclient(stmt_params_libmysqlclient)
+add_bench_libmariadb(stmt_params_libmariadb)
