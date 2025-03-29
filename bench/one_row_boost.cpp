@@ -8,12 +8,11 @@
 
 #include <cassert>
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string>
-#include <vector>
 
 using namespace std;
 
@@ -49,5 +48,5 @@ int main()
     }
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
-    return res == 0 ? 0 : 1;
+    return res == 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
