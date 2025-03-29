@@ -11,12 +11,16 @@
 from pathlib import Path
 from subprocess import check_output
 
+_results_file = 'benchmark-results.txt'
+
+
 def _record_measurement(bench: str, time: int) -> None:
     print('{}: {}ms'.format(bench, time), flush=True)
-    with open('benchmark-results.txt', 'at') as f:
-        f.write('{},{}'.format(bench, time))
+    with open(_results_file, 'at') as f:
+        f.write('{},{}\n'.format(bench, time))
 
-def run_connection_pool_bench(
+
+def _run_connection_pool(
     exe_dir: Path,
     iters: int,
     server_host: str,
@@ -39,7 +43,7 @@ def run_connection_pool_bench(
             _record_measurement(bench, time)
 
 
-def run_protocol_bench(
+def _run_protocol(
     exe_dir: Path,
     iters: int,
 ) -> None:
@@ -62,3 +66,17 @@ def run_protocol_bench(
             time = int(check_output([exe]).decode())
             _record_measurement(bench, time)
 
+
+def run_benchmarks(
+    exe_dir: Path,
+    server_host: str,
+    connection_pool_iters: int,
+    protocol_iters: int,
+) -> None:
+    # Truncate the results file, if it exists
+    with open(_results_file, 'wt') as f:
+        pass
+
+    # Run the benchmarks
+    _run_connection_pool(exe_dir, connection_pool_iters, server_host)
+    _run_protocol(exe_dir, protocol_iters)

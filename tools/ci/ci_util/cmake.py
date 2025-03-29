@@ -12,7 +12,7 @@ from typing import Optional, Dict
 from .common import run, BOOST_ROOT, IS_WINDOWS, mkdir_and_cd
 from .db_setup import db_setup, db_setup_bench
 from .install_boost import install_boost
-from .bench import run_connection_pool_bench, run_protocol_bench
+from .bench import run_benchmarks
 
 
 def _cmake_prefix_path(extra_path: Optional[Path] = None) -> str:
@@ -284,6 +284,9 @@ def bench_build(
     runner.build(target='boost_mysql_bench')
 
     # Run the benchmarks
-    exe_dir = bin_dir.joinpath('stage', 'bin')
-    run_connection_pool_bench(exe_dir, connection_pool_iters, server_host)
-    run_protocol_bench(exe_dir, protocol_iters)
+    run_benchmarks(
+        exe_dir=bin_dir.joinpath('stage', 'bin'),
+        server_host=server_host,
+        connection_pool_iters=connection_pool_iters,
+        protocol_iters=protocol_iters,
+    )
