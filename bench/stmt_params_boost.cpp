@@ -100,5 +100,5 @@ int main()
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
-    return res == 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+    return res == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
