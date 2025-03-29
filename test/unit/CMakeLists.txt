@@ -143,7 +143,7 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
         pch.hpp
     )
 endif()
-boost_mysql_common_target_settings(boost_mysql_unittests)
+boost_mysql_test_target_settings(boost_mysql_unittests)
 
 add_test(
     NAME boost_mysql_unittests

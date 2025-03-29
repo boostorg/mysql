@@ -33,7 +33,7 @@ function(add_example EXAMPLE_NAME)
     set(TARGET_NAME "boost_mysql_example_${EXAMPLE_NAME}")
     add_executable(${TARGET_NAME} ${ADD_EXAMPLE_SOURCES})
     target_link_libraries(${TARGET_NAME} PRIVATE boost_mysql_examples_common)
-    boost_mysql_common_target_settings(${TARGET_NAME})
+    boost_mysql_test_target_settings(${TARGET_NAME})
     target_link_libraries(${TARGET_NAME} PRIVATE ${ADD_EXAMPLE_LIBS})
 
     # Add it as a test

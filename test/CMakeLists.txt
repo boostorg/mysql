@@ -19,7 +19,7 @@ target_compile_definitions(
     BOOST_MYSQL_SEPARATE_COMPILATION
 )
 target_link_libraries(boost_mysql_compiled PUBLIC boost_mysql)
-boost_mysql_common_target_settings(boost_mysql_compiled)
+boost_mysql_test_target_settings(boost_mysql_compiled)
 
 # boost_mysql_testing contains common definitions, includes and settings.
 # Note: old versions of cmake require the sources passed to target_sources to be absolute

@@ -73,7 +73,7 @@ mark_as_advanced(BOOST_MYSQL_BENCH)
 # Examples and tests
 if(BUILD_TESTING)
     # Contains some functions to share code between examples and tests
-    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/test_utils.cmake)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake)
 
     # Custom target tests; required by the Boost superproject
     if(NOT TARGET tests)
@@ -90,5 +90,6 @@ if(BUILD_TESTING)
 endif()
 
 if (BOOST_MYSQL_BENCH)
+    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/utils.cmake)
     add_subdirectory(bench)
 endif()

@@ -48,11 +48,13 @@ function (add_bench cpp_name)
     add_dependencies(boost_mysql_bench ${target_name})
 endfunction()
 
-# Connection pool
-add_bench(connection_pool boost_mysql_compiled)
+# We use the header-only version here because it's slightly faster
+# and to avoid dependencies to the test CMake scripts
 
-# Protocol benchmarks. These use the header-only version of Boost.MySQL,
-# since it's slightly faster
+# Connection pool
+add_bench(connection_pool boost_mysql)
+
+# Protocol benchmarks
 add_bench(one_row_boost boost_mysql)
 add_bench(one_row_libmysqlclient boost_mysql_libmysqlclient)
 add_bench(one_row_libmariadb boost_mysql_libmariadb)
