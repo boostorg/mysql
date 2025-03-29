@@ -11,7 +11,7 @@ from typing import Union
 import os
 import argparse
 from .common import IS_WINDOWS, BOOST_ROOT
-from .cmake import cmake_build, cmake_noopenssl_build, cmake_nointeg_build, find_package_b2_test
+from .cmake import cmake_build, cmake_noopenssl_build, cmake_nointeg_build, find_package_b2_test, bench_build
 from .b2 import b2_build
 from .docs import docs_build
 
@@ -113,6 +113,13 @@ def main():
     subp = subparsers.add_parser('find-package-b2', help='find_package with b2 distribution test')
     subp.add_argument('--generator', default='Ninja')
     subp.set_defaults(func=find_package_b2_test)
+
+    # bench
+    subp = subparsers.add_parser('bench', help='build and run the benchmarks')
+    _add_db_args(subp)
+    subp.add_argument('--connection-pool-iters', type=int, required=True)
+    subp.add_argument('--protocol-iters', type=int, required=True)
+    subp.set_defaults(func=bench_build)
 
     # fuzz
     subp = subparsers.add_parser('fuzz', help='Fuzzing')
