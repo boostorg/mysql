@@ -49,5 +49,5 @@ int main()
     }
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
-    return res != 0;
+    return res == 0 ? 0 : 1;
 }
