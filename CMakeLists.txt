@@ -65,6 +65,11 @@ set(BOOST_MYSQL_DISABLED_SERVER_FEATURES "" CACHE STRING
 )
 mark_as_advanced(BOOST_MYSQL_DISABLED_SERVER_FEATURES)
 
+# Don't build benchmarks unless explicitly requested, since these require the official
+# MySQL and MariaDB client libraries
+option(BOOST_MYSQL_BENCH OFF "Whether to build the benchmarks")
+mark_as_advanced(BOOST_MYSQL_BENCH)
+
 # Examples and tests
 if(BUILD_TESTING)
     # Contains some functions to share code between examples and tests
@@ -78,13 +83,12 @@ if(BUILD_TESTING)
     # Tests
     add_subdirectory(test)
     
+    # All examples require a real server to run
     if (BOOST_MYSQL_INTEGRATION_TESTS)
-        # All examples require a real server to run
         add_subdirectory(example)
-
-        # We don't run benchmarks, but we build them to prevent code rotting.
-        # Having them under BOOST_MYSQL_INTEGRATION_TESTS prevents them
-        # from being built in superproject builds
-        add_subdirectory(bench) 
     endif()
+endif()
+
+if (BOOST_MYSQL_BENCH)
+    add_subdirectory(bench)
 endif()
