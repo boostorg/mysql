@@ -35,6 +35,7 @@ jobs:
           - { image: build-gcc14,        dockerfile: build-gcc14,        platforms: "linux/amd64"                 }
           - { image: build-cmake3_8,     dockerfile: build-cmake3_8,     platforms: "linux/amd64",                }
           - { image: build-noopenssl,    dockerfile: build-noopenssl,    platforms: "linux/amd64",                }
+          - { image: build-bench,        dockerfile: build-bench,        platforms: "linux/amd64",                }
           - { image: build-docs,         dockerfile: build-docs,         platforms: "linux/amd64",                }
 
     runs-on: ubuntu-latest
