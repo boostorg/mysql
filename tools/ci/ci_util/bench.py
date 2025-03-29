@@ -11,6 +11,11 @@
 from pathlib import Path
 from subprocess import check_output
 
+def _record_measurement(bench: str, time: int) -> None:
+    print('{}: {}ms'.format(bench, time), flush=True)
+    with open('benchmark-results.txt', 'at') as f:
+        f.write('{},{}'.format(bench, time))
+
 def run_connection_pool_bench(
     exe_dir: Path,
     iters: int,
@@ -31,7 +36,7 @@ def run_connection_pool_bench(
     for bench in benchmarks:
         for _ in range(iters):
             time = int(check_output([exe, bench, server_host]).decode())
-            print('{},{}'.format(bench, time))
+            _record_measurement(bench, time)
 
 
 def run_protocol_bench(
@@ -55,5 +60,5 @@ def run_protocol_bench(
         exe = exe_dir.joinpath('boost_mysql_bench_' + bench)
         for _ in range(iters):
             time = int(check_output([exe]).decode())
-            print('{},{}'.format(bench, time))
+            _record_measurement(bench, time)
 
