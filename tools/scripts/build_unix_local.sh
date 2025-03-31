@@ -12,7 +12,7 @@ repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
 BK=b2
 IMAGE=build-clang11
-SHA=61b5b771ffefa8c04c43ddc9e023152461a8295f
+SHA=124c270a381614d687dba42c2bd8176f69c38de6
 CONTAINER=builder-$IMAGE
 FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
 DB=mysql-8.4.1

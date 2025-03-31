@@ -5,7 +5,7 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
-FROM ubuntu:23.04
+FROM ubuntu:24.04
 
 RUN \
     apt-get update && \
