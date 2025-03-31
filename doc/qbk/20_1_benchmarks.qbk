@@ -1,0 +1,46 @@
+[/
+    Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+   
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:benchmarks Benchmarks against the official connectors]
+[nochunk]
+
+* TL;DR: Boost.MySQL is as fast as the official C APIs, faster under some circumstances.
+* These benchmarks focus on the protocol implementation, and compare the library's speed
+  to the official MySQL C API (libmysqlclient) and MariaDB C API (libmariadb).
+* Characterize the speed of the protocol implementation, focus on (de)serialization
+  and buffer handling - which is very optimized in the official C APIs. Use sync functions.
+
+The test cases (found in bench/, add link):
+
+* One row, read x5000 times. With xxx fields, mixture of integers, strings, blobs and time types,
+  total of yyy bytes per row. Use any_connection::execute with results (dynamic interface).
+* One big row, x5000? times. With xxx fields, mixture of integers, strings, blobs and time types,
+  total of yyy to zzz KB per row. Use any_connection::start_execution (dynamic interface).
+* x5000 big rows, as described above, read once. Use any_connection::start_execution and read_some_rows.
+* Execution of a statement with parameters. Has xxx parameters, mixture of integers, strings, blobs and time types,
+  with some parameters being long strings/blobs. Total zzz KB per execution. Execute x1000 times.
+
+
+Results: (image)
+
+Conditions and rationales:
+
+* Use UNIX sockets for communication, to attempt to reduce the network overhead.
+* Use a real database (against plain internal serialization functions) because the official clients
+  don't expose the serialization primitives, and buffer handling/system calls account for most of the processing time.
+* Use sync functions to focus on the protocol implementation. Because the async primitives exposed by the official drivers are not equivalent
+  to what's exposed by Boost.MySQL. libmariadb requires a significant amount of effort on the user (e.g. integrating them in a higher-level
+  framework like Asio or libuv). libmysqlclient requires busy-waiting, which can't ever be made equivalent to Boost.MySQL.
+* Use start_execution/read_some_rows when dealing with big rows. This reduces the amount of copying required.
+* OS: Ubuntu 24.04
+* Compiler: g++-14, using CMake's Release config, C++23.
+* DB: MySQL 8.4.1, running on a Docker container in the same machine.
+* CPU: Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz, 8 cores.
+
+Conclusion: equivalent performance. 
+
+[endsect]
