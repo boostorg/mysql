@@ -40,14 +40,13 @@ int main()
     );
 
     // Output results
-    mysql::execution_state st;
+    mysql::results r;
 
     auto tbegin = std::chrono::steady_clock::now();
     for (int i = 0; i < 10000; ++i)
     {
-        conn.start_execution(stmt.bind(), st);
-        while (!st.complete())
-            res += conn.read_some_rows(st).size();
+        conn.execute(stmt.bind(), r);
+        res += r.rows().size();
     }
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
