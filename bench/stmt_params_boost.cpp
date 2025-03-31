@@ -71,7 +71,7 @@ int main()
     mysql::results r;
 
     auto tbegin = std::chrono::steady_clock::now();
-    for (int i = 0; i < 10000; ++i)
+    for (int i = 0; i < 1000; ++i)
     {
         conn.execute(
             stmt.bind(

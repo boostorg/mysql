@@ -17,5 +17,5 @@ if __name__ == '__main__':
         exe_dir=Path(sys.argv[1]),
         server_host='localhost',
         connection_pool_iters=0,
-        protocol_iters=10
+        protocol_iters=25
     )

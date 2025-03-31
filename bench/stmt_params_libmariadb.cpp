@@ -169,7 +169,7 @@ int main()
     out_binds[0].buffer_length = 8;
 
     auto tbegin = std::chrono::steady_clock::now();
-    for (int i = 0; i < 10000; ++i)
+    for (int i = 0; i < 1000; ++i)
     {
         if (mysql_stmt_bind_param(stmt, in_binds))
         {

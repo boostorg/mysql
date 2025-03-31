@@ -63,7 +63,7 @@ WITH RECURSIVE cte AS (
     SELECT 0 num
     UNION ALL
     SELECT num + 1 FROM cte
-    WHERE num < 10000
+    WHERE num < 5000
 ) SELECT
     FLOOR(RAND(@seed)*(0x7f+0x80+1)-0x80),
     FLOOR(RAND(@seed)*(0xff+1)),
