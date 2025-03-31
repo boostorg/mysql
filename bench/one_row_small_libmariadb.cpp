@@ -1,16 +1,23 @@
+//
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
 #include <cassert>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <mariadb/mysql.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string>
 
 using namespace std;
 
 int main()
 {
+    // Initialize
     if (mysql_library_init(0, NULL, NULL))
     {
         fprintf(stderr, "could not initialize MySQL client library\n");
@@ -23,6 +30,7 @@ int main()
         exit(1);
     }
 
+    // Connect
     if (mysql_real_connect(con, NULL, "root", "", "boost_mysql_bench", 0, "/var/run/mysqld/mysqld.sock", 0) ==
         NULL)
     {
@@ -31,7 +39,7 @@ int main()
         exit(1);
     }
 
-    // Prepare stmt
+    // Prepare the statement. Exclude the big TEXT/BLOB fields
     MYSQL_STMT* stmt;
     stmt = mysql_stmt_init(con);
     if (!stmt)
@@ -134,27 +142,36 @@ int main()
     binds[14].buffer = &t;
     binds[14].buffer_length = sizeof(t);
 
+    // Ensure that nothing gets optimized away
+    unsigned res = 0;
+
+    // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
+
     for (int i = 0; i < 10000; ++i)
     {
+        // Execute the statement
         if (mysql_stmt_execute(stmt))
         {
             fprintf(stderr, "Error executing statement: %s\n", mysql_stmt_error(stmt));
             exit(1);
         }
 
+        // Bind output
         if (mysql_stmt_bind_result(stmt, binds))
         {
             fprintf(stderr, "Error binding result: %s\n", mysql_stmt_error(stmt));
             exit(1);
         }
 
+        // Read the rows
         while (true)
         {
             auto status = mysql_stmt_fetch(stmt);
 
             if (status == MYSQL_DATA_TRUNCATED)
             {
+                // No truncation is expected here, since we don't have big strings/blobs
                 fprintf(stderr, "Data truncation error\n");
                 exit(1);
             }
@@ -167,13 +184,22 @@ int main()
                 fprintf(stderr, "Error fetching result: %s\n", mysql_stmt_error(stmt));
                 exit(1);
             }
+            else
+            {
+                ++res;
+            }
         }
     }
 
+    // Benchmark ends here
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
+    // Cleanup
     mysql_stmt_close(stmt);
     mysql_close(con);
     exit(0);
+
+    // We expect one row per iteration
+    return res == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
