@@ -182,6 +182,7 @@ int main()
 
     // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
+
     for (int i = 0; i < 1000; ++i)
     {
         // Bind the params

@@ -1,20 +1,24 @@
-#include <cassert>
+//
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <mysql/field_types.h>
 #include <mysql/mysql.h>
-#include <mysql/mysql_com.h>
 #include <mysql/mysql_time.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string>
 #include <vector>
 
-using namespace std;
-
 int main()
 {
+    // Initialize
     if (mysql_library_init(0, NULL, NULL))
     {
         fprintf(stderr, "could not initialize MySQL client library\n");
@@ -27,6 +31,7 @@ int main()
         exit(1);
     }
 
+    // Connect
     unsigned mode = SSL_MODE_DISABLED;
     if (mysql_options(con, MYSQL_OPT_SSL_MODE, &mode))
     {
@@ -39,6 +44,25 @@ int main()
     {
         fprintf(stderr, "%s\n", mysql_error(con));
         mysql_close(con);
+        exit(1);
+    }
+
+    // Prepare the statement. It should have many parameters and be a lightweight query.
+    // This SELECT is lighter than an INSERT.
+    MYSQL_STMT* stmt;
+    stmt = mysql_stmt_init(con);
+    if (!stmt)
+    {
+        printf("Could not initialize statement\n");
+        exit(1);
+    }
+    constexpr const char* stmt_str =
+        "SELECT id FROM test_data WHERE id = 1 AND s8 = ? AND u8 = ? AND s16 = ? AND u16 = ? AND "
+        "s32 = ? AND u32 = ? AND s64 = ? AND u64 = ? AND s1 = ? AND s2 = ? AND b1 = ? AND "
+        "b2 = ? AND flt = ? AND dbl = ? AND dt = ? AND dtime = ? AND t = ?";
+    if (mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str)))
+    {
+        fprintf(stderr, "Error preparing statement: %s\n", mysql_stmt_error(stmt));
         exit(1);
     }
 
@@ -76,26 +100,8 @@ int main()
     t.second = 40;
     t.second_part = 123456;
 
-    // Prepare stmt
-    MYSQL_STMT* stmt;
-    stmt = mysql_stmt_init(con);
-    if (!stmt)
-    {
-        printf("Could not initialize statement\n");
-        exit(1);
-    }
-    constexpr const char* stmt_str =
-        "SELECT id FROM test_data WHERE id = 1 AND s8 = ? AND u8 = ? AND s16 = ? AND u16 = ? AND "
-        "s32 = ? AND u32 = ? AND s64 = ? AND u64 = ? AND s1 = ? AND s2 = ? AND b1 = ? AND "
-        "b2 = ? AND flt = ? AND dbl = ? AND dt = ? AND dtime = ? AND t = ?";
-    if (mysql_stmt_prepare(stmt, stmt_str, strlen(stmt_str)))
-    {
-        fprintf(stderr, "Error preparing statement: %s\n", mysql_stmt_error(stmt));
-        exit(1);
-    }
-
     // Prepare the bind objects
-    MYSQL_BIND in_binds[27]{};
+    MYSQL_BIND in_binds[17]{};
     in_binds[0].buffer_type = MYSQL_TYPE_TINY;
     in_binds[0].buffer = &s8;
     in_binds[0].buffer_length = 1;
@@ -172,37 +178,53 @@ int main()
     in_binds[16].buffer = &t;
     in_binds[16].buffer_length = sizeof(t);
 
+    // Prepare the output bind objects (only one parameter)
     long long int out_id = 0;
     MYSQL_BIND out_binds[1]{};
     out_binds[0].buffer_type = MYSQL_TYPE_LONGLONG;
     out_binds[0].buffer = &out_id;
     out_binds[0].buffer_length = 8;
 
+    // Ensure that nothing gets optimized away
+    unsigned res = 0;
+
+    // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
+
     for (int i = 0; i < 1000; ++i)
     {
+        // Bind the params
         if (mysql_stmt_bind_param(stmt, in_binds))
         {
             fprintf(stderr, "Error binding params: %s\n", mysql_stmt_error(stmt));
             exit(1);
         }
 
+        // Execute the statement
         if (mysql_stmt_execute(stmt))
         {
             fprintf(stderr, "Error executing statement: %s\n", mysql_stmt_error(stmt));
             exit(1);
         }
 
+        // Bind output
         if (mysql_stmt_bind_result(stmt, out_binds))
         {
             fprintf(stderr, "Error binding result: %s\n", mysql_stmt_error(stmt));
             exit(1);
         }
 
+        // Read the rows
         while (true)
         {
             auto status = mysql_stmt_fetch(stmt);
-            if (status == MYSQL_NO_DATA)
+            if (status == MYSQL_DATA_TRUNCATED)
+            {
+                // No truncation is expected here
+                fprintf(stderr, "Data truncation error\n");
+                exit(1);
+            }
+            else if (status == MYSQL_NO_DATA)
             {
                 break;
             }
@@ -211,13 +233,22 @@ int main()
                 fprintf(stderr, "Error fetching result: %s\n", mysql_stmt_error(stmt));
                 exit(1);
             }
+            else
+            {
+                ++res;
+            }
         }
     }
 
+    // Benchmark ends here
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
+    // Cleanup
     mysql_stmt_close(stmt);
     mysql_close(con);
     exit(0);
+
+    // We don't expect any rows to be matched
+    return res == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
