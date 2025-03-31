@@ -7,13 +7,13 @@
 
 #include <cassert>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <mysql/field_types.h>
 #include <mysql/mysql.h>
 #include <mysql/mysql_com.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string>
 
 int main()
