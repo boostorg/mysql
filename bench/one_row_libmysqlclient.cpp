@@ -1,18 +1,24 @@
+//
+// Copyright (c) 2019-2025 Ruben Perez Hidalgo (rubenperez038 at gmail dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
 #include <cassert>
 #include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <mysql/field_types.h>
 #include <mysql/mysql.h>
 #include <mysql/mysql_com.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string>
-
-using namespace std;
 
 int main()
 {
+    // Initialize
     if (mysql_library_init(0, NULL, NULL))
     {
         fprintf(stderr, "could not initialize MySQL client library\n");
@@ -25,6 +31,7 @@ int main()
         exit(1);
     }
 
+    // Connect
     unsigned mode = SSL_MODE_DISABLED;
     if (mysql_options(con, MYSQL_OPT_SSL_MODE, &mode))
     {
@@ -40,7 +47,7 @@ int main()
         exit(1);
     }
 
-    // Prepare stmt
+    // Prepare the statement
     MYSQL_STMT* stmt;
     stmt = mysql_stmt_init(con);
     if (!stmt)
@@ -163,27 +170,36 @@ int main()
     binds[17].buffer = &t;
     binds[17].buffer_length = sizeof(t);
 
+    // Ensure that nothing gets optimized away
+    unsigned res = 0;
+
+    // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
+
     for (int i = 0; i < 10000; ++i)
     {
+        // Execute the statement
         if (mysql_stmt_execute(stmt))
         {
             fprintf(stderr, "Error executing statement: %s\n", mysql_stmt_error(stmt));
             exit(1);
         }
 
+        // Bind output
         if (mysql_stmt_bind_result(stmt, binds))
         {
             fprintf(stderr, "Error binding result: %s\n", mysql_stmt_error(stmt));
             exit(1);
         }
 
+        // Read the rows
         while (true)
         {
             auto status = mysql_stmt_fetch(stmt);
 
             if (status == MYSQL_DATA_TRUNCATED)
             {
+                // On truncation, resize the buffer and read again
                 if (s2_length > s2.size())
                 {
                     s2.resize(s2_length);
@@ -217,13 +233,22 @@ int main()
                 fprintf(stderr, "Error fetching result: %s\n", mysql_stmt_error(stmt));
                 exit(1);
             }
+            else
+            {
+                ++res;
+            }
         }
     }
 
+    // Benchmark ends here
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
+    // Cleanup
     mysql_stmt_close(stmt);
     mysql_close(con);
     exit(0);
+
+    // We expect many rows
+    return res == 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }
