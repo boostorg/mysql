@@ -198,7 +198,6 @@ int main()
     // Cleanup
     mysql_stmt_close(stmt);
     mysql_close(con);
-    exit(0);
 
     // We expect one row per iteration
     return res == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
