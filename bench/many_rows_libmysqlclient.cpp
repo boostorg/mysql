@@ -220,6 +220,8 @@ int main()
                     exit(1);
                 }
             }
+
+            ++res;
         }
         else if (status == MYSQL_NO_DATA)
         {
