@@ -247,7 +247,6 @@ int main()
     // Cleanup
     mysql_stmt_close(stmt);
     mysql_close(con);
-    exit(0);
 
     // We don't expect any rows to be matched
     return res == 0 ? EXIT_SUCCESS : EXIT_FAILURE;

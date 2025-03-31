@@ -243,7 +243,6 @@ int main()
     // Cleanup
     mysql_stmt_close(stmt);
     mysql_close(con);
-    exit(0);
 
     // We expect many rows
     return res == 0 ? EXIT_FAILURE : EXIT_SUCCESS;
