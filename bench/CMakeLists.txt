@@ -59,6 +59,10 @@ add_bench(one_row_boost boost_mysql)
 add_bench(one_row_libmysqlclient boost_mysql_libmysqlclient)
 add_bench(one_row_libmariadb boost_mysql_libmariadb)
 
+add_bench(one_row_small_boost boost_mysql)
+add_bench(one_row_small_libmysqlclient boost_mysql_libmysqlclient)
+add_bench(one_row_small_libmariadb boost_mysql_libmariadb)
+
 add_bench(many_rows_boost boost_mysql)
 add_bench(many_rows_libmysqlclient boost_mysql_libmysqlclient)
 add_bench(many_rows_libmariadb boost_mysql_libmariadb)
