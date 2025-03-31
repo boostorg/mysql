@@ -7,11 +7,11 @@
 
 #include <cassert>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <mariadb/mysql.h>
-#include <stdio.h>
 #include <string>
 
 int main()
