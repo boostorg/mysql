@@ -44,7 +44,7 @@ int main()
     auto stmt = conn.prepare_statement("SELECT * FROM test_data WHERE id = 1");
 
     // Ensure that nothing gets optimized away
-    unsigned res = 0;
+    unsigned num_rows = 0;
 
     // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
@@ -55,7 +55,7 @@ int main()
         // so it's preferable when we have big rows, like here
         conn.start_execution(stmt.bind(), st);
         while (!st.complete())
-            res += conn.read_some_rows(st).size();
+            num_rows += conn.read_some_rows(st).size();
     }
 
     // Benchmark ends here
@@ -63,5 +63,5 @@ int main()
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
     // We expect one row per iteration
-    return res == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return num_rows == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -44,7 +44,7 @@ int main()
     );
 
     // Ensure that nothing gets optimized away
-    unsigned res = 0;
+    unsigned num_rows = 0;
 
     // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
@@ -53,7 +53,7 @@ int main()
     {
         // Since the rows are small, using execute is recommended
         conn.execute(stmt.bind(), r);
-        res += r.rows().size();
+        num_rows += r.rows().size();
     }
 
     // Benchmark ends here
@@ -61,5 +61,5 @@ int main()
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
     // We expect one row per iteration
-    return res == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return num_rows == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

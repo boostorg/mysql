@@ -162,7 +162,7 @@ int main()
     binds[17].buffer_length = sizeof(t);
 
     // Ensure that nothing gets optimized away
-    unsigned res = 0;
+    unsigned num_rows = 0;
 
     // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
@@ -215,7 +215,7 @@ int main()
                     }
                 }
 
-                ++res;
+                ++num_rows;
             }
             else if (status == MYSQL_NO_DATA)
             {
@@ -228,7 +228,7 @@ int main()
             }
             else
             {
-                ++res;
+                ++num_rows;
             }
         }
     }
@@ -242,5 +242,5 @@ int main()
     mysql_close(con);
 
     // We expect one row per iteration
-    return res == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return num_rows == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
 }

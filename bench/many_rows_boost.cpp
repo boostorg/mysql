@@ -42,7 +42,7 @@ int main()
     auto stmt = conn.prepare_statement("SELECT * FROM test_data");
 
     // Ensure that nothing gets optimized away
-    unsigned res = 0;
+    unsigned num_rows = 0;
 
     // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
@@ -51,12 +51,12 @@ int main()
     // so it's preferable when we have big rows, like here
     conn.start_execution(stmt.bind(), st);
     while (!st.complete())
-        res += conn.read_some_rows(st).size();
+        num_rows += conn.read_some_rows(st).size();
 
     // Benchmark ends here
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
     // We expect many rows
-    return res == 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+    return num_rows == 0 ? EXIT_FAILURE : EXIT_SUCCESS;
 }

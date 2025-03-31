@@ -186,7 +186,7 @@ int main()
     out_binds[0].buffer_length = 8;
 
     // Ensure that nothing gets optimized away
-    unsigned res = 0;
+    unsigned num_rows = 0;
 
     // Benchmark starts here
     auto tbegin = std::chrono::steady_clock::now();
@@ -235,7 +235,7 @@ int main()
             }
             else
             {
-                ++res;
+                ++num_rows;
             }
         }
     }
@@ -249,5 +249,5 @@ int main()
     mysql_close(con);
 
     // We don't expect any rows to be matched
-    return res == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    return num_rows == 0 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
