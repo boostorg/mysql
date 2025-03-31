@@ -49,12 +49,12 @@ def _run_protocol(
 ) -> None:
     # The benchmarks to run
     benchmarks = [
-        "one_row_boost",
-        "one_row_libmysqlclient",
-        "one_row_libmariadb",
-        "one_row_small_boost",
-        "one_row_small_libmysqlclient",
-        "one_row_small_libmariadb",
+        "one_small_row_boost",
+        "one_small_row_libmysqlclient",
+        "one_small_row_libmariadb",
+        "one_big_row_boost",
+        "one_big_row_libmysqlclient",
+        "one_big_row_libmariadb",
         "many_rows_boost",
         "many_rows_libmysqlclient",
         "many_rows_libmariadb",
