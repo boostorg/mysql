@@ -62,6 +62,6 @@ int main()
     auto tend = std::chrono::steady_clock::now();
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(tend - tbegin).count() << std::endl;
 
-    // We expect many rows
-    return res == 0 ? EXIT_FAILURE : EXIT_SUCCESS;
+    // We expect one row per iteration
+    return res == 10000 ? EXIT_SUCCESS : EXIT_FAILURE;
 }
