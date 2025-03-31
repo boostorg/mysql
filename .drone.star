@@ -264,6 +264,16 @@ def find_package_b2_windows(name):
     return _pipeline(name=name, image=_win_image('build-msvc14_3'), os='windows', command=command, db=None)
 
 
+def bench(name):
+    command = 'python tools/ci/main.py ' + \
+                '--source-dir="$(pwd)" ' + \
+                'bench ' + \
+                '--server-host=mysql ' + \
+                '--connection-pool-iters=1 ' + \
+                '--protocol-iters=1 '
+    return _pipeline(name=name, image=_image('build-bench'), os='linux', command=command, db='mysql-8.4.1')
+
+
 def docs(name):
     return _pipeline(
         name=name,
@@ -323,6 +333,9 @@ def main(ctx):
         windows_b2('Windows B2 msvc14.2',             _win_image('build-msvc14_2'), toolset='msvc-14.2', cxxstd='14,17',    variant='release'),
         windows_b2('Windows B2 msvc14.3',             _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='17,20',    variant='debug,release'),
         windows_b2('Windows B2 msvc14.3-ts-executor', _win_image('build-msvc14_3'), toolset='msvc-14.3', cxxstd='20',       variant='release',       use_ts_executor=1),
+
+        # Benchmarks
+        bench('Benchmarks'),
 
         # Docs
         docs('Linux docs')
