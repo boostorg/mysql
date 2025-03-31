@@ -83,3 +83,15 @@ WITH RECURSIVE cte AS (
     DATE_ADD('2010-03-20', INTERVAL FLOOR(RAND(@seed)*(3600*24*365*20+3600*24*365*20+1)-3600*24*365*20) SECOND),
     SEC_TO_TIME(RAND(@seed) + FLOOR(RAND(@seed)*(839*3600+839*3600+1)-839*3600))
 FROM cte;
+
+-- A lightweight table, for the connection_pool benchmarks
+CREATE TABLE lightweight_data(
+    id INT NOT NULL PRIMARY KEY,
+    data VARCHAR(100) NOT NULL
+);
+
+INSERT INTO lightweight_data VALUES
+    (1, "Data piece 1"),
+    (2, "Another data piece"),
+    (3, "Final data piece")
+;
