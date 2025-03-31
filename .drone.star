@@ -6,7 +6,7 @@
 #
 
 _triggers = { "branch": [ "master", "develop" ] }
-_container_tag = '124c270a381614d687dba42c2bd8176f69c38de6'
+_container_tag = 'e9696175806589fc91e160399eedeac8fdc88c68'
 _win_container_tag = 'e7bd656c3515263f9b3c69a2d73d045f6a0fed72'
 
 

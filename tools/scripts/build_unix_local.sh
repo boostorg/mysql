@@ -12,9 +12,9 @@ repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
 BK=b2
 IMAGE=build-clang11
-SHA=124c270a381614d687dba42c2bd8176f69c38de6
+SHA=e9696175806589fc91e160399eedeac8fdc88c68
 CONTAINER=builder-$IMAGE
-FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
+FULL_IMAGE=bench
 DB=mysql-8.4.1
 
 docker start $DB || docker run -d \
@@ -56,6 +56,12 @@ case $BK in
         ;;
     
     fuzz) cmd="$db_args" ;;
+
+    bench) cmd="$db_args
+                --protocol-iters=10
+                --connection-pool-iters=0
+                "
+        ;;
 
     *) cmd="" ;;
 esac
