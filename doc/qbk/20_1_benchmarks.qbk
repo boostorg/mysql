@@ -84,12 +84,20 @@ Benchmark conditions:
 
 [$mysql/images/bench-protocol.png [align center]]
 
-* Faster than libmysqlclient in the single row benchmarks
-* Similar performance than libmariadb in most of the benchmarks, some above, some below,
-  differences likely not statistically significant.
-* TL;DR: similar performance.
-* Remember that protocol is just one piece. It is required that it's correctly implemented
-  to get decent performance, but it's not enough. correctly using features like connection_pool,
-  start_execution and multi-queries can make a huge difference. Measure!
+The three libraries exhibit a similar level of performance, which is expected
+from a correctly implemented binary protocol. Boost.MySQL outperforms libmysqlclient
+in the single row benchmarks, and is on par with libmariadb. Differences in the
+other benchmarks don't appear to be statistically significant.
+
+During these benchmarks, some potential performance improvement areas
+have been identified. See [https://github.com/boostorg/mysql/issues/458 this issue]
+for details.
+
+Remember that protocol is just one piece to the whole puzzle.
+Correctly using features like [reflink connection_pool], [reflink with_params],
+multi-function operations and multi-queries can make a huge performance difference
+in your application. Never assume anything and always measure!
+
+Acknowledgments: thanks [@https://github.com/LowLevelMahn LowLevelMahn] for proposing the benchmarks.
 
 [endsect]
