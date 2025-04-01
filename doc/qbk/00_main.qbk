@@ -214,6 +214,7 @@ END
 [include 18_time_types.qbk]
 [include 19_templated_connection.qbk]
 [include 20_pipeline.qbk]
+[include 20_1_benchmarks.qbk]
 [include 21_examples.qbk]
 
 
