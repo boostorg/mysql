@@ -257,6 +257,48 @@ BOOST_AUTO_TEST_CASE(init_copy_org_name_empty)
     BOOST_TEST(meta.original_column_name() == "");
 }
 
+// Same, but many strings are empty
+BOOST_AUTO_TEST_CASE(init_copy_many_empty)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database("A database")
+                    .table(string_view())
+                    .org_table(string_view())
+                    .name("The name of the column")
+                    .org_name(string_view())
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Check
+    BOOST_TEST(meta.database() == "A database");
+    BOOST_TEST(meta.table() == "");
+    BOOST_TEST(meta.original_table() == "");
+    BOOST_TEST(meta.column_name() == "The name of the column");
+    BOOST_TEST(meta.original_column_name() == "");
+}
+
+// Same, but all strings are empty
+BOOST_AUTO_TEST_CASE(init_copy_all_empty)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database(string_view())
+                    .table(string_view())
+                    .org_table(string_view())
+                    .name(string_view())
+                    .org_name(string_view())
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Check
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.table() == "");
+    BOOST_TEST(meta.original_table() == "");
+    BOOST_TEST(meta.column_name() == "");
+    BOOST_TEST(meta.original_column_name() == "");
+}
+
 BOOST_AUTO_TEST_CASE(int_primary_key)
 {
     detail::coldef_view msg{
