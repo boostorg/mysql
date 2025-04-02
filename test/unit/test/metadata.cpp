@@ -460,7 +460,7 @@ BOOST_AUTO_TEST_CASE(move_constructor_sbo)
 // Move constructor works without strings, too
 BOOST_AUTO_TEST_CASE(move_constructor_no_strings)
 {
-    // Setup. Use both long and short strings to catch any SBO problems
+    // Setup
     auto pack = meta_builder().column_length(200).type(column_type::blob).build_coldef();
     auto meta_orig = detail::access::construct<metadata>(pack, false);
 
@@ -533,7 +533,7 @@ BOOST_AUTO_TEST_CASE(copy_assign)
 // Copy assignment works without strings, too
 BOOST_AUTO_TEST_CASE(copy_assign_no_strings)
 {
-    // Setup. Use both long and short strings to catch any SBO problems
+    // Setup
     auto pack_orig = meta_builder().type(column_type::blob).decimals(12).build_coldef();
     auto meta_orig = create_dynamic_meta(pack_orig, false);
     auto pack = meta_builder().type(column_type::varbinary).decimals(10).build_coldef();
@@ -572,7 +572,83 @@ BOOST_AUTO_TEST_CASE(copy_assign_self)
     BOOST_TEST(meta.type() == column_type::binary);
 }
 
-// move assignment, with/without strings
+// Move assignment handles strings correctly
+BOOST_AUTO_TEST_CASE(move_assign)
+{
+    // Setup. Use both long and short strings to catch any SBO problems
+    auto pack_orig = meta_builder()
+                         .database("db")
+                         .table("Some table value")
+                         .org_table("Some other original table value")
+                         .name("name")
+                         .org_name("The original name of the database column")
+                         .column_length(200)
+                         .type(column_type::blob)
+                         .decimals(12)
+                         .collation_id(1234)
+                         .flags(column_flags::pri_key)
+                         .build_coldef();
+    auto meta_orig = create_dynamic_meta(pack_orig, true);
+    auto pack = meta_builder()
+                    .database("other_db")
+                    .table("another tbl")
+                    .org_table("original tbl")
+                    .name(string_view())
+                    .org_name("Some test")
+                    .column_length(10)
+                    .type(column_type::varbinary)
+                    .decimals(10)
+                    .collation_id(42)
+                    .flags(column_flags::not_null)
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Move assign
+    meta = std::move(*meta_orig);
+
+    // Destroy the original object
+    meta_orig.reset();
+
+    // Check
+    BOOST_TEST(meta.database() == "db");
+    BOOST_TEST(meta.table() == "Some table value");
+    BOOST_TEST(meta.original_table() == "Some other original table value");
+    BOOST_TEST(meta.column_name() == "name");
+    BOOST_TEST(meta.original_column_name() == "The original name of the database column");
+    BOOST_TEST(meta.column_length() == 200u);
+    BOOST_TEST(meta.type() == column_type::blob);
+    BOOST_TEST(meta.decimals() == 12u);
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+// Move assignment works without strings, too
+BOOST_AUTO_TEST_CASE(move_assign_no_strings)
+{
+    // Setup. Use both long and short strings to catch any SBO problems
+    auto pack_orig = meta_builder().type(column_type::blob).decimals(12).build_coldef();
+    auto meta_orig = create_dynamic_meta(pack_orig, false);
+    auto pack = meta_builder().type(column_type::varbinary).decimals(10).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Move assign
+    meta = std::move(*meta_orig);
+
+    // Destroy the original object
+    meta_orig.reset();
+
+    // Check
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.type() == column_type::blob);
+    BOOST_TEST(meta.decimals() == 12u);
+}
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
 {
