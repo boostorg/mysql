@@ -8,11 +8,16 @@
 #include <boost/mysql/column_type.hpp>
 #include <boost/mysql/metadata.hpp>
 #include <boost/mysql/mysql_collations.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/coldef_view.hpp>
 
 #include <boost/test/unit_test.hpp>
+
+#include <cstddef>
+#include <cstring>
+#include <memory>
 
 #include "test_unit/create_meta.hpp"
 
@@ -29,8 +34,6 @@ namespace column_flags = boost::mysql::detail::column_flags;
 // tests having each flag set/not
 //
 // init constructor
-//    copy_strings false, things to copy
-//    copy_strings false, nothing to copy
 //    copy_strings true, destroy storage
 //    copy_strings true, every string present
 //    copy_strings true, one string absent (one for each string)
@@ -40,6 +43,8 @@ namespace column_flags = boost::mysql::detail::column_flags;
 // move constructor, with strings
 // copy assignment, with/without stings
 // move assignment, with/without strings
+
+namespace {
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
 
@@ -80,8 +85,6 @@ BOOST_AUTO_TEST_CASE(init_nocopy)
                     .name("field")
                     .org_name("org_field")
                     .build_coldef();
-
-    // Build
     auto meta = detail::access::construct<metadata>(pack, false);
 
     // Strings were not copied
@@ -97,8 +100,6 @@ BOOST_AUTO_TEST_CASE(init_nocopy_empty_strings)
 {
     // Setup
     auto pack = meta_builder().database("").table("").org_table("").name("").org_name("").build_coldef();
-
-    // Build
     auto meta = detail::access::construct<metadata>(pack, false);
 
     // Strings are also empty, no UB happens
@@ -107,6 +108,51 @@ BOOST_AUTO_TEST_CASE(init_nocopy_empty_strings)
     BOOST_TEST(meta.original_table() == "");
     BOOST_TEST(meta.column_name() == "");
     BOOST_TEST(meta.original_column_name() == "");
+}
+
+// String in dynamic storage, to help sanitizers catch memory bugs
+struct dynamic_string
+{
+    std::unique_ptr<char[]> storage;
+    std::size_t size;
+
+    explicit dynamic_string(string_view from) : storage(new char[from.size()]), size(from.size())
+    {
+        std::memcpy(storage.get(), from.data(), from.size());
+    }
+
+    string_view get() const { return string_view(storage.get(), size); }
+};
+
+// Init ctor, copy_strings=true, ensure that lifetime guarantees are met
+BOOST_AUTO_TEST_CASE(init_copy_lifetimes)
+{
+    // Construct some strings in dynamic storage, to help catch memory bugs
+    dynamic_string db("db"), table("tab"), org_table("original_tab"), name("nam"), org_name("original_nam");
+
+    // Build
+    auto pack = meta_builder()
+                    .database(db.get())
+                    .table(table.get())
+                    .org_table(org_table.get())
+                    .name(name.get())
+                    .org_name(org_name.get())
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Destroy the original strings
+    db.storage.reset();
+    table.storage.reset();
+    org_table.storage.reset();
+    name.storage.reset();
+    org_name.storage.reset();
+
+    // Check
+    BOOST_TEST(meta.database() == "db");
+    BOOST_TEST(meta.table() == "tab");
+    BOOST_TEST(meta.original_table() == "original_tab");
+    BOOST_TEST(meta.column_name() == "nam");
+    BOOST_TEST(meta.original_column_name() == "original_nam");
 }
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
@@ -264,3 +310,5 @@ BOOST_AUTO_TEST_CASE(string_ownership)
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_metadata
+
+}  // namespace
