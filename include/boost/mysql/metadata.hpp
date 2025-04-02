@@ -273,20 +273,21 @@ private:
     std::size_t org_table_offset_{};  // physical table
     std::size_t name_offset_{};       // virtual column name
     std::size_t org_name_offset_{};   // physical column name
-    std::uint16_t character_set_;
-    std::uint32_t column_length_;  // maximum length of the field
-    column_type type_;             // type of the column
-    std::uint16_t flags_;          // Flags as defined in Column Definition Flags
-    std::uint8_t decimals_;        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
-                                   // dynamic strings, double, float
+    std::uint16_t character_set_{};
+    std::uint32_t column_length_{};  // maximum length of the field
+    column_type type_{};             // type of the column
+    std::uint16_t flags_{};          // Flags as defined in Column Definition Flags
+    std::uint8_t decimals_{};        // max shown decimal digits. 0x00 for int/static strings; 0x1f for
+                                     // dynamic strings, double, float
+
+    static std::size_t total_string_size(const detail::coldef_view& coldef)
+    {
+        return coldef.database.size() + coldef.table.size() + coldef.org_table.size() + coldef.name.size() +
+               coldef.org_name.size();
+    }
 
     metadata(const detail::coldef_view& coldef, bool copy_strings)
-        : strings_(
-              copy_strings ? coldef.database.size() + coldef.table.size() + coldef.org_table.size() +
-                                 coldef.name.size() + coldef.org_name.size()
-                           : 0u,
-              0
-          ),
+        : strings_(copy_strings ? total_string_size(coldef) : 0u, '\0'),
           character_set_(coldef.collation_id),
           column_length_(coldef.column_length),
           type_(coldef.type),
@@ -301,13 +302,15 @@ private:
             name_offset_ = org_table_offset_ + coldef.org_table.size();
             org_name_offset_ = name_offset_ + coldef.name.size();
 
-            // Values
+            // Values. The packet points into a network packet, so it's guaranteed to
+            // not overlap with
             void* it = strings_.data();
             it = std::memcpy(it, coldef.database.data(), coldef.database.size());
             it = std::memcpy(it, coldef.table.data(), coldef.table.size());
             it = std::memcpy(it, coldef.org_table.data(), coldef.org_table.size());
             it = std::memcpy(it, coldef.name.data(), coldef.name.size());
-            std::memcpy(it, coldef.org_name.data(), coldef.org_name.size());
+            it = std::memcpy(it, coldef.org_name.data(), coldef.org_name.size());
+            BOOST_ASSERT(it == strings_.data() + strings_.size());
         }
     }
 
