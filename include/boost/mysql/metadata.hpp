@@ -286,6 +286,12 @@ private:
                coldef.org_name.size();
     }
 
+    static char* copy_string(string_view from, char* to)
+    {
+        std::memcpy(to, from.data(), from.size());
+        return to + from.size();
+    }
+
     metadata(const detail::coldef_view& coldef, bool copy_strings)
         : strings_(copy_strings ? total_string_size(coldef) : 0u, '\0'),
           character_set_(coldef.collation_id),
@@ -304,12 +310,12 @@ private:
 
             // Values. The packet points into a network packet, so it's guaranteed to
             // not overlap with
-            void* it = strings_.data();
-            it = std::memcpy(it, coldef.database.data(), coldef.database.size());
-            it = std::memcpy(it, coldef.table.data(), coldef.table.size());
-            it = std::memcpy(it, coldef.org_table.data(), coldef.org_table.size());
-            it = std::memcpy(it, coldef.name.data(), coldef.name.size());
-            it = std::memcpy(it, coldef.org_name.data(), coldef.org_name.size());
+            char* it = strings_.data();
+            it = copy_string(coldef.database, it);
+            it = copy_string(coldef.table, it);
+            it = copy_string(coldef.org_table, it);
+            it = copy_string(coldef.name, it);
+            it = copy_string(coldef.org_name, it);
             BOOST_ASSERT(it == strings_.data() + strings_.size());
         }
     }
