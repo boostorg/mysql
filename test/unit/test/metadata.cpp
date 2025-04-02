@@ -32,14 +32,7 @@ namespace column_flags = boost::mysql::detail::column_flags;
 // type
 // decimals
 // tests having each flag set/not
-//
-// init constructor
-//    copy_strings true, several strings absent
-//    copy_strings true, all strings absent
-// copy constructor, with strings
-// move constructor, with strings
-// copy assignment, with/without stings
-// move assignment, with/without strings
+// TODO: collation ID
 
 namespace {
 
@@ -298,6 +291,81 @@ BOOST_AUTO_TEST_CASE(init_copy_all_empty)
     BOOST_TEST(meta.column_name() == "");
     BOOST_TEST(meta.original_column_name() == "");
 }
+
+// Copy ctor handles strings correctly
+BOOST_AUTO_TEST_CASE(copy_constructor)
+{
+    // Setup. Use both long and short strings to catch any SBO problems
+    auto pack = meta_builder()
+                    .database("db")
+                    .table("Some table value")
+                    .org_table("Some other original table value")
+                    .name("name")
+                    .org_name("The original name of the database column")
+                    .column_length(200)
+                    .type(column_type::blob)
+                    .decimals(12)
+                    .collation_id(1234)
+                    .flags(column_flags::pri_key)
+                    .build_coldef();
+    auto meta_orig = detail::access::construct<metadata>(pack, true);
+
+    // Copy construct
+    metadata meta(meta_orig);
+
+    // Invalidate the original object
+    meta_orig = detail::access::construct<metadata>(detail::coldef_view{}, true);
+
+    // Check
+    BOOST_TEST(meta.database() == "db");
+    BOOST_TEST(meta.table() == "Some table value");
+    BOOST_TEST(meta.original_table() == "Some other original table value");
+    BOOST_TEST(meta.column_name() == "name");
+    BOOST_TEST(meta.original_column_name() == "The original name of the database column");
+    BOOST_TEST(meta.column_length() == 200u);
+    BOOST_TEST(meta.type() == column_type::blob);
+    BOOST_TEST(meta.decimals() == 12u);
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+// Double-check that no SBO problems happen
+BOOST_AUTO_TEST_CASE(copy_constructor_sbo)
+{
+    // Setup. Create the original object in dynamic memory to help sanitizers
+    auto pack = meta_builder()
+                    .database("db")
+                    .table("tab")
+                    .org_table("ot")
+                    .name("nam")
+                    .org_name("on")
+                    .build_coldef();
+    std::unique_ptr<metadata> meta_orig(new metadata(detail::access::construct<metadata>(pack, true)));
+
+    // Copy construct
+    metadata meta(*meta_orig);
+
+    // Destroy the original object
+    meta_orig.reset();
+
+    // Check
+    BOOST_TEST(meta.database() == "db");
+    BOOST_TEST(meta.table() == "tab");
+    BOOST_TEST(meta.original_table() == "ot");
+    BOOST_TEST(meta.column_name() == "nam");
+    BOOST_TEST(meta.original_column_name() == "on");
+}
+
+// move constructor, with strings
+// copy assignment, with/without stings
+// move assignment, with/without strings
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
 {
