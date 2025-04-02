@@ -12,6 +12,7 @@
 
 #include <boost/mysql/detail/access.hpp>
 #include <boost/mysql/detail/coldef_view.hpp>
+#include <boost/mysql/detail/flags.hpp>
 
 #include <boost/test/unit_test.hpp>
 
@@ -37,6 +38,12 @@ namespace column_flags = boost::mysql::detail::column_flags;
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
+
+// Creates a metadata object in dynamic memory, to help sanitizers detect memory errors
+std::unique_ptr<metadata> create_dynamic_meta(const detail::coldef_view& coldef, bool copy_strings)
+{
+    return std::unique_ptr<metadata>(new metadata(detail::access::construct<metadata>(coldef, copy_strings)));
+}
 
 // Default constructing metadata objects should be well defined
 BOOST_AUTO_TEST_CASE(default_constructor)
@@ -347,7 +354,7 @@ BOOST_AUTO_TEST_CASE(copy_constructor_sbo)
                     .name("nam")
                     .org_name("on")
                     .build_coldef();
-    std::unique_ptr<metadata> meta_orig(new metadata(detail::access::construct<metadata>(pack, true)));
+    auto meta_orig = create_dynamic_meta(pack, true);
 
     // Copy construct
     metadata meta(*meta_orig);
@@ -361,6 +368,22 @@ BOOST_AUTO_TEST_CASE(copy_constructor_sbo)
     BOOST_TEST(meta.original_table() == "ot");
     BOOST_TEST(meta.column_name() == "nam");
     BOOST_TEST(meta.original_column_name() == "on");
+}
+
+// Copy constructor works without strings, too
+BOOST_AUTO_TEST_CASE(copy_constructor_no_strings)
+{
+    // Setup. Use both long and short strings to catch any SBO problems
+    auto pack = meta_builder().column_length(200).type(column_type::blob).build_coldef();
+    auto meta_orig = detail::access::construct<metadata>(pack, false);
+
+    // Copy construct
+    metadata meta(meta_orig);
+
+    // Check
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.column_length() == 200u);
+    BOOST_TEST(meta.type() == column_type::blob);
 }
 
 // Move ctor handles strings correctly
@@ -418,7 +441,7 @@ BOOST_AUTO_TEST_CASE(move_constructor_sbo)
                     .name("nam")
                     .org_name("on")
                     .build_coldef();
-    std::unique_ptr<metadata> meta_orig(new metadata(detail::access::construct<metadata>(pack, true)));
+    auto meta_orig = create_dynamic_meta(pack, true);
 
     // Move construct
     metadata meta(std::move(*meta_orig));
@@ -434,7 +457,121 @@ BOOST_AUTO_TEST_CASE(move_constructor_sbo)
     BOOST_TEST(meta.original_column_name() == "on");
 }
 
-// copy assignment, with/without stings
+// Move constructor works without strings, too
+BOOST_AUTO_TEST_CASE(move_constructor_no_strings)
+{
+    // Setup. Use both long and short strings to catch any SBO problems
+    auto pack = meta_builder().column_length(200).type(column_type::blob).build_coldef();
+    auto meta_orig = detail::access::construct<metadata>(pack, false);
+
+    // Copy construct
+    metadata meta(std::move(meta_orig));
+
+    // Check
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.column_length() == 200u);
+    BOOST_TEST(meta.type() == column_type::blob);
+}
+
+// Copy assignment handles strings correctly
+BOOST_AUTO_TEST_CASE(copy_assign)
+{
+    // Setup. Use both long and short strings to catch any SBO problems
+    auto pack_orig = meta_builder()
+                         .database("db")
+                         .table("Some table value")
+                         .org_table("Some other original table value")
+                         .name("name")
+                         .org_name("The original name of the database column")
+                         .column_length(200)
+                         .type(column_type::blob)
+                         .decimals(12)
+                         .collation_id(1234)
+                         .flags(column_flags::pri_key)
+                         .build_coldef();
+    auto meta_orig = create_dynamic_meta(pack_orig, true);
+    auto pack = meta_builder()
+                    .database("other_db")
+                    .table("another tbl")
+                    .org_table("original tbl")
+                    .name(string_view())
+                    .org_name("Some test")
+                    .column_length(10)
+                    .type(column_type::varbinary)
+                    .decimals(10)
+                    .collation_id(42)
+                    .flags(column_flags::not_null)
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Copy assign
+    meta = *meta_orig;
+
+    // Destroy the original object
+    meta_orig.reset();
+
+    // Check
+    BOOST_TEST(meta.database() == "db");
+    BOOST_TEST(meta.table() == "Some table value");
+    BOOST_TEST(meta.original_table() == "Some other original table value");
+    BOOST_TEST(meta.column_name() == "name");
+    BOOST_TEST(meta.original_column_name() == "The original name of the database column");
+    BOOST_TEST(meta.column_length() == 200u);
+    BOOST_TEST(meta.type() == column_type::blob);
+    BOOST_TEST(meta.decimals() == 12u);
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+// Copy assignment works without strings, too
+BOOST_AUTO_TEST_CASE(copy_assign_no_strings)
+{
+    // Setup. Use both long and short strings to catch any SBO problems
+    auto pack_orig = meta_builder().type(column_type::blob).decimals(12).build_coldef();
+    auto meta_orig = create_dynamic_meta(pack_orig, false);
+    auto pack = meta_builder().type(column_type::varbinary).decimals(10).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Copy assign
+    meta = *meta_orig;
+
+    // Destroy the original object
+    meta_orig.reset();
+
+    // Check
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.type() == column_type::blob);
+    BOOST_TEST(meta.decimals() == 12u);
+}
+
+// Self copy-assign works
+BOOST_AUTO_TEST_CASE(copy_assign_self)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database("Some value")
+                    .name("Some name")
+                    .type(column_type::binary)
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Assign
+    const auto& meta_ref = meta;  // avoid warnings
+    meta = meta_ref;
+
+    // Check
+    BOOST_TEST(meta.database() == "Some value");
+    BOOST_TEST(meta.column_name() == "Some name");
+    BOOST_TEST(meta.type() == column_type::binary);
+}
+
 // move assignment, with/without strings
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
