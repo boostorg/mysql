@@ -115,7 +115,7 @@ public:
 
                 BOOST_ASIO_CORO_YIELD
                 conn_.async_prepare_statement(
-                    "SELECT tax_id FROM company WHERE id = ?",
+                    "SELECT data FROM lightweight_data WHERE id = ?",
                     diag_,
                     [this](error_code ec, boost::mysql::statement s) {
                         stmt_ = s;
@@ -124,7 +124,7 @@ public:
                 );
 
                 BOOST_ASIO_CORO_YIELD
-                conn_.async_execute(stmt_.bind("HGS"), r_, diag_, [this](error_code ec) { resume(ec); });
+                conn_.async_execute(stmt_.bind(2), r_, diag_, [this](error_code ec) { resume(ec); });
 
                 BOOST_ASIO_CORO_YIELD
                 conn_.async_close(diag_, [this](error_code ec) { resume(ec); });
@@ -179,7 +179,7 @@ public:
 
                 BOOST_ASIO_CORO_YIELD
                 conn_->async_prepare_statement(
-                    "SELECT tax_id FROM company WHERE id = ?",
+                    "SELECT data FROM lightweight_data WHERE id = ?",
                     diag_,
                     [this](error_code ec, boost::mysql::statement s) {
                         stmt_ = s;
@@ -188,7 +188,7 @@ public:
                 );
 
                 BOOST_ASIO_CORO_YIELD
-                conn_->async_execute(stmt_.bind("HGS"), r_, diag_, [this](error_code ec) { resume(ec); });
+                conn_->async_execute(stmt_.bind(2), r_, diag_, [this](error_code ec) { resume(ec); });
 
                 conn_ = boost::mysql::pooled_connection();
 
@@ -208,9 +208,9 @@ void run_nopool(mysql::any_address server_addr, bool use_ssl)
     asio::io_context ctx;
     mysql::connect_params params;
     params.server_address = std::move(server_addr);
-    params.username = "example_user";
-    params.password = "example_password";
-    params.database = "boost_mysql_examples";
+    params.username = "root";
+    params.password = "";
+    params.database = "boost_mysql_bench";
     params.ssl = use_ssl ? mysql::ssl_mode::require : mysql::ssl_mode::disable;
     std::vector<task_nopool> conns;
     coordinator coord;
@@ -237,9 +237,9 @@ void run_pool(mysql::any_address server_addr, bool use_ssl)
     asio::io_context ctx;
     mysql::pool_params params;
     params.server_address = std::move(server_addr);
-    params.username = "example_user";
-    params.password = "example_password";
-    params.database = "boost_mysql_examples";
+    params.username = "root";
+    params.password = "";
+    params.database = "boost_mysql_bench";
     params.max_size = num_parallel;
     params.ssl = use_ssl ? mysql::ssl_mode::require : mysql::ssl_mode::disable;
 

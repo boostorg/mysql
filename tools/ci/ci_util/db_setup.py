@@ -100,3 +100,8 @@ def db_setup(
     # Setup environment variables
     os.environ['BOOST_MYSQL_SERVER_HOST'] = server_host
     os.environ['BOOST_MYSQL_DISABLED_SERVER_FEATURES'] = disabled_features_str
+
+
+# Loads benchmark data. This takes around 15s, so we don't do it unless necessary
+def db_setup_bench(source_dir: Path) -> None:
+    _run_sql_file(source_dir.joinpath('bench', 'db_setup.sql'))

@@ -5,6 +5,12 @@
 # file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 #
 
+# Include guard
+if (_BOOST_MYSQL_UTILS_INCLUDED)
+    return()
+endif()
+set(_BOOST_MYSQL_UTILS_INCLUDED TRUE)
+
 # Sets _WIN32_WINNT on Windows
 function(boost_mysql_set_windows_version TARGET_NAME)
     if(MSVC)
@@ -47,6 +53,10 @@ function(boost_mysql_common_target_settings TARGET_NAME)
     endif()
 
     set_target_properties(${TARGET_NAME} PROPERTIES CXX_EXTENSIONS OFF) # disable extensions
+endfunction()
+
+function(boost_mysql_test_target_settings TARGET_NAME)
+    boost_mysql_common_target_settings(${TARGET_NAME})
 
     # Follow the Boost convention: don't build test targets by default,
     # and only when explicitly requested by building target tests
