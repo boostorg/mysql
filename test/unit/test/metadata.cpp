@@ -21,8 +21,26 @@ using namespace boost::mysql::test;
 namespace collations = boost::mysql::mysql_collations;
 namespace column_flags = boost::mysql::detail::column_flags;
 
-// TODO: these tests should be more targeted towards metadata's object responsibilities
-// and less integration-y
+// what is today
+// collation
+// column length
+// type
+// decimals
+// tests having each flag set/not
+//
+// default constructor
+// init constructor
+//    copy_strings false, things to copy
+//    copy_strings false, nothing to copy
+//    copy_strings true, destroy storage
+//    copy_strings true, every string present
+//    copy_strings true, one string absent (one for each string)
+//    copy_strings true, several strings absent
+//    copy_strings true, all strings absent
+// copy constructor, with strings
+// move constructor, with strings
+// copy assignment, with/without stings
+// move assignment, with/without strings
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
 
