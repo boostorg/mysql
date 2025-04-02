@@ -28,7 +28,6 @@ namespace column_flags = boost::mysql::detail::column_flags;
 // decimals
 // tests having each flag set/not
 //
-// default constructor
 // init constructor
 //    copy_strings false, things to copy
 //    copy_strings false, nothing to copy
@@ -43,6 +42,32 @@ namespace column_flags = boost::mysql::detail::column_flags;
 // move assignment, with/without strings
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
+
+// Default constructing metadata objects should be well defined
+BOOST_AUTO_TEST_CASE(default_constructor)
+{
+    // Setup
+    metadata meta;
+
+    // Check
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.table() == "");
+    BOOST_TEST(meta.original_table() == "");
+    BOOST_TEST(meta.column_name() == "");
+    BOOST_TEST(meta.original_column_name() == "");
+    BOOST_TEST(meta.column_length() == 0u);
+    BOOST_TEST(meta.type() == column_type::tinyint);
+    BOOST_TEST(meta.decimals() == 0u);
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
 {
