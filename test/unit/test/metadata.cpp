@@ -69,6 +69,46 @@ BOOST_AUTO_TEST_CASE(default_constructor)
     BOOST_TEST(!meta.is_set_to_now_on_update());
 }
 
+// Init ctor, copy_strings=false, there are strings to be copied in the packet
+BOOST_AUTO_TEST_CASE(init_nocopy)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database("db")
+                    .table("tab")
+                    .org_table("org_tab")
+                    .name("field")
+                    .org_name("org_field")
+                    .build_coldef();
+
+    // Build
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Strings were not copied
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.table() == "");
+    BOOST_TEST(meta.original_table() == "");
+    BOOST_TEST(meta.column_name() == "");
+    BOOST_TEST(meta.original_column_name() == "");
+}
+
+// Init ctor, copy_strings=false, strings in the packet are empty
+BOOST_AUTO_TEST_CASE(init_nocopy_empty_strings)
+{
+    // Setup
+    auto pack = meta_builder().database("").table("").org_table("").name("").org_name("").build_coldef();
+
+    // Build
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Strings are also empty, no UB happens
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.table() == "");
+    BOOST_TEST(meta.original_table() == "");
+    BOOST_TEST(meta.column_name() == "");
+    BOOST_TEST(meta.original_column_name() == "");
+}
+
 BOOST_AUTO_TEST_CASE(int_primary_key)
 {
     detail::coldef_view msg{
