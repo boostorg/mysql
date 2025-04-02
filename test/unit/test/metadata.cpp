@@ -34,9 +34,6 @@ namespace column_flags = boost::mysql::detail::column_flags;
 // tests having each flag set/not
 //
 // init constructor
-//    copy_strings true, destroy storage
-//    copy_strings true, every string present
-//    copy_strings true, one string absent (one for each string)
 //    copy_strings true, several strings absent
 //    copy_strings true, all strings absent
 // copy constructor, with strings
@@ -153,6 +150,111 @@ BOOST_AUTO_TEST_CASE(init_copy_lifetimes)
     BOOST_TEST(meta.original_table() == "original_tab");
     BOOST_TEST(meta.column_name() == "nam");
     BOOST_TEST(meta.original_column_name() == "original_nam");
+}
+
+// Init ctor, copy_strings=true, db is empty
+BOOST_AUTO_TEST_CASE(init_copy_db_empty)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database("")
+                    .table("Some table value")
+                    .org_table("Some other original table value")
+                    .name("The name of the column")
+                    .org_name("The name of the original column")
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Check
+    BOOST_TEST(meta.database() == "");
+    BOOST_TEST(meta.table() == "Some table value");
+    BOOST_TEST(meta.original_table() == "Some other original table value");
+    BOOST_TEST(meta.column_name() == "The name of the column");
+    BOOST_TEST(meta.original_column_name() == "The name of the original column");
+}
+
+// Same for table
+BOOST_AUTO_TEST_CASE(init_copy_table_empty)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database("Database value")
+                    .table(string_view())
+                    .org_table("Some other original table value")
+                    .name("The name of the column")
+                    .org_name("The name of the original column")
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Check
+    BOOST_TEST(meta.database() == "Database value");
+    BOOST_TEST(meta.table() == "");
+    BOOST_TEST(meta.original_table() == "Some other original table value");
+    BOOST_TEST(meta.column_name() == "The name of the column");
+    BOOST_TEST(meta.original_column_name() == "The name of the original column");
+}
+
+// Same for original table
+BOOST_AUTO_TEST_CASE(init_copy_org_table_empty)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database("A database")
+                    .table("Some table value")
+                    .org_table(string_view())
+                    .name("The name of the column")
+                    .org_name("The name of the original column")
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Check
+    BOOST_TEST(meta.database() == "A database");
+    BOOST_TEST(meta.table() == "Some table value");
+    BOOST_TEST(meta.original_table() == "");
+    BOOST_TEST(meta.column_name() == "The name of the column");
+    BOOST_TEST(meta.original_column_name() == "The name of the original column");
+}
+
+// Same for name
+BOOST_AUTO_TEST_CASE(init_copy_name_empty)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database("A database")
+                    .table("Some table value")
+                    .org_table("Some other original table value")
+                    .name(string_view())
+                    .org_name("The name of the original column")
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Check
+    BOOST_TEST(meta.database() == "A database");
+    BOOST_TEST(meta.table() == "Some table value");
+    BOOST_TEST(meta.original_table() == "Some other original table value");
+    BOOST_TEST(meta.column_name() == "");
+    BOOST_TEST(meta.original_column_name() == "The name of the original column");
+}
+
+// Same for org_name
+BOOST_AUTO_TEST_CASE(init_copy_org_name_empty)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .database("A database")
+                    .table("Some table value")
+                    .org_table("Some other original table value")
+                    .name("The name of the column")
+                    .org_name(string_view())
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Check
+    BOOST_TEST(meta.database() == "A database");
+    BOOST_TEST(meta.table() == "Some table value");
+    BOOST_TEST(meta.original_table() == "Some other original table value");
+    BOOST_TEST(meta.column_name() == "The name of the column");
+    BOOST_TEST(meta.original_column_name() == "");
 }
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
