@@ -694,8 +694,230 @@ BOOST_AUTO_TEST_CASE(move_assign_no_strings)
     BOOST_TEST(meta.decimals() == 12u);
 }
 
+// Flags
+BOOST_AUTO_TEST_CASE(flags_not_null)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::not_null).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(flags_pri_key)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::pri_key).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(flags_unique_key)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::unique_key).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(flags_multiple_key)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::multiple_key).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(flags_unsigned)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::unsigned_).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(flags_zerofill)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::zerofill).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(flags_auto_increment)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::auto_increment).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(flags_no_default_value)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::no_default_value).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+BOOST_AUTO_TEST_CASE(flags_on_update_now)
+{
+    // Setup
+    auto pack = meta_builder().flags(column_flags::on_update_now).build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(!meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(meta.is_set_to_now_on_update());
+}
+
+// Several flags are set
+BOOST_AUTO_TEST_CASE(flags_several)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .flags(column_flags::pri_key | column_flags::auto_increment | column_flags::not_null)
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, false);
+
+    // Check
+    BOOST_TEST(meta.is_not_null());
+    BOOST_TEST(meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
+}
+
+// Some flags are not exposed
+BOOST_AUTO_TEST_CASE(flags_ignored)
+{
+    struct
+    {
+        string_view name;
+        unsigned flags;
+    } test_cases[] = {
+        {"binary",    column_flags::binary                                          },
+        {"enum",      column_flags::enum_                                           },
+        {"timestamp", column_flags::timestamp                                       },
+        {"set",       column_flags::set                                             },
+        {"part_key",  column_flags::part_key                                        },
+        {"num",       column_flags::num                                             },
+        {"mixed",     column_flags::binary | column_flags::enum_ | column_flags::set},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            auto pack = meta_builder().flags(tc.flags).build_coldef();
+            auto meta = detail::access::construct<metadata>(pack, false);
+
+            // Check
+            BOOST_TEST(!meta.is_not_null());
+            BOOST_TEST(!meta.is_primary_key());
+            BOOST_TEST(!meta.is_unique_key());
+            BOOST_TEST(!meta.is_multiple_key());
+            BOOST_TEST(!meta.is_unsigned());
+            BOOST_TEST(!meta.is_zerofill());
+            BOOST_TEST(!meta.is_auto_increment());
+            BOOST_TEST(!meta.has_no_default_value());
+            BOOST_TEST(!meta.is_set_to_now_on_update());
+        }
+    }
+}
+
 // what is today
-// tests having each flag set/not
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
 {
