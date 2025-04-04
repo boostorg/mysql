@@ -884,7 +884,7 @@ BOOST_AUTO_TEST_CASE(flags_ignored)
     struct
     {
         string_view name;
-        unsigned flags;
+        std::uint16_t flags;
     } test_cases[] = {
         {"binary",    column_flags::binary                                          },
         {"enum",      column_flags::enum_                                           },
