@@ -27,14 +27,6 @@ using namespace boost::mysql::test;
 namespace collations = boost::mysql::mysql_collations;
 namespace column_flags = boost::mysql::detail::column_flags;
 
-// what is today
-// collation
-// column length
-// type
-// decimals
-// tests having each flag set/not
-// TODO: collation ID
-
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_metadata)
@@ -57,6 +49,7 @@ BOOST_AUTO_TEST_CASE(default_constructor)
     BOOST_TEST(meta.original_table() == "");
     BOOST_TEST(meta.column_name() == "");
     BOOST_TEST(meta.original_column_name() == "");
+    BOOST_TEST(meta.column_collation() == 0u);
     BOOST_TEST(meta.column_length() == 0u);
     BOOST_TEST(meta.type() == column_type::tinyint);
     BOOST_TEST(meta.decimals() == 0u);
@@ -329,6 +322,7 @@ BOOST_AUTO_TEST_CASE(copy_constructor)
     BOOST_TEST(meta.original_table() == "Some other original table value");
     BOOST_TEST(meta.column_name() == "name");
     BOOST_TEST(meta.original_column_name() == "The original name of the database column");
+    BOOST_TEST(meta.column_collation() == 1234u);
     BOOST_TEST(meta.column_length() == 200u);
     BOOST_TEST(meta.type() == column_type::blob);
     BOOST_TEST(meta.decimals() == 12u);
@@ -416,6 +410,7 @@ BOOST_AUTO_TEST_CASE(move_constructor)
     BOOST_TEST(meta.original_table() == "Some other original table value");
     BOOST_TEST(meta.column_name() == "name");
     BOOST_TEST(meta.original_column_name() == "The original name of the database column");
+    BOOST_TEST(meta.column_collation() == 1234u);
     BOOST_TEST(meta.column_length() == 200u);
     BOOST_TEST(meta.type() == column_type::blob);
     BOOST_TEST(meta.decimals() == 12u);
@@ -516,6 +511,7 @@ BOOST_AUTO_TEST_CASE(copy_assign)
     BOOST_TEST(meta.original_table() == "Some other original table value");
     BOOST_TEST(meta.column_name() == "name");
     BOOST_TEST(meta.original_column_name() == "The original name of the database column");
+    BOOST_TEST(meta.column_collation() == 1234u);
     BOOST_TEST(meta.column_length() == 200u);
     BOOST_TEST(meta.type() == column_type::blob);
     BOOST_TEST(meta.decimals() == 12u);
@@ -615,6 +611,7 @@ BOOST_AUTO_TEST_CASE(move_assign)
     BOOST_TEST(meta.original_table() == "Some other original table value");
     BOOST_TEST(meta.column_name() == "name");
     BOOST_TEST(meta.original_column_name() == "The original name of the database column");
+    BOOST_TEST(meta.column_collation() == 1234u);
     BOOST_TEST(meta.column_length() == 200u);
     BOOST_TEST(meta.type() == column_type::blob);
     BOOST_TEST(meta.decimals() == 12u);
@@ -649,6 +646,13 @@ BOOST_AUTO_TEST_CASE(move_assign_no_strings)
     BOOST_TEST(meta.type() == column_type::blob);
     BOOST_TEST(meta.decimals() == 12u);
 }
+
+// what is today
+// collation
+// column length
+// type
+// decimals
+// tests having each flag set/not
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
 {
