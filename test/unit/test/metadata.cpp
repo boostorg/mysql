@@ -74,15 +74,33 @@ BOOST_AUTO_TEST_CASE(init_nocopy)
                     .org_table("org_tab")
                     .name("field")
                     .org_name("org_field")
+                    .collation_id(42)
+                    .type(column_type::bigint)
+                    .column_length(100)
+                    .decimals(200)
+                    .flags(column_flags::pri_key)
                     .build_coldef();
     auto meta = detail::access::construct<metadata>(pack, false);
 
-    // Strings were not copied
+    // Strings were not copied. The rest of the fields were copied
     BOOST_TEST(meta.database() == "");
     BOOST_TEST(meta.table() == "");
     BOOST_TEST(meta.original_table() == "");
     BOOST_TEST(meta.column_name() == "");
     BOOST_TEST(meta.original_column_name() == "");
+    BOOST_TEST(meta.column_collation() == 42u);
+    BOOST_TEST(meta.column_length() == 100u);
+    BOOST_TEST(meta.type() == column_type::bigint);
+    BOOST_TEST(meta.decimals() == 200u);
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
 }
 
 // Init ctor, copy_strings=false, strings in the packet are empty
@@ -290,6 +308,35 @@ BOOST_AUTO_TEST_CASE(init_copy_all_empty)
     BOOST_TEST(meta.original_table() == "");
     BOOST_TEST(meta.column_name() == "");
     BOOST_TEST(meta.original_column_name() == "");
+}
+
+// copy=true does not affect how non string fields are processed
+BOOST_AUTO_TEST_CASE(init_copy_nonstrings)
+{
+    // Setup
+    auto pack = meta_builder()
+                    .collation_id(42)
+                    .column_length(200)
+                    .type(column_type::bigint)
+                    .decimals(100)
+                    .flags(column_flags::pri_key)
+                    .build_coldef();
+    auto meta = detail::access::construct<metadata>(pack, true);
+
+    // Check
+    BOOST_TEST(meta.column_collation() == 42u);
+    BOOST_TEST(meta.column_length() == 200u);
+    BOOST_TEST(meta.type() == column_type::bigint);
+    BOOST_TEST(meta.decimals() == 100u);
+    BOOST_TEST(!meta.is_not_null());
+    BOOST_TEST(meta.is_primary_key());
+    BOOST_TEST(!meta.is_unique_key());
+    BOOST_TEST(!meta.is_multiple_key());
+    BOOST_TEST(!meta.is_unsigned());
+    BOOST_TEST(!meta.is_zerofill());
+    BOOST_TEST(!meta.is_auto_increment());
+    BOOST_TEST(!meta.has_no_default_value());
+    BOOST_TEST(!meta.is_set_to_now_on_update());
 }
 
 // Copy ctor handles strings correctly
@@ -648,10 +695,6 @@ BOOST_AUTO_TEST_CASE(move_assign_no_strings)
 }
 
 // what is today
-// collation
-// column length
-// type
-// decimals
 // tests having each flag set/not
 
 BOOST_AUTO_TEST_CASE(int_primary_key)
