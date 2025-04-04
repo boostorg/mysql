@@ -288,7 +288,8 @@ private:
 
     static char* copy_string(string_view from, char* to)
     {
-        std::memcpy(to, from.data(), from.size());
+        if (!from.empty())
+            std::memcpy(to, from.data(), from.size());
         return to + from.size();
     }
 
