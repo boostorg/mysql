@@ -45,7 +45,7 @@ public:
      * No-throw guarantee.
      *
      * \par Object lifetimes
-     * `string_view`s obtained by calling accessor functions on `other` are invalidated.
+     * `string_view` values obtained by calling accessor functions on `other` are invalidated.
      */
     metadata(metadata&& other) = default;
 
@@ -64,7 +64,7 @@ public:
      * No-throw guarantee.
      *
      * \par Object lifetimes
-     * `string_view`s obtained by calling accessor functions on both `*this` and `other`
+     * `string_view` values obtained by calling accessor functions on both `*this` and `other`
      * are invalidated.
      */
     metadata& operator=(metadata&& other) = default;
@@ -76,7 +76,7 @@ public:
      * Basic guarantee. Internal allocations may throw.
      *
      * \par Object lifetimes
-     * `string_view`s obtained by calling accessor functions on `*this`
+     * `string_view` values obtained by calling accessor functions on `*this`
      * are invalidated.
      */
     metadata& operator=(const metadata& other) = default;
@@ -102,8 +102,8 @@ public:
     /**
      * \brief Returns the name of the virtual table the column belongs to.
      * \details If the table was aliased, this will be the name of the alias
-     * (e.g. in `"SELECT * FROM employees emp"`, `table()` will be `"emp"`).
-     *\n
+     * (e.g. in `"SELECT id FROM employees emp"`, `table()` will be `"emp"`).
+     *
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
      *
@@ -118,9 +118,9 @@ public:
 
     /**
      * \brief Returns the name of the physical table the column belongs to.
-     * \details E.g. in `"SELECT * FROM employees emp"`,
+     * \details E.g. in `"SELECT id FROM employees emp"`,
      * `original_table()` will be `"employees"`.
-     * \n
+     *
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
      *
@@ -138,7 +138,7 @@ public:
      * \details If the column was aliased, this will be the name of the alias
      * (e.g. in `"SELECT id AS employee_id FROM employees"`,
      * `column_name()` will be `"employee_id"`).
-     *\n
+     *
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
      *
@@ -155,7 +155,7 @@ public:
      * \brief Returns the original (physical) name of the column.
      * \details E.g. in `"SELECT id AS employee_id FROM employees"`,
      * `original_column_name()` will be `"id"`.
-     * \n
+     *
      * This is optional information - it won't be populated unless
      * the connection executing the query has `meta_mode() == metadata_mode::full`.
      *
@@ -170,7 +170,7 @@ public:
 
     /**
      * \brief Returns the ID of the collation that fields belonging to this column use.
-     * \details This is <b>not</b> the collation used when defining the column
+     * \details This is *not* the collation used when defining the column
      * in a `CREATE TABLE` statement, but the collation that fields that belong to
      * this column and are sent to the client have. It usually matches the connection's collation.
      *
@@ -293,9 +293,7 @@ private:
 
     bool flag_set(std::uint16_t flag) const noexcept { return flags_ & flag; }
 
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 };
 
 }  // namespace mysql

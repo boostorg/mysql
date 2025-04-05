@@ -38,7 +38,8 @@ namespace mysql {
  * \brief (EXPERIMENTAL) A variant-like type holding the response of a single pipeline stage.
  * \details
  * This is a variant-like type, similar to `boost::system::result`. At any point in time,
- * it can contain: \n
+ * it can contain:
+ *
  *   \li A \ref statement. Will happen if the stage was a prepare statement that succeeded.
  *   \li A \ref results. Will happen if the stage was a query or statement execution that succeeded.
  *   \li An \ref error_code, \ref diagnostics pair. Will happen if the stage failed, or if it succeeded but
@@ -50,7 +51,6 @@ namespace mysql {
  */
 class stage_response
 {
-#ifndef BOOST_MYSQL_DOXYGEN
     struct errcode_with_diagnostics
     {
         error_code ec;
@@ -75,7 +75,6 @@ class stage_response
     } impl_;
 
     friend struct detail::access;
-#endif
 
     bool has_error() const { return impl_.value.index() == 0u; }
 
@@ -257,7 +256,6 @@ public:
  */
 class pipeline_request
 {
-#ifndef BOOST_MYSQL_DOXYGEN
     struct impl_t
     {
         std::vector<std::uint8_t> buffer_;
@@ -265,7 +263,6 @@ class pipeline_request
     } impl_;
 
     friend struct detail::access;
-#endif
 
 public:
     /**
@@ -287,7 +284,7 @@ public:
      * Strong guarantee. Memory allocations may throw.
      *
      * \par Object lifetimes
-     * query is copied into the request and need not be kept alive after this function returns.
+     * `query` is copied into the request and need not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
     pipeline_request& add_execute(string_view query);
@@ -331,7 +328,7 @@ public:
      * `stmt` bound to any parameters passed in `params`, like \ref any_connection::execute
      * and \ref statement::bind. For example, `add_execute_range(stmt, params)` has
      * effects equivalent to `conn.execute(stmt.bind(params.begin(), params.end()))`.
-     * \n
+     *
      * This function can be used instead of \ref add_execute when the number of actual parameters
      * of a statement is not known at compile time.
      *
@@ -360,7 +357,7 @@ public:
      * Strong guarantee. Memory allocations may throw.
      *
      * \par Object lifetimes
-     * stmt_sql is copied into the request and need not be kept alive after this function returns.
+     * `stmt_sql` is copied into the request and need not be kept alive after this function returns.
      */
     BOOST_MYSQL_DECL
     pipeline_request& add_prepare_statement(string_view stmt_sql);

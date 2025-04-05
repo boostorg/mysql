@@ -43,28 +43,21 @@ struct character_set
      * string encoded using this character set, and return the number of
      * bytes that the first character in the string spans, or 0 in case of error.
      * `r` is guaranteed to be non-empty (`r.size() > 0`).
-     * \n
+     *
      * In some character sets (like UTF-8), not all byte sequences represent
      * valid characters. If this function finds an invalid byte sequence while
      * trying to interpret the first character, it should return 0 to signal the error.
-     * \n
+     *
      * This function must not throw exceptions or have side effects.
      */
     std::size_t (*next_char)(span<const unsigned char>);
 };
 
 /// The utf8mb4 character set (the one you should use by default).
-BOOST_INLINE_CONSTEXPR character_set utf8mb4_charset
-#ifndef BOOST_MYSQL_DOXYGEN
-    {"utf8mb4", detail::next_char_utf8mb4}
-#endif
-;
+BOOST_INLINE_CONSTEXPR character_set utf8mb4_charset{"utf8mb4", detail::next_char_utf8mb4};
 
 /// The ascii character set.
-BOOST_INLINE_CONSTEXPR character_set ascii_charset
-#ifndef BOOST_MYSQL_DOXYGEN
-    {"ascii", detail::next_char_ascii};
-#endif
+BOOST_INLINE_CONSTEXPR character_set ascii_charset{"ascii", detail::next_char_ascii};
 ;
 
 /**

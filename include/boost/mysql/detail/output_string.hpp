@@ -40,18 +40,8 @@ concept output_string = std::movable<T> && requires(T& t, const char* data, std:
 
 class output_string_ref
 {
-    using append_fn_t = void (*)(void*, const char*, std::size_t);
-
-    append_fn_t append_fn_;
-    void* container_;
-
-    template <class T>
-    static void do_append(void* container, const char* data, std::size_t size)
-    {
-        static_cast<T*>(container)->append(data, size);
-    }
-
 public:
+    using append_fn_t = void (*)(void*, const char*, std::size_t);
     output_string_ref(append_fn_t append_fn, void* container) noexcept
         : append_fn_(append_fn), container_(container)
     {
@@ -67,6 +57,16 @@ public:
     {
         if (data.size() > 0u)
             append_fn_(container_, data.data(), data.size());
+    }
+
+private:
+    append_fn_t append_fn_;
+    void* container_;
+
+    template <class T>
+    static void do_append(void* container, const char* data, std::size_t size)
+    {
+        static_cast<T*>(container)->append(data, size);
     }
 };
 

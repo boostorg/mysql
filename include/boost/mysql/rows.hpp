@@ -29,34 +29,30 @@ namespace mysql {
  * Models an owning, matrix-like container. Indexing a `rows` object (by using iterators,
  * \ref rows::at or \ref rows::operator[]) returns a \ref row_view object, representing a
  * single row. All rows in the collection are the same size (as given by \ref num_columns).
- * \n
+ *
  * A `rows` object owns a chunk of memory in which it stores its elements. The \ref rows_view
  * objects obtained on element access point into the `rows`' internal storage. These views (and any
  * \ref row_view and \ref field_view obtained from the former) behave
  * like references, and are valid as long as pointers, iterators and references into the `rows`
  * object remain valid.
- * \n
+ *
  * Although owning, `rows` is read-only. It's optimized for memory re-use.
  */
 class rows
 {
 public:
-#ifdef BOOST_MYSQL_DOXYGEN
     /**
      * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = __see_below__;
-#else
-    using iterator = detail::rows_iterator;
-#endif
+    using iterator = impl_defined::rows_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;
 
     /**
      * \brief A type that can hold elements in this collection with value semantics.
-     * \details Note that element accesors (like \ref rows_view::operator[]) return \ref reference
+     * \details Note that element accessors (like \ref rows_view::operator[]) return \ref reference
      * objects instead of `value_type` objects. You can use this type if you need an owning class.
      */
     using value_type = row;

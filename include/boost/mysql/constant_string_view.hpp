@@ -33,22 +33,20 @@ class constant_string_view
 {
     string_view impl_;
 
-#ifndef BOOST_MYSQL_DOXYGEN
     constexpr constant_string_view(string_view value, int) noexcept : impl_(value) {}
     friend constexpr constant_string_view runtime(string_view) noexcept;
-#endif
 
 public:
     /**
      * \brief Consteval constructor.
      * \details
      * Constructs a \ref string_view from the passed argument.
-     * \n
+     *
      * This function is `consteval`: it results in a compile-time error
      * if the passed value is not known at compile-time. You can bypass
      * this check using the \ref runtime function. This check works only
      * for C++20 and above. No check is performed for lower C++ standard versions.
-     * \n
+     *
      * This constructor is only considered if a \ref string_view can be constructed
      * from the passed value.
      *
@@ -87,7 +85,7 @@ public:
  * \details
  * You can use this function to bypass the `consteval` check performed by \ref constant_string_view
  * constructor.
- * \n
+ *
  * Don't use this function unless you know what you are doing. `consteval` checks exist
  * for the sake of security. Make sure to only pass trusted values to the relevant API.
  *

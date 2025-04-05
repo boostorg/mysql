@@ -32,10 +32,10 @@ namespace mysql {
  *
  * \par Type requirements
  *
- *   - Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
- *     pair that can be compared for (in)equality.
- *   - The expression `static_cast<const FormatFn&>(fn)(* std::begin(range), ctx)`
- *     should be well formed, with `ctx` begin a `format_context_base&`.
+ *   \li Expressions `std::begin(range)` and `std::end(range)` should return an input iterator/sentinel
+ *       pair that can be compared for (in)equality.
+ *   \li The expression `static_cast<const FormatFn&>(fn)( *std::begin(range), ctx )`
+ *       should be well formed, with `ctx` begin a `format_context_base&`.
  */
 template <class Range, class FormatFn>
 #if defined(BOOST_MYSQL_HAS_CONCEPTS)
@@ -66,27 +66,21 @@ struct format_sequence
  *
  * Formally, given the input range type `T` (which can be a reference with cv-qualifiers):
  *
- *  - If `T` is a C array or a reference to one (as per `std::is_array`),
- *    and the array elements' type is `U`, yields `std::array<std::remove_cv_t<U>, N>`.
- *  - If `T` is a `std::reference_wrapper<U>` object, or a reference to one,
- *    yields `U&`.
- *  - Otherwise, yields `std::remove_cvref_t<T>`.
+ *  \li If `T` is a C array or a reference to one (as per `std::is_array`),
+ *      and the array elements' type is `U`, yields `std::array<std::remove_cv_t<U>, N>`.
+ *  \li If `T` is a `std::reference_wrapper<U>` object, or a reference to one,
+ *      yields `U&`.
+ *  \li Otherwise, yields `std::remove_cvref_t<T>`.
  *
  * Examples:
  *
- *  - `sequence_range_t<const std::vector<int>&>` is `std::vector<int>`.
- *  - `sequence_range_t<std::reference_wrapper<std::vector<int>>>` is `std::vector<int>&`.
- *  - `sequence_range_t<std::reference_wrapper<const std::vector<int>>>` is `const std::vector<int>&`.
- *  - `sequence_range_t<int(&)[4]>` is `std::array<int, 4>`.
+ *  \li `sequence_range_t<const std::vector<int>&>` is `std::vector<int>`.
+ *  \li `sequence_range_t<std::reference_wrapper<std::vector<int>>>` is `std::vector<int>&`.
+ *  \li `sequence_range_t<std::reference_wrapper<const std::vector<int>>>` is `const std::vector<int>&`.
+ *  \li `sequence_range_t<int(&)[4]>` is `std::array<int, 4>`.
  */
 template <class T>
-using sequence_range_t =
-#ifdef BOOST_MYSQL_DOXYGEN
-    __see_below__
-#else
-    typename detail::sequence_range_type<T>::type;
-#endif
-    ;
+using sequence_range_t = impl_defined::sequence_range_t<T>;
 
 /**
  * \brief Creates an object that, when formatted, applies a per-element function to a range.
@@ -104,14 +98,14 @@ using sequence_range_t =
  *
  * Formally:
  *
- *   - If `Range` is a (possibly cv-qualified) C array reference (as per `std::is_array<Range>`),
- *     and the array has `N` elements of type `U`, the output range type is
- *     `std::array<std::remove_cv< U >, N>`, and the range is created as if `std::to_array` was called.
- *   - If `Range` is a `std::reference_wrapper< U >` object, or a reference to one,
- *     the output range type is `U&`. This effectively disables copying the input range.
- *     The resulting object will be a view type, and the caller is responsible for lifetime management.
- *   - Otherwise, the output range type is `std::remove_cvref_t<Range>`, and it will be
- *     created by forwarding the passed `range`.
+ *   \li If `Range` is a (possibly cv-qualified) C array reference (as per `std::is_array<Range>`),
+ *       and the array has `N` elements of type `U`, the output range type
+ *       is `std::array<std::remove_cv< U >, N>`, and the range is created as if `std::to_array` was called.
+ *   \li If `Range` is a `std::reference_wrapper< U >` object, or a reference to one,
+ *       the output range type is `U&`. This effectively disables copying the input range.
+ *       The resulting object will be a view type, and the caller is responsible for lifetime management.
+ *   \li Otherwise, the output range type is `std::remove_cvref_t<Range>`, and it will be
+ *       created by forwarding the passed `range`.
  *
  * `FormatFn` is always decay-copied into the resulting object.
  *
@@ -122,15 +116,15 @@ using sequence_range_t =
  * The resulting range and format function should be compatible, and any required
  * copy/move operations should be well defined. Formally:
  *
- *   - `std::decay_t<FormatFn>` should be a formatter function compatible with
- *     the elements of the output range. See \ref format_sequence for the formal requirements.
- *   - If `Range` is a `std::reference_wrapper< U >`, or a reference to one,
- *     no further requirements are placed on `U`.
- *   - If `Range` is a lvalue reference to a C array, its elements should be copy-constructible
- *     (as per `std::to_array` requirements).
- *   - If `Range` is a rvalue reference to a C array, its elements should be move-constructible
- *     (as per `std::to_array` requirements).
- *   - Performing a decay-copy of `FormatFn` should be well defined.
+ *   \li `std::decay_t<FormatFn>` should be a formatter function compatible with
+ *       the elements of the output range. See \ref format_sequence for the formal requirements.
+ *   \li If `Range` is a `std::reference_wrapper< U >`, or a reference to one,
+ *       no further requirements are placed on `U`.
+ *   \li If `Range` is a lvalue reference to a C array, its elements should be copy-constructible
+ *       (as per `std::to_array` requirements).
+ *   \li If `Range` is a rvalue reference to a C array, its elements should be move-constructible
+ *       (as per `std::to_array` requirements).
+ *   \li Performing a decay-copy of `FormatFn` should be well defined.
  *
  * \par Exception safety
  * Basic guarantee. Propagates any exception thrown when constructing the output

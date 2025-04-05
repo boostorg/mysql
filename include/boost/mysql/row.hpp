@@ -19,6 +19,9 @@
 
 namespace boost {
 namespace mysql {
+namespace impl_defined {
+using row_iterator = const field_view*;  // Required by the doc toolchain
+}
 
 /**
  * \brief An owning, read-only sequence of fields.
@@ -38,15 +41,11 @@ class row
     detail::row_impl impl_;
 
 public:
-#ifdef BOOST_MYSQL_DOXYGEN
     /**
      * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = __see_below__;
-#else
-    using iterator = const field_view*;
-#endif
+    using iterator = impl_defined::row_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;

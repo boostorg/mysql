@@ -32,23 +32,20 @@ namespace mysql {
  * This object can store the results of single and multi resultset queries.
  * For the former, you use \ref meta, \ref rows, \ref affected_rows and so on.
  * For the latter, this class is a random-access collection of \ref resultset objects.
- * \n
+ *
  * \par Thread safety
- * Distinct objects: safe. \n
- * Shared objects: unsafe. \n
+ * Distinct objects: safe.
+ *
+ * Shared objects: unsafe.
  */
 class results
 {
 public:
-#ifdef BOOST_MYSQL_DOXYGEN
     /**
      * \brief A random access iterator to an element.
      * \details The exact type of the iterator is unspecified.
      */
-    using iterator = __see_below__;
-#else
-    using iterator = detail::results_iterator;
-#endif
+    using iterator = impl_defined::results_iterator;
 
     /// \copydoc iterator
     using const_iterator = iterator;
@@ -165,7 +162,7 @@ public:
      * \details
      * The returned collection will have as many \ref metadata objects as columns retrieved by
      * the SQL query, and in the same order.
-     * \n
+     *
      * For operations returning more than one resultset, returns metadata
      * for the first resultset.
      *
@@ -258,11 +255,11 @@ public:
     /**
      * \brief Returns additional text information about the execution of the SQL statement.
      * \details
-     * The format of this information is documented by MySQL <a
-     * href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
-     * \n
+     * The format of this information is documented by MySQL
+     * <a href="https://dev.mysql.com/doc/c-api/8.0/en/mysql-info.html">here</a>.
+     *
      * The returned string always uses ASCII encoding, regardless of the connection's character set.
-     * \n
+     *
      * For operations returning more than one resultset, returns the
      * first resultset's info.
      *
@@ -452,7 +449,7 @@ public:
      * Relevant for `CALL` operations performed using prepared statements that
      * bind placeholders to `OUT` or `INOUT` parameters. Returns a row containing a field per
      * bound output parameter.
-     * \n
+     *
      * If this operation had no output parameters (e.g. it wasn't a `CALL`), returns an empty row.
      *
      * \par Preconditions
@@ -476,9 +473,7 @@ public:
 
 private:
     detail::results_impl impl_;
-#ifndef BOOST_MYSQL_DOXYGEN
     friend struct detail::access;
-#endif
 };
 
 }  // namespace mysql

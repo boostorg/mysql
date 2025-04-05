@@ -176,7 +176,6 @@ inline error_code make_error_code(client_errc error)
 
 }  // namespace mysql
 
-#ifndef BOOST_MYSQL_DOXYGEN
 namespace system {
 
 template <>
@@ -185,7 +184,6 @@ struct is_error_code_enum<::boost::mysql::client_errc>
     static constexpr bool value = true;
 };
 }  // namespace system
-#endif
 
 }  // namespace boost
 

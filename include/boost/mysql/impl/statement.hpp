@@ -23,48 +23,13 @@
 #include <tuple>
 #include <vector>
 
-template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple>
-class boost::mysql::bound_statement_tuple
-{
-    friend class statement;
-    friend struct detail::access;
-
-    struct impl
-    {
-        statement stmt;
-        WritableFieldTuple params;
-    } impl_;
-
-    template <typename TupleType>
-    bound_statement_tuple(const statement& stmt, TupleType&& t) : impl_{stmt, std::forward<TupleType>(t)}
-    {
-    }
-};
-
-template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator>
-class boost::mysql::bound_statement_iterator_range
-{
-    friend class statement;
-    friend struct detail::access;
-
-    struct impl
-    {
-        statement stmt;
-        FieldViewFwdIterator first;
-        FieldViewFwdIterator last;
-    } impl_;
-
-    bound_statement_iterator_range(
-        const statement& stmt,
-        FieldViewFwdIterator first,
-        FieldViewFwdIterator last
-    )
-        : impl_{stmt, first, last}
-    {
-    }
-};
-
-template <BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple, typename EnableIf>
+template <
+    BOOST_MYSQL_WRITABLE_FIELD_TUPLE WritableFieldTuple
+#ifndef BOOST_MYSQL_DOXYGEN
+    ,
+    typename EnableIf
+#endif
+    >
 boost::mysql::bound_statement_tuple<typename std::decay<WritableFieldTuple>::type> boost::mysql::statement::
     bind(WritableFieldTuple&& args) const
 
@@ -76,7 +41,13 @@ boost::mysql::bound_statement_tuple<typename std::decay<WritableFieldTuple>::typ
     );
 }
 
-template <BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator, typename EnableIf>
+template <
+    BOOST_MYSQL_FIELD_VIEW_FORWARD_ITERATOR FieldViewFwdIterator
+#ifndef BOOST_MYSQL_DOXYGEN
+    ,
+    typename EnableIf
+#endif
+    >
 boost::mysql::bound_statement_iterator_range<FieldViewFwdIterator> boost::mysql::statement::bind(
     FieldViewFwdIterator first,
     FieldViewFwdIterator last

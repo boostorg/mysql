@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@asciidoctor/tabs": "^1.0.0-beta.6",
+    "@cppalliance/antora-cpp-reference-extension": "^0.0.6",
+    "@cppalliance/antora-cpp-tagfiles-extension": "^0.0.4",
+    "@cppalliance/antora-playbook-macros-extension": "^0.0.2",
+    "@cppalliance/asciidoctor-boost-links": "^0.0.2",
+    "antora": "^3.1.10"
+  }
+}
