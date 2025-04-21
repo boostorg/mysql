@@ -248,23 +248,16 @@ std::vector<std::uint8_t> create_more_data_frame(std::uint8_t seqnum, boost::spa
 
 struct fixture : algo_fixture_base
 {
-    detail::handshake_algo algo{
-        {handshake_params("example_user", "example_password"), false}
-    };
+    detail::handshake_algo algo;
 
-    fixture() { st.status = connection_status::not_connected; }
+    fixture(const handshake_params& hparams = handshake_params("example_user", "example_password"))
+        : algo({hparams, false})
+    {
+        st.status = connection_status::not_connected;
+    }
 };
 
 /**
-Capabilities
-    With database
-    Without database
-    With all possible collation values
-    With an unknown collation
-    All combinations of ssl_mode, server supports ssl, transport supports ssl/transport is secure
-    Server doesn't support deprecate eof/other mandatory capabilities
-    Server doesn't support multi queries, requested/not requested
-    Server doesn't support connect with DB, requested/not requested
 other stuff
     Auth switch with unknown default plugin: same as above
     Auth switch to unknown default plugin: hello, response, auth switch, error
@@ -284,6 +277,8 @@ Network errors
     Auth with more data
     Auth with auth switch
     Using SSL
+
+empty passwords?
 */
 
 // These challenge/responses have been captured with Wireshark
@@ -775,6 +770,83 @@ BOOST_AUTO_TEST_CASE(csha2p_authswitch_okfollows_ok)
         .will_set_connection_id(42)
         .check(fix);
 }
+
+//
+// capabilities: connect with db
+//
+
+constexpr capabilities db_caps = min_caps | capabilities(detail::CLIENT_CONNECT_WITH_DB);
+
+BOOST_AUTO_TEST_CASE(db_nonempty_supported)
+{
+    // Setup
+    fixture fix(handshake_params("example_user", "example_password", "mydb"));
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().caps(db_caps).auth_response(mnp_response()).db("mydb").build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(db_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+BOOST_AUTO_TEST_CASE(db_nonempty_unsupported)
+{
+    // Setup
+    fixture fix(handshake_params("example_user", "example_password", "mydb"));
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
+}
+
+// If the user didn't request a DB, we don't send it
+BOOST_AUTO_TEST_CASE(db_empty_supported)
+{
+    // Setup
+    fixture fix(handshake_params("example_user", "example_password", ""));
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// If the server doesn't support connect with DB but the user didn't request it, we don't fail
+BOOST_AUTO_TEST_CASE(db_empty_unsupported)
+{
+    // Setup
+    fixture fix(handshake_params("example_user", "example_password", ""));
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+//     With all possible collation values
+//     With an unknown collation
+//     All combinations of ssl_mode, server supports ssl, transport supports ssl/transport is secure
+//     Server doesn't support deprecate eof/other mandatory capabilities
+//     Server doesn't support multi queries, requested/not requested
+//     Server doesn't support connect with DB, requested/not requested
 
 BOOST_AUTO_TEST_SUITE_END()
 
