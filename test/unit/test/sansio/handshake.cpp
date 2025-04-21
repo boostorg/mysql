@@ -42,6 +42,7 @@
 #include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
+#include "test_unit/printing.hpp"
 #include "test_unit/serialize_to_vector.hpp"
 
 using namespace boost::mysql::test;
@@ -1229,6 +1230,41 @@ BOOST_AUTO_TEST_CASE(hello_connection_id)
                 .will_set_capabilities(min_caps)
                 .will_set_current_charset(utf8mb4_charset)
                 .will_set_connection_id(value)
+                .check(fix);
+        }
+    }
+}
+
+// Flavor is set, regardless of what we had before
+BOOST_AUTO_TEST_CASE(flavor)
+{
+    struct
+    {
+        string_view version;
+        detail::db_flavor flavor;
+    } test_cases[] = {
+        {"11.4.2-MariaDB-ubu2404",             detail::db_flavor::mariadb},
+        {"8.4.1 MySQL Community Server - GPL", detail::db_flavor::mysql  },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.flavor)
+        {
+            // Setup
+            fixture fix;
+            fix.st.flavor = static_cast<detail::db_flavor>(0xffff);  // make sure that we set the value
+
+            // Run the test
+            algo_test()
+                .expect_read(server_hello_builder().version(tc.version).auth_data(mnp_challenge()).build())
+                .expect_write(login_request_builder().auth_response(mnp_response()).build())
+                .expect_read(create_ok_frame(2, ok_builder().build()))
+                .will_set_status(connection_status::ready)
+                .will_set_capabilities(min_caps)
+                .will_set_current_charset(utf8mb4_charset)
+                .will_set_connection_id(42)
+                .will_set_flavor(tc.flavor)
                 .check(fix);
         }
     }
