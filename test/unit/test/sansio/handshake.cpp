@@ -9,6 +9,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
@@ -35,6 +36,7 @@
 #include <vector>
 
 #include "test_common/create_diagnostics.hpp"
+#include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
 #include "test_unit/create_frame.hpp"
@@ -250,8 +252,11 @@ struct fixture : algo_fixture_base
 {
     detail::handshake_algo algo;
 
-    fixture(const handshake_params& hparams = handshake_params("example_user", "example_password"))
-        : algo({hparams, false})
+    fixture(
+        const handshake_params& hparams = handshake_params("example_user", "example_password"),
+        bool secure_transport = false
+    )
+        : algo({hparams, secure_transport})
     {
         st.status = connection_status::not_connected;
     }
@@ -841,9 +846,141 @@ BOOST_AUTO_TEST_CASE(db_empty_unsupported)
         .check(fix);
 }
 
+//
+// capabilities: TLS
+//
+
+// Cases where we successfully negotiate the use of TLS
+BOOST_AUTO_TEST_CASE(tls_on)
+{
+    for (auto mode : {ssl_mode::enable, ssl_mode::require})
+    {
+        BOOST_TEST_CONTEXT(mode)
+        {
+            // Setup
+            handshake_params hparams("example_user", "example_password");
+            hparams.set_ssl(mode);
+            fixture fix(hparams, false);  // TLS only negotiated when the transport is not secure
+            fix.st.tls_supported = true;  // TLS only negotiated if supported
+
+            // Run the test
+            algo_test()
+                .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
+                .expect_write(ssl_request_builder().build())
+                .expect_ssl_handshake()
+                .expect_write(
+                    login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response()).build()
+                )
+                .expect_read(create_ok_frame(3, ok_builder().build()))
+                .will_set_status(connection_status::ready)
+                .will_set_tls_active(true)
+                .will_set_capabilities(tls_caps)
+                .will_set_current_charset(utf8mb4_charset)
+                .will_set_connection_id(42)
+                .check(fix);
+        }
+    }
+}
+
+// Cases where we negotiate that we won't use any TLS
+BOOST_AUTO_TEST_CASE(tls_off)
+{
+    // TODO: handshake should be in charge of not negotiating
+    // TLS when a secure channel is in place. Enable these tests then
+    // constexpr struct
+    // {
+    //     const char* name;
+    //     ssl_mode mode;
+    //     bool secure_transport;
+    //     bool transport_supports_tls;
+    //     capabilities server_caps;
+    // } test_cases[] = {
+    //     {"disable_insecure_clino_serverno",   ssl_mode::disable, false, false, min_caps},
+    //     {"disable_insecure_clino_serveryes",  ssl_mode::disable, false, false, tls_caps},
+    //     {"disable_insecure_cliyes_serverno",  ssl_mode::disable, false, true,  min_caps},
+    //     {"disable_insecure_cliyes_serveryes", ssl_mode::disable, false, true,  tls_caps},
+    //     {"disable_secure_clino_serverno",     ssl_mode::disable, true,  false, min_caps},
+    //     {"disable_secure_clino_serveryes",    ssl_mode::disable, true,  false, tls_caps},
+    //     {"disable_secure_cliyes_serverno",    ssl_mode::disable, true,  true,  min_caps},
+    //     {"disable_secure_cliyes_serveryes",   ssl_mode::disable, true,  true,  tls_caps},
+
+    //     {"enable_insecure_clino_serverno",    ssl_mode::enable,  false, false, min_caps},
+    //     {"enable_insecure_clino_serveryes",   ssl_mode::enable,  false, false, tls_caps},
+    //     {"enable_insecure_cliyes_serverno",   ssl_mode::enable,  false, true,  min_caps},
+    //     {"enable_secure_clino_serverno",      ssl_mode::enable,  true,  false, min_caps},
+    //     {"enable_secure_clino_serveryes",     ssl_mode::enable,  true,  false, tls_caps},
+    //     {"enable_secure_cliyes_serverno",     ssl_mode::enable,  true,  true,  min_caps},
+    //     // {"enable_secure_cliyes_serveryes",    ssl_mode::enable,  true,  true,  tls_caps},
+
+    //     {"require_insecure_clino_serverno",   ssl_mode::require, false, false, min_caps},
+    //     {"require_insecure_clino_serveryes",  ssl_mode::require, false, false, tls_caps},
+    //     {"require_secure_clino_serverno",     ssl_mode::require, true,  false, min_caps},
+    //     {"require_secure_clino_serveryes",    ssl_mode::require, true,  false, tls_caps},
+    //     {"require_secure_cliyes_serverno",    ssl_mode::require, true,  true,  min_caps},
+    //     {"require_secure_cliyes_serveryes",   ssl_mode::require, true,  true,  tls_caps},
+    // };
+
+    constexpr struct
+    {
+        const char* name;
+        ssl_mode mode;
+        bool transport_supports_tls;
+        capabilities server_caps;
+    } test_cases[] = {
+        {"disable_clino_serverno",   ssl_mode::disable, false, min_caps},
+        {"disable_clino_serveryes",  ssl_mode::disable, false, tls_caps},
+        {"disable_cliyes_serverno",  ssl_mode::disable, true,  min_caps},
+        {"disable_cliyes_serveryes", ssl_mode::disable, true,  tls_caps},
+
+        {"enable_clino_serverno",    ssl_mode::enable,  false, min_caps},
+        {"enable_clino_serveryes",   ssl_mode::enable,  false, tls_caps},
+        {"enable_cliyes_serverno",   ssl_mode::enable,  true,  min_caps},
+
+        {"require_clino_serverno",   ssl_mode::require, false, min_caps},
+        {"require_clino_serveryes",  ssl_mode::require, false, tls_caps},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            handshake_params hparams("example_user", "example_password");
+            hparams.set_ssl(tc.mode);
+            fixture fix(hparams, false);
+            fix.st.tls_supported = tc.transport_supports_tls;
+
+            // Run the test
+            algo_test()
+                .expect_read(server_hello_builder().caps(tc.server_caps).auth_data(mnp_challenge()).build())
+                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+                .expect_read(create_ok_frame(2, ok_builder().build()))
+                .will_set_status(connection_status::ready)
+                .will_set_capabilities(min_caps)
+                .will_set_current_charset(utf8mb4_charset)
+                .will_set_connection_id(42)
+                .check(fix);
+        }
+    }
+}
+
+// We strongly want TLS but the server doesn't support it
+BOOST_AUTO_TEST_CASE(tls_error_unsupported)
+{
+    // Setup
+    handshake_params hparams("example_user", "example_password");
+    hparams.set_ssl(ssl_mode::require);
+    fixture fix(hparams, false);  // This doesn't happen if the transport is already secure
+    fix.st.tls_supported = true;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .check(fix, client_errc::server_doesnt_support_ssl);
+}
+
 //     With all possible collation values
 //     With an unknown collation
-//     All combinations of ssl_mode, server supports ssl, transport supports ssl/transport is secure
 //     Server doesn't support deprecate eof/other mandatory capabilities
 //     Server doesn't support multi queries, requested/not requested
 //     Server doesn't support connect with DB, requested/not requested
