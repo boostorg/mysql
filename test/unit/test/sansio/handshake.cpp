@@ -68,6 +68,7 @@ class server_hello_builder
     std::vector<std::uint8_t> auth_plugin_data_;
     detail::capabilities server_caps_{min_caps};
     string_view auth_plugin_name_{"mysql_native_password"};
+    std::uint32_t connection_id_{42};
 
 public:
     server_hello_builder& version(string_view v)
@@ -90,6 +91,11 @@ public:
     server_hello_builder& auth_plugin(string_view v)
     {
         auth_plugin_name_ = v;
+        return *this;
+    }
+    server_hello_builder& connection_id(std::uint32_t v)
+    {
+        connection_id_ = v;
         return *this;
     }
 
@@ -117,9 +123,9 @@ public:
                 ctx.serialize(
                     int1{10},  // protocol_version
                     string_null{server_version_},
-                    int4{42},       // connection_id
-                    plugin_data_1,  // plugin data, 1st part
-                    int1{0},        // filler
+                    int4{connection_id_},  // connection_id
+                    plugin_data_1,         // plugin data, 1st part
+                    int1{0},               // filler
                     caps_low,
                     int1{25},  // character set
                     int2{0},   // status flags
@@ -261,25 +267,6 @@ struct fixture : algo_fixture_base
         st.status = connection_status::not_connected;
     }
 };
-
-/**
-other stuff
-    The correct secure_channel value is passed to the plugin?
-    SSL handshake
-    Error deserializing hello/contains an error packet (e.g. too many connections)
-    Error deserializing auth switch
-    The correct DB flavor is set
-    backslash escapes
-    flags in hello
-    connection_id
-    everything is correctly reset
-Network errors
-    Auth with more data
-    Auth with auth switch
-    Using SSL
-
-empty passwords?
-*/
 
 // These challenge/responses have been captured with Wireshark
 std::vector<std::uint8_t> mnp_challenge()
@@ -1219,6 +1206,51 @@ BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
 // TODO: auth switch to itself (better after we refactor the handshake)
 // TODO: auth switch more than once (better after we refactor the handshake)
 
+//
+// Data in the initial hello
+//
+
+// No value of connection_id causes trouble
+BOOST_AUTO_TEST_CASE(hello_connection_id)
+{
+    for (std::uint32_t value : {0u, 10u, 0xffffffffu})
+    {
+        BOOST_TEST_CONTEXT(value)
+        {
+            // Setup
+            fixture fix;
+
+            // Run the test
+            algo_test()
+                .expect_read(server_hello_builder().connection_id(value).auth_data(mnp_challenge()).build())
+                .expect_write(login_request_builder().auth_response(mnp_response()).build())
+                .expect_read(create_ok_frame(2, ok_builder().build()))
+                .will_set_status(connection_status::ready)
+                .will_set_capabilities(min_caps)
+                .will_set_current_charset(utf8mb4_charset)
+                .will_set_connection_id(value)
+                .check(fix);
+        }
+    }
+}
+
+/**
+other stuff
+    The correct secure_channel value is passed to the plugin?
+    SSL handshake
+    Error deserializing hello/contains an error packet (e.g. too many connections)
+    Error deserializing auth switch
+    The correct DB flavor is set
+    backslash escapes
+    flags in hello
+    everything is correctly reset
+Network errors
+    Auth with more data
+    Auth with auth switch
+    Using SSL
+
+empty passwords?
+*/
 //     With all possible collation values
 //     With an unknown collation
 
