@@ -1063,7 +1063,7 @@ BOOST_AUTO_TEST_CASE(tls_error_unsupported)
 // TODO: having the capabilities in all uppercase likely conflicts with official headers
 
 // If the server doesn't have these, we can't talk to it
-BOOST_AUTO_TEST_CASE(mandatory_capabilities)
+BOOST_AUTO_TEST_CASE(caps_mandatory)
 {
     constexpr struct
     {
@@ -1097,7 +1097,7 @@ BOOST_AUTO_TEST_CASE(mandatory_capabilities)
 }
 
 // If the server doesn't have them, it's OK (but better if it has them)
-BOOST_AUTO_TEST_CASE(optional_capabilities)
+BOOST_AUTO_TEST_CASE(caps_optional)
 {
     constexpr struct
     {
@@ -1126,6 +1126,57 @@ BOOST_AUTO_TEST_CASE(optional_capabilities)
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
                 .will_set_capabilities(min_caps | tc.caps)
+                .will_set_current_charset(utf8mb4_charset)
+                .will_set_connection_id(42)
+                .check(fix);
+        }
+    }
+}
+
+// We don't understand these capabilities, so we set them to off even if the server supports them
+BOOST_AUTO_TEST_CASE(caps_ignored)
+{
+    constexpr struct
+    {
+        const char* name;
+        capabilities caps;
+    } test_cases[] = {
+        {"long_password",                capabilities(detail::CLIENT_LONG_PASSWORD)               },
+        {"found_rows",                   capabilities(detail::CLIENT_FOUND_ROWS)                  },
+        {"long_flag",                    capabilities(detail::CLIENT_LONG_FLAG)                   },
+        {"no_schema",                    capabilities(detail::CLIENT_NO_SCHEMA)                   },
+        {"compress",                     capabilities(detail::CLIENT_COMPRESS)                    },
+        {"odbc",                         capabilities(detail::CLIENT_ODBC)                        },
+        {"local_files",                  capabilities(detail::CLIENT_LOCAL_FILES)                 },
+        {"ignore_space",                 capabilities(detail::CLIENT_IGNORE_SPACE)                },
+        {"interactive",                  capabilities(detail::CLIENT_INTERACTIVE)                 },
+        {"ignore_sigpipe",               capabilities(detail::CLIENT_IGNORE_SIGPIPE)              },
+        {"transactions",                 capabilities(detail::CLIENT_TRANSACTIONS)                },
+        {"reserved",                     capabilities(detail::CLIENT_RESERVED)                    },
+        {"connect_attrs",                capabilities(detail::CLIENT_CONNECT_ATTRS)               },
+        {"can_handle_expired_passwords", capabilities(detail::CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS)},
+        {"session_track",                capabilities(detail::CLIENT_SESSION_TRACK)               },
+        {"ssl_verify_server_cert",       capabilities(detail::CLIENT_SSL_VERIFY_SERVER_CERT)      },
+        {"optional_resultset_metadata",  capabilities(detail::CLIENT_OPTIONAL_RESULTSET_METADATA) },
+        {"remember_options",             capabilities(detail::CLIENT_REMEMBER_OPTIONS)            },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            fixture fix;
+
+            // Run the test
+            algo_test()
+                .expect_read(
+                    server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_challenge()).build()
+                )
+                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+                .expect_read(create_ok_frame(2, ok_builder().build()))
+                .will_set_status(connection_status::ready)
+                .will_set_capabilities(min_caps)
                 .will_set_current_charset(utf8mb4_charset)
                 .will_set_connection_id(42)
                 .check(fix);
