@@ -591,6 +591,35 @@ BOOST_AUTO_TEST_CASE(csha2p_fast_track_success_no_ok_follows)
         .check(fix);
 }
 
+// Password errors don't trigger this path (they always go through full auth),
+// but other errors (like incorrect database) trigger this path
+// TODO: write an integration test?
+// TODO: this is a bug, report and fix it
+// BOOST_AUTO_TEST_CASE(csha2p_fast_track_error)
+// {
+//     // Setup
+//     fixture fix;
+
+//     // Run the test
+//     algo_test()
+//         .expect_read(
+//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+//         )
+//         .expect_write(login_request_builder()
+//                           .auth_plugin("caching_sha2_password")
+//                           .auth_response(csha2p_response())
+//                           .build())
+//         .expect_read(create_more_data_frame(2, csha2p_ok_follows))
+//         .expect_read(err_builder()
+//                          .seqnum(3)
+//                          .code(common_server_errc::er_access_denied_error)
+//                          .message("Denied")
+//                          .build_frame())
+//         .will_set_capabilities(min_caps)  // incidental
+//         .will_set_connection_id(42)       // incidental
+//         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+// }
+
 // csha2p
 //     fast track success
 //         hello, login request, more data ok follows, ok
