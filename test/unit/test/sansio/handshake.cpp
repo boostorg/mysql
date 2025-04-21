@@ -315,22 +315,6 @@ std::vector<std::uint8_t> csha2p_response()
 // mysql_native_password
 //
 
-// mysql_native_password
-//     bad challenge length in any of them
-//     more data
-
-// std::vector<std::uint8_t> challenge2()
-// {
-//     return {0x36, 0x2c, 0x3f, 0x49, 0x1e, 0x51, 0x13, 0x79, 0x4c, 0x0b,
-//             0x0e, 0x06, 0x08, 0x40, 0x04, 0x0b, 0x2c, 0x53, 0x1e, 0x36};
-// }
-
-// std::vector<std::uint8_t> response2()
-// {
-//     return {0x21, 0x34, 0xca, 0xa6, 0x49, 0x91, 0x77, 0x63, 0x72, 0x7a,
-//             0xa6, 0xc9, 0x9b, 0x58, 0x3c, 0x9e, 0x89, 0x94, 0x34, 0x41};
-// }
-
 BOOST_AUTO_TEST_CASE(mnp_ok)
 {
     // Setup
@@ -767,21 +751,30 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
-// csha2p
-//     fast track success
-//         hello, login request, auth switch, auth switch response, more data ok follows, ok
-//     fast track non-password error: (password error causes full auth)
-//         hello, login request, auth switch with scram,  auth switch response, more data ok follows, error
-//     request to perform full auth, success
-//         hello, login request, auth switch with scram, auth switch response, more data perform full auth,
-//             password, ok
-//         (theoretical) hello, login request, auth switch perform full auth, password, ok
-//     request to perform full auth, password/non-password error
-//         hello, login request, auth switch with scram, auth switch response, more data perform full auth,
-//         error
-//     request to perform full auth, no ssl
-//     bad challenge length in any of them
-//     more data but it's not full auth or wait for ok
+// TODO: other cases with authswitch
+BOOST_AUTO_TEST_CASE(csha2p_authswitch_okfollows_ok)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("mysql_native_password").auth_data(mnp_challenge()).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("mysql_native_password").auth_response(mnp_response()).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge()))
+        .expect_write(create_frame(3, csha2p_response()))
+        .expect_read(create_more_data_frame(4, csha2p_ok_follows))
+        .expect_read(create_ok_frame(5, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
