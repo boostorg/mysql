@@ -776,6 +776,8 @@ BOOST_AUTO_TEST_CASE(csha2p_authswitch_okfollows_ok)
         .check(fix);
 }
 
+// TODO: secure transport with csha2p
+
 //
 // capabilities: connect with db
 //
@@ -838,6 +840,82 @@ BOOST_AUTO_TEST_CASE(db_empty_unsupported)
     algo_test()
         .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
         .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+//
+// capabilities: multi_queries
+//
+
+constexpr capabilities multiq_caps = min_caps | capabilities(detail::CLIENT_MULTI_STATEMENTS);
+
+// We request it and the server supports it
+BOOST_AUTO_TEST_CASE(multiq_true_supported)
+{
+    // Setup
+    handshake_params hparams("example_user", "example_password");
+    hparams.set_multi_queries(true);
+    fixture fix(hparams);
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().caps(multiq_caps).auth_response(mnp_response()).build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(multiq_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// We request is but the serve doesn't support it
+BOOST_AUTO_TEST_CASE(multiq_true_unsupported)
+{
+    // Setup
+    handshake_params hparams("example_user", "example_password");
+    hparams.set_multi_queries(true);
+    fixture fix(hparams);
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
+}
+
+// We don't request it but the server supports it. We request the server to disable it
+BOOST_AUTO_TEST_CASE(multiq_false_supported)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// We don't request it and the server doesn't support it, either. That's OK
+BOOST_AUTO_TEST_CASE(multiq_false_unsupported)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -983,7 +1061,6 @@ BOOST_AUTO_TEST_CASE(tls_error_unsupported)
 //     With an unknown collation
 //     Server doesn't support deprecate eof/other mandatory capabilities
 //     Server doesn't support multi queries, requested/not requested
-//     Server doesn't support connect with DB, requested/not requested
 
 BOOST_AUTO_TEST_SUITE_END()
 
