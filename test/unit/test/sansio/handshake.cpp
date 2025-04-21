@@ -264,15 +264,10 @@ struct fixture : algo_fixture_base
 
 /**
 other stuff
-    Auth switch with unknown default plugin: same as above
-    Auth switch to unknown default plugin: hello, response, auth switch, error
-    Auth switch to itself
-    auth switch more than once
     The correct secure_channel value is passed to the plugin?
     SSL handshake
     Error deserializing hello/contains an error packet (e.g. too many connections)
     Error deserializing auth switch
-    Error: capabilities are insufficient
     The correct DB flavor is set
     backslash escapes
     flags in hello
@@ -1183,6 +1178,46 @@ BOOST_AUTO_TEST_CASE(caps_ignored)
         }
     }
 }
+
+//
+// Generic auth plugin errors
+//
+
+BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_plugin("unknown").auth_data(csha2p_challenge()).build())
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
+BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_auth_switch_frame(2, "unknown", mnp_challenge()))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
+// TODO: auth switch to itself (better after we refactor the handshake)
+// TODO: auth switch more than once (better after we refactor the handshake)
 
 //     With all possible collation values
 //     With an unknown collation
