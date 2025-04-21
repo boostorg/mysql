@@ -1057,10 +1057,46 @@ BOOST_AUTO_TEST_CASE(tls_error_unsupported)
         .check(fix, client_errc::server_doesnt_support_ssl);
 }
 
+//
+// Base capabilities
+//
+// TODO: having the capabilities in all uppercase likely conflicts with official headers
+
+BOOST_AUTO_TEST_CASE(mandatory_capabilities)
+{
+    constexpr struct
+    {
+        const char* name;
+        capabilities caps;
+    } test_cases[] = {
+        {"no_protocol_41",             capabilities(min_caps.get() & ~detail::CLIENT_PROTOCOL_41)      },
+        {"no_plugin_auth",             capabilities(min_caps.get() & ~detail::CLIENT_PLUGIN_AUTH)      },
+        {"no_plugin_auth_lenenc_data",
+         capabilities(min_caps.get() & ~detail::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA)                 },
+        {"no_deprecate_eof",           capabilities(min_caps.get() & ~detail::CLIENT_DEPRECATE_EOF)    },
+        {"no_secure_connection",       capabilities(min_caps.get() & ~detail::CLIENT_SECURE_CONNECTION)},
+        {"several_missing",
+         capabilities(detail::CLIENT_PLUGIN_AUTH | detail::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA)      },
+        {"none",                       capabilities()                                                  },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            fixture fix;
+
+            // Run the test
+            algo_test()
+                .expect_read(server_hello_builder().caps(tc.caps).auth_data(mnp_challenge()).build())
+                .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
+        }
+    }
+}
+
 //     With all possible collation values
 //     With an unknown collation
-//     Server doesn't support deprecate eof/other mandatory capabilities
-//     Server doesn't support multi queries, requested/not requested
 
 BOOST_AUTO_TEST_SUITE_END()
 
