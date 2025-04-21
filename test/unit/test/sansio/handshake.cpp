@@ -709,6 +709,41 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_ok)
         .check(fix);
 }
 
+// Error with full auth
+BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
+{
+    // Setup
+    fixture fix;
+    fix.st.tls_supported = true;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_challenge())
+                         .build())
+        .expect_write(ssl_request_builder().build())
+        .expect_ssl_handshake()
+        .expect_write(login_request_builder()
+                          .seqnum(2)
+                          .caps(tls_caps)
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_more_data_frame(3, csha2p_full_auth))
+        .expect_write(create_frame(4, null_terminated_password()))
+        .expect_read(err_builder()
+                         .seqnum(5)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .will_set_capabilities(tls_caps)
+        .will_set_connection_id(42)
+        .will_set_tls_active(true)
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
 // csha2p
 //     fast track success
 //         hello, login request, auth switch, auth switch response, more data ok follows, ok
