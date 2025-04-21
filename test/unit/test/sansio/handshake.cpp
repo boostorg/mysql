@@ -1317,6 +1317,26 @@ BOOST_AUTO_TEST_CASE(collations)
     }
 }
 
+// The value of backslash_escapes in the final OK packet doesn't get ignored
+BOOST_AUTO_TEST_CASE(backslash_escapes)
+{
+    // Setup
+    fixture fix;
+    fix.st.backslash_escapes = true;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(create_ok_frame(2, ok_builder().no_backslash_escapes(true).build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_backslash_escapes(false)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
 /**
 other stuff
     The correct secure_channel value is passed to the plugin?
@@ -1330,8 +1350,6 @@ Network errors
     Auth with auth switch
     Using SSL
 */
-//     With all possible collation values
-//     With an unknown collation
 
 BOOST_AUTO_TEST_SUITE_END()
 
