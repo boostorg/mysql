@@ -9,6 +9,7 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/metadata_mode.hpp>
 #include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
@@ -1337,14 +1338,32 @@ BOOST_AUTO_TEST_CASE(backslash_escapes)
         .check(fix);
 }
 
+// Handshake should not modify the value of metadata mode
+BOOST_AUTO_TEST_CASE(meta_mode)
+{
+    // Setup
+    fixture fix;
+    fix.st.meta_mode = metadata_mode::full;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
 /**
 other stuff
     The correct secure_channel value is passed to the plugin?
     SSL handshake
     Error deserializing hello/contains an error packet (e.g. too many connections)
     Error deserializing auth switch
-    backslash escapes
-    everything is correctly reset
+    status changes
 Network errors
     Auth with more data
     Auth with auth switch
