@@ -620,6 +620,31 @@ BOOST_AUTO_TEST_CASE(csha2p_fast_track_success_no_ok_follows)
 //         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 // }
 
+// Receiving an error packet before the OK follows looks legal, too
+BOOST_AUTO_TEST_CASE(csha2p_fast_track_error_no_ok_follows)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(err_builder()
+                         .seqnum(2)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
 // csha2p
 //     fast track success
 //         hello, login request, more data ok follows, ok
