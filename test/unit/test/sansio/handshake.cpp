@@ -43,6 +43,7 @@
 using namespace boost::mysql::test;
 using namespace boost::mysql;
 using detail::capabilities;
+using detail::connection_status;
 
 namespace {
 
@@ -240,6 +241,8 @@ struct fixture : algo_fixture_base
     detail::handshake_algo algo{
         {handshake_params("example_user", "example_password"), false}
     };
+
+    fixture() { st.status = connection_status::not_connected; }
 };
 
 /**
@@ -346,7 +349,7 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_success)
         .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
         .expect_write(login_request_builder().auth_response(mnp_response()).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
-        .will_set_is_connected(true)
+        .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
         .will_set_current_charset(utf8mb4_charset)
         .will_set_connection_id(42)
@@ -403,7 +406,7 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_success)
         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
         .expect_write(create_frame(3, mnp_response()))
         .expect_read(create_ok_frame(4, ok_builder().build()))
-        .will_set_is_connected(true)
+        .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
         .will_set_current_charset(utf8mb4_charset)
         .will_set_connection_id(42)
@@ -472,7 +475,7 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
         .expect_ssl_handshake()
         .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response()).build())
         .expect_read(create_ok_frame(3, ok_builder().build()))
-        .will_set_is_connected(true)
+        .will_set_status(connection_status::ready)
         .will_set_tls_active(true)
         .will_set_capabilities(tls_caps)
         .will_set_current_charset(utf8mb4_charset)
