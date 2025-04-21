@@ -237,6 +237,7 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('.txt', IgnoreProcessor()),
     ('.pyc', IgnoreProcessor()),
     ('.ipynb', IgnoreProcessor()),
+    ('.png', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):
