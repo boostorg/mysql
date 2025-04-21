@@ -510,6 +510,30 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_bad_challenge_length)
 //         .check(fix, client_errc::protocol_value_error);
 // }
 
+// In mysql_native_password, more data packets are not supported
+// TODO: re-enable this test when we make the handshake more robust
+// BOOST_AUTO_TEST_CASE(mnp_auth_switch_error_double_auth_switch)
+// {
+//     // Setup
+//     fixture fix;
+
+//     // Run the test
+//     algo_test()
+//         .expect_read(
+//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+//         )
+//         .expect_write(login_request_builder()
+//                           .auth_plugin("caching_sha2_password")
+//                           .auth_response(csha2p_response())
+//                           .build())
+//         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
+//         .expect_write(create_frame(3, mnp_response()))
+//         .expect_read(create_more_data_frame(4, mnp_challenge()))
+//         .will_set_capabilities(min_caps)  // incidental
+//         .will_set_connection_id(42)       // incidental
+//         .check(fix, client_errc::protocol_value_error);
+// }
+
 // Spotcheck: mysql_native_password doesn't have interactions with TLS
 BOOST_AUTO_TEST_CASE(mnp_tls)
 {
@@ -531,10 +555,6 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
         .will_set_connection_id(42)
         .check(fix);
 }
-
-// TODO: auth switch after auth switch
-// TODO: more data fast track
-// TODO: more data after auth switch
 
 BOOST_AUTO_TEST_SUITE_END()
 
