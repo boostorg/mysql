@@ -9,9 +9,11 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/common_server_errc.hpp>
 #include <boost/mysql/handshake_params.hpp>
+#include <boost/mysql/mysql_collations.hpp>
 #include <boost/mysql/ssl_mode.hpp>
 #include <boost/mysql/string_view.hpp>
 
+#include <boost/mysql/detail/character_set.hpp>
 #include <boost/mysql/detail/execution_processor/execution_processor.hpp>
 
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
@@ -1270,22 +1272,63 @@ BOOST_AUTO_TEST_CASE(flavor)
     }
 }
 
+//
+// Collations
+//
+// TODO: the known ones require an integration test
+BOOST_AUTO_TEST_CASE(collations)
+{
+    constexpr struct
+    {
+        const char* name;
+        std::uint16_t collation_id;
+        character_set charset;
+    } test_cases[] = {
+        {"utf8mb4_bin",        mysql_collations::utf8mb4_bin,        utf8mb4_charset},
+        {"utf8mb4_general_ci", mysql_collations::utf8mb4_general_ci, utf8mb4_charset},
+        {"ascii_general_ci",   mysql_collations::ascii_general_ci,   ascii_charset  },
+        {"ascii_bin",          mysql_collations::ascii_bin,          ascii_charset  },
+        {"latin1_general_ci",  mysql_collations::latin1_general_ci,  {}             },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            handshake_params hparams("example_user", "example_password");
+            hparams.set_connection_collation(tc.collation_id);
+            fixture fix(hparams);
+            fix.st.current_charset = {"other", detail::next_char_utf8mb4};  // make sure that we set the value
+
+            // Run the test
+            algo_test()
+                .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+                .expect_write(
+                    login_request_builder().collation(tc.collation_id).auth_response(mnp_response()).build()
+                )
+                .expect_read(create_ok_frame(2, ok_builder().build()))
+                .will_set_status(connection_status::ready)
+                .will_set_capabilities(min_caps)
+                .will_set_current_charset(tc.charset)
+                .will_set_connection_id(42)
+                .check(fix);
+        }
+    }
+}
+
 /**
 other stuff
     The correct secure_channel value is passed to the plugin?
     SSL handshake
     Error deserializing hello/contains an error packet (e.g. too many connections)
     Error deserializing auth switch
-    The correct DB flavor is set
     backslash escapes
-    flags in hello
     everything is correctly reset
 Network errors
     Auth with more data
     Auth with auth switch
     Using SSL
-
-empty passwords?
 */
 //     With all possible collation values
 //     With an unknown collation
