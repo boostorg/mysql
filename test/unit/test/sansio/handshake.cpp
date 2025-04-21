@@ -330,7 +330,7 @@ std::vector<std::uint8_t> csha2p_response()
 //             0xa6, 0xc9, 0x9b, 0x58, 0x3c, 0x9e, 0x89, 0x94, 0x34, 0x41};
 // }
 
-BOOST_AUTO_TEST_CASE(mnp_fast_track_success)
+BOOST_AUTO_TEST_CASE(mnp_ok)
 {
     // Setup
     fixture fix;
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_success)
         .check(fix);
 }
 
-BOOST_AUTO_TEST_CASE(mnp_fast_track_auth_error)
+BOOST_AUTO_TEST_CASE(mnp_err)
 {
     // Setup
     fixture fix;
@@ -367,7 +367,7 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_auth_error)
 }
 
 // The authentication plugin generates an error during fast track
-BOOST_AUTO_TEST_CASE(mnp_fast_track_bad_challenge_length)
+BOOST_AUTO_TEST_CASE(mnp_bad_challenge_length)
 {
     // Setup
     fixture fix;
@@ -382,7 +382,7 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_bad_challenge_length)
 
 // Receiving a more data message at this point is illegal
 // TODO: re-enable this test when we improve the handshake algorithm
-// BOOST_AUTO_TEST_CASE(mnp_fast_track_error_more_data)
+// BOOST_AUTO_TEST_CASE(mnp_moredata)
 // {
 //     // Setup
 //     fixture fix;
@@ -397,7 +397,7 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_bad_challenge_length)
 //         .check(fix, client_errc::protocol_value_error);
 // }
 
-BOOST_AUTO_TEST_CASE(mnp_auth_switch_success)
+BOOST_AUTO_TEST_CASE(mnp_authswitch_ok)
 {
     // Setup
     fixture fix;
@@ -421,7 +421,7 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_success)
         .check(fix);
 }
 
-BOOST_AUTO_TEST_CASE(mnp_auth_switch_auth_error)
+BOOST_AUTO_TEST_CASE(mnp_authswitch_error)
 {
     // Setup
     fixture fix;
@@ -448,7 +448,7 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_auth_error)
 }
 
 // The authentication plugin generates an error during auth switch
-BOOST_AUTO_TEST_CASE(mnp_auth_switch_bad_challenge_length)
+BOOST_AUTO_TEST_CASE(mnp_authswitch_bad_challenge_length)
 {
     // Setup
     fixture fix;
@@ -471,7 +471,7 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_bad_challenge_length)
 
 // After receiving an auth switch, receiving another one is illegal
 // TODO: re-enable this test when we make the handshake more robust
-// BOOST_AUTO_TEST_CASE(mnp_auth_switch_error_double_auth_switch)
+// BOOST_AUTO_TEST_CASE(mnp_authswitch_authswitch)
 // {
 //     // Setup
 //     fixture fix;
@@ -495,7 +495,7 @@ BOOST_AUTO_TEST_CASE(mnp_auth_switch_bad_challenge_length)
 
 // In mysql_native_password, more data packets are not supported
 // TODO: re-enable this test when we make the handshake more robust
-// BOOST_AUTO_TEST_CASE(mnp_auth_switch_error_double_auth_switch)
+// BOOST_AUTO_TEST_CASE(mnp_authswitch_moredata)
 // {
 //     // Setup
 //     fixture fix;
@@ -545,7 +545,56 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
 
 static constexpr std::array<std::uint8_t, 1> csha2p_ok_follows{{0x03}};
 
-BOOST_AUTO_TEST_CASE(csha2p_fast_track_success)
+// Edge case: we tolerate a direct OK packet, without an OK follows
+BOOST_AUTO_TEST_CASE(csha2p_ok)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// Edge case: we tolerate a direct error packet, without an OK follows
+BOOST_AUTO_TEST_CASE(csha2p_err)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(err_builder()
+                         .seqnum(2)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
+// Usual success when using the fast track
+BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 {
     // Setup
     fixture fix;
@@ -568,34 +617,11 @@ BOOST_AUTO_TEST_CASE(csha2p_fast_track_success)
         .check(fix);
 }
 
-// Edge case: we tolerate the server not sending the OK follows
-BOOST_AUTO_TEST_CASE(csha2p_fast_track_success_no_ok_follows)
-{
-    // Setup
-    fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
-        )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
-                          .build())
-        .expect_read(create_ok_frame(2, ok_builder().build()))
-        .will_set_status(connection_status::ready)
-        .will_set_capabilities(min_caps)
-        .will_set_current_charset(utf8mb4_charset)
-        .will_set_connection_id(42)
-        .check(fix);
-}
-
 // Password errors don't trigger this path (they always go through full auth),
 // but other errors (like incorrect database) trigger this path
 // TODO: write an integration test?
 // TODO: this is a bug, report and fix it
-// BOOST_AUTO_TEST_CASE(csha2p_fast_track_error)
+// BOOST_AUTO_TEST_CASE(csha2p_okfollows_err)
 // {
 //     // Setup
 //     fixture fix;
@@ -620,37 +646,10 @@ BOOST_AUTO_TEST_CASE(csha2p_fast_track_success_no_ok_follows)
 //         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 // }
 
-// Receiving an error packet before the OK follows looks legal, too
-BOOST_AUTO_TEST_CASE(csha2p_fast_track_error_no_ok_follows)
-{
-    // Setup
-    fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
-        )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
-                          .build())
-        .expect_read(err_builder()
-                         .seqnum(2)
-                         .code(common_server_errc::er_access_denied_error)
-                         .message("Denied")
-                         .build_frame())
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
-        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
-}
-
 // csha2p
 //     fast track success
-//         hello, login request, more data ok follows, ok
 //         hello, login request, auth switch, auth switch response, more data ok follows, ok
 //     fast track non-password error: (password error causes full auth)
-//         hello, login request, more data ok follows, error => we have a bug
 //         hello, login request, auth switch with scram,  auth switch response, more data ok follows, error
 //     request to perform full auth, success
 //         hello, login request, more data perform full auth, password, ok
