@@ -236,6 +236,14 @@ std::vector<std::uint8_t> create_auth_switch_frame(
                         }));
 }
 
+std::vector<std::uint8_t> create_more_data_frame(std::uint8_t seqnum, boost::span<const std::uint8_t> data)
+{
+    return create_frame(seqnum, serialize_to_vector([=](detail::serialization_context& ctx) {
+                            ctx.add(0x01);  // more data header
+                            ctx.add(data);
+                        }));
+}
+
 struct fixture : algo_fixture_base
 {
     detail::handshake_algo algo{
@@ -388,6 +396,23 @@ BOOST_AUTO_TEST_CASE(mnp_fast_track_bad_challenge_length)
         .will_set_connection_id(42)       // incidental
         .check(fix, client_errc::protocol_value_error);
 }
+
+// Receiving a more data message at this point is illegal
+// TODO: re-enable this test when we improve the handshake algorithm
+// BOOST_AUTO_TEST_CASE(mnp_fast_track_error_more_data)
+// {
+//     // Setup
+//     fixture fix;
+
+//     // Run the test
+//     algo_test()
+//         .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+//         .expect_write(login_request_builder().auth_response(mnp_response()).build())
+//         .expect_read(create_more_data_frame(2, mnp_challenge()))
+//         .will_set_capabilities(min_caps)  // incidental
+//         .will_set_connection_id(42)       // incidental
+//         .check(fix, client_errc::protocol_value_error);
+// }
 
 BOOST_AUTO_TEST_CASE(mnp_auth_switch_success)
 {
