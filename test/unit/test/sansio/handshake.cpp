@@ -31,6 +31,7 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <vector>
 
 #include "test_common/create_diagnostics.hpp"
@@ -544,6 +545,14 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
 //
 
 static constexpr std::array<std::uint8_t, 1> csha2p_ok_follows{{0x03}};
+static constexpr std::array<std::uint8_t, 1> csha2p_full_auth{{0x04}};
+
+// Null-terminated password, as required by the plugin
+boost::span<const std::uint8_t> null_terminated_password()
+{
+    const char* passwd = "example_password";
+    return {reinterpret_cast<const std::uint8_t*>(passwd), std::strlen(passwd) + 1};
+}
 
 // Edge case: we tolerate a direct OK packet, without an OK follows
 BOOST_AUTO_TEST_CASE(csha2p_ok)
@@ -646,6 +655,10 @@ BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 //         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 // }
 
+// TODO: okfollows-more data
+// TODO: okfollows-auth switch
+// TODO: okfollows-full auth
+
 // The authentication plugin raises an error during the "fast track" auth
 BOOST_AUTO_TEST_CASE(csha2p_bad_challenge_length)
 {
@@ -661,6 +674,39 @@ BOOST_AUTO_TEST_CASE(csha2p_bad_challenge_length)
         .will_set_capabilities(min_caps)
         .will_set_connection_id(42)
         .check(fix, client_errc::protocol_value_error);
+}
+
+// Usual flow when requesting full auth
+BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_ok)
+{
+    // Setup
+    fixture fix;
+    fix.st.tls_supported = true;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_challenge())
+                         .build())
+        .expect_write(ssl_request_builder().build())
+        .expect_ssl_handshake()
+        .expect_write(login_request_builder()
+                          .seqnum(2)
+                          .caps(tls_caps)
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_more_data_frame(3, csha2p_full_auth))
+        .expect_write(create_frame(4, null_terminated_password()))
+        .expect_read(create_ok_frame(5, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(tls_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .will_set_tls_active(true)
+        .check(fix);
 }
 
 // csha2p
