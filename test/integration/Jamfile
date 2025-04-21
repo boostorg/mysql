@@ -33,9 +33,11 @@ run
         test/stored_procedures.cpp
         test/multi_queries.cpp
         test/static_interface.cpp
+        test/multi_function.cpp
         test/reconnect.cpp
         test/any_connection.cpp
         test/character_set_tracking.cpp
+        test/connection_id.cpp
         test/pipeline.cpp
         test/connection_pool.cpp
         test/db_specific.cpp
@@ -48,7 +50,7 @@ run
         test/snippets/text_queries.cpp
         test/snippets/prepared_statements.cpp
         test/snippets/dynamic_interface.cpp
-        test/snippets/static.cpp
+        test/snippets/static_interface.cpp
         test/snippets/multi_resultset.cpp
         test/snippets/multi_function.cpp
         test/snippets/metadata.cpp

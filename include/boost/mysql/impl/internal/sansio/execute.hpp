@@ -32,8 +32,10 @@ class read_execute_response_algo
     read_some_rows_algo read_some_rows_st_;
 
 public:
+    // We pass false because they are subordinate algos. This suppresses state checks.
+    // This is always a subordinate algo, so it never performs state checks.
     read_execute_response_algo(execution_processor* proc) noexcept
-        : read_head_st_({proc}), read_some_rows_st_({proc, output_ref()})
+        : read_head_st_({proc}, false), read_some_rows_st_({proc, output_ref()}, false)
     {
     }
 
@@ -81,8 +83,10 @@ class execute_algo
     execution_processor& processor() { return read_response_st_.processor(); }
 
 public:
+    // We pass false to the start execution algo's constructor because it's a subordinate algo.
+    // This disables state checks.
     execute_algo(execute_algo_params params) noexcept
-        : start_execution_st_({params.req, params.proc}), read_response_st_(params.proc)
+        : start_execution_st_({params.req, params.proc}, false), read_response_st_(params.proc)
     {
     }
 
@@ -93,6 +97,11 @@ public:
         switch (resume_point_)
         {
         case 0:
+
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
 
             // Send request and read the first response
             while (!(act = start_execution_st_.resume(st, diag, ec)).is_done())

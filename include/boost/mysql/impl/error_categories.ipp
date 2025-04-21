@@ -89,7 +89,17 @@ inline const char* error_to_string(client_errc error)
     case client_errc::operation_in_progress:
         return "Another operation is currently in progress for this connection. Make sure that a single "
                "connection does not run two asynchronous operations in parallel.";
-
+    case client_errc::not_connected:
+        return "The requested operation requires an established session. Call async_connect before invoking "
+               "other operations.";
+    case client_errc::engaged_in_multi_function:
+        return "The connection is currently engaged in a multi-function operation."
+               "Finish the current operation by calling async_read_some_rows and async_read_resultset_head "
+               "before "
+               "starting any other operation.";
+    case client_errc::not_engaged_in_multi_function:
+        return "The operation requires the connection to be engaged in a multi-function operation. "
+               "Use async_start_execution to start one.";
     default: return "<unknown MySQL client error>";
     }
 }

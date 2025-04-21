@@ -42,6 +42,7 @@ public:
         switch (resume_point_)
         {
         case 0:
+            // Handshake and connect wipe out state, so no state checks are performed.
 
             // Physical connect
             BOOST_MYSQL_YIELD(resume_point_, 1, next_action::connect(server_address_))

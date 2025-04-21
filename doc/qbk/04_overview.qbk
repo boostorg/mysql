@@ -287,10 +287,11 @@ table in batches, which can be the case in an ETL process:
 
 [overview_multifn]
 
-[warning
+[note
     Once you start a multi-function operation with [refmemunq any_connection async_start_execution],
     the server immediately sends all rows to the client. [*You must read all rows] before engaging in further operations.
-    Otherwise, you will encounter packet mismatches, which can lead to bugs and vulnerabilities!
+    If you try to initiate an unrelated operation before reading all rows, you will get a
+    `client_errc::engaged_in_multi_function` error.
 ]
 
 Multi-function operations are powerful but complex. Only use them when there is a strong reason to do so.

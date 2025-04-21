@@ -44,6 +44,7 @@ add_executable(
     test/sansio/prepare_statement.cpp
     test/sansio/run_pipeline.cpp
     test/sansio/quit_connection.cpp
+    test/sansio/close_connection.cpp
 
     test/execution_processor/execution_processor.cpp
     test/execution_processor/execution_state_impl.cpp
@@ -143,7 +144,7 @@ if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
         pch.hpp
     )
 endif()
-boost_mysql_common_target_settings(boost_mysql_unittests)
+boost_mysql_test_target_settings(boost_mysql_unittests)
 
 add_test(
     NAME boost_mysql_unittests

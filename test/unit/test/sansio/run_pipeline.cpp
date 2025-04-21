@@ -668,4 +668,36 @@ BOOST_AUTO_TEST_CASE(reusing_responses)
     BOOST_TEST(resp.at(1).as_results().info() == "msg");
 }
 
+// Connection status checked correctly
+BOOST_AUTO_TEST_CASE(error_invalid_connection_status)
+{
+    struct
+    {
+        detail::connection_status status;
+        error_code expected_err;
+    } test_cases[] = {
+        {detail::connection_status::not_connected,             client_errc::not_connected            },
+        {detail::connection_status::engaged_in_multi_function, client_errc::engaged_in_multi_function},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.status)
+        {
+            // Setup
+            const std::array<pipeline_request_stage, 2> stages{
+                {
+                 {pipeline_stage_kind::execute, 42u, resultset_encoding::binary},
+                 {pipeline_stage_kind::prepare_statement, 11u, {}},
+                 }
+            };
+            fixture fix(stages);
+            fix.st.status = tc.status;
+
+            // Run the test
+            algo_test().check(fix, tc.expected_err);
+        }
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

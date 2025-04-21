@@ -30,6 +30,7 @@
 #include <boost/mysql/impl/internal/protocol/impl/protocol_field_type.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+#include <boost/mysql/impl/internal/sansio/connection_state.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/asio/buffer.hpp>
@@ -139,7 +140,7 @@ class boost::mysql::test::algo_test::state_checker
 
     // The values we expect to get after running the algorithm.
     // If a change is not in expected_state_changes_t, the value shouldn't change
-    bool expected_is_connected;
+    detail::connection_status expected_status;
     detail::db_flavor expected_flavor;
     detail::capabilities expected_capabilities;
     std::uint32_t expected_connection_id;
@@ -151,7 +152,7 @@ class boost::mysql::test::algo_test::state_checker
 public:
     state_checker(detail::connection_state_data& st, const expected_state_changes_t& changes) noexcept
         : st_(st),
-          expected_is_connected(changes.is_connected.value_or(st.is_connected)),
+          expected_status(changes.status.value_or(st.status)),
           expected_flavor(changes.flavor.value_or(st.flavor)),
           expected_capabilities(changes.current_capabilities.value_or(st.current_capabilities)),
           expected_connection_id(changes.connection_id.value_or(st.connection_id)),
@@ -164,7 +165,7 @@ public:
 
     void check() const
     {
-        BOOST_TEST(st_.is_connected == expected_is_connected);
+        BOOST_TEST(st_.status == expected_status);
         BOOST_TEST(st_.flavor == expected_flavor);
         BOOST_TEST(st_.current_capabilities == expected_capabilities);
         BOOST_TEST(st_.connection_id == expected_connection_id);
@@ -640,6 +641,24 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, detail::results
     return os << ::to_string(v);
 }
 
+// connection_status
+static const char* to_string(detail::connection_status v)
+{
+    switch (v)
+    {
+    case detail::connection_status::ready: return "connection_status::ready";
+    case detail::connection_status::not_connected: return "connection_status::not_connected";
+    case detail::connection_status::engaged_in_multi_function:
+        return "connection_status::engaged_in_multi_function";
+    default: return "<unknown connection_status>";
+    }
+}
+
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, detail::connection_status v)
+{
+    return os << ::to_string(v);
+}
+
 // results_iterator
 std::ostream& boost::mysql::detail::operator<<(std::ostream& os, const results_iterator& it)
 {
@@ -712,24 +731,24 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, pipeline_reques
     return os << " }";
 }
 
-// connection_status
-static const char* to_string(detail::connection_status v)
+// node_status
+static const char* to_string(detail::node_status v)
 {
     switch (v)
     {
-    case detail::connection_status::initial: return "connection_status::initial";
-    case detail::connection_status::connect_in_progress: return "connection_status::connect_in_progress";
-    case detail::connection_status::sleep_connect_failed_in_progress:
-        return "connection_status::sleep_connect_failed_in_progress";
-    case detail::connection_status::reset_in_progress: return "connection_status::reset_in_progress";
-    case detail::connection_status::ping_in_progress: return "connection_status::ping_in_progress";
-    case detail::connection_status::idle: return "connection_status::idle";
-    case detail::connection_status::in_use: return "connection_status::in_use";
-    default: return "<unknown connection_status>";
+    case detail::node_status::initial: return "node_status::initial";
+    case detail::node_status::connect_in_progress: return "node_status::connect_in_progress";
+    case detail::node_status::sleep_connect_failed_in_progress:
+        return "node_status::sleep_connect_failed_in_progress";
+    case detail::node_status::reset_in_progress: return "node_status::reset_in_progress";
+    case detail::node_status::ping_in_progress: return "node_status::ping_in_progress";
+    case detail::node_status::idle: return "node_status::idle";
+    case detail::node_status::in_use: return "node_status::in_use";
+    default: return "<unknown node_status>";
     }
 }
 
-std::ostream& boost::mysql::detail::operator<<(std::ostream& os, connection_status v)
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, node_status v)
 {
     return os << ::to_string(v);
 }
@@ -777,15 +796,18 @@ std::ostream& boost::mysql::detail::operator<<(std::ostream& os, next_connection
 //
 boost::mysql::any_connection boost::mysql::test::create_test_any_connection(
     asio::io_context& ctx,
-    any_connection_params params
+    any_connection_params params,
+    detail::connection_status initial_status
 )
 {
-    return any_connection(detail::access::construct<any_connection>(
+    auto res = any_connection(detail::access::construct<any_connection>(
         std::unique_ptr<detail::engine>(
             new detail::engine_impl<detail::engine_stream_adaptor<test_stream>>(ctx.get_executor())
         ),
         params
     ));
+    detail::access::get_impl(res).get_state().data().status = initial_status;
+    return res;
 }
 
 test_stream& boost::mysql::test::get_stream(any_connection& conn)

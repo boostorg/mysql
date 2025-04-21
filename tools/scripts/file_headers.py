@@ -236,6 +236,7 @@ FILE_PROCESSORS : List[Tuple[str, BaseProcessor]] = [
     ('.json', IgnoreProcessor()),
     ('.txt', IgnoreProcessor()),
     ('.pyc', IgnoreProcessor()),
+    ('.ipynb', IgnoreProcessor()),
 ]
 
 def process_file(fpath: str):

@@ -28,8 +28,8 @@ using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
 using detail::collection_state;
-using detail::connection_status;
 using detail::next_connection_action;
+using detail::node_status;
 using detail::num_connections_to_create;
 using detail::sansio_connection_node;
 
@@ -65,7 +65,7 @@ struct mock_node : public sansio_connection_node<mock_node>
         num_exiting_pending = 0;
     }
 
-    void check(connection_status expected_status, int hooks)
+    void check(node_status expected_status, int hooks)
     {
         BOOST_TEST(status() == expected_status);
         BOOST_TEST(num_entering_idle == (hooks & enter_idle ? 1u : 0u));
@@ -81,31 +81,31 @@ BOOST_AUTO_TEST_CASE(normal_lifecyle)
 {
     // Initial
     mock_node nod;
-    nod.check(connection_status::initial, 0);
+    nod.check(node_status::initial, 0);
 
     // First resume yields connect
     auto act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
-    nod.check(connection_status::connect_in_progress, enter_pending);
+    nod.check(node_status::connect_in_progress, enter_pending);
 
     // Connect success
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check(connection_status::idle, exit_pending | enter_idle);
+    nod.check(node_status::idle, exit_pending | enter_idle);
 
     // Connection taken by user
     nod.mark_as_in_use();
-    nod.check(connection_status::in_use, exit_idle);
+    nod.check(node_status::in_use, exit_idle);
 
     // Connection returned by user
     act = nod.resume(error_code(), collection_state::needs_collect_with_reset);
     BOOST_TEST(act == next_connection_action::reset);
-    nod.check(connection_status::reset_in_progress, enter_pending);
+    nod.check(node_status::reset_in_progress, enter_pending);
 
     // Reset successful
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check(connection_status::idle, exit_pending | enter_idle);
+    nod.check(node_status::idle, exit_pending | enter_idle);
 
     // Terminate
     nod.cancel();
@@ -116,111 +116,111 @@ BOOST_AUTO_TEST_CASE(normal_lifecyle)
 BOOST_AUTO_TEST_CASE(collect_without_reset)
 {
     // Initial: connection idle
-    mock_node nod(connection_status::idle);
+    mock_node nod(node_status::idle);
 
     // Connection taken by the user
     nod.mark_as_in_use();
-    nod.check(connection_status::in_use, exit_idle);
+    nod.check(node_status::in_use, exit_idle);
 
     // Connection returned without reset
     auto act = nod.resume(error_code(), collection_state::needs_collect);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check(connection_status::idle, enter_idle);
+    nod.check(node_status::idle, enter_idle);
 }
 
 BOOST_AUTO_TEST_CASE(collect_still_in_use)
 {
     // Initial: connection idle
-    mock_node nod(connection_status::idle);
+    mock_node nod(node_status::idle);
 
     // Connection taken by the user
     nod.mark_as_in_use();
-    nod.check(connection_status::in_use, exit_idle);
+    nod.check(node_status::in_use, exit_idle);
 
     // Idle wait finishes but the connection is still in use
     auto act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check(connection_status::in_use, 0);
+    nod.check(node_status::in_use, 0);
 }
 
 BOOST_AUTO_TEST_CASE(ping_success)
 {
     // Connection idle
-    mock_node nod(connection_status::idle);
+    mock_node nod(node_status::idle);
 
     // Time elapses and the connection is not taken by the user
     auto act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::ping);
-    nod.check(connection_status::ping_in_progress, exit_idle | enter_pending);
+    nod.check(node_status::ping_in_progress, exit_idle | enter_pending);
 
     // Ping succeeds, we're idle again
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check(connection_status::idle, exit_pending | enter_idle);
+    nod.check(node_status::idle, exit_pending | enter_idle);
 }
 
 // Error state transitions
 BOOST_AUTO_TEST_CASE(connect_error)
 {
     // Connection trying to connect
-    mock_node nod(connection_status::connect_in_progress);
+    mock_node nod(node_status::connect_in_progress);
 
     // Fail connecting
     auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::sleep_connect_failed);
-    nod.check(connection_status::sleep_connect_failed_in_progress, 0);
+    nod.check(node_status::sleep_connect_failed_in_progress, 0);
 
     // Sleep done
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
-    nod.check(connection_status::connect_in_progress, 0);
+    nod.check(node_status::connect_in_progress, 0);
 
     // Connect success
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check(connection_status::idle, exit_pending | enter_idle);
+    nod.check(node_status::idle, exit_pending | enter_idle);
 }
 
 BOOST_AUTO_TEST_CASE(ping_error)
 {
     // Connection idle
-    mock_node nod(connection_status::idle);
+    mock_node nod(node_status::idle);
 
     // Time elapses and the connection is not taken by the user
     auto act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::ping);
-    nod.check(connection_status::ping_in_progress, exit_idle | enter_pending);
+    nod.check(node_status::ping_in_progress, exit_idle | enter_pending);
 
     // Ping fails
     act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
-    nod.check(connection_status::connect_in_progress, 0);
+    nod.check(node_status::connect_in_progress, 0);
 
     // Connect succeeds, we're idle again
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check(connection_status::idle, exit_pending | enter_idle);
+    nod.check(node_status::idle, exit_pending | enter_idle);
 }
 
 BOOST_AUTO_TEST_CASE(reset_error)
 {
     // Connection in use
-    mock_node nod(connection_status::in_use);
+    mock_node nod(node_status::in_use);
 
     // Returned by the user
     auto act = nod.resume(error_code(), collection_state::needs_collect_with_reset);
     BOOST_TEST(act == next_connection_action::reset);
-    nod.check(connection_status::reset_in_progress, enter_pending);
+    nod.check(node_status::reset_in_progress, enter_pending);
 
     // Reset fails
     act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
-    nod.check(connection_status::connect_in_progress, 0);
+    nod.check(node_status::connect_in_progress, 0);
 
     // Connect succeeds, we're idle again
     act = nod.resume(error_code(), collection_state::none);
     BOOST_TEST(act == next_connection_action::idle_wait);
-    nod.check(connection_status::idle, exit_pending | enter_idle);
+    nod.check(node_status::idle, exit_pending | enter_idle);
 }
 
 BOOST_AUTO_TEST_CASE(sleep_between_retries_fail)
@@ -229,17 +229,17 @@ BOOST_AUTO_TEST_CASE(sleep_between_retries_fail)
     // canceled, and this would come with a cancel() call
 
     // Connection trying to connect
-    mock_node nod(connection_status::connect_in_progress);
+    mock_node nod(node_status::connect_in_progress);
 
     // Fail connecting
     auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::sleep_connect_failed);
-    nod.check(connection_status::sleep_connect_failed_in_progress, 0);
+    nod.check(node_status::sleep_connect_failed_in_progress, 0);
 
     // Sleep reports an error. It will get ignored
     act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::connect);
-    nod.check(connection_status::connect_in_progress, 0);
+    nod.check(node_status::connect_in_progress, 0);
 }
 
 BOOST_AUTO_TEST_CASE(idle_wait_fail)
@@ -248,12 +248,12 @@ BOOST_AUTO_TEST_CASE(idle_wait_fail)
     // canceled, and this would come with a cancel() call
 
     // Connection idle
-    mock_node nod(connection_status::idle);
+    mock_node nod(node_status::idle);
 
     // Idle wait failed. Error gets ignored
     auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
     BOOST_TEST(act == next_connection_action::ping);
-    nod.check(connection_status::ping_in_progress, exit_idle | enter_pending);
+    nod.check(node_status::ping_in_progress, exit_idle | enter_pending);
 }
 
 BOOST_AUTO_TEST_CASE(idle_wait_fail_in_use)
@@ -262,12 +262,12 @@ BOOST_AUTO_TEST_CASE(idle_wait_fail_in_use)
     // canceled, and this would come with a cancel() call
 
     // Connection in use
-    mock_node nod(connection_status::in_use);
+    mock_node nod(node_status::in_use);
 
     // Idle wait failed. Error gets ignored
     auto act = nod.resume(asio::error::operation_aborted, collection_state::needs_collect_with_reset);
     BOOST_TEST(act == next_connection_action::reset);
-    nod.check(connection_status::reset_in_progress, enter_pending);
+    nod.check(node_status::reset_in_progress, enter_pending);
 }
 
 // Cancellations
@@ -275,15 +275,15 @@ BOOST_AUTO_TEST_CASE(cancel)
 {
     struct
     {
-        connection_status initial_status;
+        node_status initial_status;
         int hooks;
     } test_cases[] = {
-        {connection_status::connect_in_progress,              exit_pending},
-        {connection_status::sleep_connect_failed_in_progress, exit_pending},
-        {connection_status::idle,                             exit_idle   },
-        {connection_status::in_use,                           0           },
-        {connection_status::ping_in_progress,                 exit_pending},
-        {connection_status::reset_in_progress,                exit_pending},
+        {node_status::connect_in_progress,              exit_pending},
+        {node_status::sleep_connect_failed_in_progress, exit_pending},
+        {node_status::idle,                             exit_idle   },
+        {node_status::in_use,                           0           },
+        {node_status::ping_in_progress,                 exit_pending},
+        {node_status::reset_in_progress,                exit_pending},
     };
 
     for (const auto& tc : test_cases)
@@ -298,13 +298,13 @@ BOOST_AUTO_TEST_CASE(cancel)
             // Next action will always return none
             auto act = nod.resume(asio::error::operation_aborted, collection_state::none);
             BOOST_TEST(act == next_connection_action::none);
-            nod.check(connection_status::terminated, tc.hooks);
+            nod.check(node_status::terminated, tc.hooks);
 
             // Cancel again does nothing
             nod.cancel();
             act = nod.resume(asio::error::operation_aborted, collection_state::none);
             BOOST_TEST(act == next_connection_action::none);
-            nod.check(connection_status::terminated, 0);
+            nod.check(node_status::terminated, 0);
         }
     }
 }

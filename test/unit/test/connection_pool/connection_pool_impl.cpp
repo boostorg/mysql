@@ -74,7 +74,7 @@ using namespace boost::mysql;
 using namespace boost::mysql::test;
 namespace asio = boost::asio;
 using boost::test_tools::per_element;
-using detail::connection_status;
+using detail::node_status;
 using std::chrono::steady_clock;
 namespace data = boost::unit_test::data;
 
@@ -499,7 +499,7 @@ public:
     // Waits for a status on a certain node
     void wait_for_status(
         mock_node& node,
-        connection_status status,
+        node_status status,
         boost::source_location loc = BOOST_MYSQL_CURRENT_LOCATION
     )
     {
@@ -544,23 +544,23 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_error)
     auto& node = fix.pool().nodes().front();
 
     // Connection trying to connect
-    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.wait_for_status(node, node_status::connect_in_progress);
     fix.check_shared_st(diagnostics(), 1, 0);
 
     // Connect fails, so the connection goes to sleep. Diagnostics are stored in shared state.
     fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection, connect_diag);
-    fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+    fix.wait_for_status(node, node_status::sleep_connect_failed_in_progress);
     fix.check_shared_st(expected_diag, 1, 0);
 
     // Advance until it's time to retry again
     mock_clock::advance_time_by(std::chrono::seconds(2));
-    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.wait_for_status(node, node_status::connect_in_progress);
     fix.check_shared_st(expected_diag, 1, 0);
 
     // Connection connects successfully this time. Diagnostics have
     // been cleared and the connection is marked as idle
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -576,22 +576,22 @@ BOOST_AUTO_TEST_CASE(lifecycle_connect_timeout)
     auto& node = fix.pool().nodes().front();
 
     // Connection trying to connect
-    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.wait_for_status(node, node_status::connect_in_progress);
 
     // Timeout elapses. Connect is considered failed
     const auto expected_diag = create_client_diag("Last connection attempt timed out");
     mock_clock::advance_time_by(std::chrono::seconds(5));
-    fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+    fix.wait_for_status(node, node_status::sleep_connect_failed_in_progress);
     fix.check_shared_st(expected_diag, 1, 0);
 
     // Advance until it's time to retry again
     mock_clock::advance_time_by(std::chrono::seconds(2));
-    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.wait_for_status(node, node_status::connect_in_progress);
     fix.check_shared_st(expected_diag, 1, 0);
 
     // Connection connects successfully this time
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -605,7 +605,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
 
     // Wait until a connection is successfully connected
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 
     // Simulate a user picking the connection
@@ -616,7 +616,7 @@ BOOST_AUTO_TEST_CASE(lifecycle_return_without_reset)
     fix.pool().return_connection(node, false);
 
     // The connection goes back to idle without invoking resets
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -630,19 +630,19 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_success)
 
     // Wait until a connection is successfully connected, then pick it up
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     node.mark_as_in_use();
 
     // Simulate a user returning the connection (with reset)
     fix.pool().return_connection(node, true);
 
     // A reset is issued
-    fix.wait_for_status(node, connection_status::reset_in_progress);
+    fix.wait_for_status(node, node_status::reset_in_progress);
     fix.check_shared_st(diagnostics(), 1, 0);
 
     // Successful reset makes the connection idle again
     fix.step(node, fn_type::pipeline);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -656,19 +656,19 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_error)
 
     // Connect, pick up and return a connection
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     node.mark_as_in_use();
     fix.pool().return_connection(node, true);
-    fix.wait_for_status(node, connection_status::reset_in_progress);
+    fix.wait_for_status(node, node_status::reset_in_progress);
 
     // Reset fails. This triggers a reconnection. Diagnostics are not saved
     fix.step(node, fn_type::pipeline, common_server_errc::er_aborting_connection);
-    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.wait_for_status(node, node_status::connect_in_progress);
     fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reconnect succeeds. We're idle again
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -684,19 +684,19 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout)
 
     // Connect, pick up and return a connection
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     node.mark_as_in_use();
     fix.pool().return_connection(node, true);
-    fix.wait_for_status(node, connection_status::reset_in_progress);
+    fix.wait_for_status(node, node_status::reset_in_progress);
 
     // Reset times out. This triggers a reconnection
     mock_clock::advance_time_by(std::chrono::seconds(1));
-    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.wait_for_status(node, node_status::connect_in_progress);
     fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reconnect succeeds. We're idle again
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -712,19 +712,19 @@ BOOST_AUTO_TEST_CASE(lifecycle_reset_timeout_disabled)
 
     // Connect, pick up and return a connection
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     node.mark_as_in_use();
     fix.pool().return_connection(node, true);
-    fix.wait_for_status(node, connection_status::reset_in_progress);
+    fix.wait_for_status(node, node_status::reset_in_progress);
 
     // Reset doesn't time out, regardless of how much time we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
-    poll_until(fix.ctx, [&]() { return node.status() == connection_status::reset_in_progress; });
+    poll_until(fix.ctx, [&]() { return node.status() == node_status::reset_in_progress; });
     fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reset succeeds
     fix.step(node, fn_type::pipeline);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -740,16 +740,16 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_success)
 
     // Wait until a connection is successfully connected
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
 
     // Wait until ping interval ellapses. This triggers a ping
     mock_clock::advance_time_by(std::chrono::seconds(100));
-    fix.wait_for_status(node, connection_status::ping_in_progress);
+    fix.wait_for_status(node, node_status::ping_in_progress);
     fix.check_shared_st(diagnostics(), 1, 0);
 
     // After ping succeeds, connection goes back to idle
     fix.step(node, fn_type::ping);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -765,19 +765,19 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_error)
 
     // Wait until a connection is successfully connected
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
 
     // Wait until ping interval ellapses
     mock_clock::advance_time_by(std::chrono::seconds(100));
 
     // Ping fails. This triggers a reconnection. Diagnostics are not saved
     fix.step(node, fn_type::ping, common_server_errc::er_aborting_connection);
-    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.wait_for_status(node, node_status::connect_in_progress);
     fix.check_shared_st(diagnostics(), 1, 0);
 
     // Reconnection succeeds
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -794,19 +794,19 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout)
 
     // Wait until a connection is successfully connected
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
 
     // Wait until ping interval ellapses
     mock_clock::advance_time_by(std::chrono::seconds(100));
-    fix.wait_for_status(node, connection_status::ping_in_progress);
+    fix.wait_for_status(node, node_status::ping_in_progress);
 
     // Ping times out. This triggers a reconnection. Diagnostics are not saved
     mock_clock::advance_time_by(std::chrono::seconds(2));
-    fix.wait_for_status(node, connection_status::connect_in_progress);
+    fix.wait_for_status(node, node_status::connect_in_progress);
 
     // Reconnection succeeds
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -823,19 +823,19 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_timeout_disabled)
 
     // Wait until a connection is successfully connected
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
 
     // Wait until ping interval ellapses
     mock_clock::advance_time_by(std::chrono::seconds(100));
-    fix.wait_for_status(node, connection_status::ping_in_progress);
+    fix.wait_for_status(node, node_status::ping_in_progress);
 
     // Ping doesn't time out, regardless of how much we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
-    poll_until(fix.ctx, [&]() { return node.status() == connection_status::ping_in_progress; });
+    poll_until(fix.ctx, [&]() { return node.status() == node_status::ping_in_progress; });
 
     // Ping succeeds
     fix.step(node, fn_type::ping);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -851,11 +851,11 @@ BOOST_AUTO_TEST_CASE(lifecycle_ping_disabled)
 
     // Wait until a connection is successfully connected
     fix.step(node, fn_type::connect);
-    fix.wait_for_status(node, connection_status::idle);
+    fix.wait_for_status(node, node_status::idle);
 
     // Connection won't ping, regardless of how much time we wait
     mock_clock::advance_time_by(std::chrono::hours(9999));
-    poll_until(fix.ctx, [&]() { return node.status() == connection_status::idle; });
+    poll_until(fix.ctx, [&]() { return node.status() == node_status::idle; });
     fix.check_shared_st(diagnostics(), 0, 1);
 }
 
@@ -888,14 +888,14 @@ BOOST_AUTO_TEST_CASE(get_connection_immediate_completion)
 
             // Wait for a connection to be ready
             fix.step(node, fn_type::connect);
-            fix.wait_for_status(node, connection_status::idle);
+            fix.wait_for_status(node, node_status::idle);
             BOOST_TEST(fix.num_pending_requests() == 0u);
 
             // A request for a connection is issued. The request completes immediately.
             // In thread-safe mode, we still need to exit the strand, so we won't see an inline
             // completion
             fix.create_task(nullptr, tc.bind_slot).wait(node, !tc.thread_safe);
-            BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(node.status() == node_status::in_use);
             BOOST_TEST(fix.pool().nodes().size() == 1u);
             BOOST_TEST(fix.num_pending_requests() == 0u);
         }
@@ -930,7 +930,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
             // Connection tries to connect and fails
             fix.step(node, fn_type::connect, common_server_errc::er_aborting_connection);
-            fix.wait_for_status(node, connection_status::sleep_connect_failed_in_progress);
+            fix.wait_for_status(node, node_status::sleep_connect_failed_in_progress);
 
             // A request for a connection is issued. The request doesn't find
             // any available connection, and the current one is pending, so no new connections are created
@@ -945,7 +945,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_success)
 
             // Request is fulfilled
             task.wait(node, false);
-            BOOST_TEST(node.status() == connection_status::in_use);
+            BOOST_TEST(node.status() == node_status::in_use);
             BOOST_TEST(fix.pool().nodes().size() == 1u);
             BOOST_TEST(fix.num_pending_requests() == 0u);
         }
@@ -1073,7 +1073,7 @@ BOOST_AUTO_TEST_CASE(get_connection_wait_op_cancelled_timeout)
 
     // The connection attempt times out
     mock_clock::advance_time_by(std::chrono::seconds(6));
-    fix.wait_for_status(fix.pool().nodes().front(), connection_status::sleep_connect_failed_in_progress);
+    fix.wait_for_status(fix.pool().nodes().front(), node_status::sleep_connect_failed_in_progress);
 
     // The request gets cancelled. We get the expected error
     task.cancel();
@@ -1187,7 +1187,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
 
     // Wait for a connection to be ready, then get it from the pool
     fix.step(node1, fn_type::connect);
-    fix.wait_for_status(node1, connection_status::idle);
+    fix.wait_for_status(node1, node_status::idle);
     fix.create_task().wait(node1, true);
     BOOST_TEST(fix.num_pending_requests() == 0u);
 
@@ -1201,7 +1201,7 @@ BOOST_AUTO_TEST_CASE(get_connection_connection_creation)
     // Connection connects successfully and is handed to us
     fix.step(*node2, fn_type::connect);
     task2.wait(*node2, false);
-    BOOST_TEST(node2->status() == connection_status::in_use);
+    BOOST_TEST(node2->status() == node_status::in_use);
     BOOST_TEST(fix.pool().nodes().size() == 2u);
     BOOST_TEST(fix.num_pending_requests() == 0u);
 

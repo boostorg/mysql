@@ -55,8 +55,6 @@ public:
         {
         case 0:
 
-            // Note: diagnostics should have been cleaned by other algos
-
             // Read response
             BOOST_MYSQL_YIELD(resume_point_, 1, st.read(sequence_number_))
 
@@ -96,6 +94,10 @@ public:
         switch (resume_point_)
         {
         case 0:
+            // Check status
+            ec = st.check_status_ready();
+            if (ec)
+                return ec;
 
             // Send request
             BOOST_MYSQL_YIELD(

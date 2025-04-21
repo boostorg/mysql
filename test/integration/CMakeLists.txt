@@ -23,9 +23,11 @@ add_executable(
     test/stored_procedures.cpp
     test/multi_queries.cpp
     test/static_interface.cpp
+    test/multi_function.cpp
     test/reconnect.cpp
     test/any_connection.cpp
     test/character_set_tracking.cpp
+    test/connection_id.cpp
     test/pipeline.cpp
     test/connection_pool.cpp
     test/db_specific.cpp
@@ -38,7 +40,7 @@ add_executable(
     test/snippets/text_queries.cpp
     test/snippets/prepared_statements.cpp
     test/snippets/dynamic_interface.cpp
-    test/snippets/static.cpp
+    test/snippets/static_interface.cpp
     test/snippets/multi_resultset.cpp
     test/snippets/multi_function.cpp
     test/snippets/metadata.cpp
@@ -61,7 +63,7 @@ target_link_libraries(
     PRIVATE
     boost_mysql_testing
 )
-boost_mysql_common_target_settings(boost_mysql_integrationtests)
+boost_mysql_test_target_settings(boost_mysql_integrationtests)
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL 3.16)
     target_precompile_headers(
         boost_mysql_integrationtests

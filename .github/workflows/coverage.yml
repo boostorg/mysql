@@ -18,12 +18,12 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/anarthal-containers/build-gcc14:61b5b771ffefa8c04c43ddc9e023152461a8295f
+      image: ghcr.io/anarthal-containers/build-gcc14:e9696175806589fc91e160399eedeac8fdc88c68
       volumes:
         - /var/run/mysqld:/var/run/mysqld
     services:
       mysql:
-        image: ghcr.io/anarthal-containers/ci-db:mysql-8.4.1-61b5b771ffefa8c04c43ddc9e023152461a8295f
+        image: ghcr.io/anarthal-containers/ci-db:mysql-8.4.1-e9696175806589fc91e160399eedeac8fdc88c68
         ports:
           - 3306:3306
         volumes:

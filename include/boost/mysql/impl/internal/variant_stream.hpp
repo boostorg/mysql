@@ -19,6 +19,7 @@
 
 #include <boost/asio/any_io_executor.hpp>
 #include <boost/asio/associated_immediate_executor.hpp>
+#include <boost/asio/cancellation_type.hpp>
 #include <boost/asio/compose.hpp>
 #include <boost/asio/connect.hpp>
 #include <boost/asio/dispatch.hpp>
@@ -116,11 +117,22 @@ public:
     asio::ip::tcp::resolver& resolver() { return *resolv_; }
     asio::generic::stream_protocol::socket& socket() { return st_->sock; }
 
-    vsconnect_action resume(error_code ec, const asio::ip::tcp::resolver::results_type* resolver_results)
+    vsconnect_action resume(
+        error_code ec,
+        const asio::ip::tcp::resolver::results_type* resolver_results,
+        asio::cancellation_type_t cancel_state
+    )
     {
         // All errors are considered fatal
         if (ec)
             return ec;
+
+        // If we received a terminal cancellation signal, exit with the appropriate error code.
+        // In composed async operations, if the cancellation arrives after an intermediate operation
+        // has completed, but before the handler is called, the operation finishes successfully,
+        // but the cancellation state is set. This check covers this case.
+        if (!!(cancel_state & asio::cancellation_type_t::terminal))
+            return error_code(asio::error::operation_aborted);
 
         switch (resume_point_)
         {
@@ -280,7 +292,8 @@ public:
         // Run until complete
         while (true)
         {
-            auto act = algo.resume(ec, &resolver_results);
+            // The sync algorithm doesn't support cancellation
+            auto act = algo.resume(ec, &resolver_results, asio::cancellation_type_t::none);
             switch (act.type)
             {
             case vsconnect_action_type::connect: asio::connect(st_.sock, act.data.connect, ec); break;
@@ -333,7 +346,7 @@ private:
             const asio::ip::tcp::resolver::results_type& resolver_results = {}
         )
         {
-            auto act = algo_->resume(ec, &resolver_results);
+            auto act = algo_->resume(ec, &resolver_results, self.cancelled());
             switch (act.type)
             {
             case vsconnect_action_type::connect:
