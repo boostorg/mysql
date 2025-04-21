@@ -28,6 +28,7 @@
 #include <boost/test/unit_test_suite.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <vector>
@@ -542,7 +543,33 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
 // caching_sha2_password
 //
 
+static constexpr std::array<std::uint8_t, 1> csha2p_ok_follows{{0x03}};
+
 BOOST_AUTO_TEST_CASE(csha2p_fast_track_success)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_more_data_frame(2, csha2p_ok_follows))
+        .expect_read(create_ok_frame(3, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// Edge case: we tolerate the server not sending the OK follows
+BOOST_AUTO_TEST_CASE(csha2p_fast_track_success_no_ok_follows)
 {
     // Setup
     fixture fix;
