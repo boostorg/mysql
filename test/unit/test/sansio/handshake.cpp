@@ -254,24 +254,6 @@ struct fixture : algo_fixture_base
 };
 
 /**
-csha2p
-    fast track success
-        hello, login request, more data ok follows, ok
-        hello, login request, auth switch, auth switch response, more data ok follows, ok
-    fast track non-password error: (password error causes full auth)
-        hello, login request, more data ok follows, error => we have a bug
-        hello, login request, auth switch with scram,  auth switch response, more data ok follows, error
-    request to perform full auth, success
-        hello, login request, more data perform full auth, password, ok
-        hello, login request, auth switch with scram, auth switch response, more data perform full auth,
-            password, ok
-        (theoretical) hello, login request, auth switch perform full auth, password, ok
-    request to perform full auth, password/non-password error
-        hello, login request, more data perform full auth, error
-        hello, login request, auth switch with scram, auth switch response, more data perform full auth, error
-    request to perform full auth, no ssl
-    bad challenge length in any of them
-    more data but it's not full auth or wait for ok
 Capabilities
     With database
     Without database
@@ -555,6 +537,52 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
         .will_set_connection_id(42)
         .check(fix);
 }
+
+//
+// caching_sha2_password
+//
+
+BOOST_AUTO_TEST_CASE(csha2p_fast_track_success)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_ok_frame(2, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// csha2p
+//     fast track success
+//         hello, login request, more data ok follows, ok
+//         hello, login request, auth switch, auth switch response, more data ok follows, ok
+//     fast track non-password error: (password error causes full auth)
+//         hello, login request, more data ok follows, error => we have a bug
+//         hello, login request, auth switch with scram,  auth switch response, more data ok follows, error
+//     request to perform full auth, success
+//         hello, login request, more data perform full auth, password, ok
+//         hello, login request, auth switch with scram, auth switch response, more data perform full auth,
+//             password, ok
+//         (theoretical) hello, login request, auth switch perform full auth, password, ok
+//     request to perform full auth, password/non-password error
+//         hello, login request, more data perform full auth, error
+//         hello, login request, auth switch with scram, auth switch response, more data perform full auth,
+//         error
+//     request to perform full auth, no ssl
+//     bad challenge length in any of them
+//     more data but it's not full auth or wait for ok
 
 BOOST_AUTO_TEST_SUITE_END()
 
