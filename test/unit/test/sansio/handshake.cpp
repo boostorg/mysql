@@ -646,6 +646,23 @@ BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 //         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 // }
 
+// The authentication plugin raises an error during the "fast track" auth
+BOOST_AUTO_TEST_CASE(csha2p_bad_challenge_length)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(std::vector<std::uint8_t>(21, 0x01))
+                         .build())
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::protocol_value_error);
+}
+
 // csha2p
 //     fast track success
 //         hello, login request, auth switch, auth switch response, more data ok follows, ok
