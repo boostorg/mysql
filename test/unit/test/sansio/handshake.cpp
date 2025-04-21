@@ -1062,6 +1062,7 @@ BOOST_AUTO_TEST_CASE(tls_error_unsupported)
 //
 // TODO: having the capabilities in all uppercase likely conflicts with official headers
 
+// If the server doesn't have these, we can't talk to it
 BOOST_AUTO_TEST_CASE(mandatory_capabilities)
 {
     constexpr struct
@@ -1091,6 +1092,43 @@ BOOST_AUTO_TEST_CASE(mandatory_capabilities)
             algo_test()
                 .expect_read(server_hello_builder().caps(tc.caps).auth_data(mnp_challenge()).build())
                 .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
+        }
+    }
+}
+
+// If the server doesn't have them, it's OK (but better if it has them)
+BOOST_AUTO_TEST_CASE(optional_capabilities)
+{
+    constexpr struct
+    {
+        const char* name;
+        capabilities caps;
+    } test_cases[] = {
+        {"multi_results",    capabilities(detail::CLIENT_MULTI_RESULTS)   },
+        {"ps_multi_results", capabilities(detail::CLIENT_PS_MULTI_RESULTS)},
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            fixture fix;
+
+            // Run the test
+            algo_test()
+                .expect_read(
+                    server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_challenge()).build()
+                )
+                .expect_write(
+                    login_request_builder().caps(min_caps | tc.caps).auth_response(mnp_response()).build()
+                )
+                .expect_read(create_ok_frame(2, ok_builder().build()))
+                .will_set_status(connection_status::ready)
+                .will_set_capabilities(min_caps | tc.caps)
+                .will_set_current_charset(utf8mb4_charset)
+                .will_set_connection_id(42)
+                .check(fix);
         }
     }
 }
