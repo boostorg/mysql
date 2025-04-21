@@ -602,6 +602,29 @@ BOOST_AUTO_TEST_CASE(csha2p_err)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
+// At the moment, this plugin requires TLS, so this is an error
+BOOST_AUTO_TEST_CASE(csha2p_fullauth)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_challenge())
+                         .build())
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response())
+                          .build())
+        .expect_read(create_more_data_frame(2, csha2p_full_auth))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::auth_plugin_requires_ssl);
+}
+
 // Usual success when using the fast track
 BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 {
@@ -750,12 +773,10 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
 //     fast track non-password error: (password error causes full auth)
 //         hello, login request, auth switch with scram,  auth switch response, more data ok follows, error
 //     request to perform full auth, success
-//         hello, login request, more data perform full auth, password, ok
 //         hello, login request, auth switch with scram, auth switch response, more data perform full auth,
 //             password, ok
 //         (theoretical) hello, login request, auth switch perform full auth, password, ok
 //     request to perform full auth, password/non-password error
-//         hello, login request, more data perform full auth, error
 //         hello, login request, auth switch with scram, auth switch response, more data perform full auth,
 //         error
 //     request to perform full auth, no ssl
