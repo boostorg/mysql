@@ -621,8 +621,7 @@ BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 
 // Password errors don't trigger this path (they always go through full auth),
 // but other errors (like incorrect database) trigger this path
-// TODO: write an integration test?
-// TODO: this is a bug, report and fix it
+// TODO: uncomment this after https://github.com/boostorg/mysql/issues/468 gets fixed
 // BOOST_AUTO_TEST_CASE(csha2p_okfollows_err)
 // {
 //     // Setup
