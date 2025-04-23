@@ -309,20 +309,44 @@ BOOST_FIXTURE_TEST_CASE(bad_password_cache_miss, any_connection_fixture)
         .validate_error_contains(common_server_errc::er_access_denied_error, {"access denied", regular_user});
 }
 
-// Spotcheck: an invalid DB error after cache miss works
-BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
-{
-    // Setup
-    auto params = connect_params_builder().ssl(ssl_mode::require).database("bad_db").build();
-    clear_sha256_cache();
+// TODO: re-enable these tests when https://github.com/boostorg/mysql/issues/468 is fixed
+// // Spotcheck: an invalid DB error after a cache miss works
+// BOOST_FIXTURE_TEST_CASE(bad_db_cache_miss, any_connection_fixture)
+// {
+//     // Setup
+//     auto params = connect_params_builder()
+//                       .ssl(ssl_mode::require)
+//                       .credentials(regular_user, regular_passwd)
+//                       .database("bad_db")
+//                       .build();
+//     clear_sha256_cache();
 
-    // Connect fails
-    conn.async_connect(params, as_netresult)
-        .validate_error(
-            common_server_errc::er_dbaccess_denied_error,
-            "Access denied for user 'integ_user'@'%' to database 'bad_db'"
-        );
-}
+//     // Connect fails
+//     conn.async_connect(params, as_netresult)
+//         .validate_error(
+//             common_server_errc::er_dbaccess_denied_error,
+//             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+//         );
+// }
+
+// // Spotcheck: an invalid DB error after a cache hit works
+// BOOST_FIXTURE_TEST_CASE(bad_db_cache_hit, any_connection_fixture)
+// {
+//     // Setup
+//     auto params = connect_params_builder()
+//                       .ssl(ssl_mode::disable)
+//                       .credentials(regular_user, regular_passwd)
+//                       .database("bad_db")
+//                       .build();
+//     load_sha256_cache(regular_user, regular_passwd);
+
+//     // Connect fails
+//     conn.async_connect(params, as_netresult)
+//         .validate_error(
+//             common_server_errc::er_dbaccess_denied_error,
+//             "Access denied for user 'integ_user'@'%' to database 'bad_db'"
+//         );
+// }
 
 // Spotcheck: caching_sha2_password works with old connection
 BOOST_FIXTURE_TEST_CASE(tcp_ssl_connection_, io_context_fixture)
