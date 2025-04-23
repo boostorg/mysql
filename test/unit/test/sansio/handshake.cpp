@@ -1445,9 +1445,38 @@ BOOST_AUTO_TEST_CASE(connection_status_error)
     }
 }
 
+//
+// Deserialization errors
+//
+
+BOOST_AUTO_TEST_CASE(deserialization_error_hello)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(create_frame(0, boost::span<const std::uint8_t>()))
+        .check(fix, client_errc::incomplete_message);
+}
+
+BOOST_AUTO_TEST_CASE(deserialization_error_handshake_server_response)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(create_frame(2, boost::span<const std::uint8_t>()))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::incomplete_message);
+}
+
 /**
 other stuff
-    The correct secure_channel value is passed to the plugin?
     SSL handshake
     Error deserializing hello/contains an error packet (e.g. too many connections)
     Error deserializing auth switch
