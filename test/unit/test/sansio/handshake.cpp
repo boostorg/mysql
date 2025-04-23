@@ -352,7 +352,7 @@ BOOST_AUTO_TEST_CASE(mnp_bad_challenge_length)
 }
 
 // Receiving a more data message at this point is illegal
-// TODO: re-enable this test when we improve the handshake algorithm
+// TODO: re-enable this test after https://github.com/boostorg/mysql/issues/469
 // BOOST_AUTO_TEST_CASE(mnp_moredata)
 // {
 //     // Setup
@@ -441,7 +441,7 @@ BOOST_AUTO_TEST_CASE(mnp_authswitch_bad_challenge_length)
 }
 
 // After receiving an auth switch, receiving another one is illegal
-// TODO: re-enable this test when we make the handshake more robust
+// TODO: re-enable this test after https://github.com/boostorg/mysql/issues/469
 // BOOST_AUTO_TEST_CASE(mnp_authswitch_authswitch)
 // {
 //     // Setup
@@ -465,7 +465,7 @@ BOOST_AUTO_TEST_CASE(mnp_authswitch_bad_challenge_length)
 // }
 
 // In mysql_native_password, more data packets are not supported
-// TODO: re-enable this test when we make the handshake more robust
+// TODO: re-enable this test after https://github.com/boostorg/mysql/issues/469
 // BOOST_AUTO_TEST_CASE(mnp_authswitch_moredata)
 // {
 //     // Setup
@@ -647,10 +647,6 @@ BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 //         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 // }
 
-// TODO: okfollows-more data
-// TODO: okfollows-auth switch
-// TODO: okfollows-full auth
-
 // The authentication plugin raises an error during the "fast track" auth
 BOOST_AUTO_TEST_CASE(csha2p_bad_challenge_length)
 {
@@ -736,7 +732,6 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
-// TODO: other cases with authswitch
 BOOST_AUTO_TEST_CASE(csha2p_authswitch_okfollows_ok)
 {
     // Setup
@@ -763,7 +758,8 @@ BOOST_AUTO_TEST_CASE(csha2p_authswitch_okfollows_ok)
 
 // If we're using a secure transport (e.g. UNIX socket), caching_sha2_password
 // just sends the raw password
-// TODO: after we refactor handshake, maybe run more cases with secure_channel=true
+// TODO: after https://github.com/boostorg/mysql/issues/469,
+// maybe run more cases with secure_channel=true
 BOOST_AUTO_TEST_CASE(csha2p_securetransport_fullauth_ok)
 {
     // Setup
@@ -1234,8 +1230,8 @@ BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
         .check(fix, client_errc::unknown_auth_plugin);
 }
 
-// TODO: auth switch to itself (better after we refactor the handshake)
-// TODO: auth switch more than once (better after we refactor the handshake)
+// TODO: auth switch to itself (after https://github.com/boostorg/mysql/issues/469)
+// TODO: auth switch more than once (after https://github.com/boostorg/mysql/issues/469)
 
 //
 // Data in the initial hello
