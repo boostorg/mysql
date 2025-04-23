@@ -70,7 +70,7 @@ class server_hello_builder
 {
     string_view server_version_{"8.1.33"};
     std::vector<std::uint8_t> auth_plugin_data_;
-    detail::capabilities server_caps_{min_caps};
+    capabilities server_caps_{min_caps};
     string_view auth_plugin_name_{"mysql_native_password"};
     std::uint32_t connection_id_{42};
 
@@ -87,7 +87,7 @@ public:
         auth_plugin_data_ = std::move(v);
         return *this;
     }
-    server_hello_builder& caps(detail::capabilities v)
+    server_hello_builder& caps(capabilities v)
     {
         server_caps_ = v;
         return *this;
@@ -165,7 +165,7 @@ public:
         return *this;
     }
 
-    login_request_builder& caps(detail::capabilities v)
+    login_request_builder& caps(capabilities v)
     {
         caps_ = v;
         return *this;
@@ -218,23 +218,15 @@ public:
     }
 };
 
-class ssl_request_builder
+std::vector<std::uint8_t> create_ssl_request()
 {
-    capabilities caps_{tls_caps};
-    std::uint32_t collation_id_{45};
-
-public:
-    ssl_request_builder() = default;
-
-    std::vector<std::uint8_t> build()
-    {
-        const auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
-            detail::ssl_request req{caps_, detail::max_packet_size, collation_id_};
-            req.serialize(ctx);
-        });
-        return create_frame(1, body);
-    }
-};
+    const auto body = serialize_to_vector([](detail::serialization_context& ctx) {
+        constexpr std::uint32_t collation_id = 45;  // utf8_general_ci
+        detail::ssl_request req{tls_caps, detail::max_packet_size, collation_id};
+        req.serialize(ctx);
+    });
+    return create_frame(1, body);
+}
 
 std::vector<std::uint8_t> create_auth_switch_frame(
     std::uint8_t seqnum,
@@ -498,7 +490,7 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
     // Run the test
     algo_test()
         .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
-        .expect_write(ssl_request_builder().build())
+        .expect_write(create_ssl_request())
         .expect_ssl_handshake()
         .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response()).build())
         .expect_read(create_ok_frame(3, ok_builder().build()))
@@ -678,7 +670,7 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_ok)
                          .auth_plugin("caching_sha2_password")
                          .auth_data(csha2p_challenge())
                          .build())
-        .expect_write(ssl_request_builder().build())
+        .expect_write(create_ssl_request())
         .expect_ssl_handshake()
         .expect_write(login_request_builder()
                           .seqnum(2)
@@ -711,7 +703,7 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
                          .auth_plugin("caching_sha2_password")
                          .auth_data(csha2p_challenge())
                          .build())
-        .expect_write(ssl_request_builder().build())
+        .expect_write(create_ssl_request())
         .expect_ssl_handshake()
         .expect_write(login_request_builder()
                           .seqnum(2)
@@ -953,7 +945,7 @@ BOOST_AUTO_TEST_CASE(tls_on)
             // Run the test
             algo_test()
                 .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
-                .expect_write(ssl_request_builder().build())
+                .expect_write(create_ssl_request())
                 .expect_ssl_handshake()
                 .expect_write(
                     login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response()).build()
@@ -1476,7 +1468,7 @@ BOOST_AUTO_TEST_CASE(network_error_ssl_request)
     // Run the test
     algo_test()
         .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
-        .expect_write(ssl_request_builder().build(), client_errc::sequence_number_mismatch)
+        .expect_write(create_ssl_request(), client_errc::sequence_number_mismatch)
         .will_set_capabilities(tls_caps)
         .will_set_connection_id(42)
         .check(fix, client_errc::sequence_number_mismatch);
@@ -1491,7 +1483,7 @@ BOOST_AUTO_TEST_CASE(network_error_ssl_handshake)
     // Run the test
     algo_test()
         .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
-        .expect_write(ssl_request_builder().build())
+        .expect_write(create_ssl_request())
         .expect_ssl_handshake(client_errc::sequence_number_mismatch)
         .will_set_capabilities(tls_caps)
         .will_set_connection_id(42)
