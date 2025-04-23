@@ -1475,16 +1475,84 @@ BOOST_AUTO_TEST_CASE(deserialization_error_handshake_server_response)
         .check(fix, client_errc::incomplete_message);
 }
 
-/**
-other stuff
-    SSL handshake
-    Error deserializing hello/contains an error packet (e.g. too many connections)
-    Error deserializing auth switch
-Network errors
-    Auth with more data
-    Auth with auth switch
-    Using SSL
-*/
+//
+// Network errors
+//
+
+BOOST_AUTO_TEST_CASE(network_error_hello)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(client_errc::sequence_number_mismatch)
+        .check(fix, client_errc::sequence_number_mismatch);
+}
+
+BOOST_AUTO_TEST_CASE(network_error_ssl_request)
+{
+    // Setup
+    fixture fix;
+    fix.st.tls_supported = true;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
+        .expect_write(ssl_request_builder().build(), client_errc::sequence_number_mismatch)
+        .will_set_capabilities(tls_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::sequence_number_mismatch);
+}
+
+BOOST_AUTO_TEST_CASE(network_error_ssl_handshake)
+{
+    // Setup
+    fixture fix;
+    fix.st.tls_supported = true;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
+        .expect_write(ssl_request_builder().build())
+        .expect_ssl_handshake(client_errc::sequence_number_mismatch)
+        .will_set_capabilities(tls_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::sequence_number_mismatch);
+}
+
+BOOST_AUTO_TEST_CASE(network_error_login_request)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .expect_write(
+            login_request_builder().caps(min_caps).auth_response(mnp_response()).build(),
+            client_errc::sequence_number_mismatch
+        )
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::sequence_number_mismatch);
+}
+
+BOOST_AUTO_TEST_CASE(network_error_auth_switch_response)
+{
+    // Setup
+    fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge()))
+        .expect_write(create_frame(3, csha2p_response()), client_errc::sequence_number_mismatch)
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::sequence_number_mismatch);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
