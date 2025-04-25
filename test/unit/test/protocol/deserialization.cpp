@@ -1245,17 +1245,18 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_impl_success)
     constexpr std::uint8_t auth_plugin_data[] = {0x52, 0x1a, 0x50, 0x3a, 0x4b, 0x12, 0x70, 0x2f, 0x03, 0x5a,
                                                  0x74, 0x05, 0x28, 0x2b, 0x7f, 0x21, 0x43, 0x4a, 0x21, 0x62};
 
-    constexpr std::uint32_t caps = CLIENT_LONG_PASSWORD | CLIENT_FOUND_ROWS | CLIENT_LONG_FLAG |
-                                   CLIENT_CONNECT_WITH_DB | CLIENT_NO_SCHEMA | CLIENT_COMPRESS | CLIENT_ODBC |
-                                   CLIENT_LOCAL_FILES | CLIENT_IGNORE_SPACE | CLIENT_PROTOCOL_41 |
-                                   CLIENT_INTERACTIVE | CLIENT_IGNORE_SIGPIPE | CLIENT_TRANSACTIONS |
-                                   CLIENT_RESERVED |           // old flag, but set in this frame
-                                   CLIENT_SECURE_CONNECTION |  // old flag, but set in this frame
-                                   CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS | CLIENT_PS_MULTI_RESULTS |
-                                   CLIENT_PLUGIN_AUTH | CLIENT_CONNECT_ATTRS |
-                                   CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-                                   CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS | CLIENT_SESSION_TRACK |
-                                   CLIENT_DEPRECATE_EOF | CLIENT_REMEMBER_OPTIONS;
+    constexpr auto caps = capabilities::long_password | capabilities::found_rows | capabilities::long_flag |
+                          capabilities::connect_with_db | capabilities::no_schema | capabilities::compress |
+                          capabilities::odbc | capabilities::local_files | capabilities::ignore_space |
+                          capabilities::protocol_41 | capabilities::interactive |
+                          capabilities::ignore_sigpipe | capabilities::transactions |
+                          capabilities::reserved |           // old flag, but set in this frame
+                          capabilities::secure_connection |  // old flag, but set in this frame
+                          capabilities::multi_statements | capabilities::multi_results |
+                          capabilities::ps_multi_results | capabilities::plugin_auth |
+                          capabilities::connect_attrs | capabilities::plugin_auth_lenenc_data |
+                          capabilities::can_handle_expired_passwords | capabilities::session_track |
+                          capabilities::deprecate_eof | capabilities::remember_options;
 
     deserialization_buffer serialized{0x35, 0x2e, 0x37, 0x2e, 0x32, 0x37, 0x2d, 0x30, 0x75, 0x62, 0x75, 0x6e,
                                       0x74, 0x75, 0x30, 0x2e, 0x31, 0x39, 0x2e, 0x30, 0x34, 0x2e, 0x31, 0x00,
@@ -1276,7 +1277,7 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_impl_success)
     // Actual value
     BOOST_TEST(actual.server == db_flavor::mysql);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(actual.auth_plugin_data.to_span(), auth_plugin_data);
-    BOOST_TEST(actual.server_capabilities == capabilities(caps));
+    BOOST_TEST(actual.server_capabilities == caps);
     BOOST_TEST(actual.connection_id == 2u);
     BOOST_TEST(actual.auth_plugin_name == "mysql_native_password");
 
@@ -1457,17 +1458,18 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_success)
     constexpr std::uint8_t auth_plugin_data[] = {0x52, 0x1a, 0x50, 0x3a, 0x4b, 0x12, 0x70, 0x2f, 0x03, 0x5a,
                                                  0x74, 0x05, 0x28, 0x2b, 0x7f, 0x21, 0x43, 0x4a, 0x21, 0x62};
 
-    constexpr std::uint32_t caps = CLIENT_LONG_PASSWORD | CLIENT_FOUND_ROWS | CLIENT_LONG_FLAG |
-                                   CLIENT_CONNECT_WITH_DB | CLIENT_NO_SCHEMA | CLIENT_COMPRESS | CLIENT_ODBC |
-                                   CLIENT_LOCAL_FILES | CLIENT_IGNORE_SPACE | CLIENT_PROTOCOL_41 |
-                                   CLIENT_INTERACTIVE | CLIENT_IGNORE_SIGPIPE | CLIENT_TRANSACTIONS |
-                                   CLIENT_RESERVED |           // old flag, but set in this frame
-                                   CLIENT_SECURE_CONNECTION |  // old flag, but set in this frame
-                                   CLIENT_MULTI_STATEMENTS | CLIENT_MULTI_RESULTS | CLIENT_PS_MULTI_RESULTS |
-                                   CLIENT_PLUGIN_AUTH | CLIENT_CONNECT_ATTRS |
-                                   CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-                                   CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS | CLIENT_SESSION_TRACK |
-                                   CLIENT_DEPRECATE_EOF | CLIENT_REMEMBER_OPTIONS;
+    constexpr auto caps = capabilities::long_password | capabilities::found_rows | capabilities::long_flag |
+                          capabilities::connect_with_db | capabilities::no_schema | capabilities::compress |
+                          capabilities::odbc | capabilities::local_files | capabilities::ignore_space |
+                          capabilities::protocol_41 | capabilities::interactive |
+                          capabilities::ignore_sigpipe | capabilities::transactions |
+                          capabilities::reserved |           // old flag, but set in this frame
+                          capabilities::secure_connection |  // old flag, but set in this frame
+                          capabilities::multi_statements | capabilities::multi_results |
+                          capabilities::ps_multi_results | capabilities::plugin_auth |
+                          capabilities::connect_attrs | capabilities::plugin_auth_lenenc_data |
+                          capabilities::can_handle_expired_passwords | capabilities::session_track |
+                          capabilities::deprecate_eof | capabilities::remember_options;
 
     deserialization_buffer serialized{0x0a, 0x35, 0x2e, 0x37, 0x2e, 0x32, 0x37, 0x2d, 0x30, 0x75, 0x62, 0x75,
                                       0x6e, 0x74, 0x75, 0x30, 0x2e, 0x31, 0x39, 0x2e, 0x30, 0x34, 0x2e, 0x31,
@@ -1490,7 +1492,7 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_success)
     // Actual value
     BOOST_TEST(actual.server == db_flavor::mysql);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(actual.auth_plugin_data.to_span(), auth_plugin_data);
-    BOOST_TEST(actual.server_capabilities == capabilities(caps));
+    BOOST_TEST(actual.server_capabilities == caps);
     BOOST_TEST(actual.connection_id == 2u);
     BOOST_TEST(actual.auth_plugin_name == "mysql_native_password");
 }

@@ -611,9 +611,9 @@ static const char* to_string(address_type v)
 std::ostream& boost::mysql::operator<<(std::ostream& os, address_type v) { return os << ::to_string(v); }
 
 // capabilities
-std::ostream& boost::mysql::detail::operator<<(std::ostream& os, const capabilities& v)
+std::ostream& boost::mysql::detail::operator<<(std::ostream& os, capabilities v)
 {
-    return os << "capabilities{" << v.get() << "}";
+    return os << "capabilities{" << static_cast<std::uint32_t>(v) << "}";
 }
 
 // db_flavor

@@ -32,9 +32,9 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline capabilities conditional_capability(bool condition, std::uint32_t cap)
+inline capabilities conditional_capability(bool condition, capabilities cap)
 {
-    return capabilities(condition ? cap : 0);
+    return condition ? cap : capabilities{};
 }
 
 inline error_code process_capabilities(
@@ -44,24 +44,47 @@ inline error_code process_capabilities(
     bool transport_supports_ssl
 )
 {
+    // The capabilities that we absolutely require. These are always set except in extremely old servers
+    constexpr capabilities mandatory_capabilities =
+        // We don't speak the older protocol
+        capabilities::protocol_41 |
+
+        // We only know how to deserialize the hello frame if this is set
+        capabilities::plugin_auth |
+
+        // Same as above
+        capabilities::plugin_auth_lenenc_data |
+
+        // This makes processing execute responses easier
+        capabilities::deprecate_eof |
+
+        // Used in MariaDB to signal 4.1 protocol. Always set in MySQL, too
+        capabilities::secure_connection;
+
+    // The capabilities that we support but don't require
+    constexpr capabilities optional_capabilities = capabilities::multi_results |
+                                                   capabilities::ps_multi_results;
+
     auto ssl = transport_supports_ssl ? params.ssl() : ssl_mode::disable;
     capabilities server_caps = hello.server_capabilities;
-    capabilities required_caps = mandatory_capabilities |
-                                 conditional_capability(!params.database().empty(), CLIENT_CONNECT_WITH_DB) |
-                                 conditional_capability(params.multi_queries(), CLIENT_MULTI_STATEMENTS) |
-                                 conditional_capability(ssl == ssl_mode::require, CLIENT_SSL);
-    if (required_caps.has(CLIENT_SSL) && !server_caps.has(CLIENT_SSL))
+    capabilities
+        required_caps = mandatory_capabilities |
+                        conditional_capability(!params.database().empty(), capabilities::connect_with_db) |
+                        conditional_capability(params.multi_queries(), capabilities::multi_statements) |
+                        conditional_capability(ssl == ssl_mode::require, capabilities::ssl);
+    if (has_capabilities(required_caps, capabilities::ssl) &&
+        !has_capabilities(server_caps, capabilities::ssl))
     {
         // This happens if the server doesn't have SSL configured. This special
         // error code helps users diagnosing their problem a lot (server_unsupported doesn't).
         return make_error_code(client_errc::server_doesnt_support_ssl);
     }
-    else if (!server_caps.has_all(required_caps))
+    else if (!has_capabilities(server_caps, required_caps))
     {
         return make_error_code(client_errc::server_unsupported);
     }
     negotiated_caps = server_caps & (required_caps | optional_capabilities |
-                                     conditional_capability(ssl == ssl_mode::enable, CLIENT_SSL));
+                                     conditional_capability(ssl == ssl_mode::enable, capabilities::ssl));
     return error_code();
 }
 
@@ -89,7 +112,10 @@ class handshake_algo
     }
 
     // Once the handshake is processed, the capabilities are stored in the connection state
-    bool use_ssl(const connection_state_data& st) const { return st.current_capabilities.has(CLIENT_SSL); }
+    bool use_ssl(const connection_state_data& st) const
+    {
+        return has_capabilities(st.current_capabilities, capabilities::ssl);
+    }
 
     error_code process_handshake(
         connection_state_data& st,
@@ -104,7 +130,7 @@ class handshake_algo
             return err;
 
         // Check capabilities
-        capabilities negotiated_caps;
+        capabilities negotiated_caps{};
         err = process_capabilities(hparams_, hello, negotiated_caps, st.tls_supported);
         if (err)
             return err;

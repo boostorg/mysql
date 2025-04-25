@@ -59,7 +59,7 @@ struct connection_state_data
     db_flavor flavor{db_flavor::mysql};
 
     // What are the connection's capabilities?
-    capabilities current_capabilities;
+    capabilities current_capabilities{};
 
     // The current connection ID. Supplied by handshake, can be used in KILL statements
     std::uint32_t connection_id{};
@@ -110,7 +110,7 @@ struct connection_state_data
     {
         status = connection_status::not_connected;
         flavor = db_flavor::mysql;
-        current_capabilities = capabilities();
+        current_capabilities = capabilities{};
         // Metadata mode does not get reset on handshake
         reader.reset();
         // Writer does not need reset, since every write clears previous state
