@@ -1247,7 +1247,7 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_impl_success)
 
     constexpr auto caps = capabilities::long_password | capabilities::found_rows | capabilities::long_flag |
                           capabilities::connect_with_db | capabilities::no_schema | capabilities::compress |
-                          capabilities::odbc | capabilities::local_files | capabilities::ignore_sigpipe |
+                          capabilities::odbc | capabilities::local_files | capabilities::ignore_space |
                           capabilities::protocol_41 | capabilities::interactive |
                           capabilities::ignore_sigpipe | capabilities::transactions |
                           capabilities::reserved |           // old flag, but set in this frame
@@ -1460,7 +1460,7 @@ BOOST_AUTO_TEST_CASE(deserialize_server_hello_success)
 
     constexpr auto caps = capabilities::long_password | capabilities::found_rows | capabilities::long_flag |
                           capabilities::connect_with_db | capabilities::no_schema | capabilities::compress |
-                          capabilities::odbc | capabilities::local_files | capabilities::ignore_sigpipe |
+                          capabilities::odbc | capabilities::local_files | capabilities::ignore_space |
                           capabilities::protocol_41 | capabilities::interactive |
                           capabilities::ignore_sigpipe | capabilities::transactions |
                           capabilities::reserved |           // old flag, but set in this frame

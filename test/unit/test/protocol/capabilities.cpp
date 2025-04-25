@@ -44,8 +44,7 @@ BOOST_AUTO_TEST_CASE(operator_and)
 
     // Multiple flags
     BOOST_TEST(
-        (static_cast<capabilities>(9) & static_cast<capabilities>(66)) ==
-        (capabilities::long_password | capabilities::found_rows)
+        (static_cast<capabilities>(11) & static_cast<capabilities>(67)) == static_cast<capabilities>(3)
     );
 
     // Big values
@@ -85,9 +84,9 @@ BOOST_AUTO_TEST_CASE(has_capabilities_)
         !has_capabilities(capabilities::connect_with_db | capabilities::compress, capabilities::long_flag)
     );
 
-    // Searching for the empty set always returns false
-    BOOST_TEST(!has_capabilities(capabilities::connect_with_db | capabilities::compress, capabilities{}));
-    BOOST_TEST(!has_capabilities(static_cast<capabilities>(0xffffffff), capabilities{}));
+    // Searching for the empty set always returns true
+    BOOST_TEST(has_capabilities(capabilities::connect_with_db | capabilities::compress, capabilities{}));
+    BOOST_TEST(has_capabilities(static_cast<capabilities>(0xffffffff), capabilities{}));
 }
 
 BOOST_AUTO_TEST_SUITE_END()  // test_capabilities
