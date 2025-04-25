@@ -109,7 +109,7 @@ class handshake_algo
             return err;
 
         // Check capabilities
-        capabilities negotiated_caps;
+        capabilities negotiated_caps{};
         err = process_capabilities(hparams_, hello, negotiated_caps, st.tls_supported);
         if (err)
             return err;
