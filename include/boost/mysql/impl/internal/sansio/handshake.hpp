@@ -371,23 +371,25 @@ public:
                     );
 
                     // Do what the plugin says
-                    if (act.type() == next_action_type::none)
-                    {
-                        // An error
-                        BOOST_ASSERT(act.error());
-                        return act;
-                    }
-                    else if (act.type() == next_action_type::read)
+                    if (act.type() == next_action_type::read)
                     {
                         // The plugin wants more data. The server should be sending us a more_data packet (or
                         // an error or OK)
                         continue;
                     }
-                    else
+                    else if (act.type() == next_action_type::write)
                     {
                         // The plugin wants us to first write the message in the write buffer, then read
                         BOOST_ASSERT(act.type() == next_action_type::write);
                         BOOST_MYSQL_YIELD(resume_point_, 8, act)
+                    }
+                    else
+                    {
+                        // An error. Plugins shouldn't use any of the other actions.
+                        // Defining a custom action type is not worth it, though.
+                        BOOST_ASSERT(act.type() == next_action_type::none);
+                        BOOST_ASSERT(act.error());
+                        return act;
                     }
                 }
             }

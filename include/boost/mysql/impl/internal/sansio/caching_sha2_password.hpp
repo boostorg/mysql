@@ -107,11 +107,6 @@ public:
         return res;
     }
 
-    // Can be:
-    //   write the packet in the write buffer
-    //   read a packet and call me again
-    //   an error
-    // TODO: this should use a type != to next_action
     next_action resume(
         connection_state_data& st,
         span<const std::uint8_t> server_data,
