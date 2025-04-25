@@ -13,6 +13,8 @@
 
 #include <boost/mysql/detail/next_action.hpp>
 
+#include <boost/mysql/impl/internal/sansio/auth_plugin.hpp>
+
 #include <boost/core/span.hpp>
 
 #include <array>
@@ -28,9 +30,10 @@ BOOST_INLINE_CONSTEXPR std::size_t mnp_challenge_length = 20;
 BOOST_INLINE_CONSTEXPR std::size_t mnp_response_length = 20;
 
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
-inline std::array<std::uint8_t, mnp_response_length> mnp_compute_auth_string(
+inline void mnp_compute_auth_string(
     string_view password,
-    boost::span<const std::uint8_t, mnp_challenge_length> challenge
+    span<const std::uint8_t, mnp_challenge_length> challenge,
+    span<std::uint8_t, mnp_response_length> output
 )
 {
     static_assert(mnp_response_length == SHA_DIGEST_LENGTH, "Buffer size mismatch");
@@ -47,25 +50,19 @@ inline std::array<std::uint8_t, mnp_response_length> mnp_compute_auth_string(
     SHA1(salted_buffer.data(), salted_buffer.size(), salted_sha1.data());
 
     // XOR
-    std::array<std::uint8_t, mnp_response_length> output;
     for (std::size_t i = 0; i < SHA_DIGEST_LENGTH; ++i)
     {
         output[i] = password_sha1[i] ^ salted_sha1[i];
     }
-    return output;
 }
 
 class mysql_native_password_algo
 {
-    std::array<std::uint8_t, mnp_response_length> hashed_password_{};
-
 public:
     mysql_native_password_algo() = default;
 
-    system::result<span<const std::uint8_t>> hash_password(
-        string_view password,
-        span<const std::uint8_t> challenge
-    )
+    system::result<hashed_password> hash_password(string_view password, span<const std::uint8_t> challenge)
+        const
     {
         // If the challenge doesn't match the expected size,
         // something wrong is going on and we should fail
@@ -74,14 +71,17 @@ public:
 
         // Empty passwords are not hashed
         if (password.empty())
-            return span<const std::uint8_t>();
+            return hashed_password();
 
         // Run the algorithm
-        hashed_password_ = mnp_compute_auth_string(
+        hashed_password res;
+        res.resize(mnp_response_length);
+        mnp_compute_auth_string(
             password,
-            span<const std::uint8_t, mnp_challenge_length>(challenge)
+            span<const std::uint8_t, mnp_challenge_length>(challenge),
+            span<std::uint8_t, mnp_response_length>(res.data(), mnp_response_length)
         );
-        return hashed_password_;
+        return res;
     }
 };
 

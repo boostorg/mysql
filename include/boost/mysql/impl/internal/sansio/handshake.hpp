@@ -25,6 +25,7 @@
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/sansio/auth_plugin.hpp>
 #include <boost/mysql/impl/internal/sansio/caching_sha2_password.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/mysql_native_password.hpp>
@@ -115,7 +116,7 @@ public:
     any_authentication_plugin() = default;
 
     // Emplaces the plugin and computes the first authentication response by hashing the password
-    system::result<span<const std::uint8_t>> bootstrap_plugin(
+    system::result<hashed_password> bootstrap_plugin(
         string_view plugin_name,
         string_view password,
         span<const std::uint8_t> challenge
@@ -179,7 +180,7 @@ class handshake_algo
     int resume_point_{0};
     handshake_params hparams_;
     any_authentication_plugin plugin_;
-    span<const std::uint8_t> hashed_password_;  // TODO: get rid of this
+    hashed_password hashed_password_;
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
     bool has_auth_switched_{false};
@@ -258,7 +259,7 @@ class handshake_algo
             static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
             hparams_.username(),
-            hashed_password_,
+            hashed_password_.to_span(),
             hparams_.database(),
             plugin_.name(),
         };
@@ -278,7 +279,7 @@ class handshake_algo
             return hashed_password.error();
 
         // Serialize the response
-        return st.write(auth_switch_response{*hashed_password}, sequence_number_);
+        return st.write(auth_switch_response{hashed_password->to_span()}, sequence_number_);
     }
 
     void on_success(connection_state_data& st, const ok_view& ok)

@@ -17,6 +17,7 @@
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
+#include <boost/mysql/impl/internal/sansio/auth_plugin.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/core/span.hpp>
@@ -37,9 +38,10 @@ namespace detail {
 BOOST_INLINE_CONSTEXPR std::size_t csha2p_challenge_length = 20;
 BOOST_INLINE_CONSTEXPR std::size_t csha2p_response_length = 32;
 
-inline std::array<std::uint8_t, csha2p_response_length> csha2p_compute_auth_string(
+inline void csha2p_compute_auth_string(
     string_view password,
-    boost::span<const std::uint8_t, csha2p_challenge_length> challenge
+    span<const std::uint8_t, csha2p_challenge_length> challenge,
+    span<std::uint8_t, csha2p_response_length> output
 )
 {
     static_assert(csha2p_response_length == SHA256_DIGEST_LENGTH, "Buffer size mismatch");
@@ -59,26 +61,22 @@ inline std::array<std::uint8_t, csha2p_response_length> csha2p_compute_auth_stri
     SHA256(buffer.data(), buffer.size(), salted_password.data());
 
     // salted_password XOR password_sha
-    std::array<std::uint8_t, csha2p_response_length> res;
     for (unsigned i = 0; i < csha2p_response_length; ++i)
     {
-        res[i] = salted_password[i] ^ password_sha[i];
+        output[i] = salted_password[i] ^ password_sha[i];
     }
-
-    return res;
 }
 
 class caching_sha2_password_algo
 {
     int resume_point_{0};
-    std::array<std::uint8_t, csha2p_response_length> hashed_password_{};
 
-    static bool is_perform_full_auth(boost::span<const std::uint8_t> server_data)
+    static bool is_perform_full_auth(span<const std::uint8_t> server_data)
     {
         return server_data.size() == 1u && server_data[0] == 4;
     }
 
-    static bool is_fast_auth_ok(boost::span<const std::uint8_t> server_data)
+    static bool is_fast_auth_ok(span<const std::uint8_t> server_data)
     {
         return server_data.size() == 1u && server_data[0] == 3;
     }
@@ -86,10 +84,8 @@ class caching_sha2_password_algo
 public:
     caching_sha2_password_algo() = default;
 
-    system::result<span<const std::uint8_t>> hash_password(
-        string_view password,
-        span<const std::uint8_t> challenge
-    )
+    system::result<hashed_password> hash_password(string_view password, span<const std::uint8_t> challenge)
+        const
     {
         // If the challenge doesn't match the expected size,
         // something wrong is going on and we should fail
@@ -98,14 +94,17 @@ public:
 
         // Empty passwords are not hashed
         if (password.empty())
-            return span<const std::uint8_t>();
+            return hashed_password();
 
         // Run the algorithm
-        hashed_password_ = csha2p_compute_auth_string(
+        hashed_password res;
+        res.resize(csha2p_response_length);
+        csha2p_compute_auth_string(
             password,
-            span<const std::uint8_t, csha2p_challenge_length>(challenge)
+            span<const std::uint8_t, csha2p_challenge_length>(challenge),
+            span<std::uint8_t, csha2p_response_length>(res.data(), csha2p_response_length)
         );
-        return hashed_password_;
+        return res;
     }
 
     // Can be:
@@ -115,7 +114,7 @@ public:
     // TODO: this should use a type != to next_action
     next_action resume(
         connection_state_data& st,
-        boost::span<const std::uint8_t> server_data,
+        span<const std::uint8_t> server_data,
         string_view password,
         bool secure_channel,
         std::uint8_t& seqnum

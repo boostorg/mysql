@@ -20,23 +20,33 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-template <std::size_t max_size>
+template <std::size_t N>
 class static_buffer
 {
-    std::array<std::uint8_t, max_size> buffer_{};
+    std::array<std::uint8_t, N> buffer_{};
     std::size_t size_{};
 
 public:
-    static_buffer() noexcept = default;
-    span<const std::uint8_t> to_span() const noexcept { return {buffer_.data(), size_}; }
-    void append(const void* data, std::size_t data_size) noexcept
+    static constexpr std::size_t max_size = N;
+
+    static_buffer() = default;
+    span<const std::uint8_t> to_span() const { return {buffer_.data(), size_}; }
+    const std::uint8_t* data() const { return buffer_.data(); }
+    std::uint8_t* data() { return buffer_.data(); }
+    void resize(std::size_t sz)
+    {
+        // TODO: test
+        BOOST_ASSERT(sz <= N);
+        size_ = sz;
+    }
+    void append(const void* data, std::size_t data_size)
     {
         std::size_t new_size = size_ + data_size;
-        BOOST_ASSERT(new_size <= max_size);
+        BOOST_ASSERT(new_size <= N);
         std::memcpy(buffer_.data() + size_, data, data_size);
         size_ = new_size;
     }
-    void clear() noexcept { size_ = 0; }
+    void clear() { size_ = 0; }
 };
 
 }  // namespace detail
