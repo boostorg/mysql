@@ -8,8 +8,6 @@
 #ifndef BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_CAPABILITIES_HPP
 #define BOOST_MYSQL_IMPL_INTERNAL_PROTOCOL_CAPABILITIES_HPP
 
-#include <boost/config.hpp>
-
 #include <cstdint>
 
 namespace boost {
@@ -118,59 +116,6 @@ constexpr capabilities operator|(capabilities lhs, capabilities rhs)
 
 // Are all capabilities in subset in caps?
 constexpr bool has_capabilities(capabilities caps, capabilities subset) { return (caps & subset) == subset; }
-
-/*
- * CLIENT_LONG_PASSWORD: unset //  Use the improved version of Old Password Authentication
- * CLIENT_FOUND_ROWS: unset //  Send found rows instead of affected rows in EOF_Packet
- * CLIENT_LONG_FLAG: unset //  Get all column flags
- * CLIENT_CONNECT_WITH_DB: optional //  Database (schema) name can be specified on connect in
- * Handshake Response Packet CLIENT_NO_SCHEMA: unset //  Don't allow database.table.column
- * CLIENT_COMPRESS: unset //  Compression protocol supported
- * CLIENT_ODBC: unset //  Special handling of ODBC behavior
- * CLIENT_LOCAL_FILES: unset //  Can use LOAD DATA LOCAL
- * CLIENT_IGNORE_SPACE: unset //  Ignore spaces before '('
- * CLIENT_PROTOCOL_41: mandatory //  New 4.1 protocol
- * CLIENT_INTERACTIVE: unset //  This is an interactive client
- * CLIENT_SSL: unset //  Use SSL encryption for the session
- * CLIENT_IGNORE_SIGPIPE: unset //  Client only flag
- * CLIENT_TRANSACTIONS: unset //  Client knows about transactions
- * CLIENT_RESERVED: unset //  DEPRECATED: Old flag for 4.1 protocol
- * CLIENT_RESERVED2: unset //  DEPRECATED: Old flag for 4.1 authentication
- * \ CLIENT_SECURE_CONNECTION CLIENT_MULTI_STATEMENTS: unset //  Enable/disable multi-stmt support
- * CLIENT_MULTI_RESULTS: unset //  Enable/disable multi-results
- * CLIENT_PS_MULTI_RESULTS: unset //  Multi-results and OUT parameters in PS-protocol
- * CLIENT_PLUGIN_AUTH: mandatory //  Client supports plugin authentication
- * CLIENT_CONNECT_ATTRS: unset //  Client supports connection attributes
- * CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA: mandatory //  Enable authentication response packet to be
- * larger than 255 bytes CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS: unset //  Don't close the connection
- * for a user account with expired password CLIENT_SESSION_TRACK: unset //  Capable of handling
- * server state change information CLIENT_DEPRECATE_EOF: mandatory //  Client no longer needs
- * EOF_Packet and will use OK_Packet instead CLIENT_SSL_VERIFY_SERVER_CERT: unset //  Verify server
- * certificate CLIENT_OPTIONAL_RESULTSET_METADATA: unset //  The client can handle optional metadata
- * information in the resultset CLIENT_REMEMBER_OPTIONS: unset //  Don't reset the options after an
- * unsuccessful connect
- *
- * We pay attention to:
- * CLIENT_CONNECT_WITH_DB: optional //  Database (schema) name can be specified on connect in
- * Handshake Response Packet CLIENT_PROTOCOL_41: mandatory //  New 4.1 protocol CLIENT_PLUGIN_AUTH:
- * mandatory //  Client supports plugin authentication CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA:
- * mandatory //  Enable authentication response packet to be larger than 255 bytes
- * CLIENT_DEPRECATE_EOF: mandatory //  Client no longer needs EOF_Packet and will use OK_Packet
- * instead
- */
-
-// clang-format off
-BOOST_INLINE_CONSTEXPR capabilities mandatory_capabilities = 
-    capabilities::protocol_41 |
-    capabilities::plugin_auth |
-    capabilities::plugin_auth_lenenc_data |
-    capabilities::deprecate_eof |
-    capabilities::secure_connection
-;
-// clang-format on
-
-BOOST_INLINE_CONSTEXPR capabilities optional_capabilities = capabilities::multi_results |
-                                                            capabilities::ps_multi_results;
 
 }  // namespace detail
 }  // namespace mysql

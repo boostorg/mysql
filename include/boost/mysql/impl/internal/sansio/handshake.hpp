@@ -44,6 +44,27 @@ inline error_code process_capabilities(
     bool transport_supports_ssl
 )
 {
+    // The capabilities that we absolutely require. These are always set except in extremely old servers
+    constexpr capabilities mandatory_capabilities =
+        // We don't speak the older protocol
+        capabilities::protocol_41 |
+
+        // We only know how to deserialize the hello frame if this is set
+        capabilities::plugin_auth |
+
+        // Same as above
+        capabilities::plugin_auth_lenenc_data |
+
+        // This makes processing execute responses easier
+        capabilities::deprecate_eof |
+
+        // Used in MariaDB to signal 4.1 protocol. Always set in MySQL, too
+        capabilities::secure_connection;
+
+    // The capabilities that we support but don't require
+    constexpr capabilities optional_capabilities = capabilities::multi_results |
+                                                   capabilities::ps_multi_results;
+
     auto ssl = transport_supports_ssl ? params.ssl() : ssl_mode::disable;
     capabilities server_caps = hello.server_capabilities;
     capabilities
