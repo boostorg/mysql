@@ -206,7 +206,6 @@ struct handhake_server_response
     {
         ok,
         error,
-        ok_follows,
         auth_switch,
         auth_more_data
     } type;
@@ -221,14 +220,12 @@ struct handhake_server_response
 
         data_t(const ok_view& ok) noexcept : ok(ok) {}
         data_t(error_code err) noexcept : err(err) {}
-        data_t(ok_follows_t) noexcept : ok_follows({}) {}
         data_t(auth_switch msg) noexcept : auth_sw(msg) {}
         data_t(span<const std::uint8_t> more_data) noexcept : more_data(more_data) {}
     } data;
 
     handhake_server_response(const ok_view& ok) noexcept : type(type_t::ok), data(ok) {}
     handhake_server_response(error_code err) noexcept : type(type_t::error), data(err) {}
-    handhake_server_response(ok_follows_t) noexcept : type(type_t::ok_follows), data(ok_follows_t{}) {}
     handhake_server_response(auth_switch auth_switch) noexcept : type(type_t::auth_switch), data(auth_switch)
     {
     }
@@ -931,7 +928,6 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
 {
     constexpr std::uint8_t auth_switch_request_header = 0xfe;
     constexpr std::uint8_t auth_more_data_header = 0x01;
-    constexpr string_view fast_auth_complete_challenge = make_string_view("\3");
 
     deserialization_context ctx(buff);
     int1 msg_type{};
@@ -968,19 +964,7 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
         auto ec = auth_more_data.deserialize(ctx);
         BOOST_ASSERT(ec == deserialize_errc::ok);
         boost::ignore_unused(ec);
-
-        // If the special value fast_auth_complete_challenge
-        // is received as auth data, it means that the auth is complete
-        // but we must wait for another OK message. We consider this
-        // a special type of message
-        string_view challenge = auth_more_data.value;
-        if (challenge == fast_auth_complete_challenge)
-        {
-            return handhake_server_response::ok_follows_t();
-        }
-
-        // Otherwise, just return the normal data
-        return handhake_server_response(to_span(challenge));
+        return handhake_server_response(to_span(auth_more_data.value));
     }
     else
     {
