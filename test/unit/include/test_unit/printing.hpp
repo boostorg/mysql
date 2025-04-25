@@ -8,6 +8,7 @@
 #ifndef BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_PRINTING_HPP
 #define BOOST_MYSQL_TEST_UNIT_INCLUDE_TEST_UNIT_PRINTING_HPP
 
+#include <cstdint>
 #include <iosfwd>
 
 namespace boost {
@@ -20,8 +21,8 @@ std::ostream& operator<<(std::ostream& os, address_type value);
 namespace detail {
 
 // capabilities
-class capabilities;
-std::ostream& operator<<(std::ostream& os, const capabilities& caps);
+enum class capabilities : std::uint32_t;
+std::ostream& operator<<(std::ostream& os, capabilities caps);
 
 // db_flavor
 enum class db_flavor;

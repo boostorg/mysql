@@ -758,7 +758,7 @@ inline capabilities compose_capabilities(string_fixed<2> low, string_fixed<2> hi
     auto capabilities_begin = reinterpret_cast<std::uint8_t*>(&res);
     memcpy(capabilities_begin, low.value.data(), 2);
     memcpy(capabilities_begin + 2, high.value.data(), 2);
-    return capabilities(boost::endian::little_to_native(res));
+    return static_cast<capabilities>(boost::endian::little_to_native(res));
 }
 
 inline db_flavor parse_db_version(string_view version_string)
@@ -811,7 +811,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
     auto cap = compose_capabilities(pack.capability_flags_low, pack.capability_flags_high);
 
     // Check minimum server capabilities to deserialize this frame
-    if (!cap.has(CLIENT_PLUGIN_AUTH))
+    if (!has_capabilities(cap, capabilities::plugin_auth))
         return client_errc::server_unsupported;
 
     // Deserialize next fields

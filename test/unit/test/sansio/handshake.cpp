@@ -58,12 +58,11 @@ namespace {
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
 // Capabilities
-constexpr capabilities min_caps{
-    detail::CLIENT_PLUGIN_AUTH | detail::CLIENT_PROTOCOL_41 | detail::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA |
-    detail::CLIENT_DEPRECATE_EOF | detail::CLIENT_SECURE_CONNECTION
-};
+constexpr auto min_caps = capabilities::plugin_auth | capabilities::protocol_41 |
+                          capabilities::plugin_auth_lenenc_data | capabilities::deprecate_eof |
+                          capabilities::secure_connection;
 
-constexpr capabilities tls_caps{min_caps.get() | detail::CLIENT_SSL};
+constexpr auto tls_caps = min_caps | capabilities::ssl;
 
 // Helpers to create the relevant packets
 class server_hello_builder
@@ -119,7 +118,9 @@ public:
                 // Capabilities is also divided in 2 parts
                 string_fixed<2> caps_low{};
                 string_fixed<2> caps_high{};
-                std::uint32_t caps_little = boost::endian::native_to_little(server_caps_.get());
+                std::uint32_t caps_little = boost::endian::native_to_little(
+                    static_cast<std::uint32_t>(server_caps_)
+                );
                 auto* caps_begin = reinterpret_cast<const char*>(&caps_little);
                 std::copy(caps_begin, caps_begin + 2, caps_low.value.data());
                 std::copy(caps_begin + 2, caps_begin + 4, caps_high.value.data());
@@ -783,7 +784,7 @@ BOOST_AUTO_TEST_CASE(csha2p_securetransport_fullauth_ok)
 // capabilities: connect with db
 //
 
-constexpr capabilities db_caps = min_caps | capabilities(detail::CLIENT_CONNECT_WITH_DB);
+constexpr auto db_caps = min_caps | capabilities::connect_with_db;
 
 BOOST_AUTO_TEST_CASE(db_nonempty_supported)
 {
@@ -853,7 +854,7 @@ BOOST_AUTO_TEST_CASE(db_empty_unsupported)
 // capabilities: multi_queries
 //
 
-constexpr capabilities multiq_caps = min_caps | capabilities(detail::CLIENT_MULTI_STATEMENTS);
+constexpr auto multiq_caps = min_caps | capabilities::multi_statements;
 
 // We request it and the server supports it
 BOOST_AUTO_TEST_CASE(multiq_true_supported)
@@ -1061,7 +1062,6 @@ BOOST_AUTO_TEST_CASE(tls_error_unsupported)
 //
 // Base capabilities
 //
-// TODO: having the capabilities in all uppercase likely conflicts with official headers
 
 // If the server doesn't have these, we can't talk to it
 BOOST_AUTO_TEST_CASE(caps_mandatory)
@@ -1071,15 +1071,23 @@ BOOST_AUTO_TEST_CASE(caps_mandatory)
         const char* name;
         capabilities caps;
     } test_cases[] = {
-        {"no_protocol_41",             capabilities(min_caps.get() & ~detail::CLIENT_PROTOCOL_41)      },
-        {"no_plugin_auth",             capabilities(min_caps.get() & ~detail::CLIENT_PLUGIN_AUTH)      },
+        {"no_plugin_auth",
+         capabilities::protocol_41 | capabilities::plugin_auth_lenenc_data | capabilities::deprecate_eof |
+             capabilities::secure_connection                                                            },
+        {"no_protocol_41",
+         capabilities::plugin_auth | capabilities::plugin_auth_lenenc_data | capabilities::deprecate_eof |
+             capabilities::secure_connection                                                            },
         {"no_plugin_auth_lenenc_data",
-         capabilities(min_caps.get() & ~detail::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA)                 },
-        {"no_deprecate_eof",           capabilities(min_caps.get() & ~detail::CLIENT_DEPRECATE_EOF)    },
-        {"no_secure_connection",       capabilities(min_caps.get() & ~detail::CLIENT_SECURE_CONNECTION)},
-        {"several_missing",
-         capabilities(detail::CLIENT_PLUGIN_AUTH | detail::CLIENT_PLUGIN_AUTH_LENENC_CLIENT_DATA)      },
-        {"none",                       capabilities()                                                  },
+         capabilities::plugin_auth | capabilities::protocol_41 | capabilities::deprecate_eof |
+             capabilities::secure_connection                                                            },
+        {"no_deprecate_eof",
+         capabilities::plugin_auth | capabilities::protocol_41 | capabilities::plugin_auth_lenenc_data |
+             capabilities::secure_connection                                                            },
+        {"no_secure_connection",
+         capabilities::plugin_auth | capabilities::protocol_41 | capabilities::plugin_auth_lenenc_data |
+             capabilities::deprecate_eof                                                                },
+        {"several_missing",            capabilities::plugin_auth | capabilities::plugin_auth_lenenc_data},
+        {"none",                       capabilities{}                                                   },
     };
 
     for (const auto& tc : test_cases)
@@ -1105,8 +1113,8 @@ BOOST_AUTO_TEST_CASE(caps_optional)
         const char* name;
         capabilities caps;
     } test_cases[] = {
-        {"multi_results",    capabilities(detail::CLIENT_MULTI_RESULTS)   },
-        {"ps_multi_results", capabilities(detail::CLIENT_PS_MULTI_RESULTS)},
+        {"multi_results",    capabilities::multi_results   },
+        {"ps_multi_results", capabilities::ps_multi_results},
     };
 
     for (const auto& tc : test_cases)
@@ -1142,24 +1150,24 @@ BOOST_AUTO_TEST_CASE(caps_ignored)
         const char* name;
         capabilities caps;
     } test_cases[] = {
-        {"long_password",                capabilities(detail::CLIENT_LONG_PASSWORD)               },
-        {"found_rows",                   capabilities(detail::CLIENT_FOUND_ROWS)                  },
-        {"long_flag",                    capabilities(detail::CLIENT_LONG_FLAG)                   },
-        {"no_schema",                    capabilities(detail::CLIENT_NO_SCHEMA)                   },
-        {"compress",                     capabilities(detail::CLIENT_COMPRESS)                    },
-        {"odbc",                         capabilities(detail::CLIENT_ODBC)                        },
-        {"local_files",                  capabilities(detail::CLIENT_LOCAL_FILES)                 },
-        {"ignore_space",                 capabilities(detail::CLIENT_IGNORE_SPACE)                },
-        {"interactive",                  capabilities(detail::CLIENT_INTERACTIVE)                 },
-        {"ignore_sigpipe",               capabilities(detail::CLIENT_IGNORE_SIGPIPE)              },
-        {"transactions",                 capabilities(detail::CLIENT_TRANSACTIONS)                },
-        {"reserved",                     capabilities(detail::CLIENT_RESERVED)                    },
-        {"connect_attrs",                capabilities(detail::CLIENT_CONNECT_ATTRS)               },
-        {"can_handle_expired_passwords", capabilities(detail::CLIENT_CAN_HANDLE_EXPIRED_PASSWORDS)},
-        {"session_track",                capabilities(detail::CLIENT_SESSION_TRACK)               },
-        {"ssl_verify_server_cert",       capabilities(detail::CLIENT_SSL_VERIFY_SERVER_CERT)      },
-        {"optional_resultset_metadata",  capabilities(detail::CLIENT_OPTIONAL_RESULTSET_METADATA) },
-        {"remember_options",             capabilities(detail::CLIENT_REMEMBER_OPTIONS)            },
+        {"long_password",                capabilities::long_password               },
+        {"found_rows",                   capabilities::found_rows                  },
+        {"long_flag",                    capabilities::long_flag                   },
+        {"no_schema",                    capabilities::no_schema                   },
+        {"compress",                     capabilities::compress                    },
+        {"odbc",                         capabilities::odbc                        },
+        {"local_files",                  capabilities::local_files                 },
+        {"ignore_space",                 capabilities::ignore_space                },
+        {"interactive",                  capabilities::interactive                 },
+        {"ignore_sigpipe",               capabilities::ignore_sigpipe              },
+        {"transactions",                 capabilities::transactions                },
+        {"reserved",                     capabilities::reserved                    },
+        {"connect_attrs",                capabilities::connect_attrs               },
+        {"can_handle_expired_passwords", capabilities::can_handle_expired_passwords},
+        {"session_track",                capabilities::session_track               },
+        {"ssl_verify_server_cert",       capabilities::ssl_verify_server_cert      },
+        {"optional_resultset_metadata",  capabilities::optional_resultset_metadata },
+        {"remember_options",             capabilities::remember_options            },
     };
 
     for (const auto& tc : test_cases)
