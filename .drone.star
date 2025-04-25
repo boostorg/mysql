@@ -304,7 +304,7 @@ def main(ctx):
         find_package_b2_windows('Windows find_package b2 distribution'),
 
         # B2 Linux
-        linux_b2('Linux B2 clang-3.6',            _image('build-clang3_6'),      toolset='clang-3.6', cxxstd='11,14'),
+        # linux_b2('Linux B2 clang-3.6',            _image('build-clang3_6'),      toolset='clang-3.6', cxxstd='11,14'),
         linux_b2('Linux B2 clang-7',              _image('build-clang7'),        toolset='clang-7',   cxxstd='14,17'),
         linux_b2('Linux B2 clang-11',             _image('build-clang11'),       toolset='clang-11',  cxxstd='20'),
         linux_b2('Linux B2 clang-14-header-only', _image('build-clang14'),       toolset='clang-14',  cxxstd='11,20', separate_compilation=0),

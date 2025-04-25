@@ -161,6 +161,27 @@ public:
     }
 
     BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_capabilities(detail::capabilities expected)
+    {
+        state_changes_.current_capabilities = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_connection_id(std::uint32_t expected)
+    {
+        state_changes_.connection_id = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& will_set_flavor(detail::db_flavor expected)
+    {
+        state_changes_.flavor = expected;
+        return *this;
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
     algo_test& will_set_tls_active(bool expected)
     {
         state_changes_.tls_active = expected;

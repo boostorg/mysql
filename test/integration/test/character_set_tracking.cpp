@@ -83,6 +83,42 @@ BOOST_FIXTURE_TEST_CASE(charset_lifecycle, any_connection_fixture)
     validate_db_charset(conn, "greek");
 }
 
+// For some collations, we set the tracked character set after handshake.
+// Check that all the collations that we know are supported by all the servers
+// that we support. If the collation is not supported, the server falls back to
+// a default charset, so we shouldn't be setting the value of the tracked character set.
+BOOST_FIXTURE_TEST_CASE(connect_with_known_collation, io_context_fixture)
+{
+    constexpr struct
+    {
+        const char* name;
+        std::uint16_t collation_id;
+        character_set charset;
+    } test_cases[] = {
+        {"utf8mb4_bin",        mysql_collations::utf8mb4_bin,        utf8mb4_charset},
+        {"utf8mb4_general_ci", mysql_collations::utf8mb4_general_ci, utf8mb4_charset},
+        {"ascii_general_ci",   mysql_collations::ascii_general_ci,   ascii_charset  },
+        {"ascii_bin",          mysql_collations::ascii_bin,          ascii_charset  },
+    };
+
+    for (const auto& tc : test_cases)
+    {
+        BOOST_TEST_CONTEXT(tc.name)
+        {
+            // Setup
+            any_connection conn(ctx);
+
+            // Connect
+            conn.async_connect(connect_params_builder().collation(tc.collation_id).build(), as_netresult)
+                .validate_no_error();
+
+            // Check that the tracked character set and the one chosen by the DB match
+            BOOST_TEST(conn.current_character_set().value() == tc.charset);
+            validate_db_charset(conn, tc.charset.name);
+        }
+    }
+}
+
 BOOST_FIXTURE_TEST_CASE(connect_with_unknown_collation, any_connection_fixture)
 {
     // Connect with a collation that some servers may not support, or that we don't know of

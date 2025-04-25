@@ -31,6 +31,7 @@ add_executable(
     test/sansio/message_reader.cpp
     test/sansio/top_level_algo.cpp
 
+    test/sansio/handshake.cpp
     test/sansio/read_resultset_head.cpp
     test/sansio/start_execution.cpp
     test/sansio/read_some_rows.cpp
