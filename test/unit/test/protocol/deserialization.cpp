@@ -57,7 +57,7 @@ using boost::mysql::string_view;
 
 BOOST_TEST_DONT_PRINT_LOG_VALUE(execute_response::type_t)
 BOOST_TEST_DONT_PRINT_LOG_VALUE(row_message::type_t)
-BOOST_TEST_DONT_PRINT_LOG_VALUE(handhake_server_response::type_t)
+BOOST_TEST_DONT_PRINT_LOG_VALUE(handshake_server_response::type_t)
 
 BOOST_AUTO_TEST_SUITE(test_deserialization)
 
@@ -1583,7 +1583,7 @@ BOOST_AUTO_TEST_CASE(deserialize_handshake_server_response_more_data)
     auto response = deserialize_handshake_server_response(serialized, db_flavor::mysql, diag);
 
     // Actual value
-    BOOST_TEST_REQUIRE(response.type == handhake_server_response::type_t::auth_more_data);
+    BOOST_TEST_REQUIRE(response.type == handshake_server_response::type_t::auth_more_data);
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(response.data.more_data, auth_data);
 }
 // TODO: ok packet

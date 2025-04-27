@@ -292,7 +292,7 @@ public:
         if (ec)
             return ec;
 
-        handhake_server_response resp(error_code{});
+        handshake_server_response resp(error_code{});
         next_action act;
 
         switch (resume_point_)
@@ -333,7 +333,7 @@ public:
             resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, diag);
 
             // Auth switches are only legal at this point. Handle the case here
-            if (resp.type == handhake_server_response::type_t::auth_switch)
+            if (resp.type == handshake_server_response::type_t::auth_switch)
             {
                 // Write our packet
                 BOOST_MYSQL_YIELD(resume_point_, 6, process_auth_switch(st, resp.data.auth_sw))
@@ -347,7 +347,7 @@ public:
 
             // Now we will send/receive raw data packets from the server until an OK or error happens.
             // Packets requiring responses are auth_more_data packets
-            while (resp.type == handhake_server_response::type_t::auth_more_data)
+            while (resp.type == handshake_server_response::type_t::auth_more_data)
             {
                 // Invoke the authentication plugin algorithm
                 act = plugin_.resume(
@@ -383,13 +383,13 @@ public:
             }
 
             // If we got here, we've received a packet that terminates the algorithm
-            if (resp.type == handhake_server_response::type_t::ok)
+            if (resp.type == handshake_server_response::type_t::ok)
             {
                 // Auth success, quit
                 on_success(st, resp.data.ok);
                 return next_action();
             }
-            else if (resp.type == handhake_server_response::type_t::error)
+            else if (resp.type == handshake_server_response::type_t::error)
             {
                 // Error, quit
                 return resp.data.err;
@@ -397,7 +397,7 @@ public:
             else
             {
                 // Auth switches are no longer allowed at this point
-                BOOST_ASSERT(resp.type == handhake_server_response::type_t::auth_switch);
+                BOOST_ASSERT(resp.type == handshake_server_response::type_t::auth_switch);
                 return error_code(client_errc::protocol_value_error);
             }
         }

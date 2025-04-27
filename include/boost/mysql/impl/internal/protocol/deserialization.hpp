@@ -196,12 +196,8 @@ BOOST_ATTRIBUTE_NODISCARD inline error_code deserialize_auth_switch(
 );  // exposed for testing
 
 // Handshake server response
-struct handhake_server_response
+struct handshake_server_response
 {
-    struct ok_follows_t
-    {
-    };
-
     enum class type_t
     {
         ok,
@@ -214,7 +210,6 @@ struct handhake_server_response
     {
         ok_view ok;
         error_code err;
-        ok_follows_t ok_follows;
         auth_switch auth_sw;
         span<const std::uint8_t> more_data;
 
@@ -224,17 +219,17 @@ struct handhake_server_response
         data_t(span<const std::uint8_t> more_data) noexcept : more_data(more_data) {}
     } data;
 
-    handhake_server_response(const ok_view& ok) noexcept : type(type_t::ok), data(ok) {}
-    handhake_server_response(error_code err) noexcept : type(type_t::error), data(err) {}
-    handhake_server_response(auth_switch auth_switch) noexcept : type(type_t::auth_switch), data(auth_switch)
+    handshake_server_response(const ok_view& ok) noexcept : type(type_t::ok), data(ok) {}
+    handshake_server_response(error_code err) noexcept : type(type_t::error), data(err) {}
+    handshake_server_response(auth_switch auth_switch) noexcept : type(type_t::auth_switch), data(auth_switch)
     {
     }
-    handhake_server_response(span<const std::uint8_t> more_data) noexcept
+    handshake_server_response(span<const std::uint8_t> more_data) noexcept
         : type(type_t::auth_more_data), data(more_data)
     {
     }
 };
-inline handhake_server_response deserialize_handshake_server_response(
+inline handshake_server_response deserialize_handshake_server_response(
     span<const std::uint8_t> buff,
     db_flavor flavor,
     diagnostics& diag
@@ -920,7 +915,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_auth_switch(
     return ctx.check_extra_bytes();
 }
 
-boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize_handshake_server_response(
+boost::mysql::detail::handshake_server_response boost::mysql::detail::deserialize_handshake_server_response(
     span<const std::uint8_t> buff,
     db_flavor flavor,
     diagnostics& diag
@@ -964,7 +959,7 @@ boost::mysql::detail::handhake_server_response boost::mysql::detail::deserialize
         auto ec = auth_more_data.deserialize(ctx);
         BOOST_ASSERT(ec == deserialize_errc::ok);
         boost::ignore_unused(ec);
-        return handhake_server_response(to_span(auth_more_data.value));
+        return handshake_server_response(to_span(auth_more_data.value));
     }
     else
     {
