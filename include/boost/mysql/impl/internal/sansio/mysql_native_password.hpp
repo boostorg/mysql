@@ -22,6 +22,9 @@
 #include <cstdint>
 #include <openssl/sha.h>
 
+// Reference:
+// https://dev.mysql.com/doc/dev/mysql-server/8.4.4/page_protocol_connection_phase_authentication_methods_native_password_authentication.html
+
 namespace boost {
 namespace mysql {
 namespace detail {
