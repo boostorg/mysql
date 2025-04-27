@@ -109,6 +109,27 @@ BOOST_AUTO_TEST_CASE(fullauth)
         .check(fix, client_errc::auth_plugin_requires_ssl);
 }
 
+// Receiving an unknown more data frame (something != fullauth or fastok) is illegal
+BOOST_AUTO_TEST_CASE(moredata)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, std::vector<std::uint8_t>{10, 20, 30}))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
+
 // Usual success path when using the fast track
 BOOST_AUTO_TEST_CASE(fastok_ok)
 {
@@ -249,8 +270,6 @@ BOOST_AUTO_TEST_CASE(fastok_authswitch)
         .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
-
-// TODO: unknown more data frame
 
 // Usual flow when requesting full auth
 BOOST_AUTO_TEST_CASE(tls_fullauth_ok)
