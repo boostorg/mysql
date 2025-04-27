@@ -816,7 +816,7 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
         static_cast<std::size_t>(13u),
         static_cast<std::size_t>(pack.auth_plugin_data_len.value - pack.auth_plugin_data_part_1.value.size())
     ));
-    const void* auth2_data = ctx.first();
+    const std::uint8_t* auth2_data = ctx.first();
     if (!ctx.enough_size(auth2_length))
         return client_errc::incomplete_message;
     ctx.advance(auth2_length);
@@ -834,12 +834,13 @@ boost::mysql::error_code boost::mysql::detail::deserialize_server_hello_impl(
 
     // Compose auth_plugin_data
     output.auth_plugin_data.clear();
-    output.auth_plugin_data.append(
-        pack.auth_plugin_data_part_1.value.data(),
+    output.auth_plugin_data.append(span<const std::uint8_t>(
+        reinterpret_cast<const std::uint8_t*>(pack.auth_plugin_data_part_1.value.data()),
         pack.auth_plugin_data_part_1.value.size()
-    );
-    output.auth_plugin_data.append(auth2_data,
-                                   auth2_length - 1);  // discard an extra trailing NULL byte
+    ));
+
+    // discard an extra trailing NULL byte
+    output.auth_plugin_data.append(span<const std::uint8_t>(auth2_data, auth2_length - 1));
 
     return ctx.check_extra_bytes();
 }

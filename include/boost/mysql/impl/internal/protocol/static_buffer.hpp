@@ -28,28 +28,28 @@ class static_buffer
     std::size_t size_{};
 
 public:
+    // Allow inspecting the supplied template argument
     static constexpr std::size_t max_size = N;
 
+    // Constructors
     static_buffer() = default;
     static_buffer(std::size_t sz) noexcept : size_(sz) { BOOST_ASSERT(sz <= size_); }
 
-    span<const std::uint8_t> to_span() const { return {buffer_.data(), size_}; }
-    const std::uint8_t* data() const { return buffer_.data(); }
-    std::uint8_t* data() { return buffer_.data(); }
-    void resize(std::size_t sz)
+    // Size and data
+    std::size_t size() const noexcept { return size_; }
+    const std::uint8_t* data() const noexcept { return buffer_.data(); }
+    std::uint8_t* data() noexcept { return buffer_.data(); }
+
+    // Modifiers
+    void append(span<const std::uint8_t> data) noexcept
     {
-        // TODO: test
-        BOOST_ASSERT(sz <= N);
-        size_ = sz;
-    }
-    void append(const void* data, std::size_t data_size)
-    {
-        std::size_t new_size = size_ + data_size;
+        std::size_t new_size = size_ + data.size();
         BOOST_ASSERT(new_size <= N);
-        std::memcpy(buffer_.data() + size_, data, data_size);
+        std::memcpy(buffer_.data() + size_, data.data(), data.size());
         size_ = new_size;
     }
-    void clear() { size_ = 0; }
+
+    void clear() noexcept { size_ = 0; }
 };
 
 }  // namespace detail

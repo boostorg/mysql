@@ -229,7 +229,7 @@ class handshake_algo
         auto hashed_password = plugin_.bootstrap_plugin(
             hello.auth_plugin_name,
             hparams_.password(),
-            hello.auth_plugin_data.to_span()
+            hello.auth_plugin_data
         );
         if (hashed_password.has_error())
             return hashed_password.error();
@@ -256,7 +256,7 @@ class handshake_algo
             static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
             hparams_.username(),
-            hashed_password_.to_span(),
+            hashed_password_,
             hparams_.database(),
             plugin_.name(),
         };
@@ -271,7 +271,7 @@ class handshake_algo
             return hashed_password.error();
 
         // Serialize the response
-        return st.write(auth_switch_response{hashed_password->to_span()}, sequence_number_);
+        return st.write(auth_switch_response{*hashed_password}, sequence_number_);
     }
 
     void on_success(connection_state_data& st, const ok_view& ok)
