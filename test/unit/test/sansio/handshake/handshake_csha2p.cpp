@@ -271,74 +271,6 @@ BOOST_AUTO_TEST_CASE(fastok_authswitch)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
-// Usual flow when requesting full auth
-BOOST_AUTO_TEST_CASE(tls_fullauth_ok)
-{
-    // Setup
-    handshake_fixture fix;
-    fix.st.tls_supported = true;
-
-    // Run the test
-    algo_test()
-        .expect_read(server_hello_builder()
-                         .caps(tls_caps)
-                         .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge)
-                         .build())
-        .expect_write(create_ssl_request())
-        .expect_ssl_handshake()
-        .expect_write(login_request_builder()
-                          .seqnum(2)
-                          .caps(tls_caps)
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
-        .expect_read(create_more_data_frame(3, perform_full_auth))
-        .expect_write(create_frame(4, null_terminated_password()))
-        .expect_read(create_ok_frame(5, ok_builder().build()))
-        .will_set_status(connection_status::ready)
-        .will_set_capabilities(tls_caps)
-        .will_set_current_charset(utf8mb4_charset)
-        .will_set_connection_id(42)
-        .will_set_tls_active(true)
-        .check(fix);
-}
-
-// Error with full auth
-BOOST_AUTO_TEST_CASE(tls_fullauth_err)
-{
-    // Setup
-    handshake_fixture fix;
-    fix.st.tls_supported = true;
-
-    // Run the test
-    algo_test()
-        .expect_read(server_hello_builder()
-                         .caps(tls_caps)
-                         .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge)
-                         .build())
-        .expect_write(create_ssl_request())
-        .expect_ssl_handshake()
-        .expect_write(login_request_builder()
-                          .seqnum(2)
-                          .caps(tls_caps)
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
-        .expect_read(create_more_data_frame(3, perform_full_auth))
-        .expect_write(create_frame(4, null_terminated_password()))
-        .expect_read(err_builder()
-                         .seqnum(5)
-                         .code(common_server_errc::er_access_denied_error)
-                         .message("Denied")
-                         .build_frame())
-        .will_set_capabilities(tls_caps)
-        .will_set_connection_id(42)
-        .will_set_tls_active(true)
-        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
-}
-
 // Auth switch flows with fast OK work
 BOOST_AUTO_TEST_CASE(authswitch_fastok_ok)
 {
@@ -363,8 +295,6 @@ BOOST_AUTO_TEST_CASE(authswitch_fastok_ok)
         .will_set_connection_id(42)
         .check(fix);
 }
-
-// TODO: tls authswitch fullauth ok
 
 // If we're using a secure transport (e.g. UNIX socket), caching_sha2_password
 // just sends the raw password
@@ -395,9 +325,73 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_ok)
         .check(fix);
 }
 
+// Same, but failing
+// If we're using a secure transport (e.g. UNIX socket), caching_sha2_password
+// just sends the raw password
+BOOST_AUTO_TEST_CASE(securetransport_fullauth_err)
+{
+    // Setup
+    handshake_fixture fix(true);
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, perform_full_auth))
+        .expect_write(create_frame(3, null_terminated_password()))
+        .expect_read(err_builder()
+                         .seqnum(4)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
+// TODO: tls authswitch fullauth ok
+
 // TODO: securetransport fullauth fastok
 // TODO: securetransport fullauth unknown_more_data
 // TODO: securetransport fullauth authswitch
+
+// Spotcheck: TLS counts as a secure channel
+BOOST_AUTO_TEST_CASE(tls)
+{
+    // Setup
+    handshake_fixture fix;
+    fix.st.tls_supported = true;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_challenge)
+                         .build())
+        .expect_write(create_ssl_request())
+        .expect_ssl_handshake()
+        .expect_write(login_request_builder()
+                          .seqnum(2)
+                          .caps(tls_caps)
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(3, perform_full_auth))
+        .expect_write(create_frame(4, null_terminated_password()))
+        .expect_read(create_ok_frame(5, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(tls_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .will_set_tls_active(true)
+        .check(fix);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 

@@ -258,6 +258,11 @@ struct handshake_fixture : algo_fixture_base
     {
         st.status = detail::connection_status::not_connected;
     }
+
+    handshake_fixture(bool secure_transport)
+        : handshake_fixture(handshake_params("example_user", password), secure_transport)
+    {
+    }
 };
 
 }  // namespace test
