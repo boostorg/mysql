@@ -38,7 +38,7 @@ namespace detail {
 BOOST_INLINE_CONSTEXPR std::size_t csha2p_challenge_length = 20;
 BOOST_INLINE_CONSTEXPR std::size_t csha2p_response_length = 32;
 
-inline void csha2p_compute_auth_string(
+inline void csha2p_hash_password_impl(
     string_view password,
     span<const std::uint8_t, csha2p_challenge_length> challenge,
     span<std::uint8_t, csha2p_response_length> output
@@ -67,6 +67,30 @@ inline void csha2p_compute_auth_string(
     }
 }
 
+inline system::result<hashed_password> csha2p_hash_password(
+    string_view password,
+    span<const std::uint8_t> challenge
+)
+{
+    // If the challenge doesn't match the expected size,
+    // something wrong is going on and we should fail
+    if (challenge.size() != csha2p_challenge_length)
+        return client_errc::protocol_value_error;
+
+    // Empty passwords are not hashed
+    if (password.empty())
+        return hashed_password();
+
+    // Run the algorithm
+    hashed_password res(csha2p_response_length);
+    csha2p_hash_password_impl(
+        password,
+        span<const std::uint8_t, csha2p_challenge_length>(challenge),
+        span<std::uint8_t, csha2p_response_length>(res.data(), csha2p_response_length)
+    );
+    return res;
+}
+
 class caching_sha2_password_algo
 {
     int resume_point_{0};
@@ -83,28 +107,6 @@ class caching_sha2_password_algo
 
 public:
     caching_sha2_password_algo() = default;
-
-    system::result<hashed_password> hash_password(string_view password, span<const std::uint8_t> challenge)
-        const
-    {
-        // If the challenge doesn't match the expected size,
-        // something wrong is going on and we should fail
-        if (challenge.size() != csha2p_challenge_length)
-            return client_errc::protocol_value_error;
-
-        // Empty passwords are not hashed
-        if (password.empty())
-            return hashed_password();
-
-        // Run the algorithm
-        hashed_password res(csha2p_response_length);
-        csha2p_compute_auth_string(
-            password,
-            span<const std::uint8_t, csha2p_challenge_length>(challenge),
-            span<std::uint8_t, csha2p_response_length>(res.data(), csha2p_response_length)
-        );
-        return res;
-    }
 
     next_action resume(
         connection_state_data& st,

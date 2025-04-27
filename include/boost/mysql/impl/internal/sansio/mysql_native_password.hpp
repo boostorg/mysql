@@ -33,7 +33,7 @@ BOOST_INLINE_CONSTEXPR std::size_t mnp_challenge_length = 20;
 BOOST_INLINE_CONSTEXPR std::size_t mnp_response_length = 20;
 
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
-inline void mnp_compute_auth_string(
+inline void mnp_hash_password_impl(
     string_view password,
     span<const std::uint8_t, mnp_challenge_length> challenge,
     span<std::uint8_t, mnp_response_length> output
@@ -59,33 +59,29 @@ inline void mnp_compute_auth_string(
     }
 }
 
-class mysql_native_password_algo
+inline system::result<hashed_password> mnp_hash_password(
+    string_view password,
+    span<const std::uint8_t> challenge
+)
 {
-public:
-    mysql_native_password_algo() = default;
+    // If the challenge doesn't match the expected size,
+    // something wrong is going on and we should fail
+    if (challenge.size() != mnp_challenge_length)
+        return client_errc::protocol_value_error;
 
-    system::result<hashed_password> hash_password(string_view password, span<const std::uint8_t> challenge)
-        const
-    {
-        // If the challenge doesn't match the expected size,
-        // something wrong is going on and we should fail
-        if (challenge.size() != mnp_challenge_length)
-            return client_errc::protocol_value_error;
+    // Empty passwords are not hashed
+    if (password.empty())
+        return hashed_password();
 
-        // Empty passwords are not hashed
-        if (password.empty())
-            return hashed_password();
-
-        // Run the algorithm
-        hashed_password res(mnp_response_length);
-        mnp_compute_auth_string(
-            password,
-            span<const std::uint8_t, mnp_challenge_length>(challenge),
-            span<std::uint8_t, mnp_response_length>(res.data(), mnp_response_length)
-        );
-        return res;
-    }
-};
+    // Run the algorithm
+    hashed_password res(mnp_response_length);
+    mnp_hash_password_impl(
+        password,
+        span<const std::uint8_t, mnp_challenge_length>(challenge),
+        span<std::uint8_t, mnp_response_length>(res.data(), mnp_response_length)
+    );
+    return res;
+}
 
 }  // namespace detail
 }  // namespace mysql

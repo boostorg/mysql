@@ -102,15 +102,14 @@ class any_authentication_plugin
     {
         mnp,
         csha2p
-    } type_{type_t::mnp};
+    };
 
-    union data_t
-    {
-        mysql_native_password_algo mnp;
-        caching_sha2_password_algo csha2p;
+    // Which authentication plugin are we using?
+    type_t type_{type_t::mnp};
 
-        data_t() : mnp() {}
-    } data_;
+    // State for algorithms that require stateful exchanges.
+    // mysql_native_password is stateless, so only caching_sha2_password has an entry here
+    caching_sha2_password_algo csha2p_;
 
 public:
     any_authentication_plugin() = default;
@@ -125,14 +124,13 @@ public:
         if (plugin_name == "mysql_native_password")
         {
             type_ = type_t::mnp;
-            data_.mnp = mysql_native_password_algo();
-            return data_.mnp.hash_password(password, challenge);
+            return mnp_hash_password(password, challenge);
         }
         else if (plugin_name == "caching_sha2_password")
         {
             type_ = type_t::csha2p;
-            data_.csha2p = caching_sha2_password_algo();
-            return data_.csha2p.hash_password(password, challenge);
+            csha2p_ = caching_sha2_password_algo();  // Reset any leftover state, just in case
+            return csha2p_hash_password(password, challenge);
         }
         else
         {
@@ -153,7 +151,7 @@ public:
         case type_t::mnp:
             // This algorithm doesn't allow more data frames
             return error_code(client_errc::protocol_value_error);
-        case type_t::csha2p: return data_.csha2p.resume(st, server_data, password, secure_channel, seqnum);
+        case type_t::csha2p: return csha2p_.resume(st, server_data, password, secure_channel, seqnum);
         default:
             // TODO: lcov
             BOOST_ASSERT(false);
