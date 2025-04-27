@@ -182,7 +182,28 @@ BOOST_AUTO_TEST_CASE(fastok_fastok)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
-// TODO: fastok fullauth
+// Receiving a full auth request after a fast track OK is illegal
+BOOST_AUTO_TEST_CASE(fastok_fullauth)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, fast_auth_ok))
+        .expect_read(create_more_data_frame(3, perform_full_auth))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
+
 // TODO: fastok unknown more data frame
 // TODO: fastok authswitch
 
