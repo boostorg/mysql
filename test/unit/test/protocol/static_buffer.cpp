@@ -39,6 +39,21 @@ BOOST_AUTO_TEST_CASE(init_constructor)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(static_buffer<32>(32), std::vector<std::uint8_t>(32, 0x00));
 }
 
+// Accessors
+BOOST_AUTO_TEST_CASE(data_size_const)
+{
+    const static_buffer<32> buff(8);
+    BOOST_TEST(buff.data() != nullptr);
+    BOOST_TEST(buff.size() == 8u);
+}
+
+BOOST_AUTO_TEST_CASE(data_size_nonconst)
+{
+    static_buffer<32> buff(8);
+    BOOST_TEST(buff.data() != nullptr);
+    BOOST_TEST(buff.size() == 8u);
+}
+
 // clear
 BOOST_AUTO_TEST_CASE(clear_empty)
 {
