@@ -181,7 +181,6 @@ class handshake_algo
     hashed_password hashed_password_;
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
-    bool has_auth_switched_{false};
 
     // Attempts to map the collection_id to a character set. We try to be conservative
     // here, since servers will happily accept unknown collation IDs, silently defaulting
@@ -266,11 +265,6 @@ class handshake_algo
     // Processes auth_switch and auth_more_data messages, and leaves the result in auth_resp_
     next_action process_auth_switch(connection_state_data& st, auth_switch msg)
     {
-        // Only one auth switch per handshake may happen
-        if (has_auth_switched_)
-            return error_code(client_errc::protocol_value_error);  // TODO: error code
-        has_auth_switched_ = true;
-
         // Emplace the authentication plugin and compute the first response
         auto hashed_password = plugin_.bootstrap_plugin(msg.plugin_name, hparams_.password(), msg.auth_data);
         if (hashed_password.has_error())
@@ -332,64 +326,79 @@ public:
             // Compose and send handshake response
             BOOST_MYSQL_YIELD(resume_point_, 4, st.write(compose_login_request(st), sequence_number_))
 
-            // Auth message exchange
-            while (true)
-            {
-                // Receive response
-                BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
+            // Receive the response
+            BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
 
-                // Process it
+            // Process it
+            resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, diag);
+
+            // Auth switches are only legal at this point. Handle the case here
+            if (resp.type == handhake_server_response::type_t::auth_switch)
+            {
+                // Write our packet
+                BOOST_MYSQL_YIELD(resume_point_, 6, process_auth_switch(st, resp.data.auth_sw))
+
+                // Read another packet
+                BOOST_MYSQL_YIELD(resume_point_, 7, st.read(sequence_number_))
+
+                // Deserialize it
                 resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, diag);
-                if (resp.type == handhake_server_response::type_t::ok)
+            }
+
+            // Now we will send/receive raw data packets from the server until an OK or error happens.
+            // Packets requiring responses are auth_more_data packets
+            while (resp.type == handhake_server_response::type_t::auth_more_data)
+            {
+                // Invoke the authentication plugin algorithm
+                act = plugin_.resume(
+                    st,
+                    resp.data.more_data,
+                    hparams_.password(),
+                    secure_channel_,
+                    sequence_number_
+                );
+
+                // Do what the plugin says
+                if (act.type() == next_action_type::none)
                 {
-                    // Auth success, quit
-                    on_success(st, resp.data.ok);
-                    return next_action();
+                    // The plugin signalled an error. Exit
+                    BOOST_ASSERT(act.error());
+                    return act;
                 }
-                else if (resp.type == handhake_server_response::type_t::error)
+                else if (act.type() == next_action_type::write)
                 {
-                    // Error, quit
-                    return resp.data.err;
-                }
-                else if (resp.type == handhake_server_response::type_t::auth_switch)
-                {
-                    BOOST_MYSQL_YIELD(resume_point_, 6, process_auth_switch(st, resp.data.auth_sw))
+                    // The plugin wants us to first write the message in the write buffer, then read
+                    BOOST_MYSQL_YIELD(resume_point_, 8, act)
+                    BOOST_MYSQL_YIELD(resume_point_, 9, st.read(sequence_number_))
                 }
                 else
                 {
-                    BOOST_ASSERT(resp.type == handhake_server_response::type_t::auth_more_data);
-
-                    // Invoke the authentication plugin algorithm
-                    act = plugin_.resume(
-                        st,
-                        resp.data.more_data,
-                        hparams_.password(),
-                        secure_channel_,
-                        sequence_number_
-                    );
-
-                    // Do what the plugin says
-                    if (act.type() == next_action_type::read)
-                    {
-                        // The plugin wants more data. The server should be sending us a more_data packet (or
-                        // an error or OK)
-                        continue;
-                    }
-                    else if (act.type() == next_action_type::write)
-                    {
-                        // The plugin wants us to first write the message in the write buffer, then read
-                        BOOST_ASSERT(act.type() == next_action_type::write);
-                        BOOST_MYSQL_YIELD(resume_point_, 8, act)
-                    }
-                    else
-                    {
-                        // An error. Plugins shouldn't use any of the other actions.
-                        // Defining a custom action type is not worth it, though.
-                        BOOST_ASSERT(act.type() == next_action_type::none);
-                        BOOST_ASSERT(act.error());
-                        return act;
-                    }
+                    // The plugin wants us to read another packet
+                    BOOST_ASSERT(act.type() == next_action_type::read);
+                    BOOST_MYSQL_YIELD(resume_point_, 10, st.read(sequence_number_))
                 }
+
+                // If we got here, we've successfully read a packet. Deserialize it
+                resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, diag);
+            }
+
+            // If we got here, we've received a packet that terminates the algorithm
+            if (resp.type == handhake_server_response::type_t::ok)
+            {
+                // Auth success, quit
+                on_success(st, resp.data.ok);
+                return next_action();
+            }
+            else if (resp.type == handhake_server_response::type_t::error)
+            {
+                // Error, quit
+                return resp.data.err;
+            }
+            else
+            {
+                // Auth switches are no longer allowed at this point
+                BOOST_ASSERT(resp.type == handhake_server_response::type_t::auth_switch);
+                return error_code(client_errc::protocol_value_error);
             }
         }
 
