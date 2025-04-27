@@ -83,7 +83,8 @@ bool boost::mysql::is_fatal_error(error_code ec) noexcept
         case client_errc::server_doesnt_support_ssl:
         case client_errc::unknown_auth_plugin:
         case client_errc::server_unsupported:
-        case client_errc::auth_plugin_requires_ssl: return true;
+        case client_errc::auth_plugin_requires_ssl:
+        case client_errc::bad_handshake_packet_type: return true;
 
         default: return false;
         }

@@ -164,7 +164,10 @@ enum class client_errc : int
      */
     not_engaged_in_multi_function,
 
-    // TODO: document
+    /**
+     * \brief During handshake, the server sent a packet type that is not allowed in the current state
+     * (protocol violation).
+     */
     bad_handshake_packet_type,
 };
 

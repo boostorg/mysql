@@ -71,6 +71,7 @@ BOOST_AUTO_TEST_CASE(test_is_fatal_error)
         {"unknown_auth_plugin",             client_errc::unknown_auth_plugin,                               true },
         {"auth_plugin_requires_ssl",        client_errc::auth_plugin_requires_ssl,                          true },
         {"server_doesnt_support_ssl",       client_errc::server_doesnt_support_ssl,                         true },
+        {"bad_handshake_packet_type",       client_errc::bad_handshake_packet_type,                         true },
 
         // Other client errors
         {"wrong_num_params",                client_errc::wrong_num_params,                                  false},
