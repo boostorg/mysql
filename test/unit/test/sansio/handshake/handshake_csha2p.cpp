@@ -11,6 +11,7 @@
 
 #include <array>
 #include <cstring>
+#include <vector>
 
 #include "handshake_common.hpp"
 #include "test_common/create_diagnostics.hpp"
@@ -204,8 +205,52 @@ BOOST_AUTO_TEST_CASE(fastok_fullauth)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
-// TODO: fastok unknown more data frame
-// TODO: fastok authswitch
+// Receiving an unknown data frame after a fast track OK fails as expected
+BOOST_AUTO_TEST_CASE(fastok_moredata)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, fast_auth_ok))
+        .expect_read(create_more_data_frame(3, std::vector<std::uint8_t>{10, 20, 30}))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
+
+// Receiving an auth switch after a fast track OK fails as expected
+// TODO: move this to the generic section
+BOOST_AUTO_TEST_CASE(fastok_authswitch)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, fast_auth_ok))
+        .expect_read(create_auth_switch_frame(3, "mysql_native_password", mnp_challenge))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
+
+// TODO: unknown more data frame
 
 // Usual flow when requesting full auth
 BOOST_AUTO_TEST_CASE(tls_fullauth_ok)
