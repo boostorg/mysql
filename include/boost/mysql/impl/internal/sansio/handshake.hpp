@@ -153,9 +153,8 @@ public:
             return error_code(client_errc::protocol_value_error);
         case type_t::csha2p: return csha2p_.resume(st, server_data, password, secure_channel, seqnum);
         default:
-            // TODO: lcov
             BOOST_ASSERT(false);
-            return next_action(client_errc::protocol_value_error);
+            return next_action(client_errc::protocol_value_error);  // LCOV_EXCL_LINE
         }
     }
 
@@ -165,10 +164,7 @@ public:
         {
         case type_t::mnp: return "mysql_native_password";  // TODO: these constants are repeated
         case type_t::csha2p: return "caching_sha2_password";
-        default:
-            // TODO: lcov
-            BOOST_ASSERT(false);
-            return {};
+        default: BOOST_ASSERT(false); return {};  // LCOV_EXCL_LINE
         }
     }
 };
