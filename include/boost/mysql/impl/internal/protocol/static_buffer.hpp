@@ -14,6 +14,7 @@
 #include <boost/core/span.hpp>
 
 #include <array>
+#include <cstddef>
 #include <cstring>
 
 namespace boost {
@@ -30,6 +31,8 @@ public:
     static constexpr std::size_t max_size = N;
 
     static_buffer() = default;
+    static_buffer(std::size_t sz) noexcept : size_(sz) { BOOST_ASSERT(sz <= size_); }
+
     span<const std::uint8_t> to_span() const { return {buffer_.data(), size_}; }
     const std::uint8_t* data() const { return buffer_.data(); }
     std::uint8_t* data() { return buffer_.data(); }

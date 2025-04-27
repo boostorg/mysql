@@ -74,8 +74,7 @@ public:
             return hashed_password();
 
         // Run the algorithm
-        hashed_password res;
-        res.resize(mnp_response_length);
+        hashed_password res(mnp_response_length);
         mnp_compute_auth_string(
             password,
             span<const std::uint8_t, mnp_challenge_length>(challenge),

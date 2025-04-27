@@ -97,8 +97,7 @@ public:
             return hashed_password();
 
         // Run the algorithm
-        hashed_password res;
-        res.resize(csha2p_response_length);
+        hashed_password res(csha2p_response_length);
         csha2p_compute_auth_string(
             password,
             span<const std::uint8_t, csha2p_challenge_length>(challenge),
