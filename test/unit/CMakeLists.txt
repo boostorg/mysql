@@ -12,8 +12,6 @@ add_executable(
     src/utils.cpp
 
     # Actual tests
-    test/auth/auth.cpp
-
     test/protocol/static_buffer.cpp
     test/protocol/capabilities.cpp
     test/protocol/null_bitmap.cpp
@@ -31,7 +29,13 @@ add_executable(
     test/sansio/message_reader.cpp
     test/sansio/top_level_algo.cpp
 
-    test/sansio/handshake.cpp
+    test/sansio/mysql_native_password.cpp
+    test/sansio/caching_sha2_password.cpp
+    test/sansio/handshake/handshake.cpp
+    test/sansio/handshake/handshake_mnp.cpp
+    test/sansio/handshake/handshake_csha2p.cpp
+    test/sansio/handshake/handshake_capabilities.cpp
+    test/sansio/handshake/handshake_connection_state_data.cpp
     test/sansio/read_resultset_head.cpp
     test/sansio/start_execution.cpp
     test/sansio/read_some_rows.cpp
