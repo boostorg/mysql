@@ -65,12 +65,12 @@ public:
         span<const std::uint8_t> challenge
     )
     {
-        if (plugin_name == "mysql_native_password")
+        if (plugin_name == mnp_plugin_name)
         {
             type_ = type_t::mnp;
             return mnp_hash_password(password, challenge);
         }
-        else if (plugin_name == "caching_sha2_password")
+        else if (plugin_name == csha2p_plugin_name)
         {
             type_ = type_t::csha2p;
             csha2p_ = csha2p_algo();  // Reset any leftover state, just in case
@@ -106,8 +106,8 @@ public:
     {
         switch (type_)
         {
-        case type_t::mnp: return "mysql_native_password";  // TODO: these constants are repeated
-        case type_t::csha2p: return "caching_sha2_password";
+        case type_t::mnp: return mnp_plugin_name;
+        case type_t::csha2p: return csha2p_plugin_name;
         default: BOOST_ASSERT(false); return {};  // LCOV_EXCL_LINE
         }
     }

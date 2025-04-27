@@ -34,9 +34,10 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-// Algorithm itself
+// Constants
 BOOST_INLINE_CONSTEXPR std::size_t csha2p_challenge_length = 20;
 BOOST_INLINE_CONSTEXPR std::size_t csha2p_response_length = 32;
+BOOST_INLINE_CONSTEXPR const char* csha2p_plugin_name = "caching_sha2_password";
 
 inline void csha2p_hash_password_impl(
     string_view password,

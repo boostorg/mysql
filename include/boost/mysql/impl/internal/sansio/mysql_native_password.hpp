@@ -28,8 +28,10 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
+// Constants
 BOOST_INLINE_CONSTEXPR std::size_t mnp_challenge_length = 20;
 BOOST_INLINE_CONSTEXPR std::size_t mnp_response_length = 20;
+BOOST_INLINE_CONSTEXPR const char* mnp_plugin_name = "mysql_native_password";
 
 // SHA1( password ) XOR SHA1( "20-bytes random data from server" <concat> SHA1( SHA1( password ) ) )
 inline void mnp_hash_password_impl(
