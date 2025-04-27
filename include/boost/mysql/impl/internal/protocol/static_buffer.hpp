@@ -43,10 +43,13 @@ public:
     // Modifiers
     void append(span<const std::uint8_t> data) noexcept
     {
-        std::size_t new_size = size_ + data.size();
-        BOOST_ASSERT(new_size <= N);
-        std::memcpy(buffer_.data() + size_, data.data(), data.size());
-        size_ = new_size;
+        if (!data.empty())
+        {
+            std::size_t new_size = size_ + data.size();
+            BOOST_ASSERT(new_size <= N);
+            std::memcpy(buffer_.data() + size_, data.data(), data.size());
+            size_ = new_size;
+        }
     }
 
     void clear() noexcept { size_ = 0; }
