@@ -5,47 +5,16 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include <boost/mysql/character_set.hpp>
-#include <boost/mysql/client_errc.hpp>
-#include <boost/mysql/common_server_errc.hpp>
-#include <boost/mysql/handshake_params.hpp>
-#include <boost/mysql/metadata_mode.hpp>
-#include <boost/mysql/mysql_collations.hpp>
-#include <boost/mysql/ssl_mode.hpp>
-#include <boost/mysql/string_view.hpp>
-
-#include <boost/mysql/detail/character_set.hpp>
-#include <boost/mysql/detail/execution_processor/execution_processor.hpp>
-
-#include <boost/mysql/impl/internal/protocol/capabilities.hpp>
-#include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
-#include <boost/mysql/impl/internal/protocol/frame_header.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-#include <boost/mysql/impl/internal/protocol/serialization.hpp>
-#include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
-#include <boost/mysql/impl/internal/sansio/handshake.hpp>
-
 #include <boost/core/span.hpp>
-#include <boost/endian/conversion.hpp>
-#include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test_suite.hpp>
 
 #include <array>
-#include <cassert>
-#include <cstdint>
 #include <cstring>
-#include <vector>
 
 #include "handshake_common.hpp"
 #include "test_common/create_diagnostics.hpp"
-#include "test_common/printing.hpp"
-#include "test_unit/algo_test.hpp"
 #include "test_unit/create_err.hpp"
-#include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
-#include "test_unit/printing.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
