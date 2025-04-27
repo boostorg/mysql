@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE(moredata)
                           .auth_plugin("caching_sha2_password")
                           .auth_response(csha2p_response)
                           .build())
-        .expect_read(create_more_data_frame(2, std::vector<std::uint8_t>{10, 20, 30}))
+        .expect_read(create_more_data_frame(2, std::vector<std::uint8_t>{3, 4}))
         .will_set_capabilities(min_caps)
         .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
@@ -397,8 +397,28 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_fullauth)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
-// TODO: securetransport fullauth unknown_more_data
-// TODO: securetransport fullauth authswitch
+// Any subsequent more data frames are illegal
+BOOST_AUTO_TEST_CASE(securetransport_fullauth_moredata)
+{
+    // Setup
+    handshake_fixture fix(true);
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, perform_full_auth))
+        .expect_write(create_frame(3, null_terminated_password()))
+        .expect_read(create_more_data_frame(4, std::vector<std::uint8_t>{4, 3, 2}))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
 
 // Spotcheck: TLS counts as a secure channel
 BOOST_AUTO_TEST_CASE(tls)
