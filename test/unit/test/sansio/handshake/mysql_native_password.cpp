@@ -5,6 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
+
 #include "handshake_common.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/create_err.hpp"
@@ -144,21 +146,42 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
 }
 
 // mysql_native_password does not support more_data packets
-// TODO: re-enable this test after https://github.com/boostorg/mysql/issues/469
-// BOOST_AUTO_TEST_CASE(mnp_moredata)
-// {
-//     // Setup
-//     fixture fix;
+BOOST_AUTO_TEST_CASE(moredata)
+{
+    // Setup
+    handshake_fixture fix;
 
-//     // Run the test
-//     algo_test()
-//         .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
-//         .expect_write(login_request_builder().auth_response(mnp_response).build())
-//         .expect_read(create_more_data_frame(2, mnp_challenge))
-//         .will_set_capabilities(min_caps)  // incidental
-//         .will_set_connection_id(42)       // incidental
-//         .check(fix, client_errc::protocol_value_error);
-// }
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().auth_response(mnp_response).build())
+        .expect_read(create_more_data_frame(2, mnp_challenge))
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
+
+BOOST_AUTO_TEST_CASE(authswitch_moredata)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
+        .expect_write(create_frame(3, mnp_response))
+        .expect_read(create_more_data_frame(4, mnp_challenge))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
 
 BOOST_AUTO_TEST_SUITE_END()
 
