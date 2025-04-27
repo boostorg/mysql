@@ -301,17 +301,14 @@ BOOST_AUTO_TEST_CASE(authswitch_fastok_ok)
 BOOST_AUTO_TEST_CASE(securetransport_fullauth_ok)
 {
     // Setup
-    handshake_fixture fix(handshake_params("example_user", "example_password"), true);
+    handshake_fixture fix(true);
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder()
-                         .caps(min_caps)
-                         .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge)
-                         .build())
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
         .expect_write(login_request_builder()
-                          .caps(min_caps)
                           .auth_plugin("caching_sha2_password")
                           .auth_response(csha2p_response)
                           .build())
@@ -354,7 +351,28 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_err)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
-// TODO: tls authswitch fullauth ok
+// A fast track OK after a fullauth request is not legal
+BOOST_AUTO_TEST_CASE(securetransport_fullauth_fastok)
+{
+    // Setup
+    handshake_fixture fix(true);
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, perform_full_auth))
+        .expect_write(create_frame(3, null_terminated_password()))
+        .expect_read(create_more_data_frame(4, fast_auth_ok))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
 
 // TODO: securetransport fullauth fastok
 // TODO: securetransport fullauth unknown_more_data
