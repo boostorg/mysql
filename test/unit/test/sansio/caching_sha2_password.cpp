@@ -16,6 +16,9 @@ using namespace boost::mysql;
 using namespace boost::mysql::test;
 using detail::csha2p_hash_password;
 
+// Tests only password hashing - the stateful algorithm
+// is more easily tested with the handshake algorithm itself
+
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_csha2p)
@@ -34,15 +37,13 @@ constexpr std::uint8_t expected[32] = {
 BOOST_AUTO_TEST_CASE(nonempty_password)
 {
     auto res = csha2p_hash_password("hola", challenge);
-    BOOST_TEST_REQUIRE(res.has_value());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(*res, expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(res.value(), expected);
 }
 
 BOOST_AUTO_TEST_CASE(empty_password)
 {
     auto res = csha2p_hash_password("", challenge);
-    BOOST_TEST_REQUIRE(res.has_value());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(*res, std::vector<std::uint8_t>());
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(res.value(), std::vector<std::uint8_t>());
 }
 
 BOOST_AUTO_TEST_CASE(bad_challenge_length_nonempty_password)
@@ -56,6 +57,12 @@ BOOST_AUTO_TEST_CASE(bad_challenge_length_nempty_password)
 {
     constexpr std::uint8_t bad_challenge[] = {0x00, 0x01, 0x02};
     auto res = csha2p_hash_password("", bad_challenge);
+    BOOST_TEST(res.error() == client_errc::protocol_value_error);
+}
+
+BOOST_AUTO_TEST_CASE(empty_challenge)
+{
+    auto res = csha2p_hash_password("", {});
     BOOST_TEST(res.error() == client_errc::protocol_value_error);
 }
 
