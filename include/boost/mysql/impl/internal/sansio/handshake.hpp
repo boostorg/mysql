@@ -94,11 +94,11 @@ public:
         {
         case type_t::mnp:
             // This algorithm doesn't allow more data frames
-            return error_code(client_errc::protocol_value_error);
+            return error_code(client_errc::bad_handshake_packet_type);
         case type_t::csha2p: return csha2p_.resume(st, server_data, password, secure_channel, seqnum);
         default:
             BOOST_ASSERT(false);
-            return next_action(client_errc::protocol_value_error);  // LCOV_EXCL_LINE
+            return next_action(client_errc::bad_handshake_packet_type);  // LCOV_EXCL_LINE
         }
     }
 
@@ -398,7 +398,7 @@ public:
             {
                 // Auth switches are no longer allowed at this point
                 BOOST_ASSERT(resp.type == handshake_server_response::type_t::auth_switch);
-                return error_code(client_errc::protocol_value_error);
+                return error_code(client_errc::bad_handshake_packet_type);
             }
         }
 

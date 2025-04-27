@@ -163,6 +163,9 @@ enum class client_errc : int
      * Use `async_start_execution` to start one.
      */
     not_engaged_in_multi_function,
+
+    // TODO: document
+    bad_handshake_packet_type,
 };
 
 BOOST_MYSQL_DECL

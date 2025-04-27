@@ -15,7 +15,7 @@
 #include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>  // TODO
+#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
@@ -141,13 +141,12 @@ public:
             {
                 // The server sent a data packet and we don't know what it means.
                 // Treat it as a protocol violation error and exit
-                return error_code(client_errc::protocol_value_error);
+                return error_code(client_errc::bad_handshake_packet_type);
             }
         }
 
         // If we got here, the server sent us more data, which is a protocol violation
-        // TODO: make an error code for this
-        return error_code(client_errc::protocol_value_error);
+        return error_code(client_errc::bad_handshake_packet_type);
     }
 };
 
