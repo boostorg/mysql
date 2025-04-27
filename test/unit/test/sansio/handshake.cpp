@@ -31,13 +31,13 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test_suite.hpp>
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
 #include <cstring>
 #include <vector>
 
+#include "handshake/handshake_common.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_common/printing.hpp"
 #include "test_unit/algo_test.hpp"
@@ -46,7 +46,6 @@
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/printing.hpp"
-#include "test_unit/serialize_to_vector.hpp"
 
 using namespace boost::mysql::test;
 using namespace boost::mysql;
@@ -57,239 +56,6 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
-// Capabilities
-constexpr auto min_caps = capabilities::plugin_auth | capabilities::protocol_41 |
-                          capabilities::plugin_auth_lenenc_data | capabilities::deprecate_eof |
-                          capabilities::secure_connection;
-
-constexpr auto tls_caps = min_caps | capabilities::ssl;
-
-// Helpers to create the relevant packets
-class server_hello_builder
-{
-    string_view server_version_{"8.1.33"};
-    std::vector<std::uint8_t> auth_plugin_data_;
-    capabilities server_caps_{min_caps};
-    string_view auth_plugin_name_{"mysql_native_password"};
-    std::uint32_t connection_id_{42};
-
-public:
-    server_hello_builder& version(string_view v)
-    {
-        server_version_ = v;
-        return *this;
-    }
-    server_hello_builder& auth_data(std::vector<std::uint8_t> v)
-    {
-        BOOST_ASSERT(v.size() >= 8u);  // split in two parts, and the 1st one is fixed size at 8 bytes
-        BOOST_ASSERT(v.size() <= 0xfeu);
-        auth_plugin_data_ = std::move(v);
-        return *this;
-    }
-    server_hello_builder& caps(capabilities v)
-    {
-        server_caps_ = v;
-        return *this;
-    }
-    server_hello_builder& auth_plugin(string_view v)
-    {
-        auth_plugin_name_ = v;
-        return *this;
-    }
-    server_hello_builder& connection_id(std::uint32_t v)
-    {
-        connection_id_ = v;
-        return *this;
-    }
-
-    std::vector<std::uint8_t> build() const
-    {
-        return create_frame(
-            0,
-            serialize_to_vector([this](detail::serialization_context& ctx) {
-                using namespace detail;
-
-                // Auth plugin data is separated in two parts
-                string_fixed<8> plugin_data_1{};
-                auto plug_data_begin = reinterpret_cast<const char*>(auth_plugin_data_.data());
-                std::copy(plug_data_begin, plug_data_begin + 8, plugin_data_1.value.data());
-                auto plugin_data_2 = boost::span<const std::uint8_t>(auth_plugin_data_).subspan(8);
-
-                // Capabilities is also divided in 2 parts
-                string_fixed<2> caps_low{};
-                string_fixed<2> caps_high{};
-                std::uint32_t caps_little = boost::endian::native_to_little(
-                    static_cast<std::uint32_t>(server_caps_)
-                );
-                auto* caps_begin = reinterpret_cast<const char*>(&caps_little);
-                std::copy(caps_begin, caps_begin + 2, caps_low.value.data());
-                std::copy(caps_begin + 2, caps_begin + 4, caps_high.value.data());
-
-                ctx.serialize(
-                    int1{10},  // protocol_version
-                    string_null{server_version_},
-                    int4{connection_id_},  // connection_id
-                    plugin_data_1,         // plugin data, 1st part
-                    int1{0},               // filler
-                    caps_low,
-                    int1{25},  // character set
-                    int2{0},   // status flags
-                    caps_high,
-                    int1{static_cast<std::uint8_t>(auth_plugin_data_.size() + 1u)
-                    },                  // auth plugin data length
-                    string_fixed<10>{}  // reserved
-                );
-                ctx.add(plugin_data_2);
-                ctx.add(0);  // extra null byte that mysql adds here
-                ctx.serialize(string_null{auth_plugin_name_});
-            })
-        );
-    }
-};
-
-class login_request_builder
-{
-    std::uint8_t seqnum_{1};
-    capabilities caps_{min_caps};
-    std::uint32_t collation_id_{45};  // utf8_general_ci
-    string_view username_{"example_user"};
-    std::vector<std::uint8_t> auth_response_;
-    string_view database_{};
-    string_view auth_plugin_name_{"mysql_native_password"};
-
-public:
-    login_request_builder() = default;
-
-    login_request_builder& seqnum(std::uint8_t v)
-    {
-        seqnum_ = v;
-        return *this;
-    }
-
-    login_request_builder& caps(capabilities v)
-    {
-        caps_ = v;
-        return *this;
-    }
-
-    login_request_builder& collation(std::uint32_t v)
-    {
-        collation_id_ = v;
-        return *this;
-    }
-
-    login_request_builder& username(string_view v)
-    {
-        username_ = v;
-        return *this;
-    }
-
-    login_request_builder& auth_response(std::vector<std::uint8_t> v)
-    {
-        auth_response_ = std::move(v);
-        return *this;
-    }
-
-    login_request_builder& db(string_view v)
-    {
-        database_ = v;
-        return *this;
-    }
-
-    login_request_builder& auth_plugin(string_view v)
-    {
-        auth_plugin_name_ = v;
-        return *this;
-    }
-
-    std::vector<std::uint8_t> build() const
-    {
-        auto body = serialize_to_vector([this](detail::serialization_context& ctx) {
-            ctx.serialize(detail::login_request{
-                caps_,
-                detail::max_packet_size,
-                collation_id_,
-                username_,
-                auth_response_,
-                database_,
-                auth_plugin_name_
-            });
-        });
-        return create_frame(seqnum_, body);
-    }
-};
-
-std::vector<std::uint8_t> create_ssl_request()
-{
-    const auto body = serialize_to_vector([](detail::serialization_context& ctx) {
-        constexpr std::uint32_t collation_id = 45;  // utf8_general_ci
-        detail::ssl_request req{tls_caps, detail::max_packet_size, collation_id};
-        req.serialize(ctx);
-    });
-    return create_frame(1, body);
-}
-
-std::vector<std::uint8_t> create_auth_switch_frame(
-    std::uint8_t seqnum,
-    string_view plugin_name,
-    boost::span<const std::uint8_t> data
-)
-{
-    return create_frame(seqnum, serialize_to_vector([=](detail::serialization_context& ctx) {
-                            ctx.add(0xfe);  // auth switch header
-                            detail::string_null{plugin_name}.serialize(ctx);
-                            ctx.add(data);
-                            ctx.add(std::uint8_t(0));  // This has a NULL byte at the end
-                        }));
-}
-
-std::vector<std::uint8_t> create_more_data_frame(std::uint8_t seqnum, boost::span<const std::uint8_t> data)
-{
-    return create_frame(seqnum, serialize_to_vector([=](detail::serialization_context& ctx) {
-                            ctx.add(0x01);  // more data header
-                            ctx.add(data);
-                        }));
-}
-
-struct fixture : algo_fixture_base
-{
-    detail::handshake_algo algo;
-
-    fixture(
-        const handshake_params& hparams = handshake_params("example_user", "example_password"),
-        bool secure_transport = false
-    )
-        : algo({hparams, secure_transport})
-    {
-        st.status = connection_status::not_connected;
-    }
-};
-
-// These challenge/responses have been captured with Wireshark
-std::vector<std::uint8_t> mnp_challenge()
-{
-    return {0x1b, 0x0f, 0x6e, 0x59, 0x1b, 0x70, 0x33, 0x01, 0x0c, 0x01,
-            0x7e, 0x2e, 0x30, 0x7a, 0x79, 0x5c, 0x02, 0x50, 0x51, 0x35};
-}
-
-std::vector<std::uint8_t> mnp_response()
-{
-    return {0xbe, 0xa5, 0xb5, 0xe7, 0x9c, 0x05, 0x23, 0x34, 0xda, 0x06,
-            0x1d, 0xaf, 0xd9, 0x8b, 0x4b, 0x09, 0x86, 0xe5, 0xd1, 0x4a};
-}
-
-std::vector<std::uint8_t> csha2p_challenge()
-{
-    return {0x6f, 0x1b, 0x3b, 0x64, 0x39, 0x01, 0x46, 0x44, 0x53, 0x3b,
-            0x74, 0x3c, 0x3e, 0x3c, 0x3c, 0x0b, 0x30, 0x77, 0x1a, 0x49};
-}
-
-std::vector<std::uint8_t> csha2p_response()
-{
-    return {0xa7, 0xc3, 0x7f, 0x88, 0x25, 0xec, 0x92, 0x2c, 0x88, 0xba, 0x47, 0x04, 0x14, 0xd2, 0xa3, 0xa3,
-            0x5e, 0xa9, 0x41, 0x8e, 0xdc, 0x89, 0xeb, 0xe2, 0xa1, 0xec, 0xd8, 0x4f, 0x73, 0xa1, 0x49, 0x60};
-}
-
 //
 // mysql_native_password
 //
@@ -297,12 +63,12 @@ std::vector<std::uint8_t> csha2p_response()
 BOOST_AUTO_TEST_CASE(mnp_ok)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().auth_response(mnp_response).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -314,12 +80,12 @@ BOOST_AUTO_TEST_CASE(mnp_ok)
 BOOST_AUTO_TEST_CASE(mnp_err)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().auth_response(mnp_response).build())
         .expect_read(err_builder()
                          .seqnum(2)
                          .code(common_server_errc::er_access_denied_error)
@@ -334,7 +100,7 @@ BOOST_AUTO_TEST_CASE(mnp_err)
 BOOST_AUTO_TEST_CASE(mnp_bad_challenge_length)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
@@ -353,9 +119,9 @@ BOOST_AUTO_TEST_CASE(mnp_bad_challenge_length)
 
 //     // Run the test
 //     algo_test()
-//         .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
-//         .expect_write(login_request_builder().auth_response(mnp_response()).build())
-//         .expect_read(create_more_data_frame(2, mnp_challenge()))
+//         .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+//         .expect_write(login_request_builder().auth_response(mnp_response).build())
+//         .expect_read(create_more_data_frame(2, mnp_challenge))
 //         .will_set_capabilities(min_caps)  // incidental
 //         .will_set_connection_id(42)       // incidental
 //         .check(fix, client_errc::protocol_value_error);
@@ -364,19 +130,19 @@ BOOST_AUTO_TEST_CASE(mnp_bad_challenge_length)
 BOOST_AUTO_TEST_CASE(mnp_authswitch_ok)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
         )
         .expect_write(login_request_builder()
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
-        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
-        .expect_write(create_frame(3, mnp_response()))
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
+        .expect_write(create_frame(3, mnp_response))
         .expect_read(create_ok_frame(4, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -388,19 +154,19 @@ BOOST_AUTO_TEST_CASE(mnp_authswitch_ok)
 BOOST_AUTO_TEST_CASE(mnp_authswitch_error)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
         )
         .expect_write(login_request_builder()
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
-        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
-        .expect_write(create_frame(3, mnp_response()))
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
+        .expect_write(create_frame(3, mnp_response))
         .expect_read(err_builder()
                          .seqnum(4)
                          .code(common_server_errc::er_access_denied_error)
@@ -415,16 +181,16 @@ BOOST_AUTO_TEST_CASE(mnp_authswitch_error)
 BOOST_AUTO_TEST_CASE(mnp_authswitch_bad_challenge_length)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
         )
         .expect_write(login_request_builder()
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
         .expect_read(create_auth_switch_frame(2, "mysql_native_password", std::vector<std::uint8_t>(21, 0x0a))
         )
@@ -443,15 +209,15 @@ BOOST_AUTO_TEST_CASE(mnp_authswitch_bad_challenge_length)
 //     // Run the test
 //     algo_test()
 //         .expect_read(
-//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
 //         )
 //         .expect_write(login_request_builder()
 //                           .auth_plugin("caching_sha2_password")
-//                           .auth_response(csha2p_response())
+//                           .auth_response(csha2p_response)
 //                           .build())
-//         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
-//         .expect_write(create_frame(3, mnp_response()))
-//         .expect_read(create_auth_switch_frame(4, "mysql_native_password", mnp_challenge()))
+//         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
+//         .expect_write(create_frame(3, mnp_response))
+//         .expect_read(create_auth_switch_frame(4, "mysql_native_password", mnp_challenge))
 //         .will_set_capabilities(min_caps)  // incidental
 //         .will_set_connection_id(42)       // incidental
 //         .check(fix, client_errc::protocol_value_error);
@@ -467,15 +233,15 @@ BOOST_AUTO_TEST_CASE(mnp_authswitch_bad_challenge_length)
 //     // Run the test
 //     algo_test()
 //         .expect_read(
-//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
 //         )
 //         .expect_write(login_request_builder()
 //                           .auth_plugin("caching_sha2_password")
-//                           .auth_response(csha2p_response())
+//                           .auth_response(csha2p_response)
 //                           .build())
-//         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge()))
-//         .expect_write(create_frame(3, mnp_response()))
-//         .expect_read(create_more_data_frame(4, mnp_challenge()))
+//         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
+//         .expect_write(create_frame(3, mnp_response))
+//         .expect_read(create_more_data_frame(4, mnp_challenge))
 //         .will_set_capabilities(min_caps)  // incidental
 //         .will_set_connection_id(42)       // incidental
 //         .check(fix, client_errc::protocol_value_error);
@@ -485,15 +251,15 @@ BOOST_AUTO_TEST_CASE(mnp_authswitch_bad_challenge_length)
 BOOST_AUTO_TEST_CASE(mnp_tls)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
     fix.st.tls_supported = true;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge).build())
         .expect_write(create_ssl_request())
         .expect_ssl_handshake()
-        .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response()).build())
+        .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response).build())
         .expect_read(create_ok_frame(3, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_tls_active(true)
@@ -521,16 +287,16 @@ boost::span<const std::uint8_t> null_terminated_password()
 BOOST_AUTO_TEST_CASE(csha2p_ok)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
         )
         .expect_write(login_request_builder()
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
@@ -544,16 +310,16 @@ BOOST_AUTO_TEST_CASE(csha2p_ok)
 BOOST_AUTO_TEST_CASE(csha2p_err)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
         )
         .expect_write(login_request_builder()
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
         .expect_read(err_builder()
                          .seqnum(2)
@@ -569,18 +335,18 @@ BOOST_AUTO_TEST_CASE(csha2p_err)
 BOOST_AUTO_TEST_CASE(csha2p_fullauth)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(server_hello_builder()
                          .caps(tls_caps)
                          .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge())
+                         .auth_data(csha2p_challenge)
                          .build())
         .expect_write(login_request_builder()
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
         .expect_read(create_more_data_frame(2, csha2p_full_auth))
         .will_set_capabilities(min_caps)
@@ -592,16 +358,16 @@ BOOST_AUTO_TEST_CASE(csha2p_fullauth)
 BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
         )
         .expect_write(login_request_builder()
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
         .expect_read(create_more_data_frame(2, csha2p_ok_follows))
         .expect_read(create_ok_frame(3, ok_builder().build()))
@@ -623,11 +389,11 @@ BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 //     // Run the test
 //     algo_test()
 //         .expect_read(
-//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
 //         )
 //         .expect_write(login_request_builder()
 //                           .auth_plugin("caching_sha2_password")
-//                           .auth_response(csha2p_response())
+//                           .auth_response(csha2p_response)
 //                           .build())
 //         .expect_read(create_more_data_frame(2, csha2p_ok_follows))
 //         .expect_read(err_builder()
@@ -644,7 +410,7 @@ BOOST_AUTO_TEST_CASE(csha2p_okfollows_ok)
 BOOST_AUTO_TEST_CASE(csha2p_bad_challenge_length)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
@@ -661,7 +427,7 @@ BOOST_AUTO_TEST_CASE(csha2p_bad_challenge_length)
 BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_ok)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
     fix.st.tls_supported = true;
 
     // Run the test
@@ -669,7 +435,7 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_ok)
         .expect_read(server_hello_builder()
                          .caps(tls_caps)
                          .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge())
+                         .auth_data(csha2p_challenge)
                          .build())
         .expect_write(create_ssl_request())
         .expect_ssl_handshake()
@@ -677,7 +443,7 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_ok)
                           .seqnum(2)
                           .caps(tls_caps)
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
         .expect_read(create_more_data_frame(3, csha2p_full_auth))
         .expect_write(create_frame(4, null_terminated_password()))
@@ -694,7 +460,7 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_ok)
 BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
     fix.st.tls_supported = true;
 
     // Run the test
@@ -702,7 +468,7 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
         .expect_read(server_hello_builder()
                          .caps(tls_caps)
                          .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge())
+                         .auth_data(csha2p_challenge)
                          .build())
         .expect_write(create_ssl_request())
         .expect_ssl_handshake()
@@ -710,7 +476,7 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
                           .seqnum(2)
                           .caps(tls_caps)
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
         .expect_read(create_more_data_frame(3, csha2p_full_auth))
         .expect_write(create_frame(4, null_terminated_password()))
@@ -728,18 +494,18 @@ BOOST_AUTO_TEST_CASE(csha2p_tls_fullauth_err)
 BOOST_AUTO_TEST_CASE(csha2p_authswitch_okfollows_ok)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("mysql_native_password").auth_data(mnp_challenge()).build()
+            server_hello_builder().auth_plugin("mysql_native_password").auth_data(mnp_challenge).build()
         )
         .expect_write(
-            login_request_builder().auth_plugin("mysql_native_password").auth_response(mnp_response()).build()
+            login_request_builder().auth_plugin("mysql_native_password").auth_response(mnp_response).build()
         )
-        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge()))
-        .expect_write(create_frame(3, csha2p_response()))
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge))
+        .expect_write(create_frame(3, csha2p_response))
         .expect_read(create_more_data_frame(4, csha2p_ok_follows))
         .expect_read(create_ok_frame(5, ok_builder().build()))
         .will_set_status(connection_status::ready)
@@ -756,19 +522,19 @@ BOOST_AUTO_TEST_CASE(csha2p_authswitch_okfollows_ok)
 BOOST_AUTO_TEST_CASE(csha2p_securetransport_fullauth_ok)
 {
     // Setup
-    fixture fix(handshake_params("example_user", "example_password"), true);
+    handshake_fixture fix(handshake_params("example_user", "example_password"), true);
 
     // Run the test
     algo_test()
         .expect_read(server_hello_builder()
                          .caps(min_caps)
                          .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge())
+                         .auth_data(csha2p_challenge)
                          .build())
         .expect_write(login_request_builder()
                           .caps(min_caps)
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
         .expect_read(create_more_data_frame(2, csha2p_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
@@ -789,12 +555,12 @@ constexpr auto db_caps = min_caps | capabilities::connect_with_db;
 BOOST_AUTO_TEST_CASE(db_nonempty_supported)
 {
     // Setup
-    fixture fix(handshake_params("example_user", "example_password", "mydb"));
+    handshake_fixture fix(handshake_params("example_user", "example_password", "mydb"));
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().caps(db_caps).auth_response(mnp_response()).db("mydb").build())
+        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().caps(db_caps).auth_response(mnp_response).db("mydb").build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(db_caps)
@@ -806,11 +572,11 @@ BOOST_AUTO_TEST_CASE(db_nonempty_supported)
 BOOST_AUTO_TEST_CASE(db_nonempty_unsupported)
 {
     // Setup
-    fixture fix(handshake_params("example_user", "example_password", "mydb"));
+    handshake_fixture fix(handshake_params("example_user", "example_password", "mydb"));
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
         .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
 }
 
@@ -818,12 +584,12 @@ BOOST_AUTO_TEST_CASE(db_nonempty_unsupported)
 BOOST_AUTO_TEST_CASE(db_empty_supported)
 {
     // Setup
-    fixture fix(handshake_params("example_user", "example_password", ""));
+    handshake_fixture fix(handshake_params("example_user", "example_password", ""));
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -836,12 +602,12 @@ BOOST_AUTO_TEST_CASE(db_empty_supported)
 BOOST_AUTO_TEST_CASE(db_empty_unsupported)
 {
     // Setup
-    fixture fix(handshake_params("example_user", "example_password", ""));
+    handshake_fixture fix(handshake_params("example_user", "example_password", ""));
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().auth_response(mnp_response).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -862,12 +628,12 @@ BOOST_AUTO_TEST_CASE(multiq_true_supported)
     // Setup
     handshake_params hparams("example_user", "example_password");
     hparams.set_multi_queries(true);
-    fixture fix(hparams);
+    handshake_fixture fix(hparams);
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().caps(multiq_caps).auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().caps(multiq_caps).auth_response(mnp_response).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(multiq_caps)
@@ -882,11 +648,11 @@ BOOST_AUTO_TEST_CASE(multiq_true_unsupported)
     // Setup
     handshake_params hparams("example_user", "example_password");
     hparams.set_multi_queries(true);
-    fixture fix(hparams);
+    handshake_fixture fix(hparams);
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
         .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
 }
 
@@ -894,12 +660,12 @@ BOOST_AUTO_TEST_CASE(multiq_true_unsupported)
 BOOST_AUTO_TEST_CASE(multiq_false_supported)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -912,12 +678,12 @@ BOOST_AUTO_TEST_CASE(multiq_false_supported)
 BOOST_AUTO_TEST_CASE(multiq_false_unsupported)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -940,16 +706,16 @@ BOOST_AUTO_TEST_CASE(tls_on)
             // Setup
             handshake_params hparams("example_user", "example_password");
             hparams.set_ssl(mode);
-            fixture fix(hparams, false);  // TLS only negotiated when the transport is not secure
-            fix.st.tls_supported = true;  // TLS only negotiated if supported
+            handshake_fixture fix(hparams, false);  // TLS only negotiated when the transport is not secure
+            fix.st.tls_supported = true;            // TLS only negotiated if supported
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
+                .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge).build())
                 .expect_write(create_ssl_request())
                 .expect_ssl_handshake()
                 .expect_write(
-                    login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response()).build()
+                    login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response).build()
                 )
                 .expect_read(create_ok_frame(3, ok_builder().build()))
                 .will_set_status(connection_status::ready)
@@ -1027,13 +793,13 @@ BOOST_AUTO_TEST_CASE(tls_off)
             // Setup
             handshake_params hparams("example_user", "example_password");
             hparams.set_ssl(tc.mode);
-            fixture fix(hparams, false);
+            handshake_fixture fix(hparams, false);
             fix.st.tls_supported = tc.transport_supports_tls;
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().caps(tc.server_caps).auth_data(mnp_challenge()).build())
-                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+                .expect_read(server_hello_builder().caps(tc.server_caps).auth_data(mnp_challenge).build())
+                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
                 .will_set_capabilities(min_caps)
@@ -1050,12 +816,12 @@ BOOST_AUTO_TEST_CASE(tls_error_unsupported)
     // Setup
     handshake_params hparams("example_user", "example_password");
     hparams.set_ssl(ssl_mode::require);
-    fixture fix(hparams, false);  // This doesn't happen if the transport is already secure
+    handshake_fixture fix(hparams, false);  // This doesn't happen if the transport is already secure
     fix.st.tls_supported = true;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
         .check(fix, client_errc::server_doesnt_support_ssl);
 }
 
@@ -1095,11 +861,11 @@ BOOST_AUTO_TEST_CASE(caps_mandatory)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            fixture fix;
+            handshake_fixture fix;
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().caps(tc.caps).auth_data(mnp_challenge()).build())
+                .expect_read(server_hello_builder().caps(tc.caps).auth_data(mnp_challenge).build())
                 .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
         }
     }
@@ -1122,15 +888,13 @@ BOOST_AUTO_TEST_CASE(caps_optional)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            fixture fix;
+            handshake_fixture fix;
 
             // Run the test
             algo_test()
-                .expect_read(
-                    server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_challenge()).build()
-                )
+                .expect_read(server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_challenge).build())
                 .expect_write(
-                    login_request_builder().caps(min_caps | tc.caps).auth_response(mnp_response()).build()
+                    login_request_builder().caps(min_caps | tc.caps).auth_response(mnp_response).build()
                 )
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
@@ -1175,14 +939,12 @@ BOOST_AUTO_TEST_CASE(caps_ignored)
         BOOST_TEST_CONTEXT(tc.name)
         {
             // Setup
-            fixture fix;
+            handshake_fixture fix;
 
             // Run the test
             algo_test()
-                .expect_read(
-                    server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_challenge()).build()
-                )
-                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
+                .expect_read(server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_challenge).build())
+                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
                 .will_set_capabilities(min_caps)
@@ -1200,11 +962,11 @@ BOOST_AUTO_TEST_CASE(caps_ignored)
 BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_plugin("unknown").auth_data(csha2p_challenge()).build())
+        .expect_read(server_hello_builder().auth_plugin("unknown").auth_data(csha2p_challenge).build())
         .will_set_capabilities(min_caps)
         .will_set_connection_id(42)
         .check(fix, client_errc::unknown_auth_plugin);
@@ -1213,18 +975,18 @@ BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
 BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge()).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
         )
         .expect_write(login_request_builder()
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response())
+                          .auth_response(csha2p_response)
                           .build())
-        .expect_read(create_auth_switch_frame(2, "unknown", mnp_challenge()))
+        .expect_read(create_auth_switch_frame(2, "unknown", mnp_challenge))
         .will_set_capabilities(min_caps)
         .will_set_connection_id(42)
         .check(fix, client_errc::unknown_auth_plugin);
@@ -1245,12 +1007,12 @@ BOOST_AUTO_TEST_CASE(hello_connection_id)
         BOOST_TEST_CONTEXT(value)
         {
             // Setup
-            fixture fix;
+            handshake_fixture fix;
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().connection_id(value).auth_data(mnp_challenge()).build())
-                .expect_write(login_request_builder().auth_response(mnp_response()).build())
+                .expect_read(server_hello_builder().connection_id(value).auth_data(mnp_challenge).build())
+                .expect_write(login_request_builder().auth_response(mnp_response).build())
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
                 .will_set_capabilities(min_caps)
@@ -1278,13 +1040,13 @@ BOOST_AUTO_TEST_CASE(flavor)
         BOOST_TEST_CONTEXT(tc.flavor)
         {
             // Setup
-            fixture fix;
+            handshake_fixture fix;
             fix.st.flavor = static_cast<detail::db_flavor>(0xffff);  // make sure that we set the value
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().version(tc.version).auth_data(mnp_challenge()).build())
-                .expect_write(login_request_builder().auth_response(mnp_response()).build())
+                .expect_read(server_hello_builder().version(tc.version).auth_data(mnp_challenge).build())
+                .expect_write(login_request_builder().auth_response(mnp_response).build())
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
                 .will_set_capabilities(min_caps)
@@ -1304,15 +1066,15 @@ BOOST_AUTO_TEST_CASE(unknown_collation)
     // Setup
     handshake_params hparams("example_user", "example_password");
     hparams.set_connection_collation(mysql_collations::utf8mb4_0900_as_ci);
-    fixture fix(hparams);
+    handshake_fixture fix(hparams);
     fix.st.current_charset = {"other", detail::next_char_utf8mb4};  // make sure that we set the value
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
         .expect_write(login_request_builder()
                           .collation(mysql_collations::utf8mb4_0900_as_ci)
-                          .auth_response(mnp_response())
+                          .auth_response(mnp_response)
                           .build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
@@ -1326,13 +1088,13 @@ BOOST_AUTO_TEST_CASE(unknown_collation)
 BOOST_AUTO_TEST_CASE(backslash_escapes)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
     fix.st.backslash_escapes = true;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().auth_response(mnp_response).build())
         .expect_read(create_ok_frame(2, ok_builder().no_backslash_escapes(true).build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -1346,13 +1108,13 @@ BOOST_AUTO_TEST_CASE(backslash_escapes)
 BOOST_AUTO_TEST_CASE(meta_mode)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
     fix.st.meta_mode = metadata_mode::full;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().auth_response(mnp_response).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -1379,13 +1141,13 @@ BOOST_AUTO_TEST_CASE(connection_status_success)
         BOOST_TEST_CONTEXT(initial_status)
         {
             // Setup
-            fixture fix;
+            handshake_fixture fix;
             fix.st.status = initial_status;
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
-                .expect_write(login_request_builder().auth_response(mnp_response()).build())
+                .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+                .expect_write(login_request_builder().auth_response(mnp_response).build())
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
                 .will_set_capabilities(min_caps)
@@ -1410,7 +1172,7 @@ BOOST_AUTO_TEST_CASE(connection_status_error)
         BOOST_TEST_CONTEXT(initial_status)
         {
             // Setup
-            fixture fix;
+            handshake_fixture fix;
             fix.st.status = initial_status;
 
             // Run the test
@@ -1429,7 +1191,7 @@ BOOST_AUTO_TEST_CASE(connection_status_error)
 BOOST_AUTO_TEST_CASE(deserialization_error_hello)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
@@ -1440,12 +1202,12 @@ BOOST_AUTO_TEST_CASE(deserialization_error_hello)
 BOOST_AUTO_TEST_CASE(deserialization_error_handshake_server_response)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().auth_response(mnp_response()).build())
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().auth_response(mnp_response).build())
         .expect_read(create_frame(2, boost::span<const std::uint8_t>()))
         .will_set_capabilities(min_caps)
         .will_set_connection_id(42)
@@ -1459,7 +1221,7 @@ BOOST_AUTO_TEST_CASE(deserialization_error_handshake_server_response)
 BOOST_AUTO_TEST_CASE(network_error_hello)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
@@ -1470,12 +1232,12 @@ BOOST_AUTO_TEST_CASE(network_error_hello)
 BOOST_AUTO_TEST_CASE(network_error_ssl_request)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
     fix.st.tls_supported = true;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge).build())
         .expect_write(create_ssl_request(), client_errc::sequence_number_mismatch)
         .will_set_capabilities(tls_caps)
         .will_set_connection_id(42)
@@ -1485,12 +1247,12 @@ BOOST_AUTO_TEST_CASE(network_error_ssl_request)
 BOOST_AUTO_TEST_CASE(network_error_ssl_handshake)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
     fix.st.tls_supported = true;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge()).build())
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge).build())
         .expect_write(create_ssl_request())
         .expect_ssl_handshake(client_errc::sequence_number_mismatch)
         .will_set_capabilities(tls_caps)
@@ -1501,13 +1263,13 @@ BOOST_AUTO_TEST_CASE(network_error_ssl_handshake)
 BOOST_AUTO_TEST_CASE(network_error_login_request)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
         .expect_write(
-            login_request_builder().caps(min_caps).auth_response(mnp_response()).build(),
+            login_request_builder().caps(min_caps).auth_response(mnp_response).build(),
             client_errc::sequence_number_mismatch
         )
         .will_set_capabilities(min_caps)
@@ -1518,14 +1280,14 @@ BOOST_AUTO_TEST_CASE(network_error_login_request)
 BOOST_AUTO_TEST_CASE(network_error_auth_switch_response)
 {
     // Setup
-    fixture fix;
+    handshake_fixture fix;
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge()).build())
-        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response()).build())
-        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge()))
-        .expect_write(create_frame(3, csha2p_response()), client_errc::sequence_number_mismatch)
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge))
+        .expect_write(create_frame(3, csha2p_response), client_errc::sequence_number_mismatch)
         .will_set_capabilities(min_caps)
         .will_set_connection_id(42)
         .check(fix, client_errc::sequence_number_mismatch);
