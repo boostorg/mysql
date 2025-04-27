@@ -127,10 +127,12 @@ class handshake_algo
         return condition ? cap : capabilities{};
     }
 
-    static error_code process_capabilities(
+    // Given our params and the capabilities that the server sent us,
+    // performs capability negotiation, returning either the capabilities to
+    // send to the server or an error
+    static system::result<capabilities> negotiate_capabilities(
         const handshake_params& params,
-        const server_hello& hello,
-        capabilities& negotiated_caps,
+        capabilities server_caps,
         bool transport_supports_ssl
     )
     {
@@ -156,7 +158,6 @@ class handshake_algo
                                                        capabilities::ps_multi_results;
 
         auto ssl = transport_supports_ssl ? params.ssl() : ssl_mode::disable;
-        capabilities server_caps = hello.server_capabilities;
         capabilities required_caps = mandatory_capabilities |
                                      conditional_capability(
                                          !params.database().empty(),
@@ -178,9 +179,8 @@ class handshake_algo
         {
             return make_error_code(client_errc::server_unsupported);
         }
-        negotiated_caps = server_caps & (required_caps | optional_capabilities |
-                                         conditional_capability(ssl == ssl_mode::enable, capabilities::ssl));
-        return error_code();
+        return server_caps & (required_caps | optional_capabilities |
+                              conditional_capability(ssl == ssl_mode::enable, capabilities::ssl));
     }
 
     // Attempts to map the collection_id to a character set. We try to be conservative
@@ -213,13 +213,12 @@ class handshake_algo
             return err;
 
         // Check capabilities
-        capabilities negotiated_caps{};
-        err = process_capabilities(hparams_, hello, negotiated_caps, st.tls_supported);
-        if (err)
-            return err;
+        auto negotiated_caps = negotiate_capabilities(hparams_, hello.server_capabilities, st.tls_supported);
+        if (negotiated_caps.has_error())
+            return negotiated_caps.error();
 
         // Set capabilities, db flavor and connection ID
-        st.current_capabilities = negotiated_caps;
+        st.current_capabilities = *negotiated_caps;
         st.flavor = hello.server;
         st.connection_id = hello.connection_id;
 
