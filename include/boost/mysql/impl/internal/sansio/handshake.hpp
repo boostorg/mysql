@@ -25,7 +25,7 @@
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
-#include <boost/mysql/impl/internal/sansio/auth_plugin.hpp>
+#include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
 #include <boost/mysql/impl/internal/sansio/caching_sha2_password.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/mysql_native_password.hpp>
@@ -53,13 +53,13 @@ class any_authentication_plugin
 
     // State for algorithms that require stateful exchanges.
     // mysql_native_password is stateless, so only caching_sha2_password has an entry here
-    caching_sha2_password_algo csha2p_;
+    csha2p_algo csha2p_;
 
 public:
     any_authentication_plugin() = default;
 
     // Emplaces the plugin and computes the first authentication response by hashing the password
-    system::result<hashed_password> bootstrap_plugin(
+    system::result<static_buffer<32>> bootstrap_plugin(
         string_view plugin_name,
         string_view password,
         span<const std::uint8_t> challenge
@@ -73,7 +73,7 @@ public:
         else if (plugin_name == "caching_sha2_password")
         {
             type_ = type_t::csha2p;
-            csha2p_ = caching_sha2_password_algo();  // Reset any leftover state, just in case
+            csha2p_ = csha2p_algo();  // Reset any leftover state, just in case
             return csha2p_hash_password(password, challenge);
         }
         else
@@ -118,7 +118,7 @@ class handshake_algo
     int resume_point_{0};
     handshake_params hparams_;
     any_authentication_plugin plugin_;
-    hashed_password hashed_password_;
+    static_buffer<32> hashed_password_;
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
 

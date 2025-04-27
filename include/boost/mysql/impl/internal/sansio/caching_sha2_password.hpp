@@ -15,9 +15,9 @@
 #include <boost/mysql/detail/next_action.hpp>
 
 #include <boost/mysql/impl/internal/coroutine.hpp>
-#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
+#include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>  // TODO
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
-#include <boost/mysql/impl/internal/sansio/auth_plugin.hpp>
+#include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/core/span.hpp>
@@ -67,7 +67,7 @@ inline void csha2p_hash_password_impl(
     }
 }
 
-inline system::result<hashed_password> csha2p_hash_password(
+inline system::result<static_buffer<32>> csha2p_hash_password(
     string_view password,
     span<const std::uint8_t> challenge
 )
@@ -79,10 +79,10 @@ inline system::result<hashed_password> csha2p_hash_password(
 
     // Empty passwords are not hashed
     if (password.empty())
-        return hashed_password();
+        return {};
 
     // Run the algorithm
-    hashed_password res(csha2p_response_length);
+    static_buffer<32> res(csha2p_response_length);
     csha2p_hash_password_impl(
         password,
         span<const std::uint8_t, csha2p_challenge_length>(challenge),
@@ -91,7 +91,7 @@ inline system::result<hashed_password> csha2p_hash_password(
     return res;
 }
 
-class caching_sha2_password_algo
+class csha2p_algo
 {
     int resume_point_{0};
 
@@ -106,7 +106,7 @@ class caching_sha2_password_algo
     }
 
 public:
-    caching_sha2_password_algo() = default;
+    csha2p_algo() = default;
 
     next_action resume(
         connection_state_data& st,

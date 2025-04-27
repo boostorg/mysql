@@ -11,10 +11,9 @@
 #include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/string_view.hpp>
 
-#include <boost/mysql/detail/next_action.hpp>
+#include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
 
-#include <boost/mysql/impl/internal/sansio/auth_plugin.hpp>
-
+#include <boost/config.hpp>
 #include <boost/core/span.hpp>
 
 #include <array>
@@ -59,7 +58,8 @@ inline void mnp_hash_password_impl(
     }
 }
 
-inline system::result<hashed_password> mnp_hash_password(
+// The static buffer size is chosen so that every plugin uses the same size
+inline system::result<static_buffer<32>> mnp_hash_password(
     string_view password,
     span<const std::uint8_t> challenge
 )
@@ -71,10 +71,10 @@ inline system::result<hashed_password> mnp_hash_password(
 
     // Empty passwords are not hashed
     if (password.empty())
-        return hashed_password();
+        return {};
 
     // Run the algorithm
-    hashed_password res(mnp_response_length);
+    static_buffer<32> res(mnp_response_length);
     mnp_hash_password_impl(
         password,
         span<const std::uint8_t, mnp_challenge_length>(challenge),
