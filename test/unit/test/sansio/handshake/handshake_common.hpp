@@ -251,7 +251,7 @@ struct handshake_fixture : algo_fixture_base
     detail::handshake_algo algo;
 
     handshake_fixture(
-        const handshake_params& hparams = handshake_params("example_user", "example_password"),
+        const handshake_params& hparams = handshake_params("example_user", password),
         bool secure_transport = false
     )
         : algo({hparams, secure_transport})

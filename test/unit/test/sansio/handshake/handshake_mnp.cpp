@@ -59,6 +59,7 @@ BOOST_AUTO_TEST_CASE(err)
 }
 
 // Hashing the password fails
+// TODO: move to generic section
 BOOST_AUTO_TEST_CASE(bad_challenge_length)
 {
     // Setup
@@ -97,6 +98,7 @@ BOOST_AUTO_TEST_CASE(authswitch_ok)
         .check(fix);
 }
 
+// TODO: move to generic section
 BOOST_AUTO_TEST_CASE(authswitch_error)
 {
     // Setup
