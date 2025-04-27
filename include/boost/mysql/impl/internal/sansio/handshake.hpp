@@ -40,62 +40,6 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline capabilities conditional_capability(bool condition, capabilities cap)
-{
-    return condition ? cap : capabilities{};
-}
-
-inline error_code process_capabilities(
-    const handshake_params& params,
-    const server_hello& hello,
-    capabilities& negotiated_caps,
-    bool transport_supports_ssl
-)
-{
-    // The capabilities that we absolutely require. These are always set except in extremely old servers
-    constexpr capabilities mandatory_capabilities =
-        // We don't speak the older protocol
-        capabilities::protocol_41 |
-
-        // We only know how to deserialize the hello frame if this is set
-        capabilities::plugin_auth |
-
-        // Same as above
-        capabilities::plugin_auth_lenenc_data |
-
-        // This makes processing execute responses easier
-        capabilities::deprecate_eof |
-
-        // Used in MariaDB to signal 4.1 protocol. Always set in MySQL, too
-        capabilities::secure_connection;
-
-    // The capabilities that we support but don't require
-    constexpr capabilities optional_capabilities = capabilities::multi_results |
-                                                   capabilities::ps_multi_results;
-
-    auto ssl = transport_supports_ssl ? params.ssl() : ssl_mode::disable;
-    capabilities server_caps = hello.server_capabilities;
-    capabilities
-        required_caps = mandatory_capabilities |
-                        conditional_capability(!params.database().empty(), capabilities::connect_with_db) |
-                        conditional_capability(params.multi_queries(), capabilities::multi_statements) |
-                        conditional_capability(ssl == ssl_mode::require, capabilities::ssl);
-    if (has_capabilities(required_caps, capabilities::ssl) &&
-        !has_capabilities(server_caps, capabilities::ssl))
-    {
-        // This happens if the server doesn't have SSL configured. This special
-        // error code helps users diagnosing their problem a lot (server_unsupported doesn't).
-        return make_error_code(client_errc::server_doesnt_support_ssl);
-    }
-    else if (!has_capabilities(server_caps, required_caps))
-    {
-        return make_error_code(client_errc::server_unsupported);
-    }
-    negotiated_caps = server_caps & (required_caps | optional_capabilities |
-                                     conditional_capability(ssl == ssl_mode::enable, capabilities::ssl));
-    return error_code();
-}
-
 class any_authentication_plugin
 {
     enum class type_t
@@ -177,6 +121,67 @@ class handshake_algo
     hashed_password hashed_password_;
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
+
+    static capabilities conditional_capability(bool condition, capabilities cap)
+    {
+        return condition ? cap : capabilities{};
+    }
+
+    static error_code process_capabilities(
+        const handshake_params& params,
+        const server_hello& hello,
+        capabilities& negotiated_caps,
+        bool transport_supports_ssl
+    )
+    {
+        // The capabilities that we absolutely require. These are always set except in extremely old servers
+        constexpr capabilities mandatory_capabilities =
+            // We don't speak the older protocol
+            capabilities::protocol_41 |
+
+            // We only know how to deserialize the hello frame if this is set
+            capabilities::plugin_auth |
+
+            // Same as above
+            capabilities::plugin_auth_lenenc_data |
+
+            // This makes processing execute responses easier
+            capabilities::deprecate_eof |
+
+            // Used in MariaDB to signal 4.1 protocol. Always set in MySQL, too
+            capabilities::secure_connection;
+
+        // The capabilities that we support but don't require
+        constexpr capabilities optional_capabilities = capabilities::multi_results |
+                                                       capabilities::ps_multi_results;
+
+        auto ssl = transport_supports_ssl ? params.ssl() : ssl_mode::disable;
+        capabilities server_caps = hello.server_capabilities;
+        capabilities required_caps = mandatory_capabilities |
+                                     conditional_capability(
+                                         !params.database().empty(),
+                                         capabilities::connect_with_db
+                                     ) |
+                                     conditional_capability(
+                                         params.multi_queries(),
+                                         capabilities::multi_statements
+                                     ) |
+                                     conditional_capability(ssl == ssl_mode::require, capabilities::ssl);
+        if (has_capabilities(required_caps, capabilities::ssl) &&
+            !has_capabilities(server_caps, capabilities::ssl))
+        {
+            // This happens if the server doesn't have SSL configured. This special
+            // error code helps users diagnosing their problem a lot (server_unsupported doesn't).
+            return make_error_code(client_errc::server_doesnt_support_ssl);
+        }
+        else if (!has_capabilities(server_caps, required_caps))
+        {
+            return make_error_code(client_errc::server_unsupported);
+        }
+        negotiated_caps = server_caps & (required_caps | optional_capabilities |
+                                         conditional_capability(ssl == ssl_mode::enable, capabilities::ssl));
+        return error_code();
+    }
 
     // Attempts to map the collection_id to a character set. We try to be conservative
     // here, since servers will happily accept unknown collation IDs, silently defaulting
