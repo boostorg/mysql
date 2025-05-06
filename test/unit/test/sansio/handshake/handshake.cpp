@@ -212,6 +212,32 @@ BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
         .check(fix, client_errc::unknown_auth_plugin);
 }
 
+// Performing an auth switch to the same plugin is okay
+BOOST_AUTO_TEST_CASE(authswitch_to_itself)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge))
+        .expect_write(create_frame(3, csha2p_response))
+        .expect_read(create_more_data_frame(4, csha2p_fast_auth_ok))
+        .expect_read(create_ok_frame(5, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
 // Receiving an auth switch after a fast track OK fails as expected
 // TODO: move this to the generic section
 BOOST_AUTO_TEST_CASE(fastok_authswitch)
@@ -236,31 +262,6 @@ BOOST_AUTO_TEST_CASE(fastok_authswitch)
 //
 // mysql_native_password
 //
-
-// TODO: redo this as a generic test
-// After receiving an auth switch, receiving another one is illegal
-// TODO: re-enable this test after https://github.com/boostorg/mysql/issues/469
-// BOOST_AUTO_TEST_CASE(mnp_authswitch_authswitch)
-// {
-//     // Setup
-//     fixture fix;
-
-//     // Run the test
-//     algo_test()
-//         .expect_read(
-//             server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
-//         )
-//         .expect_write(login_request_builder()
-//                           .auth_plugin("caching_sha2_password")
-//                           .auth_response(csha2p_response)
-//                           .build())
-//         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
-//         .expect_write(create_frame(3, mnp_response))
-//         .expect_read(create_auth_switch_frame(4, "mysql_native_password", mnp_challenge))
-//         .will_set_capabilities(min_caps)  // incidental
-//         .will_set_connection_id(42)       // incidental
-//         .check(fix, client_errc::protocol_value_error);
-// }
 
 // TODO: auth switch to itself (after https://github.com/boostorg/mysql/issues/469)
 
