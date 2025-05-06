@@ -17,7 +17,7 @@ using detail::connection_status;
 
 namespace {
 
-BOOST_AUTO_TEST_SUITE(test_handshake)
+BOOST_AUTO_TEST_SUITE(test_handshake_connection_state_data)
 
 // connection_id: no value causes trouble
 BOOST_AUTO_TEST_CASE(hello_connection_id)
