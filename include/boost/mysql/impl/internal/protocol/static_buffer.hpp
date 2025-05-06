@@ -14,6 +14,7 @@
 #include <boost/core/span.hpp>
 
 #include <array>
+#include <cstdint>
 #include <cstring>
 
 namespace boost {
