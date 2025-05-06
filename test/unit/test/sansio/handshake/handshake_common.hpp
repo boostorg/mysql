@@ -246,6 +246,9 @@ constexpr std::uint8_t csha2p_response[] = {
     0x5e, 0xa9, 0x41, 0x8e, 0xdc, 0x89, 0xeb, 0xe2, 0xa1, 0xec, 0xd8, 0x4f, 0x73, 0xa1, 0x49, 0x60,
 };
 
+constexpr std::uint8_t csha2p_fast_auth_ok[] = {0x03};
+constexpr std::uint8_t csha2p_perform_full_auth[] = {0x04};
+
 struct handshake_fixture : algo_fixture_base
 {
     detail::handshake_algo algo;

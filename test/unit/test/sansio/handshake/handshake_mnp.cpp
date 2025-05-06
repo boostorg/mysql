@@ -58,21 +58,6 @@ BOOST_AUTO_TEST_CASE(err)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
-// Hashing the password fails
-// TODO: move to generic section
-BOOST_AUTO_TEST_CASE(bad_challenge_length)
-{
-    // Setup
-    handshake_fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(server_hello_builder().auth_data(std::vector<std::uint8_t>(21, 0x0a)).build())
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
-        .check(fix, client_errc::protocol_value_error);
-}
-
 // The flows with auth switch work
 BOOST_AUTO_TEST_CASE(authswitch_ok)
 {
@@ -96,33 +81,6 @@ BOOST_AUTO_TEST_CASE(authswitch_ok)
         .will_set_current_charset(utf8mb4_charset)
         .will_set_connection_id(42)
         .check(fix);
-}
-
-// TODO: move to generic section
-BOOST_AUTO_TEST_CASE(authswitch_error)
-{
-    // Setup
-    handshake_fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
-        )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
-        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
-        .expect_write(create_frame(3, mnp_response))
-        .expect_read(err_builder()
-                         .seqnum(4)
-                         .code(common_server_errc::er_access_denied_error)
-                         .message("Denied")
-                         .build_frame())
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
-        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
 // mysql_native_password doesn't have interactions with TLS

@@ -6,6 +6,8 @@
 //
 
 #include "handshake_common.hpp"
+#include "test_common/create_diagnostics.hpp"
+#include "test_unit/create_err.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/printing.hpp"
@@ -18,6 +20,71 @@ using detail::connection_status;
 namespace {
 
 BOOST_AUTO_TEST_SUITE(test_handshake)
+
+// TODO: move to generic section
+BOOST_AUTO_TEST_CASE(authswitch_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
+        .expect_write(create_frame(3, mnp_response))
+        .expect_read(err_builder()
+                         .seqnum(4)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
+// Hashing the password fails
+// TODO: move to generic section
+BOOST_AUTO_TEST_CASE(bad_challenge_length)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(std::vector<std::uint8_t>(21, 0x0a)).build())
+        .will_set_capabilities(min_caps)  // incidental
+        .will_set_connection_id(42)       // incidental
+        .check(fix, client_errc::protocol_value_error);
+}
+
+// Receiving an auth switch after a fast track OK fails as expected
+// TODO: move this to the generic section
+BOOST_AUTO_TEST_CASE(fastok_authswitch)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
+        .expect_read(create_auth_switch_frame(3, "mysql_native_password", mnp_challenge))
+        .will_set_capabilities(min_caps)
+        .will_set_connection_id(42)
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
 
 //
 // mysql_native_password
