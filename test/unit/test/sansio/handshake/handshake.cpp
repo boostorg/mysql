@@ -6,6 +6,8 @@
 //
 
 #include <boost/mysql/client_errc.hpp>
+#include <boost/mysql/error_categories.hpp>
+#include <boost/mysql/mariadb_server_errc.hpp>
 
 #include "handshake_common.hpp"
 #include "test_common/create_diagnostics.hpp"
@@ -52,6 +54,35 @@ BOOST_AUTO_TEST_CASE(hello_hash_password_error)
         .expect_read(server_hello_builder().auth_data(std::vector<std::uint8_t>(21, 0x0a)).build())
         .check(fix, client_errc::protocol_value_error);
 }
+
+//
+// Errors processing the initial server response
+//
+
+// Deserialization happens with the correct db_flavor
+BOOST_AUTO_TEST_CASE(initial_response_err_flavor)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(mnp_challenge).version("11.4.2-MariaDB-ubu2404").build()
+        )
+        .expect_write(login_request_builder().auth_response(mnp_response).build())
+        .expect_read(
+            err_builder().seqnum(2).code(mariadb_server_errc::er_bad_data).message("bad data").build_frame()
+        )
+        .check(
+            fix,
+            error_code(mariadb_server_errc::er_bad_data, get_mariadb_server_category()),
+            create_server_diag("bad data")
+        );
+}
+
+//
+// Errors processing the auth switch
+//
 
 // TODO: move to generic section
 BOOST_AUTO_TEST_CASE(authswitch_error)
