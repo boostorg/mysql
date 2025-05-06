@@ -5,9 +5,12 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include <boost/mysql/client_errc.hpp>
+
 #include "handshake_common.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/create_err.hpp"
+#include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 #include "test_unit/printing.hpp"
@@ -24,6 +27,31 @@ BOOST_AUTO_TEST_SUITE(test_handshake)
 //
 // Errors processing server hello
 //
+
+// The initial hello is invalid
+BOOST_AUTO_TEST_CASE(hello_deserialize_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(create_frame(0, {0x09, 0x00}))  // unsupported v9 protocol
+        .check(fix, client_errc::server_unsupported);
+}
+
+// The authentication plugin reports an error while hashing the password
+// with the data in the initial hello
+BOOST_AUTO_TEST_CASE(hello_hash_password_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_data(std::vector<std::uint8_t>(21, 0x0a)).build())
+        .check(fix, client_errc::protocol_value_error);
+}
 
 // TODO: move to generic section
 BOOST_AUTO_TEST_CASE(authswitch_error)
@@ -48,19 +76,6 @@ BOOST_AUTO_TEST_CASE(authswitch_error)
                          .message("Denied")
                          .build_frame())
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
-}
-
-// Hashing the password fails
-// TODO: move to generic section
-BOOST_AUTO_TEST_CASE(bad_challenge_length)
-{
-    // Setup
-    handshake_fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(server_hello_builder().auth_data(std::vector<std::uint8_t>(21, 0x0a)).build())
-        .check(fix, client_errc::protocol_value_error);
 }
 
 // Receiving an auth switch after a fast track OK fails as expected
