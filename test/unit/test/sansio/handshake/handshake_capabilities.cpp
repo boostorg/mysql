@@ -50,7 +50,7 @@ BOOST_AUTO_TEST_CASE(db_nonempty_unsupported)
     // Run the test
     algo_test()
         .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
-        .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
+        .check(fix, client_errc::server_unsupported);
 }
 
 // If the user didn't request a DB, we don't send it
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(multiq_true_unsupported)
     // Run the test
     algo_test()
         .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
-        .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
+        .check(fix, client_errc::server_unsupported);
 }
 
 // We don't request it but the server supports it. We request the server to disable it
@@ -339,7 +339,7 @@ BOOST_AUTO_TEST_CASE(caps_mandatory)
             // Run the test
             algo_test()
                 .expect_read(server_hello_builder().caps(tc.caps).auth_data(mnp_challenge).build())
-                .check(fix, client_errc::server_unsupported);  // TODO: some diagnostics here would be great
+                .check(fix, client_errc::server_unsupported);
         }
     }
 }
