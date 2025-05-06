@@ -375,7 +375,7 @@ public:
                 {
                     // The plugin wants us to read another packet
                     BOOST_ASSERT(act.type() == next_action_type::read);
-                    BOOST_MYSQL_YIELD(resume_point_, 10, st.read(sequence_number_))
+                    BOOST_MYSQL_YIELD(resume_point_, 10, act)
                 }
 
                 // If we got here, we've successfully read a packet. Deserialize it
