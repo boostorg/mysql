@@ -18,7 +18,7 @@ using detail::mnp_hash_password;
 
 namespace {
 
-BOOST_AUTO_TEST_SUITE(test_mnp)
+BOOST_AUTO_TEST_SUITE(test_handshake_mnp_hash_password)
 
 // Values snooped using Wireshark
 constexpr std::uint8_t challenge[20] = {

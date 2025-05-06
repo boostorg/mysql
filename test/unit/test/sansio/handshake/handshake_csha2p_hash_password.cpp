@@ -16,12 +16,9 @@ using namespace boost::mysql;
 using namespace boost::mysql::test;
 using detail::csha2p_hash_password;
 
-// Tests only password hashing - the stateful algorithm
-// is more easily tested with the handshake algorithm itself
-
 namespace {
 
-BOOST_AUTO_TEST_SUITE(test_csha2p)
+BOOST_AUTO_TEST_SUITE(test_handshake_csha2p_hash_password)
 
 // Values snooped using the MySQL Python connector
 constexpr std::uint8_t challenge[20] = {

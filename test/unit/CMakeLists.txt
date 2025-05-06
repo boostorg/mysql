@@ -29,11 +29,11 @@ add_executable(
     test/sansio/message_reader.cpp
     test/sansio/top_level_algo.cpp
 
-    test/sansio/mysql_native_password.cpp
-    test/sansio/caching_sha2_password.cpp
     test/sansio/handshake/handshake.cpp
     test/sansio/handshake/handshake_mnp.cpp
+    test/sansio/handshake/handshake_mnp_hash_password.cpp
     test/sansio/handshake/handshake_csha2p.cpp
+    test/sansio/handshake/handshake_csha2p_hash_password.cpp
     test/sansio/handshake/handshake_capabilities.cpp
     test/sansio/handshake/handshake_connection_state_data.cpp
     test/sansio/read_resultset_head.cpp
