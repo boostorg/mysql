@@ -238,6 +238,10 @@ BOOST_AUTO_TEST_CASE(authswitch_to_itself)
         .check(fix);
 }
 
+//
+// Errors in the more_data package exchange
+//
+
 // Receiving an auth switch after a more_data package is illegal
 BOOST_AUTO_TEST_CASE(moredata_authswitch)
 {
@@ -275,6 +279,34 @@ BOOST_AUTO_TEST_CASE(authswitch_moredata_authswitch)
         .expect_write(create_frame(3, csha2p_response))
         .expect_read(create_auth_switch_frame(4, "caching_sha2_password", csha2p_challenge))
         .check(fix, client_errc::bad_handshake_packet_type);
+}
+
+// We pass the correct db_flavor to error packets deserialized in the more_data exchange
+BOOST_AUTO_TEST_CASE(moredata_error_flavor)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .version("11.4.2-MariaDB-ubu2404")
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_challenge)
+                         .build())
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
+        .expect_read(
+            err_builder().seqnum(3).code(mariadb_server_errc::er_bad_data).message("Denied").build_frame()
+        )
+        .check(
+            fix,
+            error_code(mariadb_server_errc::er_bad_data, get_mariadb_server_category()),
+            create_server_diag("Denied")
+        );
 }
 
 //
