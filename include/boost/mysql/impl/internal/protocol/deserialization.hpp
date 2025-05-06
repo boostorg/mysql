@@ -21,7 +21,6 @@
 
 #include <boost/mysql/detail/coldef_view.hpp>
 #include <boost/mysql/detail/config.hpp>
-#include <boost/mysql/detail/make_string_view.hpp>
 #include <boost/mysql/detail/ok_view.hpp>
 #include <boost/mysql/detail/resultset_encoding.hpp>
 
