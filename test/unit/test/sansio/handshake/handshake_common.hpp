@@ -249,6 +249,12 @@ constexpr std::uint8_t csha2p_response[] = {
 constexpr std::uint8_t csha2p_fast_auth_ok[] = {0x03};
 constexpr std::uint8_t csha2p_perform_full_auth[] = {0x04};
 
+// Null-terminated password, as required by the plugin
+inline boost::span<const std::uint8_t> null_terminated_password()
+{
+    return {reinterpret_cast<const std::uint8_t*>(password), std::strlen(password) + 1};
+}
+
 struct handshake_fixture : algo_fixture_base
 {
     detail::handshake_algo algo;

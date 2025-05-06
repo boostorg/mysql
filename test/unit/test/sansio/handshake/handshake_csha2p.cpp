@@ -27,12 +27,6 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_handshake_csha2p)
 
-// Null-terminated password, as required by the plugin
-boost::span<const std::uint8_t> null_terminated_password()
-{
-    return {reinterpret_cast<const std::uint8_t*>(password), std::strlen(password) + 1};
-}
-
 // Edge case: we tolerate a direct OK packet in the fast path, without a fast auth OK
 BOOST_AUTO_TEST_CASE(ok)
 {
