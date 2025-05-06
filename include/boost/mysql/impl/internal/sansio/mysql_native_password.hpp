@@ -15,6 +15,7 @@
 
 #include <boost/config.hpp>
 #include <boost/core/span.hpp>
+#include <boost/system/result.hpp>
 
 #include <array>
 #include <cstddef>
