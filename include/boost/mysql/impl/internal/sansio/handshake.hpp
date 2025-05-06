@@ -198,12 +198,6 @@ class handshake_algo
         }
     }
 
-    // Once the handshake is processed, the capabilities are stored in the connection state
-    bool use_ssl(const connection_state_data& st) const
-    {
-        return has_capabilities(st.current_capabilities, capabilities::ssl);
-    }
-
     error_code process_hello(connection_state_data& st, diagnostics& diag, span<const std::uint8_t> buffer)
     {
         // Deserialize server hello
@@ -223,7 +217,7 @@ class handshake_algo
         st.connection_id = hello.connection_id;
 
         // If we're using SSL, mark the channel as secure
-        secure_channel_ = secure_channel_ || use_ssl(st);
+        secure_channel_ = secure_channel_ || has_capabilities(*negotiated_caps, capabilities::ssl);
 
         // Emplace the authentication plugin and compute the first response
         auto hashed_password = plugin_.bootstrap_plugin(
@@ -311,7 +305,7 @@ public:
                 return ec;
 
             // SSL
-            if (use_ssl(st))
+            if (has_capabilities(st.current_capabilities, capabilities::ssl))
             {
                 // Send SSL request
                 BOOST_MYSQL_YIELD(resume_point_, 2, st.write(compose_ssl_request(st), sequence_number_))
