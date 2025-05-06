@@ -390,7 +390,9 @@ class handshake_algo
             }
         }
 
-        return next_action();
+        // We should never get here
+        BOOST_ASSERT(false);
+        return next_action();  // LCOV_EXCL_LINE
     }
 
 public:
