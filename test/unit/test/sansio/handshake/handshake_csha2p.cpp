@@ -77,8 +77,6 @@ BOOST_AUTO_TEST_CASE(err)
                          .code(common_server_errc::er_access_denied_error)
                          .message("Denied")
                          .build_frame())
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
@@ -100,8 +98,6 @@ BOOST_AUTO_TEST_CASE(fullauth)
                           .auth_response(csha2p_response)
                           .build())
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::auth_plugin_requires_ssl);
 }
 
@@ -121,8 +117,6 @@ BOOST_AUTO_TEST_CASE(moredata)
                           .auth_response(csha2p_response)
                           .build())
         .expect_read(create_more_data_frame(2, std::vector<std::uint8_t>{3, 4}))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -172,8 +166,6 @@ BOOST_AUTO_TEST_CASE(fastok_err)
                          .code(common_server_errc::er_access_denied_error)
                          .message("Denied")
                          .build_frame())
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
@@ -194,8 +186,6 @@ BOOST_AUTO_TEST_CASE(fastok_fastok)
                           .build())
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(create_more_data_frame(3, csha2p_fast_auth_ok))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -216,8 +206,6 @@ BOOST_AUTO_TEST_CASE(fastok_fullauth)
                           .build())
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(create_more_data_frame(3, csha2p_perform_full_auth))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -238,8 +226,6 @@ BOOST_AUTO_TEST_CASE(fastok_moredata)
                           .build())
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(create_more_data_frame(3, std::vector<std::uint8_t>{10, 20, 30}))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -318,8 +304,6 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_err)
                          .code(common_server_errc::er_access_denied_error)
                          .message("Denied")
                          .build_frame())
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
@@ -341,8 +325,6 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_fastok)
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
         .expect_read(create_more_data_frame(4, csha2p_fast_auth_ok))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -364,8 +346,6 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_fullauth)
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
         .expect_read(create_more_data_frame(4, csha2p_perform_full_auth))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -387,8 +367,6 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_moredata)
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
         .expect_read(create_more_data_frame(4, std::vector<std::uint8_t>{4, 3, 2}))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 

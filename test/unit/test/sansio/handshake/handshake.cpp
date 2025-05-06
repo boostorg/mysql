@@ -21,6 +21,10 @@ namespace {
 
 BOOST_AUTO_TEST_SUITE(test_handshake)
 
+//
+// Errors processing server hello
+//
+
 // TODO: move to generic section
 BOOST_AUTO_TEST_CASE(authswitch_error)
 {
@@ -43,8 +47,6 @@ BOOST_AUTO_TEST_CASE(authswitch_error)
                          .code(common_server_errc::er_access_denied_error)
                          .message("Denied")
                          .build_frame())
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
@@ -58,8 +60,6 @@ BOOST_AUTO_TEST_CASE(bad_challenge_length)
     // Run the test
     algo_test()
         .expect_read(server_hello_builder().auth_data(std::vector<std::uint8_t>(21, 0x0a)).build())
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
         .check(fix, client_errc::protocol_value_error);
 }
 
@@ -81,8 +81,6 @@ BOOST_AUTO_TEST_CASE(fastok_authswitch)
                           .build())
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(create_auth_switch_frame(3, "mysql_native_password", mnp_challenge))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -108,8 +106,6 @@ BOOST_AUTO_TEST_CASE(mnp_authswitch_bad_challenge_length)
                           .build())
         .expect_read(create_auth_switch_frame(2, "mysql_native_password", std::vector<std::uint8_t>(21, 0x0a))
         )
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
         .check(fix, client_errc::protocol_value_error);
 }
 
@@ -150,8 +146,6 @@ BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
     // Run the test
     algo_test()
         .expect_read(server_hello_builder().auth_plugin("unknown").auth_data(csha2p_challenge).build())
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::unknown_auth_plugin);
 }
 
@@ -170,8 +164,6 @@ BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
                           .auth_response(csha2p_response)
                           .build())
         .expect_read(create_auth_switch_frame(2, "unknown", mnp_challenge))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::unknown_auth_plugin);
 }
 
@@ -264,8 +256,6 @@ BOOST_AUTO_TEST_CASE(deserialization_error_handshake_server_response)
         .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
         .expect_write(login_request_builder().auth_response(mnp_response).build())
         .expect_read(create_frame(2, boost::span<const std::uint8_t>()))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::incomplete_message);
 }
 
@@ -294,8 +284,6 @@ BOOST_AUTO_TEST_CASE(network_error_ssl_request)
     algo_test()
         .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge).build())
         .expect_write(create_ssl_request(), client_errc::sequence_number_mismatch)
-        .will_set_capabilities(tls_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::sequence_number_mismatch);
 }
 
@@ -310,8 +298,6 @@ BOOST_AUTO_TEST_CASE(network_error_ssl_handshake)
         .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge).build())
         .expect_write(create_ssl_request())
         .expect_ssl_handshake(client_errc::sequence_number_mismatch)
-        .will_set_capabilities(tls_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::sequence_number_mismatch);
 }
 
@@ -327,8 +313,6 @@ BOOST_AUTO_TEST_CASE(network_error_login_request)
             login_request_builder().caps(min_caps).auth_response(mnp_response).build(),
             client_errc::sequence_number_mismatch
         )
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::sequence_number_mismatch);
 }
 
@@ -343,10 +327,10 @@ BOOST_AUTO_TEST_CASE(network_error_auth_switch_response)
         .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
         .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge))
         .expect_write(create_frame(3, csha2p_response), client_errc::sequence_number_mismatch)
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::sequence_number_mismatch);
 }
+
+// TODO: the adequate db_flavor is passed when deserializing errors
 
 BOOST_AUTO_TEST_SUITE_END()
 

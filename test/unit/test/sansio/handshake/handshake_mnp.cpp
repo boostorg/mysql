@@ -53,8 +53,6 @@ BOOST_AUTO_TEST_CASE(err)
                          .code(common_server_errc::er_access_denied_error)
                          .message("Denied")
                          .build_frame())
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
@@ -116,8 +114,6 @@ BOOST_AUTO_TEST_CASE(moredata)
         .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
         .expect_write(login_request_builder().auth_response(mnp_response).build())
         .expect_read(create_more_data_frame(2, mnp_challenge))
-        .will_set_capabilities(min_caps)  // incidental
-        .will_set_connection_id(42)       // incidental
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -138,8 +134,6 @@ BOOST_AUTO_TEST_CASE(authswitch_moredata)
         .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
         .expect_write(create_frame(3, mnp_response))
         .expect_read(create_more_data_frame(4, mnp_challenge))
-        .will_set_capabilities(min_caps)
-        .will_set_connection_id(42)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 

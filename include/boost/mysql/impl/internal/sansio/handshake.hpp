@@ -275,13 +275,7 @@ class handshake_algo
         st.current_charset = collation_id_to_charset(hparams_.connection_collation());
     }
 
-public:
-    handshake_algo(handshake_algo_params params) noexcept
-        : hparams_(params.hparams), secure_channel_(params.secure_channel)
-    {
-    }
-
-    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
+    next_action resume_impl(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
             return ec;
@@ -397,6 +391,21 @@ public:
         }
 
         return next_action();
+    }
+
+public:
+    handshake_algo(handshake_algo_params params) noexcept
+        : hparams_(params.hparams), secure_channel_(params.secure_channel)
+    {
+    }
+
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
+    {
+        // On error, reset the connection's state to well-known values
+        auto act = resume_impl(st, diag, ec);
+        if (act.is_done() && act.error())
+            st.reset();
+        return act;
     }
 };
 
