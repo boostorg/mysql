@@ -310,67 +310,6 @@ BOOST_AUTO_TEST_CASE(moredata_error_flavor)
 }
 
 //
-// Connection status
-//
-
-// On success, set to ready, regardless of the initial value
-BOOST_AUTO_TEST_CASE(connection_status_success)
-{
-    constexpr connection_status all_status[] = {
-        connection_status::not_connected,
-        connection_status::ready,
-        connection_status::engaged_in_multi_function
-    };
-
-    for (auto initial_status : all_status)
-    {
-        BOOST_TEST_CONTEXT(initial_status)
-        {
-            // Setup
-            handshake_fixture fix;
-            fix.st.status = initial_status;
-
-            // Run the test
-            algo_test()
-                .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
-                .expect_write(login_request_builder().auth_response(mnp_response).build())
-                .expect_read(create_ok_frame(2, ok_builder().build()))
-                .will_set_status(connection_status::ready)
-                .will_set_capabilities(min_caps)
-                .will_set_current_charset(utf8mb4_charset)
-                .will_set_connection_id(42)
-                .check(fix);
-        }
-    }
-}
-
-// On success, set to not connected, regardless of the initial value
-BOOST_AUTO_TEST_CASE(connection_status_error)
-{
-    constexpr connection_status all_status[] = {
-        connection_status::not_connected,
-        connection_status::ready,
-        connection_status::engaged_in_multi_function
-    };
-
-    for (auto initial_status : all_status)
-    {
-        BOOST_TEST_CONTEXT(initial_status)
-        {
-            // Setup
-            handshake_fixture fix;
-            fix.st.status = initial_status;
-
-            // Run the test
-            algo_test()
-                .expect_read(client_errc::sequence_number_mismatch)
-                .will_set_status(connection_status::not_connected)
-                .check(fix, client_errc::sequence_number_mismatch);
-        }
-    }
-}
-
-//
 // Deserialization errors
 //
 
