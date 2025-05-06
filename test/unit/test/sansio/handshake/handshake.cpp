@@ -56,6 +56,18 @@ BOOST_AUTO_TEST_CASE(hello_hash_password_error)
         .check(fix, client_errc::protocol_value_error);
 }
 
+// The auth plugin supplied in hello is unknown
+BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder().auth_plugin("unknown").auth_data(csha2p_challenge).build())
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
 //
 // Errors processing the initial server response
 //
@@ -181,6 +193,25 @@ BOOST_AUTO_TEST_CASE(authswitch_authswitch)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
+// The plugin in the auth switch is unknown
+BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+        )
+        .expect_write(login_request_builder()
+                          .auth_plugin("caching_sha2_password")
+                          .auth_response(csha2p_response)
+                          .build())
+        .expect_read(create_auth_switch_frame(2, "unknown", mnp_challenge))
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
 // Receiving an auth switch after a fast track OK fails as expected
 // TODO: move this to the generic section
 BOOST_AUTO_TEST_CASE(fastok_authswitch)
@@ -231,41 +262,7 @@ BOOST_AUTO_TEST_CASE(fastok_authswitch)
 //         .check(fix, client_errc::protocol_value_error);
 // }
 
-//
-// Generic auth plugin errors
-//
-
-BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
-{
-    // Setup
-    handshake_fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(server_hello_builder().auth_plugin("unknown").auth_data(csha2p_challenge).build())
-        .check(fix, client_errc::unknown_auth_plugin);
-}
-
-BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
-{
-    // Setup
-    handshake_fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
-        )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
-        .expect_read(create_auth_switch_frame(2, "unknown", mnp_challenge))
-        .check(fix, client_errc::unknown_auth_plugin);
-}
-
 // TODO: auth switch to itself (after https://github.com/boostorg/mysql/issues/469)
-// TODO: auth switch more than once (after https://github.com/boostorg/mysql/issues/469)
 
 //
 // Connection status
