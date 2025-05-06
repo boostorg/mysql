@@ -238,9 +238,8 @@ BOOST_AUTO_TEST_CASE(authswitch_to_itself)
         .check(fix);
 }
 
-// Receiving an auth switch after a fast track OK fails as expected
-// TODO: move this to the generic section
-BOOST_AUTO_TEST_CASE(fastok_authswitch)
+// Receiving an auth switch after a more_data package is illegal
+BOOST_AUTO_TEST_CASE(moredata_authswitch)
 {
     // Setup
     handshake_fixture fix;
@@ -259,11 +258,24 @@ BOOST_AUTO_TEST_CASE(fastok_authswitch)
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
-//
-// mysql_native_password
-//
+BOOST_AUTO_TEST_CASE(authswitch_moredata_authswitch)
+{
+    // Setup
+    handshake_fixture fix;
 
-// TODO: auth switch to itself (after https://github.com/boostorg/mysql/issues/469)
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("mysql_native_password").auth_data(mnp_challenge).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("mysql_native_password").auth_response(mnp_response).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge))
+        .expect_write(create_frame(3, csha2p_response))
+        .expect_read(create_auth_switch_frame(4, "caching_sha2_password", csha2p_challenge))
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
 
 //
 // Connection status
