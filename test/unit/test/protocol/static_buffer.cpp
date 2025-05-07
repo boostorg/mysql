@@ -9,114 +9,127 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <array>
+#include <vector>
+
 #include "test_common/assert_buffer_equals.hpp"
-#include "test_common/buffer_concat.hpp"
 
 using namespace boost::mysql::test;
 using boost::mysql::detail::static_buffer;
 
+namespace {
+
 BOOST_AUTO_TEST_SUITE(test_static_buffer)
 
-struct fixture
+// Constructors
+BOOST_AUTO_TEST_CASE(default_constructor)
 {
-    static constexpr std::size_t max_size_value = 32;
-    using string_type = static_buffer<max_size_value>;
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(static_buffer<32>(), std::vector<std::uint8_t>());
+}
 
-    static std::vector<std::uint8_t> original_midsize() { return {0x01, 0x02, 0x03}; }
-    static std::vector<std::uint8_t> original_maxsize()
-    {
-        return std::vector<std::uint8_t>(max_size_value, 0xde);
-    }
-
-    std::vector<std::uint8_t> midsize = original_midsize();
-    std::vector<std::uint8_t> maxsize = original_maxsize();
-
-    void wipe_midsize() { midsize = {0xa, 0xb, 0xc}; }
-    void wipe_maxsize() { maxsize = std::vector<std::uint8_t>(max_size_value, 0xaa); }
-};
-
-// Default ctor.
-BOOST_FIXTURE_TEST_CASE(default_constructor, fixture)
+BOOST_AUTO_TEST_CASE(init_constructor)
 {
-    string_type v;
-    BOOST_TEST(v.to_span().size() == 0u);
+    // Zero size
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(static_buffer<32>(0), std::vector<std::uint8_t>());
+
+    // Intermediate size
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(static_buffer<32>(10), std::vector<std::uint8_t>(10, 0x00));
+
+    // Max size
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(static_buffer<32>(32), std::vector<std::uint8_t>(32, 0x00));
+}
+
+// Accessors
+BOOST_AUTO_TEST_CASE(data_size_const)
+{
+    const static_buffer<32> buff(8);
+    BOOST_TEST(buff.data() != nullptr);
+    BOOST_TEST(buff.size() == 8u);
+}
+
+BOOST_AUTO_TEST_CASE(data_size_nonconst)
+{
+    static_buffer<32> buff(8);
+    BOOST_TEST(buff.data() != nullptr);
+    BOOST_TEST(buff.size() == 8u);
 }
 
 // clear
-BOOST_FIXTURE_TEST_CASE(clear_empty, fixture)
+BOOST_AUTO_TEST_CASE(clear_empty)
 {
-    string_type v;
+    static_buffer<32> v;
     v.clear();
-    BOOST_TEST(v.to_span().size() == 0u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v, std::vector<std::uint8_t>());
 }
 
-BOOST_FIXTURE_TEST_CASE(clear_not_empty, fixture)
+BOOST_AUTO_TEST_CASE(clear_not_empty)
 {
-    string_type v;
-    const std::array<std::uint8_t, 5> data{
+    static_buffer<32> v;
+    v.append(std::array<std::uint8_t, 5>{
         {0, 1, 2, 3, 4}
-    };
-    v.append(data.data(), data.size());
-    BOOST_TEST(v.to_span().size() == 5u);
+    });
+    BOOST_TEST(v.size() == 5u);
     v.clear();
-    BOOST_TEST(v.to_span().size() == 0u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v, std::vector<std::uint8_t>());
 }
 
 // append
-BOOST_FIXTURE_TEST_CASE(append_from_empty_to_empty, fixture)
+BOOST_AUTO_TEST_CASE(append_from_empty_to_empty)
 {
-    string_type v;
-    v.append(midsize.data(), 0);
-    wipe_midsize();
-    BOOST_TEST(v.to_span().size() == 0u);
+    static_buffer<32> v;
+    v.append({});
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v, std::vector<std::uint8_t>());
 }
 
-BOOST_FIXTURE_TEST_CASE(append_from_empty_to_midsize, fixture)
+BOOST_AUTO_TEST_CASE(append_from_empty_to_midsize)
 {
-    string_type v;
-    v.append(midsize.data(), midsize.size());
-    wipe_midsize();
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), original_midsize());
+    const std::array<std::uint8_t, 3> data{
+        {1, 2, 3}
+    };
+    static_buffer<32> v;
+    v.append(std::vector<std::uint8_t>(data.begin(), data.end()));  // verify we make a copy
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v, data);
 }
 
-BOOST_FIXTURE_TEST_CASE(append_from_empty_to_maxsize, fixture)
+BOOST_AUTO_TEST_CASE(append_from_empty_to_maxsize)
 {
-    string_type v;
-    v.append(maxsize.data(), maxsize.size());
-    wipe_maxsize();
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), original_maxsize());
+    const std::vector<std::uint8_t> data(32, 0xde);
+    static_buffer<32> v;
+    v.append(data);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v, data);
 }
 
-BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_midsize, fixture)
+BOOST_AUTO_TEST_CASE(append_from_midsize_to_midsize)
 {
     // Initial
-    string_type v;
-    std::vector<std::uint8_t> initial{2, 2, 2};
-    v.append(initial.data(), initial.size());
+    static_buffer<32> v;
+    v.append(std::vector<std::uint8_t>{2, 2, 2});
 
     // Append more data
-    v.append(midsize.data(), midsize.size());
-    wipe_midsize();  // Check it was actually copied
+    v.append(std::vector<std::uint8_t>{1, 2, 3});
 
     // Verify
-    auto expected = concat(initial, original_midsize());
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), expected);
+    const std::vector<std::uint8_t> expected{2, 2, 2, 1, 2, 3};
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v, expected);
 }
 
-BOOST_FIXTURE_TEST_CASE(append_from_midsize_to_maxsize, fixture)
+BOOST_AUTO_TEST_CASE(append_from_midsize_to_maxsize)
 {
     // Initial
-    string_type v;
-    v.append(midsize.data(), midsize.size());
+    static_buffer<32> v;
+    v.append(std::vector<std::uint8_t>{1, 2, 3});
 
     // Append
-    std::vector<std::uint8_t> newbuff(max_size_value - midsize.size(), 1);
-    v.append(newbuff.data(), newbuff.size());
-    wipe_midsize();  // Verify that we actually copied the data
+    v.append(std::vector<std::uint8_t>(29, 0xde));
 
     // Verify
-    auto expected = concat(original_midsize(), newbuff);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v.to_span(), expected);
+    const std::array<std::uint8_t, 32> expected{
+        {0x01, 0x02, 0x03, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde,
+         0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde, 0xde}
+    };
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(v, expected);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+}  // namespace

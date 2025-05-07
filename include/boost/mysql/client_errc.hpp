@@ -163,6 +163,12 @@ enum class client_errc : int
      * Use `async_start_execution` to start one.
      */
     not_engaged_in_multi_function,
+
+    /**
+     * \brief During handshake, the server sent a packet type that is not allowed in the current state
+     * (protocol violation).
+     */
+    bad_handshake_packet_type,
 };
 
 BOOST_MYSQL_DECL

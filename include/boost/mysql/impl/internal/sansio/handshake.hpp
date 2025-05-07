@@ -9,22 +9,30 @@
 #define BOOST_MYSQL_IMPL_INTERNAL_SANSIO_HANDSHAKE_HPP
 
 #include <boost/mysql/character_set.hpp>
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/diagnostics.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/handshake_params.hpp>
 #include <boost/mysql/mysql_collations.hpp>
+#include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/detail/algo_params.hpp>
 #include <boost/mysql/detail/next_action.hpp>
 #include <boost/mysql/detail/ok_view.hpp>
 
-#include <boost/mysql/impl/internal/auth/auth.hpp>
 #include <boost/mysql/impl/internal/coroutine.hpp>
 #include <boost/mysql/impl/internal/protocol/capabilities.hpp>
 #include <boost/mysql/impl/internal/protocol/db_flavor.hpp>
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
+#include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
+#include <boost/mysql/impl/internal/sansio/caching_sha2_password.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/mysql_native_password.hpp>
+
+#include <boost/core/span.hpp>
+#include <boost/system/result.hpp>
+#include <boost/variant2/variant.hpp>
 
 #include <cstdint>
 
@@ -32,69 +40,148 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline capabilities conditional_capability(bool condition, capabilities cap)
+class any_authentication_plugin
 {
-    return condition ? cap : capabilities{};
-}
-
-inline error_code process_capabilities(
-    const handshake_params& params,
-    const server_hello& hello,
-    capabilities& negotiated_caps,
-    bool transport_supports_ssl
-)
-{
-    // The capabilities that we absolutely require. These are always set except in extremely old servers
-    constexpr capabilities mandatory_capabilities =
-        // We don't speak the older protocol
-        capabilities::protocol_41 |
-
-        // We only know how to deserialize the hello frame if this is set
-        capabilities::plugin_auth |
-
-        // Same as above
-        capabilities::plugin_auth_lenenc_data |
-
-        // This makes processing execute responses easier
-        capabilities::deprecate_eof |
-
-        // Used in MariaDB to signal 4.1 protocol. Always set in MySQL, too
-        capabilities::secure_connection;
-
-    // The capabilities that we support but don't require
-    constexpr capabilities optional_capabilities = capabilities::multi_results |
-                                                   capabilities::ps_multi_results;
-
-    auto ssl = transport_supports_ssl ? params.ssl() : ssl_mode::disable;
-    capabilities server_caps = hello.server_capabilities;
-    capabilities
-        required_caps = mandatory_capabilities |
-                        conditional_capability(!params.database().empty(), capabilities::connect_with_db) |
-                        conditional_capability(params.multi_queries(), capabilities::multi_statements) |
-                        conditional_capability(ssl == ssl_mode::require, capabilities::ssl);
-    if (has_capabilities(required_caps, capabilities::ssl) &&
-        !has_capabilities(server_caps, capabilities::ssl))
+    enum class type_t
     {
-        // This happens if the server doesn't have SSL configured. This special
-        // error code helps users diagnosing their problem a lot (server_unsupported doesn't).
-        return make_error_code(client_errc::server_doesnt_support_ssl);
-    }
-    else if (!has_capabilities(server_caps, required_caps))
+        mnp,
+        csha2p
+    };
+
+    // Which authentication plugin are we using?
+    type_t type_{type_t::mnp};
+
+    // State for algorithms that require stateful exchanges.
+    // mysql_native_password is stateless, so only caching_sha2_password has an entry here
+    csha2p_algo csha2p_;
+
+public:
+    any_authentication_plugin() = default;
+
+    // Emplaces the plugin and computes the first authentication response by hashing the password
+    system::result<static_buffer<32>> bootstrap_plugin(
+        string_view plugin_name,
+        string_view password,
+        span<const std::uint8_t> challenge
+    )
     {
-        return make_error_code(client_errc::server_unsupported);
+        if (plugin_name == mnp_plugin_name)
+        {
+            type_ = type_t::mnp;
+            return mnp_hash_password(password, challenge);
+        }
+        else if (plugin_name == csha2p_plugin_name)
+        {
+            type_ = type_t::csha2p;
+            csha2p_ = csha2p_algo();  // Reset any leftover state, just in case
+            return csha2p_hash_password(password, challenge);
+        }
+        else
+        {
+            return client_errc::unknown_auth_plugin;
+        }
     }
-    negotiated_caps = server_caps & (required_caps | optional_capabilities |
-                                     conditional_capability(ssl == ssl_mode::enable, capabilities::ssl));
-    return error_code();
-}
+
+    next_action resume(
+        connection_state_data& st,
+        boost::span<const std::uint8_t> server_data,
+        string_view password,
+        bool secure_channel,
+        std::uint8_t& seqnum
+    )
+    {
+        switch (type_)
+        {
+        case type_t::mnp:
+            // This algorithm doesn't allow more data frames
+            return error_code(client_errc::bad_handshake_packet_type);
+        case type_t::csha2p: return csha2p_.resume(st, server_data, password, secure_channel, seqnum);
+        default:
+            BOOST_ASSERT(false);
+            return next_action(client_errc::bad_handshake_packet_type);  // LCOV_EXCL_LINE
+        }
+    }
+
+    string_view name() const
+    {
+        switch (type_)
+        {
+        case type_t::mnp: return mnp_plugin_name;
+        case type_t::csha2p: return csha2p_plugin_name;
+        default: BOOST_ASSERT(false); return {};  // LCOV_EXCL_LINE
+        }
+    }
+};
 
 class handshake_algo
 {
     int resume_point_{0};
     handshake_params hparams_;
-    auth_response auth_resp_;
+    any_authentication_plugin plugin_;
+    static_buffer<32> hashed_password_;
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
+
+    static capabilities conditional_capability(bool condition, capabilities cap)
+    {
+        return condition ? cap : capabilities{};
+    }
+
+    // Given our params and the capabilities that the server sent us,
+    // performs capability negotiation, returning either the capabilities to
+    // send to the server or an error
+    static system::result<capabilities> negotiate_capabilities(
+        const handshake_params& params,
+        capabilities server_caps,
+        bool transport_supports_ssl
+    )
+    {
+        // The capabilities that we absolutely require. These are always set except in extremely old servers
+        constexpr capabilities mandatory_capabilities =
+            // We don't speak the older protocol
+            capabilities::protocol_41 |
+
+            // We only know how to deserialize the hello frame if this is set
+            capabilities::plugin_auth |
+
+            // Same as above
+            capabilities::plugin_auth_lenenc_data |
+
+            // This makes processing execute responses easier
+            capabilities::deprecate_eof |
+
+            // Used in MariaDB to signal 4.1 protocol. Always set in MySQL, too
+            capabilities::secure_connection;
+
+        // The capabilities that we support but don't require
+        constexpr capabilities optional_capabilities = capabilities::multi_results |
+                                                       capabilities::ps_multi_results;
+
+        auto ssl = transport_supports_ssl ? params.ssl() : ssl_mode::disable;
+        capabilities required_caps = mandatory_capabilities |
+                                     conditional_capability(
+                                         !params.database().empty(),
+                                         capabilities::connect_with_db
+                                     ) |
+                                     conditional_capability(
+                                         params.multi_queries(),
+                                         capabilities::multi_statements
+                                     ) |
+                                     conditional_capability(ssl == ssl_mode::require, capabilities::ssl);
+        if (has_capabilities(required_caps, capabilities::ssl) &&
+            !has_capabilities(server_caps, capabilities::ssl))
+        {
+            // This happens if the server doesn't have SSL configured. This special
+            // error code helps users diagnosing their problem a lot (server_unsupported doesn't).
+            return make_error_code(client_errc::server_doesnt_support_ssl);
+        }
+        else if (!has_capabilities(server_caps, required_caps))
+        {
+            return make_error_code(client_errc::server_unsupported);
+        }
+        return server_caps & (required_caps | optional_capabilities |
+                              conditional_capability(ssl == ssl_mode::enable, capabilities::ssl));
+    }
 
     // Attempts to map the collection_id to a character set. We try to be conservative
     // here, since servers will happily accept unknown collation IDs, silently defaulting
@@ -111,17 +198,7 @@ class handshake_algo
         }
     }
 
-    // Once the handshake is processed, the capabilities are stored in the connection state
-    bool use_ssl(const connection_state_data& st) const
-    {
-        return has_capabilities(st.current_capabilities, capabilities::ssl);
-    }
-
-    error_code process_handshake(
-        connection_state_data& st,
-        diagnostics& diag,
-        span<const std::uint8_t> buffer
-    )
+    error_code process_hello(connection_state_data& st, diagnostics& diag, span<const std::uint8_t> buffer)
     {
         // Deserialize server hello
         server_hello hello{};
@@ -130,27 +207,30 @@ class handshake_algo
             return err;
 
         // Check capabilities
-        capabilities negotiated_caps{};
-        err = process_capabilities(hparams_, hello, negotiated_caps, st.tls_supported);
-        if (err)
-            return err;
+        auto negotiated_caps = negotiate_capabilities(hparams_, hello.server_capabilities, st.tls_supported);
+        if (negotiated_caps.has_error())
+            return negotiated_caps.error();
 
         // Set capabilities, db flavor and connection ID
-        st.current_capabilities = negotiated_caps;
+        st.current_capabilities = *negotiated_caps;
         st.flavor = hello.server;
         st.connection_id = hello.connection_id;
 
         // If we're using SSL, mark the channel as secure
-        secure_channel_ = secure_channel_ || use_ssl(st);
+        secure_channel_ = secure_channel_ || has_capabilities(*negotiated_caps, capabilities::ssl);
 
-        // Compute auth response
-        return compute_auth_response(
+        // Emplace the authentication plugin and compute the first response
+        auto hashed_password = plugin_.bootstrap_plugin(
             hello.auth_plugin_name,
             hparams_.password(),
-            hello.auth_plugin_data.to_span(),
-            secure_channel_,
-            auth_resp_
+            hello.auth_plugin_data
         );
+        if (hashed_password.has_error())
+            return hashed_password.error();
+
+        // Save it for later
+        hashed_password_ = *hashed_password;
+        return error_code();
     }
 
     // Response to that initial greeting
@@ -170,39 +250,22 @@ class handshake_algo
             static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
             hparams_.username(),
-            auth_resp_.data,
+            hashed_password_,
             hparams_.database(),
-            auth_resp_.plugin_name,
+            plugin_.name(),
         };
     }
 
     // Processes auth_switch and auth_more_data messages, and leaves the result in auth_resp_
-    error_code process_auth_switch(auth_switch msg)
+    next_action process_auth_switch(connection_state_data& st, auth_switch msg)
     {
-        return compute_auth_response(
-            msg.plugin_name,
-            hparams_.password(),
-            msg.auth_data,
-            secure_channel_,
-            auth_resp_
-        );
-    }
+        // Emplace the authentication plugin and compute the first response
+        auto hashed_password = plugin_.bootstrap_plugin(msg.plugin_name, hparams_.password(), msg.auth_data);
+        if (hashed_password.has_error())
+            return hashed_password.error();
 
-    error_code process_auth_more_data(span<const std::uint8_t> data)
-    {
-        return compute_auth_response(
-            auth_resp_.plugin_name,
-            hparams_.password(),
-            data,
-            secure_channel_,
-            auth_resp_
-        );
-    }
-
-    // Composes an auth_switch_response message with the contents of auth_resp_
-    auth_switch_response compose_auth_switch_response() const
-    {
-        return auth_switch_response{auth_resp_.data};
+        // Serialize the response
+        return st.write(auth_switch_response{*hashed_password}, sequence_number_);
     }
 
     void on_success(connection_state_data& st, const ok_view& ok)
@@ -212,28 +275,13 @@ class handshake_algo
         st.current_charset = collation_id_to_charset(hparams_.connection_collation());
     }
 
-    error_code process_ok(connection_state_data& st)
-    {
-        ok_view res{};
-        auto ec = deserialize_ok_packet(st.reader.message(), res);
-        if (ec)
-            return ec;
-        on_success(st, res);
-        return error_code();
-    }
-
-public:
-    handshake_algo(handshake_algo_params params) noexcept
-        : hparams_(params.hparams), secure_channel_(params.secure_channel)
-    {
-    }
-
-    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
+    next_action resume_impl(connection_state_data& st, diagnostics& diag, error_code ec)
     {
         if (ec)
             return ec;
 
-        handhake_server_response resp(error_code{});
+        handshake_server_response resp(error_code{});
+        next_action act;
 
         switch (resume_point_)
         {
@@ -246,12 +294,12 @@ public:
             BOOST_MYSQL_YIELD(resume_point_, 1, st.read(sequence_number_))
 
             // Process server greeting
-            ec = process_handshake(st, diag, st.reader.message());
+            ec = process_hello(st, diag, st.reader.message());
             if (ec)
                 return ec;
 
             // SSL
-            if (use_ssl(st))
+            if (has_capabilities(st.current_capabilities, capabilities::ssl))
             {
                 // Send SSL request
                 BOOST_MYSQL_YIELD(resume_point_, 2, st.write(compose_ssl_request(st), sequence_number_))
@@ -266,67 +314,100 @@ public:
             // Compose and send handshake response
             BOOST_MYSQL_YIELD(resume_point_, 4, st.write(compose_login_request(st), sequence_number_))
 
-            // Auth message exchange
-            while (true)
+            // Receive the response
+            BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
+
+            // Process it
+            resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, diag);
+
+            // Auth switches are only legal at this point. Handle the case here
+            if (resp.type == handshake_server_response::type_t::auth_switch)
             {
-                // Receive response
-                BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
+                // Write our packet
+                BOOST_MYSQL_YIELD(resume_point_, 6, process_auth_switch(st, resp.data.auth_sw))
 
-                // Process it
+                // Read another packet
+                BOOST_MYSQL_YIELD(resume_point_, 7, st.read(sequence_number_))
+
+                // Deserialize it
                 resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, diag);
-                if (resp.type == handhake_server_response::type_t::ok)
-                {
-                    // Auth success, quit
-                    on_success(st, resp.data.ok);
-                    return next_action();
-                }
-                else if (resp.type == handhake_server_response::type_t::error)
-                {
-                    // Error, quit
-                    return resp.data.err;
-                }
-                else if (resp.type == handhake_server_response::type_t::auth_switch)
-                {
-                    // Compute response
-                    ec = process_auth_switch(resp.data.auth_sw);
-                    if (ec)
-                        return ec;
+            }
 
-                    BOOST_MYSQL_YIELD(
-                        resume_point_,
-                        6,
-                        st.write(compose_auth_switch_response(), sequence_number_)
-                    )
-                }
-                else if (resp.type == handhake_server_response::type_t::ok_follows)
-                {
-                    // The next packet must be an OK packet. Read it
-                    BOOST_MYSQL_YIELD(resume_point_, 7, st.read(sequence_number_))
+            // Now we will send/receive raw data packets from the server until an OK or error happens.
+            // Packets requiring responses are auth_more_data packets
+            while (resp.type == handshake_server_response::type_t::auth_more_data)
+            {
+                // Invoke the authentication plugin algorithm
+                act = plugin_.resume(
+                    st,
+                    resp.data.more_data,
+                    hparams_.password(),
+                    secure_channel_,
+                    sequence_number_
+                );
 
-                    // Process it
-                    // Regardless of whether we succeeded or not, we're done
-                    return process_ok(st);
+                // Do what the plugin says
+                if (act.type() == next_action_type::none)
+                {
+                    // The plugin signalled an error. Exit
+                    BOOST_ASSERT(act.error());
+                    return act;
+                }
+                else if (act.type() == next_action_type::write)
+                {
+                    // The plugin wants us to first write the message in the write buffer, then read
+                    BOOST_MYSQL_YIELD(resume_point_, 8, act)
+                    BOOST_MYSQL_YIELD(resume_point_, 9, st.read(sequence_number_))
                 }
                 else
                 {
-                    BOOST_ASSERT(resp.type == handhake_server_response::type_t::auth_more_data);
-
-                    // Compute response
-                    ec = process_auth_more_data(resp.data.more_data);
-                    if (ec)
-                        return ec;
-
-                    // Write response
-                    BOOST_MYSQL_YIELD(
-                        resume_point_,
-                        8,
-                        st.write(compose_auth_switch_response(), sequence_number_)
-                    )
+                    // The plugin wants us to read another packet
+                    BOOST_ASSERT(act.type() == next_action_type::read);
+                    BOOST_MYSQL_YIELD(resume_point_, 10, act)
                 }
+
+                // If we got here, we've successfully read a packet. Deserialize it
+                resp = deserialize_handshake_server_response(st.reader.message(), st.flavor, diag);
+            }
+
+            // If we got here, we've received a packet that terminates the algorithm
+            if (resp.type == handshake_server_response::type_t::ok)
+            {
+                // Auth success, quit
+                on_success(st, resp.data.ok);
+                return next_action();
+            }
+            else if (resp.type == handshake_server_response::type_t::error)
+            {
+                // Error, quit
+                return resp.data.err;
+            }
+            else
+            {
+                // Auth switches are no longer allowed at this point
+                BOOST_ASSERT(resp.type == handshake_server_response::type_t::auth_switch);
+                return error_code(client_errc::bad_handshake_packet_type);
             }
         }
 
-        return next_action();
+        // We should never get here
+        BOOST_ASSERT(false);
+        return next_action();  // LCOV_EXCL_LINE
+    }
+
+public:
+    handshake_algo(handshake_algo_params params) noexcept
+        : hparams_(params.hparams), secure_channel_(params.secure_channel)
+    {
+    }
+
+    next_action resume(connection_state_data& st, diagnostics& diag, error_code ec)
+    {
+        // On error, reset the connection's state to well-known values
+        auto act = resume_impl(st, diag, ec);
+        if (act.is_done() && act.error())
+            st.reset();
+        return act;
     }
 };
 

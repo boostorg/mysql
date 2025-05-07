@@ -111,6 +111,7 @@ struct connection_state_data
         status = connection_status::not_connected;
         flavor = db_flavor::mysql;
         current_capabilities = capabilities{};
+        connection_id = 0u;
         // Metadata mode does not get reset on handshake
         reader.reset();
         // Writer does not need reset, since every write clears previous state

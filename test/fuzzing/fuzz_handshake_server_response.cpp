@@ -16,7 +16,7 @@ static bool parse_handshake_server_response(const uint8_t* data, size_t size) no
 {
     boost::mysql::diagnostics diag;
     auto msg = deserialize_handshake_server_response({data, size}, db_flavor::mysql, diag);
-    return msg.type == handhake_server_response::type_t::error && diag.server_message().empty();
+    return msg.type == handshake_server_response::type_t::error && diag.server_message().empty();
 }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)

@@ -13,6 +13,8 @@
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 
+#include <boost/test/unit_test.hpp>
+
 #include <cstdint>
 #include <vector>
 
