@@ -13,6 +13,9 @@ USE boost_mysql_bench;
 -- Required for the WITH RECURSIVE and the amount of rows we're generating
 SET SESSION cte_max_recursion_depth = 15000;
 
+-- Having this prevents sporadic CI failures
+SET global max_connections = 5000;
+
 -- An arbitrary value to pass to RAND(@seed). RAND(@i) generates a
 -- deterministic sequence, vs RAND(@seed)
 SET @seed = 3;
