@@ -16,6 +16,7 @@
 #include <boost/mysql/detail/flags.hpp>
 
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <vector>
 
