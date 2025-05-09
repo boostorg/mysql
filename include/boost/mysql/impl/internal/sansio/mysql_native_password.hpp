@@ -47,7 +47,7 @@ inline void mnp_hash_password_impl(
     std::array<std::uint8_t, mnp_hash_size> password_sha1;
     SHA1(reinterpret_cast<const unsigned char*>(password.data()), password.size(), password_sha1.data());
 
-    // Add server challenge (salt)
+    // Add server scramble (salt)
     std::array<std::uint8_t, scramble_size + mnp_hash_size> salted_buffer;
     std::memcpy(salted_buffer.data(), scramble.data(), scramble.size());
     SHA1(password_sha1.data(), password_sha1.size(), salted_buffer.data() + mnp_hash_size);

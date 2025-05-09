@@ -58,17 +58,17 @@ inline void csha2p_hash_password_impl(
     span<std::uint8_t, csha2p_hash_size> output
 )
 {
-    // SHA(SHA(password_sha) concat challenge) XOR password_sha
+    // SHA(SHA(password_sha) concat scramble) XOR password_sha
     // hash1 = SHA(pass)
     std::array<std::uint8_t, csha2p_hash_size> password_sha;
     SHA256(reinterpret_cast<const unsigned char*>(password.data()), password.size(), password_sha.data());
 
-    // SHA(password_sha) concat challenge = buffer
+    // SHA(password_sha) concat scramble = buffer
     std::array<std::uint8_t, csha2p_hash_size + csha2p_hash_size> buffer;
     SHA256(password_sha.data(), password_sha.size(), buffer.data());
     std::memcpy(buffer.data() + csha2p_hash_size, scramble.data(), csha2p_hash_size);
 
-    // SHA(SHA(password_sha) concat challenge) = SHA(buffer) = salted_password
+    // SHA(SHA(password_sha) concat scramble) = SHA(buffer) = salted_password
     std::array<std::uint8_t, csha2p_hash_size> salted_password;
     SHA256(buffer.data(), buffer.size(), salted_password.data());
 
@@ -126,14 +126,13 @@ using csha2p_password_buffer = container::small_vector<std::uint8_t, 256>;
 
 inline error_code csha2p_encrypt_password(
     string_view password,
-    span<const std::uint8_t> challenge,
+    span<const std::uint8_t, scramble_size> scramble,
     span<const std::uint8_t> server_key,
     csha2p_password_buffer& output
 )
 {
-    // TODO: test that these can really never happen
+    // TODO: this is not guaranteed
     BOOST_ASSERT(!password.empty());
-    BOOST_ASSERT(!challenge.empty());
 
     // Try to parse the private key. TODO: size check here
     unique_bio bio{BIO_new_mem_buf(server_key.data(), server_key.size())};
@@ -146,11 +145,11 @@ inline error_code csha2p_encrypt_password(
     // Salt the password, as a NULL-terminated string
     csha2p_password_buffer salted_password(password.size() + 1u, 0);
     for (std::size_t i = 0; i < password.size(); ++i)
-        salted_password[i] = password[i] ^ challenge[i % challenge.size()];
+        salted_password[i] = password[i] ^ scramble[i % scramble.size()];
 
     // Add the NULL terminator. It should be salted, too. Since 0 ^ U = U,
-    // the byte should be the challenge at the position we're in
-    salted_password[password.size()] = challenge[password.size() % challenge.size()];
+    // the byte should be the scramble at the position we're in
+    salted_password[password.size()] = scramble[password.size() % scramble.size()];
 
     // Set up the encryption context
     unique_evp_pkey_ctx ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
@@ -200,12 +199,12 @@ class csha2p_algo
         connection_state_data& st,
         std::uint8_t& seqnum,
         string_view password,
-        span<const std::uint8_t> challenge,
+        span<const std::uint8_t, scramble_size> scramble,
         span<const std::uint8_t> server_key
     )
     {
         csha2p_password_buffer buff;
-        auto ec = csha2p_encrypt_password(password, challenge, server_key, buff);
+        auto ec = csha2p_encrypt_password(password, scramble, server_key, buff);
         if (ec)
             return ec;
         return st.write(
