@@ -15,14 +15,16 @@
 
 #include <boost/mysql/impl/internal/sansio/auth_plugin_common.hpp>
 
-#include <boost/asio/ssl/error.hpp>
 #include <boost/container/small_vector.hpp>
+#include <boost/core/span.hpp>
 
 #include <cstdint>
 #include <memory>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <openssl/rsa.h>
 #include <openssl/types.h>
 
 namespace boost {

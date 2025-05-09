@@ -277,7 +277,7 @@ def verify_test_consistency():
     for test_type in ('unit', 'integration'):
         for ftocheck in ('Jamfile', 'CMakeLists.txt'):
             base_path = path.join(REPO_BASE, 'test', test_type)
-            tests = glob.glob(base_path + '/**/*.cpp', recursive=True)
+            tests = glob.glob(base_path + '/test/**/*.cpp', recursive=True)
             tests = [elm.replace(base_path + '/', '') for elm in tests]
 
             with open(path.join(REPO_BASE, 'test', test_type, ftocheck), 'rt') as f:
