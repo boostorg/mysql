@@ -20,6 +20,7 @@
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
 #include <boost/mysql/impl/internal/sansio/auth_plugin_common.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
+#include <boost/mysql/impl/internal/sansio/csha2p_encrypt_password.hpp>
 
 #include <boost/asio/ssl/error.hpp>
 #include <boost/container/small_vector.hpp>
@@ -29,7 +30,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <openssl/bio.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -98,85 +98,9 @@ inline static_buffer<max_hash_size> csha2p_hash_password(
     return res;
 }
 
-// TODO: we may want to take this to a separate file?
-struct bio_deleter
+inline error_code translate_openssl_error(unsigned long code)
 {
-    void operator()(BIO* bio) const noexcept { BIO_free(bio); }
-};
-using unique_bio = std::unique_ptr<BIO, bio_deleter>;
-
-struct evp_pkey_deleter
-{
-    void operator()(EVP_PKEY* pkey) const noexcept { EVP_PKEY_free(pkey); }
-};
-using unique_evp_pkey = std::unique_ptr<EVP_PKEY, evp_pkey_deleter>;
-
-struct evp_pkey_ctx_deleter
-{
-    void operator()(EVP_PKEY_CTX* ctx) const noexcept { EVP_PKEY_CTX_free(ctx); }
-};
-using unique_evp_pkey_ctx = std::unique_ptr<EVP_PKEY_CTX, evp_pkey_ctx_deleter>;
-
-inline error_code get_last_openssl_error()
-{
-    return error_code(::ERR_get_error(), asio::error::get_ssl_category());  // TODO: is this OK?
-}
-
-using csha2p_password_buffer = container::small_vector<std::uint8_t, 256>;
-
-inline error_code csha2p_encrypt_password(
-    string_view password,
-    span<const std::uint8_t, scramble_size> scramble,
-    span<const std::uint8_t> server_key,
-    csha2p_password_buffer& output
-)
-{
-    // TODO: test that password.size() == 0u does not cause trouble
-    // Try to parse the private key. TODO: size check here
-    unique_bio bio{BIO_new_mem_buf(server_key.data(), server_key.size())};
-    if (!bio)
-        return get_last_openssl_error();
-    unique_evp_pkey key(PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr));
-    if (!key)
-        return get_last_openssl_error();
-
-    // Salt the password, as a NULL-terminated string
-    csha2p_password_buffer salted_password(password.size() + 1u, 0);
-    for (std::size_t i = 0; i < password.size(); ++i)
-        salted_password[i] = password[i] ^ scramble[i % scramble.size()];
-
-    // Add the NULL terminator. It should be salted, too. Since 0 ^ U = U,
-    // the byte should be the scramble at the position we're in
-    salted_password[password.size()] = scramble[password.size() % scramble.size()];
-
-    // Set up the encryption context
-    unique_evp_pkey_ctx ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
-    if (!ctx)
-        return get_last_openssl_error();
-    if (EVP_PKEY_encrypt_init(ctx.get()) <= 0)
-        return get_last_openssl_error();
-    if (EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) <= 0)
-        return get_last_openssl_error();
-
-    // Encrypt
-    int max_size = EVP_PKEY_get_size(key.get());
-    BOOST_ASSERT(max_size >= 0);
-    output.resize(max_size);
-    std::size_t actual_size = static_cast<std::size_t>(max_size);
-    if (EVP_PKEY_encrypt(
-            ctx.get(),
-            output.data(),
-            &actual_size,
-            salted_password.data(),
-            salted_password.size()
-        ) <= 0)
-    {
-        return get_last_openssl_error();
-    }
-    output.resize(actual_size);
-
-    // Done
-    return error_code();
+    return error_code(code, asio::error::get_ssl_category());  // TODO: is this OK?
 }
 
 class csha2p_algo
@@ -201,10 +125,10 @@ class csha2p_algo
         span<const std::uint8_t> server_key
     )
     {
-        csha2p_password_buffer buff;
-        auto ec = csha2p_encrypt_password(password, scramble, server_key, buff);
-        if (ec)
-            return ec;
+        container::small_vector<std::uint8_t, 512> buff;
+        unsigned long err = csha2p_encrypt_password(password, scramble, server_key, buff);
+        if (err)
+            return translate_openssl_error(err);
         return st.write(
             string_eof{string_view(reinterpret_cast<const char*>(buff.data()), buff.size())},
             seqnum

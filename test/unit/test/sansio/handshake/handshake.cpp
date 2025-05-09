@@ -68,6 +68,8 @@ BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
         .check(fix, client_errc::unknown_auth_plugin);
 }
 
+// TODO: check that this is the error even if we get a scramble of != size
+
 //
 // Errors processing the initial server response
 //
