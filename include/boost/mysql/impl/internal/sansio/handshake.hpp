@@ -30,6 +30,7 @@
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/mysql_native_password.hpp>
 
+#include <boost/container/small_vector.hpp>
 #include <boost/core/span.hpp>
 #include <boost/system/result.hpp>
 #include <boost/variant2/variant.hpp>
@@ -58,23 +59,18 @@ class any_authentication_plugin
 public:
     any_authentication_plugin() = default;
 
-    // Emplaces the plugin and computes the first authentication response by hashing the password
-    system::result<static_buffer<32>> bootstrap_plugin(
-        string_view plugin_name,
-        string_view password,
-        span<const std::uint8_t> challenge
-    )
+    error_code emplace_plugin(string_view plugin_name)
     {
         if (plugin_name == mnp_plugin_name)
         {
             type_ = type_t::mnp;
-            return mnp_hash_password(password, challenge);
+            return error_code();
         }
         else if (plugin_name == csha2p_plugin_name)
         {
             type_ = type_t::csha2p;
             csha2p_ = csha2p_algo();  // Reset any leftover state, just in case
-            return csha2p_hash_password(password, challenge);
+            return error_code();
         }
         else
         {
@@ -82,10 +78,21 @@ public:
         }
     }
 
+    system::result<static_buffer<32>> hash_password(string_view password, span<const std::uint8_t> challenge)
+    {
+        switch (type_)
+        {
+        case type_t::mnp: return mnp_hash_password(password, challenge);
+        case type_t::csha2p: return csha2p_hash_password(password, challenge);
+        default: BOOST_ASSERT(false); return client_errc::unknown_auth_plugin;  // LCOV_EXCL_LINE
+        }
+    }
+
     next_action resume(
         connection_state_data& st,
         boost::span<const std::uint8_t> server_data,
         string_view password,
+        boost::span<const std::uint8_t> challenge,
         bool secure_channel,
         std::uint8_t& seqnum
     )
@@ -95,7 +102,8 @@ public:
         case type_t::mnp:
             // This algorithm doesn't allow more data frames
             return error_code(client_errc::bad_handshake_packet_type);
-        case type_t::csha2p: return csha2p_.resume(st, server_data, password, secure_channel, seqnum);
+        case type_t::csha2p:
+            return csha2p_.resume(st, server_data, password, challenge, secure_channel, seqnum);
         default:
             BOOST_ASSERT(false);
             return next_action(client_errc::bad_handshake_packet_type);  // LCOV_EXCL_LINE
@@ -118,7 +126,7 @@ class handshake_algo
     int resume_point_{0};
     handshake_params hparams_;
     any_authentication_plugin plugin_;
-    static_buffer<32> hashed_password_;
+    container::small_vector<std::uint8_t, 32> challenge_;  // TODO: make this a static vector
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
 
@@ -219,18 +227,12 @@ class handshake_algo
         // If we're using SSL, mark the channel as secure
         secure_channel_ = secure_channel_ || has_capabilities(*negotiated_caps, capabilities::ssl);
 
-        // Emplace the authentication plugin and compute the first response
-        auto hashed_password = plugin_.bootstrap_plugin(
-            hello.auth_plugin_name,
-            hparams_.password(),
-            hello.auth_plugin_data
-        );
-        if (hashed_password.has_error())
-            return hashed_password.error();
+        // Save the challenge for later
+        span<const std::uint8_t> auth_data(hello.auth_plugin_data);
+        challenge_.assign(auth_data.begin(), auth_data.end());
 
-        // Save it for later
-        hashed_password_ = *hashed_password;
-        return error_code();
+        // Emplace the authentication plugin
+        return plugin_.emplace_plugin(hello.auth_plugin_name);
     }
 
     // Response to that initial greeting
@@ -243,24 +245,41 @@ class handshake_algo
         };
     }
 
-    login_request compose_login_request(const connection_state_data& st)
+    next_action compose_login_request(connection_state_data& st)
     {
-        return login_request{
+        // Hash the password
+        auto hashed_password = plugin_.hash_password(hparams_.password(), challenge_);
+        if (hashed_password.has_error())
+            return hashed_password.error();
+
+        // Compose the message
+        login_request msg{
             st.current_capabilities,
             static_cast<std::uint32_t>(max_packet_size),
             hparams_.connection_collation(),
             hparams_.username(),
-            hashed_password_,
+            *hashed_password,
             hparams_.database(),
             plugin_.name(),
         };
+
+        // Serialize it
+        return st.write(msg, sequence_number_);
     }
 
     // Processes auth_switch and auth_more_data messages, and leaves the result in auth_resp_
     next_action process_auth_switch(connection_state_data& st, auth_switch msg)
     {
-        // Emplace the authentication plugin and compute the first response
-        auto hashed_password = plugin_.bootstrap_plugin(msg.plugin_name, hparams_.password(), msg.auth_data);
+        // Emplace the new authentication plugin
+        auto ec = plugin_.emplace_plugin(msg.plugin_name);
+        if (ec)
+            return ec;
+
+        // Store the challenge for later
+        challenge_.assign(msg.auth_data.begin(), msg.auth_data.end());
+
+        // Hash the password
+        auto hashed_password = plugin_.hash_password(hparams_.password(), msg.auth_data);
         if (hashed_password.has_error())
             return hashed_password.error();
 
@@ -312,7 +331,7 @@ class handshake_algo
             }
 
             // Compose and send handshake response
-            BOOST_MYSQL_YIELD(resume_point_, 4, st.write(compose_login_request(st), sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 4, compose_login_request(st))
 
             // Receive the response
             BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
@@ -342,6 +361,7 @@ class handshake_algo
                     st,
                     resp.data.more_data,
                     hparams_.password(),
+                    challenge_,
                     secure_channel_,
                     sequence_number_
                 );

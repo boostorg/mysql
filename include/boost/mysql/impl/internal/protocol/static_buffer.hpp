@@ -53,6 +53,12 @@ public:
         }
     }
 
+    void resize(std::size_t new_size)
+    {
+        BOOST_ASSERT(new_size <= N);
+        size_ = new_size;
+    }
+
     void clear() noexcept { size_ = 0; }
 };
 
