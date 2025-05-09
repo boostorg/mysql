@@ -18,6 +18,7 @@
 #include <boost/mysql/impl/internal/protocol/impl/protocol_types.hpp>
 #include <boost/mysql/impl/internal/protocol/impl/serialization_context.hpp>
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
+#include <boost/mysql/impl/internal/sansio/auth_plugin_common.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 
 #include <boost/asio/ssl/error.hpp>
@@ -46,59 +47,53 @@ namespace mysql {
 namespace detail {
 
 // Constants
-BOOST_INLINE_CONSTEXPR std::size_t csha2p_challenge_length = 20;
-BOOST_INLINE_CONSTEXPR std::size_t csha2p_response_length = 32;
+BOOST_INLINE_CONSTEXPR std::size_t csha2p_hash_size = 32;
 BOOST_INLINE_CONSTEXPR const char* csha2p_plugin_name = "caching_sha2_password";
+static_assert(csha2p_hash_size <= max_hash_size, "");
+static_assert(csha2p_hash_size == SHA256_DIGEST_LENGTH, "Buffer size mismatch");
 
 inline void csha2p_hash_password_impl(
     string_view password,
-    span<const std::uint8_t, csha2p_challenge_length> challenge,
-    span<std::uint8_t, csha2p_response_length> output
+    span<const std::uint8_t, scramble_size> scramble,
+    span<std::uint8_t, csha2p_hash_size> output
 )
 {
-    static_assert(csha2p_response_length == SHA256_DIGEST_LENGTH, "Buffer size mismatch");
-
     // SHA(SHA(password_sha) concat challenge) XOR password_sha
     // hash1 = SHA(pass)
-    std::array<std::uint8_t, csha2p_response_length> password_sha;
+    std::array<std::uint8_t, csha2p_hash_size> password_sha;
     SHA256(reinterpret_cast<const unsigned char*>(password.data()), password.size(), password_sha.data());
 
     // SHA(password_sha) concat challenge = buffer
-    std::array<std::uint8_t, csha2p_response_length + csha2p_challenge_length> buffer;
+    std::array<std::uint8_t, csha2p_hash_size + csha2p_hash_size> buffer;
     SHA256(password_sha.data(), password_sha.size(), buffer.data());
-    std::memcpy(buffer.data() + csha2p_response_length, challenge.data(), csha2p_challenge_length);
+    std::memcpy(buffer.data() + csha2p_hash_size, scramble.data(), csha2p_hash_size);
 
     // SHA(SHA(password_sha) concat challenge) = SHA(buffer) = salted_password
-    std::array<std::uint8_t, csha2p_response_length> salted_password;
+    std::array<std::uint8_t, csha2p_hash_size> salted_password;
     SHA256(buffer.data(), buffer.size(), salted_password.data());
 
     // salted_password XOR password_sha
-    for (unsigned i = 0; i < csha2p_response_length; ++i)
+    for (unsigned i = 0; i < csha2p_hash_size; ++i)
     {
         output[i] = salted_password[i] ^ password_sha[i];
     }
 }
 
-inline system::result<static_buffer<32>> csha2p_hash_password(
+inline static_buffer<max_hash_size> csha2p_hash_password(
     string_view password,
-    span<const std::uint8_t> challenge
+    span<const std::uint8_t, scramble_size> scramble
 )
 {
-    // If the challenge doesn't match the expected size,
-    // something wrong is going on and we should fail
-    if (challenge.size() != csha2p_challenge_length)
-        return client_errc::protocol_value_error;
-
     // Empty passwords are not hashed
     if (password.empty())
         return {};
 
     // Run the algorithm
-    static_buffer<32> res(csha2p_response_length);
+    static_buffer<max_hash_size> res(csha2p_hash_size);
     csha2p_hash_password_impl(
         password,
-        span<const std::uint8_t, csha2p_challenge_length>(challenge),
-        span<std::uint8_t, csha2p_response_length>(res.data(), csha2p_response_length)
+        scramble,
+        span<std::uint8_t, csha2p_hash_size>(res.data(), csha2p_hash_size)
     );
     return res;
 }
@@ -226,7 +221,7 @@ public:
         connection_state_data& st,
         span<const std::uint8_t> server_data,
         string_view password,
-        span<const std::uint8_t> challenge,
+        span<const std::uint8_t, scramble_size> scramble,
         bool secure_channel,
         std::uint8_t& seqnum
     )
@@ -249,13 +244,13 @@ public:
                 else
                 {
                     // Request the server's public key
-                    BOOST_MYSQL_YIELD(resume_point_, 99, st.write(int1{2}, seqnum))
+                    BOOST_MYSQL_YIELD(resume_point_, 2, st.write(int1{2}, seqnum))
 
                     // Encrypt the password with the key we were given
                     BOOST_MYSQL_YIELD(
                         resume_point_,
-                        100,
-                        encrypt_password(st, seqnum, password, challenge, server_data)
+                        3,
+                        encrypt_password(st, seqnum, password, scramble, server_data)
                     )
 
                     // The server shouldn't send us any more packets
@@ -265,7 +260,7 @@ public:
             else if (is_fast_auth_ok(server_data))
             {
                 // We should wait for the server to send an OK or an error
-                BOOST_MYSQL_YIELD(resume_point_, 2, st.read(seqnum))
+                BOOST_MYSQL_YIELD(resume_point_, 4, st.read(seqnum))
             }
             else
             {
