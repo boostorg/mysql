@@ -131,9 +131,7 @@ inline error_code csha2p_encrypt_password(
     csha2p_password_buffer& output
 )
 {
-    // TODO: this is not guaranteed
-    BOOST_ASSERT(!password.empty());
-
+    // TODO: test that password.size() == 0u does not cause trouble
     // Try to parse the private key. TODO: size check here
     unique_bio bio{BIO_new_mem_buf(server_key.data(), server_key.size())};
     if (!bio)
