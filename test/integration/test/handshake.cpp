@@ -65,10 +65,11 @@ struct transport_test_case
 };
 std::ostream& operator<<(std::ostream& os, const transport_test_case& tc) { return os << tc.name; }
 
-std::vector<transport_test_case> make_secure_transports()
+std::vector<transport_test_case> make_all_transports()
 {
     std::vector<transport_test_case> res{
-        {"tcp_ssl", connect_params_builder().ssl(ssl_mode::require).build(), true},
+        {"tcp",     connect_params_builder().ssl(ssl_mode::disable).build(), false},
+        {"tcp_ssl", connect_params_builder().ssl(ssl_mode::require).build(), true },
     };
 
 #ifdef BOOST_ASIO_HAS_LOCAL_SOCKETS
@@ -81,14 +82,6 @@ std::vector<transport_test_case> make_secure_transports()
     return res;
 }
 
-std::vector<transport_test_case> make_all_transports()
-{
-    auto res = make_secure_transports();
-    res.push_back({"tcp", connect_params_builder().ssl(ssl_mode::disable).build(), false});
-    return res;
-}
-
-auto secure_transports = make_secure_transports();
 auto all_transports = make_all_transports();
 
 // Check whether the connection is using SSL or not
