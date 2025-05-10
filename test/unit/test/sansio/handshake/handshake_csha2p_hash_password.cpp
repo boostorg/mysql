@@ -43,4 +43,37 @@ BOOST_AUTO_TEST_CASE(empty_password)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+BOOST_AUTO_TEST_SUITE(test_handshake_csha2p_encrypt_password)
+
+/**
+encrypt password success
+    success
+    success password is 20 bytes
+    success password is > 20 bytes
+    success password is max length
+    success password is > max length but key is longer than default max length
+    password is > 512 (small buffer)
+    digest is > 512 (small buffer)
+error creating buffer (mock)
+error loading key
+    buffer is empty
+    key is malformed
+    TODO: should we fuzz this function?
+    key is not RSA
+    key is smaller than what we expect?
+determining the size of the hash
+    failure (EVP_PKEY_get_size < 0: mock)
+    not available (EVP_PKEY_get_size = 0: mock)
+error creating ctx (mock)
+error setting RSA padding (mock)
+encrypting
+    the returned size is < buffer
+    the returned size is == buffer
+    the returned size is > buffer (mock)
+    encryption fails (probably merge with the one below)
+    password is too big for encryption (with 2 sizes)
+*/
+
+BOOST_AUTO_TEST_SUITE_END()
+
 }  // namespace
