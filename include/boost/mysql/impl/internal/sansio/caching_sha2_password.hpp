@@ -64,9 +64,9 @@ inline void csha2p_hash_password_impl(
     SHA256(reinterpret_cast<const unsigned char*>(password.data()), password.size(), password_sha.data());
 
     // SHA(password_sha) concat scramble = buffer
-    std::array<std::uint8_t, csha2p_hash_size + csha2p_hash_size> buffer;
+    std::array<std::uint8_t, csha2p_hash_size + scramble_size> buffer;
     SHA256(password_sha.data(), password_sha.size(), buffer.data());
-    std::memcpy(buffer.data() + csha2p_hash_size, scramble.data(), csha2p_hash_size);
+    std::memcpy(buffer.data() + csha2p_hash_size, scramble.data(), scramble.size());
 
     // SHA(SHA(password_sha) concat scramble) = SHA(buffer) = salted_password
     std::array<std::uint8_t, csha2p_hash_size> salted_password;
