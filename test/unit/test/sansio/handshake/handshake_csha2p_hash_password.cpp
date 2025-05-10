@@ -10,7 +10,6 @@
 #include <boost/mysql/impl/internal/sansio/caching_sha2_password.hpp>
 
 #include "test_common/assert_buffer_equals.hpp"
-#include "test_common/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
@@ -21,46 +20,25 @@ namespace {
 BOOST_AUTO_TEST_SUITE(test_handshake_csha2p_hash_password)
 
 // Values snooped using the MySQL Python connector
-constexpr std::uint8_t challenge[20] = {
+// TODO: this doesn't make a lot of sense as a separate test now
+constexpr std::uint8_t scramble[20] = {
     0x3e, 0x3b, 0x4,  0x55, 0x4,  0x70, 0x16, 0x3a, 0x4c, 0x15,
     0x35, 0x3,  0x15, 0x76, 0x73, 0x22, 0x46, 0x8,  0x18, 0x1,
 };
 
-constexpr std::uint8_t expected[32] = {
+constexpr std::uint8_t hash[32] = {
     0xa1, 0xc1, 0xe1, 0xe9, 0x1b, 0xb6, 0x54, 0x4b, 0xa7, 0x37, 0x4b, 0x9c, 0x56, 0x6d, 0x69, 0x3e,
     0x6,  0xca, 0x7,  0x2,  0x98, 0xac, 0xd1, 0x6,  0x18, 0xc6, 0x90, 0x38, 0x9d, 0x88, 0xe1, 0x20,
 };
 
 BOOST_AUTO_TEST_CASE(nonempty_password)
 {
-    auto res = csha2p_hash_password("hola", challenge);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(res.value(), expected);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(csha2p_hash_password("hola", scramble), hash);
 }
 
 BOOST_AUTO_TEST_CASE(empty_password)
 {
-    auto res = csha2p_hash_password("", challenge);
-    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(res.value(), std::vector<std::uint8_t>());
-}
-
-BOOST_AUTO_TEST_CASE(bad_challenge_length_nonempty_password)
-{
-    constexpr std::uint8_t bad_challenge[] = {0x00, 0x01, 0x02};
-    auto res = csha2p_hash_password("hola", bad_challenge);
-    BOOST_TEST(res.error() == client_errc::protocol_value_error);
-}
-
-BOOST_AUTO_TEST_CASE(bad_challenge_length_nempty_password)
-{
-    constexpr std::uint8_t bad_challenge[] = {0x00, 0x01, 0x02};
-    auto res = csha2p_hash_password("", bad_challenge);
-    BOOST_TEST(res.error() == client_errc::protocol_value_error);
-}
-
-BOOST_AUTO_TEST_CASE(empty_challenge)
-{
-    auto res = csha2p_hash_password("", {});
-    BOOST_TEST(res.error() == client_errc::protocol_value_error);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(csha2p_hash_password("", scramble), std::vector<std::uint8_t>());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
