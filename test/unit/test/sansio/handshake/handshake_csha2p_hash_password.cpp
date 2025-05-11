@@ -8,12 +8,25 @@
 #include <boost/mysql/client_errc.hpp>
 
 #include <boost/mysql/impl/internal/sansio/caching_sha2_password.hpp>
+#include <boost/mysql/impl/internal/sansio/csha2p_encrypt_password.hpp>
+
+#include <boost/core/span.hpp>
+#include <boost/test/unit_test.hpp>
+
+#include <cstddef>
+#include <openssl/bio.h>
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using detail::csha2p_encrypt_password;
 using detail::csha2p_hash_password;
+
+using buffer_type = boost::container::small_vector<std::uint8_t, 512>;
 
 namespace {
 
@@ -43,11 +56,147 @@ BOOST_AUTO_TEST_CASE(empty_password)
 
 BOOST_AUTO_TEST_SUITE_END()
 
+// Encrypting with RSA and OAEP padding involves random numbers for padding.
+// There isn't a reliable way to seed OpenSSL's random number generators so that
+// the output is deterministic. So we do the following:
+//    1. We know the server's public and private keys and the password (the constants below).
+//    2. We capture a scramble and a corresponding ciphertext using Wireshark.
+//    3. We decrypt the ciphertext with OpenSSL to obtain the expected plaintext (the salted password).
+//    4. Tests run csha2p_encrypt_password, decrypt its output, and verify that it matches the expected
+//    plaintext.
 BOOST_AUTO_TEST_SUITE(test_handshake_csha2p_encrypt_password)
+
+constexpr unsigned char public_key_2048[] = R"%(-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA36OYSpdiy1lFDrdO1Vux
+GwjPTo35R2+mXqW2SZV7kH5C6BSCeoTk6STVRBJbgOCabtp5bpUZ+x2bYWOZp4fs
+JakC75CN2YTJoYg5z5U6XUBEWn6WNBpvEoSJaUtrzfU69J07uWqB6v0MdJf3JTgd
+ILfGKvk2T+maxqUiYObs0BJd5eKJZDlUaf2r4a9KC8zGUZzHdgtZEXlkHVNLEbbD
+Ju4KjtCtJCG1NEBAh3oSnNp/Q1FKFywqU7YnEBWI0B9C5UcKNFbg7M35daimXfGp
+V7WJKhO9w7iBJYL1SW+PwyUCh3DNsuSm3nLmuwKhTvGQHZJS/5OVdSHgZhjDnk2V
+WwIDAQAB
+-----END PUBLIC KEY-----
+)%";
+
+constexpr unsigned char private_key_2048[] = R"%(-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDfo5hKl2LLWUUO
+t07VW7EbCM9OjflHb6ZepbZJlXuQfkLoFIJ6hOTpJNVEEluA4Jpu2nlulRn7HZth
+Y5mnh+wlqQLvkI3ZhMmhiDnPlTpdQERafpY0Gm8ShIlpS2vN9Tr0nTu5aoHq/Qx0
+l/clOB0gt8Yq+TZP6ZrGpSJg5uzQEl3l4olkOVRp/avhr0oLzMZRnMd2C1kReWQd
+U0sRtsMm7gqO0K0kIbU0QECHehKc2n9DUUoXLCpTticQFYjQH0LlRwo0VuDszfl1
+qKZd8alXtYkqE73DuIElgvVJb4/DJQKHcM2y5Kbecua7AqFO8ZAdklL/k5V1IeBm
+GMOeTZVbAgMBAAECggEANI0UtDJunKoVeCfK9ofdTiT70dG6yfaKeaMm+pONvZ5t
+ymtHXdLsl3x4QM6vgdFFeNcNwdZ3jHKgmHn3GU7vRso4TmMBciOp3bNNImJGnLMF
+XN5yHTw47XkHcR6v7m25tNFdv2wvqzBbROqQwMY20gFdJ6v3/z89h4A2W97nttyp
+ixcNdSTHOfu6iUceEGi2PjHrvw4STPQeihXFNTnYG7hvlWzAerQ5STx5K2n4JoXz
+xI5MuHS6PGj5EBPUoq0+EQhmhORWBdNCMcijpHqobVDjifPRY2JbI3zZHtVjYpGH
+otmc72hIDjNW7RX1ePKW/gsq6p2by3U8+4dOdya4AQKBgQDz4/6uo7atJSTgVo3d
+Zr/7UJ4Qi2mlc992jLAqTQle6JchhNERoPvb19Qy8BaOz6LcxmuMXnRij05mxdyb
+LmoH8TPe6RFLCOJrRapkUjUtRD8dIg6UNFLk98LD5t3o5PoHwNpBFfokRlchwoHL
+uBvbEHQkrPX2xPbgla5e7zJLgQKBgQDqvjCUMvmap9+AlqxGFhv51V9dIlKvT0xW
+p5KEMVfs3JXCHAM7o0ClZ8NitHXw18E8+iMG4pWw3+FX4K6tKGR+rCeGCUNGuiQT
+FzXjrEej+Pnuk8zacjXkbS+PNnEqhpSq6STZVFn2UW+ZWAoq2iAMR7qw0eAjylln
+h//Wad3+2wKBgAjwWEtKUM2zyNA4G+b7dxnc8I4mre6UeqI7sdE7FZbW64Mc/RSq
+U9DQ7kQXrJv7XDq/Qv3YEGf0XKlDozxEzToRSxdmb23Sm4nW+dHHeY95Kt8EeohQ
+CqG9uvO3KHb6vXc/SECOb6aYtWTVXjB7RPoYdklJ1ZH/0hSVJ9ju52cBAoGBAK63
+A90p25F6ZOWGP46iogve/e2JwFTvBnhwnKJ7P1/yBhzFULqwlUsG4euzOR0a2J6T
+5kIXnyZYW5ZWimwi5jlJ1Nj0R/h6TqNO4TMlZOTsSMmDhDMKUoZDpeRHtw7ZwAk9
+IcoH+DVXA2L0ngyq8LNzJ8a3TsYUs1pVZNunTC2FAoGARe4x29tdri8akxxwF3BV
+bjJ9qRUIfIDK8rGWRdw94vVCB7XVmSWCEchmLqA1DqGYvAhYMYjkXTg9akfBTUQS
+s+8JasUuQam8Y88JAfC0QqGbLgUsh0TpRUOXj+YQuoNiMVu14NNgYgFkx71WtvAq
+kUmkxr/moPcZ+O1ahVjv/Us=
+-----END PRIVATE KEY-----
+)%";
+
+// Decrypts the output of
+std::vector<std::uint8_t> decrypt(
+    boost::span<const std::uint8_t> private_key,
+    boost::span<const std::uint8_t> ciphertext
+)
+{
+    // RAII helpers
+    struct bio_deleter
+    {
+        void operator()(BIO* bio) const noexcept { BIO_free(bio); }
+    };
+    using unique_bio = std::unique_ptr<BIO, bio_deleter>;
+
+    struct evp_pkey_deleter
+    {
+        void operator()(EVP_PKEY* pkey) const noexcept { EVP_PKEY_free(pkey); }
+    };
+    using unique_evp_pkey = std::unique_ptr<EVP_PKEY, evp_pkey_deleter>;
+
+    struct evp_pkey_ctx_deleter
+    {
+        void operator()(EVP_PKEY_CTX* ctx) const noexcept { EVP_PKEY_CTX_free(ctx); }
+    };
+    using unique_evp_pkey_ctx = std::unique_ptr<EVP_PKEY_CTX, evp_pkey_ctx_deleter>;
+
+    // Create a BIO with the key
+    unique_bio bio(BIO_new_mem_buf(private_key.data(), private_key.size()));
+    BOOST_TEST_REQUIRE(bio != nullptr, "Creating a BIO failed: " << ERR_get_error());
+
+    // Load the key
+    unique_evp_pkey pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
+    BOOST_TEST_REQUIRE(bio != nullptr, "Loading the key failed: " << ERR_get_error());
+
+    // Create a decryption context
+    unique_evp_pkey_ctx ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+    BOOST_TEST_REQUIRE(ctx != nullptr, "Creating a context failed: " << ERR_get_error());
+
+    // Initialize it
+    BOOST_TEST_REQUIRE(
+        EVP_PKEY_decrypt_init(ctx.get()) > 0,
+        "Initializing decryption failed: " << ERR_get_error()
+    );
+
+    // Set the padding scheme
+    BOOST_TEST_REQUIRE(
+        EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) > 0,
+        "Setting the padding scheme failed: " << ERR_get_error()
+    );
+
+    // Determine the size of the decrypted buffer
+    std::size_t out_size = 0;
+    BOOST_TEST_REQUIRE(
+        EVP_PKEY_decrypt(ctx.get(), nullptr, &out_size, ciphertext.data(), ciphertext.size()) > 0,
+        "Determining decryption size failed: " << ERR_get_error()
+    );
+    std::vector<std::uint8_t> res(out_size, 0);
+
+    // Actually decrypt
+    BOOST_TEST_REQUIRE(
+        EVP_PKEY_decrypt(ctx.get(), res.data(), &out_size, ciphertext.data(), ciphertext.size()) > 0,
+        "Decrypting failed: " << ERR_get_error()
+    );
+    res.resize(out_size);
+
+    // Done
+    return res;
+}
+
+//
+BOOST_AUTO_TEST_CASE(password_lt20)
+{
+    // Setup
+    constexpr std::uint8_t scramble[] = {
+        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
+        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
+    };
+    constexpr std::uint8_t expected_decrypted[] =
+        {0x6c, 0x17, 0x27, 0x4e, 0x19, 0x4b, 0x78, 0x1b, 0x24, 0x2f, 0x20, 0x76, 0x7c, 0x0c, 0x2b, 0x10};
+    buffer_type buff;
+
+    // Call the function
+    unsigned long err = csha2p_encrypt_password("csha2p_password", scramble, public_key_2048, buff);
+
+    // Verify
+    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_2048, buff), expected_decrypted);
+}
 
 /**
 encrypt password success
-    success
     success password is 20 bytes
     success password is > 20 bytes
     success password is max length
@@ -72,6 +221,7 @@ encrypting
     the returned size is > buffer (mock)
     encryption fails (probably merge with the one below)
     password is too big for encryption (with 2 sizes)
+buffer is reset?
 */
 
 BOOST_AUTO_TEST_SUITE_END()
