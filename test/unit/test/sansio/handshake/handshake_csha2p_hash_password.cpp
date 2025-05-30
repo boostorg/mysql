@@ -18,6 +18,7 @@
 #include <openssl/bio.h>
 #include <openssl/evp.h>
 #include <openssl/pem.h>
+#include <string>
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
@@ -105,6 +106,135 @@ IcoH+DVXA2L0ngyq8LNzJ8a3TsYUs1pVZNunTC2FAoGARe4x29tdri8akxxwF3BV
 bjJ9qRUIfIDK8rGWRdw94vVCB7XVmSWCEchmLqA1DqGYvAhYMYjkXTg9akfBTUQS
 s+8JasUuQam8Y88JAfC0QqGbLgUsh0TpRUOXj+YQuoNiMVu14NNgYgFkx71WtvAq
 kUmkxr/moPcZ+O1ahVjv/Us=
+-----END PRIVATE KEY-----
+)%";
+
+constexpr unsigned char public_key_8192[] = R"%(-----BEGIN PUBLIC KEY-----
+MIIEIjANBgkqhkiG9w0BAQEFAAOCBA8AMIIECgKCBAEA43dhEnCSwC/hAAm9XrZc
+t0QaC4bkoSifeiL00+U8xBbAuAYnZSQ4PBbEERnxIRLpgCf0b2SDvCXPJmXB6lKz
+1W4vVcw2fVuG4Kmp5C9skhXeGXrXoEOgSxBp8VkWWWB1tbpKmKwdGnh6O0JOwWRq
+wWxefR3J9EWBNTz0vvbjGxYWt0XfcCjULPuXuPVlrbZkTsdCl8ncWG8G/OjRNHr3
+f9eiWHb2gA+xsUJfP/iWlUmy+9MiEGBT+JMW2wZAOu7JgVbyZWXV/pkwodP1IVFy
+c9RTexnC7Th3dDlT+HcAWXDCTuWwq2KhD/WUnfXO6uZEjyp3aJiJOa7Mceag0B9t
+T9d1AZkXQs3PZYn+Sl1cF3hq6e8OoKHZsA95PAtNrXfDe7vkyICB4sp1Dkqg75Ws
+arOTC45CWcr/woReqCDYRiSr0aQodlJmSvSIlOz5IAyB40nFzA3VgEgTgHJ4mU7O
+QcsOSStmZNvk6Hl9xfUfJi9xTB/vwf7FKWe+IcDGdkU9WV3yJ6UTXPW4TQu25uTc
+6WoK4Us8Lk2h7f+Tk2dsyt+VTDOma5qbwTT8U/NKSd8Se5ewS4++ERqaRikLmp0o
+AciYxH00Wk3ZLPFUn9/svcA4BAwOCTkYjIQvW/gLDrYyu4qyrgkGXiNs0L2QYB7l
+AUTOl5M0Bmez5Nl8SIdaVk4bj5D+4BbHrDZGLMkkP1KWRgNFOJOfLT3JgMPxDwme
+n4qFs/HV/d4qh8kzyjITsBRQj1EloqqU+40WJ9X3mIEo7xQ1DPloQMWADDYrO/bX
+fFtYnTtnJLV6ndTSdQz0yZ7ubROJFatPy1VQ6AiBeN24sq9iKm6NXuWjszS0paZ/
+JfO+QOTB9D3lVnFzV2yHRIboHNpm/X1eVeXDlzzVTobqVr4eN78bL4+VQiGQav1I
+8ebv3Gx9+NO1qVfsWHC89I+hw9HSN69gEyCmeWwIuY8hMGfTBgERVKPkWhSPM0cU
+JlkM+ER1Pngz93TR7tWPsp9tYaKMG4DVth0fINRSVsFFkeHu1CLeKboUW8QMoH+A
+vPDVnSE2M3ecAeFz0yNXTwVtHbQT2YpYZ88gnYvYcRNdqeOvRKkrGUON0fDGvBnF
+xxcuNzZVP2wBEUTkYljnLrJ5zR+uabPgrQiIhTVdDplRRZd6DVRh9s357L5b94tX
+wtNAFfHT3AsU/C5p8O6taxckrxYMqNsOJ/6zYp7gUTTdb3e/V1c3xgi/x8+gUrUn
+ivGZZdOaWUbSDZf1cz2kfQPsaiDDPVKL7goo0ZA5gnbjkhHUNpGmE5KauHek9rxO
+2KX3dpjl3YJyHSmOKv7Lf46Uja0cNWbTh/0nHlG5xtbzBNGvxF90iGmHDmr+u6BT
+zwIDAQAB
+-----END PUBLIC KEY-----
+)%";
+
+constexpr unsigned char private_key_8192[] = R"%(-----BEGIN PRIVATE KEY-----
+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
+2vrUYCC8gWblftYH+yTWu2bQ4Y1pDw==
 -----END PRIVATE KEY-----
 )%";
 
@@ -286,11 +416,67 @@ BOOST_AUTO_TEST_CASE(password_max_size_2048)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_2048, buff), expected_decrypted);
 }
 
+// Longer passwords are accepted if the key supports them.
+// Concretely, passwords longer than 512 (size of our SBO) are supported
+BOOST_AUTO_TEST_CASE(password_longer_sbo)
+{
+    // Setup
+    constexpr std::uint8_t scramble[] = {
+        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
+        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
+    };
+    constexpr std::uint8_t expected_decrypted[] = {
+        0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13,
+        0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b,
+        0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66,
+        0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e,
+        0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e,
+        0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51,
+        0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68,
+        0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25,
+        0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26,
+        0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69,
+        0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12,
+        0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a,
+        0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a,
+        0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16,
+        0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a,
+        0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34,
+        0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70,
+        0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e,
+        0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a,
+        0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12,
+        0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13,
+        0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b,
+        0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66,
+        0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e,
+        0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e,
+        0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51,
+        0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68,
+        0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25,
+        0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26,
+        0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69,
+        0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12,
+        0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a,
+        0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16, 0x68, 0x12, 0x3a,
+        0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13, 0x16,
+        0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a,
+        0x25, 0x13, 0x16, 0x68, 0x12, 0x0f
+    };
+    buffer_type buff;
+
+    std::string password(600, '5');
+
+    // Call the function
+    unsigned long err = csha2p_encrypt_password(password, scramble, public_key_8192, buff);
+
+    // Verify
+    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_8192, buff), expected_decrypted);
+}
+
 /**
 encrypt password success
-    success password is > max length but key is longer than default max length
-    password is > 512 (small buffer)
-    digest is > 512 (small buffer)
     no character causes problems
 error creating buffer (mock)
 error loading key
