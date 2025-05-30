@@ -26,6 +26,7 @@
 #include <boost/container/small_vector.hpp>
 #include <boost/core/span.hpp>
 #include <boost/system/result.hpp>
+#include <boost/system/system_category.hpp>
 
 #include <array>
 #include <cstddef>
@@ -100,7 +101,21 @@ inline static_buffer<max_hash_size> csha2p_hash_password(
 
 inline error_code translate_openssl_error(unsigned long code)
 {
-    return error_code(code, asio::error::get_ssl_category());  // TODO: is this OK?
+    // TODO: it'd be helpful to include source code info here
+    // If ERR_SYSTEM_ERROR is true, the error code is a system error.
+    // This function only exists since OpenSSL 3
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (ERR_SYSTEM_ERROR(code))
+    {
+        return error_code(ERR_GET_REASON(code), system::system_category());
+    }
+#endif
+
+    // In OpenSSL < 3, error codes > 0x80000000 are reserved for the user,
+    // so it's unlikely that we will encounter these here. Overflow here
+    // is implementation-defined behavior (and not UB), so we're fine.
+    // This is what Asio does, anyway.
+    return error_code(static_cast<int>(code), asio::error::get_ssl_category());
 }
 
 class csha2p_algo
