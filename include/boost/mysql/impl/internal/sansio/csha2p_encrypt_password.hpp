@@ -57,7 +57,6 @@ inline unsigned long csha2p_encrypt_password(
     };
     using unique_evp_pkey_ctx = std::unique_ptr<EVP_PKEY_CTX, evp_pkey_ctx_deleter>;
 
-    // TODO: test that password.size() == 0u does not cause trouble
     // Try to parse the private key. TODO: size check here
     unique_bio bio{BIO_new_mem_buf(server_key.data(), server_key.size())};
     if (!bio)

@@ -306,6 +306,26 @@ std::vector<std::uint8_t> decrypt(
     return res;
 }
 
+// An empty password does not cause trouble. This is an edge case, since
+// an empty password should employ a different workflow
+BOOST_AUTO_TEST_CASE(password_empty)
+{
+    // Setup
+    constexpr std::uint8_t scramble[] = {
+        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
+        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
+    };
+    constexpr std::uint8_t expected_decrypted[] = {0x0f};
+    buffer_type buff;
+
+    // Call the function
+    unsigned long err = csha2p_encrypt_password({}, scramble, public_key_2048, buff);
+
+    // Verify
+    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_2048, buff), expected_decrypted);
+}
+
 // Password is < length of the scramble
 BOOST_AUTO_TEST_CASE(password_shorter_scramble)
 {
@@ -588,7 +608,7 @@ mVpTh++3j7pnpWUjnFuarvWmWh/H6t96/pTx566FKGxZpLn3H9TLHZJsog==
     unsigned long err = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff);
     BOOST_TEST(err > 0u);                                              // is an error
     BOOST_TEST(err < 0x80000000);                                      // not a system or user-defined error
-    BOOST_TEST(detail::translate_openssl_error(err).message() == "");  // produces some output
+    BOOST_TEST(detail::translate_openssl_error(err).message() != "");  // produces some output
 }
 
 /**
