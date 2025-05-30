@@ -515,6 +515,24 @@ BOOST_AUTO_TEST_CASE(password_all_characters)
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_8192, buff), expected_decrypted);
 }
 
+//
+// Errors. It's not defined what exact error code will each function return.
+//
+
+// We passed an empty buffer to the key parser
+BOOST_AUTO_TEST_CASE(error_key_buffer_empty)
+{
+    constexpr std::uint8_t scramble[] = {
+        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
+        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
+    };
+    buffer_type buff;
+    unsigned long err = csha2p_encrypt_password("csha2p_password", scramble, {}, buff);
+    BOOST_TEST(err > 0u);                                              // is an error
+    BOOST_TEST(err < 0x80000000);                                      // not a system or user-defined error
+    BOOST_TEST(detail::translate_openssl_error(err).message() != "");  // produces some output
+}
+
 /**
 error creating buffer (mock)
 error loading key
