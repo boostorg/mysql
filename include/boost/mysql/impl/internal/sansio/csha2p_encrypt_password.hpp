@@ -59,6 +59,23 @@ inline error_code translate_openssl_error(
     return error_code(static_cast<int>(code), openssl_category, loc);
 }
 
+inline container::small_vector<std::uint8_t, 512> csha2p_salt_password(
+    string_view password,
+    span<const std::uint8_t, scramble_size> scramble
+)
+{
+    // Salt the password, as a NULL-terminated string
+    container::small_vector<std::uint8_t, 512> res(password.size() + 1u, 0);
+    for (std::size_t i = 0; i < password.size(); ++i)
+        res[i] = password[i] ^ scramble[i % scramble.size()];
+
+    // Add the NULL terminator. It should be salted, too. Since 0 ^ U = U,
+    // the byte should be the scramble at the position we're in
+    res[password.size()] = scramble[password.size() % scramble.size()];
+
+    return res;
+}
+
 inline error_code csha2p_encrypt_password(
     string_view password,
     span<const std::uint8_t, scramble_size> scramble,
@@ -100,14 +117,8 @@ inline error_code csha2p_encrypt_password(
         return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
     }
 
-    // Salt the password, as a NULL-terminated string
-    container::small_vector<std::uint8_t, 512> salted_password(password.size() + 1u, 0);
-    for (std::size_t i = 0; i < password.size(); ++i)
-        salted_password[i] = password[i] ^ scramble[i % scramble.size()];
-
-    // Add the NULL terminator. It should be salted, too. Since 0 ^ U = U,
-    // the byte should be the scramble at the position we're in
-    salted_password[password.size()] = scramble[password.size() % scramble.size()];
+    // Salt the password
+    auto salted_password = csha2p_salt_password(password, scramble);
 
     // Set up the encryption context
     unique_evp_pkey_ctx ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
@@ -165,7 +176,7 @@ inline error_code csha2p_encrypt_password(
     }
 
     // Adjust size
-    BOOST_ASSERT(actual_size >= output.size());
+    BOOST_ASSERT(actual_size <= output.size());
     output.resize(actual_size);
 
     // Done
