@@ -141,10 +141,16 @@ inline error_code csha2p_encrypt_password(
             return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
     }
 
-    // Encrypt
+    // Allocate a buffer for encryption
     int max_size = EVP_PKEY_get_size(key.get());
-    BOOST_ASSERT(max_size >= 0);
+    if (max_size <= 0)
+    {
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
+    }
     output.resize(max_size);
+
+    // Encrypt
     std::size_t actual_size = static_cast<std::size_t>(max_size);
     if (EVP_PKEY_encrypt(
             ctx.get(),
@@ -157,6 +163,9 @@ inline error_code csha2p_encrypt_password(
         static constexpr auto loc = BOOST_CURRENT_LOCATION;
         return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
     }
+
+    // Adjust size
+    BOOST_ASSERT(actual_size >= output.size());
     output.resize(actual_size);
 
     // Done

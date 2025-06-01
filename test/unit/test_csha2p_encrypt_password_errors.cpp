@@ -5,7 +5,6 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#include "boost/mysql/error_code.hpp"
 #define BOOST_TEST_MODULE test_csha2p_encrypt_password_errors
 
 #include <boost/mysql/impl/internal/sansio/csha2p_encrypt_password.hpp>
@@ -23,7 +22,9 @@ using detail::csha2p_encrypt_password;
 
 // Contains tests that need mocking OpenSSL functions.
 // We do this at link time, by defining the functions declared in OpenSSL headers here
-// and not linking to libssl/libcrypto
+// and not linking to libssl/libcrypto.
+// These tests cover cases that can't be covered directly by the unit tests using the real OpenSSL.
+// Try to put as few tests here as possible.
 
 namespace {
 
@@ -56,7 +57,9 @@ struct
     EVP_PKEY* key{reinterpret_cast<EVP_PKEY*>(static_cast<std::uintptr_t>(200))};
     EVP_PKEY_CTX* ctx{reinterpret_cast<EVP_PKEY_CTX*>(static_cast<std::uintptr_t>(300))};
     int encrypt_init_result{0};
-    unsigned long last_error{0};
+    int set_rsa_padding_result{0};
+    int get_size_result{512};
+    unsigned long last_error{0u};
 
 } openssl_mock;
 
@@ -78,35 +81,75 @@ BOOST_AUTO_TEST_CASE(error_creating_bio)
     BOOST_TEST(openssl_mock.PEM_read_bio_PUBKEY_calls == 0u);
 }
 
-// // Determining the maximum size of the ciphertext fails
-// BOOST_AUTO_TEST_CASE(error_get_size)
-// {
-//     openssl_mock.last_error = 43u;
-//     vector_type out;
-//     auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
-//     BOOST_TEST(ec == error_code(42, ssl_category));
-// }
+BOOST_AUTO_TEST_CASE(error_creating_pkey_ctx)
+{
+    // Setup
+    openssl_mock = {};
+    openssl_mock.ctx = nullptr;
+    openssl_mock.last_error = 42u;
+    vector_type out;
+
+    // Call the function
+    auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+
+    // Check
+    BOOST_TEST(ec == error_code(42, ssl_category));
+    BOOST_TEST(ec.has_location());
+    BOOST_TEST(openssl_mock.EVP_PKEY_CTX_new_calls == 1u);
+    BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_init_calls == 0u);
+}
+
+BOOST_AUTO_TEST_CASE(error_setting_rsa_padding)
+{
+    // Setup. The return value should be != -2, which indicates
+    // operation not supported and is handled separately
+    openssl_mock = {};
+    openssl_mock.set_rsa_padding_result = -1;
+    openssl_mock.last_error = 42u;
+    vector_type out;
+
+    // Call the function
+    auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+
+    // Check
+    BOOST_TEST(ec == error_code(42, ssl_category));
+    BOOST_TEST(ec.has_location());
+    BOOST_TEST(openssl_mock.EVP_PKEY_CTX_set_rsa_padding_calls == 1u);
+    BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
+}
+
+// Getting a zero size as max buffer size might happen in theory (although it shouldn't for RSA)
+BOOST_AUTO_TEST_CASE(get_size_zero)
+{
+    // Setup
+    openssl_mock = {};
+    openssl_mock.get_size_result = 0;
+    openssl_mock.last_error = 42u;
+    vector_type out;
+
+    // Call the function
+    auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+
+    // Check
+    BOOST_TEST(ec == error_code(42, ssl_category));
+    BOOST_TEST(ec.has_location());
+    BOOST_TEST(openssl_mock.EVP_PKEY_get_size_calls == 1u);
+    BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
+}
 
 /**
 error loading key
     TODO: should we fuzz this function?
-    EVP_PKEY_CTX_set_rsa_padding fails with a value != -2 (mock)
     TODO: if openssl returns 0 in ERR_get_error, does the error code count as failed, too? no it does not
-determining the size of the hash
-    failure (EVP_PKEY_get_size < 0: mock)
-    not available (EVP_PKEY_get_size = 0: mock)
-error creating ctx (mock)
 encrypting
     the returned size is < buffer
     the returned size is == buffer
     the returned size is > buffer (mock)
-    encryption fails (probably merge with the one below)
-    password is too big for encryption (with 2 sizes)
-buffer is reset?
 */
 
 }  // namespace
 
+// Implement the OpenSSL functions
 BIO* BIO_new_mem_buf(const void*, int)
 {
     ++openssl_mock.BIO_new_mem_buf_calls;
@@ -139,7 +182,7 @@ int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX* ctx, int)
 {
     ++openssl_mock.EVP_PKEY_CTX_set_rsa_padding_calls;
     BOOST_TEST(ctx == openssl_mock.ctx);
-    return 0;
+    return openssl_mock.set_rsa_padding_result;
 }
 int EVP_PKEY_get_size(const EVP_PKEY* pkey)
 {
