@@ -570,25 +570,7 @@ mVpTh++3j7pnpWUjnFuarvWmWh/H6t96/pTx566FKGxZpLn3H9TLHZJsog==
     BOOST_TEST(ec == client_errc::protocol_value_error);  // OpenSSL does not provide an error code here
 }
 
-/**
-error creating buffer (mock)
-error loading key
-    TODO: should we fuzz this function?
-    key is smaller than what we expect?
-    EVP_PKEY_CTX_set_rsa_padding fails with a value != -2 (mock)
-    TODO: if openssl returns 0 in ERR_get_error, does the error code count as failed, too? no it does not
-determining the size of the hash
-    failure (EVP_PKEY_get_size < 0: mock)
-    not available (EVP_PKEY_get_size = 0: mock)
-error creating ctx (mock)
-encrypting
-    the returned size is < buffer
-    the returned size is == buffer
-    the returned size is > buffer (mock)
-    encryption fails (probably merge with the one below)
-    password is too big for encryption (with 2 sizes)
-buffer is reset?
-*/
+// TODO: verify that these error codes have source code info
 
 BOOST_AUTO_TEST_SUITE_END()
 

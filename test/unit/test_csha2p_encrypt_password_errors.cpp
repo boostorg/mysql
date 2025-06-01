@@ -9,13 +9,28 @@
 
 #include <boost/container/small_vector.hpp>
 #include <boost/core/lightweight_test.hpp>
+#include <boost/system/error_category.hpp>
 
 #include <cstdint>
+#include <string>
 
 using namespace boost::mysql;
 using detail::csha2p_encrypt_password;
 
+// Contains tests that need mocking OpenSSL functions.
+// We do this at link time, by defining the functions declared in OpenSSL headers here
+// and not linking to libssl/libcrypto
+
 namespace {
+
+// If we use asio::error::ssl_category, many more other OpenSSL functions
+// become used, and mocking becomes problematic.
+class mock_ssl_category final : public boost::system::error_category
+{
+public:
+    const char* name() const noexcept override { return "mock_ssl"; }
+    std::string message(int) const override { return {}; }
+} ssl_category;
 
 constexpr std::uint8_t scramble[20]{};
 
@@ -35,9 +50,27 @@ void test_bio_new_error()
 {
     openssl_mock.last_error = 42u;
     vector_type out;
-    unsigned long err = csha2p_encrypt_password("passwd", scramble, {}, out);
-    BOOST_TEST_EQ(err, 42u);
+    auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+    BOOST_TEST_EQ(ec, error_code(42, ssl_category));
 }
+
+/**
+error loading key
+    TODO: should we fuzz this function?
+    EVP_PKEY_CTX_set_rsa_padding fails with a value != -2 (mock)
+    TODO: if openssl returns 0 in ERR_get_error, does the error code count as failed, too? no it does not
+determining the size of the hash
+    failure (EVP_PKEY_get_size < 0: mock)
+    not available (EVP_PKEY_get_size = 0: mock)
+error creating ctx (mock)
+encrypting
+    the returned size is < buffer
+    the returned size is == buffer
+    the returned size is > buffer (mock)
+    encryption fails (probably merge with the one below)
+    password is too big for encryption (with 2 sizes)
+buffer is reset?
+*/
 
 }  // namespace
 

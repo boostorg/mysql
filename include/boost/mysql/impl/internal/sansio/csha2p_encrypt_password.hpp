@@ -37,7 +37,6 @@ namespace detail {
 
 // The OpenSSL category is passed as parameter to avoid including asio/ssl headers here.
 // Doing so would make mocking OpenSSL more difficult (more functions used)
-// TODO: give it a try
 inline error_code translate_openssl_error(
     unsigned long code,
     const source_location* loc,
