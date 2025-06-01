@@ -11,6 +11,7 @@
 #include <boost/mysql/impl/internal/sansio/caching_sha2_password.hpp>
 #include <boost/mysql/impl/internal/sansio/csha2p_encrypt_password.hpp>
 
+#include <boost/asio/ssl/error.hpp>
 #include <boost/core/span.hpp>
 #include <boost/test/unit_test.hpp>
 
@@ -22,9 +23,11 @@
 #include <vector>
 
 #include "test_common/assert_buffer_equals.hpp"
+#include "test_common/printing.hpp"
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using boost::asio::error::ssl_category;
 using detail::csha2p_encrypt_password;
 using detail::csha2p_hash_password;
 
@@ -319,10 +322,10 @@ BOOST_AUTO_TEST_CASE(password_empty)
     buffer_type buff;
 
     // Call the function
-    unsigned long err = csha2p_encrypt_password({}, scramble, public_key_2048, buff);
+    auto ec = csha2p_encrypt_password({}, scramble, public_key_2048, buff, ssl_category);
 
     // Verify
-    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_TEST_REQUIRE(ec == error_code());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_2048, buff), expected_decrypted);
 }
 
@@ -339,10 +342,10 @@ BOOST_AUTO_TEST_CASE(password_shorter_scramble)
     buffer_type buff;
 
     // Call the function
-    unsigned long err = csha2p_encrypt_password("csha2p_password", scramble, public_key_2048, buff);
+    auto ec = csha2p_encrypt_password("csha2p_password", scramble, public_key_2048, buff, ssl_category);
 
     // Verify
-    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_TEST_REQUIRE(ec == error_code());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_2048, buff), expected_decrypted);
 }
 
@@ -361,10 +364,10 @@ BOOST_AUTO_TEST_CASE(password_same_size_scramble)
     buffer_type buff;
 
     // Call the function
-    unsigned long err = csha2p_encrypt_password("hjbjd923KKLiosoi90J", scramble, public_key_2048, buff);
+    auto ec = csha2p_encrypt_password("hjbjd923KKLiosoi90J", scramble, public_key_2048, buff, ssl_category);
 
     // Verify
-    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_TEST_REQUIRE(ec == error_code());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_2048, buff), expected_decrypted);
 }
 
@@ -384,15 +387,16 @@ BOOST_AUTO_TEST_CASE(password_longer_scramble)
     buffer_type buff;
 
     // Call the function
-    unsigned long err = csha2p_encrypt_password(
+    auto ec = csha2p_encrypt_password(
         "kjaski829380jvnnM,ka;::_kshf93IJCLIJO)jcjsnaklO?a",
         scramble,
         public_key_2048,
-        buff
+        buff,
+        ssl_category
     );
 
     // Verify
-    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_TEST_REQUIRE(ec == error_code());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_2048, buff), expected_decrypted);
 }
 
@@ -429,10 +433,10 @@ BOOST_AUTO_TEST_CASE(password_max_size_2048)
     BOOST_TEST(password.size() == 213u);
 
     // Call the function
-    unsigned long err = csha2p_encrypt_password(password, scramble, public_key_2048, buff);
+    auto ec = csha2p_encrypt_password(password, scramble, public_key_2048, buff, ssl_category);
 
     // Verify
-    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_TEST_REQUIRE(ec == error_code());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_2048, buff), expected_decrypted);
 }
 
@@ -488,10 +492,10 @@ BOOST_AUTO_TEST_CASE(password_longer_sbo)
     std::string password(600, '5');
 
     // Call the function
-    unsigned long err = csha2p_encrypt_password(password, scramble, public_key_8192, buff);
+    auto ec = csha2p_encrypt_password(password, scramble, public_key_8192, buff, ssl_category);
 
     // Verify
-    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_TEST_REQUIRE(ec == error_code());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_8192, buff), expected_decrypted);
 }
 
@@ -528,10 +532,10 @@ BOOST_AUTO_TEST_CASE(password_all_characters)
         password.push_back(static_cast<char>(i));
 
     // Call the function
-    unsigned long err = csha2p_encrypt_password(password, scramble, public_key_8192, buff);
+    auto ec = csha2p_encrypt_password(password, scramble, public_key_8192, buff, ssl_category);
 
     // Verify
-    BOOST_TEST_REQUIRE(err == 0u);
+    BOOST_TEST_REQUIRE(ec == error_code());
     BOOST_MYSQL_ASSERT_BUFFER_EQUALS(decrypt(private_key_8192, buff), expected_decrypted);
 }
 
@@ -547,10 +551,10 @@ BOOST_AUTO_TEST_CASE(error_key_buffer_empty)
         0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
     };
     buffer_type buff;
-    unsigned long err = csha2p_encrypt_password("csha2p_password", scramble, {}, buff);
-    BOOST_TEST(err > 0u);                                              // is an error
-    BOOST_TEST(err < 0x80000000);                                      // not a system or user-defined error
-    BOOST_TEST(detail::translate_openssl_error(err).message() != "");  // produces some output
+    auto ec = csha2p_encrypt_password("csha2p_password", scramble, {}, buff, ssl_category);
+    BOOST_TEST((ec.category() == ssl_category));
+    BOOST_TEST(ec.value() > 0u);     // is an error
+    BOOST_TEST(ec.message() != "");  // produces some output
 }
 
 BOOST_AUTO_TEST_CASE(error_key_malformed)
@@ -561,10 +565,10 @@ BOOST_AUTO_TEST_CASE(error_key_malformed)
     };
     constexpr std::uint8_t key_buffer[] = "-----BEGIN PUBLIC KEY-----zwIDAQAB__kaj0?))=";
     buffer_type buff;
-    unsigned long err = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff);
-    BOOST_TEST(err > 0u);                                              // is an error
-    BOOST_TEST(err < 0x80000000);                                      // not a system or user-defined error
-    BOOST_TEST(detail::translate_openssl_error(err).message() != "");  // produces some output
+    auto ec = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff, ssl_category);
+    BOOST_TEST((ec.category() == ssl_category));
+    BOOST_TEST(ec.value() > 0u);     // is an error
+    BOOST_TEST(ec.message() != "");  // produces some output
 }
 
 // Passing in a public key type that does not support encryption operations
@@ -582,10 +586,10 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERDkCI/degPJXEIYYncyvGsTdj9YI
 )%";
 
     buffer_type buff;
-    unsigned long err = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff);
-    BOOST_TEST(err > 0u);                                              // is an error
-    BOOST_TEST(err < 0x80000000);                                      // not a system or user-defined error
-    BOOST_TEST(detail::translate_openssl_error(err).message() != "");  // produces some output
+    auto ec = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff, ssl_category);
+    BOOST_TEST((ec.category() == ssl_category));
+    BOOST_TEST(ec.value() > 0u);     // is an error
+    BOOST_TEST(ec.message() != "");  // produces some output
 }
 
 // Passing in a public key type that allows encryption but is not RSA fails as expected.
@@ -605,10 +609,8 @@ mVpTh++3j7pnpWUjnFuarvWmWh/H6t96/pTx566FKGxZpLn3H9TLHZJsog==
 )%";
 
     buffer_type buff;
-    unsigned long err = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff);
-    BOOST_TEST(err > 0u);                                              // is an error
-    BOOST_TEST(err < 0x80000000);                                      // not a system or user-defined error
-    BOOST_TEST(detail::translate_openssl_error(err).message() != "");  // produces some output
+    auto ec = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff, ssl_category);
+    BOOST_TEST(ec == client_errc::protocol_value_error);  // OpenSSL does not provide an error code here
 }
 
 /**
@@ -616,6 +618,8 @@ error creating buffer (mock)
 error loading key
     TODO: should we fuzz this function?
     key is smaller than what we expect?
+    EVP_PKEY_CTX_set_rsa_padding fails with a value != -2 (mock)
+    TODO: if openssl returns 0 in ERR_get_error, does the error code count as failed, too?
 determining the size of the hash
     failure (EVP_PKEY_get_size < 0: mock)
     not available (EVP_PKEY_get_size = 0: mock)

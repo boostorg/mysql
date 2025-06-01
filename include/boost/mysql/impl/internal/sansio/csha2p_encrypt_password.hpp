@@ -10,13 +10,17 @@
 
 // Having this in a separate file allows us to mock the OpenSSL API in the tests
 
+#include <boost/mysql/client_errc.hpp>
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/string_view.hpp>
 
 #include <boost/mysql/impl/internal/sansio/auth_plugin_common.hpp>
 
+#include <boost/assert/source_location.hpp>
 #include <boost/container/small_vector.hpp>
 #include <boost/core/span.hpp>
+#include <boost/system/error_category.hpp>
+#include <boost/system/system_category.hpp>
 
 #include <cstdint>
 #include <memory>
@@ -31,11 +35,37 @@ namespace boost {
 namespace mysql {
 namespace detail {
 
-inline unsigned long csha2p_encrypt_password(
+// The OpenSSL category is passed as parameter to avoid including asio/ssl headers here.
+// Doing so would make mocking OpenSSL more difficult (more functions used)
+// TODO: give it a try
+inline error_code translate_openssl_error(
+    unsigned long code,
+    const source_location* loc,
+    const system::error_category& openssl_category
+)
+{
+    // If ERR_SYSTEM_ERROR is true, the error code is a system error.
+    // This function only exists since OpenSSL 3
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    if (ERR_SYSTEM_ERROR(code))
+    {
+        return error_code(ERR_GET_REASON(code), system::system_category(), loc);
+    }
+#endif
+
+    // In OpenSSL < 3, error codes > 0x80000000 are reserved for the user,
+    // so it's unlikely that we will encounter these here. Overflow here
+    // is implementation-defined behavior (and not UB), so we're fine.
+    // This is what Asio does, anyway.
+    return error_code(static_cast<int>(code), openssl_category, loc);
+}
+
+inline error_code csha2p_encrypt_password(
     string_view password,
     span<const std::uint8_t, scramble_size> scramble,
     span<const std::uint8_t> server_key,
-    container::small_vector<std::uint8_t, 512>& output
+    container::small_vector<std::uint8_t, 512>& output,
+    const system::error_category& openssl_category
 )
 {
     // RAII helpers
@@ -60,10 +90,16 @@ inline unsigned long csha2p_encrypt_password(
     // Try to parse the private key. TODO: size check here
     unique_bio bio{BIO_new_mem_buf(server_key.data(), server_key.size())};
     if (!bio)
-        return ERR_get_error();
+    {
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
+    }
     unique_evp_pkey key(PEM_read_bio_PUBKEY(bio.get(), nullptr, nullptr, nullptr));
     if (!key)
-        return ERR_get_error();
+    {
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
+    }
 
     // Salt the password, as a NULL-terminated string
     container::small_vector<std::uint8_t, 512> salted_password(password.size() + 1u, 0);
@@ -77,11 +113,34 @@ inline unsigned long csha2p_encrypt_password(
     // Set up the encryption context
     unique_evp_pkey_ctx ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
     if (!ctx)
-        return ERR_get_error();
+    {
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
+    }
     if (EVP_PKEY_encrypt_init(ctx.get()) <= 0)
-        return ERR_get_error();
-    if (EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING) <= 0)
-        return ERR_get_error();
+    {
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
+    }
+    int rsa_pad_res = EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_OAEP_PADDING);
+    if (rsa_pad_res <= 0)
+    {
+        // If the server passed us a key type that does not support encryption,
+        // OpenSSL returns -2 and does not add an error to the stack (ERR_get_error returns 0).
+        // This shouldn't happen with real servers, so we re-use an existing error code and set
+        // the source location to allow diagnosis
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        if (rsa_pad_res == -2)
+        {
+            return error_code(
+                static_cast<int>(client_errc::protocol_value_error),
+                get_client_category(),
+                &loc
+            );
+        }
+        else
+            return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
+    }
 
     // Encrypt
     int max_size = EVP_PKEY_get_size(key.get());
@@ -96,12 +155,13 @@ inline unsigned long csha2p_encrypt_password(
             salted_password.size()
         ) <= 0)
     {
-        return ERR_get_error();
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
     }
     output.resize(actual_size);
 
     // Done
-    return 0u;
+    return error_code();
 }
 
 }  // namespace detail

@@ -99,25 +99,6 @@ inline static_buffer<max_hash_size> csha2p_hash_password(
     return res;
 }
 
-inline error_code translate_openssl_error(unsigned long code)
-{
-    // TODO: it'd be helpful to include source code info here
-    // If ERR_SYSTEM_ERROR is true, the error code is a system error.
-    // This function only exists since OpenSSL 3
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
-    if (ERR_SYSTEM_ERROR(code))
-    {
-        return error_code(ERR_GET_REASON(code), system::system_category());
-    }
-#endif
-
-    // In OpenSSL < 3, error codes > 0x80000000 are reserved for the user,
-    // so it's unlikely that we will encounter these here. Overflow here
-    // is implementation-defined behavior (and not UB), so we're fine.
-    // This is what Asio does, anyway.
-    return error_code(static_cast<int>(code), asio::error::get_ssl_category());
-}
-
 class csha2p_algo
 {
     int resume_point_{0};
@@ -141,9 +122,9 @@ class csha2p_algo
     )
     {
         container::small_vector<std::uint8_t, 512> buff;
-        unsigned long err = csha2p_encrypt_password(password, scramble, server_key, buff);
-        if (err)
-            return translate_openssl_error(err);
+        auto ec = csha2p_encrypt_password(password, scramble, server_key, buff, asio::error::ssl_category);
+        if (ec)
+            return ec;
         return st.write(
             string_eof{string_view(reinterpret_cast<const char*>(buff.data()), buff.size())},
             seqnum
