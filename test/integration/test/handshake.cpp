@@ -263,6 +263,18 @@ BOOST_DATA_TEST_CASE_F(any_connection_fixture, empty_password_cache_miss, all_tr
     check_ssl(conn, sample.expect_ssl);
 }
 
+// Passwords longer than the scramble work correctly.
+// This is only relevant for cache misses over insecure channels.
+BOOST_FIXTURE_TEST_CASE(long_password_cache_miss, any_connection_fixture)
+{
+    auto params = connect_params_builder()
+                      .ssl(ssl_mode::disable)
+                      .credentials("csha2p_long_password_user", "1234567890abcdefghijklmnopqrstuvwxyz")
+                      .build();
+    clear_sha256_cache();
+    conn.async_connect(params, as_netresult).validate_no_error();
+}
+
 BOOST_FIXTURE_TEST_CASE(bad_password_cache_hit, any_connection_fixture)
 {
     auto params = connect_params_builder()
