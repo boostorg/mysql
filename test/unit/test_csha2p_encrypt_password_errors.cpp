@@ -5,11 +5,14 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#define BOOST_TEST_MODULE test_csha2p_encrypt_password_errors
+
 #include <boost/mysql/impl/internal/sansio/csha2p_encrypt_password.hpp>
 
 #include <boost/container/small_vector.hpp>
-#include <boost/core/lightweight_test.hpp>
 #include <boost/system/error_category.hpp>
+#include <boost/test/unit_test.hpp>
+#include <boost/test/unit_test_suite.hpp>
 
 #include <cstdint>
 #include <string>
@@ -46,12 +49,12 @@ struct
 
 } openssl_mock;
 
-void test_bio_new_error()
+BOOST_AUTO_TEST_CASE(error_creating_bio)
 {
     openssl_mock.last_error = 42u;
     vector_type out;
     auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
-    BOOST_TEST_EQ(ec, error_code(42, ssl_category));
+    BOOST_TEST(ec == error_code(42, ssl_category));
 }
 
 /**
@@ -79,43 +82,36 @@ int BIO_free(BIO*) { return 0; }
 
 EVP_PKEY* PEM_read_bio_PUBKEY(BIO* bio, EVP_PKEY**, pem_password_cb*, void*)
 {
-    BOOST_TEST_EQ(bio, openssl_mock.bio);
+    BOOST_TEST(bio == openssl_mock.bio);
     return openssl_mock.key;
 }
 void EVP_PKEY_free(EVP_PKEY*) {}
 
 EVP_PKEY_CTX* EVP_PKEY_CTX_new(EVP_PKEY* pkey, ENGINE*)
 {
-    BOOST_TEST_EQ(pkey, openssl_mock.key);
+    BOOST_TEST(pkey == openssl_mock.key);
     return openssl_mock.ctx;
 }
 void EVP_PKEY_CTX_free(EVP_PKEY_CTX*) {}
 int EVP_PKEY_encrypt_init(EVP_PKEY_CTX* ctx)
 {
-    BOOST_TEST_EQ(ctx, openssl_mock.ctx);
+    BOOST_TEST(ctx == openssl_mock.ctx);
     return openssl_mock.encrypt_init_result;
 }
 int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX* ctx, int)
 {
-    BOOST_TEST_EQ(ctx, openssl_mock.ctx);
+    BOOST_TEST(ctx == openssl_mock.ctx);
     return 0;
 }
 int EVP_PKEY_get_size(const EVP_PKEY* pkey)
 {
-    BOOST_TEST_EQ(pkey, openssl_mock.key);
+    BOOST_TEST(pkey == openssl_mock.key);
     return 256;
 }
 int EVP_PKEY_encrypt(EVP_PKEY_CTX* ctx, unsigned char*, size_t*, const unsigned char*, size_t)
 {
-    BOOST_TEST_EQ(ctx, openssl_mock.ctx);
+    BOOST_TEST(ctx == openssl_mock.ctx);
     return 0;
 }
 
 unsigned long ERR_get_error() { return openssl_mock.last_error; }
-
-int main()
-{
-    test_bio_new_error();
-
-    return boost::report_errors();
-}
