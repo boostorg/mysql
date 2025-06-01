@@ -5,6 +5,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
+#include "boost/mysql/error_code.hpp"
 #define BOOST_TEST_MODULE test_csha2p_encrypt_password_errors
 
 #include <boost/mysql/impl/internal/sansio/csha2p_encrypt_password.hpp>
@@ -41,6 +42,16 @@ using vector_type = boost::container::small_vector<std::uint8_t, 512>;
 
 struct
 {
+    // Number of times that each function has been called.
+    // Tracking this helps us to check that we're actually covering the case we want
+    std::size_t BIO_new_mem_buf_calls{};
+    std::size_t PEM_read_bio_PUBKEY_calls{};
+    std::size_t EVP_PKEY_CTX_new_calls{};
+    std::size_t EVP_PKEY_encrypt_init_calls{};
+    std::size_t EVP_PKEY_CTX_set_rsa_padding_calls{};
+    std::size_t EVP_PKEY_get_size_calls{};
+    std::size_t EVP_PKEY_encrypt_calls{};
+
     BIO* bio{reinterpret_cast<BIO*>(static_cast<std::uintptr_t>(100))};
     EVP_PKEY* key{reinterpret_cast<EVP_PKEY*>(static_cast<std::uintptr_t>(200))};
     EVP_PKEY_CTX* ctx{reinterpret_cast<EVP_PKEY_CTX*>(static_cast<std::uintptr_t>(300))};
@@ -51,11 +62,30 @@ struct
 
 BOOST_AUTO_TEST_CASE(error_creating_bio)
 {
+    // Setup
+    openssl_mock = {};
+    openssl_mock.bio = nullptr;
     openssl_mock.last_error = 42u;
     vector_type out;
+
+    // Call the function
     auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+
+    // Check
     BOOST_TEST(ec == error_code(42, ssl_category));
+    BOOST_TEST(ec.has_location());
+    BOOST_TEST(openssl_mock.BIO_new_mem_buf_calls == 1u);
+    BOOST_TEST(openssl_mock.PEM_read_bio_PUBKEY_calls == 0u);
 }
+
+// // Determining the maximum size of the ciphertext fails
+// BOOST_AUTO_TEST_CASE(error_get_size)
+// {
+//     openssl_mock.last_error = 43u;
+//     vector_type out;
+//     auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+//     BOOST_TEST(ec == error_code(42, ssl_category));
+// }
 
 /**
 error loading key
@@ -77,11 +107,16 @@ buffer is reset?
 
 }  // namespace
 
-BIO* BIO_new_mem_buf(const void*, int) { return openssl_mock.bio; }
+BIO* BIO_new_mem_buf(const void*, int)
+{
+    ++openssl_mock.BIO_new_mem_buf_calls;
+    return openssl_mock.bio;
+}
 int BIO_free(BIO*) { return 0; }
 
 EVP_PKEY* PEM_read_bio_PUBKEY(BIO* bio, EVP_PKEY**, pem_password_cb*, void*)
 {
+    ++openssl_mock.PEM_read_bio_PUBKEY_calls;
     BOOST_TEST(bio == openssl_mock.bio);
     return openssl_mock.key;
 }
@@ -89,27 +124,32 @@ void EVP_PKEY_free(EVP_PKEY*) {}
 
 EVP_PKEY_CTX* EVP_PKEY_CTX_new(EVP_PKEY* pkey, ENGINE*)
 {
+    ++openssl_mock.EVP_PKEY_CTX_new_calls;
     BOOST_TEST(pkey == openssl_mock.key);
     return openssl_mock.ctx;
 }
 void EVP_PKEY_CTX_free(EVP_PKEY_CTX*) {}
 int EVP_PKEY_encrypt_init(EVP_PKEY_CTX* ctx)
 {
+    ++openssl_mock.EVP_PKEY_encrypt_init_calls;
     BOOST_TEST(ctx == openssl_mock.ctx);
     return openssl_mock.encrypt_init_result;
 }
 int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX* ctx, int)
 {
+    ++openssl_mock.EVP_PKEY_CTX_set_rsa_padding_calls;
     BOOST_TEST(ctx == openssl_mock.ctx);
     return 0;
 }
 int EVP_PKEY_get_size(const EVP_PKEY* pkey)
 {
+    ++openssl_mock.EVP_PKEY_get_size_calls;
     BOOST_TEST(pkey == openssl_mock.key);
     return 256;
 }
 int EVP_PKEY_encrypt(EVP_PKEY_CTX* ctx, unsigned char*, size_t*, const unsigned char*, size_t)
 {
+    ++openssl_mock.EVP_PKEY_encrypt_calls;
     BOOST_TEST(ctx == openssl_mock.ctx);
     return 0;
 }
