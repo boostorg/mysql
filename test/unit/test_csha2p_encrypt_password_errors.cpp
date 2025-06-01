@@ -56,9 +56,9 @@ struct
     BIO* bio{reinterpret_cast<BIO*>(static_cast<std::uintptr_t>(100))};
     EVP_PKEY* key{reinterpret_cast<EVP_PKEY*>(static_cast<std::uintptr_t>(200))};
     EVP_PKEY_CTX* ctx{reinterpret_cast<EVP_PKEY_CTX*>(static_cast<std::uintptr_t>(300))};
-    int encrypt_init_result{0};
-    int set_rsa_padding_result{0};
-    int get_size_result{512};
+    int set_rsa_padding_result{1};
+    int get_size_result{256};
+    std::size_t actual_ciphertext_size{256u};
     unsigned long last_error{0u};
 
 } openssl_mock;
@@ -137,14 +137,28 @@ BOOST_AUTO_TEST_CASE(get_size_zero)
     BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
 }
 
+// In theory, the encryption function may communicate that it didn't use all the bytes
+// in the buffer. This shouldn't happen in RSA, but we handle the case anyway
+BOOST_AUTO_TEST_CASE(encrypt_actual_size_lt_max_size)
+{
+    // Setup
+    openssl_mock = {};
+    openssl_mock.get_size_result = 256;
+    openssl_mock.actual_ciphertext_size = 200u;
+    vector_type out;
+
+    // Call the function
+    auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+
+    // Check
+    BOOST_TEST(ec == error_code());
+    BOOST_TEST(out.size() == 200u);
+}
+
 /**
 error loading key
     TODO: should we fuzz this function?
     TODO: if openssl returns 0 in ERR_get_error, does the error code count as failed, too? no it does not
-encrypting
-    the returned size is < buffer
-    the returned size is == buffer
-    the returned size is > buffer (mock)
 */
 
 }  // namespace
@@ -176,7 +190,7 @@ int EVP_PKEY_encrypt_init(EVP_PKEY_CTX* ctx)
 {
     ++openssl_mock.EVP_PKEY_encrypt_init_calls;
     BOOST_TEST(ctx == openssl_mock.ctx);
-    return openssl_mock.encrypt_init_result;
+    return 1;
 }
 int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX* ctx, int)
 {
@@ -188,13 +202,15 @@ int EVP_PKEY_get_size(const EVP_PKEY* pkey)
 {
     ++openssl_mock.EVP_PKEY_get_size_calls;
     BOOST_TEST(pkey == openssl_mock.key);
-    return 256;
+    return openssl_mock.get_size_result;
 }
-int EVP_PKEY_encrypt(EVP_PKEY_CTX* ctx, unsigned char*, size_t*, const unsigned char*, size_t)
+int EVP_PKEY_encrypt(EVP_PKEY_CTX* ctx, unsigned char*, size_t* actual_size, const unsigned char*, size_t)
 {
     ++openssl_mock.EVP_PKEY_encrypt_calls;
     BOOST_TEST(ctx == openssl_mock.ctx);
-    return 0;
+    if (actual_size)
+        *actual_size = openssl_mock.actual_ciphertext_size;
+    return 1;
 }
 
 unsigned long ERR_get_error() { return openssl_mock.last_error; }
