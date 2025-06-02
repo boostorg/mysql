@@ -36,6 +36,7 @@ target_link_libraries(
     Boost::charconv
     Boost::compat
     Boost::config
+    Boost::container
     Boost::core
     Boost::describe
     Boost::endian
