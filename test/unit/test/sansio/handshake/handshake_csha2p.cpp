@@ -250,7 +250,7 @@ BOOST_AUTO_TEST_CASE(fullauth_key_ok)
         .check(fix);
 }
 
-// The server might send us an error (e.g. if the password is invalid)
+// The server might send us an error after we sent the password (e.g. unauthorized)
 BOOST_AUTO_TEST_CASE(fullauth_key_error)
 {
     // Setup
@@ -278,9 +278,35 @@ BOOST_AUTO_TEST_CASE(fullauth_key_error)
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
 }
 
+// The server might send us an error instead of the key,
+// if the key pair for caching_sha2_password was misconfigured
+BOOST_AUTO_TEST_CASE(fullauth_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
+        .expect_write(create_frame(3, csha2p_request_key))
+        .expect_read(err_builder()
+                         .seqnum(4)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Bad key")
+                         .build_frame())
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Bad key"));
+}
+
 // TODO
 //   fullauth invalid_key
-//   fullauth error
 //   fullauth fullauth
 //   fullauth more_data
 //   fullauth key more_data
