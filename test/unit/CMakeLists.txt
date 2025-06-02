@@ -34,6 +34,7 @@ add_executable(
     test/sansio/handshake/handshake_mnp_hash_password.cpp
     test/sansio/handshake/handshake_csha2p.cpp
     test/sansio/handshake/handshake_csha2p_hash_password.cpp
+    test/sansio/handshake/handshake_csha2p_encrypt_password.cpp
     test/sansio/handshake/handshake_capabilities.cpp
     test/sansio/handshake/handshake_connection_state_data.cpp
     test/sansio/read_resultset_head.cpp
