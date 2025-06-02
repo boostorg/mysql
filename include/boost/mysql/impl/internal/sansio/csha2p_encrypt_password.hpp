@@ -103,7 +103,7 @@ inline error_code csha2p_encrypt_password(
     };
     using unique_evp_pkey_ctx = std::unique_ptr<EVP_PKEY_CTX, evp_pkey_ctx_deleter>;
 
-    // Try to parse the private key. TODO: size check here
+    // Try to parse the private key
     unique_bio bio{BIO_new_mem_buf(server_key.data(), server_key.size())};
     if (!bio)
     {
