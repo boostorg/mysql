@@ -328,11 +328,29 @@ BOOST_AUTO_TEST_CASE(fullauth_encrypterror)
         .check(fix, client_errc::protocol_value_error);
 }
 
-// TODO
-//   fullauth invalid_key
-//   fullauth fullauth
-//   fullauth more_data
-//   fullauth key more_data
+// After encrypting the password, no more messages are expected
+BOOST_AUTO_TEST_CASE(fullauth_key_moredata)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
+        .expect_write(create_frame(3, csha2p_request_key))
+        .expect_read(create_more_data_frame(4, public_key_2048))
+        .expect_any_write()  // the exact encryption result is not deterministic
+        .expect_read(create_more_data_frame(6, csha2p_perform_full_auth))
+        .check(fix, client_errc::bad_handshake_packet_type);
+}
 
 // If we're using a secure transport (e.g. UNIX socket), caching_sha2_password
 // just sends the raw password
