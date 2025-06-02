@@ -13,8 +13,10 @@
 #include <vector>
 
 #include "handshake_common.hpp"
+#include "handshake_csh2p_keys.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/create_err.hpp"
+#include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 
@@ -70,26 +72,6 @@ BOOST_AUTO_TEST_CASE(err)
                          .message("Denied")
                          .build_frame())
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
-}
-
-// At the moment, this plugin requires TLS, so this is an error
-BOOST_AUTO_TEST_CASE(fullauth)
-{
-    // Setup
-    handshake_fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(server_hello_builder()
-                         .caps(tls_caps)
-                         .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_scramble)
-                         .build())
-        .expect_write(
-            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
-        )
-        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
-        .check(fix, client_errc::auth_plugin_requires_ssl);
 }
 
 // Receiving an unknown more data frame (something != fullauth or fastok) is illegal
@@ -238,6 +220,43 @@ BOOST_AUTO_TEST_CASE(authswitch_fastok_ok)
         .will_set_connection_id(42)
         .check(fix);
 }
+
+// If the server requests us to perform full auth and we're using plaintext,
+// we request the server's public key
+BOOST_AUTO_TEST_CASE(fullauth_key_ok)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
+        .expect_write(create_frame(3, csha2p_request_key))
+        .expect_read(create_more_data_frame(4, public_key_2048))
+        .expect_any_write()  // the exact encryption result is not deterministic
+        .expect_read(create_ok_frame(6, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// TODO
+//   fullauth key error
+//   fullauth invalid_key
+//   fullauth error
+//   fullauth fullauth
+//   fullauth more_data
+//   fullauth key more_data
 
 // If we're using a secure transport (e.g. UNIX socket), caching_sha2_password
 // just sends the raw password
