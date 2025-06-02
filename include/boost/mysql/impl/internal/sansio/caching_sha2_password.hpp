@@ -31,14 +31,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <openssl/bio.h>
-#include <openssl/crypto.h>
-#include <openssl/err.h>
-#include <openssl/evp.h>
-#include <openssl/pem.h>
-#include <openssl/rsa.h>
 #include <openssl/sha.h>
-#include <openssl/types.h>
 
 // Reference:
 // https://dev.mysql.com/doc/dev/mysql-server/latest/page_caching_sha2_authentication_exchanges.html
