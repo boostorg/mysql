@@ -300,7 +300,7 @@ BOOST_AUTO_TEST_CASE(success)
 }
 
 //
-// Errors. It's not defined what exact error code will each function return.
+// Errors. For OpenSSL errors, it's not defined what exact code will each function return.
 //
 
 // We passed an empty buffer to the key parser
@@ -315,6 +315,7 @@ BOOST_AUTO_TEST_CASE(error_key_buffer_empty)
     BOOST_TEST((ec.category() == ssl_category));
     BOOST_TEST(ec.value() > 0);      // is an error
     BOOST_TEST(ec.message() != "");  // produces some output
+    BOOST_TEST(ec.has_location());
 }
 
 BOOST_AUTO_TEST_CASE(error_key_malformed)
@@ -329,6 +330,7 @@ BOOST_AUTO_TEST_CASE(error_key_malformed)
     BOOST_TEST((ec.category() == ssl_category));
     BOOST_TEST(ec.value() > 0);      // is an error
     BOOST_TEST(ec.message() != "");  // produces some output
+    BOOST_TEST(ec.has_location());
 }
 
 // Passing in a public key type that does not support encryption operations
@@ -350,6 +352,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERDkCI/degPJXEIYYncyvGsTdj9YI
     BOOST_TEST((ec.category() == ssl_category));
     BOOST_TEST(ec.value() > 0);      // is an error
     BOOST_TEST(ec.message() != "");  // produces some output
+    BOOST_TEST(ec.has_location());
 }
 
 // Passing in a public key type that allows encryption but is not RSA fails as expected.
@@ -366,9 +369,8 @@ BOOST_AUTO_TEST_CASE(error_key_not_rsa)
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, public_key_sm2, buff, ssl_category);
     BOOST_TEST(ec == client_errc::protocol_value_error);  // OpenSSL does not provide an error code here
+    BOOST_TEST(ec.has_location());
 }
-
-// TODO: verify that these error codes have source code info
 
 BOOST_AUTO_TEST_SUITE_END()
 
