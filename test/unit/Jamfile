@@ -144,3 +144,12 @@ run
         <include>include
     : target-name boost_mysql_unittests
     ;
+
+
+# Tests edge cases when encrypting passwords that require mocking OpenSSL.
+# This executable should not link to any OpenSSL libraries.
+# TODO: does this really work??
+run test_csha2p_encrypt_password_errors.cpp
+    /boost/mysql/test//boost_mysql
+    /boost/test//boost_unit_test_framework/<warnings-as-errors>off
+;
