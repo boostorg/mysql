@@ -5,8 +5,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef BOOST_MYSQL_TEST_UNIT_TEST_SANSIO_HANDSHAKE_HANDSHAKE_CSH2P_KEYS_HPP
-#define BOOST_MYSQL_TEST_UNIT_TEST_SANSIO_HANDSHAKE_HANDSHAKE_CSH2P_KEYS_HPP
+#ifndef BOOST_MYSQL_TEST_UNIT_TEST_SANSIO_HANDSHAKE_HANDSHAKE_CSHA2P_KEYS_HPP
+#define BOOST_MYSQL_TEST_UNIT_TEST_SANSIO_HANDSHAKE_HANDSHAKE_CSHA2P_KEYS_HPP
 
 namespace boost {
 namespace mysql {
@@ -180,6 +180,13 @@ FsKX4nSNK6rJ1uONSJu+dIiOA1YCabhCab7NRMCn+Bj+fHHkpvir24QbmqX1R8Au
 415sPjVLQr2FNiHaXDzwiCS0jdNhTLGV8xaykv8bKAzH19lNfqZcZStwSP2DoQ8O
 2vrUYCC8gWblftYH+yTWu2bQ4Y1pDw==
 -----END PRIVATE KEY-----
+)%";
+
+// ECDSA public key set up for SM2 encryption
+constexpr unsigned char public_key_sm2[] = R"%(-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAEWGAXSpPHb2bWQjROuegjWPcuVwNW
+mVpTh++3j7pnpWUjnFuarvWmWh/H6t96/pTx566FKGxZpLn3H9TLHZJsog==
+-----END PUBLIC KEY-----
 )%";
 
 }  // namespace test

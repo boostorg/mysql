@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-#include "handshake_csh2p_keys.hpp"
+#include "handshake_csha2p_keys.hpp"
 #include "test_common/assert_buffer_equals.hpp"
 #include "test_common/printing.hpp"
 
@@ -390,14 +390,9 @@ BOOST_AUTO_TEST_CASE(error_key_not_rsa)
         0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
         0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
     };
-    constexpr unsigned char key_buffer[] = R"%(-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAEWGAXSpPHb2bWQjROuegjWPcuVwNW
-mVpTh++3j7pnpWUjnFuarvWmWh/H6t96/pTx566FKGxZpLn3H9TLHZJsog==
------END PUBLIC KEY-----
-)%";
 
     buffer_type buff;
-    auto ec = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff, ssl_category);
+    auto ec = csha2p_encrypt_password("csha2p_password", scramble, public_key_sm2, buff, ssl_category);
     BOOST_TEST(ec == client_errc::protocol_value_error);  // OpenSSL does not provide an error code here
 }
 
