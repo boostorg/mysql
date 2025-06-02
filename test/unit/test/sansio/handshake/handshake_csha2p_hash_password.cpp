@@ -100,15 +100,15 @@ std::vector<std::uint8_t> decrypt(
 
     // Create a BIO with the key
     unique_bio bio(BIO_new_mem_buf(private_key.data(), private_key.size()));
-    BOOST_TEST_REQUIRE(bio != nullptr, "Creating a BIO failed: " << ERR_get_error());
+    BOOST_TEST_REQUIRE((bio != nullptr), "Creating a BIO failed: " << ERR_get_error());
 
     // Load the key
     unique_evp_pkey pkey(PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
-    BOOST_TEST_REQUIRE(bio != nullptr, "Loading the key failed: " << ERR_get_error());
+    BOOST_TEST_REQUIRE((bio != nullptr), "Loading the key failed: " << ERR_get_error());
 
     // Create a decryption context
     unique_evp_pkey_ctx ctx(EVP_PKEY_CTX_new(pkey.get(), nullptr));
-    BOOST_TEST_REQUIRE(ctx != nullptr, "Creating a context failed: " << ERR_get_error());
+    BOOST_TEST_REQUIRE((ctx != nullptr), "Creating a context failed: " << ERR_get_error());
 
     // Initialize it
     BOOST_TEST_REQUIRE(
@@ -341,7 +341,7 @@ BOOST_AUTO_TEST_CASE(error_key_buffer_empty)
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, {}, buff, ssl_category);
     BOOST_TEST((ec.category() == ssl_category));
-    BOOST_TEST(ec.value() > 0u);     // is an error
+    BOOST_TEST(ec.value() > 0);      // is an error
     BOOST_TEST(ec.message() != "");  // produces some output
 }
 
@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE(error_key_malformed)
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff, ssl_category);
     BOOST_TEST((ec.category() == ssl_category));
-    BOOST_TEST(ec.value() > 0u);     // is an error
+    BOOST_TEST(ec.value() > 0);      // is an error
     BOOST_TEST(ec.message() != "");  // produces some output
 }
 
@@ -376,7 +376,7 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERDkCI/degPJXEIYYncyvGsTdj9YI
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff, ssl_category);
     BOOST_TEST((ec.category() == ssl_category));
-    BOOST_TEST(ec.value() > 0u);     // is an error
+    BOOST_TEST(ec.value() > 0);      // is an error
     BOOST_TEST(ec.message() != "");  // produces some output
 }
 
