@@ -155,13 +155,33 @@ add_test(
     COMMAND boost_mysql_unittests
 )
 
-# TODO: refactor this
-add_executable(boost_mysql_test_csha2p_encrypt_password_errors test_csha2p_encrypt_password_errors.cpp)
-get_target_property(boost_mysql_deps Boost::mysql INTERFACE_LINK_LIBRARIES)
-list(REMOVE_ITEM boost_mysql_deps OpenSSL::Crypto OpenSSL::SSL)
-target_link_libraries(boost_mysql_test_csha2p_encrypt_password_errors PRIVATE ${boost_mysql_deps})
-target_include_directories(boost_mysql_test_csha2p_encrypt_password_errors PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../../include ${OPENSSL_INCLUDE_DIR})
-target_compile_features(boost_mysql INTERFACE cxx_std_11)
+# Tests edge cases when encrypting passwords that require mocking OpenSSL.
+# This executable should not link to any OpenSSL libraries.
+add_executable(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    test_csha2p_encrypt_password_errors.cpp
+)
+target_include_directories(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include # our own includes
+    ${OPENSSL_INCLUDE_DIR} # we only need the includes
+)
+target_link_libraries(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    PRIVATE
+    Boost::unit_test_framework
+    Boost::assert
+    Boost::config
+    Boost::container
+    Boost::core
+    Boost::system
+)
+target_compile_features(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    INTERFACE
+    cxx_std_11
+)
 boost_mysql_test_target_settings(boost_mysql_test_csha2p_encrypt_password_errors)
 add_test(
     NAME boost_mysql_test_csha2p_encrypt_password_errors
