@@ -175,10 +175,35 @@ BOOST_AUTO_TEST_CASE(error_code_zero)
     BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
 }
 
+// OpenSSL 3+ might report system errors represented as codes > 0x80000000.
+// Previous versions used them for user-defined errors, so we should tolerate them, too.
+BOOST_AUTO_TEST_CASE(error_code_system)
+{
+    // Setup. The return value should be != -2, which indicates
+    // operation not supported and is handled separately
+    openssl_mock = {};
+    openssl_mock.set_rsa_padding_result = -1;
+    openssl_mock.last_error = 0x800000ab;
+    vector_type out;
+
+    // Call the function
+    auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+
+    // Check
+    BOOST_TEST(ec.failed());
+    BOOST_TEST(ec.has_location());
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
+    BOOST_TEST((ec.category() == boost::system::system_category()));
+#else
+    BOOST_TEST((ec.category() == ssl_category));
+#endif
+    BOOST_TEST(openssl_mock.EVP_PKEY_CTX_set_rsa_padding_calls == 1u);
+    BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
+}
+
 /**
 error loading key
     TODO: should we fuzz this function?
-    TODO: test openssl system errors
     TODO: are we missing any static_buffer tests?
 */
 
