@@ -178,6 +178,8 @@ BOOST_AUTO_TEST_CASE(error_code_zero)
 /**
 error loading key
     TODO: should we fuzz this function?
+    TODO: test openssl system errors
+    TODO: are we missing any static_buffer tests?
 */
 
 }  // namespace
@@ -217,7 +219,14 @@ int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX* ctx, int)
     BOOST_TEST(ctx == openssl_mock.ctx);
     return openssl_mock.set_rsa_padding_result;
 }
+
+// OpenSSL >=3: EVP_PKEY_get_size is a function, EVP_PKEY_size is a macro
+// OpenSSL < 3: EVP_PKEY_size is a function
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 int EVP_PKEY_get_size(const EVP_PKEY* pkey)
+#else
+int EVP_PKEY_size(const EVP_PKEY* pkey)
+#endif
 {
     ++openssl_mock.EVP_PKEY_get_size_calls;
     BOOST_TEST(pkey == openssl_mock.key);

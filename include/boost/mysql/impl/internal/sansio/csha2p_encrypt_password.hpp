@@ -160,7 +160,7 @@ inline error_code csha2p_encrypt_password(
     }
 
     // Allocate a buffer for encryption
-    int max_size = EVP_PKEY_get_size(key.get());
+    int max_size = EVP_PKEY_size(key.get());
     if (max_size <= 0)
     {
         static constexpr auto loc = BOOST_CURRENT_LOCATION;
