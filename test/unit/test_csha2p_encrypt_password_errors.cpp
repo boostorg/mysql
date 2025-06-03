@@ -201,11 +201,6 @@ BOOST_AUTO_TEST_CASE(error_code_system)
     BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
 }
 
-/**
-error loading key
-    TODO: should we fuzz this function?
-*/
-
 }  // namespace
 
 // Implement the OpenSSL functions
