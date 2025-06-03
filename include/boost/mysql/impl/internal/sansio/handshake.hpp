@@ -269,17 +269,21 @@ class handshake_algo
         };
     }
 
-    login_request compose_login_request(const connection_state_data& st) const
+    next_action serialize_login_request(connection_state_data& st)
     {
-        return {
-            st.current_capabilities,
-            static_cast<std::uint32_t>(max_packet_size),
-            hparams_.connection_collation(),
-            hparams_.username(),
-            plugin_.hash_password(hparams_.password(), scramble_),
-            hparams_.database(),
-            plugin_.name(),
-        };
+        auto hashed_password = plugin_.hash_password(hparams_.password(), scramble_);
+        return st.write(
+            login_request{
+                st.current_capabilities,
+                static_cast<std::uint32_t>(max_packet_size),
+                hparams_.connection_collation(),
+                hparams_.username(),
+                hashed_password,
+                hparams_.database(),
+                plugin_.name(),
+            },
+            sequence_number_
+        );
     }
 
     // Processes auth_switch and auth_more_data messages, and leaves the result in auth_resp_
@@ -346,7 +350,7 @@ class handshake_algo
             }
 
             // Compose and send handshake response
-            BOOST_MYSQL_YIELD(resume_point_, 4, st.write(compose_login_request(st), sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 4, serialize_login_request(st))
 
             // Receive the response
             BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
