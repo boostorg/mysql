@@ -25,6 +25,9 @@ using detail::csha2p_encrypt_password;
 // and not linking to libssl/libcrypto.
 // These tests cover cases that can't be covered directly by the unit tests using the real OpenSSL.
 // Try to put as few tests here as possible.
+// Some of the mocked functions are macros in OpenSSL versions before 3, so this setup can't work
+
+#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 
 namespace {
 
@@ -175,8 +178,7 @@ BOOST_AUTO_TEST_CASE(error_code_zero)
     BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
 }
 
-// OpenSSL 3+ might report system errors represented as codes > 0x80000000.
-// Previous versions used them for user-defined errors, so we should tolerate them, too.
+// OpenSSL 3+ might report system errors represented as codes > 0x80000000
 BOOST_AUTO_TEST_CASE(error_code_system)
 {
     // Setup. The return value should be != -2, which indicates
@@ -192,11 +194,7 @@ BOOST_AUTO_TEST_CASE(error_code_system)
     // Check
     BOOST_TEST(ec.failed());
     BOOST_TEST(ec.has_location());
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
     BOOST_TEST((ec.category() == boost::system::system_category()));
-#else
-    BOOST_TEST((ec.category() == ssl_category));
-#endif
     BOOST_TEST(openssl_mock.EVP_PKEY_CTX_set_rsa_padding_calls == 1u);
     BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
 }
@@ -239,13 +237,7 @@ int EVP_PKEY_CTX_set_rsa_padding(EVP_PKEY_CTX* ctx, int)
     return openssl_mock.set_rsa_padding_result;
 }
 
-// OpenSSL >=3: EVP_PKEY_get_size is a function, EVP_PKEY_size is a macro
-// OpenSSL < 3: EVP_PKEY_size is a function
-#if OPENSSL_VERSION_NUMBER >= 0x30000000L
 int EVP_PKEY_get_size(const EVP_PKEY* pkey)
-#else
-int EVP_PKEY_size(const EVP_PKEY* pkey)
-#endif
 {
     ++openssl_mock.EVP_PKEY_get_size_calls;
     BOOST_TEST(pkey == openssl_mock.key);
@@ -261,3 +253,7 @@ int EVP_PKEY_encrypt(EVP_PKEY_CTX* ctx, unsigned char*, size_t* actual_size, con
 }
 
 unsigned long ERR_get_error() { return openssl_mock.last_error; }
+
+#else
+BOOST_AUTO_TEST_CASE(dummy) {}
+#endif
