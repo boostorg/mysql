@@ -366,7 +366,7 @@ BOOST_AUTO_TEST_CASE(error_key_not_rsa)
 
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, public_key_sm2, buff, ssl_category);
-    BOOST_TEST(ec == client_errc::protocol_value_error);  // OpenSSL does not provide an error code here
+    BOOST_TEST(ec.failed());  // OpenSSL might or might not provide an error code here
     BOOST_TEST(ec.has_location());
 }
 
