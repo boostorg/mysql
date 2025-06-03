@@ -61,7 +61,7 @@ inline error_code translate_openssl_error(
     // called because an OpenSSL primitive failed. It might indicate that OpenSSL
     // did not provide any extra error information. But it should still be an error
     if (int_code == 0)
-        return error_code(static_cast<int>(client_errc::unknown_openssl_error), get_client_category(), loc);
+        return error_code(client_errc::unknown_openssl_error, loc);
     else
         return error_code(int_code, openssl_category, loc);
 }
@@ -124,6 +124,13 @@ inline error_code csha2p_encrypt_password(
         return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
     }
 
+    // Apply a sanity check to the key buffer size
+    if (server_key.size() > 1024u * 1024u * 1024u)
+    {
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        return error_code(client_errc::protocol_value_error, &loc);
+    }
+
     // Salt the password
     auto salted_password = csha2p_salt_password(password, scramble);
 
@@ -148,13 +155,7 @@ inline error_code csha2p_encrypt_password(
         // the source location to allow diagnosis
         static constexpr auto loc = BOOST_CURRENT_LOCATION;
         if (rsa_pad_res == -2)
-        {
-            return error_code(
-                static_cast<int>(client_errc::protocol_value_error),
-                get_client_category(),
-                &loc
-            );
-        }
+            return error_code(client_errc::protocol_value_error, &loc);
         else
             return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
     }
