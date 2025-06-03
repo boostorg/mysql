@@ -55,7 +55,15 @@ inline error_code translate_openssl_error(
     // so it's unlikely that we will encounter these here. Overflow here
     // is implementation-defined behavior (and not UB), so we're fine.
     // This is what Asio does, anyway.
-    return error_code(static_cast<int>(code), openssl_category, loc);
+    int int_code = static_cast<int>(code);
+
+    // An error code of zero would mean success, while this function is always
+    // called because an OpenSSL primitive failed. It might indicate that OpenSSL
+    // did not provide any extra error information. But it should still be an error
+    if (int_code == 0)
+        return error_code(static_cast<int>(client_errc::unknown_openssl_error), get_client_category(), loc);
+    else
+        return error_code(int_code, openssl_category, loc);
 }
 
 inline container::small_vector<std::uint8_t, 512> csha2p_salt_password(

@@ -155,10 +155,29 @@ BOOST_AUTO_TEST_CASE(encrypt_actual_size_lt_max_size)
     BOOST_TEST(out.size() == 200u);
 }
 
+// OpenSSL functions might fail without adding an error to the stack.
+// If that's the case, the operation must still fail
+BOOST_AUTO_TEST_CASE(error_code_zero)
+{
+    // Setup. The return value should be != -2, which indicates
+    // operation not supported and is handled separately
+    openssl_mock = {};
+    openssl_mock.set_rsa_padding_result = -1;
+    vector_type out;
+
+    // Call the function
+    auto ec = csha2p_encrypt_password("passwd", scramble, {}, out, ssl_category);
+
+    // Check
+    BOOST_TEST(ec == error_code(client_errc::unknown_openssl_error));
+    BOOST_TEST(ec.has_location());
+    BOOST_TEST(openssl_mock.EVP_PKEY_CTX_set_rsa_padding_calls == 1u);
+    BOOST_TEST(openssl_mock.EVP_PKEY_encrypt_calls == 0u);
+}
+
 /**
 error loading key
     TODO: should we fuzz this function?
-    TODO: if openssl returns 0 in ERR_get_error, does the error code count as failed, too? no it does not
 */
 
 }  // namespace
