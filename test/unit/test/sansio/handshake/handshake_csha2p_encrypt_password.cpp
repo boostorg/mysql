@@ -28,6 +28,7 @@
 
 using namespace boost::mysql;
 using namespace boost::mysql::test;
+using boost::span;
 using boost::asio::error::ssl_category;
 using detail::csha2p_encrypt_password;
 
@@ -46,10 +47,7 @@ namespace {
 BOOST_AUTO_TEST_SUITE(test_handshake_csha2p_encrypt_password)
 
 // Decrypts the output of
-std::vector<std::uint8_t> decrypt(
-    boost::span<const std::uint8_t> private_key,
-    boost::span<const std::uint8_t> ciphertext
-)
+std::vector<std::uint8_t> decrypt(span<const std::uint8_t> private_key, span<const std::uint8_t> ciphertext)
 {
     // RAII helpers
     struct bio_deleter
@@ -130,8 +128,8 @@ BOOST_AUTO_TEST_CASE(success)
     {
         string_view name;
         std::string password;
-        boost::span<const std::uint8_t> public_key;
-        boost::span<const std::uint8_t> private_key;
+        span<const std::uint8_t> public_key;
+        span<const std::uint8_t> private_key;
         std::vector<std::uint8_t> expected_decrypted;
     } test_cases[] = {
         // clang-format off
@@ -140,8 +138,8 @@ BOOST_AUTO_TEST_CASE(success)
         {
             "password_empty",
             {},
-            public_key_2048,
-            private_key_2048,
+            span<const unsigned char>(public_key_2048),
+            span<const unsigned char>(private_key_2048),
             {0x0f}
         },
 
@@ -149,8 +147,8 @@ BOOST_AUTO_TEST_CASE(success)
         {
             "password_shorter_scramble",
             "csha2p_password",
-            public_key_2048,
-            private_key_2048, 
+            span<const unsigned char>(public_key_2048),
+            span<const unsigned char>(private_key_2048), 
             {
                 0x6c, 0x17, 0x27, 0x4e, 0x19, 0x4b, 0x78, 0x1b, 0x24, 0x2f, 0x20, 0x76, 0x7c, 0x0c, 0x2b, 0x10
             }
@@ -160,8 +158,8 @@ BOOST_AUTO_TEST_CASE(success)
         {
             "password_same_size_scramble",
             "hjbjd923KKLiosoi90J",
-            public_key_2048,
-            private_key_2048,
+            span<const unsigned char>(public_key_2048),
+            span<const unsigned char>(private_key_2048),
             {
                 0x67, 0x0e, 0x2d, 0x45, 0x4f, 0x02, 0x15, 0x58, 0x0e, 0x17,
                 0x1f, 0x68, 0x7c, 0x0d, 0x20, 0x79, 0x1f, 0x13, 0x17, 0x27
@@ -172,8 +170,8 @@ BOOST_AUTO_TEST_CASE(success)
         {
             "password_longer_scramble",
             "kjaski829380jvnnM,ka;::_kshf93IJCLIJO)jcjsnaklO?a",
-            public_key_2048,
-            private_key_2048,
+            span<const unsigned char>(public_key_2048),
+            span<const unsigned char>(private_key_2048),
             {
                 0x64, 0x0e, 0x2e, 0x5c, 0x40, 0x52, 0x1f, 0x59, 0x7c, 0x6f, 0x6b, 0x31, 0x79, 0x08, 0x21, 0x7e, 0x6b,
                 0x0f, 0x36, 0x46, 0x34, 0x5e, 0x75, 0x70, 0x40, 0x48, 0x4f, 0x0d, 0x7c, 0x6f, 0x1a, 0x4b, 0x50, 0x32,
@@ -187,8 +185,8 @@ BOOST_AUTO_TEST_CASE(success)
             "hjbjd923KKLkjbdkcjwhekiy8393ou2weusidhiahJBKJKHCIHCKJIu9KHO09IJIpojaf0w39jalsjMMKjkjhiue93I=))"
                 "UXIOJKXNKNhkai8923oiawiakssaknhakhIIHICHIO)CU)"
                 "IHCKHCKJhisiweioHHJHUCHIIIJIOPkjgwijiosoi9jsu84HHUHCHI9839hdjsbsdjuUHJjbJ",
-            public_key_2048,
-            private_key_2048,
+            span<const unsigned char>(public_key_2048),
+            span<const unsigned char>(private_key_2048),
             {
                 0x67, 0x0e, 0x2d, 0x45, 0x4f, 0x02, 0x15, 0x58, 0x0e, 0x17, 0x1f, 0x6a, 0x79, 0x1c, 0x2b, 0x7b, 0x45,
                 0x49, 0x2a, 0x4f, 0x6a, 0x0f, 0x26, 0x56, 0x13, 0x08, 0x1e, 0x58, 0x2a, 0x29, 0x61, 0x76, 0x76, 0x0b,
@@ -211,8 +209,8 @@ BOOST_AUTO_TEST_CASE(success)
         {
             "password_longer_sbo",
             std::string(600, '5'),
-            public_key_8192,
-            private_key_8192,
+            span<const unsigned char>(public_key_8192),
+            span<const unsigned char>(private_key_8192),
             {
                 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b, 0x7a, 0x25, 0x13,
                 0x16, 0x68, 0x12, 0x3a, 0x51, 0x7a, 0x1a, 0x1e, 0x0e, 0x12, 0x5e, 0x70, 0x69, 0x66, 0x34, 0x26, 0x4b,
@@ -257,8 +255,8 @@ BOOST_AUTO_TEST_CASE(success)
         {
             "password_all_characters",
             all_chars_password,
-            public_key_8192,
-            private_key_8192,
+            span<const unsigned char>(public_key_8192),
+            span<const unsigned char>(private_key_8192),
             {
                 0x0f, 0x65, 0x4d, 0x2c, 0x2f, 0x3e, 0x21, 0x6c, 0x4d, 0x55, 0x59, 0x0a, 0x1f, 0x73, 0x41, 0x1f, 0x36,
                 0x32, 0x4f, 0x34, 0x1b, 0x71, 0x59, 0x38, 0x33, 0x22, 0x3d, 0x70, 0x59, 0x41, 0x4d, 0x1e, 0x33, 0x5f,
