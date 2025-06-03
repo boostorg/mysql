@@ -41,7 +41,7 @@ This library implements the two most common authentication plugins:
   connections. It sends the password hashed, salted by a nonce.
 * [mysqllink caching-sha2-pluggable-authentication.html
   `caching_sha2_password`]. This is the default plugin for
-  MySQL 8.0+. This plugin used to require the use of TLS.
+  MySQL 8.0+. This plugin used to require using TLS.
   Since Boost 1.89, this is no longer the case, and it can be used
   with plaintext connections, too.
 
