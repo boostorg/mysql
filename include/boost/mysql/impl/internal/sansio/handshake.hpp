@@ -250,13 +250,14 @@ class handshake_algo
         // If we're using SSL, mark the channel as secure
         secure_channel_ = secure_channel_ || has_capabilities(*negotiated_caps, capabilities::ssl);
 
-        // Save the scramble for later
-        err = save_scramble(hello.auth_plugin_data);
+        // Save which authentication plugin we're using. Do this before saving the scramble,
+        // as an unknown plugin might have a scramble size different to what we know
+        err = plugin_.emplace_by_name(hello.auth_plugin_name);
         if (err)
             return err;
 
-        // Save which authentication plugin we're using
-        return plugin_.emplace_by_name(hello.auth_plugin_name);
+        // Save the scramble for later
+        return save_scramble(hello.auth_plugin_data);
     }
 
     // Response to that initial greeting

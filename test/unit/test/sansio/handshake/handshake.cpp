@@ -10,6 +10,8 @@
 #include <boost/mysql/error_code.hpp>
 #include <boost/mysql/mariadb_server_errc.hpp>
 
+#include <vector>
+
 #include "handshake_common.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/create_err.hpp"
@@ -68,7 +70,20 @@ BOOST_AUTO_TEST_CASE(hello_unknown_plugin)
         .check(fix, client_errc::unknown_auth_plugin);
 }
 
-// TODO: check that this is the error even if we get a scramble of != size
+// If the plugin is unknown, the scramble size might be different
+BOOST_AUTO_TEST_CASE(hello_unknown_plugin_different_scramble_size)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .auth_plugin("unknown")
+                         .auth_data(std::vector<std::uint8_t>(30, 0xab))
+                         .build())
+        .check(fix, client_errc::unknown_auth_plugin);
+}
 
 //
 // Errors processing the initial server response
@@ -205,6 +220,24 @@ BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin)
             login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
         )
         .expect_read(create_auth_switch_frame(2, "unknown", mnp_scramble))
+        .check(fix, client_errc::unknown_auth_plugin);
+}
+
+// If the plugin is unknown, the scramble may have a different size
+BOOST_AUTO_TEST_CASE(authswitch_unknown_plugin_different_scramble_size)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
+        )
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "unknown", std::vector<std::uint8_t>(30, 0xab)))
         .check(fix, client_errc::unknown_auth_plugin);
 }
 
