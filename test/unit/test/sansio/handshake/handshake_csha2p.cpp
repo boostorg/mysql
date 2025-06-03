@@ -306,7 +306,7 @@ BOOST_AUTO_TEST_CASE(fullauth_error)
 }
 
 // If encryption fails (e.g. because the server sent us an invalid key), we fail appropriately.
-// Using a SM2 key yields a predictable error code.
+// Size checks are the only ones that yield a predictable error code
 BOOST_AUTO_TEST_CASE(fullauth_encrypterror)
 {
     // Setup
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(fullauth_encrypterror)
         )
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, csha2p_request_key))
-        .expect_read(create_more_data_frame(4, public_key_sm2))
+        .expect_read(create_more_data_frame(4, std::vector<std::uint8_t>(2u * 1024u * 1024u, 0xab)))
         .check(fix, client_errc::protocol_value_error);
 }
 

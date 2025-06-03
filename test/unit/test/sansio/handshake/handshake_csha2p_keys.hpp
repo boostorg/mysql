@@ -182,13 +182,6 @@ FsKX4nSNK6rJ1uONSJu+dIiOA1YCabhCab7NRMCn+Bj+fHHkpvir24QbmqX1R8Au
 -----END PRIVATE KEY-----
 )%";
 
-// ECDSA public key set up for SM2 encryption
-constexpr unsigned char public_key_sm2[] = R"%(-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAEWGAXSpPHb2bWQjROuegjWPcuVwNW
-mVpTh++3j7pnpWUjnFuarvWmWh/H6t96/pTx566FKGxZpLn3H9TLHZJsog==
------END PUBLIC KEY-----
-)%";
-
 }  // namespace test
 }  // namespace mysql
 }  // namespace boost

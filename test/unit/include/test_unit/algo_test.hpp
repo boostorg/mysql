@@ -238,7 +238,7 @@ public:
 
 struct algo_fixture_base
 {
-    static constexpr std::size_t default_max_buffsize = 1024u;
+    static constexpr std::size_t default_max_buffsize = 4u * 1024u * 1024u;
 
     detail::connection_state_data st;
 

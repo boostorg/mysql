@@ -346,6 +346,13 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERDkCI/degPJXEIYYncyvGsTdj9YI
 //   openssl pkey -in private.pem -pubout -out public.pem
 BOOST_AUTO_TEST_CASE(error_key_not_rsa)
 {
+    // ECDSA public key set up for SM2 encryption
+    constexpr unsigned char public_key_sm2[] = R"%(-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoEcz1UBgi0DQgAEWGAXSpPHb2bWQjROuegjWPcuVwNW
+mVpTh++3j7pnpWUjnFuarvWmWh/H6t96/pTx566FKGxZpLn3H9TLHZJsog==
+-----END PUBLIC KEY-----
+)%";
+
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, public_key_sm2, buff, ssl_category);
     BOOST_TEST(ec.failed());  // OpenSSL might or might not provide an error code here
