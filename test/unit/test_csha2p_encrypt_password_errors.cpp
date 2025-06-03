@@ -204,7 +204,6 @@ BOOST_AUTO_TEST_CASE(error_code_system)
 /**
 error loading key
     TODO: should we fuzz this function?
-    TODO: are we missing any static_buffer tests?
 */
 
 }  // namespace
