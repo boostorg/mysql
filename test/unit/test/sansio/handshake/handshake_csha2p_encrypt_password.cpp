@@ -46,6 +46,11 @@ namespace {
 //    plaintext.
 BOOST_AUTO_TEST_SUITE(test_handshake_csha2p_encrypt_password)
 
+constexpr std::uint8_t scramble[] = {
+    0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
+    0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
+};
+
 // Decrypts the output of
 std::vector<std::uint8_t> decrypt(span<const std::uint8_t> private_key, span<const std::uint8_t> ciphertext)
 {
@@ -113,12 +118,6 @@ std::vector<std::uint8_t> decrypt(span<const std::uint8_t> private_key, span<con
 
 BOOST_AUTO_TEST_CASE(success)
 {
-    // Common for all tests
-    constexpr std::uint8_t scramble[] = {
-        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
-        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
-    };
-
     // A password with all the possible ASCII values
     std::string all_chars_password;
     for (int i = 0; i < 256; ++i)
@@ -304,10 +303,6 @@ BOOST_AUTO_TEST_CASE(success)
 // We passed an empty buffer to the key parser
 BOOST_AUTO_TEST_CASE(error_key_buffer_empty)
 {
-    constexpr std::uint8_t scramble[] = {
-        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
-        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
-    };
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, {}, buff, ssl_category);
     BOOST_TEST((ec.category() == ssl_category));
@@ -318,10 +313,6 @@ BOOST_AUTO_TEST_CASE(error_key_buffer_empty)
 
 BOOST_AUTO_TEST_CASE(error_key_malformed)
 {
-    constexpr std::uint8_t scramble[] = {
-        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
-        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
-    };
     constexpr std::uint8_t key_buffer[] = "-----BEGIN PUBLIC KEY-----zwIDAQAB__kaj0?))=";
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff, ssl_category);
@@ -335,10 +326,6 @@ BOOST_AUTO_TEST_CASE(error_key_malformed)
 // (like ECDSA) fails
 BOOST_AUTO_TEST_CASE(error_key_doesnt_support_encryption)
 {
-    constexpr std::uint8_t scramble[] = {
-        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
-        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
-    };
     constexpr unsigned char key_buffer[] = R"%(-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERDkCI/degPJXEIYYncyvGsTdj9YI
 4xQ6KPTzoF+DY2jM09w1TCncxk9XV1eOo44UMDUuK9K01halQy70mohFSQ==
@@ -359,14 +346,18 @@ MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAERDkCI/degPJXEIYYncyvGsTdj9YI
 //   openssl pkey -in private.pem -pubout -out public.pem
 BOOST_AUTO_TEST_CASE(error_key_not_rsa)
 {
-    constexpr std::uint8_t scramble[] = {
-        0x0f, 0x64, 0x4f, 0x2f, 0x2b, 0x3b, 0x27, 0x6b, 0x45, 0x5c,
-        0x53, 0x01, 0x13, 0x7e, 0x4f, 0x10, 0x26, 0x23, 0x5d, 0x27,
-    };
-
     buffer_type buff;
     auto ec = csha2p_encrypt_password("csha2p_password", scramble, public_key_sm2, buff, ssl_category);
     BOOST_TEST(ec.failed());  // OpenSSL might or might not provide an error code here
+    BOOST_TEST(ec.has_location());
+}
+
+BOOST_AUTO_TEST_CASE(error_key_too_big)
+{
+    buffer_type buff;
+    std::vector<std::uint8_t> key_buffer(2u * 1024u * 1024u, 0x0a);
+    auto ec = csha2p_encrypt_password("csha2p_password", scramble, key_buffer, buff, ssl_category);
+    BOOST_TEST(ec == client_errc::protocol_value_error);
     BOOST_TEST(ec.has_location());
 }
 

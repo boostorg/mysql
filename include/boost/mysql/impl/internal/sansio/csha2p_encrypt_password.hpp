@@ -110,6 +110,14 @@ inline error_code csha2p_encrypt_password(
     };
     using unique_evp_pkey_ctx = std::unique_ptr<EVP_PKEY_CTX, evp_pkey_ctx_deleter>;
 
+    // Apply a sanity check to the key buffer size
+    constexpr std::size_t max_key_buffer_size = 1024u * 1024u;  // 1MB
+    if (server_key.size() > max_key_buffer_size)
+    {
+        static constexpr auto loc = BOOST_CURRENT_LOCATION;
+        return error_code(client_errc::protocol_value_error, &loc);
+    }
+
     // Try to parse the private key
     unique_bio bio{BIO_new_mem_buf(server_key.data(), server_key.size())};
     if (!bio)
@@ -122,13 +130,6 @@ inline error_code csha2p_encrypt_password(
     {
         static constexpr auto loc = BOOST_CURRENT_LOCATION;
         return translate_openssl_error(ERR_get_error(), &loc, openssl_category);
-    }
-
-    // Apply a sanity check to the key buffer size
-    if (server_key.size() > 1024u * 1024u * 1024u)
-    {
-        static constexpr auto loc = BOOST_CURRENT_LOCATION;
-        return error_code(client_errc::protocol_value_error, &loc);
     }
 
     // Salt the password
