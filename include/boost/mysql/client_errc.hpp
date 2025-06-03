@@ -172,6 +172,9 @@ enum class client_errc : int
      * (protocol violation).
      */
     bad_handshake_packet_type,
+
+    /// An OpenSSL function failed and did not provide any extra diagnostics.
+    unknown_openssl_error,
 };
 
 BOOST_MYSQL_DECL
