@@ -74,7 +74,7 @@ std::vector<std::uint8_t> decrypt(span<const std::uint8_t> private_key, span<con
     using unique_evp_pkey_ctx = std::unique_ptr<EVP_PKEY_CTX, evp_pkey_ctx_deleter>;
 
     // Create a BIO with the key
-    unique_bio bio(BIO_new_mem_buf(private_key.data(), private_key.size()));
+    unique_bio bio(BIO_new_mem_buf(private_key.data(), static_cast<int>(private_key.size())));
     BOOST_TEST_REQUIRE((bio != nullptr), "Creating a BIO failed: " << ERR_get_error());
 
     // Load the key
