@@ -62,16 +62,10 @@ using pfr_fields_t = decltype(pfr::structure_to_tuple(std::declval<const T&>()))
 template <std::size_t N>
 constexpr std::array<string_view, N> to_name_table_storage(std::array<std::string_view, N> input) noexcept
 {
-    std::array<string_view, N> res;
+    std::array<string_view, N> res{};
     for (std::size_t i = 0; i < N; ++i)
         res[i] = input[i];
     return res;
-}
-
-// Workaround for https://github.com/boostorg/pfr/issues/165
-constexpr std::array<string_view, 0u> to_name_table_storage(std::array<std::nullptr_t, 0u>) noexcept
-{
-    return {};
 }
 
 template <class T>
