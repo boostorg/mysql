@@ -119,7 +119,7 @@ inline error_code csha2p_encrypt_password(
     }
 
     // Try to parse the private key
-    unique_bio bio{BIO_new_mem_buf(server_key.data(), server_key.size())};
+    unique_bio bio{BIO_new_mem_buf(server_key.data(), static_cast<int>(server_key.size()))};
     if (!bio)
     {
         static constexpr auto loc = BOOST_CURRENT_LOCATION;
