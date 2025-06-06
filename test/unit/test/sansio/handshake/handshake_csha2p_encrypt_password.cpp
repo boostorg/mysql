@@ -368,6 +368,18 @@ BOOST_AUTO_TEST_CASE(error_key_too_big)
     BOOST_TEST(ec.has_location());
 }
 
+// If a password longer than the longest allowed plaintext is provided, we fail
+BOOST_AUTO_TEST_CASE(error_password_too_big)
+{
+    buffer_type buff;
+    std::string passwd(214u, 'a');  // 213 is the max RSA/OAEP plaintext size
+    auto ec = csha2p_encrypt_password(passwd, scramble, public_key_2048, buff, ssl_category);
+    BOOST_TEST((ec.category() == ssl_category));
+    BOOST_TEST(ec.value() > 0);      // is an error
+    BOOST_TEST(ec.message() != "");  // produces some output
+    BOOST_TEST(ec.has_location());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 }  // namespace
