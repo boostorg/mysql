@@ -74,7 +74,7 @@ And with the following databases:
   of executing a prepared statement is sent in binary format rather than in text.
 - Stored procedures.
 - Authentication methods (authentication plugins): mysql_native_password and
-  caching_sha2_password. These are the default methods in MySQL 5 and MySQL 8,
+  caching_sha2_password. These are the default methods in MySQL 5/MariaDB and MySQL 8,
   respectively.
 - Encrypted connections (TLS).
 - TCP and UNIX socket transports.

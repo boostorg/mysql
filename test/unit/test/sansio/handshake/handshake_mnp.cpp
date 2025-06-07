@@ -29,8 +29,8 @@ BOOST_AUTO_TEST_CASE(ok)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().auth_response(mnp_response).build())
+        .expect_read(server_hello_builder().auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().auth_response(mnp_hash).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -46,8 +46,8 @@ BOOST_AUTO_TEST_CASE(err)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().auth_response(mnp_response).build())
+        .expect_read(server_hello_builder().auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().auth_response(mnp_hash).build())
         .expect_read(err_builder()
                          .seqnum(2)
                          .code(common_server_errc::er_access_denied_error)
@@ -65,14 +65,13 @@ BOOST_AUTO_TEST_CASE(authswitch_ok)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
-        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
-        .expect_write(create_frame(3, mnp_response))
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_scramble))
+        .expect_write(create_frame(3, mnp_hash))
         .expect_read(create_ok_frame(4, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -90,10 +89,10 @@ BOOST_AUTO_TEST_CASE(mnp_tls)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge).build())
+        .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_scramble).build())
         .expect_write(create_ssl_request())
         .expect_ssl_handshake()
-        .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response).build())
+        .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_hash).build())
         .expect_read(create_ok_frame(3, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_tls_active(true)
@@ -111,9 +110,9 @@ BOOST_AUTO_TEST_CASE(moredata)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().auth_response(mnp_response).build())
-        .expect_read(create_more_data_frame(2, mnp_challenge))
+        .expect_read(server_hello_builder().auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().auth_response(mnp_hash).build())
+        .expect_read(create_more_data_frame(2, mnp_scramble))
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 
@@ -125,15 +124,14 @@ BOOST_AUTO_TEST_CASE(authswitch_moredata)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
-        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_challenge))
-        .expect_write(create_frame(3, mnp_response))
-        .expect_read(create_more_data_frame(4, mnp_challenge))
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_auth_switch_frame(2, "mysql_native_password", mnp_scramble))
+        .expect_write(create_frame(3, mnp_hash))
+        .expect_read(create_more_data_frame(4, mnp_scramble))
         .check(fix, client_errc::bad_handshake_packet_type);
 }
 

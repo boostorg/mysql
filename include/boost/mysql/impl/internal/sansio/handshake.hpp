@@ -26,6 +26,7 @@
 #include <boost/mysql/impl/internal/protocol/deserialization.hpp>
 #include <boost/mysql/impl/internal/protocol/serialization.hpp>
 #include <boost/mysql/impl/internal/protocol/static_buffer.hpp>
+#include <boost/mysql/impl/internal/sansio/auth_plugin_common.hpp>
 #include <boost/mysql/impl/internal/sansio/caching_sha2_password.hpp>
 #include <boost/mysql/impl/internal/sansio/connection_state_data.hpp>
 #include <boost/mysql/impl/internal/sansio/mysql_native_password.hpp>
@@ -34,12 +35,15 @@
 #include <boost/system/result.hpp>
 #include <boost/variant2/variant.hpp>
 
+#include <array>
 #include <cstdint>
+#include <cstring>
 
 namespace boost {
 namespace mysql {
 namespace detail {
 
+// Stores which authentication plugin we're using, plus any required state. Variant-like
 class any_authentication_plugin
 {
     enum class type_t
@@ -58,23 +62,19 @@ class any_authentication_plugin
 public:
     any_authentication_plugin() = default;
 
-    // Emplaces the plugin and computes the first authentication response by hashing the password
-    system::result<static_buffer<32>> bootstrap_plugin(
-        string_view plugin_name,
-        string_view password,
-        span<const std::uint8_t> challenge
-    )
+    // Emplaces a plugin of the type given by plugin_name. Errors on unknown plugin
+    error_code emplace_by_name(string_view plugin_name)
     {
         if (plugin_name == mnp_plugin_name)
         {
             type_ = type_t::mnp;
-            return mnp_hash_password(password, challenge);
+            return error_code();
         }
         else if (plugin_name == csha2p_plugin_name)
         {
             type_ = type_t::csha2p;
             csha2p_ = csha2p_algo();  // Reset any leftover state, just in case
-            return csha2p_hash_password(password, challenge);
+            return error_code();
         }
         else
         {
@@ -82,10 +82,26 @@ public:
         }
     }
 
+    // Hashes the password with the selected plugin
+    static_buffer<max_hash_size> hash_password(
+        string_view password,
+        span<const std::uint8_t, scramble_size> scramble
+    ) const
+    {
+        switch (type_)
+        {
+        case type_t::mnp: return mnp_hash_password(password, scramble);
+        case type_t::csha2p: return csha2p_hash_password(password, scramble);
+        default: BOOST_ASSERT(false); return {};  // LCOV_EXCL_LINE
+        }
+    }
+
+    // Invokes the plugin action. Use when a more_data packet is received.
     next_action resume(
         connection_state_data& st,
-        boost::span<const std::uint8_t> server_data,
+        span<const std::uint8_t> server_data,
         string_view password,
+        span<const std::uint8_t, scramble_size> scramble,
         bool secure_channel,
         std::uint8_t& seqnum
     )
@@ -95,7 +111,8 @@ public:
         case type_t::mnp:
             // This algorithm doesn't allow more data frames
             return error_code(client_errc::bad_handshake_packet_type);
-        case type_t::csha2p: return csha2p_.resume(st, server_data, password, secure_channel, seqnum);
+        case type_t::csha2p:
+            return csha2p_.resume(st, server_data, password, scramble, secure_channel, seqnum);
         default:
             BOOST_ASSERT(false);
             return next_action(client_errc::bad_handshake_packet_type);  // LCOV_EXCL_LINE
@@ -118,7 +135,7 @@ class handshake_algo
     int resume_point_{0};
     handshake_params hparams_;
     any_authentication_plugin plugin_;
-    static_buffer<32> hashed_password_;
+    std::array<std::uint8_t, scramble_size> scramble_;
     std::uint8_t sequence_number_{0};
     bool secure_channel_{false};
 
@@ -198,6 +215,20 @@ class handshake_algo
         }
     }
 
+    // Saves the scramble, checking that it has the right size
+    error_code save_scramble(span<const std::uint8_t> value)
+    {
+        // All scrambles must have exactly this size. Otherwise, it's a protocol violation error
+        if (value.size() != scramble_size)
+            return client_errc::protocol_value_error;
+
+        // Store the scramble
+        std::memcpy(scramble_.data(), value.data(), scramble_size);
+
+        // Done
+        return error_code();
+    }
+
     error_code process_hello(connection_state_data& st, diagnostics& diag, span<const std::uint8_t> buffer)
     {
         // Deserialize server hello
@@ -219,18 +250,14 @@ class handshake_algo
         // If we're using SSL, mark the channel as secure
         secure_channel_ = secure_channel_ || has_capabilities(*negotiated_caps, capabilities::ssl);
 
-        // Emplace the authentication plugin and compute the first response
-        auto hashed_password = plugin_.bootstrap_plugin(
-            hello.auth_plugin_name,
-            hparams_.password(),
-            hello.auth_plugin_data
-        );
-        if (hashed_password.has_error())
-            return hashed_password.error();
+        // Save which authentication plugin we're using. Do this before saving the scramble,
+        // as an unknown plugin might have a scramble size different to what we know
+        err = plugin_.emplace_by_name(hello.auth_plugin_name);
+        if (err)
+            return err;
 
-        // Save it for later
-        hashed_password_ = *hashed_password;
-        return error_code();
+        // Save the scramble for later
+        return save_scramble(hello.auth_plugin_data);
     }
 
     // Response to that initial greeting
@@ -243,29 +270,41 @@ class handshake_algo
         };
     }
 
-    login_request compose_login_request(const connection_state_data& st)
+    next_action serialize_login_request(connection_state_data& st)
     {
-        return login_request{
-            st.current_capabilities,
-            static_cast<std::uint32_t>(max_packet_size),
-            hparams_.connection_collation(),
-            hparams_.username(),
-            hashed_password_,
-            hparams_.database(),
-            plugin_.name(),
-        };
+        auto hashed_password = plugin_.hash_password(hparams_.password(), scramble_);
+        return st.write(
+            login_request{
+                st.current_capabilities,
+                static_cast<std::uint32_t>(max_packet_size),
+                hparams_.connection_collation(),
+                hparams_.username(),
+                hashed_password,
+                hparams_.database(),
+                plugin_.name(),
+            },
+            sequence_number_
+        );
     }
 
     // Processes auth_switch and auth_more_data messages, and leaves the result in auth_resp_
     next_action process_auth_switch(connection_state_data& st, auth_switch msg)
     {
-        // Emplace the authentication plugin and compute the first response
-        auto hashed_password = plugin_.bootstrap_plugin(msg.plugin_name, hparams_.password(), msg.auth_data);
-        if (hashed_password.has_error())
-            return hashed_password.error();
+        // Emplace the new authentication plugin
+        auto ec = plugin_.emplace_by_name(msg.plugin_name);
+        if (ec)
+            return ec;
+
+        // Store the scramble for later (required by caching_sha2_password, for instance)
+        ec = save_scramble(msg.auth_data);
+        if (ec)
+            return ec;
+
+        // Hash the password
+        auto hashed_password = plugin_.hash_password(hparams_.password(), scramble_);
 
         // Serialize the response
-        return st.write(auth_switch_response{*hashed_password}, sequence_number_);
+        return st.write(auth_switch_response{hashed_password}, sequence_number_);
     }
 
     void on_success(connection_state_data& st, const ok_view& ok)
@@ -312,7 +351,7 @@ class handshake_algo
             }
 
             // Compose and send handshake response
-            BOOST_MYSQL_YIELD(resume_point_, 4, st.write(compose_login_request(st), sequence_number_))
+            BOOST_MYSQL_YIELD(resume_point_, 4, serialize_login_request(st))
 
             // Receive the response
             BOOST_MYSQL_YIELD(resume_point_, 5, st.read(sequence_number_))
@@ -342,6 +381,7 @@ class handshake_algo
                     st,
                     resp.data.more_data,
                     hparams_.password(),
+                    scramble_,
                     secure_channel_,
                     sequence_number_
                 );

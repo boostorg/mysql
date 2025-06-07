@@ -19,6 +19,7 @@
 using namespace boost::mysql;
 using namespace boost::mysql::test;
 
+using boost::test_tools::per_element;
 using detail::get_row_name_table;
 using detail::get_row_size;
 using detail::is_pfr_reflectable;
@@ -90,21 +91,14 @@ static_assert(get_row_size<pfr_by_name<s1>>() == 3u, "");
 static_assert(get_row_size<pfr_by_name<s2>>() == 1u, "");
 
 // name table
-static void compare_name_tables(name_table_t lhs, name_table_t rhs)
-{
-    std::vector<string_view> lhsvec(lhs.begin(), lhs.end());
-    std::vector<string_view> rhsvec(rhs.begin(), rhs.end());
-    BOOST_TEST(lhsvec == rhsvec);
-}
-
 BOOST_AUTO_TEST_CASE(get_row_name_table_)
 {
     const string_view expected_s1[] = {"i", "f", "double_field"};
     const string_view expected_s2[] = {"s"};
 
-    compare_name_tables(get_row_name_table<pfr_by_name<empty>>(), name_table_t());
-    compare_name_tables(get_row_name_table<pfr_by_name<s1>>(), expected_s1);
-    compare_name_tables(get_row_name_table<pfr_by_name<s2>>(), expected_s2);
+    BOOST_TEST(get_row_name_table<pfr_by_name<empty>>() == name_table_t(), per_element());
+    BOOST_TEST(get_row_name_table<pfr_by_name<s1>>() == expected_s1, per_element());
+    BOOST_TEST(get_row_name_table<pfr_by_name<s2>>() == expected_s2, per_element());
 }
 
 // meta check

@@ -43,6 +43,7 @@ run
         test/sansio/handshake/handshake_mnp_hash_password.cpp
         test/sansio/handshake/handshake_csha2p.cpp
         test/sansio/handshake/handshake_csha2p_hash_password.cpp
+        test/sansio/handshake/handshake_csha2p_encrypt_password.cpp
         test/sansio/handshake/handshake_capabilities.cpp
         test/sansio/handshake/handshake_connection_state_data.cpp
         test/sansio/read_resultset_head.cpp
@@ -144,3 +145,11 @@ run
         <include>include
     : target-name boost_mysql_unittests
     ;
+
+
+# Tests edge cases when encrypting passwords that require mocking OpenSSL.
+# It looks like this works even if boost_mysql links to the SSL libraries.
+run test_csha2p_encrypt_password_errors.cpp
+    /boost/mysql/test//boost_mysql
+    /boost/test//boost_unit_test_framework/<warnings-as-errors>off
+;

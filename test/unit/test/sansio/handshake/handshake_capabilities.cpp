@@ -32,8 +32,8 @@ BOOST_AUTO_TEST_CASE(db_nonempty_supported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().caps(db_caps).auth_response(mnp_response).db("mydb").build())
+        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().caps(db_caps).auth_response(mnp_hash).db("mydb").build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(db_caps)
@@ -49,7 +49,7 @@ BOOST_AUTO_TEST_CASE(db_nonempty_unsupported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_scramble).build())
         .check(fix, client_errc::server_unsupported);
 }
 
@@ -61,8 +61,8 @@ BOOST_AUTO_TEST_CASE(db_empty_supported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
+        .expect_read(server_hello_builder().caps(db_caps).auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_hash).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -79,8 +79,8 @@ BOOST_AUTO_TEST_CASE(db_empty_unsupported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().auth_response(mnp_response).build())
+        .expect_read(server_hello_builder().auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().auth_response(mnp_hash).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -105,8 +105,8 @@ BOOST_AUTO_TEST_CASE(multiq_true_supported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().caps(multiq_caps).auth_response(mnp_response).build())
+        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().caps(multiq_caps).auth_response(mnp_hash).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(multiq_caps)
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(multiq_true_unsupported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_scramble).build())
         .check(fix, client_errc::server_unsupported);
 }
 
@@ -137,8 +137,8 @@ BOOST_AUTO_TEST_CASE(multiq_false_supported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
+        .expect_read(server_hello_builder().caps(multiq_caps).auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_hash).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -155,8 +155,8 @@ BOOST_AUTO_TEST_CASE(multiq_false_unsupported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
-        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_scramble).build())
+        .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_hash).build())
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -184,11 +184,10 @@ BOOST_AUTO_TEST_CASE(tls_on)
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_challenge).build())
+                .expect_read(server_hello_builder().caps(tls_caps).auth_data(mnp_scramble).build())
                 .expect_write(create_ssl_request())
                 .expect_ssl_handshake()
-                .expect_write(
-                    login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_response).build()
+                .expect_write(login_request_builder().seqnum(2).caps(tls_caps).auth_response(mnp_hash).build()
                 )
                 .expect_read(create_ok_frame(3, ok_builder().build()))
                 .will_set_status(connection_status::ready)
@@ -271,8 +270,8 @@ BOOST_AUTO_TEST_CASE(tls_off)
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().caps(tc.server_caps).auth_data(mnp_challenge).build())
-                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
+                .expect_read(server_hello_builder().caps(tc.server_caps).auth_data(mnp_scramble).build())
+                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_hash).build())
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
                 .will_set_capabilities(min_caps)
@@ -294,7 +293,7 @@ BOOST_AUTO_TEST_CASE(tls_error_unsupported)
 
     // Run the test
     algo_test()
-        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_challenge).build())
+        .expect_read(server_hello_builder().caps(min_caps).auth_data(mnp_scramble).build())
         .check(fix, client_errc::server_doesnt_support_ssl);
 }
 
@@ -338,7 +337,7 @@ BOOST_AUTO_TEST_CASE(caps_mandatory)
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().caps(tc.caps).auth_data(mnp_challenge).build())
+                .expect_read(server_hello_builder().caps(tc.caps).auth_data(mnp_scramble).build())
                 .check(fix, client_errc::server_unsupported);
         }
     }
@@ -365,9 +364,8 @@ BOOST_AUTO_TEST_CASE(caps_optional)
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_challenge).build())
-                .expect_write(
-                    login_request_builder().caps(min_caps | tc.caps).auth_response(mnp_response).build()
+                .expect_read(server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_scramble).build())
+                .expect_write(login_request_builder().caps(min_caps | tc.caps).auth_response(mnp_hash).build()
                 )
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
@@ -416,8 +414,8 @@ BOOST_AUTO_TEST_CASE(caps_ignored)
 
             // Run the test
             algo_test()
-                .expect_read(server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_challenge).build())
-                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_response).build())
+                .expect_read(server_hello_builder().caps(min_caps | tc.caps).auth_data(mnp_scramble).build())
+                .expect_write(login_request_builder().caps(min_caps).auth_response(mnp_hash).build())
                 .expect_read(create_ok_frame(2, ok_builder().build()))
                 .will_set_status(connection_status::ready)
                 .will_set_capabilities(min_caps)

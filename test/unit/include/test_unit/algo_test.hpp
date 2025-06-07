@@ -70,6 +70,7 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         detail::next_action_type type;
         std::vector<std::uint8_t> bytes;
         error_code result;
+        bool check;
     };
 
     std::vector<step_t> steps_;
@@ -98,7 +99,12 @@ class BOOST_ATTRIBUTE_NODISCARD algo_test
         std::size_t num_steps_to_run
     ) const;
 
-    algo_test& add_step(detail::next_action_type act_type, std::vector<std::uint8_t> bytes, error_code ec);
+    algo_test& add_step(
+        detail::next_action_type act_type,
+        std::vector<std::uint8_t> bytes,
+        error_code ec,
+        bool check = true
+    );
 
     void check_impl(
         any_algo_ref algo,
@@ -124,6 +130,12 @@ public:
     algo_test& expect_write(std::vector<std::uint8_t> bytes, error_code result = {})
     {
         return add_step(detail::next_action_type::write, std::move(bytes), result);
+    }
+
+    BOOST_ATTRIBUTE_NODISCARD
+    algo_test& expect_any_write(error_code result = {})
+    {
+        return add_step(detail::next_action_type::write, {}, result, false);
     }
 
     BOOST_ATTRIBUTE_NODISCARD
@@ -226,7 +238,7 @@ public:
 
 struct algo_fixture_base
 {
-    static constexpr std::size_t default_max_buffsize = 1024u;
+    static constexpr std::size_t default_max_buffsize = 4u * 1024u * 1024u;
 
     detail::connection_state_data st;
 

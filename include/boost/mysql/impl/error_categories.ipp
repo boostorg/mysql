@@ -103,6 +103,8 @@ inline const char* error_to_string(client_errc error)
     case client_errc::bad_handshake_packet_type:
         return "During handshake, the server sent a packet type that is not allowed in the current state "
                "(protocol violation).";
+    case client_errc::unknown_openssl_error:
+        return "An OpenSSL function failed and did not provide any extra diagnostics.";
     default: return "<unknown MySQL client error>";
     }
 }

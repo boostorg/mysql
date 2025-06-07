@@ -50,7 +50,10 @@ enum class client_errc : int
     /// The user employs an authentication plugin not known to this library.
     unknown_auth_plugin,
 
-    /// The authentication plugin requires the connection to use SSL.
+    /**
+     * \brief (Legacy) The authentication plugin requires the connection to use SSL.
+     * This code is no longer used, since all supported plugins support plaintext connections.
+     */
     auth_plugin_requires_ssl,
 
     /**
@@ -169,6 +172,9 @@ enum class client_errc : int
      * (protocol violation).
      */
     bad_handshake_packet_type,
+
+    /// An OpenSSL function failed and did not provide any extra diagnostics.
+    unknown_openssl_error,
 };
 
 BOOST_MYSQL_DECL

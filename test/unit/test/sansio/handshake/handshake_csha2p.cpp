@@ -13,8 +13,10 @@
 #include <vector>
 
 #include "handshake_common.hpp"
+#include "handshake_csha2p_keys.hpp"
 #include "test_common/create_diagnostics.hpp"
 #include "test_unit/create_err.hpp"
+#include "test_unit/create_frame.hpp"
 #include "test_unit/create_ok.hpp"
 #include "test_unit/create_ok_frame.hpp"
 
@@ -36,12 +38,11 @@ BOOST_AUTO_TEST_CASE(ok)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_ok_frame(2, ok_builder().build()))
         .will_set_status(connection_status::ready)
         .will_set_capabilities(min_caps)
@@ -60,39 +61,17 @@ BOOST_AUTO_TEST_CASE(err)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(err_builder()
                          .seqnum(2)
                          .code(common_server_errc::er_access_denied_error)
                          .message("Denied")
                          .build_frame())
         .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
-}
-
-// At the moment, this plugin requires TLS, so this is an error
-BOOST_AUTO_TEST_CASE(fullauth)
-{
-    // Setup
-    handshake_fixture fix;
-
-    // Run the test
-    algo_test()
-        .expect_read(server_hello_builder()
-                         .caps(tls_caps)
-                         .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge)
-                         .build())
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
-        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
-        .check(fix, client_errc::auth_plugin_requires_ssl);
 }
 
 // Receiving an unknown more data frame (something != fullauth or fastok) is illegal
@@ -104,12 +83,11 @@ BOOST_AUTO_TEST_CASE(moredata)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, std::vector<std::uint8_t>{3, 4}))
         .check(fix, client_errc::bad_handshake_packet_type);
 }
@@ -123,12 +101,11 @@ BOOST_AUTO_TEST_CASE(fastok_ok)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(create_ok_frame(3, ok_builder().build()))
         .will_set_status(connection_status::ready)
@@ -148,12 +125,11 @@ BOOST_AUTO_TEST_CASE(fastok_err)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(err_builder()
                          .seqnum(3)
@@ -172,12 +148,11 @@ BOOST_AUTO_TEST_CASE(fastok_fastok)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(create_more_data_frame(3, csha2p_fast_auth_ok))
         .check(fix, client_errc::bad_handshake_packet_type);
@@ -192,12 +167,11 @@ BOOST_AUTO_TEST_CASE(fastok_fullauth)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(create_more_data_frame(3, csha2p_perform_full_auth))
         .check(fix, client_errc::bad_handshake_packet_type);
@@ -212,12 +186,11 @@ BOOST_AUTO_TEST_CASE(fastok_moredata)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_fast_auth_ok))
         .expect_read(create_more_data_frame(3, std::vector<std::uint8_t>{10, 20, 30}))
         .check(fix, client_errc::bad_handshake_packet_type);
@@ -232,13 +205,13 @@ BOOST_AUTO_TEST_CASE(authswitch_fastok_ok)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("mysql_native_password").auth_data(mnp_challenge).build()
+            server_hello_builder().auth_plugin("mysql_native_password").auth_data(mnp_scramble).build()
         )
         .expect_write(
-            login_request_builder().auth_plugin("mysql_native_password").auth_response(mnp_response).build()
+            login_request_builder().auth_plugin("mysql_native_password").auth_response(mnp_hash).build()
         )
-        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_challenge))
-        .expect_write(create_frame(3, csha2p_response))
+        .expect_read(create_auth_switch_frame(2, "caching_sha2_password", csha2p_scramble))
+        .expect_write(create_frame(3, csha2p_hash))
         .expect_read(create_more_data_frame(4, csha2p_fast_auth_ok))
         .expect_read(create_ok_frame(5, ok_builder().build()))
         .will_set_status(connection_status::ready)
@@ -246,6 +219,137 @@ BOOST_AUTO_TEST_CASE(authswitch_fastok_ok)
         .will_set_current_charset(utf8mb4_charset)
         .will_set_connection_id(42)
         .check(fix);
+}
+
+// If the server requests us to perform full auth and we're using plaintext,
+// we request the server's public key
+BOOST_AUTO_TEST_CASE(fullauth_key_ok)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
+        .expect_write(create_frame(3, csha2p_request_key))
+        .expect_read(create_more_data_frame(4, public_key_2048))
+        .expect_any_write()  // the exact encryption result is not deterministic
+        .expect_read(create_ok_frame(6, ok_builder().build()))
+        .will_set_status(connection_status::ready)
+        .will_set_capabilities(min_caps)
+        .will_set_current_charset(utf8mb4_charset)
+        .will_set_connection_id(42)
+        .check(fix);
+}
+
+// The server might send us an error after we sent the password (e.g. unauthorized)
+BOOST_AUTO_TEST_CASE(fullauth_key_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
+        .expect_write(create_frame(3, csha2p_request_key))
+        .expect_read(create_more_data_frame(4, public_key_2048))
+        .expect_any_write()  // the exact encryption result is not deterministic
+        .expect_read(err_builder()
+                         .seqnum(6)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Denied")
+                         .build_frame())
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Denied"));
+}
+
+// The server might send us an error instead of the key,
+// if the key pair for caching_sha2_password was misconfigured
+BOOST_AUTO_TEST_CASE(fullauth_error)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
+        .expect_write(create_frame(3, csha2p_request_key))
+        .expect_read(err_builder()
+                         .seqnum(4)
+                         .code(common_server_errc::er_access_denied_error)
+                         .message("Bad key")
+                         .build_frame())
+        .check(fix, common_server_errc::er_access_denied_error, create_server_diag("Bad key"));
+}
+
+// If encryption fails (e.g. because the server sent us an invalid key), we fail appropriately.
+// Size checks are the only ones that yield a predictable error code
+BOOST_AUTO_TEST_CASE(fullauth_encrypterror)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
+        .expect_write(create_frame(3, csha2p_request_key))
+        .expect_read(create_more_data_frame(4, std::vector<std::uint8_t>(2u * 1024u * 1024u, 0xab)))
+        .check(fix, client_errc::protocol_value_error);
+}
+
+// After encrypting the password, no more messages are expected
+BOOST_AUTO_TEST_CASE(fullauth_key_moredata)
+{
+    // Setup
+    handshake_fixture fix;
+
+    // Run the test
+    algo_test()
+        .expect_read(server_hello_builder()
+                         .caps(tls_caps)
+                         .auth_plugin("caching_sha2_password")
+                         .auth_data(csha2p_scramble)
+                         .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
+        .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
+        .expect_write(create_frame(3, csha2p_request_key))
+        .expect_read(create_more_data_frame(4, public_key_2048))
+        .expect_any_write()  // the exact encryption result is not deterministic
+        .expect_read(create_more_data_frame(6, csha2p_perform_full_auth))
+        .check(fix, client_errc::bad_handshake_packet_type);
 }
 
 // If we're using a secure transport (e.g. UNIX socket), caching_sha2_password
@@ -258,12 +362,11 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_ok)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
         .expect_read(create_ok_frame(4, ok_builder().build()))
@@ -285,12 +388,11 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_err)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
         .expect_read(err_builder()
@@ -310,12 +412,11 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_fastok)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
         .expect_read(create_more_data_frame(4, csha2p_fast_auth_ok))
@@ -331,12 +432,11 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_fullauth)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
         .expect_read(create_more_data_frame(4, csha2p_perform_full_auth))
@@ -352,12 +452,11 @@ BOOST_AUTO_TEST_CASE(securetransport_fullauth_moredata)
     // Run the test
     algo_test()
         .expect_read(
-            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_challenge).build()
+            server_hello_builder().auth_plugin("caching_sha2_password").auth_data(csha2p_scramble).build()
         )
-        .expect_write(login_request_builder()
-                          .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
-                          .build())
+        .expect_write(
+            login_request_builder().auth_plugin("caching_sha2_password").auth_response(csha2p_hash).build()
+        )
         .expect_read(create_more_data_frame(2, csha2p_perform_full_auth))
         .expect_write(create_frame(3, null_terminated_password()))
         .expect_read(create_more_data_frame(4, std::vector<std::uint8_t>{4, 3, 2}))
@@ -376,7 +475,7 @@ BOOST_AUTO_TEST_CASE(tls)
         .expect_read(server_hello_builder()
                          .caps(tls_caps)
                          .auth_plugin("caching_sha2_password")
-                         .auth_data(csha2p_challenge)
+                         .auth_data(csha2p_scramble)
                          .build())
         .expect_write(create_ssl_request())
         .expect_ssl_handshake()
@@ -384,7 +483,7 @@ BOOST_AUTO_TEST_CASE(tls)
                           .seqnum(2)
                           .caps(tls_caps)
                           .auth_plugin("caching_sha2_password")
-                          .auth_response(csha2p_response)
+                          .auth_response(csha2p_hash)
                           .build())
         .expect_read(create_more_data_frame(3, csha2p_perform_full_auth))
         .expect_write(create_frame(4, null_terminated_password()))

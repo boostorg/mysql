@@ -34,6 +34,7 @@ add_executable(
     test/sansio/handshake/handshake_mnp_hash_password.cpp
     test/sansio/handshake/handshake_csha2p.cpp
     test/sansio/handshake/handshake_csha2p_hash_password.cpp
+    test/sansio/handshake/handshake_csha2p_encrypt_password.cpp
     test/sansio/handshake/handshake_capabilities.cpp
     test/sansio/handshake/handshake_connection_state_data.cpp
     test/sansio/read_resultset_head.cpp
@@ -153,4 +154,37 @@ boost_mysql_test_target_settings(boost_mysql_unittests)
 add_test(
     NAME boost_mysql_unittests
     COMMAND boost_mysql_unittests
+)
+
+# Tests edge cases when encrypting passwords that require mocking OpenSSL.
+# This executable should not link to any OpenSSL libraries.
+add_executable(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    test_csha2p_encrypt_password_errors.cpp
+)
+target_include_directories(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include # our own includes
+    ${OPENSSL_INCLUDE_DIR} # we only need the includes
+)
+target_link_libraries(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    PRIVATE
+    Boost::unit_test_framework
+    Boost::assert
+    Boost::config
+    Boost::container
+    Boost::core
+    Boost::system
+)
+target_compile_features(
+    boost_mysql_test_csha2p_encrypt_password_errors
+    INTERFACE
+    cxx_std_11
+)
+boost_mysql_test_target_settings(boost_mysql_test_csha2p_encrypt_password_errors)
+add_test(
+    NAME boost_mysql_test_csha2p_encrypt_password_errors
+    COMMAND boost_mysql_test_csha2p_encrypt_password_errors
 )

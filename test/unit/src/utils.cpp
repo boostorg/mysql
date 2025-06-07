@@ -113,7 +113,10 @@ detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
             if (step.type == detail::next_action_type::read)
                 handle_read(st, step);
             else if (step.type == detail::next_action_type::write)
-                BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, step.bytes);
+            {
+                if (step.check)
+                    BOOST_MYSQL_ASSERT_BUFFER_EQUALS(act.write_args().buffer, step.bytes);
+            }
             // Other actions don't need any handling
 
             act = algo.resume(st, diag, step.result);
@@ -126,10 +129,11 @@ detail::next_action boost::mysql::test::algo_test::run_algo_until_step(
 boost::mysql::test::algo_test& boost::mysql::test::algo_test::add_step(
     detail::next_action_type act_type,
     std::vector<std::uint8_t> bytes,
-    error_code ec
+    error_code ec,
+    bool check
 )
 {
-    steps_.push_back(step_t{act_type, std::move(bytes), ec});
+    steps_.push_back(step_t{act_type, std::move(bytes), ec, check});
     return *this;
 }
 
