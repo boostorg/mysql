@@ -82,7 +82,6 @@ DELIMITER ;
 
 -- User
 DROP USER IF EXISTS 'example_user'@'%';
-CREATE USER 'example_user'@'%' IDENTIFIED WITH 'mysql_native_password';
-ALTER USER 'example_user'@'%' IDENTIFIED BY 'example_password';
+CREATE USER 'example_user'@'%' IDENTIFIED BY 'example_password';
 GRANT ALL PRIVILEGES ON boost_mysql_examples.* TO 'example_user'@'%';
 FLUSH PRIVILEGES;

@@ -56,6 +56,7 @@ static test::server_features do_get_server_features()
         {"json-type",             &test::server_features::json_type            },
         {"regex-error-codes",     &test::server_features::regex_error_codes    },
         {"dup-query-error-codes", &test::server_features::dup_query_error_codes},
+        {"mnp",                   &test::server_features::mnp                  },
     };
 
     // Match disabled features against the possible set

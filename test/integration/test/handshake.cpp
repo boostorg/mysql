@@ -102,6 +102,7 @@ void check_ssl(Conn& conn, bool expected, boost::source_location loc = BOOST_MYS
 }
 
 // mysql_native_password
+BOOST_TEST_DECORATOR(*run_if(&server_features::mnp))
 BOOST_AUTO_TEST_SUITE(mysql_native_password)
 
 constexpr const char* regular_user = "mysqlnp_user";
