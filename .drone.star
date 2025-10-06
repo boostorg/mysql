@@ -288,7 +288,7 @@ def main(ctx):
         # CMake Linux
         linux_cmake('Linux CMake MySQL 5.x',      _image('build-gcc14:1'), db='mysql-5_7_41:1',   build_shared_libs=0),
         linux_cmake('Linux CMake MariaDB',        _image('build-gcc14:1'), db='mariadb-11_4_2:1', build_shared_libs=1),
-        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8:2'), cxxstd='11', install_test=0),
+        linux_cmake('Linux CMake cmake 3.8',      _image('build-cmake3_8:3'), cxxstd='11', install_test=0),
         linux_cmake('Linux CMake gcc Release',    _image('build-gcc14:1'), cmake_build_type='Release'),
         linux_cmake('Linux CMake gcc MinSizeRel', _image('build-gcc14:1'), cmake_build_type='MinSizeRel'),
         linux_cmake_noopenssl('Linux CMake no OpenSSL'),
