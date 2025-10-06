@@ -11,17 +11,18 @@ set -e
 repo_base=$(realpath $(dirname $(realpath $0))/../..)
 
 BK=cmake
-IMAGE=build-cmake3_8
-SHA=e9696175806589fc91e160399eedeac8fdc88c68
+IMAGE=build-gcc13
+IMAGE_VERSION=1
 CONTAINER=builder-$IMAGE
-FULL_IMAGE=ghcr.io/anarthal-containers/$IMAGE:$SHA
-DB=mysql-8.4.1
+FULL_IMAGE=ghcr.io/anarthal/cpp-ci-containers/$IMAGE:$IMAGE_VERSION
+DB=mysql-9_4_0
+DB_VERSION=1
 
 docker start $DB || docker run -d \
     --name $DB \
     -v /var/run/mysqld:/var/run/mysqld \
     -p 3306:3306 \
-    ghcr.io/anarthal-containers/ci-db:$DB-$SHA
+    ghcr.io/anarthal/cpp-ci-containers/$DB:$DB_VERSION
 docker start $CONTAINER || docker run -dit \
     --name $CONTAINER \
     -v "$repo_base:/opt/boost-mysql" \
