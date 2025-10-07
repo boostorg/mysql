@@ -337,7 +337,7 @@ def main(ctx):
         linux_b2('Linux B2 gcc-9',                _image('build-gcc9:1'),          toolset='gcc-9',     cxxstd='14,17', variant='debug'),
         linux_b2('Linux B2 gcc-10',               _image('build-gcc10:1'),         toolset='gcc-10',    cxxstd='17'),
         linux_b2('Linux B2 gcc-11',               _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20'),
-        linux_b2('Linux B2 gcc-12',               _image('build-gcc11:1'),         toolset='gcc-12',    cxxstd='20,23', variant='debug'),
+        linux_b2('Linux B2 gcc-12',               _image('build-gcc12:1'),         toolset='gcc-12',    cxxstd='20,23', variant='debug'),
         linux_b2('Linux B2 gcc-13',               _image('build-gcc13:1'),         toolset='gcc-13',    cxxstd='20'),
         linux_b2('Linux B2 gcc-14',               _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23'),
         linux_b2('Linux B2 gcc-15',               _image('build-gcc15:1'),         toolset='gcc-15',    cxxstd='23'),
