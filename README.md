@@ -55,8 +55,8 @@ target_link_libraries(main PRIVATE Boost::charconv Threads::Threads OpenSSL::Cry
 
 Boost.MySQL has been tested with the following compilers:
 
-- gcc 5 to 14.
-- clang 3.6 to 18.
+- gcc 5 to 15.
+- clang 4 to 20.
 - msvc 14.1, 14.2 and 14.3.
 
 And with the following databases:
