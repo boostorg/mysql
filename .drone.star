@@ -327,7 +327,7 @@ def main(ctx):
         linux_b2('Linux B2 clang-19-libc++',      _image('build-clang19:1'),       toolset='clang-19',  cxxstd='23', stdlib='libc++'),
         linux_b2('Linux B2 clang-20',             _image('build-clang20:1'),       toolset='clang-20',  cxxstd='23'),
         linux_b2('Linux B2 clang-sanit',          _image('build-clang20:1'),       toolset='clang-20',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
 
         linux_b2('Linux B2 gcc-5',                _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
         linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
