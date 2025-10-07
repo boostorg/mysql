@@ -309,7 +309,6 @@ def main(ctx):
         #   Ubuntu 20.04: gcc9,  clang 10
         #   Ubuntu 22.04: gcc11, clang 14
         #   Ubuntu 24.04: gcc13, clang 18
-        linux_b2('Linux B2 clang-3_8',            _image('build-clang3_8:1'),      toolset='clang-3_8', cxxstd='11'),
         linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
         linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14,17', variant='debug', separate_compilation=0),
         linux_b2('Linux B2 clang-6',              _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14,17', variant='debug'),

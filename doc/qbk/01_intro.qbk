@@ -75,7 +75,7 @@ It may not be a good fit for you if:
 Boost.MySQL is tested under the following compilers:
 
 * gcc 5.4 to gcc 15.0 (Linux)
-* clang 3.8 to clang 20.0 (Linux)
+* clang 4 to clang 20.0 (Linux)
 * Apple clang 14.0 (OSX)
 * MSVC 14.1 - Visual Studio 2017 (Windows)
 * MSVC 14.2 - Visual Studio 2019 (Windows)
