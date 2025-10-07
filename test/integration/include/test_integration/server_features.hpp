@@ -25,6 +25,9 @@ struct server_features
     // Includes caching_sha2_password and sha256_password
     bool sha256{true};
 
+    // Does the server support the mysql_native_password authentication method?
+    bool mnp{true};
+
     // Does the server support the dedicated JSON type?
     bool json_type{true};
 

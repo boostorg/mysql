@@ -18,7 +18,8 @@ import re
 class _DbSystemType(Enum):
     mysql5 = 1
     mysql8 = 2
-    mariadb = 3
+    mysql9 = 3
+    mariadb = 4
 
 
 def _run_piped_stdin(args: List[str], fname: Path) -> None:
@@ -54,8 +55,12 @@ def _parse_db_version(db: str) -> _DbSystemType:
     # Perform the matching
     if is_mariadb:
         return _DbSystemType.mariadb
+    elif vmaj == 8:
+        return _DbSystemType.mysql8
+    elif vmaj >= 9:
+        return _DbSystemType.mysql9
     else:
-        return _DbSystemType.mysql8 if vmaj >= 8 else _DbSystemType.mysql5
+        return _DbSystemType.mysql5
 
 
 def _compute_disabled_features(db: _DbSystemType) -> Dict[str, bool]:
@@ -73,7 +78,10 @@ def _compute_disabled_features(db: _DbSystemType) -> Dict[str, bool]:
         'regex-error-codes': db in (_DbSystemType.mysql5, _DbSystemType.mariadb),
 
         # dup-query-error-codes. Disabled in mysql systems
-        'dup-query-error-codes': db in (_DbSystemType.mysql5, _DbSystemType.mysql8),
+        'dup-query-error-codes': db in (_DbSystemType.mysql5, _DbSystemType.mysql8, _DbSystemType.mysql9),
+
+        # mysql_native_password. Disabled in mysql9
+        'mnp': db == _DbSystemType.mysql9,
     }
 
 
@@ -96,6 +104,8 @@ def db_setup(
     _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup.sql'))
     if not disabled_features['sha256']:
         _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_sha256.sql'))
+    if not disabled_features['mnp']:
+        _run_sql_file(source_dir.joinpath('test', 'integration', 'db_setup_mnp.sql'))
     
     # Setup environment variables
     os.environ['BOOST_MYSQL_SERVER_HOST'] = server_host
