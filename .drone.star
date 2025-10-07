@@ -310,10 +310,10 @@ def main(ctx):
         #   Ubuntu 22.04: gcc11, clang 14
         #   Ubuntu 24.04: gcc13, clang 18
         linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
-        linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14,17', variant='debug', separate_compilation=0),
-        linux_b2('Linux B2 clang-6',              _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14,17', variant='debug'),
+        linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14', separate_compilation=0),
+        linux_b2('Linux B2 clang-6',              _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14'),
         linux_b2('Linux B2 clang-7',              _image('build-clang7:2'),        toolset='clang-7',   cxxstd='14,17'),
-        linux_b2('Linux B2 clang-8',              _image('build-clang8:1'),        toolset='clang-8',   cxxstd='14', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-8',              _image('build-clang8:2'),        toolset='clang-8',   cxxstd='14', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
         linux_b2('Linux B2 clang-9',              _image('build-clang9:2'),        toolset='clang-9',   cxxstd='17', variant='release'),
         linux_b2('Linux B2 clang-10',             _image('build-clang10:2'),       toolset='clang-10',  cxxstd='17,20', variant='debug'),
         linux_b2('Linux B2 clang-11',             _image('build-clang11:2'),       toolset='clang-11',  cxxstd='20'),
