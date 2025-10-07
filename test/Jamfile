@@ -75,6 +75,8 @@ local requirements =
         <toolset>gcc,<thread-sanitizer>norecover:<cxxflags>-Wno-tsan
         # gcc-11 emits spurious warnings for valid vector::insert ops
         <toolset>gcc-11:<cxxflags>-Wno-stringop-overflow
+        # gcc-15 emits spurious warnings about uninitialized variables in coroutines
+        <toolset>gcc-15:<cxxflags>-Wno-maybe-uninitialized
         # TODO: remove when PFR unused warnings are fixed
         # https://github.com/boostorg/pfr/pull/187
         <toolset>gcc:<cxxflags>-Wno-unused-parameter

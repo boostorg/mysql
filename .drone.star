@@ -302,29 +302,49 @@ def main(ctx):
         find_package_b2_linux('Linux find_package b2 distribution'),
         find_package_b2_windows('Windows find_package b2 distribution'),
 
-        # B2 Linux
-        # linux_b2('Linux B2 clang-3.6',            _image('build-clang3_6'),      toolset='clang-3.6', cxxstd='11,14'),
-        linux_b2('Linux B2 clang-7',              _image('build-clang7:1'),        toolset='clang-7',   cxxstd='14,17'),
-        linux_b2('Linux B2 clang-11',             _image('build-clang11:1'),       toolset='clang-11',  cxxstd='20'),
-        linux_b2('Linux B2 clang-14-header-only1',_image('build-clang14:1'),       toolset='clang-14',  cxxstd='11', separate_compilation=0),
-        linux_b2('Linux B2 clang-14-header-only2',_image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', separate_compilation=0),
-        linux_b2('Linux B2 clang-14-libc++',      _image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', stdlib='libc++'),
-        linux_b2('Linux B2 clang-14-arm64',       _image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', arch='arm64'),
-        linux_b2('Linux B2 clang-16-sanit',       _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-16-i386-sanit',  _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 clang-17',             _image('build-clang17:1'),       toolset='clang-17',  cxxstd='20'),
-        linux_b2('Linux B2 clang-18',             _image('build-clang18:1'),       toolset='clang-18',  cxxstd='23'),
+        # B2 Linux. Please try to keep this below 3 configurations per build so CI doesn't take forever
+        # Default Ubuntu compilers:
+        #   Ubuntu 16.04: gcc5,  clang 3.8
+        #   Ubuntu 18.04: gcc7,  clang 7
+        #   Ubuntu 20.04: gcc9,  clang 10
+        #   Ubuntu 22.04: gcc11, clang 14
+        #   Ubuntu 24.04: gcc13, clang 18
+        linux_b2('Linux B2 clang-4',              _image('build-clang4:1'),        toolset='clang-4',   cxxstd='14'),
+        linux_b2('Linux B2 clang-5-honly-dbg',    _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14', separate_compilation=0),
+        linux_b2('Linux B2 clang-6',              _image('build-clang5:1'),        toolset='clang-5',   cxxstd='14'),
+        linux_b2('Linux B2 clang-7',              _image('build-clang7:2'),        toolset='clang-7',   cxxstd='14,17'),
+        linux_b2('Linux B2 clang-8',              _image('build-clang8:2'),        toolset='clang-8',   cxxstd='14', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-9',              _image('build-clang9:2'),        toolset='clang-9',   cxxstd='17', variant='release'),
+        linux_b2('Linux B2 clang-10',             _image('build-clang10:2'),       toolset='clang-10',  cxxstd='17,20', variant='debug'),
+        linux_b2('Linux B2 clang-11',             _image('build-clang11:2'),       toolset='clang-11',  cxxstd='20'),
+        linux_b2('Linux B2 clang-12',             _image('build-clang12:2'),       toolset='clang-12',  cxxstd='20', variant='debug', stdlib='libc++', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-13',             _image('build-clang13:1'),       toolset='clang-13',  cxxstd='20'),
+        linux_b2('Linux B2 clang-14',             _image('build-clang14:1'),       toolset='clang-14',  cxxstd='20', variant='debug'),
+        linux_b2('Linux B2 clang-15',             _image('build-clang15:1'),       toolset='clang-15',  cxxstd='20', variant='debug'),
+        linux_b2('Linux B2 clang-16',             _image('build-clang16:1'),       toolset='clang-16',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-17-honly-rls',   _image('build-clang17:1'),       toolset='clang-17',  cxxstd='20', variant='release', separate_compilation=0),
+        linux_b2('Linux B2 clang-18-honly-dbg',   _image('build-clang18:1'),       toolset='clang-18',  cxxstd='20', variant='debug', separate_compilation=0),
+        linux_b2('Linux B2 clang-19-libc++',      _image('build-clang19:1'),       toolset='clang-19',  cxxstd='23', stdlib='libc++'),
+        linux_b2('Linux B2 clang-20',             _image('build-clang20:1'),       toolset='clang-20',  cxxstd='23'),
+        linux_b2('Linux B2 clang-sanit',          _image('build-clang20:1'),       toolset='clang-20',  cxxstd='20', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 clang-i386-sanit',     _image('build-clang16-i386:1'),  toolset='clang-16',  cxxstd='20', variant='debug', address_model='32', address_sanitizer=1, undefined_sanitizer=1),
+
         linux_b2('Linux B2 gcc-5',                _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11'), # gcc-5 C++14 doesn't like my constexpr field_view
         linux_b2('Linux B2 gcc-5-ts-executor',    _image('build-gcc5:1'),          toolset='gcc-5',     cxxstd='11', use_ts_executor=1),
-        linux_b2('Linux B2 gcc-6',                _image('build-gcc6:1'),          toolset='gcc-6',     cxxstd='14,17'),
-        linux_b2('Linux B2 gcc-10',               _image('build-gcc10:1'),         toolset='gcc-10',    cxxstd='17,20'),
+        linux_b2('Linux B2 gcc-6-honly-dbg',      _image('build-gcc6:1'),          toolset='gcc-6',     cxxstd='14', variant='debug', separate_compilation=0),
+        linux_b2('Linux B2 gcc-7',                _image('build-gcc7:1'),          toolset='gcc-7',     cxxstd='14,17', variant='debug'),
+        linux_b2('Linux B2 gcc-8',                _image('build-gcc8:1'),          toolset='gcc-8',     cxxstd='17'),
+        linux_b2('Linux B2 gcc-9',                _image('build-gcc9:1'),          toolset='gcc-9',     cxxstd='14,17', variant='debug'),
+        linux_b2('Linux B2 gcc-10',               _image('build-gcc10:1'),         toolset='gcc-10',    cxxstd='17'),
         linux_b2('Linux B2 gcc-11',               _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20'),
-        linux_b2('Linux B2 gcc-11-arm64',         _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='11,20', arch='arm64', variant='release'),
-        linux_b2('Linux B2 gcc-11-arm64-sanit',   _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20',    arch='arm64', variant='debug'),
-        linux_b2('Linux B2 gcc-13',               _image('build-gcc13:1'),         toolset='gcc-13',    cxxstd='20', variant='release'),
-        linux_b2('Linux B2 gcc-14',               _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='release'),
-        linux_b2('Linux B2 gcc-14-sanit',         _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
-        linux_b2('Linux B2 gcc-14-valgrind',      _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', valgrind=1),
+        linux_b2('Linux B2 gcc-12',               _image('build-gcc12:1'),         toolset='gcc-12',    cxxstd='20,23', variant='debug'),
+        linux_b2('Linux B2 gcc-13',               _image('build-gcc13:1'),         toolset='gcc-13',    cxxstd='20'),
+        linux_b2('Linux B2 gcc-14',               _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23'),
+        linux_b2('Linux B2 gcc-15',               _image('build-gcc15:1'),         toolset='gcc-15',    cxxstd='23'),
+        linux_b2('Linux B2 gcc-sanit',            _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', address_sanitizer=1, undefined_sanitizer=1),
+        linux_b2('Linux B2 gcc-valgrind',         _image('build-gcc14:1'),         toolset='gcc-14',    cxxstd='23', variant='debug', valgrind=1),
+        linux_b2('Linux B2 gcc-11-arm64',         _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20', arch='arm64', variant='release'),
+        linux_b2('Linux B2 gcc-11-arm64-sanit',   _image('build-gcc11:1'),         toolset='gcc-11',    cxxstd='20', arch='arm64', variant='debug'),
         linux_b2('Linux B2 noopenssl',            _image('build-noopenssl:1'),     toolset='gcc',       cxxstd='11', fail_if_no_openssl=0),
 
         # B2 Windows
